@@ -1,10 +1,18 @@
+/// Represents a single date.
+///
+/// This class represents a specific date (Year, Month, Day) in the civil calendar,
+/// independent of any time zone or time of day. It is immutable.
 class CivilDay {
   final int year;
   final int month;
   final int day;
 
+  /// Creates a [CivilDay].
   const CivilDay({required this.year, required this.month, required this.day});
 
+  /// Creates a [CivilDay] from a [DateTime].
+  ///
+  /// The time components of the [dateTime] are ignored.
   factory CivilDay.fromDateTime(DateTime dateTime) {
     return CivilDay(
       year: dateTime.year,
@@ -13,6 +21,7 @@ class CivilDay {
     );
   }
 
+  /// Converts this [CivilDay] to a [DateTime] at midnight (00:00:00).
   DateTime toDateTime() {
     return DateTime(year, month, day);
   }
