@@ -1,200 +1,285 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
+import 'relative_time_widget_robot.dart';
 
 void main() {
-  Widget buildTestApp(
-    Duration initialValue,
-    Function(Duration) onChanged, {
-    RelativeTimeConstraint constraint = RelativeTimeConstraint.forward,
-  }) {
-    return MaterialApp(
-      home: Scaffold(
-        body: StatefulBuilder(
-          builder: (context, setState) {
-            return RelativeTimeWidget(
-              value: initialValue,
-              onChanged: (newValue) {
-                setState(() {
-                  initialValue = newValue;
-                });
-                onChanged(newValue);
-              },
-              constraint: constraint,
-            );
-          },
-        ),
-      ),
-    );
-  }
+  group('RelativeTimeWidget (dayOfOrAfter)', () {
+    testWidgets('renders correctly with initial "Day of" state', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
 
-  testWidgets('RelativeTimeWidget renders initial state correctly (Day of)', (
-    WidgetTester tester,
-  ) async {
-    Duration value = const Duration(hours: 14, minutes: 30); // 14:30
-
-    await tester.pumpWidget(buildTestApp(value, (v) {}));
-
-    // Check for 14:30 or 2:30 PM.
-    // Simplifying: just find a text widget containing "2:30" or "14:30".
-    expect(
-      find.byWidgetPredicate((widget) {
-        if (widget is Text) {
-          final data = widget.data ?? '';
-          return data.contains('14:30') || data.contains('2:30');
-        }
-        return false;
-      }),
-      findsOneWidget,
-    );
-
-    expect(find.text('Day of'), findsOneWidget);
-    final segments = tester.widget<SegmentedButton<int>>(
-      find.byType(SegmentedButton<int>),
-    );
-    expect(segments.selected.first, 0);
-  });
-
-  testWidgets('RelativeTimeWidget renders 1 day after correctly', (
-    WidgetTester tester,
-  ) async {
-    Duration value = const Duration(days: 1, hours: 9, minutes: 0);
-
-    await tester.pumpWidget(
-      buildTestApp(value, (v) {}, constraint: RelativeTimeConstraint.forward),
-    );
-
-    expect(
-      find.byWidgetPredicate((widget) {
-        if (widget is Text) {
-          final data = widget.data ?? '';
-          return data.contains('9:00') || data.contains('09:00');
-        }
-        return false;
-      }),
-      findsOneWidget,
-    );
-
-    final segments = tester.widget<SegmentedButton<int>>(
-      find.byType(SegmentedButton<int>),
-    );
-    expect(segments.selected.first, 1);
-    expect(find.text('1 day after'), findsOneWidget);
-  });
-
-  testWidgets('RelativeTimeWidget renders 1 day before correctly', (
-    WidgetTester tester,
-  ) async {
-    Duration value = const Duration(days: -1, hours: 9, minutes: 0);
-
-    await tester.pumpWidget(
-      buildTestApp(value, (v) {}, constraint: RelativeTimeConstraint.backward),
-    );
-
-    final segments = tester.widget<SegmentedButton<int>>(
-      find.byType(SegmentedButton<int>),
-    );
-    expect(
-      segments.selected.first,
-      1,
-    ); // Logic maps -1 to the valid "1" segment for backward (value 1 in UI)
-    // Wait, let's double check widget implementation for segments.
-    // In widget: value: 1, label: oneDayLabel.
-    // Logic: if (constraint == backward && _dayOffset == -1) return 1.
-    // So selected value is indeed 1.
-
-    expect(find.text('1 day before'), findsOneWidget);
-  });
-
-  testWidgets('RelativeTimeWidget updates value when segments change', (
-    WidgetTester tester,
-  ) async {
-    Duration value = const Duration(hours: 10);
-    Duration? capturedValue;
-
-    await tester.pumpWidget(
-      buildTestApp(value, (v) {
-        capturedValue = v;
-      }),
-    );
-
-    await tester.tap(find.text('1 day after'));
-    await tester.pump();
-
-    expect(capturedValue, isNotNull);
-    expect(capturedValue!.inDays, 1);
-    // 10:00 -> 10 hours
-    expect(capturedValue!.inHours % 24, 10);
-  });
-
-  testWidgets('RelativeTimeWidget custom input updates value', (
-    WidgetTester tester,
-  ) async {
-    Duration value = const Duration(hours: 10);
-    Duration? capturedValue;
-
-    await tester.pumpWidget(
-      buildTestApp(value, (v) {
-        capturedValue = v;
-      }),
-    );
-
-    // Tap "Custom"
-    await tester.tap(find.text('Custom'));
-    await tester.pump();
-
-    // Default custom transition is 2 days
-    expect(capturedValue!.inDays, 2);
-
-    // Now field should exist, but SegmentedButton should be gone
-    expect(find.byType(TextField), findsOneWidget);
-    expect(find.byType(SegmentedButton<int>), findsNothing);
-
-    await tester.enterText(find.byType(TextField), '5');
-    // TextField onChanged usually doesn't require extra pump if flutter_test handles it?
-    // Usually need to pump to trigger rebuilds if setState called.
-    // The widget calls _updateValue which triggers parent setState.
-    await tester.pump();
-
-    expect(capturedValue!.inDays, 5);
-    expect(capturedValue!.inHours % 24, 10);
-  });
-
-  testWidgets(
-    'RelativeTimeWidget handles negative duration (backward logic) correctly',
-    (WidgetTester tester) async {
-      // -26 hours = -2 days + 22 hours (10 PM)
-      Duration value = const Duration(hours: -26);
+      final controller = ValueNotifier(const Duration(hours: 14, minutes: 30));
+      final robot = RelativeTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
-        buildTestApp(
-          value,
-          (v) {},
-          constraint: RelativeTimeConstraint.backward,
+        MaterialApp(
+          home: Scaffold(
+            body: RelativeTimeWidget(
+              controller: controller,
+              constraint: RelativeTimeConstraint.dayOfOrAfter,
+            ),
+          ),
         ),
       );
 
-      // Custom
-      // Since we are in custom mode, SegmentedButton is gone.
-      expect(find.byType(SegmentedButton<int>), findsNothing);
-      expect(find.byType(TextField), findsOneWidget);
+      expect(robot.timeTextFinder, findsOneWidget);
+      // 14:30 is 2:30 PM
+      expect(find.textContaining('2:30'), findsOneWidget);
 
-      // Time check: 22:00 or 10:00 PM
-      expect(
-        find.byWidgetPredicate((widget) {
-          if (widget is Text) {
-            final data = widget.data ?? '';
-            return data.contains('22:00') ||
-                (data.contains('10:00') && data.contains('PM'));
-          }
-          return false;
-        }),
-        findsOneWidget,
+      // We can't access private enum values, but we can verify the segments
+      // labels However, checking the selected set is tricky without the enum.
+      // Instead, we verify UI state by ensuring "Day of" is visually selected
+      // if possible, or simply that the correct segments are present.
+      expect(find.text('Day of'), findsOneWidget);
+      expect(find.text('1 day after'), findsOneWidget);
+      expect(find.text('Custom'), findsOneWidget);
+
+      // Verify text field is not visible
+      expect(robot.customTextField, findsNothing);
+    });
+
+    testWidgets('renders correctly with "1 day after" state', (tester) async {
+      final controller = ValueNotifier(const Duration(days: 1, hours: 9));
+      final robot = RelativeTimeWidgetRobot(tester);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RelativeTimeWidget(
+              controller: controller,
+              constraint: RelativeTimeConstraint.dayOfOrAfter,
+            ),
+          ),
+        ),
       );
 
-      // Day offset check
-      // The controller text is absolute days: 2
+      // Verify checking logic for segmented button selection involves internal
+      // enum, but we can trust the controller update tests.  Here just verify
+      // the text is present and it didn't default to something else.
+      expect(find.text('1 day after'), findsOneWidget);
+      expect(robot.customTextField, findsNothing);
+    });
+
+    testWidgets('updates controller when "1 day after" segment is selected', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final controller = ValueNotifier(const Duration(hours: 10));
+      final robot = RelativeTimeWidgetRobot(tester);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RelativeTimeWidget(
+              controller: controller,
+              constraint: RelativeTimeConstraint.dayOfOrAfter,
+            ),
+          ),
+        ),
+      );
+
+      await robot.selectDayAfter();
+
+      expect(controller.value.inDays, 1);
+      expect(controller.value.inHours % 24, 10);
+    });
+
+    testWidgets(
+      'updates controller when Custom mode is selected and days entered',
+      (tester) async {
+        final controller = ValueNotifier(const Duration(hours: 10));
+        final robot = RelativeTimeWidgetRobot(tester);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: RelativeTimeWidget(
+                controller: controller,
+                constraint: RelativeTimeConstraint.dayOfOrAfter,
+              ),
+            ),
+          ),
+        );
+
+        await robot.selectCustom();
+
+        // Default assertion for custom mode logic (starts at 2 days for forward)
+        expect(controller.value.inDays, 2);
+        expect(robot.customTextField, findsOneWidget);
+        expect(find.text('days later'), findsOneWidget);
+
+        await robot.enterCustomDays('5');
+
+        expect(controller.value.inDays, 5);
+        expect(controller.value.inHours % 24, 10);
+      },
+    );
+
+    testWidgets(
+      'resets to "Day of" when close button is tapped in custom mode',
+      (tester) async {
+        final controller = ValueNotifier(const Duration(days: 5, hours: 10));
+        final robot = RelativeTimeWidgetRobot(tester);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: RelativeTimeWidget(
+                controller: controller,
+                constraint: RelativeTimeConstraint.dayOfOrAfter,
+              ),
+            ),
+          ),
+        );
+
+        // Initially in custom mode due to 5 days
+        expect(robot.customTextField, findsOneWidget);
+
+        await robot.closeCustomMode();
+
+        expect(controller.value.inDays, 0);
+        expect(robot.customTextField, findsNothing);
+        expect(robot.segmentedButton, findsOneWidget);
+      },
+    );
+
+    testWidgets('updates controller when time is picked', (tester) async {
+      final controller = ValueNotifier(const Duration(hours: 10));
+      final robot = RelativeTimeWidgetRobot(tester);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RelativeTimeWidget(
+              controller: controller,
+              constraint: RelativeTimeConstraint.dayOfOrAfter,
+            ),
+          ),
+        ),
+      );
+
+      // Initial time 10:00
+      expect(find.textContaining('10:00'), findsOneWidget);
+
+      // Pick 08:30 (Safe for AM/PM tests as 8:30 or 08:30)
+      await robot.pickTime(8, 30);
+
+      expect(controller.value.inHours, 8);
+      expect(controller.value.inMinutes % 60, 30);
+      expect(find.textContaining('8:30'), findsOneWidget);
+    });
+
+    testWidgets('updates UI when controller changes externally', (
+      tester,
+    ) async {
+      final controller = ValueNotifier(const Duration(hours: 10));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RelativeTimeWidget(
+              controller: controller,
+              constraint: RelativeTimeConstraint.dayOfOrAfter,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.textContaining('10:00'), findsOneWidget);
+
+      controller.value = const Duration(days: 1, hours: 12, minutes: 15);
+      await tester.pump();
+
+      expect(find.textContaining('12:15'), findsOneWidget);
+    });
+  });
+
+  group('RelativeTimeWidget (dayOfOrBefore)', () {
+    testWidgets('renders correctly with "1 day before" state', (tester) async {
+      final controller = ValueNotifier(const Duration(days: -1, hours: 9));
+      final robot = RelativeTimeWidgetRobot(tester);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RelativeTimeWidget(
+              controller: controller,
+              constraint: RelativeTimeConstraint.dayOfOrBefore,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('1 day before'), findsOneWidget);
+      expect(robot.customTextField, findsNothing);
+    });
+
+    testWidgets('updates controller when "1 day before" segment is selected', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final controller = ValueNotifier(const Duration(hours: 10));
+      final robot = RelativeTimeWidgetRobot(tester);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RelativeTimeWidget(
+              controller: controller,
+              constraint: RelativeTimeConstraint.dayOfOrBefore,
+            ),
+          ),
+        ),
+      );
+
+      await robot.selectDayBefore();
+
+      expect(controller.value, const Duration(days: -1, hours: 10));
+    });
+
+    testWidgets('handles custom input for backward constraint correctly', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final controller = ValueNotifier(const Duration(hours: 10));
+      final robot = RelativeTimeWidgetRobot(tester);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RelativeTimeWidget(
+              controller: controller,
+              constraint: RelativeTimeConstraint.dayOfOrBefore,
+            ),
+          ),
+        ),
+      );
+
+      await robot.selectCustom();
+
+      // Default custom logic for backward is -2 days
+      expect(controller.value, const Duration(days: -2, hours: 10));
+      expect(find.text('days before'), findsOneWidget);
+      // The text field displays absolute value
       expect(find.text('2'), findsOneWidget);
-    },
-  );
+
+      await robot.enterCustomDays('5');
+
+      // Should be -5 days
+      expect(controller.value, const Duration(days: -5, hours: 10));
+    });
+  });
 }

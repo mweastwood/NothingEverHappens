@@ -1,133 +1,181 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Constraints for the relative time widget.
 enum RelativeTimeConstraint {
   /// The time must be on or after the reference day (offset >= 0).
-  forward,
+  dayOfOrAfter,
 
   /// The time must be on or before the reference day (offset <= 0).
-  backward,
+  dayOfOrBefore,
 }
 
+/// A widget that allows users to select a time relative to a reference day.
+///
+/// It combines a time picker with a day offset selector (e.g., "Day of", "1 day
+/// after", or Custom).
+///
+/// Example:
+/// ```dart
+/// final controller = ValueNotifier(const Duration(hours: 9));
+/// // Log changes
+/// controller.addListener(() {
+///   print('Selected duration from midnight: ${controller.value}');
+/// });
+///
+/// RelativeTimeWidget(
+///   controller: controller, // 09:00 AM on the day of.
+///   constraint: RelativeTimeConstraint.dayOfOrAfter,
+/// )
+/// ```
 class RelativeTimeWidget extends StatefulWidget {
-  final Duration value;
-  final ValueChanged<Duration> onChanged;
   final RelativeTimeConstraint constraint;
+  final ValueNotifier<Duration> controller;
 
   const RelativeTimeWidget({
     super.key,
-    required this.value,
-    required this.onChanged,
-    this.constraint = RelativeTimeConstraint.forward,
+    required this.constraint,
+    required this.controller,
   });
 
   @override
   State<RelativeTimeWidget> createState() => _RelativeTimeWidgetState();
 }
 
+/// Options for the relative time selector.
+enum _RelativeTimeOption { dayOf, dayAfter, dayBefore, custom }
+
 class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
-  late TimeOfDay _timeOfDay;
-  late int _dayOffset;
-  final _daysController = TextEditingController();
-  static const int _customOption = -999;
+  /// Stores the time of day component of the relative time.
+  late final ValueNotifier<TimeOfDay> _timeNotifier;
+
+  /// Stores the day offset component of the relative time.
+  late final ValueNotifier<int> _daysNotifier;
+
+  final _textController = TextEditingController();
+
+  Duration get _currentDuration => widget.controller.value;
 
   @override
   void initState() {
     super.initState();
-    _parseValue();
+    _timeNotifier = ValueNotifier(const TimeOfDay(hour: 0, minute: 0));
+    _daysNotifier = ValueNotifier(0);
+    _onExternalUpdate();
+    widget.controller.addListener(_onExternalUpdate);
+    _onInternalUpdateToTime();
+    _timeNotifier.addListener(_onInternalUpdateToTime);
+    _onInternalUpdateToDays();
+    _daysNotifier.addListener(_onInternalUpdateToDays);
   }
 
   @override
   void didUpdateWidget(covariant RelativeTimeWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.value != widget.value) {
-      _parseValue();
+    if (widget.controller != oldWidget.controller) {
+      oldWidget.controller.removeListener(_onExternalUpdate);
+      widget.controller.addListener(_onExternalUpdate);
+      _onExternalUpdate();
     }
   }
 
   @override
   void dispose() {
-    _daysController.dispose();
+    widget.controller.removeListener(_onExternalUpdate);
+    _daysNotifier.dispose();
+    _timeNotifier.dispose();
+    _textController.dispose();
     super.dispose();
   }
 
-  void _parseValue() {
-    // A negative duration means we are BEFORE the reference event, so offset is negative.
-    // However, when simply extracting time from duration, we need to be careful with negative values.
-    // simpler approach: Total minutes.
+  void _onExternalUpdate() {
+    switch (widget.constraint) {
+      case RelativeTimeConstraint.dayOfOrAfter:
+        assert(
+          !_currentDuration.isNegative,
+          'Given value ($_currentDuration) does not represent a time on or after the reference day.',
+        );
+      case RelativeTimeConstraint.dayOfOrBefore:
+        assert(
+          _currentDuration < const Duration(days: 1),
+          'Given value ($_currentDuration) does not represent a time on or before the reference day.',
+        );
+    }
 
-    final totalMinutes = widget.value.inMinutes;
+    final currentMinutes = _currentDuration.inMinutes;
+    final maybeNegativeMinuteOfDay = currentMinutes % (24 * 60);
+    final positiveMinuteOfDay =
+        (maybeNegativeMinuteOfDay + (24 * 60)) % (24 * 60);
+    final remainingMinutes = currentMinutes - positiveMinuteOfDay;
 
-    // Days part
-    // If totalMinutes is negative, floor() moves further away from 0.
-    // e.g. -100 mins -> -1 day (remainder -100 - (-1440) = 1340 mins? wait.)
-
-    // Let's standardise:
-    // midnight + Duration = Target Time
-    // Day offset = floor(Duration / 24h).
-    // Time = Duration - (Day offset * 24h).
-
-    _dayOffset = (totalMinutes / 1440).floor();
-    final remainingMinutes = totalMinutes - (_dayOffset * 1440);
-
-    // If remainingMinutes can be negative?
-    // If -25 hours = -1500 mins.
-    // -1500 / 1440 = -1.04 -> floor is -2.
-    // -1500 - (-2 * 1440) = -1500 + 2880 = 1380. (23:00)
-    // This implies "2 days before, at 23:00".
-    // This handles the math correctly for "offset from midnight of ref day".
-
-    _timeOfDay = TimeOfDay(
-      hour: remainingMinutes ~/ 60,
-      minute: remainingMinutes % 60,
+    _daysNotifier.value = remainingMinutes ~/ (24 * 60);
+    _timeNotifier.value = TimeOfDay(
+      hour: positiveMinuteOfDay ~/ 60,
+      minute: positiveMinuteOfDay % 60,
     );
+  }
 
-    // Update text controller if custom is potentially active
-    if (_segmentValue == _customOption) {
-      final absDays = _dayOffset.abs();
-      if (_daysController.text != absDays.toString()) {
-        _daysController.text = absDays.toString();
-      }
+  void _internalUpdateTime(TimeOfDay time) {
+    _timeNotifier.value = time;
+  }
+
+  void _onInternalUpdateToTime() {
+    _onInternalUpdate();
+  }
+
+  void _internalUpdateDays(int days) {
+    _daysNotifier.value = days;
+  }
+
+  void _onInternalUpdateToDays() {
+    final days = _daysNotifier.value;
+    final absDays = days.abs();
+    if (_textController.text != absDays.toString()) {
+      _textController.text = absDays.toString();
+    }
+    _onInternalUpdate();
+  }
+
+  void _onInternalUpdate() {
+    final newDuration = Duration(
+      days: _daysNotifier.value,
+      hours: _timeNotifier.value.hour,
+      minutes: _timeNotifier.value.minute,
+    );
+    if (widget.controller.value != newDuration) {
+      widget.controller.value = newDuration;
     }
   }
 
-  int get _segmentValue {
-    if (_dayOffset == 0) {
-      return 0;
+  _RelativeTimeOption _getSegment(int days) {
+    switch (days) {
+      case 0:
+        return _RelativeTimeOption.dayOf;
+      case 1:
+        return _RelativeTimeOption.dayAfter;
+      case -1:
+        return _RelativeTimeOption.dayBefore;
+      default:
+        return _RelativeTimeOption.custom;
     }
-    // "1 day after/before" check
-    if (widget.constraint == RelativeTimeConstraint.forward) {
-      if (_dayOffset == 1) return 1;
-    } else {
-      if (_dayOffset == -1)
-        return 1; // "1 day before" uses the '1' slot in UI logic effectively
-    }
-    return _customOption;
-  }
-
-  void _updateValue({TimeOfDay? time, int? days}) {
-    final t = time ?? _timeOfDay;
-    final d = days ?? _dayOffset;
-
-    final newDuration = Duration(days: d, hours: t.hour, minutes: t.minute);
-    widget.onChanged(newDuration);
   }
 
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: _timeOfDay,
+      initialTime: _timeNotifier.value,
     );
     if (picked != null) {
-      _updateValue(time: picked);
+      _internalUpdateTime(picked);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isForward = widget.constraint == RelativeTimeConstraint.forward;
-    final oneDayLabel = isForward ? '1 day after' : '1 day before';
-    final isCustom = _segmentValue == _customOption;
+    final (oneDayLabel, isForward) = switch (widget.constraint) {
+      RelativeTimeConstraint.dayOfOrAfter => ('1 day after', true),
+      RelativeTimeConstraint.dayOfOrBefore => ('1 day before', false),
+    };
 
     // Use a fixed height to avoid layout jumps when switching modes.
     const double commonHeight = 40.0;
@@ -138,26 +186,39 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // Time Button
-        FilledButton.tonalIcon(
-          onPressed: _pickTime,
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-            // Ensure height matches commonHeight implicitly or via fixed size
-            fixedSize: const Size.fromHeight(commonHeight),
-          ),
-          icon: const Icon(Icons.access_time, size: 18),
-          label: Text(
-            _timeOfDay.format(context),
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+        ValueListenableBuilder<TimeOfDay>(
+          valueListenable: _timeNotifier,
+          builder: (context, time, child) {
+            return FilledButton.tonalIcon(
+              onPressed: _pickTime,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 0,
+                ),
+                fixedSize: const Size.fromHeight(commonHeight),
+              ),
+              icon: const Icon(Icons.access_time, size: 18),
+              label: Text(
+                time.format(context),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            );
+          },
         ),
         const SizedBox(width: 16),
         // Right side: Offset Selector
         SizedBox(
           height: commonHeight,
           width: commonWidth,
-          child: isCustom
-              ? Row(
+          child: ValueListenableBuilder<int>(
+            valueListenable: _daysNotifier,
+            builder: (context, days, child) {
+              final segment = _getSegment(days);
+              final isCustom = segment == _RelativeTimeOption.custom;
+
+              if (isCustom) {
+                return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
@@ -165,8 +226,11 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
                         SizedBox(
                           width: 48,
                           child: TextField(
-                            controller: _daysController,
+                            controller: _textController,
                             keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             style: const TextStyle(fontSize: 14),
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
@@ -183,7 +247,7 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
                                 final signedDays = isForward
                                     ? daysAbs
                                     : -daysAbs;
-                                _updateValue(days: signedDays);
+                                _internalUpdateDays(signedDays);
                               }
                             },
                           ),
@@ -197,47 +261,57 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
-                      // Match height and provide touch target
                       constraints: const BoxConstraints(
                         minWidth: 40,
                         minHeight: 40,
                       ),
                       padding: EdgeInsets.zero,
                       onPressed: () {
-                        _updateValue(days: 0);
+                        _internalUpdateDays(0);
                       },
                       tooltip: 'Reset to Day of',
                     ),
                   ],
-                )
-              : LayoutBuilder(
+                );
+              } else {
+                return LayoutBuilder(
                   builder: (context, constraints) {
-                    return SegmentedButton<int>(
+                    return SegmentedButton<_RelativeTimeOption>(
                       segments: [
-                        const ButtonSegment(value: 0, label: Text('Day of')),
-                        ButtonSegment(value: 1, label: Text(oneDayLabel)),
                         const ButtonSegment(
-                          value: _customOption,
+                          value: _RelativeTimeOption.dayOf,
+                          label: Text('Day of'),
+                        ),
+                        ButtonSegment(
+                          value: isForward
+                              ? _RelativeTimeOption.dayAfter
+                              : _RelativeTimeOption.dayBefore,
+                          label: Text(oneDayLabel),
+                        ),
+                        const ButtonSegment(
+                          value: _RelativeTimeOption.custom,
                           label: Text('Custom'),
                         ),
                       ],
-                      selected: {_segmentValue},
-                      onSelectionChanged: (Set<int> newSelection) {
-                        final val = newSelection.first;
-                        if (val == 0) {
-                          _updateValue(days: 0);
-                        } else if (val == 1) {
-                          _updateValue(days: isForward ? 1 : -1);
-                        } else {
-                          int defaultCustom = isForward ? 2 : -2;
-                          if (_segmentValue != _customOption) {
-                            _updateValue(days: defaultCustom);
-                            _daysController.text = defaultCustom
-                                .abs()
-                                .toString();
-                          }
-                        }
-                      },
+                      selected: {segment},
+                      onSelectionChanged:
+                          (Set<_RelativeTimeOption> newSelection) {
+                            final val = newSelection.first;
+                            switch (val) {
+                              case _RelativeTimeOption.dayOf:
+                                _internalUpdateDays(0);
+                              case _RelativeTimeOption.dayAfter:
+                                _internalUpdateDays(1);
+                              case _RelativeTimeOption.dayBefore:
+                                _internalUpdateDays(-1);
+                              case _RelativeTimeOption.custom:
+                                int defaultCustom = isForward ? 2 : -2;
+                                if (segment != _RelativeTimeOption.custom) {
+                                  _internalUpdateDays(defaultCustom);
+                                  // Controller sync happens via listener
+                                }
+                            }
+                          },
                       showSelectedIcon: false,
                       style: ButtonStyle(
                         visualDensity: VisualDensity.standard,
@@ -249,7 +323,10 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
                       ),
                     );
                   },
-                ),
+                );
+              }
+            },
+          ),
         ),
       ],
     );
