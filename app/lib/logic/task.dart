@@ -6,6 +6,9 @@ abstract class TaskSchedule {
   bool occursOn(CivilDay date);
 }
 
+/// Enum representing the type of recurrence for UI selection.
+enum RecurrenceType { oneOff, daily, weekly }
+
 /// A schedule for a task that happens exactly once.
 class OneOffSchedule extends TaskSchedule {
   /// The specific date the task occurs.

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nothing_ever_happens/civil_day.dart';
-import 'package:nothing_ever_happens/task.dart';
+import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/task.dart';
 
 void main() {
   group('Recurrence Logic with CivilDay', () {
