@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../task.dart';
+import '../logic/task.dart';
 import '../widgets/fun_check_button.dart';
-import '../civil_day.dart';
+import '../logic/civil_day.dart';
 import 'create_task_screen.dart';
 
 class TaskListScreen extends StatefulWidget {

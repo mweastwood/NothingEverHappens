@@ -65,7 +65,7 @@ void main() {
     );
 
     // Save
-    await tester.tap(find.byIcon(Icons.check));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     // Verify we are back on TaskListScreen and task is added
