@@ -36,4 +36,41 @@ void main() {
     expect(find.byType(GridView), findsOneWidget);
     expect(find.text('Buy groceries'), findsOneWidget);
   });
+
+  testWidgets('Task list shows FAB and navigates to CreateTaskScreen', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(createScreen());
+
+    // Verify FAB exists
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byIcon(Icons.add), findsOneWidget);
+
+    // Tap FAB
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    // Verify we are on the CreateTaskScreen
+    expect(find.text('New Task'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNWidgets(2));
+
+    // Enter details for new task
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Title'),
+      'New Task Title',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Description'),
+      'New Task Description',
+    );
+
+    // Save
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+
+    // Verify we are back on TaskListScreen and task is added
+    expect(find.text('Nothing Ever Happens'), findsOneWidget);
+    expect(find.text('New Task Title'), findsOneWidget);
+    expect(find.text('New Task Description'), findsOneWidget);
+  });
 }
