@@ -47,10 +47,7 @@ class TaskListScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nothing Ever Happens'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
+      appBar: AppBar(title: const Text('Nothing Ever Happens')),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Card(
