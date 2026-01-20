@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../logic/task.dart';
 import '../widgets/fun_check_button.dart';
 import '../logic/civil_day.dart';
+import '../logic/relative_time.dart';
 import 'create_task_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
@@ -18,8 +19,14 @@ class _TaskListScreenState extends State<TaskListScreen> {
       id: '1',
       title: 'Buy groceries',
       description: 'Milk, Eggs, Bread',
-      startFromMidnight: const Duration(hours: 9),
-      dueFromMidnight: const Duration(hours: 18),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 18, minute: 0),
+      ),
       schedule: DailySchedule(
         startDate: CivilDay(year: 2024, month: 1, day: 1),
         interval: 1,
@@ -29,8 +36,14 @@ class _TaskListScreenState extends State<TaskListScreen> {
       id: '2',
       title: 'Walk the dog',
       description: 'Take Fido to the park',
-      startFromMidnight: const Duration(hours: 7),
-      dueFromMidnight: const Duration(hours: 8),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 7, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 8, minute: 0),
+      ),
       schedule: DailySchedule(
         startDate: CivilDay(year: 2024, month: 1, day: 1),
         interval: 1,
@@ -40,8 +53,14 @@ class _TaskListScreenState extends State<TaskListScreen> {
       id: '3',
       title: 'Weekly meeting',
       description: 'Discuss project status',
-      startFromMidnight: const Duration(hours: 10),
-      dueFromMidnight: const Duration(hours: 11),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 10, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 11, minute: 0),
+      ),
       schedule: WeeklySchedule(
         startDate: CivilDay(year: 2024, month: 1, day: 1),
         interval: 1,

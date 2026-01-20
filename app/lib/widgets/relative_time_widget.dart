@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../logic/relative_time.dart';
 
 /// Constraints for the relative time widget.
 enum RelativeTimeConstraint {
@@ -17,10 +18,12 @@ enum RelativeTimeConstraint {
 ///
 /// Example:
 /// ```dart
-/// final controller = ValueNotifier(const Duration(hours: 9));
+/// final controller = ValueNotifier(
+///   const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+/// );
 /// // Log changes
 /// controller.addListener(() {
-///   print('Selected duration from midnight: ${controller.value}');
+///   print('Selected relative time: ${controller.value}');
 /// });
 ///
 /// RelativeTimeWidget(
@@ -30,7 +33,7 @@ enum RelativeTimeConstraint {
 /// ```
 class RelativeTimeWidget extends StatefulWidget {
   final RelativeTimeConstraint constraint;
-  final ValueNotifier<Duration> controller;
+  final ValueNotifier<RelativeTime> controller;
 
   const RelativeTimeWidget({
     super.key,
@@ -54,18 +57,24 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
 
   final _textController = TextEditingController();
 
-  Duration get _currentDuration => widget.controller.value;
+  RelativeTime get _currentRelativeTime => widget.controller.value;
+
+  bool _isUpdatingFromExternal = false;
 
   @override
   void initState() {
     super.initState();
-    _timeNotifier = ValueNotifier(const TimeOfDay(hour: 0, minute: 0));
-    _daysNotifier = ValueNotifier(0);
+    // Initialize notifiers with current controller value
+    _timeNotifier = ValueNotifier(_currentRelativeTime.time);
+    _daysNotifier = ValueNotifier(_currentRelativeTime.dayOffset);
+
+    // Ensure text controller matches initial state
+    _updateTextController(_currentRelativeTime.dayOffset);
+
     _onExternalUpdate();
     widget.controller.addListener(_onExternalUpdate);
-    _onInternalUpdateToTime();
+
     _timeNotifier.addListener(_onInternalUpdateToTime);
-    _onInternalUpdateToDays();
     _daysNotifier.addListener(_onInternalUpdateToDays);
   }
 
@@ -82,6 +91,8 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
   @override
   void dispose() {
     widget.controller.removeListener(_onExternalUpdate);
+    _daysNotifier.removeListener(_onInternalUpdateToDays);
+    _timeNotifier.removeListener(_onInternalUpdateToTime);
     _daysNotifier.dispose();
     _timeNotifier.dispose();
     _textController.dispose();
@@ -89,30 +100,34 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
   }
 
   void _onExternalUpdate() {
-    switch (widget.constraint) {
-      case RelativeTimeConstraint.dayOfOrAfter:
-        assert(
-          !_currentDuration.isNegative,
-          'Given value ($_currentDuration) does not represent a time on or after the reference day.',
-        );
-      case RelativeTimeConstraint.dayOfOrBefore:
-        assert(
-          _currentDuration < const Duration(days: 1),
-          'Given value ($_currentDuration) does not represent a time on or before the reference day.',
-        );
+    _isUpdatingFromExternal = true;
+    try {
+      // Check constraints
+      final offset = _currentRelativeTime.dayOffset;
+      switch (widget.constraint) {
+        case RelativeTimeConstraint.dayOfOrAfter:
+          assert(
+            offset >= 0,
+            'Given value ($_currentRelativeTime) does not represent a time on or after the reference day.',
+          );
+        case RelativeTimeConstraint.dayOfOrBefore:
+          assert(
+            offset <= 0,
+            'Given value ($_currentRelativeTime) does not represent a time on or before the reference day.',
+          );
+      }
+
+      // Sync internal state if different
+      if (_daysNotifier.value != offset) {
+        _daysNotifier.value = offset;
+        _updateTextController(offset);
+      }
+      if (_timeNotifier.value != _currentRelativeTime.time) {
+        _timeNotifier.value = _currentRelativeTime.time;
+      }
+    } finally {
+      _isUpdatingFromExternal = false;
     }
-
-    final currentMinutes = _currentDuration.inMinutes;
-    final maybeNegativeMinuteOfDay = currentMinutes % (24 * 60);
-    final positiveMinuteOfDay =
-        (maybeNegativeMinuteOfDay + (24 * 60)) % (24 * 60);
-    final remainingMinutes = currentMinutes - positiveMinuteOfDay;
-
-    _daysNotifier.value = remainingMinutes ~/ (24 * 60);
-    _timeNotifier.value = TimeOfDay(
-      hour: positiveMinuteOfDay ~/ 60,
-      minute: positiveMinuteOfDay % 60,
-    );
   }
 
   void _internalUpdateTime(TimeOfDay time) {
@@ -128,22 +143,26 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
   }
 
   void _onInternalUpdateToDays() {
-    final days = _daysNotifier.value;
+    _updateTextController(_daysNotifier.value);
+    _onInternalUpdate();
+  }
+
+  void _updateTextController(int days) {
     final absDays = days.abs();
     if (_textController.text != absDays.toString()) {
       _textController.text = absDays.toString();
     }
-    _onInternalUpdate();
   }
 
   void _onInternalUpdate() {
-    final newDuration = Duration(
-      days: _daysNotifier.value,
-      hours: _timeNotifier.value.hour,
-      minutes: _timeNotifier.value.minute,
+    if (_isUpdatingFromExternal) return;
+
+    final newRelativeTime = RelativeTime(
+      dayOffset: _daysNotifier.value,
+      time: _timeNotifier.value,
     );
-    if (widget.controller.value != newDuration) {
-      widget.controller.value = newDuration;
+    if (widget.controller.value != newRelativeTime) {
+      widget.controller.value = newRelativeTime;
     }
   }
 

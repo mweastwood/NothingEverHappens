@@ -1,4 +1,5 @@
 import 'civil_day.dart';
+import 'relative_time.dart';
 
 /// Defines how often a task reoccurs.
 abstract class TaskSchedule {
@@ -108,11 +109,11 @@ class Task {
   /// Detailed description of the task.
   String description;
 
-  /// The start time offset from midnight when the task becomes active.
-  Duration startFromMidnight;
+  /// The start relative time.
+  RelativeTime startRelativeTime;
 
-  /// The due time offset from midnight after which the task is overdue.
-  Duration dueFromMidnight;
+  /// The due relative time.
+  RelativeTime dueRelativeTime;
 
   /// The recurrence schedule for the task.
   TaskSchedule schedule;
@@ -121,8 +122,8 @@ class Task {
     required this.id,
     required this.title,
     required this.description,
-    required this.startFromMidnight,
-    required this.dueFromMidnight,
+    required this.startRelativeTime,
+    required this.dueRelativeTime,
     required this.schedule,
   });
 
@@ -131,8 +132,7 @@ class Task {
     final today = CivilDay.fromDateTime(current);
 
     if (schedule.occursOn(today)) {
-      final midnight = today.toDateTime();
-      final dueTime = midnight.add(dueFromMidnight);
+      final dueTime = dueRelativeTime.referenceTo(today);
       return current.isAfter(dueTime);
     }
     return false;

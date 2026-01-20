@@ -1,5 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 
 void main() {
@@ -58,8 +60,14 @@ void main() {
         id: '1',
         title: 'Test',
         description: 'Test',
-        startFromMidnight: Duration.zero,
-        dueFromMidnight: const Duration(hours: 12),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 0, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 12, minute: 0),
+        ),
         schedule: OneOffSchedule(date: todayCivil),
       );
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
+import '../logic/relative_time.dart';
 import '../widgets/relative_time_widget.dart';
 
 class CreateTaskScreen extends StatefulWidget {
@@ -18,8 +19,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   // Time fields
   // Time fields
-  final _startController = ValueNotifier(const Duration(hours: 9, minutes: 0));
-  final _dueController = ValueNotifier(const Duration(hours: 17, minutes: 0));
+  final _startController = ValueNotifier(
+    const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+  );
+  final _dueController = ValueNotifier(
+    const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
+  );
 
   // Schedule fields
   RecurrenceType _scheduleType = RecurrenceType.oneOff;
@@ -84,8 +89,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: _titleController.text,
         description: _descriptionController.text,
-        startFromMidnight: _startController.value,
-        dueFromMidnight: _dueController.value,
+        startRelativeTime: _startController.value,
+        dueRelativeTime: _dueController.value,
         schedule: schedule,
       );
       Navigator.pop(context, newTask);
