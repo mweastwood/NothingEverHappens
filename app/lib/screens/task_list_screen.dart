@@ -4,6 +4,7 @@ import '../widgets/fun_check_button.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import 'create_task_screen.dart';
+import '../widgets/task_display.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({super.key});
@@ -89,33 +90,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Card(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth < 600) {
-                return ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: _tasks.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 1),
-                  itemBuilder: (context, index) =>
-                      _buildTaskItem(_tasks[index]),
-                );
-              } else {
-                return GridView.builder(
-                  shrinkWrap: true,
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 400,
-                    childAspectRatio: 3,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                  ),
-                  itemCount: _tasks.length,
-                  padding: const EdgeInsets.all(8),
-                  itemBuilder: (context, index) =>
-                      _buildTaskItem(_tasks[index]),
-                );
-              }
-            },
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: _tasks.length,
+            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemBuilder: (context, index) => _buildTaskItem(_tasks[index]),
           ),
         ),
       ),
@@ -130,8 +109,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
   Widget _buildTaskItem(Task task) {
     return ListTile(
       leading: FunCheckButton(value: false, onChanged: (value) {}),
-      title: SelectableText(task.title),
-      subtitle: SelectableText(task.description),
+      title: TaskDisplay(title: task.title, description: task.description),
     );
   }
 }
