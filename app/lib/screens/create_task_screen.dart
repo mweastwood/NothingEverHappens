@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
-import '../widgets/relative_time_widget.dart';
+
+import '../widgets/one_off_scheduling_widget.dart';
+import '../widgets/daily_scheduling_widget.dart';
+import '../widgets/weekly_scheduling_widget.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   const CreateTaskScreen({super.key});
@@ -17,57 +20,130 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _descriptionController = TextEditingController();
   final _intervalController = TextEditingController(text: '1');
 
-  // Time fields
-  // Time fields
-  final _startController = ValueNotifier(
+  // Relative Time fields (for Daily/Weekly)
+  final _startRelativeController = ValueNotifier(
     const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
   );
-  final _dueController = ValueNotifier(
+  final _dueRelativeController = ValueNotifier(
     const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
+  );
+
+  // Absolute Time fields (for One-off)
+  // Default to tomorrow 5pm for due, tomorrow 9am for start (snooze)
+  final _dueDateTimeController = ValueNotifier(
+    DateTime.now()
+        .add(const Duration(days: 1))
+        .copyWith(
+          hour: 17,
+          minute: 0,
+          second: 0,
+          millisecond: 0,
+          microsecond: 0,
+        ),
+  );
+  final _startDateTimeController = ValueNotifier(
+    DateTime.now()
+        .add(const Duration(days: 1))
+        .copyWith(
+          hour: 9,
+          minute: 0,
+          second: 0,
+          millisecond: 0,
+          microsecond: 0,
+        ),
   );
 
   // Schedule fields
   RecurrenceType _scheduleType = RecurrenceType.oneOff;
-  DateTime _selectedDate = DateTime.now(); // For One-off or Start Date
+  DateTime _startDate = DateTime.now(); // For Daily/Weekly start date
   int _interval = 1;
-  final Set<int> _selectedWeekdays = {};
+  Set<int> _selectedWeekdays = {};
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
     _intervalController.dispose();
-    _startController.dispose();
-    _dueController.dispose();
+    _startRelativeController.dispose();
+    _dueRelativeController.dispose();
+    _dueDateTimeController.dispose();
+    _startDateTimeController.dispose();
     super.dispose();
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
   }
 
   void _saveTask() {
     if (_formKey.currentState!.validate()) {
-      final civilDate = CivilDay.fromDateTime(_selectedDate);
       TaskSchedule schedule;
+      RelativeTime startRelative;
+      RelativeTime dueRelative;
 
       switch (_scheduleType) {
         case RecurrenceType.oneOff:
+          // For One-off, we convert absolute types to "relative" to the task date (which is the due date)
+          // But actually OneOffSchedule takes a date.
+          // Wait, Task model uses relative times.
+          // If OneOff, startRelativeTime and dueRelativeTime are usually simple.
+          // Due Time for OneOff: usually Day 0, Time X.
+          // But we have Absolute widget.
+
+          final dueDateTime = _dueDateTimeController.value;
+          final startDateTime = _startDateTimeController.value;
+
+          // CivilDay for the schedule is the Due Date's day.
+          final civilDate = CivilDay.fromDateTime(dueDateTime);
           schedule = OneOffSchedule(date: civilDate);
+
+          // Relative Time: calculated relative to the due date (civilDate)
+          // Actually, for One-off, the "date" in schedule IS the reference date.
+
+          // Due time is simply the time component of dueDateTime, offset 0?
+          // If dueDateTime is on civilDate, then offset is 0.
+          dueRelative = RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay.fromDateTime(dueDateTime),
+          );
+
+          // Start time (Snooze):
+          // Might be on a different day.
+          // Calculate difference in days between startDateTime and dueDateTime(civilDate).
+          // But strict CivilDay difference.
+
+          // dayOffset = start - due.
+          // e.g. Snooze until tomorrow, Due today? Unlikely.
+          // Usually Snooze until tomorrow, Due tomorrow (or next week).
+
+          // Wait, user provided absolute Snooze.
+          // If Snooze is BEFORE Due, then Offset <= 0.
+
+          // Calculate offset in days.
+          // We can't easily do it without logic.
+          // CivilDay doesn't have difference method visible here?
+          // Let's assume standard calculation:
+          final startMidnight = DateTime(
+            startDateTime.year,
+            startDateTime.month,
+            startDateTime.day,
+          );
+          final dueMidnight = DateTime(
+            dueDateTime.year,
+            dueDateTime.month,
+            dueDateTime.day,
+          );
+          final diff = startMidnight.difference(dueMidnight).inDays;
+
+          startRelative = RelativeTime(
+            dayOffset: diff,
+            time: TimeOfDay.fromDateTime(startDateTime),
+          );
           break;
+
         case RecurrenceType.daily:
+          final civilDate = CivilDay.fromDateTime(_startDate);
           schedule = DailySchedule(startDate: civilDate, interval: _interval);
+          startRelative = _startRelativeController.value;
+          dueRelative = _dueRelativeController.value;
           break;
+
         case RecurrenceType.weekly:
           if (_selectedWeekdays.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -77,11 +153,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             );
             return;
           }
+          final civilDate = CivilDay.fromDateTime(_startDate);
           schedule = WeeklySchedule(
             startDate: civilDate,
             interval: _interval,
             daysOfWeek: Set.from(_selectedWeekdays),
           );
+          startRelative = _startRelativeController.value;
+          dueRelative = _dueRelativeController.value;
           break;
       }
 
@@ -89,8 +168,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: _titleController.text,
         description: _descriptionController.text,
-        startRelativeTime: _startController.value,
-        dueRelativeTime: _dueController.value,
+        startRelativeTime: startRelative,
+        dueRelativeTime: dueRelative,
         schedule: schedule,
       );
       Navigator.pop(context, newTask);
@@ -158,7 +237,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             ),
                             const SizedBox(height: 16),
                             SizedBox(
-                              width: 320,
+                              width: double.infinity,
                               child: SegmentedButton<RecurrenceType>(
                                 segments: const [
                                   ButtonSegment<RecurrenceType>(
@@ -184,113 +263,35 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               ),
                             ),
                             const SizedBox(height: 24),
-                            const Text(
-                              'Times',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Start Time'),
-                                RelativeTimeWidget(
-                                  controller: _startController,
-                                  constraint:
-                                      RelativeTimeConstraint.dayOfOrAfter,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Due Time'),
-                                RelativeTimeWidget(
-                                  controller: _dueController,
-                                  constraint:
-                                      RelativeTimeConstraint.dayOfOrAfter,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            ListTile(
-                              title: Text(
-                                _scheduleType == RecurrenceType.oneOff
-                                    ? 'Date'
-                                    : 'Start Date',
-                              ),
-                              subtitle: Text(
-                                '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}',
-                              ),
-                              trailing: const Icon(Icons.calendar_today),
-                              onTap: () => _selectDate(context),
-                              shape: RoundedRectangleBorder(
-                                side: BorderSide(
-                                  color: Theme.of(context).dividerColor,
-                                ),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            if (_scheduleType != RecurrenceType.oneOff) ...[
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _intervalController,
-                                decoration: InputDecoration(
-                                  labelText:
-                                      _scheduleType == RecurrenceType.daily
-                                      ? 'Days Interval'
-                                      : 'Weeks Interval',
-                                  border: const OutlineInputBorder(),
-                                  helperText:
-                                      _scheduleType == RecurrenceType.daily
-                                      ? 'E.g., 1 for every day, 2 for every other day'
-                                      : 'E.g., 1 for every week',
-                                ),
-                                keyboardType: TextInputType.number,
-                                onChanged: (val) {
-                                  setState(
-                                    () => _interval = int.tryParse(val) ?? 1,
-                                  );
+                            if (_scheduleType == RecurrenceType.oneOff)
+                              OneOffSchedulingWidget(
+                                dueDateTime: _dueDateTimeController,
+                                startDateTime: _startDateTimeController,
+                              )
+                            else if (_scheduleType == RecurrenceType.daily)
+                              DailySchedulingWidget(
+                                startDate: _startDate,
+                                onStartDateChanged: (date) {
+                                  setState(() => _startDate = date);
+                                },
+                                startTimeController: _startRelativeController,
+                                dueTimeController: _dueRelativeController,
+                                intervalController: _intervalController,
+                              )
+                            else if (_scheduleType == RecurrenceType.weekly)
+                              WeeklySchedulingWidget(
+                                startDate: _startDate,
+                                onStartDateChanged: (date) {
+                                  setState(() => _startDate = date);
+                                },
+                                startTimeController: _startRelativeController,
+                                dueTimeController: _dueRelativeController,
+                                intervalController: _intervalController,
+                                selectedWeekdays: _selectedWeekdays,
+                                onWeekdaysChanged: (days) {
+                                  setState(() => _selectedWeekdays = days);
                                 },
                               ),
-                            ],
-                            if (_scheduleType == RecurrenceType.weekly) ...[
-                              const SizedBox(height: 16),
-                              const Text('Repeats on'),
-                              Wrap(
-                                spacing: 8.0,
-                                children: List.generate(7, (index) {
-                                  final dayIndex = index + 1; // 1 = Monday
-                                  final labels = [
-                                    'M',
-                                    'T',
-                                    'W',
-                                    'T',
-                                    'F',
-                                    'S',
-                                    'S',
-                                  ];
-                                  return FilterChip(
-                                    label: Text(labels[index]),
-                                    selected: _selectedWeekdays.contains(
-                                      dayIndex,
-                                    ),
-                                    onSelected: (selected) {
-                                      setState(() {
-                                        if (selected) {
-                                          _selectedWeekdays.add(dayIndex);
-                                        } else {
-                                          _selectedWeekdays.remove(dayIndex);
-                                        }
-                                      });
-                                    },
-                                  );
-                                }),
-                              ),
-                            ],
                           ],
                         ),
                       ),

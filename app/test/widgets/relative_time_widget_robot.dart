@@ -21,26 +21,34 @@ import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
 /// ```
 class RelativeTimeWidgetRobot {
   final WidgetTester tester;
+  final Finder? parent;
 
-  RelativeTimeWidgetRobot(this.tester);
+  RelativeTimeWidgetRobot(this.tester, {this.parent});
+
+  Finder _find(Finder finder) {
+    if (parent != null) {
+      return find.descendant(of: parent!, matching: finder);
+    }
+    return finder;
+  }
 
   Future<void> selectDayOf() async {
-    await tester.tap(find.text('Day of'));
+    await tester.tap(_find(find.text('Day of')));
     await tester.pumpAndSettle();
   }
 
   Future<void> selectDayAfter() async {
-    await tester.tap(find.text('1 day after'));
+    await tester.tap(_find(find.text('1 day after')));
     await tester.pumpAndSettle();
   }
 
   Future<void> selectDayBefore() async {
-    await tester.tap(find.text('1 day before'));
+    await tester.tap(_find(find.text('1 day before')));
     await tester.pumpAndSettle();
   }
 
   Future<void> selectCustom() async {
-    await tester.tap(find.text('Custom'));
+    await tester.tap(_find(find.text('Custom')));
     await tester.pumpAndSettle();
   }
 
@@ -51,7 +59,7 @@ class RelativeTimeWidgetRobot {
 
   Future<void> pickTime(int hour, int minute) async {
     // Tap the time button
-    await tester.tap(timeTextFinder);
+    await tester.tap(_find(timeTextFinder));
     await tester.pumpAndSettle(); // Wait for dialog
 
     // Switch to input mode for easier testing
@@ -69,15 +77,15 @@ class RelativeTimeWidgetRobot {
   }
 
   Future<void> closeCustomMode() async {
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(_find(find.byIcon(Icons.close)));
     await tester.pumpAndSettle();
   }
 
   Finder get segmentedButton {
-    return find.byWidgetPredicate((widget) => widget is SegmentedButton);
+    return _find(find.byWidgetPredicate((widget) => widget is SegmentedButton));
   }
 
-  Finder get customTextField => find.byType(TextField);
+  Finder get customTextField => _find(find.byType(TextField));
 
   Finder get timeTextFinder => find.byWidgetPredicate((widget) {
     if (widget is FilledButton) {

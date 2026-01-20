@@ -1,0 +1,137 @@
+import 'package:flutter/material.dart';
+
+/// A widget that allows users to select a specific date and time.
+///
+/// It visually mimics the [RelativeTimeWidget] but for absolute [DateTime]s.
+class AbsoluteTimeWidget extends StatefulWidget {
+  final ValueNotifier<DateTime> controller;
+
+  const AbsoluteTimeWidget({super.key, required this.controller});
+
+  @override
+  State<AbsoluteTimeWidget> createState() => _AbsoluteTimeWidgetState();
+}
+
+class _AbsoluteTimeWidgetState extends State<AbsoluteTimeWidget> {
+  late final ValueNotifier<DateTime> _dateTimeNotifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _dateTimeNotifier = ValueNotifier(widget.controller.value);
+    widget.controller.addListener(_onExternalUpdate);
+    _dateTimeNotifier.addListener(_onInternalUpdate);
+  }
+
+  @override
+  void didUpdateWidget(covariant AbsoluteTimeWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller != oldWidget.controller) {
+      oldWidget.controller.removeListener(_onExternalUpdate);
+      widget.controller.addListener(_onExternalUpdate);
+      _onExternalUpdate();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onExternalUpdate);
+    _dateTimeNotifier.removeListener(_onInternalUpdate);
+    _dateTimeNotifier.dispose();
+    super.dispose();
+  }
+
+  void _onExternalUpdate() {
+    if (_dateTimeNotifier.value != widget.controller.value) {
+      _dateTimeNotifier.value = widget.controller.value;
+    }
+  }
+
+  void _onInternalUpdate() {
+    if (widget.controller.value != _dateTimeNotifier.value) {
+      widget.controller.value = _dateTimeNotifier.value;
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_dateTimeNotifier.value),
+    );
+    if (picked != null) {
+      final current = _dateTimeNotifier.value;
+      _dateTimeNotifier.value = DateTime(
+        current.year,
+        current.month,
+        current.day,
+        picked.hour,
+        picked.minute,
+      );
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _dateTimeNotifier.value,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+    );
+    if (picked != null) {
+      final current = _dateTimeNotifier.value;
+      _dateTimeNotifier.value = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        current.hour,
+        current.minute,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Use a fixed height to match RelativeTimeWidget
+    const double commonHeight = 40.0;
+
+    return ValueListenableBuilder<DateTime>(
+      valueListenable: _dateTimeNotifier,
+      builder: (context, dateTime, child) {
+        return Row(
+          children: [
+            FilledButton.tonalIcon(
+              onPressed: _pickTime,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 0,
+                ),
+                fixedSize: const Size.fromHeight(commonHeight),
+              ),
+              icon: const Icon(Icons.access_time, size: 18),
+              label: Text(
+                TimeOfDay.fromDateTime(dateTime).format(context),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: _pickDate,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 0,
+                ),
+                fixedSize: const Size.fromHeight(commonHeight),
+              ),
+              icon: const Icon(Icons.calendar_today, size: 18),
+              label: Text(
+                '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
