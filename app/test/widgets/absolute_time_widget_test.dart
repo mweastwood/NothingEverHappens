@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:nothing_ever_happens/widgets/absolute_time_widget.dart';
 import 'absolute_time_widget_robot.dart';
 
@@ -76,6 +77,19 @@ void main() {
         10,
       ); // Month should remain same if available
       expect(controller.value.hour, 14); // Time should remain same
+    });
+    testGoldens('AbsoluteTimeWidget renders correctly', (tester) async {
+      final initialDate = DateTime(2026, 10, 26, 14, 30);
+      final controller = ValueNotifier(initialDate);
+
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 4)
+        ..addScenario('Default', AbsoluteTimeWidget(controller: controller));
+
+      await tester.pumpWidgetBuilder(
+        builder.build(),
+        wrapper: materialAppWrapper(),
+      );
+      await screenMatchesGolden(tester, 'absolute_time_widget');
     });
   });
 }

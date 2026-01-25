@@ -23,9 +23,7 @@ void main() {
     expect(find.text('Buy groceries'), findsOneWidget);
   });
 
-  testWidgets('Task list desktop layout (GridView)', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('Task list desktop layout', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -33,7 +31,7 @@ void main() {
 
     await tester.pumpWidget(createScreen());
 
-    expect(find.byType(GridView), findsOneWidget);
+    expect(find.byType(ListView), findsOneWidget);
     expect(find.text('Buy groceries'), findsOneWidget);
   });
 

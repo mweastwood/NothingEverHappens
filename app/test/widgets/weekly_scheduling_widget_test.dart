@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/widgets/weekly_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
@@ -107,6 +108,37 @@ void main() {
       await robot.toggleDayByIndex(0);
 
       expect(selectedWeekdays, {2});
+    });
+    testGoldens('WeeklySchedulingWidget renders correctly', (tester) async {
+      final startDate = DateTime(2026, 10, 26);
+      final startTimeController = ValueNotifier(
+        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+      );
+      final dueTimeController = ValueNotifier(
+        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
+      );
+      final intervalController = TextEditingController(text: '1');
+      final selectedWeekdays = {1, 3, 5};
+
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1.2)
+        ..addScenario(
+          'Default',
+          WeeklySchedulingWidget(
+            startDate: startDate,
+            onStartDateChanged: (_) {},
+            startTimeController: startTimeController,
+            dueTimeController: dueTimeController,
+            intervalController: intervalController,
+            selectedWeekdays: selectedWeekdays,
+            onWeekdaysChanged: (_) {},
+          ),
+        );
+
+      await tester.pumpWidgetBuilder(
+        builder.build(),
+        wrapper: materialAppWrapper(),
+      );
+      await screenMatchesGolden(tester, 'weekly_scheduling_widget');
     });
   });
 }

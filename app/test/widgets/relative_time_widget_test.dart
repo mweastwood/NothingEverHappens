@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
 import 'relative_time_widget_robot.dart';
@@ -313,5 +314,32 @@ void main() {
         const RelativeTime(dayOffset: -5, time: TimeOfDay(hour: 10, minute: 0)),
       );
     });
+  });
+  testGoldens('RelativeTimeWidget renders correctly', (tester) async {
+    final controller = ValueNotifier(
+      const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
+    );
+
+    final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 4)
+      ..addScenario(
+        'DayOfOrAfter',
+        RelativeTimeWidget(
+          controller: controller,
+          constraint: RelativeTimeConstraint.dayOfOrAfter,
+        ),
+      )
+      ..addScenario(
+        'DayOfOrBefore',
+        RelativeTimeWidget(
+          controller: controller,
+          constraint: RelativeTimeConstraint.dayOfOrBefore,
+        ),
+      );
+
+    await tester.pumpWidgetBuilder(
+      builder.build(),
+      wrapper: materialAppWrapper(),
+    );
+    await screenMatchesGolden(tester, 'relative_time_widget');
   });
 }

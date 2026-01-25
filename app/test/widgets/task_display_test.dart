@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:nothing_ever_happens/widgets/task_display.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -45,5 +46,23 @@ void main() {
       find.byType(MarkdownBody),
     );
     expect(markdownWidget.selectable, isTrue);
+  });
+
+  testGoldens('TaskDisplay renders correctly', (tester) async {
+    const title = 'Test Task';
+    const description =
+        'This is a **bold** description with [link](http://example.com)';
+
+    final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2)
+      ..addScenario(
+        'Default',
+        const TaskDisplay(title: title, description: description),
+      );
+
+    await tester.pumpWidgetBuilder(
+      builder.build(),
+      wrapper: materialAppWrapper(),
+    );
+    await screenMatchesGolden(tester, 'task_display');
   });
 }

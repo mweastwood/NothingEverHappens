@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
 
 void main() {
@@ -57,5 +58,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(changedValue, isTrue);
+  });
+  testGoldens('FunCheckButton renders correctly', (tester) async {
+    final builder = GoldenBuilder.grid(columns: 2, widthToHeightRatio: 1)
+      ..addScenario(
+        'Unchecked',
+        FunCheckButton(value: false, onChanged: (_) {}),
+      )
+      ..addScenario('Checked', FunCheckButton(value: true, onChanged: (_) {}));
+
+    await tester.pumpWidgetBuilder(
+      builder.build(),
+      wrapper: materialAppWrapper(),
+    );
+    await screenMatchesGolden(tester, 'fun_check_button');
   });
 }

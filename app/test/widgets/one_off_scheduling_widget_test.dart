@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:nothing_ever_happens/widgets/one_off_scheduling_widget.dart';
 
 import 'package:nothing_ever_happens/widgets/absolute_time_widget.dart';
@@ -79,6 +80,22 @@ void main() {
 
       expect(start.value.hour, 8);
       expect(start.value.minute, 30);
+    });
+    testGoldens('OneOffSchedulingWidget renders correctly', (tester) async {
+      final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
+      final start = ValueNotifier(DateTime(2026, 10, 26, 9, 0));
+
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2)
+        ..addScenario(
+          'Default',
+          OneOffSchedulingWidget(dueDateTime: due, startDateTime: start),
+        );
+
+      await tester.pumpWidgetBuilder(
+        builder.build(),
+        wrapper: materialAppWrapper(),
+      );
+      await screenMatchesGolden(tester, 'one_off_scheduling_widget');
     });
   });
 }
