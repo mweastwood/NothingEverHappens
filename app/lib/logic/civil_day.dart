@@ -21,6 +21,18 @@ class CivilDay {
     );
   }
 
+  factory CivilDay.fromJson(Map<String, dynamic> json) {
+    return CivilDay(
+      year: json['year'] as int,
+      month: json['month'] as int,
+      day: json['day'] as int,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'year': year, 'month': month, 'day': day};
+  }
+
   /// Converts this [CivilDay] to a [DateTime] at midnight (00:00:00).
   DateTime toDateTime() {
     return DateTime(year, month, day);

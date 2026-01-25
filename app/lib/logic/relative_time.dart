@@ -15,6 +15,17 @@ class RelativeTime {
 
   const RelativeTime({required this.dayOffset, required this.time});
 
+  factory RelativeTime.fromJson(Map<String, dynamic> json) {
+    return RelativeTime(
+      dayOffset: json['dayOffset'] as int,
+      time: TimeOfDay(hour: json['hour'] as int, minute: json['minute'] as int),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'dayOffset': dayOffset, 'hour': time.hour, 'minute': time.minute};
+  }
+
   /// Calculates the [DateTime] relative to the given [reference] day.
   DateTime referenceTo(CivilDay reference) {
     // Start at midnight of the reference day
