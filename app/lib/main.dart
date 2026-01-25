@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'screens/task_list_screen.dart';
 
-void main() {
+void mainCommon() {
   runApp(const MyApp());
 }
 

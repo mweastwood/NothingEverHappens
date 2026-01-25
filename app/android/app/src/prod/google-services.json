@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "936469690744",
+    "project_id": "nothing-ever-happens-prod",
+    "storage_bucket": "nothing-ever-happens-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:936469690744:android:ecb6064b221029d4f8708d",
+        "android_client_info": {
+          "package_name": "com.example.nothing_ever_happens"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFLZZibTK72dF5wuCKPRarPQSF4SwZsUo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
