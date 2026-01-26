@@ -33,6 +33,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+**/failures/*.png
 
 # Symbolication related
 app.*.symbols
