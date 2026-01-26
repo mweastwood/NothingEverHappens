@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:nothing_ever_happens/screens/create_task_screen.dart';
 
 void main() {
@@ -79,5 +80,17 @@ void main() {
 
     // Check for interval field
     expect(find.widgetWithText(TextFormField, 'Days Interval'), findsOneWidget);
+  });
+
+  testGoldens('CreateTaskScreen renders correctly', (tester) async {
+    await tester.pumpWidgetBuilder(
+      const CreateTaskScreen(),
+      wrapper: materialAppWrapper(
+        theme: ThemeData.light(),
+        platform: TargetPlatform.android,
+      ),
+      surfaceSize: const Size(600, 800),
+    );
+    await screenMatchesGolden(tester, 'create_task_screen');
   });
 }

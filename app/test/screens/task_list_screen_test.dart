@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart';
 
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 
@@ -70,5 +71,15 @@ void main() {
     expect(find.text('Nothing Ever Happens'), findsOneWidget);
     expect(find.text('New Task Title'), findsOneWidget);
     expect(find.text('New Task Description'), findsOneWidget);
+    expect(find.text('New Task Description'), findsOneWidget);
+  });
+
+  testGoldens('TaskListScreen renders correctly', (tester) async {
+    await tester.pumpWidgetBuilder(
+      const TaskListScreen(),
+      wrapper: materialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+    await screenMatchesGolden(tester, 'task_list_screen');
   });
 }
