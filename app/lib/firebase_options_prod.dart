@@ -85,5 +85,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'nothing-ever-happens-prod.firebasestorage.app',
     measurementId: 'G-LBNGS96GWK',
   );
-
 }

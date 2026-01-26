@@ -64,7 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '631207034652',
     projectId: 'nothing-ever-happens-dev',
     storageBucket: 'nothing-ever-happens-dev.firebasestorage.app',
-    iosClientId: '631207034652-9h6g86qqrftu7ti16vn3j197qr36pmk4.apps.googleusercontent.com',
+    iosClientId:
+        '631207034652-9h6g86qqrftu7ti16vn3j197qr36pmk4.apps.googleusercontent.com',
     iosBundleId: 'com.example.nothingEverHappens',
   );
 
@@ -74,7 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '631207034652',
     projectId: 'nothing-ever-happens-dev',
     storageBucket: 'nothing-ever-happens-dev.firebasestorage.app',
-    iosClientId: '631207034652-9h6g86qqrftu7ti16vn3j197qr36pmk4.apps.googleusercontent.com',
+    iosClientId:
+        '631207034652-9h6g86qqrftu7ti16vn3j197qr36pmk4.apps.googleusercontent.com',
     iosBundleId: 'com.example.nothingEverHappens',
   );
 
@@ -87,5 +89,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'nothing-ever-happens-dev.firebasestorage.app',
     measurementId: 'G-LYCK4FFWF7',
   );
-
 }
