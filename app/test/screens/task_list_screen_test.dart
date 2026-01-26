@@ -1,13 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:mockito/mockito.dart';
+import 'package:provider/provider.dart';
 
+import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 
+import 'login_screen_test.mocks.dart';
+
 void main() {
+  late MockAuthRepository mockAuthRepository;
+
+  setUp(() {
+    mockAuthRepository = MockAuthRepository();
+    // Default stubbing
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+  });
+
   // Helper to wrap the screen in a MaterialApp (needed for Scaffold, Theme, etc)
   Widget createScreen() {
-    return MaterialApp(home: const TaskListScreen());
+    return MaterialApp(
+      home: Provider<AuthRepository>.value(
+        value: mockAuthRepository,
+        child: const TaskListScreen(),
+      ),
+    );
   }
 
   testWidgets('Task list mobile layout (ListView)', (
@@ -74,9 +92,41 @@ void main() {
     expect(find.text('New Task Description'), findsOneWidget);
   });
 
+  testWidgets('Task list has drawer with logout button', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(createScreen());
+
+    // Find the hamburger menu (Scaffold drawer)
+    // Initially the drawer is closed, so we don't see 'Logout' yet.
+    expect(find.text('Logout'), findsNothing);
+
+    // Open the drawer
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+
+    // Verify drawer content
+    expect(find.text('Menu'), findsOneWidget);
+    expect(find.text('Logout'), findsOneWidget);
+
+    // Tap logout
+    await tester.tap(find.text('Logout'));
+    await tester.pump();
+
+    // Verify signOut was called
+    verify(mockAuthRepository.signOut()).called(1);
+  });
+
   testGoldens('TaskListScreen renders correctly', (tester) async {
+    final mockAuthRepository = MockAuthRepository();
+    // Default stubbing for goldens if needed, though they mostly test UI
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+
     await tester.pumpWidgetBuilder(
-      const TaskListScreen(),
+      Provider<AuthRepository>.value(
+        value: mockAuthRepository,
+        child: const TaskListScreen(),
+      ),
       wrapper: materialAppWrapper(),
       surfaceSize: const Size(400, 800),
     );

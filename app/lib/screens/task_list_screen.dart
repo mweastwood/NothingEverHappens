@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../logic/auth_repository.dart';
 import '../logic/task.dart';
 import '../widgets/fun_check_button.dart';
 import '../logic/civil_day.dart';
@@ -87,6 +89,24 @@ class _TaskListScreenState extends State<TaskListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Nothing Ever Happens')),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.blue),
+              child: Text('Menu'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Logout'),
+              onTap: () async {
+                await context.read<AuthRepository>().signOut();
+              },
+            ),
+          ],
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Card(
