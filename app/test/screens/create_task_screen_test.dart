@@ -90,11 +90,11 @@ void main() {
           shadowColor: Colors.transparent,
           textTheme: ThemeData.light(
             useMaterial3: true,
-          ).textTheme.apply(fontFamily: 'Roboto'),
+          ).textTheme.apply(fontFamily: 'Ahem'),
         ),
         platform: TargetPlatform.android,
       ),
-      surfaceSize: const Size(600, 800),
+      surfaceSize: const Size(800, 800),
     );
     await screenMatchesGolden(tester, 'create_task_screen');
   });
