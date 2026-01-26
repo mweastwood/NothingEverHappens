@@ -102,7 +102,7 @@ class _FunCheckButtonState extends State<FunCheckButton>
                                 size: 16,
                                 color: Theme.of(
                                   context,
-                                ).colorScheme.primary.withOpacity(0.5),
+                                ).colorScheme.primary.withValues(alpha: 0.5),
                               )
                             : null),
                 ),
@@ -158,7 +158,8 @@ class ConfettiPainter extends CustomPainter {
             sin(particle.angle) * distance,
           );
 
-      final paint = Paint()..color = particle.color.withOpacity(1 - progress);
+      final paint = Paint()
+        ..color = particle.color.withValues(alpha: 1 - progress);
 
       canvas.save();
       canvas.translate(particleCenter.dx, particleCenter.dy);

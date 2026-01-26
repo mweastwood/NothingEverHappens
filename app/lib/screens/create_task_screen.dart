@@ -56,7 +56,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   // Schedule fields
   RecurrenceType _scheduleType = RecurrenceType.oneOff;
   DateTime _startDate = DateTime.now(); // For Daily/Weekly start date
-  int _interval = 1;
   Set<int> _selectedWeekdays = {};
 
   @override
@@ -139,7 +138,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
         case RecurrenceType.daily:
           final civilDate = CivilDay.fromDateTime(_startDate);
-          schedule = DailySchedule(startDate: civilDate, interval: _interval);
+          final interval = int.tryParse(_intervalController.text) ?? 1;
+          schedule = DailySchedule(startDate: civilDate, interval: interval);
           startRelative = _startRelativeController.value;
           dueRelative = _dueRelativeController.value;
           break;
@@ -154,9 +154,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             return;
           }
           final civilDate = CivilDay.fromDateTime(_startDate);
+          final interval = int.tryParse(_intervalController.text) ?? 1;
           schedule = WeeklySchedule(
             startDate: civilDate,
-            interval: _interval,
+            interval: interval,
             daysOfWeek: Set.from(_selectedWeekdays),
           );
           startRelative = _startRelativeController.value;
