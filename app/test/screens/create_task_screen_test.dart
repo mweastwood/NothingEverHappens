@@ -86,7 +86,9 @@ void main() {
     await tester.pumpWidgetBuilder(
       const CreateTaskScreen(),
       wrapper: materialAppWrapper(
-        theme: ThemeData.light(),
+        theme: ThemeData.light().copyWith(
+          textTheme: ThemeData.light().textTheme.apply(fontFamily: 'Roboto'),
+        ),
         platform: TargetPlatform.android,
       ),
       surfaceSize: const Size(600, 800),
