@@ -3,10 +3,9 @@ import 'package:provider/provider.dart';
 import '../logic/auth_repository.dart';
 import '../logic/task.dart';
 import '../widgets/fun_check_button.dart';
-import '../logic/civil_day.dart';
-import '../logic/relative_time.dart';
 import 'create_task_screen.dart';
 import '../widgets/task_display.dart';
+import '../logic/task_repository.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({super.key});
@@ -16,77 +15,17 @@ class TaskListScreen extends StatefulWidget {
 }
 
 class _TaskListScreenState extends State<TaskListScreen> {
-  // Fake data
-  final List<Task> _tasks = [
-    Task(
-      id: '1',
-      title: 'Buy groceries',
-      description: 'Milk, Eggs, Bread',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 18, minute: 0),
-      ),
-      schedule: DailySchedule(
-        startDate: CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-      ),
-    ),
-    Task(
-      id: '2',
-      title: 'Walk the dog',
-      description: 'Take Fido to the park',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 7, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 8, minute: 0),
-      ),
-      schedule: DailySchedule(
-        startDate: CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-      ),
-    ),
-    Task(
-      id: '3',
-      title: 'Weekly meeting',
-      description: 'Discuss project status',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 10, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 11, minute: 0),
-      ),
-      schedule: WeeklySchedule(
-        startDate: CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-        daysOfWeek: {1}, // Monday
-      ),
-    ),
-  ];
-
   Future<void> _addNewTask() async {
-    final newTask = await Navigator.push<Task>(
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const CreateTaskScreen()),
     );
-
-    if (newTask != null) {
-      setState(() {
-        _tasks.add(newTask);
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final taskRepository = Provider.of<TaskRepository?>(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Nothing Ever Happens')),
       drawer: Drawer(
@@ -107,17 +46,40 @@ class _TaskListScreenState extends State<TaskListScreen> {
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Card(
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: _tasks.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) => _buildTaskItem(_tasks[index]),
-          ),
-        ),
-      ),
+      body: taskRepository == null
+          ? const Center(child: CircularProgressIndicator())
+          : StreamBuilder<List<Task>>(
+              stream: taskRepository.getTasks(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final tasks = snapshot.data ?? [];
+
+                if (tasks.isEmpty) {
+                  return const Center(child: Text('No tasks yet. Add one!'));
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Card(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: tasks.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
+                      itemBuilder: (context, index) =>
+                          _buildTaskItem(tasks[index]),
+                    ),
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addNewTask,
         tooltip: 'Add Task',

@@ -4,27 +4,71 @@ import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 
+import 'package:mockito/annotations.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
+import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
+import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/civil_day.dart';
 
-import 'login_screen_test.mocks.dart';
+@GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<TaskRepository>()])
+import 'task_list_screen_test.mocks.dart';
+
+import 'package:rxdart/rxdart.dart';
 
 void main() {
   late MockAuthRepository mockAuthRepository;
+  late MockTaskRepository mockTaskRepository;
+  late BehaviorSubject<List<Task>> tasksSubject;
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
+    mockTaskRepository = MockTaskRepository();
+
+    // Initial task list
+    final initialTasks = [
+      Task(
+        id: '1',
+        title: 'Mock Task',
+        description: 'Mock Description',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2024, month: 1, day: 1),
+        ),
+      ),
+    ];
+    tasksSubject = BehaviorSubject<List<Task>>.seeded(initialTasks);
+
     // Default stubbing
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubject.stream);
+    when(mockTaskRepository.addTask(any)).thenAnswer((invocation) async {
+      final task = invocation.positionalArguments.first as Task;
+      final currentTasks = tasksSubject.value;
+      tasksSubject.add([...currentTasks, task]);
+    });
+  });
+
+  tearDown(() {
+    tasksSubject.close();
   });
 
   // Helper to wrap the screen in a MaterialApp (needed for Scaffold, Theme, etc)
   Widget createScreen() {
-    return MaterialApp(
-      home: Provider<AuthRepository>.value(
-        value: mockAuthRepository,
-        child: const TaskListScreen(),
-      ),
+    return MultiProvider(
+      providers: [
+        Provider<AuthRepository>.value(value: mockAuthRepository),
+        Provider<TaskRepository>.value(value: mockTaskRepository),
+      ],
+      child: const MaterialApp(home: TaskListScreen()),
     );
   }
 
@@ -37,9 +81,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle(); // Wait for stream
 
     expect(find.byType(ListView), findsOneWidget);
-    expect(find.text('Buy groceries'), findsOneWidget);
+    expect(find.text('Mock Task'), findsOneWidget);
   });
 
   testWidgets('Task list desktop layout', (WidgetTester tester) async {
@@ -49,15 +94,17 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle(); // Wait for stream
 
     expect(find.byType(ListView), findsOneWidget);
-    expect(find.text('Buy groceries'), findsOneWidget);
+    expect(find.text('Mock Task'), findsOneWidget);
   });
 
   testWidgets('Task list shows FAB and navigates to CreateTaskScreen', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle();
 
     // Verify FAB exists
     expect(find.byType(FloatingActionButton), findsOneWidget);
@@ -89,13 +136,13 @@ void main() {
     expect(find.text('Nothing Ever Happens'), findsOneWidget);
     expect(find.text('New Task Title'), findsOneWidget);
     expect(find.text('New Task Description'), findsOneWidget);
-    expect(find.text('New Task Description'), findsOneWidget);
   });
 
   testWidgets('Task list has drawer with logout button', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle();
 
     // Find the hamburger menu (Scaffold drawer)
     // Initially the drawer is closed, so we don't see 'Logout' yet.
@@ -119,12 +166,36 @@ void main() {
 
   testGoldens('TaskListScreen renders correctly', (tester) async {
     final mockAuthRepository = MockAuthRepository();
-    // Default stubbing for goldens if needed, though they mostly test UI
+    final mockTaskRepository = MockTaskRepository();
+
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer(
+      (_) => Stream.value([
+        Task(
+          id: '1',
+          title: 'Mock Task',
+          description: 'Mock Description',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: OneOffSchedule(
+            date: const CivilDay(year: 2024, month: 1, day: 1),
+          ),
+        ),
+      ]),
+    );
 
     await tester.pumpWidgetBuilder(
-      Provider<AuthRepository>.value(
-        value: mockAuthRepository,
+      MultiProvider(
+        providers: [
+          Provider<AuthRepository>.value(value: mockAuthRepository),
+          Provider<TaskRepository>.value(value: mockTaskRepository),
+        ],
         child: const TaskListScreen(),
       ),
       wrapper: materialAppWrapper(),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
+import '../logic/task_repository.dart';
 
 import '../widgets/one_off_scheduling_widget.dart';
 import '../widgets/daily_scheduling_widget.dart';
@@ -173,7 +175,16 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         dueRelativeTime: dueRelative,
         schedule: schedule,
       );
-      Navigator.pop(context, newTask);
+
+      final repository = context.read<TaskRepository?>();
+      if (repository != null) {
+        // Use a detached Future to avoid blocking the UI,
+        // but since we pop immediately, we should probably await if we want to show error.
+        // For now, fire and forget or simple await is fine.
+        repository.addTask(newTask);
+      }
+
+      Navigator.pop(context); // Don't return the task
     }
   }
 
