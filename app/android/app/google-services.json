@@ -1,37 +1,37 @@
 {
   "project_info": {
-    "project_number": "631207034652",
-    "project_id": "nothing-ever-happens-dev",
-    "storage_bucket": "nothing-ever-happens-dev.firebasestorage.app"
+    "project_number": "936469690744",
+    "project_id": "nothing-ever-happens-prod",
+    "storage_bucket": "nothing-ever-happens-prod.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:631207034652:android:2cbd5974865538b82384d9",
+        "mobilesdk_app_id": "1:936469690744:android:ecb6064b221029d4f8708d",
         "android_client_info": {
           "package_name": "com.example.nothing_ever_happens"
         }
       },
       "oauth_client": [
         {
-          "client_id": "631207034652-91uutp0kkbmaaltqlg5858et5pal7era.apps.googleusercontent.com",
+          "client_id": "936469690744-8bthibeb317ifso2jc25ra9jmlaggdac.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyC5CxNBwjTFuEuOanfOdIyoIHWIOSLnNaY"
+          "current_key": "AIzaSyBFLZZibTK72dF5wuCKPRarPQSF4SwZsUo"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "631207034652-91uutp0kkbmaaltqlg5858et5pal7era.apps.googleusercontent.com",
+              "client_id": "936469690744-8bthibeb317ifso2jc25ra9jmlaggdac.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "631207034652-9h6g86qqrftu7ti16vn3j197qr36pmk4.apps.googleusercontent.com",
+              "client_id": "936469690744-6nd0vutnnco8b1f1h0mutptnbo78hnsq.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "com.example.nothingEverHappens"

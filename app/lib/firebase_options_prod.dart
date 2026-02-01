@@ -64,6 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '936469690744',
     projectId: 'nothing-ever-happens-prod',
     storageBucket: 'nothing-ever-happens-prod.firebasestorage.app',
+    iosClientId:
+        '936469690744-6nd0vutnnco8b1f1h0mutptnbo78hnsq.apps.googleusercontent.com',
     iosBundleId: 'com.example.nothingEverHappens',
   );
 
@@ -73,6 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '936469690744',
     projectId: 'nothing-ever-happens-prod',
     storageBucket: 'nothing-ever-happens-prod.firebasestorage.app',
+    iosClientId:
+        '936469690744-6nd0vutnnco8b1f1h0mutptnbo78hnsq.apps.googleusercontent.com',
     iosBundleId: 'com.example.nothingEverHappens',
   );
 
