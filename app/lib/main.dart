@@ -50,13 +50,11 @@ class MyApp extends StatelessWidget {
             darkScheme = darkDynamic;
           } else {
             lightScheme = ColorScheme.fromSeed(
-              seedColor: Colors.white,
-              dynamicSchemeVariant: DynamicSchemeVariant.neutral,
+              seedColor: const Color(0xFFffd9f6),
             );
             darkScheme = ColorScheme.fromSeed(
-              seedColor: Colors.white,
+              seedColor: const Color(0xFFffd9f6),
               brightness: Brightness.dark,
-              dynamicSchemeVariant: DynamicSchemeVariant.neutral,
             );
           }
 
