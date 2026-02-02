@@ -3,10 +3,9 @@ import 'package:provider/provider.dart';
 import '../logic/auth_repository.dart';
 import '../logic/task.dart';
 import '../logic/task_delta.dart';
-import '../widgets/fun_check_button.dart';
 import '../widgets/task_delta_widget.dart';
 import 'create_task_screen.dart';
-import '../widgets/task_display.dart';
+import '../widgets/task_widget.dart';
 import '../logic/task_repository.dart';
 
 class TaskListScreen extends StatefulWidget {
@@ -130,15 +129,13 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
           return Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Card(
-              child: ListView.separated(
-                physics:
-                    const NeverScrollableScrollPhysics(), // Let the CustomScrollView handle scrolling
-                shrinkWrap: true,
-                itemCount: tasks.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) => _buildTaskItem(tasks[index]),
-              ),
+            child: ListView.builder(
+              physics:
+                  const NeverScrollableScrollPhysics(), // Let the CustomScrollView handle scrolling
+              shrinkWrap: true,
+              itemCount: tasks.length,
+              // No divider needed as cards have margins/elevation
+              itemBuilder: (context, index) => _buildTaskItem(tasks[index]),
             ),
           );
         },
@@ -147,9 +144,6 @@ class _TaskListScreenState extends State<TaskListScreen> {
   }
 
   Widget _buildTaskItem(Task task) {
-    return ListTile(
-      leading: FunCheckButton(value: false, onChanged: (value) {}),
-      title: TaskDisplay(title: task.title, description: task.description),
-    );
+    return TaskWidget(key: ValueKey(task.id), task: task);
   }
 }

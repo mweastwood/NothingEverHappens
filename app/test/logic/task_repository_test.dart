@@ -147,5 +147,30 @@ void main() {
       expect(historySnapshot.docs.length, 2);
       expect(historySnapshot.docs.last.data()['operation'], 'delete');
     });
+
+    test('completeTask removes a task and adds history', () async {
+      await repository.addTask(testTask);
+
+      await repository.completeTask(testTask.id);
+
+      final taskSnapshot = await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('tasks')
+          .doc(testTask.id)
+          .get();
+
+      expect(taskSnapshot.exists, isFalse);
+
+      final historySnapshot = await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('history')
+          .get();
+
+      // 1 from add, 1 from complete
+      expect(historySnapshot.docs.length, 2);
+      expect(historySnapshot.docs.last.data()['operation'], 'complete');
+    });
   });
 }
