@@ -13,6 +13,7 @@ import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
+import '../widgets/task_widget_robot.dart';
 
 @GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<TaskRepository>()])
 import 'task_list_screen_test.mocks.dart';
@@ -170,6 +171,103 @@ void main() {
     // Verify signOut was called
     verify(mockAuthRepository.signOut()).called(1);
   });
+
+  testWidgets('Tapping checkbox completes the task', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle();
+
+    final robot = TaskWidgetRobot(tester);
+
+    // Verify task is present
+    await robot.expectTitle('Mock Task');
+
+    // Tap the checkbox
+    await robot.tapCheckbox();
+
+    // Verify completeTask was NOT called immediately
+    verifyNever(mockTaskRepository.completeTask('1'));
+
+    await robot.waitForCompletion();
+
+    // Verify completeTask was called
+    verify(mockTaskRepository.completeTask('1')).called(1);
+  });
+
+  testWidgets(
+    'Completing a task does not affect the next task state (bug repro)',
+    (WidgetTester tester) async {
+      // Setup 2 tasks
+      final task1 = Task(
+        id: '1',
+        title: 'Task 1',
+        description: 'Desc 1',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2024, month: 1, day: 1),
+        ),
+      );
+      final task2 = Task(
+        id: '2',
+        title: 'Task 2',
+        description: 'Desc 2',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2024, month: 1, day: 1),
+        ),
+      );
+
+      tasksSubject.add([task1, task2]);
+
+      // Simulate deletion when completeTask is called
+      when(mockTaskRepository.completeTask('1')).thenAnswer((_) async {
+        tasksSubject.add([task2]); // Remove task 1
+      });
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      final robot1 = TaskWidgetRobot.fromTitle(tester, 'Task 1');
+      final robot2 = TaskWidgetRobot.fromTitle(tester, 'Task 2');
+
+      robot1.expectVisible();
+      robot2.expectVisible();
+
+      // Tap Task 1
+      await robot1.tapCheckbox();
+
+      await robot1.waitForCompletion();
+      // Pump again to process the stream update and rebuild UI
+      await tester.pump();
+
+      // Verify completeTask was called
+      verify(mockTaskRepository.completeTask('1')).called(1);
+
+      // Verify Task 1 is gone (due to stream update)
+      robot1.expectGone();
+
+      // Verify Task 2 is visible
+      robot2.expectVisible();
+
+      // Check if Task 2 is inadvertently checked (state reuse bug)
+      await robot2.expectChecked(false);
+    },
+  );
 
   testGoldens('TaskListScreen history scrolling', (tester) async {
     final mockAuthRepository = MockAuthRepository();

@@ -79,4 +79,16 @@ class TaskRepository {
 
     await batch.commit();
   }
+
+  Future<void> completeTask(String id) async {
+    final newState = const TaskList([]).complete(id, _userId);
+    final delta = newState.history.last;
+
+    final batch = _firestore.batch();
+
+    batch.delete(_tasksRef.doc(id));
+    batch.set(_historyRef.doc(delta.id), delta);
+
+    await batch.commit();
+  }
 }
