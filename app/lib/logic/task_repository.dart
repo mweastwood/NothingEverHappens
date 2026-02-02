@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'task.dart';
+import 'task_delta.dart';
+import 'task_list.dart';
 
 class TaskRepository {
   final FirebaseFirestore _firestore;
@@ -20,21 +22,61 @@ class TaskRepository {
         );
   }
 
+  CollectionReference<TaskDelta> get _historyRef {
+    return _firestore
+        .collection('users')
+        .doc(_userId)
+        .collection('history')
+        .withConverter<TaskDelta>(
+          fromFirestore: (snapshot, _) => TaskDelta.fromJson(snapshot.data()!),
+          toFirestore: (delta, _) => delta.toJson(),
+        );
+  }
+
   Stream<List<Task>> getTasks() {
     return _tasksRef.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) => doc.data()).toList();
     });
   }
 
-  Future<void> addTask(Task task) async {
-    await _tasksRef.doc(task.id).set(task);
+  Stream<List<TaskDelta>> getHistory() {
+    return _historyRef.orderBy('timestamp', descending: true).snapshots().map((
+      snapshot,
+    ) {
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    });
   }
 
-  Future<void> updateTask(Task task) async {
-    await _tasksRef.doc(task.id).set(task);
+  Future<void> addTask(Task task) async {
+    final newState = const TaskList([]).add(task, _userId);
+    final delta = newState.history.last;
+
+    final batch = _firestore.batch();
+
+    batch.set(_tasksRef.doc(task.id), task);
+    batch.set(_historyRef.doc(delta.id), delta);
+
+    await batch.commit();
+  }
+
+  Future<void> updateTask(TaskModification modification) async {
+    final batch = _firestore.batch();
+
+    batch.set(_tasksRef.doc(modification.newTask.id), modification.newTask);
+    batch.set(_historyRef.doc(modification.delta.id), modification.delta);
+
+    await batch.commit();
   }
 
   Future<void> deleteTask(String id) async {
-    await _tasksRef.doc(id).delete();
+    final newState = const TaskList([]).delete(id, _userId);
+    final delta = newState.history.last;
+
+    final batch = _firestore.batch();
+
+    batch.delete(_tasksRef.doc(id));
+    batch.set(_historyRef.doc(delta.id), delta);
+
+    await batch.commit();
   }
 }

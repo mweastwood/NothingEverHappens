@@ -1,6 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
+import 'task_delta.dart';
+
+/// Result of a task update operation.
+typedef TaskModification = ({Task newTask, TaskDelta delta});
 
 /// Defines how often a task reoccurs.
 abstract class TaskSchedule {
@@ -221,6 +226,97 @@ class Task {
       'dueRelativeTime': dueRelativeTime.toJson(),
       'schedule': schedule.toJson(),
     };
+  }
+
+  static final _uuid = Uuid();
+
+  /// Updates the title and returns the modified task and delta.
+  TaskModification updateTitle(String newTitle, String userId) {
+    final newTask = _copyWith(title: newTitle);
+    final delta = _createUpdateDelta(
+      field: 'title',
+      newValue: newTitle,
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the description and returns the modified task and delta.
+  TaskModification updateDescription(String newDescription, String userId) {
+    final newTask = _copyWith(description: newDescription);
+    final delta = _createUpdateDelta(
+      field: 'description',
+      newValue: newDescription,
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the schedule and returns the modified task and delta.
+  TaskModification reschedule(TaskSchedule newSchedule, String userId) {
+    final newTask = _copyWith(schedule: newSchedule);
+    final delta = _createUpdateDelta(
+      field: 'schedule',
+      newValue: newSchedule.toJson(),
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the start relative time and returns the modified task and delta.
+  TaskModification updateStart(RelativeTime newStart, String userId) {
+    final newTask = _copyWith(startRelativeTime: newStart);
+    final delta = _createUpdateDelta(
+      field: 'startRelativeTime',
+      newValue: newStart.toJson(),
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the due relative time and returns the modified task and delta.
+  TaskModification updateDue(RelativeTime newDue, String userId) {
+    final newTask = _copyWith(dueRelativeTime: newDue);
+    final delta = _createUpdateDelta(
+      field: 'dueRelativeTime',
+      newValue: newDue.toJson(),
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  Task _copyWith({
+    String? title,
+    String? description,
+    RelativeTime? startRelativeTime,
+    RelativeTime? dueRelativeTime,
+    TaskSchedule? schedule,
+  }) {
+    return Task(
+      id: id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
+      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
+      schedule: schedule ?? this.schedule,
+    );
+  }
+
+  TaskDelta _createUpdateDelta({
+    required String field,
+    required dynamic newValue,
+    required String userId,
+  }) {
+    final now = DateTime.now();
+    return TaskDelta(
+      id: _uuid.v4(),
+      taskId: id,
+      timestamp: now,
+      expiresAt: now.add(const Duration(days: 90)),
+      operation: 'update',
+      changedFields: {field: newValue},
+      userId: userId,
+    );
   }
 
   /// Checks if the task is overdue at [current] time.
