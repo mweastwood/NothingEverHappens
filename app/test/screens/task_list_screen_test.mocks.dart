@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart' as _i4;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:nothing_ever_happens/logic/auth_repository.dart' as _i2;
 import 'package:nothing_ever_happens/logic/task.dart' as _i6;
+import 'package:nothing_ever_happens/logic/task_delta.dart' as _i7;
 import 'package:nothing_ever_happens/logic/task_repository.dart' as _i5;
 
 // ignore_for_file: type=lint
@@ -72,6 +73,15 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
           as _i3.Stream<List<_i6.Task>>);
 
   @override
+  _i3.Stream<List<_i7.TaskDelta>> getHistory() =>
+      (super.noSuchMethod(
+            Invocation.method(#getHistory, []),
+            returnValue: _i3.Stream<List<_i7.TaskDelta>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i7.TaskDelta>>.empty(),
+          )
+          as _i3.Stream<List<_i7.TaskDelta>>);
+
+  @override
   _i3.Future<void> addTask(_i6.Task? task) =>
       (super.noSuchMethod(
             Invocation.method(#addTask, [task]),
@@ -81,9 +91,11 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
           as _i3.Future<void>);
 
   @override
-  _i3.Future<void> updateTask(_i6.Task? task) =>
+  _i3.Future<void> updateTask(
+    ({_i7.TaskDelta delta, _i6.Task newTask})? modification,
+  ) =>
       (super.noSuchMethod(
-            Invocation.method(#updateTask, [task]),
+            Invocation.method(#updateTask, [modification]),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
