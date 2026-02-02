@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:nothing_ever_happens/screens/create_task_screen.dart';
+import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:provider/provider.dart';
 
+import 'create_task_screen_test.mocks.dart';
+
+@GenerateMocks([TaskRepository])
 void main() {
   testWidgets('CreateTaskScreen renders form and saves task', (
     WidgetTester tester,
@@ -97,5 +105,102 @@ void main() {
       surfaceSize: const Size(800, 800),
     );
     await screenMatchesGolden(tester, 'create_task_screen');
+  });
+
+  group('Shortcuts', () {
+    late MockTaskRepository mockRepository;
+
+    setUp(() {
+      mockRepository = MockTaskRepository();
+    });
+
+    Widget createWidgetUnderTest() {
+      return MaterialApp(
+        home: Provider<TaskRepository?>.value(
+          value: mockRepository,
+          child: const CreateTaskScreen(),
+        ),
+      );
+    }
+
+    testWidgets('Title field is focused by default', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(createWidgetUnderTest());
+
+      // Find the first EditableText which should be the title field due to autofocus
+      final EditableText titleEditableText = tester.widget(
+        find.byType(EditableText).first,
+      );
+      expect(titleEditableText.autofocus, isTrue);
+
+      final FocusNode focusNode = Focus.of(
+        tester.element(find.byType(EditableText).first),
+      );
+      expect(focusNode.hasFocus, isTrue);
+    });
+
+    testWidgets('Pressing Enter saves the task when title is focused', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(createWidgetUnderTest());
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Title'),
+        'Test Task',
+      );
+      await tester.pump();
+
+      // Simulate Enter key
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      verify(mockRepository.addTask(any)).called(1);
+      expect(
+        find.byType(CreateTaskScreen),
+        findsNothing,
+      ); // Screen should be popped
+    });
+
+    testWidgets(
+      'Pressing Enter does NOT save the task when description is focused',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(createWidgetUnderTest());
+
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Title'),
+          'Test Task',
+        );
+        // Focus description
+        await tester.tap(find.widgetWithText(TextFormField, 'Description'));
+        await tester.pump();
+
+        // Simulate Enter key - this should be consumed by the multiline text field or ignored by our action
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+
+        verifyNever(mockRepository.addTask(any));
+        expect(
+          find.byType(CreateTaskScreen),
+          findsOneWidget,
+        ); // Screen should still be there
+      },
+    );
+
+    testWidgets('Pressing Escape discards the task', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(createWidgetUnderTest());
+
+      // Simulate Escape key
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      verifyNever(mockRepository.addTask(any));
+      expect(
+        find.byType(CreateTaskScreen),
+        findsNothing,
+      ); // Screen should be popped
+    });
   });
 }

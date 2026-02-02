@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
@@ -16,9 +17,18 @@ class CreateTaskScreen extends StatefulWidget {
   State<CreateTaskScreen> createState() => _CreateTaskScreenState();
 }
 
+class SaveIntent extends Intent {
+  const SaveIntent();
+}
+
+class DiscardIntent extends Intent {
+  const DiscardIntent();
+}
+
 class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
+  final _titleFocusNode = FocusNode();
   final _descriptionController = TextEditingController();
   final _intervalController = TextEditingController(text: '1');
 
@@ -63,6 +73,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   @override
   void dispose() {
     _titleController.dispose();
+    _titleFocusNode.dispose();
     _descriptionController.dispose();
     _intervalController.dispose();
     _startRelativeController.dispose();
@@ -190,144 +201,172 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('New Task')),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            TextFormField(
-                              controller: _titleController,
-                              decoration: const InputDecoration(
-                                labelText: 'Title',
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter a title';
-                                }
-                                return null;
-                              },
+    return Shortcuts(
+      shortcuts: <ShortcutActivator, Intent>{
+        const SingleActivator(LogicalKeyboardKey.enter): const SaveIntent(),
+        const SingleActivator(LogicalKeyboardKey.escape): const DiscardIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          SaveIntent: CallbackAction<SaveIntent>(
+            onInvoke: (intent) {
+              if (_titleFocusNode.hasFocus) {
+                _saveTask();
+              }
+              return null;
+            },
+          ),
+          DiscardIntent: CallbackAction<DiscardIntent>(
+            onInvoke: (intent) => Navigator.pop(context),
+          ),
+        },
+        child: Scaffold(
+          appBar: AppBar(title: const Text('New Task')),
+          body: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextFormField(
+                                  controller: _titleController,
+                                  focusNode: _titleFocusNode,
+                                  autofocus: true,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Title',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a title';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _descriptionController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Description',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  maxLines: 3,
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _descriptionController,
-                              decoration: const InputDecoration(
-                                labelText: 'Description',
-                                border: OutlineInputBorder(),
-                              ),
-                              maxLines: 3,
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Schedule',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: SegmentedButton<RecurrenceType>(
-                                segments: const [
-                                  ButtonSegment<RecurrenceType>(
-                                    value: RecurrenceType.oneOff,
-                                    label: Text('One-off'),
+                        const SizedBox(height: 16),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Schedule',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  ButtonSegment<RecurrenceType>(
-                                    value: RecurrenceType.daily,
-                                    label: Text('Daily'),
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: SegmentedButton<RecurrenceType>(
+                                    segments: const [
+                                      ButtonSegment<RecurrenceType>(
+                                        value: RecurrenceType.oneOff,
+                                        label: Text('One-off'),
+                                      ),
+                                      ButtonSegment<RecurrenceType>(
+                                        value: RecurrenceType.daily,
+                                        label: Text('Daily'),
+                                      ),
+                                      ButtonSegment<RecurrenceType>(
+                                        value: RecurrenceType.weekly,
+                                        label: Text('Weekly'),
+                                      ),
+                                    ],
+                                    selected: <RecurrenceType>{_scheduleType},
+                                    onSelectionChanged:
+                                        (Set<RecurrenceType> newSelection) {
+                                          setState(() {
+                                            _scheduleType = newSelection.first;
+                                          });
+                                        },
                                   ),
-                                  ButtonSegment<RecurrenceType>(
-                                    value: RecurrenceType.weekly,
-                                    label: Text('Weekly'),
-                                  ),
-                                ],
-                                selected: <RecurrenceType>{_scheduleType},
-                                onSelectionChanged:
-                                    (Set<RecurrenceType> newSelection) {
-                                      setState(() {
-                                        _scheduleType = newSelection.first;
-                                      });
+                                ),
+                                const SizedBox(height: 24),
+                                if (_scheduleType == RecurrenceType.oneOff)
+                                  OneOffSchedulingWidget(
+                                    dueDateTime: _dueDateTimeController,
+                                    startDateTime: _startDateTimeController,
+                                  )
+                                else if (_scheduleType == RecurrenceType.daily)
+                                  DailySchedulingWidget(
+                                    startDate: _startDate,
+                                    onStartDateChanged: (date) {
+                                      setState(() => _startDate = date);
                                     },
-                              ),
+                                    startTimeController:
+                                        _startRelativeController,
+                                    dueTimeController: _dueRelativeController,
+                                    intervalController: _intervalController,
+                                  )
+                                else if (_scheduleType == RecurrenceType.weekly)
+                                  WeeklySchedulingWidget(
+                                    startDate: _startDate,
+                                    onStartDateChanged: (date) {
+                                      setState(() => _startDate = date);
+                                    },
+                                    startTimeController:
+                                        _startRelativeController,
+                                    dueTimeController: _dueRelativeController,
+                                    intervalController: _intervalController,
+                                    selectedWeekdays: _selectedWeekdays,
+                                    onWeekdaysChanged: (days) {
+                                      setState(() => _selectedWeekdays = days);
+                                    },
+                                  ),
+                              ],
                             ),
-                            const SizedBox(height: 24),
-                            if (_scheduleType == RecurrenceType.oneOff)
-                              OneOffSchedulingWidget(
-                                dueDateTime: _dueDateTimeController,
-                                startDateTime: _startDateTimeController,
-                              )
-                            else if (_scheduleType == RecurrenceType.daily)
-                              DailySchedulingWidget(
-                                startDate: _startDate,
-                                onStartDateChanged: (date) {
-                                  setState(() => _startDate = date);
-                                },
-                                startTimeController: _startRelativeController,
-                                dueTimeController: _dueRelativeController,
-                                intervalController: _intervalController,
-                              )
-                            else if (_scheduleType == RecurrenceType.weekly)
-                              WeeklySchedulingWidget(
-                                startDate: _startDate,
-                                onStartDateChanged: (date) {
-                                  setState(() => _startDate = date);
-                                },
-                                startTimeController: _startRelativeController,
-                                dueTimeController: _dueRelativeController,
-                                intervalController: _intervalController,
-                                selectedWeekdays: _selectedWeekdays,
-                                onWeekdaysChanged: (days) {
-                                  setState(() => _selectedWeekdays = days);
-                                },
-                              ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Discard'),
+                    ),
+                    const SizedBox(width: 16),
+                    FilledButton(
+                      onPressed: _saveTask,
+                      child: const Text('Save'),
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Discard'),
-                ),
-                const SizedBox(width: 16),
-                FilledButton(onPressed: _saveTask, child: const Text('Save')),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
