@@ -88,25 +88,25 @@ void main() {
     await tester.pumpWidget(createWidget(testTask));
 
     // Find checkbox (FunCheckButton).
-    // We expect it to be a GestureDetector inside.
     await tester.tap(find.byType(FunCheckButton));
     await tester.pump(); // Start confetti
 
-    // Wait for confetti delay (600ms)
-    await tester.pump(const Duration(milliseconds: 700));
+    // Wait for confetti delay (500ms) plus buffer
+    await tester.pump(const Duration(milliseconds: 510));
+    await tester.pump(); // Start ticker
 
-    // Wait for animation (600ms)
-    await tester.pump(const Duration(milliseconds: 700));
+    // Wait for animation (200ms) plus buffer
+    await tester.pump(const Duration(milliseconds: 210));
+    await tester.pump(); // Ensure listener executes
 
     verify(mockTaskRepository.completeTask(testTask.id)).called(1);
   });
 
-  testGoldens('TaskWidget renders correctly', (tester) async {
+  testGoldens('TaskWidget animation frames', (tester) async {
     final markdownTask = Task(
       id: '2',
       title: 'Markdown Task',
-      description:
-          'This is a **bold** description with [link](http://example.com)',
+      description: 'Check me off!',
       startRelativeTime: const RelativeTime(
         dayOffset: 0,
         time: TimeOfDay(hour: 9, minute: 0),
@@ -123,10 +123,89 @@ void main() {
     await tester.pumpWidgetBuilder(
       Provider<TaskRepository>.value(
         value: mockTaskRepository,
-        child: TaskWidget(task: markdownTask),
+        child: Container(
+          color: Colors.white, // White background for clarity
+          child: Column(
+            children: [
+              TaskWidget(task: markdownTask),
+              // Use a very high contrast container below
+              Container(
+                key: const Key('second_item'),
+                height: 100,
+                width: 400,
+                color: Colors.amber, // High contrast
+                child: const Center(
+                  child: Text(
+                    'SECOND TASK (SLIDING UP)',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       wrapper: materialAppWrapper(),
+      surfaceSize: const Size(400, 400),
     );
-    await screenMatchesGolden(tester, 'task_widget');
+
+    // Frame 0: Start
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_frame_0.png'),
+    );
+
+    // Trigger animation
+    await tester.tap(find.byType(FunCheckButton));
+    await tester.pump(); // Start confetti
+
+    // Wait for delay (500ms)
+    for (int i = 0; i < 50; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await tester.pump(); // Start ticker frame
+
+    // Frame 1: 50ms into animation (25% progress)
+    // Visual: 50% through vertical collapse. Layout: 75% height remains.
+    for (int i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_frame_1.png'),
+    );
+
+    // Frame 2: 100ms into animation (50% progress)
+    // Visual: Vertical collapse finished (thin line). Layout: 50% height remains.
+    for (int i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_frame_2.png'),
+    );
+
+    // Frame 3: 150ms into animation (75% progress)
+    // Visual: 50% through horizontal collapse. Layout: 25% height remains.
+    for (int i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_frame_3.png'),
+    );
+
+    // Frame 4: 200ms into animation (100% progress)
+    // Visual: Horizontal collapse finished (0 width). Layout: 0% height remains.
+    for (int i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_frame_4.png'),
+    );
   });
 }

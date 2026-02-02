@@ -19,6 +19,8 @@ class _TaskWidgetState extends State<TaskWidget>
   late AnimationController _controller;
   late Animation<double> _scaleYAnimation;
   late Animation<double> _scaleXAnimation;
+  late Animation<double> _sizeFactorAnimation;
+  late Animation<double> _contentOpacityAnimation;
   bool _isChecking = false;
 
   @override
@@ -26,18 +28,32 @@ class _TaskWidgetState extends State<TaskWidget>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 200),
     );
 
-    // Phase 1: Collapse Vertically (Height) - first 50%
-    _scaleYAnimation = Tween<double>(begin: 1.0, end: 0.02).animate(
+    // Layout Collapse: 1.0 -> 0.0 over the FULL 200ms
+    _sizeFactorAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+
+    // Fade content out in the first 25% (50ms)
+    _contentOpacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+        curve: const Interval(0.0, 0.25, curve: Curves.easeOut),
       ),
     );
 
-    // Phase 2: Collapse Horizontally (Width) - last 50%
+    // Visual Phase 1: Collapse Vertically (Height squish) - first 50%
+    _scaleYAnimation = Tween<double>(begin: 1.0, end: 0.1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
+      ),
+    );
+
+    // Visual Phase 2: Collapse Horizontally (Width) - last 50%
     _scaleXAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _controller,
@@ -65,8 +81,9 @@ class _TaskWidgetState extends State<TaskWidget>
       _isChecking = true;
     });
 
-    // Wait for fun check animation (confetti) to finish (~500ms)
-    Future.delayed(const Duration(milliseconds: 600), () {
+    // Wait for fun check animation (confetti) to finish (500ms)
+    // The confetti lasts ~500ms.
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         _controller.forward();
       }
@@ -78,39 +95,47 @@ class _TaskWidgetState extends State<TaskWidget>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        // Apply transformations: Diagonal matrix to scale X and Y independently
-        return Transform(
-          alignment: Alignment.center,
+        // Visual Transformation (Squish/Shrink) affects the whole Card
+        final transformedChild = Transform(
+          alignment: Alignment.topCenter,
           transform: Matrix4.diagonal3Values(
             _scaleXAnimation.value,
             _scaleYAnimation.value,
             1.0,
           ),
-          child: child,
-        );
-      },
-      child: Card(
-        child: ListTile(
-          leading: FunCheckButton(
-            value: _isChecking,
-            onChanged: (value) {
-              if (value && !_isChecking) {
-                _handleCompletion();
-              }
-            },
-          ),
-          title: Padding(
-            padding: const EdgeInsets.only(bottom: 4.0),
-            child: SelectableText(
-              widget.task.title,
-              style: Theme.of(context).textTheme.titleMedium,
+          child: Card(
+            child: Opacity(
+              opacity: _contentOpacityAnimation.value,
+              child: child,
             ),
           ),
-          subtitle: MarkdownBody(
-            data: widget.task.description,
-            selectable: true,
+        );
+
+        // Layout Transformation (Slide-up)
+        return SizeTransition(
+          sizeFactor: _sizeFactorAnimation,
+          axis: Axis.vertical,
+          axisAlignment: -1.0,
+          child: transformedChild,
+        );
+      },
+      child: ListTile(
+        leading: FunCheckButton(
+          value: _isChecking,
+          onChanged: (value) {
+            if (value && !_isChecking) {
+              _handleCompletion();
+            }
+          },
+        ),
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 4.0),
+          child: SelectableText(
+            widget.task.title,
+            style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
+        subtitle: MarkdownBody(data: widget.task.description, selectable: true),
       ),
     );
   }
