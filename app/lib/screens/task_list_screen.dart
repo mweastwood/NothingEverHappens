@@ -88,7 +88,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                 vertical: 8.0,
               ),
               child: Card(
-                color: Theme.of(context).colorScheme.surfaceVariant,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: TaskDeltaWidget(delta: history[index]),
