@@ -48,3 +48,7 @@ app.*.map.json
 
 # Firebase
 .firebase/
+
+# Antigravity CLI
+.antigravitycli/*.json
+!.antigravitycli/agents/
