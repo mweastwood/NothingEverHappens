@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options_dev.dart' as dev;
@@ -8,12 +10,21 @@ import 'screens/task_list_screen.dart';
 import 'screens/login_screen.dart';
 import 'logic/auth_repository.dart';
 import 'logic/task_repository.dart';
+import 'logic/error_handler.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: dev.DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Enable persistence for Web
+  if (kIsWeb) {
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+    );
+  }
+
   mainCommon();
 }
 
@@ -28,6 +39,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        Provider<ErrorHandler>(create: (_) => ErrorHandler()),
         Provider<AuthRepository>(create: (_) => AuthRepository()),
         StreamProvider<User?>(
           create: (context) => context.read<AuthRepository>().authStateChanges,

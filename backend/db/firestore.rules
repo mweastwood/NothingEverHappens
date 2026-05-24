@@ -15,6 +15,11 @@ service cloud.firestore {
       match /tasks/{taskId} {
         allow read, write: if isUser(userId);
       }
+
+      // History: Users can read/write their own history/deltas
+      match /history/{deltaId} {
+        allow read, write: if isUser(userId);
+      }
     }
   }
 }
