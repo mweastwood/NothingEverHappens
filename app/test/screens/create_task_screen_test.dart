@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 
 import 'create_task_screen_test.mocks.dart';
+import 'package:nothing_ever_happens/logic/error_handler.dart';
 
 @GenerateMocks([TaskRepository])
 void main() {
@@ -20,7 +22,14 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const MaterialApp(home: CreateTaskScreen()));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Provider<ErrorHandler>(
+          create: (_) => ErrorHandler(),
+          child: const CreateTaskScreen(),
+        ),
+      ),
+    );
 
     // Verify initial state
     expect(find.text('New Task'), findsOneWidget);
@@ -57,7 +66,14 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const MaterialApp(home: CreateTaskScreen()));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Provider<ErrorHandler>(
+          create: (_) => ErrorHandler(),
+          child: const CreateTaskScreen(),
+        ),
+      ),
+    );
 
     // Tap save without entering title
     final saveButton = find.text('Save');
@@ -78,7 +94,14 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const MaterialApp(home: CreateTaskScreen()));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Provider<ErrorHandler>(
+          create: (_) => ErrorHandler(),
+          child: const CreateTaskScreen(),
+        ),
+      ),
+    );
 
     // Change to Daily
     final dailySegment = find.text('Daily');
@@ -93,7 +116,7 @@ void main() {
   testGoldens('CreateTaskScreen renders correctly', (tester) async {
     await tester.pumpWidgetBuilder(
       const CreateTaskScreen(),
-      wrapper: materialAppWrapper(
+      wrapper: (child) => materialAppWrapper(
         theme: ThemeData.light(useMaterial3: true).copyWith(
           shadowColor: Colors.transparent,
           textTheme: ThemeData.light(
@@ -101,7 +124,7 @@ void main() {
           ).textTheme.apply(fontFamily: 'Ahem'),
         ),
         platform: TargetPlatform.android,
-      ),
+      )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
       surfaceSize: const Size(800, 800),
     );
     await screenMatchesGolden(tester, 'create_task_screen');
@@ -116,8 +139,11 @@ void main() {
 
     Widget createWidgetUnderTest() {
       return MaterialApp(
-        home: Provider<TaskRepository?>.value(
-          value: mockRepository,
+        home: MultiProvider(
+          providers: [
+            Provider<ErrorHandler>(create: (_) => ErrorHandler()),
+            Provider<TaskRepository?>.value(value: mockRepository),
+          ],
           child: const CreateTaskScreen(),
         ),
       );
@@ -201,6 +227,62 @@ void main() {
         find.byType(CreateTaskScreen),
         findsNothing,
       ); // Screen should be popped
+    });
+
+    testWidgets('Shows loading indicator when saving', (
+      WidgetTester tester,
+    ) async {
+      // Use a completer to control when addTask finishes
+      final completer = Completer<void>();
+      when(mockRepository.addTask(any)).thenAnswer((_) => completer.future);
+
+      await tester.pumpWidget(createWidgetUnderTest());
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Title'),
+        'Test Task',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pump(); // Start the save operation
+
+      // Verify loading indicator is present
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Save'), findsNothing);
+
+      // Verify buttons are disabled
+      final discardButton = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Discard'),
+      );
+      expect(discardButton.onPressed, isNull);
+
+      final saveButton = tester.widget<FilledButton>(find.byType(FilledButton));
+      expect(saveButton.onPressed, isNull);
+
+      // Complete the operation
+      completer.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CreateTaskScreen), findsNothing);
+    });
+
+    testWidgets('Shows error dialog when saving fails', (
+      WidgetTester tester,
+    ) async {
+      when(mockRepository.addTask(any)).thenThrow(Exception('Firestore Error'));
+
+      await tester.pumpWidget(createWidgetUnderTest());
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Title'),
+        'Test Task',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pump(); // Start the save operation
+      await tester.pumpAndSettle(); // Wait for dialog to appear
+
+      expect(find.text('Error Occurred'), findsOneWidget);
+      expect(find.textContaining('Firestore Error'), findsOneWidget);
+      expect(find.byType(CreateTaskScreen), findsOneWidget); // Still there
     });
   });
 }
