@@ -71,16 +71,19 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
           ],
         ),
         const SizedBox(height: 16),
-        ListTile(
-          title: const Text('Start Date'),
-          subtitle: Text(
-            '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
-          ),
-          trailing: const Icon(Icons.calendar_today),
-          onTap: _pickDate,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: Theme.of(context).dividerColor),
-            borderRadius: BorderRadius.circular(4),
+        Material(
+          color: Colors.transparent,
+          child: ListTile(
+            title: const Text('Start Date'),
+            subtitle: Text(
+              '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
+            ),
+            trailing: const Icon(Icons.calendar_today),
+            onTap: _pickDate,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: Theme.of(context).dividerColor),
+              borderRadius: BorderRadius.circular(4),
+            ),
           ),
         ),
         const SizedBox(height: 16),
