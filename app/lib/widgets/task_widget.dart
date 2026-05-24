@@ -115,8 +115,7 @@ class _TaskWidgetState extends State<TaskWidget>
         return SizeTransition(
           sizeFactor: _sizeFactorAnimation,
           axis: Axis.vertical,
-          // ignore: deprecated_member_use
-          axisAlignment: -1.0,
+          alignment: Alignment.topCenter,
           child: transformedChild,
         );
       },
