@@ -2,8 +2,5 @@
   "firestore": {
     "rules": "db/firestore.rules",
     "indexes": "db/firestore.indexes.json"
-  },
-  "functions": {
-    "source": "functions"
   }
 }
