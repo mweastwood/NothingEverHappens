@@ -44,7 +44,9 @@ class _TaskListScreenState extends State<TaskListScreen> {
               body: taskRepository == null
                   ? const Center(child: CircularProgressIndicator())
                   : Padding(
-                      padding: EdgeInsets.only(bottom: isMocked ? 60.0 : 0.0), // Avoid overlap with dev clock banner
+                      padding: EdgeInsets.only(
+                        bottom: isMocked ? 60.0 : 0.0,
+                      ), // Avoid overlap with dev clock banner
                       child: CustomScrollView(
                         center: _taskListKey,
                         slivers: [

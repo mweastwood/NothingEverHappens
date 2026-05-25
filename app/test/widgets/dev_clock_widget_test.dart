@@ -7,15 +7,15 @@ import 'package:nothing_ever_happens/main.dart';
 
 void main() {
   group('DevClockWidget Goldens', () {
-    testGoldens('DevClockWidget renders button when active/inactive', (tester) async {
+    testGoldens('DevClockWidget renders button when active/inactive', (
+      tester,
+    ) async {
       AppConfig.environment = AppEnvironment.dev;
       AppClock.reset();
 
       // Test 1: Inactive state (only shows the small floating button)
       await tester.pumpWidgetBuilder(
-        const Scaffold(
-          body: DevClockWidget(),
-        ),
+        const Scaffold(body: DevClockWidget()),
         wrapper: materialAppWrapper(),
         surfaceSize: const Size(400, 300),
       );
@@ -31,14 +31,14 @@ void main() {
       AppClock.reset();
     });
 
-    testGoldens('TimeMachineDashboard Bottom Sheet renders correctly', (tester) async {
+    testGoldens('TimeMachineDashboard Bottom Sheet renders correctly', (
+      tester,
+    ) async {
       AppConfig.environment = AppEnvironment.dev;
       AppClock.setMockTime(DateTime(2026, 3, 8, 1, 59));
 
       await tester.pumpWidgetBuilder(
-        const Scaffold(
-          body: TimeMachineDashboard(),
-        ),
+        const Scaffold(body: TimeMachineDashboard()),
         wrapper: materialAppWrapper(),
         surfaceSize: const Size(450, 600),
       );

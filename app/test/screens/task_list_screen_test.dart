@@ -336,7 +336,9 @@ void main() {
     await screenMatchesGolden(tester, 'task_list_screen_history');
   });
 
-  testGoldens('TaskListScreen - Prod Mode (No Dev Clock Button)', (tester) async {
+  testGoldens('TaskListScreen - Prod Mode (No Dev Clock Button)', (
+    tester,
+  ) async {
     // 1. Set environment to prod
     AppConfig.environment = AppEnvironment.prod;
 
