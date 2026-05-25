@@ -193,5 +193,46 @@ void main() {
       // 13:00 PM
       expect(task.isOverdue(DateTime(2024, 1, 1, 13, 0)), isTrue);
     });
+
+    test(
+      'toFirestore and fromFirestore serialize multiple daily times correctly',
+      () {
+        final task = Task(
+          id: 'task-test',
+          title: 'Multi Task',
+          description: 'Desc',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 3, day: 8),
+            interval: 1,
+          ),
+          dailyTimes: const [
+            DailyOccurrenceTime(
+              startTime: TimeOfDay(hour: 8, minute: 0),
+              dueTime: TimeOfDay(hour: 9, minute: 0),
+            ),
+            DailyOccurrenceTime(
+              startTime: TimeOfDay(hour: 20, minute: 0),
+              dueTime: TimeOfDay(hour: 21, minute: 0),
+            ),
+          ],
+          activeOccurrenceIndex: 1,
+        );
+
+        final map = task.toFirestore();
+        expect(map['dailyTimes'], isA<List>());
+        expect(map['dailyTimes'].length, 2);
+        expect(map['dailyTimes'][0]['startHour'], 8);
+        expect(map['dailyTimes'][1]['dueHour'], 21);
+        expect(map['activeOccurrenceIndex'], 1);
+      },
+    );
   });
 }

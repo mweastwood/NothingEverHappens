@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
-import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/widgets/weekly_scheduling_widget.dart';
-import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
+import 'package:nothing_ever_happens/widgets/daily_time_list_widget.dart';
 import 'weekly_scheduling_widget_robot.dart';
 
 void main() {
   group('WeeklySchedulingWidget', () {
     testWidgets('renders all fields', (tester) async {
       final startDate = DateTime(2026, 10, 26);
-      final startTimeController = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-      );
-      final dueTimeController = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-      );
+      final dailyTimesController = ValueNotifier<List<DailyOccurrenceTime>>([
+        const DailyOccurrenceTime(
+          startTime: TimeOfDay(hour: 9, minute: 0),
+          dueTime: TimeOfDay(hour: 17, minute: 0),
+        ),
+      ]);
       final intervalController = TextEditingController(text: '1');
       final selectedWeekdays = {1, 3, 5}; // Mon, Wed, Fri
 
@@ -26,8 +26,7 @@ void main() {
               child: WeeklySchedulingWidget(
                 startDate: startDate,
                 onStartDateChanged: (_) {},
-                startTimeController: startTimeController,
-                dueTimeController: dueTimeController,
+                dailyTimesController: dailyTimesController,
                 intervalController: intervalController,
                 selectedWeekdays: selectedWeekdays,
                 onWeekdaysChanged: (_) {},
@@ -37,18 +36,12 @@ void main() {
         ),
       );
 
-      expect(find.text('Times'), findsOneWidget);
-      expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
+      expect(find.text('Daily Occurrences'), findsOneWidget);
+      expect(find.byType(DailyTimeListWidget), findsOneWidget);
       expect(find.text('Start Date'), findsOneWidget);
       expect(find.text('Weeks Interval'), findsOneWidget);
       expect(find.text('Repeats on'), findsOneWidget);
       expect(find.byType(FilterChip), findsNWidgets(7));
-
-      // Check chips selection (1, 3, 5 are selected)
-      // FilterChip rendering check is slightly complex via standard finders,
-      // but we can check if they are toggled.
-      // Usually selected chips have checkmark or different color.
-      // We can inspect widget properties.
 
       final mondayChip = tester.widget<FilterChip>(
         find.widgetWithText(FilterChip, 'M').first,
@@ -63,12 +56,12 @@ void main() {
 
     testWidgets('updates weekdays when chip is tapped', (tester) async {
       final startDate = DateTime(2026, 10, 26);
-      final startTimeController = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-      );
-      final dueTimeController = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-      );
+      final dailyTimesController = ValueNotifier<List<DailyOccurrenceTime>>([
+        const DailyOccurrenceTime(
+          startTime: TimeOfDay(hour: 9, minute: 0),
+          dueTime: TimeOfDay(hour: 17, minute: 0),
+        ),
+      ]);
       final intervalController = TextEditingController(text: '1');
       Set<int> selectedWeekdays = {1}; // Mon
       final robot = WeeklySchedulingWidgetRobot(tester);
@@ -82,8 +75,7 @@ void main() {
                   return WeeklySchedulingWidget(
                     startDate: startDate,
                     onStartDateChanged: (_) {},
-                    startTimeController: startTimeController,
-                    dueTimeController: dueTimeController,
+                    dailyTimesController: dailyTimesController,
                     intervalController: intervalController,
                     selectedWeekdays: selectedWeekdays,
                     onWeekdaysChanged: (newSet) {
@@ -109,14 +101,15 @@ void main() {
 
       expect(selectedWeekdays, {2});
     });
+
     testGoldens('WeeklySchedulingWidget renders correctly', (tester) async {
       final startDate = DateTime(2026, 10, 26);
-      final startTimeController = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-      );
-      final dueTimeController = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-      );
+      final dailyTimesController = ValueNotifier<List<DailyOccurrenceTime>>([
+        const DailyOccurrenceTime(
+          startTime: TimeOfDay(hour: 9, minute: 0),
+          dueTime: TimeOfDay(hour: 17, minute: 0),
+        ),
+      ]);
       final intervalController = TextEditingController(text: '1');
       final selectedWeekdays = {1, 3, 5};
 
@@ -126,8 +119,7 @@ void main() {
           WeeklySchedulingWidget(
             startDate: startDate,
             onStartDateChanged: (_) {},
-            startTimeController: startTimeController,
-            dueTimeController: dueTimeController,
+            dailyTimesController: dailyTimesController,
             intervalController: intervalController,
             selectedWeekdays: selectedWeekdays,
             onWeekdaysChanged: (_) {},

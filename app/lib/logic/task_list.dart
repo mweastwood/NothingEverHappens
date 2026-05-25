@@ -3,6 +3,7 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
 import 'task.dart';
 import 'task_delta.dart';
+import 'relative_time.dart';
 
 class TaskList {
   final List<Task> activeTasks;
@@ -54,41 +55,81 @@ class TaskList {
         history: [...history, delta],
       );
     } else {
-      // Reschedule the recurring task
-      final today = CivilDay.fromDateTime(now);
-      final nextOccur = task.schedule.nextOccurrenceAfter(today);
+      // Check if there are multiple occurrence times per day
+      if (task.dailyTimes.isNotEmpty &&
+          task.activeOccurrenceIndex < task.dailyTimes.length - 1) {
+        // Advance to the next occurrence on the SAME day
+        final nextIndex = task.activeOccurrenceIndex + 1;
+        final nextOccurrence = task.dailyTimes[nextIndex];
+        final updatedTask = Task(
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          startRelativeTime: RelativeTime(
+            dayOffset: 0,
+            time: nextOccurrence.startTime,
+          ),
+          dueRelativeTime: RelativeTime(
+            dayOffset: 0,
+            time: nextOccurrence.dueTime,
+          ),
+          schedule: task.schedule, // same schedule (same startDate!)
+          dailyTimes: task.dailyTimes,
+          activeOccurrenceIndex: nextIndex,
+        );
 
-      TaskSchedule newSchedule;
-      if (task.schedule is DailySchedule) {
-        final ds = task.schedule as DailySchedule;
-        newSchedule = DailySchedule(
-          startDate: nextOccur,
-          interval: ds.interval,
-        );
-      } else if (task.schedule is WeeklySchedule) {
-        final ws = task.schedule as WeeklySchedule;
-        newSchedule = WeeklySchedule(
-          startDate: nextOccur,
-          interval: ws.interval,
-          daysOfWeek: ws.daysOfWeek,
-        );
+        final updatedTasks = List<Task>.from(activeTasks);
+        updatedTasks[taskIndex] = updatedTask;
+
+        return TaskList(updatedTasks, history: [...history, delta]);
       } else {
-        newSchedule = task.schedule;
+        // We either have no dailyTimes (fallback/compatibility), or we have completed the last daily occurrence.
+        // Reschedule the recurring task to the next occurrence day.
+        final today = CivilDay.fromDateTime(now);
+        final nextOccur = task.schedule.nextOccurrenceAfter(today);
+
+        TaskSchedule newSchedule;
+        if (task.schedule is DailySchedule) {
+          final ds = task.schedule as DailySchedule;
+          newSchedule = DailySchedule(
+            startDate: nextOccur,
+            interval: ds.interval,
+          );
+        } else if (task.schedule is WeeklySchedule) {
+          final ws = task.schedule as WeeklySchedule;
+          newSchedule = WeeklySchedule(
+            startDate: nextOccur,
+            interval: ws.interval,
+            daysOfWeek: ws.daysOfWeek,
+          );
+        } else {
+          newSchedule = task.schedule;
+        }
+
+        // Reset to the first occurrence time (or keep existing startRelativeTime / dueRelativeTime if dailyTimes is empty)
+        final firstOccurStart = task.dailyTimes.isNotEmpty
+            ? RelativeTime(dayOffset: 0, time: task.dailyTimes[0].startTime)
+            : task.startRelativeTime;
+        final firstOccurDue = task.dailyTimes.isNotEmpty
+            ? RelativeTime(dayOffset: 0, time: task.dailyTimes[0].dueTime)
+            : task.dueRelativeTime;
+
+        final updatedTask = Task(
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          startRelativeTime: firstOccurStart,
+          dueRelativeTime: firstOccurDue,
+          schedule: newSchedule,
+          dailyTimes: task.dailyTimes,
+          activeOccurrenceIndex: 0, // reset
+        );
+
+        final updatedTasks = List<Task>.from(activeTasks);
+        updatedTasks[taskIndex] = updatedTask;
+
+        return TaskList(updatedTasks, history: [...history, delta]);
       }
-
-      final updatedTask = Task(
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        startRelativeTime: task.startRelativeTime,
-        dueRelativeTime: task.dueRelativeTime,
-        schedule: newSchedule,
-      );
-
-      final updatedTasks = List<Task>.from(activeTasks);
-      updatedTasks[taskIndex] = updatedTask;
-
-      return TaskList(updatedTasks, history: [...history, delta]);
     }
   }
 
