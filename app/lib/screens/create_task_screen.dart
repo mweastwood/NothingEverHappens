@@ -6,12 +6,16 @@ import '../logic/task.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
+import '../logic/error_handler.dart';
 
 import '../widgets/one_off_scheduling_widget.dart';
 import '../widgets/daily_scheduling_widget.dart';
 import '../widgets/weekly_scheduling_widget.dart';
 
 class CreateTaskScreen extends StatefulWidget {
+  static Duration saveTimeout = const Duration(seconds: 10);
+  static bool debugDisableAnimations = false;
+
   const CreateTaskScreen({super.key});
 
   @override
@@ -71,6 +75,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   DateTime _startDate = AppClock.now; // For Daily/Weekly start date
   Set<int> _selectedWeekdays = {};
 
+  bool _isSaving = false;
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -84,119 +90,131 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     super.dispose();
   }
 
-  void _saveTask() {
+  Future<void> _saveTask() async {
     if (_formKey.currentState!.validate()) {
-      TaskSchedule schedule;
-      RelativeTime startRelative;
-      RelativeTime dueRelative;
+      setState(() {
+        _isSaving = true;
+      });
 
-      switch (_scheduleType) {
-        case RecurrenceType.oneOff:
-          // For One-off, we convert absolute types to "relative" to the task date (which is the due date)
-          // But actually OneOffSchedule takes a date.
-          // Wait, Task model uses relative times.
-          // If OneOff, startRelativeTime and dueRelativeTime are usually simple.
-          // Due Time for OneOff: usually Day 0, Time X.
-          // But we have Absolute widget.
+      try {
+        TaskSchedule schedule;
+        RelativeTime startRelative;
+        RelativeTime dueRelative;
 
-          final dueDateTime = _dueDateTimeController.value;
-          final startDateTime = _startDateTimeController.value;
+        switch (_scheduleType) {
+          case RecurrenceType.oneOff:
+            final dueDateTime = _dueDateTimeController.value;
+            final startDateTime = _startDateTimeController.value;
 
-          // CivilDay for the schedule is the Due Date's day.
-          final civilDate = CivilDay.fromDateTime(dueDateTime);
-          schedule = OneOffSchedule(date: civilDate);
+            // CivilDay for the schedule is the Due Date's day.
+            final civilDate = CivilDay.fromDateTime(dueDateTime);
+            schedule = OneOffSchedule(date: civilDate);
 
-          // Relative Time: calculated relative to the due date (civilDate)
-          // Actually, for One-off, the "date" in schedule IS the reference date.
-
-          // Due time is simply the time component of dueDateTime, offset 0?
-          // If dueDateTime is on civilDate, then offset is 0.
-          dueRelative = RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay.fromDateTime(dueDateTime),
-          );
-
-          // Start time (Snooze):
-          // Might be on a different day.
-          // Calculate difference in days between startDateTime and dueDateTime(civilDate).
-          // But strict CivilDay difference.
-
-          // dayOffset = start - due.
-          // e.g. Snooze until tomorrow, Due today? Unlikely.
-          // Usually Snooze until tomorrow, Due tomorrow (or next week).
-
-          // Wait, user provided absolute Snooze.
-          // If Snooze is BEFORE Due, then Offset <= 0.
-
-          // Calculate offset in days.
-          // We can't easily do it without logic.
-          // CivilDay doesn't have difference method visible here?
-          // Let's assume standard calculation:
-          final startMidnightUtc = DateTime.utc(
-            startDateTime.year,
-            startDateTime.month,
-            startDateTime.day,
-          );
-          final dueMidnightUtc = DateTime.utc(
-            dueDateTime.year,
-            dueDateTime.month,
-            dueDateTime.day,
-          );
-          final diff = startMidnightUtc.difference(dueMidnightUtc).inDays;
-
-          startRelative = RelativeTime(
-            dayOffset: diff,
-            time: TimeOfDay.fromDateTime(startDateTime),
-          );
-          break;
-
-        case RecurrenceType.daily:
-          final civilDate = CivilDay.fromDateTime(_startDate);
-          final interval = int.tryParse(_intervalController.text) ?? 1;
-          schedule = DailySchedule(startDate: civilDate, interval: interval);
-          startRelative = _startRelativeController.value;
-          dueRelative = _dueRelativeController.value;
-          break;
-
-        case RecurrenceType.weekly:
-          if (_selectedWeekdays.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please select at least one day of the week'),
-              ),
+            // Due time is simply the time component of dueDateTime, offset 0?
+            // If dueDateTime is on civilDate, then offset is 0.
+            dueRelative = RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay.fromDateTime(dueDateTime),
             );
-            return;
-          }
-          final civilDate = CivilDay.fromDateTime(_startDate);
-          final interval = int.tryParse(_intervalController.text) ?? 1;
-          schedule = WeeklySchedule(
-            startDate: civilDate,
-            interval: interval,
-            daysOfWeek: Set.from(_selectedWeekdays),
-          );
-          startRelative = _startRelativeController.value;
-          dueRelative = _dueRelativeController.value;
-          break;
+
+            // Start time (Snooze):
+            // Might be on a different day.
+            // Calculate difference in days between startDateTime and dueDateTime(civilDate).
+            // But strict CivilDay difference.
+
+            // dayOffset = start - due.
+            // e.g. Snooze until tomorrow, Due today? Unlikely.
+            // Usually Snooze until tomorrow, Due tomorrow (or next week).
+
+            // Wait, user provided absolute Snooze.
+            // If Snooze is BEFORE Due, then Offset <= 0.
+
+            // Calculate offset in days using UTC midnights for DST safety.
+            final startMidnightUtc = DateTime.utc(
+              startDateTime.year,
+              startDateTime.month,
+              startDateTime.day,
+            );
+            final dueMidnightUtc = DateTime.utc(
+              dueDateTime.year,
+              dueDateTime.month,
+              dueDateTime.day,
+            );
+            final diff = startMidnightUtc.difference(dueMidnightUtc).inDays;
+
+            startRelative = RelativeTime(
+              dayOffset: diff,
+              time: TimeOfDay.fromDateTime(startDateTime),
+            );
+            break;
+
+          case RecurrenceType.daily:
+            final civilDate = CivilDay.fromDateTime(_startDate);
+            final interval = int.tryParse(_intervalController.text) ?? 1;
+            schedule = DailySchedule(startDate: civilDate, interval: interval);
+            startRelative = _startRelativeController.value;
+            dueRelative = _dueRelativeController.value;
+            break;
+
+          case RecurrenceType.weekly:
+            if (_selectedWeekdays.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please select at least one day of the week'),
+                ),
+              );
+              return;
+            }
+            final civilDate = CivilDay.fromDateTime(_startDate);
+            final interval = int.tryParse(_intervalController.text) ?? 1;
+            schedule = WeeklySchedule(
+              startDate: civilDate,
+              interval: interval,
+              daysOfWeek: Set.from(_selectedWeekdays),
+            );
+            startRelative = _startRelativeController.value;
+            dueRelative = _dueRelativeController.value;
+            break;
+        }
+
+        final newTask = Task(
+          id: AppClock.now.millisecondsSinceEpoch.toString(),
+          title: _titleController.text,
+          description: _descriptionController.text,
+          startRelativeTime: startRelative,
+          dueRelativeTime: dueRelative,
+          schedule: schedule,
+        );
+
+        final repository = context.read<TaskRepository?>();
+        if (repository != null) {
+          // Add a timeout to catch cases where Firestore might be hanging due to persistence/sync issues
+          await repository
+              .addTask(newTask)
+              .timeout(
+                CreateTaskScreen.saveTimeout,
+                onTimeout: () => throw Exception(
+                  'Save operation timed out. This may be due to a connectivity issue or a failure to sync with the database.',
+                ),
+              );
+        }
+
+        if (mounted) {
+          Navigator.pop(context); // Don't return the task
+        }
+      } catch (e, stackTrace) {
+        if (mounted) {
+          final errorHandler = context.read<ErrorHandler>();
+          final report = errorHandler.report(e, stackTrace: stackTrace);
+          errorHandler.showErrorDialog(context, report);
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSaving = false;
+          });
+        }
       }
-
-      final newTask = Task(
-        id: AppClock.now.millisecondsSinceEpoch.toString(),
-        title: _titleController.text,
-        description: _descriptionController.text,
-        startRelativeTime: startRelative,
-        dueRelativeTime: dueRelative,
-        schedule: schedule,
-      );
-
-      final repository = context.read<TaskRepository?>();
-      if (repository != null) {
-        // Use a detached Future to avoid blocking the UI,
-        // but since we pop immediately, we should probably await if we want to show error.
-        // For now, fire and forget or simple await is fine.
-        repository.addTask(newTask);
-      }
-
-      Navigator.pop(context); // Don't return the task
     }
   }
 
@@ -354,13 +372,28 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _isSaving
+                          ? null
+                          : () => Navigator.pop(context),
                       child: const Text('Discard'),
                     ),
                     const SizedBox(width: 16),
                     FilledButton(
-                      onPressed: _saveTask,
-                      child: const Text('Save'),
+                      key: const Key('save_task_button'),
+                      onPressed: _isSaving ? null : _saveTask,
+                      child: _isSaving
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                value: CreateTaskScreen.debugDisableAnimations
+                                    ? 0.8
+                                    : null,
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Save'),
                     ),
                   ],
                 ),
