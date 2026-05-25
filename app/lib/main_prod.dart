@@ -16,5 +16,6 @@ void main() async {
     );
   }
 
+  AppConfig.environment = AppEnvironment.prod;
   mainCommon();
 }

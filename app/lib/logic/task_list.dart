@@ -1,5 +1,5 @@
 import 'package:uuid/uuid.dart';
-import 'app_clock.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
 import 'task.dart';
 import 'task_delta.dart';
@@ -28,6 +28,7 @@ class TaskList {
 
   TaskList complete(String taskId, String userId) {
     final now = AppClock.now;
+    print('DEBUG: AppClock.now in TaskList.complete is $now');
     final delta = TaskDelta(
       id: _uuid.v4(),
       taskId: taskId,

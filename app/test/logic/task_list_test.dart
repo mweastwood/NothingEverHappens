@@ -63,8 +63,9 @@ void main() {
       expect(delta.changedFields, isEmpty);
     });
 
-    test('complete on recurring daily task reschedules the task and advances its start date', () {
+    test('complete of recurring task advances its schedule rather than removing it', () {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      print('DEBUG: AppClock.now in test is ${AppClock.now}');
 
       final recurringTask = Task(
         id: 'task-recur',

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
-import 'app_clock.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
 import 'task_delta.dart';

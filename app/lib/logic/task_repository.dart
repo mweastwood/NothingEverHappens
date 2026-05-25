@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'app_clock.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'task.dart';
 import 'task_delta.dart';
 import 'task_list.dart';

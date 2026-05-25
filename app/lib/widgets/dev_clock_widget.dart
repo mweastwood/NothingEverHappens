@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../logic/app_clock.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
+import '../main.dart';
 
 class DevClockWidget extends StatelessWidget {
   const DevClockWidget({super.key});
@@ -15,6 +16,10 @@ class DevClockWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (AppConfig.environment == AppEnvironment.prod) {
+      return const SizedBox.shrink();
+    }
+
     return ValueListenableBuilder<DateTime?>(
       valueListenable: AppClock.timeNotifier,
       builder: (context, mockTime, _) {
@@ -192,10 +197,11 @@ class TimeMachineDashboard extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 // Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -323,6 +329,7 @@ class TimeMachineDashboard extends StatelessWidget {
                 ],
               ],
             ),
+          ),
           ),
         );
       },
