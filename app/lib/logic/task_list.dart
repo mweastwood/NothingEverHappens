@@ -1,4 +1,6 @@
 import 'package:uuid/uuid.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'civil_day.dart';
 import 'task.dart';
 import 'task_delta.dart';
 
@@ -10,7 +12,7 @@ class TaskList {
   const TaskList(this.activeTasks, {this.history = const []});
 
   TaskList add(Task task, String userId) {
-    final now = DateTime.now();
+    final now = AppClock.now;
     final delta = TaskDelta(
       id: _uuid.v4(),
       taskId: task.id,
@@ -25,7 +27,8 @@ class TaskList {
   }
 
   TaskList complete(String taskId, String userId) {
-    final now = DateTime.now();
+    final now = AppClock.now;
+    print('DEBUG: AppClock.now in TaskList.complete is $now');
     final delta = TaskDelta(
       id: _uuid.v4(),
       taskId: taskId,
@@ -36,14 +39,61 @@ class TaskList {
       userId: userId,
     );
 
-    return TaskList(
-      activeTasks.where((t) => t.id != taskId).toList(),
-      history: [...history, delta],
-    );
+    final taskIndex = activeTasks.indexWhere((t) => t.id == taskId);
+    if (taskIndex == -1) {
+      // Fallback for backward compatibility (e.g. empty activeTasks context)
+      return TaskList(
+        activeTasks.where((t) => t.id != taskId).toList(),
+        history: [...history, delta],
+      );
+    }
+
+    final task = activeTasks[taskIndex];
+    if (task.schedule is OneOffSchedule) {
+      return TaskList(
+        activeTasks.where((t) => t.id != taskId).toList(),
+        history: [...history, delta],
+      );
+    } else {
+      // Reschedule the recurring task
+      final today = CivilDay.fromDateTime(now);
+      final nextOccur = task.schedule.nextOccurrenceAfter(today);
+
+      TaskSchedule newSchedule;
+      if (task.schedule is DailySchedule) {
+        final ds = task.schedule as DailySchedule;
+        newSchedule = DailySchedule(startDate: nextOccur, interval: ds.interval);
+      } else if (task.schedule is WeeklySchedule) {
+        final ws = task.schedule as WeeklySchedule;
+        newSchedule = WeeklySchedule(
+          startDate: nextOccur,
+          interval: ws.interval,
+          daysOfWeek: ws.daysOfWeek,
+        );
+      } else {
+        newSchedule = task.schedule;
+      }
+
+      final updatedTask = Task(
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        startRelativeTime: task.startRelativeTime,
+        dueRelativeTime: task.dueRelativeTime,
+        schedule: newSchedule,
+      );
+
+      final updatedTasks = List<Task>.from(activeTasks);
+      updatedTasks[taskIndex] = updatedTask;
+
+      return TaskList(
+        updatedTasks,
+        history: [...history, delta]);
+    }
   }
 
   TaskList delete(String taskId, String userId) {
-    final now = DateTime.now();
+    final now = AppClock.now;
     final delta = TaskDelta(
       id: _uuid.v4(),
       taskId: taskId,
