@@ -8,7 +8,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:mockito/annotations.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
-import 'package:nothing_ever_happens/screens/task_list_screen.dart';
+import 'package:nothing_ever_happens/screens/home_screen.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
@@ -77,7 +77,7 @@ void main() {
         Provider<AuthRepository>.value(value: mockAuthRepository),
         Provider<TaskRepository>.value(value: mockTaskRepository),
       ],
-      child: const MaterialApp(home: TaskListScreen()),
+      child: const MaterialApp(home: HomeScreen()),
     );
   }
 
@@ -320,7 +320,7 @@ void main() {
           Provider<AuthRepository>.value(value: mockAuthRepository),
           Provider<TaskRepository>.value(value: mockTaskRepository),
         ],
-        child: const TaskListScreen(),
+        child: const HomeScreen(),
       ),
       wrapper: materialAppWrapper(),
       surfaceSize: const Size(400, 800),
@@ -329,9 +329,9 @@ void main() {
     // Initial state: we see the current task
     await screenMatchesGolden(tester, 'task_list_screen_initial');
 
-    // Scroll up to reveal history
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, 300));
-    await tester.pump();
+    // Tap history navigation tab to navigate to history
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'task_list_screen_history');
   });
@@ -355,7 +355,7 @@ void main() {
           Provider<AuthRepository>.value(value: mockAuthRepository),
           Provider<TaskRepository>.value(value: mockTaskRepository),
         ],
-        child: const TaskListScreen(),
+        child: const HomeScreen(),
       ),
       wrapper: materialAppWrapper(),
       surfaceSize: const Size(400, 800),
