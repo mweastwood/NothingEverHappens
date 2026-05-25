@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 
 void main() {
   group('Recurrence Logic with CivilDay', () {
@@ -236,7 +236,7 @@ void main() {
       },
     );
 
-    test('serializes and deserializes estimatedDuration correctly', () {
+    test('serializes and deserializes estimatedDuration correctly', () async {
       final task = Task(
         id: 'task-duration-test',
         title: 'Task with duration',
@@ -249,21 +249,28 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 3, day: 8)),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 3, day: 8),
+        ),
         estimatedDuration: const Duration(minutes: 45),
       );
 
       final map = task.toFirestore();
       expect(map['estimatedDuration'], 45);
 
-      final snapshot = FakeDocumentSnapshot('task-duration-test', map);
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('tasks').doc('task-duration-test').set(map);
+      final snapshot = await firestore
+          .collection('tasks')
+          .doc('task-duration-test')
+          .get();
       final deserialized = Task.fromFirestore(snapshot);
 
       expect(deserialized.id, 'task-duration-test');
       expect(deserialized.estimatedDuration, const Duration(minutes: 45));
     });
 
-    test('deserializes null estimatedDuration correctly', () {
+    test('deserializes null estimatedDuration correctly', () async {
       final task = Task(
         id: 'task-no-duration',
         title: 'Task without duration',
@@ -276,28 +283,24 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 3, day: 8)),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 3, day: 8),
+        ),
       );
 
       final map = task.toFirestore();
       expect(map.containsKey('estimatedDuration'), true);
       expect(map['estimatedDuration'], isNull);
 
-      final snapshot = FakeDocumentSnapshot('task-no-duration', map);
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('tasks').doc('task-no-duration').set(map);
+      final snapshot = await firestore
+          .collection('tasks')
+          .doc('task-no-duration')
+          .get();
       final deserialized = Task.fromFirestore(snapshot);
 
       expect(deserialized.estimatedDuration, isNull);
     });
   });
-}
-
-class FakeDocumentSnapshot extends Fake implements DocumentSnapshot<Map<String, dynamic>> {
-  @override
-  final String id;
-  final Map<String, dynamic> _data;
-
-  FakeDocumentSnapshot(this.id, this._data);
-
-  @override
-  Map<String, dynamic> data() => _data;
 }

@@ -187,8 +187,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         }
 
         final minutesText = _estimatedDurationController.text.trim();
-        final minutes = minutesText.isNotEmpty ? int.tryParse(minutesText) : null;
-        final estimatedDuration = minutes != null ? Duration(minutes: minutes) : null;
+        final minutes = minutesText.isNotEmpty
+            ? int.tryParse(minutesText)
+            : null;
+        final estimatedDuration = minutes != null
+            ? Duration(minutes: minutes)
+            : null;
 
         final newTask = Task(
           id: AppClock.now.millisecondsSinceEpoch.toString(),
@@ -305,7 +309,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                   decoration: const InputDecoration(
                                     labelText: 'Estimated Effort (Minutes)',
                                     border: OutlineInputBorder(),
-                                    helperText: 'Optional. Enter the estimated time in minutes.',
+                                    helperText:
+                                        'Optional. Enter the estimated time in minutes.',
                                   ),
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [

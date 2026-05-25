@@ -364,7 +364,8 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
 
-      final captured = verify(mockRepository.addTask(captureAny)).captured.single as Task;
+      final captured =
+          verify(mockRepository.addTask(captureAny)).captured.single as Task;
       expect(captured.title, 'Test Task');
       expect(captured.estimatedDuration, const Duration(minutes: 45));
     });
