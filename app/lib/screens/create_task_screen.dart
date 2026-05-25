@@ -36,6 +36,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _titleFocusNode = FocusNode();
   final _descriptionController = TextEditingController();
   final _intervalController = TextEditingController(text: '1');
+  final _estimatedDurationController = TextEditingController();
 
   // Daily/Weekly multiple times
   final _dailyTimesController = ValueNotifier<List<DailyOccurrenceTime>>([
@@ -86,6 +87,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     _dailyTimesController.dispose();
     _dueDateTimeController.dispose();
     _startDateTimeController.dispose();
+    _estimatedDurationController.dispose();
     super.dispose();
   }
 
@@ -184,6 +186,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             break;
         }
 
+        final minutesText = _estimatedDurationController.text.trim();
+        final minutes = minutesText.isNotEmpty ? int.tryParse(minutesText) : null;
+        final estimatedDuration = minutes != null ? Duration(minutes: minutes) : null;
+
         final newTask = Task(
           id: AppClock.now.millisecondsSinceEpoch.toString(),
           title: _titleController.text,
@@ -195,6 +201,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               ? const []
               : _dailyTimesController.value,
           activeOccurrenceIndex: 0,
+          estimatedDuration: estimatedDuration,
         );
 
         final repository = context.read<TaskRepository?>();
@@ -290,6 +297,29 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                     border: OutlineInputBorder(),
                                   ),
                                   maxLines: 3,
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  key: const Key('estimated_effort_field'),
+                                  controller: _estimatedDurationController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Estimated Effort (Minutes)',
+                                    border: OutlineInputBorder(),
+                                    helperText: 'Optional. Enter the estimated time in minutes.',
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  validator: (value) {
+                                    if (value != null && value.isNotEmpty) {
+                                      final val = int.tryParse(value);
+                                      if (val == null || val <= 0) {
+                                        return 'Please enter a positive number of minutes';
+                                      }
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ],
                             ),
