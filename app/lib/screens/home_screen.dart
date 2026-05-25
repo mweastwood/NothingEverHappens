@@ -4,6 +4,7 @@ import '../logic/auth_repository.dart';
 import '../widgets/dev_clock_widget.dart';
 import 'create_task_screen.dart';
 import 'task_list_screen.dart';
+import 'task_schedule_screen.dart';
 import 'task_history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -32,6 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
           drawer: _buildDrawer(context),
           body: _currentIndex == 0
               ? const TaskListScreen()
+              : _currentIndex == 1
+              ? const TaskScheduleScreen()
               : const TaskHistoryScreen(),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _currentIndex,
@@ -47,13 +50,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'Tasks',
               ),
               NavigationDestination(
+                icon: Icon(Icons.calendar_month_outlined),
+                selectedIcon: Icon(Icons.calendar_month),
+                label: 'Schedule',
+              ),
+              NavigationDestination(
                 icon: Icon(Icons.history_outlined),
                 selectedIcon: Icon(Icons.history),
                 label: 'History',
               ),
             ],
           ),
-          floatingActionButton: _currentIndex == 0
+          floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
               ? FloatingActionButton(
                   onPressed: _addNewTask,
                   tooltip: 'Add Task',
