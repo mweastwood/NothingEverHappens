@@ -38,6 +38,11 @@ class CivilDay {
     return DateTime(year, month, day);
   }
 
+  /// Converts this [CivilDay] to a UTC [DateTime] at midnight (00:00:00) UTC.
+  DateTime toUtcDateTime() {
+    return DateTime.utc(year, month, day);
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

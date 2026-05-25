@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../logic/app_clock.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
@@ -43,7 +44,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   // Absolute Time fields (for One-off)
   // Default to tomorrow 5pm for due, tomorrow 9am for start (snooze)
   final _dueDateTimeController = ValueNotifier(
-    DateTime.now()
+    AppClock.now
         .add(const Duration(days: 1))
         .copyWith(
           hour: 17,
@@ -54,7 +55,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         ),
   );
   final _startDateTimeController = ValueNotifier(
-    DateTime.now()
+    AppClock.now
         .add(const Duration(days: 1))
         .copyWith(
           hour: 9,
@@ -67,7 +68,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   // Schedule fields
   RecurrenceType _scheduleType = RecurrenceType.oneOff;
-  DateTime _startDate = DateTime.now(); // For Daily/Weekly start date
+  DateTime _startDate = AppClock.now; // For Daily/Weekly start date
   Set<int> _selectedWeekdays = {};
 
   @override
@@ -131,17 +132,17 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           // We can't easily do it without logic.
           // CivilDay doesn't have difference method visible here?
           // Let's assume standard calculation:
-          final startMidnight = DateTime(
+          final startMidnightUtc = DateTime.utc(
             startDateTime.year,
             startDateTime.month,
             startDateTime.day,
           );
-          final dueMidnight = DateTime(
+          final dueMidnightUtc = DateTime.utc(
             dueDateTime.year,
             dueDateTime.month,
             dueDateTime.day,
           );
-          final diff = startMidnight.difference(dueMidnight).inDays;
+          final diff = startMidnightUtc.difference(dueMidnightUtc).inDays;
 
           startRelative = RelativeTime(
             dayOffset: diff,
@@ -179,7 +180,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       }
 
       final newTask = Task(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: AppClock.now.millisecondsSinceEpoch.toString(),
         title: _titleController.text,
         description: _descriptionController.text,
         startRelativeTime: startRelative,

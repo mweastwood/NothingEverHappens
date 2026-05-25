@@ -51,6 +51,99 @@ void main() {
         isTrue,
       ); // Wed
     });
+
+    test('DailySchedule occursOn works across Spring forward DST boundary (March 9, 2026)', () {
+      // US Spring forward transition is March 8, 2026.
+      const start = CivilDay(year: 2026, month: 3, day: 8);
+      final schedule = DailySchedule(startDate: start, interval: 2);
+
+      // On March 8: difference in days = 0. Modulo 2 = 0 -> true
+      expect(schedule.occursOn(start), isTrue);
+
+      // On March 9: difference in days = 1. Modulo 2 = 1 -> false
+      expect(
+        schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 9)),
+        isFalse,
+      );
+
+      // On March 10 (across DST): difference in days = 2. Modulo 2 = 0 -> true
+      expect(
+        schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 10)),
+        isTrue,
+      );
+    });
+
+    test('WeeklySchedule occursOn works across Spring forward DST boundary (March 9, 2026)', () {
+      // US Spring forward transition is March 8, 2026.
+      // March 2, 2026 is Monday.
+      const start = CivilDay(year: 2026, month: 3, day: 2);
+      final schedule = WeeklySchedule(
+        startDate: start,
+        interval: 2, // Repeats every 2 weeks
+        daysOfWeek: {1}, // Mondays
+      );
+
+      expect(schedule.occursOn(start), isTrue); // Mon March 2
+
+      // Mon March 9 (1 week later, across DST on March 8) -> false (interval is 2 weeks)
+      expect(
+        schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 9)),
+        isFalse,
+      );
+
+      // Mon March 16 (2 weeks later, across DST) -> true
+      expect(
+        schedule.occursOn(const CivilDay(year: 2026, month: 3, day: 16)),
+        isTrue,
+      );
+    });
+
+    test('DailySchedule nextOccurrenceAfter calculates next occurrence correctly', () {
+      const start = CivilDay(year: 2026, month: 3, day: 8);
+      final schedule = DailySchedule(startDate: start, interval: 2);
+
+      expect(
+        schedule.nextOccurrenceAfter(const CivilDay(year: 2026, month: 3, day: 8)),
+        const CivilDay(year: 2026, month: 3, day: 10),
+      );
+
+      expect(
+        schedule.nextOccurrenceAfter(const CivilDay(year: 2026, month: 3, day: 9)),
+        const CivilDay(year: 2026, month: 3, day: 10),
+      );
+
+      expect(
+        schedule.nextOccurrenceAfter(const CivilDay(year: 2026, month: 3, day: 10)),
+        const CivilDay(year: 2026, month: 3, day: 12),
+      );
+    });
+
+    test('WeeklySchedule nextOccurrenceAfter calculates next occurrence correctly', () {
+      const start = CivilDay(year: 2026, month: 3, day: 2);
+      final schedule = WeeklySchedule(
+        startDate: start,
+        interval: 1,
+        daysOfWeek: {1, 3}, // Mon, Wed
+      );
+
+      // March 2 is Monday. Next is March 4 Wednesday
+      expect(
+        schedule.nextOccurrenceAfter(const CivilDay(year: 2026, month: 3, day: 2)),
+        const CivilDay(year: 2026, month: 3, day: 4),
+      );
+
+      // Next after March 3 is March 4 Wednesday
+      expect(
+        schedule.nextOccurrenceAfter(const CivilDay(year: 2026, month: 3, day: 3)),
+        const CivilDay(year: 2026, month: 3, day: 4),
+      );
+
+      // Next after March 4 Wednesday is March 9 Monday
+      expect(
+        schedule.nextOccurrenceAfter(const CivilDay(year: 2026, month: 3, day: 4)),
+        const CivilDay(year: 2026, month: 3, day: 9),
+      );
+    });
   });
 
   group('Task Properties', () {
