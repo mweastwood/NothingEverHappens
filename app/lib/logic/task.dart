@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
@@ -7,6 +8,52 @@ import 'task_delta.dart';
 
 /// Result of a task update operation.
 typedef TaskModification = ({Task newTask, TaskDelta delta});
+
+/// Represents a start and due time of day for an occurrence on a given day.
+class DailyOccurrenceTime {
+  final TimeOfDay startTime;
+  final TimeOfDay dueTime;
+
+  const DailyOccurrenceTime({required this.startTime, required this.dueTime});
+
+  factory DailyOccurrenceTime.fromJson(Map<String, dynamic> json) {
+    return DailyOccurrenceTime(
+      startTime: TimeOfDay(
+        hour: json['startHour'] as int,
+        minute: json['startMinute'] as int,
+      ),
+      dueTime: TimeOfDay(
+        hour: json['dueHour'] as int,
+        minute: json['dueMinute'] as int,
+      ),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'startHour': startTime.hour,
+      'startMinute': startTime.minute,
+      'dueHour': dueTime.hour,
+      'dueMinute': dueTime.minute,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is DailyOccurrenceTime &&
+        other.startTime == startTime &&
+        other.dueTime == dueTime;
+  }
+
+  @override
+  int get hashCode => Object.hash(startTime, dueTime);
+
+  @override
+  String toString() {
+    return 'DailyOccurrenceTime(start: ${startTime.hour}:${startTime.minute.toString().padLeft(2, '0')}, due: ${dueTime.hour}:${dueTime.minute.toString().padLeft(2, '0')})';
+  }
+}
 
 /// Defines how often a task reoccurs.
 abstract class TaskSchedule {
@@ -233,6 +280,12 @@ class Task {
   /// The recurrence schedule for the task.
   TaskSchedule schedule;
 
+  /// The list of daily occurrence times for tasks scheduled multiple times per day.
+  List<DailyOccurrenceTime> dailyTimes;
+
+  /// The index of the currently active occurrence time in [dailyTimes].
+  int activeOccurrenceIndex;
+
   Task({
     required this.id,
     required this.title,
@@ -240,6 +293,8 @@ class Task {
     required this.startRelativeTime,
     required this.dueRelativeTime,
     required this.schedule,
+    this.dailyTimes = const [],
+    this.activeOccurrenceIndex = 0,
   });
 
   factory Task.fromFirestore(
@@ -250,6 +305,13 @@ class Task {
     if (data == null) {
       throw Exception('Data is null for document ${snapshot.id}');
     }
+    final dailyTimesRaw = data['dailyTimes'] as List<dynamic>?;
+    final dailyTimes = dailyTimesRaw != null
+        ? dailyTimesRaw
+            .map((item) => DailyOccurrenceTime.fromJson(item as Map<String, dynamic>))
+            .toList()
+        : <DailyOccurrenceTime>[];
+
     return Task(
       id: snapshot.id,
       title: data['title'] as String? ?? 'Untitled',
@@ -261,6 +323,8 @@ class Task {
         data['dueRelativeTime'] as Map<String, dynamic>,
       ),
       schedule: TaskSchedule.fromJson(data['schedule'] as Map<String, dynamic>),
+      dailyTimes: dailyTimes,
+      activeOccurrenceIndex: data['activeOccurrenceIndex'] as int? ?? 0,
     );
   }
 
@@ -271,6 +335,8 @@ class Task {
       'startRelativeTime': startRelativeTime.toJson(),
       'dueRelativeTime': dueRelativeTime.toJson(),
       'schedule': schedule.toJson(),
+      'dailyTimes': dailyTimes.map((t) => t.toJson()).toList(),
+      'activeOccurrenceIndex': activeOccurrenceIndex,
     };
   }
 
@@ -337,6 +403,8 @@ class Task {
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
     TaskSchedule? schedule,
+    List<DailyOccurrenceTime>? dailyTimes,
+    int? activeOccurrenceIndex,
   }) {
     return Task(
       id: id,
@@ -345,6 +413,8 @@ class Task {
       startRelativeTime: startRelativeTime ?? this.startRelativeTime,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
       schedule: schedule ?? this.schedule,
+      dailyTimes: dailyTimes ?? this.dailyTimes,
+      activeOccurrenceIndex: activeOccurrenceIndex ?? this.activeOccurrenceIndex,
     );
   }
 

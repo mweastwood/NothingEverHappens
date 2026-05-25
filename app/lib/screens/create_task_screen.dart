@@ -37,13 +37,13 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _descriptionController = TextEditingController();
   final _intervalController = TextEditingController(text: '1');
 
-  // Relative Time fields (for Daily/Weekly)
-  final _startRelativeController = ValueNotifier(
-    const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-  );
-  final _dueRelativeController = ValueNotifier(
-    const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-  );
+  // Daily/Weekly multiple times
+  final _dailyTimesController = ValueNotifier<List<DailyOccurrenceTime>>([
+    const DailyOccurrenceTime(
+      startTime: TimeOfDay(hour: 9, minute: 0),
+      dueTime: TimeOfDay(hour: 17, minute: 0),
+    ),
+  ]);
 
   // Absolute Time fields (for One-off)
   // Default to tomorrow 5pm for due, tomorrow 9am for start (snooze)
@@ -83,8 +83,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     _titleFocusNode.dispose();
     _descriptionController.dispose();
     _intervalController.dispose();
-    _startRelativeController.dispose();
-    _dueRelativeController.dispose();
+    _dailyTimesController.dispose();
     _dueDateTimeController.dispose();
     _startDateTimeController.dispose();
     super.dispose();
@@ -152,8 +151,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             final civilDate = CivilDay.fromDateTime(_startDate);
             final interval = int.tryParse(_intervalController.text) ?? 1;
             schedule = DailySchedule(startDate: civilDate, interval: interval);
-            startRelative = _startRelativeController.value;
-            dueRelative = _dueRelativeController.value;
+            final firstSlot = _dailyTimesController.value.first;
+            startRelative = RelativeTime(dayOffset: 0, time: firstSlot.startTime);
+            dueRelative = RelativeTime(dayOffset: 0, time: firstSlot.dueTime);
             break;
 
           case RecurrenceType.weekly:
@@ -172,8 +172,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               interval: interval,
               daysOfWeek: Set.from(_selectedWeekdays),
             );
-            startRelative = _startRelativeController.value;
-            dueRelative = _dueRelativeController.value;
+            final firstSlot = _dailyTimesController.value.first;
+            startRelative = RelativeTime(dayOffset: 0, time: firstSlot.startTime);
+            dueRelative = RelativeTime(dayOffset: 0, time: firstSlot.dueTime);
             break;
         }
 
@@ -184,6 +185,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           startRelativeTime: startRelative,
           dueRelativeTime: dueRelative,
           schedule: schedule,
+          dailyTimes: _scheduleType == RecurrenceType.oneOff ? const [] : _dailyTimesController.value,
+          activeOccurrenceIndex: 0,
         );
 
         final repository = context.read<TaskRepository?>();
@@ -331,15 +334,13 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                     dueDateTime: _dueDateTimeController,
                                     startDateTime: _startDateTimeController,
                                   )
-                                else if (_scheduleType == RecurrenceType.daily)
+                                 else if (_scheduleType == RecurrenceType.daily)
                                   DailySchedulingWidget(
                                     startDate: _startDate,
                                     onStartDateChanged: (date) {
                                       setState(() => _startDate = date);
                                     },
-                                    startTimeController:
-                                        _startRelativeController,
-                                    dueTimeController: _dueRelativeController,
+                                    dailyTimesController: _dailyTimesController,
                                     intervalController: _intervalController,
                                   )
                                 else if (_scheduleType == RecurrenceType.weekly)
@@ -348,9 +349,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                     onStartDateChanged: (date) {
                                       setState(() => _startDate = date);
                                     },
-                                    startTimeController:
-                                        _startRelativeController,
-                                    dueTimeController: _dueRelativeController,
+                                    dailyTimesController: _dailyTimesController,
                                     intervalController: _intervalController,
                                     selectedWeekdays: _selectedWeekdays,
                                     onWeekdaysChanged: (days) {

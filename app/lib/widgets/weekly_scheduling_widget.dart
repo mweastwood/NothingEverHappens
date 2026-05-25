@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import '../logic/relative_time.dart';
-import 'relative_time_widget.dart';
+import '../logic/task.dart';
+import 'daily_time_list_widget.dart';
 
 class WeeklySchedulingWidget extends StatefulWidget {
   final DateTime startDate;
   final ValueChanged<DateTime> onStartDateChanged;
-  final ValueNotifier<RelativeTime> startTimeController;
-  final ValueNotifier<RelativeTime> dueTimeController;
+  final ValueNotifier<List<DailyOccurrenceTime>> dailyTimesController;
   final TextEditingController intervalController;
   final Set<int> selectedWeekdays;
   final ValueChanged<Set<int>> onWeekdaysChanged;
@@ -15,8 +14,7 @@ class WeeklySchedulingWidget extends StatefulWidget {
     super.key,
     required this.startDate,
     required this.onStartDateChanged,
-    required this.startTimeController,
-    required this.dueTimeController,
+    required this.dailyTimesController,
     required this.intervalController,
     required this.selectedWeekdays,
     required this.onWeekdaysChanged,
@@ -44,33 +42,10 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Times',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Start Time'),
-            RelativeTimeWidget(
-              controller: widget.startTimeController,
-              constraint: RelativeTimeConstraint.dayOfOrAfter,
-            ),
-          ],
+        DailyTimeListWidget(
+          controller: widget.dailyTimesController,
         ),
         const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Due Time'),
-            RelativeTimeWidget(
-              controller: widget.dueTimeController,
-              constraint: RelativeTimeConstraint.dayOfOrAfter,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
         Material(
           color: Colors.transparent,
           child: ListTile(
