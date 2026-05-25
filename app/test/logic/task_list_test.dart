@@ -171,7 +171,10 @@ void main() {
 
         // Check date did NOT change (remains March 8)
         final schedule = updatedTask.schedule as DailySchedule;
-        expect(schedule.startDate, const CivilDay(year: 2026, month: 3, day: 8));
+        expect(
+          schedule.startDate,
+          const CivilDay(year: 2026, month: 3, day: 8),
+        );
 
         AppClock.reset();
       },
@@ -232,7 +235,10 @@ void main() {
 
         // Check date ADVANCED to next occurrence (March 9)
         final schedule = updatedTask.schedule as DailySchedule;
-        expect(schedule.startDate, const CivilDay(year: 2026, month: 3, day: 9));
+        expect(
+          schedule.startDate,
+          const CivilDay(year: 2026, month: 3, day: 9),
+        );
 
         AppClock.reset();
       },

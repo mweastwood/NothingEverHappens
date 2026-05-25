@@ -308,8 +308,11 @@ class Task {
     final dailyTimesRaw = data['dailyTimes'] as List<dynamic>?;
     final dailyTimes = dailyTimesRaw != null
         ? dailyTimesRaw
-            .map((item) => DailyOccurrenceTime.fromJson(item as Map<String, dynamic>))
-            .toList()
+              .map(
+                (item) =>
+                    DailyOccurrenceTime.fromJson(item as Map<String, dynamic>),
+              )
+              .toList()
         : <DailyOccurrenceTime>[];
 
     return Task(
@@ -414,7 +417,8 @@ class Task {
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
       schedule: schedule ?? this.schedule,
       dailyTimes: dailyTimes ?? this.dailyTimes,
-      activeOccurrenceIndex: activeOccurrenceIndex ?? this.activeOccurrenceIndex,
+      activeOccurrenceIndex:
+          activeOccurrenceIndex ?? this.activeOccurrenceIndex,
     );
   }
 

@@ -42,9 +42,7 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        DailyTimeListWidget(
-          controller: widget.dailyTimesController,
-        ),
+        DailyTimeListWidget(controller: widget.dailyTimesController),
         const SizedBox(height: 24),
         Material(
           color: Colors.transparent,

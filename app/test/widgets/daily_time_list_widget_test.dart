@@ -6,7 +6,9 @@ import 'package:nothing_ever_happens/widgets/daily_time_list_widget.dart';
 
 void main() {
   group('DailyTimeListWidget Goldens', () {
-    testGoldens('renders single slot vs multiple slots correctly', (tester) async {
+    testGoldens('renders single slot vs multiple slots correctly', (
+      tester,
+    ) async {
       final singleSlotController = ValueNotifier<List<DailyOccurrenceTime>>([
         const DailyOccurrenceTime(
           startTime: TimeOfDay(hour: 9, minute: 0),

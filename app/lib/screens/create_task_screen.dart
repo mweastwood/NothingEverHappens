@@ -152,7 +152,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             final interval = int.tryParse(_intervalController.text) ?? 1;
             schedule = DailySchedule(startDate: civilDate, interval: interval);
             final firstSlot = _dailyTimesController.value.first;
-            startRelative = RelativeTime(dayOffset: 0, time: firstSlot.startTime);
+            startRelative = RelativeTime(
+              dayOffset: 0,
+              time: firstSlot.startTime,
+            );
             dueRelative = RelativeTime(dayOffset: 0, time: firstSlot.dueTime);
             break;
 
@@ -173,7 +176,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               daysOfWeek: Set.from(_selectedWeekdays),
             );
             final firstSlot = _dailyTimesController.value.first;
-            startRelative = RelativeTime(dayOffset: 0, time: firstSlot.startTime);
+            startRelative = RelativeTime(
+              dayOffset: 0,
+              time: firstSlot.startTime,
+            );
             dueRelative = RelativeTime(dayOffset: 0, time: firstSlot.dueTime);
             break;
         }
@@ -185,7 +191,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           startRelativeTime: startRelative,
           dueRelativeTime: dueRelative,
           schedule: schedule,
-          dailyTimes: _scheduleType == RecurrenceType.oneOff ? const [] : _dailyTimesController.value,
+          dailyTimes: _scheduleType == RecurrenceType.oneOff
+              ? const []
+              : _dailyTimesController.value,
           activeOccurrenceIndex: 0,
         );
 
@@ -334,7 +342,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                     dueDateTime: _dueDateTimeController,
                                     startDateTime: _startDateTimeController,
                                   )
-                                 else if (_scheduleType == RecurrenceType.daily)
+                                else if (_scheduleType == RecurrenceType.daily)
                                   DailySchedulingWidget(
                                     startDate: _startDate,
                                     onStartDateChanged: (date) {

@@ -8,10 +8,7 @@ import '../logic/task.dart';
 class DailyTimeListWidget extends StatefulWidget {
   final ValueNotifier<List<DailyOccurrenceTime>> controller;
 
-  const DailyTimeListWidget({
-    super.key,
-    required this.controller,
-  });
+  const DailyTimeListWidget({super.key, required this.controller});
 
   @override
   State<DailyTimeListWidget> createState() => _DailyTimeListWidgetState();
@@ -50,10 +47,12 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
   void _addTimeSlot() {
     final updatedTimes = List<DailyOccurrenceTime>.from(_times);
     // Add a default slot: 9:00 AM to 5:00 PM
-    updatedTimes.add(const DailyOccurrenceTime(
-      startTime: TimeOfDay(hour: 9, minute: 0),
-      dueTime: TimeOfDay(hour: 17, minute: 0),
-    ));
+    updatedTimes.add(
+      const DailyOccurrenceTime(
+        startTime: TimeOfDay(hour: 9, minute: 0),
+        dueTime: TimeOfDay(hour: 17, minute: 0),
+      ),
+    );
     _updateTimes(updatedTimes);
   }
 
@@ -87,7 +86,11 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                 elevation: 0,
                 color: Theme.of(context).colorScheme.surfaceContainerLow,
                 shape: RoundedRectangleBorder(
-                  side: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
+                  side: BorderSide(
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.5),
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Padding(
@@ -103,7 +106,10 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                               children: [
                                 const Text(
                                   'Start Time',
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                                 FilledButton.tonalIcon(
                                   onPressed: () => _pickTime(
@@ -121,7 +127,10 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                                   icon: const Icon(Icons.access_time, size: 16),
                                   label: Text(
                                     slot.startTime.format(context),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -132,7 +141,10 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                               children: [
                                 const Text(
                                   'Due Time',
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                                 FilledButton.tonalIcon(
                                   onPressed: () => _pickTime(
@@ -150,7 +162,10 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                                   icon: const Icon(Icons.access_time, size: 16),
                                   label: Text(
                                     slot.dueTime.format(context),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               ],
