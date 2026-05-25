@@ -29,7 +29,11 @@ class RelativeTime {
   /// Calculates the [DateTime] relative to the given [reference] day.
   DateTime referenceTo(CivilDay reference) {
     // Calculate the target day in UTC first to avoid DST shifts
-    final referenceUtc = DateTime.utc(reference.year, reference.month, reference.day);
+    final referenceUtc = DateTime.utc(
+      reference.year,
+      reference.month,
+      reference.day,
+    );
     final targetUtc = referenceUtc.add(Duration(days: dayOffset));
 
     // Construct the local DateTime using the target day's components and relative time components

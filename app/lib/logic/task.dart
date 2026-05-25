@@ -191,7 +191,11 @@ class WeeklySchedule extends TaskSchedule {
     while (true) {
       final currentUtc = DateTime.utc(current.year, current.month, current.day);
       final nextUtc = currentUtc.add(const Duration(days: 1));
-      current = CivilDay(year: nextUtc.year, month: nextUtc.month, day: nextUtc.day);
+      current = CivilDay(
+        year: nextUtc.year,
+        month: nextUtc.month,
+        day: nextUtc.day,
+      );
       if (occursOn(current)) {
         return current;
       }

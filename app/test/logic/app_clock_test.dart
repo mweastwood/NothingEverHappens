@@ -12,7 +12,10 @@ void main() {
       final systemTime = DateTime.now();
 
       // Should be extremely close to the current system time (within 100 milliseconds)
-      expect(clockTime.difference(systemTime).inMilliseconds.abs() < 100, isTrue);
+      expect(
+        clockTime.difference(systemTime).inMilliseconds.abs() < 100,
+        isTrue,
+      );
       expect(AppClock.timeNotifier.value, isNull);
     });
 
@@ -35,31 +38,43 @@ void main() {
       expect(AppClock.timeNotifier.value, expectedTime);
     });
 
-    test('advanceTime when real-time starts mock mode from advanced current time', () {
-      AppClock.reset();
-      
-      final beforeAdvance = DateTime.now();
-      AppClock.advanceTime(const Duration(days: 5));
-      final afterAdvance = AppClock.now;
+    test(
+      'advanceTime when real-time starts mock mode from advanced current time',
+      () {
+        AppClock.reset();
 
-      final expectedTime = beforeAdvance.add(const Duration(days: 5));
-      expect(afterAdvance.difference(expectedTime).inMilliseconds.abs() < 100, isTrue);
-      expect(AppClock.isMockActive, isTrue);
-    });
+        final beforeAdvance = DateTime.now();
+        AppClock.advanceTime(const Duration(days: 5));
+        final afterAdvance = AppClock.now;
 
-    test('reset clears mock overrides back to real-time and notifies listeners', () {
-      final mockTime = DateTime(2026, 3, 8, 9, 0);
-      AppClock.setMockTime(mockTime);
+        final expectedTime = beforeAdvance.add(const Duration(days: 5));
+        expect(
+          afterAdvance.difference(expectedTime).inMilliseconds.abs() < 100,
+          isTrue,
+        );
+        expect(AppClock.isMockActive, isTrue);
+      },
+    );
 
-      expect(AppClock.timeNotifier.value, isNotNull);
+    test(
+      'reset clears mock overrides back to real-time and notifies listeners',
+      () {
+        final mockTime = DateTime(2026, 3, 8, 9, 0);
+        AppClock.setMockTime(mockTime);
 
-      AppClock.reset();
+        expect(AppClock.timeNotifier.value, isNotNull);
 
-      expect(AppClock.timeNotifier.value, isNull);
-      
-      final clockTime = AppClock.now;
-      final systemTime = DateTime.now();
-      expect(clockTime.difference(systemTime).inMilliseconds.abs() < 100, isTrue);
-    });
+        AppClock.reset();
+
+        expect(AppClock.timeNotifier.value, isNull);
+
+        final clockTime = AppClock.now;
+        final systemTime = DateTime.now();
+        expect(
+          clockTime.difference(systemTime).inMilliseconds.abs() < 100,
+          isTrue,
+        );
+      },
+    );
   });
 }

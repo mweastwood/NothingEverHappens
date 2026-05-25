@@ -28,7 +28,6 @@ class TaskList {
 
   TaskList complete(String taskId, String userId) {
     final now = AppClock.now;
-    print('DEBUG: AppClock.now in TaskList.complete is $now');
     final delta = TaskDelta(
       id: _uuid.v4(),
       taskId: taskId,
@@ -62,7 +61,10 @@ class TaskList {
       TaskSchedule newSchedule;
       if (task.schedule is DailySchedule) {
         final ds = task.schedule as DailySchedule;
-        newSchedule = DailySchedule(startDate: nextOccur, interval: ds.interval);
+        newSchedule = DailySchedule(
+          startDate: nextOccur,
+          interval: ds.interval,
+        );
       } else if (task.schedule is WeeklySchedule) {
         final ws = task.schedule as WeeklySchedule;
         newSchedule = WeeklySchedule(
@@ -86,9 +88,7 @@ class TaskList {
       final updatedTasks = List<Task>.from(activeTasks);
       updatedTasks[taskIndex] = updatedTask;
 
-      return TaskList(
-        updatedTasks,
-        history: [...history, delta]);
+      return TaskList(updatedTasks, history: [...history, delta]);
     }
   }
 
