@@ -3,7 +3,9 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../main.dart';
 
 class DevClockWidget extends StatelessWidget {
-  const DevClockWidget({super.key});
+  final double bottomOffset;
+
+  const DevClockWidget({super.key, this.bottomOffset = 0.0});
 
   void _showTimeMachine(BuildContext context) {
     showModalBottomSheet(
@@ -30,7 +32,9 @@ class DevClockWidget extends StatelessWidget {
             // Floating Dev Action Button at Bottom-Left (uses InkWell instead of FAB to avoid finder collisions in tests)
             Positioned(
               left: 16,
-              bottom: isMocked ? 80 : 16, // Shift up if banner is active
+              bottom: isMocked
+                  ? (80 + bottomOffset)
+                  : (16 + bottomOffset), // Shift up if banner is active
               child: Container(
                 width: 48,
                 height: 48,
@@ -71,7 +75,7 @@ class DevClockWidget extends StatelessWidget {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 0,
+                bottom: bottomOffset,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,

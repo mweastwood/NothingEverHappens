@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options_dev.dart' as dev;
-import 'screens/task_list_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'logic/auth_repository.dart';
 import 'logic/task_repository.dart';
@@ -80,9 +80,7 @@ class MyApp extends StatelessWidget {
                   useMaterial3: true,
                 ),
                 themeMode: ThemeMode.system,
-                home: user == null
-                    ? const LoginScreen()
-                    : const TaskListScreen(),
+                home: user == null ? const LoginScreen() : const HomeScreen(),
               );
             },
           );
