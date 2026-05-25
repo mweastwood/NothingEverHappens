@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
 import 'task_delta.dart';
@@ -13,6 +14,9 @@ abstract class TaskSchedule {
 
   /// Checks if the task occurs on the given [date].
   bool occursOn(CivilDay date);
+
+  /// Calculates the next occurrence of the task strictly after [date].
+  CivilDay nextOccurrenceAfter(CivilDay date);
 
   Map<String, dynamic> toJson();
 
@@ -53,6 +57,11 @@ class OneOffSchedule extends TaskSchedule {
   }
 
   @override
+  CivilDay nextOccurrenceAfter(CivilDay date) {
+    return this.date;
+  }
+
+  @override
   Map<String, dynamic> toJson() {
     return {'type': 'oneOff', 'date': date.toJson()};
   }
@@ -77,16 +86,36 @@ class DailySchedule extends TaskSchedule {
 
   @override
   bool occursOn(CivilDay date) {
-    final start = startDate.toDateTime();
-    final target = date.toDateTime();
+    final startUtc = startDate.toUtcDateTime();
+    final targetUtc = date.toUtcDateTime();
 
     // Before start date?
-    if (target.isBefore(start)) {
+    if (targetUtc.isBefore(startUtc)) {
       return false;
     }
 
-    final difference = target.difference(start).inDays;
+    final difference = targetUtc.difference(startUtc).inDays;
     return difference % interval == 0;
+  }
+
+  @override
+  CivilDay nextOccurrenceAfter(CivilDay date) {
+    final startUtc = startDate.toUtcDateTime();
+    final currentUtc = date.toUtcDateTime();
+
+    if (currentUtc.isBefore(startUtc)) {
+      return startDate;
+    }
+
+    final daysDiff = currentUtc.difference(startUtc).inDays;
+    final intervals = daysDiff ~/ interval;
+    final occurrenceUtc = startUtc.add(Duration(days: intervals * interval));
+
+    final nextUtc = currentUtc.isBefore(occurrenceUtc)
+        ? occurrenceUtc
+        : startUtc.add(Duration(days: (intervals + 1) * interval));
+
+    return CivilDay(year: nextUtc.year, month: nextUtc.month, day: nextUtc.day);
   }
 
   @override
@@ -126,26 +155,26 @@ class WeeklySchedule extends TaskSchedule {
 
   @override
   bool occursOn(CivilDay date) {
-    final start = startDate.toDateTime();
-    final target = date.toDateTime();
+    final startUtc = startDate.toUtcDateTime();
+    final targetUtc = date.toUtcDateTime();
 
     // Before start date?
-    if (target.isBefore(start)) {
+    if (targetUtc.isBefore(startUtc)) {
       return false;
     }
 
     // Check if the specific day of week is allowed
     // weekday 1 = Monday, 7 = Sunday
-    if (!daysOfWeek.contains(target.weekday)) {
+    if (!daysOfWeek.contains(targetUtc.weekday)) {
       return false;
     }
 
     // Calculate week difference
-    final startOfWeekForStart = start.subtract(
-      Duration(days: start.weekday - 1),
+    final startOfWeekForStart = startUtc.subtract(
+      Duration(days: startUtc.weekday - 1),
     );
-    final startOfWeekForTarget = target.subtract(
-      Duration(days: target.weekday - 1),
+    final startOfWeekForTarget = targetUtc.subtract(
+      Duration(days: targetUtc.weekday - 1),
     );
 
     final daysDiff = startOfWeekForTarget
@@ -154,6 +183,23 @@ class WeeklySchedule extends TaskSchedule {
     final weeksDiff = daysDiff ~/ 7;
 
     return weeksDiff % interval == 0;
+  }
+
+  @override
+  CivilDay nextOccurrenceAfter(CivilDay date) {
+    var current = date;
+    while (true) {
+      final currentUtc = DateTime.utc(current.year, current.month, current.day);
+      final nextUtc = currentUtc.add(const Duration(days: 1));
+      current = CivilDay(
+        year: nextUtc.year,
+        month: nextUtc.month,
+        day: nextUtc.day,
+      );
+      if (occursOn(current)) {
+        return current;
+      }
+    }
   }
 
   @override
@@ -307,7 +353,7 @@ class Task {
     required dynamic newValue,
     required String userId,
   }) {
-    final now = DateTime.now();
+    final now = AppClock.now;
     return TaskDelta(
       id: _uuid.v4(),
       taskId: id,

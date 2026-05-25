@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task_list.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -61,6 +62,53 @@ void main() {
       expect(delta.userId, userId);
       expect(delta.changedFields, isEmpty);
     });
+
+    test(
+      'complete of recurring task advances its schedule rather than removing it',
+      () {
+        AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+        final recurringTask = Task(
+          id: 'task-recur',
+          title: 'Daily Task',
+          description: 'Test description',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 3, day: 8),
+            interval: 2,
+          ),
+        );
+
+        final nextState = TaskList([
+          recurringTask,
+        ]).complete('task-recur', userId);
+
+        // It should NOT be removed!
+        expect(nextState.activeTasks.length, 1);
+        final updatedTask = nextState.activeTasks.first;
+        expect(updatedTask.id, 'task-recur');
+
+        // The new start date of the schedule should be advanced to the next occurrence
+        final newSchedule = updatedTask.schedule as DailySchedule;
+        expect(
+          newSchedule.startDate,
+          const CivilDay(year: 2026, month: 3, day: 10),
+        );
+
+        final delta = nextState.history.last;
+        expect(delta.operation, 'complete');
+        expect(delta.taskId, 'task-recur');
+        expect(delta.userId, userId);
+
+        AppClock.reset();
+      },
+    );
   });
 
   group('TaskDelta', () {

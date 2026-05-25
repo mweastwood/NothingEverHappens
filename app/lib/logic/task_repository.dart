@@ -81,12 +81,23 @@ class TaskRepository {
   }
 
   Future<void> completeTask(String id) async {
-    final newState = const TaskList([]).complete(id, _userId);
+    final doc = await _tasksRef.doc(id).get();
+    if (!doc.exists) return;
+    final task = doc.data()!;
+
+    final isRecurring = task.schedule is! OneOffSchedule;
+    final newState = TaskList([task]).complete(id, _userId);
     final delta = newState.history.last;
 
     final batch = _firestore.batch();
 
-    batch.delete(_tasksRef.doc(id));
+    if (isRecurring) {
+      final updatedTask = newState.activeTasks.firstWhere((t) => t.id == id);
+      batch.set(_tasksRef.doc(id), updatedTask);
+    } else {
+      batch.delete(_tasksRef.doc(id));
+    }
+
     batch.set(_historyRef.doc(delta.id), delta);
 
     await batch.commit();
