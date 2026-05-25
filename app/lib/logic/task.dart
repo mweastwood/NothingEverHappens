@@ -286,6 +286,9 @@ class Task {
   /// The index of the currently active occurrence time in [dailyTimes].
   int activeOccurrenceIndex;
 
+  /// The estimated effort for the task (optional).
+  Duration? estimatedDuration;
+
   Task({
     required this.id,
     required this.title,
@@ -295,6 +298,7 @@ class Task {
     required this.schedule,
     this.dailyTimes = const [],
     this.activeOccurrenceIndex = 0,
+    this.estimatedDuration,
   });
 
   factory Task.fromFirestore(
@@ -328,6 +332,9 @@ class Task {
       schedule: TaskSchedule.fromJson(data['schedule'] as Map<String, dynamic>),
       dailyTimes: dailyTimes,
       activeOccurrenceIndex: data['activeOccurrenceIndex'] as int? ?? 0,
+      estimatedDuration: data['estimatedDuration'] != null
+          ? Duration(minutes: data['estimatedDuration'] as int)
+          : null,
     );
   }
 
@@ -340,6 +347,7 @@ class Task {
       'schedule': schedule.toJson(),
       'dailyTimes': dailyTimes.map((t) => t.toJson()).toList(),
       'activeOccurrenceIndex': activeOccurrenceIndex,
+      'estimatedDuration': estimatedDuration?.inMinutes,
     };
   }
 
@@ -408,6 +416,8 @@ class Task {
     TaskSchedule? schedule,
     List<DailyOccurrenceTime>? dailyTimes,
     int? activeOccurrenceIndex,
+    Duration? estimatedDuration,
+    bool clearEstimatedDuration = false,
   }) {
     return Task(
       id: id,
@@ -419,6 +429,9 @@ class Task {
       dailyTimes: dailyTimes ?? this.dailyTimes,
       activeOccurrenceIndex:
           activeOccurrenceIndex ?? this.activeOccurrenceIndex,
+      estimatedDuration: clearEstimatedDuration
+          ? null
+          : (estimatedDuration ?? this.estimatedDuration),
     );
   }
 

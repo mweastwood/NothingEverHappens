@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:nothing_ever_happens/screens/create_task_screen.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
@@ -343,6 +344,30 @@ void main() {
       expect(find.text('Error Occurred'), findsOneWidget);
       expect(find.textContaining('Firestore Error'), findsOneWidget);
       expect(find.byType(CreateTaskScreen), findsOneWidget); // Still there
+    });
+
+    testWidgets('Saves task with estimated duration', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(createWidgetUnderTest());
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Title'),
+        'Test Task',
+      );
+      await tester.enterText(
+        find.byKey(const Key('estimated_effort_field')),
+        '45',
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      final captured =
+          verify(mockRepository.addTask(captureAny)).captured.single as Task;
+      expect(captured.title, 'Test Task');
+      expect(captured.estimatedDuration, const Duration(minutes: 45));
     });
   });
 }
