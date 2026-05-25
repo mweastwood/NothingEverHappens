@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
@@ -47,7 +48,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   // Absolute Time fields (for One-off)
   // Default to tomorrow 5pm for due, tomorrow 9am for start (snooze)
   final _dueDateTimeController = ValueNotifier(
-    DateTime.now()
+    AppClock.now
         .add(const Duration(days: 1))
         .copyWith(
           hour: 17,
@@ -58,7 +59,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         ),
   );
   final _startDateTimeController = ValueNotifier(
-    DateTime.now()
+    AppClock.now
         .add(const Duration(days: 1))
         .copyWith(
           hour: 9,
@@ -71,7 +72,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   // Schedule fields
   RecurrenceType _scheduleType = RecurrenceType.oneOff;
-  DateTime _startDate = DateTime.now(); // For Daily/Weekly start date
+  DateTime _startDate = AppClock.now; // For Daily/Weekly start date
   Set<int> _selectedWeekdays = {};
 
   bool _isSaving = false;
@@ -102,22 +103,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
         switch (_scheduleType) {
           case RecurrenceType.oneOff:
-            // For One-off, we convert absolute types to "relative" to the task date (which is the due date)
-            // But actually OneOffSchedule takes a date.
-            // Wait, Task model uses relative times.
-            // If OneOff, startRelativeTime and dueRelativeTime are usually simple.
-            // Due Time for OneOff: usually Day 0, Time X.
-            // But we have Absolute widget.
-
             final dueDateTime = _dueDateTimeController.value;
             final startDateTime = _startDateTimeController.value;
 
             // CivilDay for the schedule is the Due Date's day.
             final civilDate = CivilDay.fromDateTime(dueDateTime);
             schedule = OneOffSchedule(date: civilDate);
-
-            // Relative Time: calculated relative to the due date (civilDate)
-            // Actually, for One-off, the "date" in schedule IS the reference date.
 
             // Due time is simply the time component of dueDateTime, offset 0?
             // If dueDateTime is on civilDate, then offset is 0.
@@ -138,21 +129,18 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             // Wait, user provided absolute Snooze.
             // If Snooze is BEFORE Due, then Offset <= 0.
 
-            // Calculate offset in days.
-            // We can't easily do it without logic.
-            // CivilDay doesn't have difference method visible here?
-            // Let's assume standard calculation:
-            final startMidnight = DateTime(
+            // Calculate offset in days using UTC midnights for DST safety.
+            final startMidnightUtc = DateTime.utc(
               startDateTime.year,
               startDateTime.month,
               startDateTime.day,
             );
-            final dueMidnight = DateTime(
+            final dueMidnightUtc = DateTime.utc(
               dueDateTime.year,
               dueDateTime.month,
               dueDateTime.day,
             );
-            final diff = startMidnight.difference(dueMidnight).inDays;
+            final diff = startMidnightUtc.difference(dueMidnightUtc).inDays;
 
             startRelative = RelativeTime(
               dayOffset: diff,
@@ -190,7 +178,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         }
 
         final newTask = Task(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          id: AppClock.now.millisecondsSinceEpoch.toString(),
           title: _titleController.text,
           description: _descriptionController.text,
           startRelativeTime: startRelative,

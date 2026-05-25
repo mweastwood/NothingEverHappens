@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/auth_repository.dart';
 import '../logic/task.dart';
 import '../logic/task_delta.dart';
+import '../widgets/dev_clock_widget.dart';
 import '../widgets/task_delta_widget.dart';
 import 'create_task_screen.dart';
 import '../widgets/task_widget.dart';
@@ -29,23 +31,40 @@ class _TaskListScreenState extends State<TaskListScreen> {
   Widget build(BuildContext context) {
     final taskRepository = Provider.of<TaskRepository?>(context);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Nothing Ever Happens')),
-      drawer: _buildDrawer(context),
-      body: taskRepository == null
-          ? const Center(child: CircularProgressIndicator())
-          : CustomScrollView(
-              center: _taskListKey,
-              slivers: [
-                _buildHistorySliver(taskRepository),
-                _buildTaskListSliver(taskRepository),
-              ],
+    return ValueListenableBuilder<DateTime?>(
+      valueListenable: AppClock.timeNotifier,
+      builder: (context, mockTime, _) {
+        final isMocked = mockTime != null;
+
+        return Stack(
+          children: [
+            Scaffold(
+              appBar: AppBar(title: const Text('Nothing Ever Happens')),
+              drawer: _buildDrawer(context),
+              body: taskRepository == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : Padding(
+                      padding: EdgeInsets.only(
+                        bottom: isMocked ? 60.0 : 0.0,
+                      ), // Avoid overlap with dev clock banner
+                      child: CustomScrollView(
+                        center: _taskListKey,
+                        slivers: [
+                          _buildHistorySliver(taskRepository),
+                          _buildTaskListSliver(taskRepository),
+                        ],
+                      ),
+                    ),
+              floatingActionButton: FloatingActionButton(
+                onPressed: _addNewTask,
+                tooltip: 'Add Task',
+                child: const Icon(Icons.add),
+              ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNewTask,
-        tooltip: 'Add Task',
-        child: const Icon(Icons.add),
-      ),
+            const DevClockWidget(),
+          ],
+        );
+      },
     );
   }
 

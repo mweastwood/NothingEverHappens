@@ -6,5 +6,6 @@ import 'main.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  AppConfig.environment = AppEnvironment.dev;
   mainCommon();
 }

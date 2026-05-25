@@ -13,6 +13,8 @@ import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/main.dart';
+import 'package:nothing_ever_happens/widgets/dev_clock_widget.dart';
 import '../widgets/task_widget_robot.dart';
 
 @GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<TaskRepository>()])
@@ -332,5 +334,40 @@ void main() {
     await tester.pump();
 
     await screenMatchesGolden(tester, 'task_list_screen_history');
+  });
+
+  testGoldens('TaskListScreen - Prod Mode (No Dev Clock Button)', (
+    tester,
+  ) async {
+    // 1. Set environment to prod
+    AppConfig.environment = AppEnvironment.prod;
+
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([]));
+    when(mockTaskRepository.getHistory()).thenAnswer((_) => Stream.value([]));
+
+    await tester.pumpWidgetBuilder(
+      MultiProvider(
+        providers: [
+          Provider<AuthRepository>.value(value: mockAuthRepository),
+          Provider<TaskRepository>.value(value: mockTaskRepository),
+        ],
+        child: const TaskListScreen(),
+      ),
+      wrapper: materialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    // Verify that the dev clock button is NOT displayed (only one widget tree item but shrunk to SizedBox)
+    expect(find.byType(DevClockWidget), findsOneWidget);
+    expect(find.byIcon(Icons.av_timer), findsNothing);
+
+    await screenMatchesGolden(tester, 'task_list_screen_prod');
+
+    // Reset back to dev environment for other tests
+    AppConfig.environment = AppEnvironment.dev;
   });
 }
