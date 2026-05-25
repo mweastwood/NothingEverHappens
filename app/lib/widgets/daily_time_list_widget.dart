@@ -87,8 +87,7 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                 elevation: 0,
                 color: Theme.of(context).colorScheme.surfaceContainerLow,
                 shape: RoundedRectangleBorder(
-                  // ignore: deprecated_member_use
-                  side: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+                  side: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Padding(

@@ -41,8 +41,7 @@ class DevClockWidget extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      // ignore: deprecated_member_use
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 6,
                       offset: const Offset(0, 3),
                     ),
@@ -79,8 +78,7 @@ class DevClockWidget extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    // ignore: deprecated_member_use
-                    color: Colors.orange.shade900.withOpacity(0.9),
+                    color: Colors.orange.shade900.withValues(alpha: 0.9),
                     border: const Border(
                       top: BorderSide(color: Colors.orangeAccent, width: 2),
                     ),
