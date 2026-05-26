@@ -7,7 +7,6 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:provider/provider.dart';
-import 'package:mockito/mockito.dart';
 
 import 'task_widget_test.mocks.dart';
 

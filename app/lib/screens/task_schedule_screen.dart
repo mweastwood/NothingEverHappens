@@ -164,9 +164,7 @@ class TaskScheduleScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       key: Key('edit_schedule_button_${task.id}'),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.edit_calendar, size: 20),
+                      icon: const Icon(Icons.edit_calendar),
                       tooltip: 'Edit Schedule',
                       onPressed: () {
                         Navigator.push(
@@ -178,21 +176,17 @@ class TaskScheduleScreen extends StatelessWidget {
                         );
                       },
                     ),
-                    const SizedBox(width: 12),
                     IconButton(
                       key: Key('delete_schedule_button_${task.id}'),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                       icon: Icon(
                         Icons.delete,
                         color: Theme.of(context).colorScheme.error,
-                        size: 20,
                       ),
                       tooltip: 'Delete Task',
                       onPressed: () =>
                           _confirmDelete(context, taskRepository, task),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
