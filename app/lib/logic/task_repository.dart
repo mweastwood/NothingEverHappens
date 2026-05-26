@@ -2,16 +2,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'task.dart';
 import 'task_delta.dart';
 import 'task_list.dart';
+import 'notification_service.dart';
 
 class TaskRepository {
   final FirebaseFirestore _firestore;
   final String _userId;
+  final NotificationService? _notificationService;
 
   String get userId => _userId;
 
-  TaskRepository({FirebaseFirestore? firestore, required String userId})
-    : _firestore = firestore ?? FirebaseFirestore.instance,
-      _userId = userId;
+  TaskRepository({
+    FirebaseFirestore? firestore,
+    required String userId,
+    NotificationService? notificationService,
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _userId = userId,
+       _notificationService = notificationService;
 
   CollectionReference<Task> get _tasksRef {
     return _firestore
@@ -59,6 +65,7 @@ class TaskRepository {
     batch.set(_historyRef.doc(delta.id), delta);
 
     await batch.commit();
+    await _notificationService?.scheduleNotifications(task);
   }
 
   Future<void> updateTask(TaskModification modification) async {
@@ -68,6 +75,7 @@ class TaskRepository {
     batch.set(_historyRef.doc(modification.delta.id), modification.delta);
 
     await batch.commit();
+    await _notificationService?.scheduleNotifications(modification.newTask);
   }
 
   Future<void> deleteTask(String id) async {
@@ -80,6 +88,7 @@ class TaskRepository {
     batch.set(_historyRef.doc(delta.id), delta);
 
     await batch.commit();
+    await _notificationService?.cancelNotifications(id);
   }
 
   Future<void> completeTask(String id) async {
@@ -93,8 +102,9 @@ class TaskRepository {
 
     final batch = _firestore.batch();
 
+    Task? updatedTask;
     if (isRecurring) {
-      final updatedTask = newState.activeTasks.firstWhere((t) => t.id == id);
+      updatedTask = newState.activeTasks.firstWhere((t) => t.id == id);
       batch.set(_tasksRef.doc(id), updatedTask);
     } else {
       batch.delete(_tasksRef.doc(id));
@@ -103,5 +113,11 @@ class TaskRepository {
     batch.set(_historyRef.doc(delta.id), delta);
 
     await batch.commit();
+
+    if (isRecurring && updatedTask != null) {
+      await _notificationService?.scheduleNotifications(updatedTask);
+    } else {
+      await _notificationService?.cancelNotifications(id);
+    }
   }
 }

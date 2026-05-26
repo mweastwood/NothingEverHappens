@@ -113,7 +113,7 @@ void main() {
       final intervalController = TextEditingController(text: '1');
       final selectedWeekdays = {1, 3, 5};
 
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1.2)
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.9)
         ..addScenario(
           'Default',
           WeeklySchedulingWidget(
@@ -129,6 +129,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: materialAppWrapper(),
+        surfaceSize: const Size(800, 1000),
       );
       await screenMatchesGolden(tester, 'weekly_scheduling_widget');
     });

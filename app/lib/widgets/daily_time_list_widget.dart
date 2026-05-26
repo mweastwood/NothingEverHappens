@@ -39,9 +39,41 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
       updatedTimes[index] = DailyOccurrenceTime(
         startTime: isStart ? picked : current.startTime,
         dueTime: isStart ? current.dueTime : picked,
+        notificationTime: current.notificationTime,
       );
       _updateTimes(updatedTimes);
     }
+  }
+
+  Future<void> _pickNotificationTime({
+    required int index,
+    required TimeOfDay initialTime,
+  }) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+    if (picked != null) {
+      final updatedTimes = List<DailyOccurrenceTime>.from(_times);
+      final current = updatedTimes[index];
+      updatedTimes[index] = DailyOccurrenceTime(
+        startTime: current.startTime,
+        dueTime: current.dueTime,
+        notificationTime: picked,
+      );
+      _updateTimes(updatedTimes);
+    }
+  }
+
+  void _clearNotificationTime(int index) {
+    final updatedTimes = List<DailyOccurrenceTime>.from(_times);
+    final current = updatedTimes[index];
+    updatedTimes[index] = DailyOccurrenceTime(
+      startTime: current.startTime,
+      dueTime: current.dueTime,
+      notificationTime: null,
+    );
+    _updateTimes(updatedTimes);
   }
 
   void _addTimeSlot() {
@@ -168,6 +200,86 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                                     ),
                                   ),
                                 ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Notification Time',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (slot.notificationTime == null)
+                                  OutlinedButton.icon(
+                                    onPressed: () => _pickNotificationTime(
+                                      index: index,
+                                      initialTime: const TimeOfDay(
+                                        hour: 9,
+                                        minute: 0,
+                                      ),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
+                                      fixedSize: const Size.fromHeight(36),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.notifications_none,
+                                      size: 16,
+                                    ),
+                                    label: const Text(
+                                      'None',
+                                      style: TextStyle(fontSize: 13),
+                                    ),
+                                  )
+                                else
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _pickNotificationTime(
+                                          index: index,
+                                          initialTime: slot.notificationTime!,
+                                        ),
+                                        style: FilledButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 4,
+                                          ),
+                                          fixedSize: const Size.fromHeight(36),
+                                        ),
+                                        icon: const Icon(
+                                          Icons.notifications_active,
+                                          size: 16,
+                                        ),
+                                        label: Text(
+                                          slot.notificationTime!.format(
+                                            context,
+                                          ),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        icon: const Icon(Icons.clear, size: 16),
+                                        onPressed: () =>
+                                            _clearNotificationTime(index),
+                                        visualDensity: VisualDensity.compact,
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        tooltip: 'Clear notification time',
+                                      ),
+                                    ],
+                                  ),
                               ],
                             ),
                           ],
