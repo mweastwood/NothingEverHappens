@@ -211,4 +211,63 @@ void main() {
 
     await screenMatchesGolden(tester, 'task_schedule_screen_populated');
   });
+
+  testWidgets(
+    'TaskScheduleScreen delete button opens confirmation dialog and deletes task',
+    (WidgetTester tester) async {
+      final dailyTask = Task(
+        id: 'delete-recurring-task-1',
+        title: 'Daily Exercises',
+        description: 'Run 5km and do pushups',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 7, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 8, minute: 30),
+        ),
+        schedule: DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+        ),
+      );
+
+      tasksSubject.add([dailyTask]);
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      // Verify Delete Schedule Button is rendered
+      final deleteButtonKey = const Key(
+        'delete_schedule_button_delete-recurring-task-1',
+      );
+      expect(find.byKey(deleteButtonKey), findsOneWidget);
+
+      // Tap Delete button
+      await tester.tap(find.byKey(deleteButtonKey));
+      await tester.pumpAndSettle();
+
+      // Verify confirmation dialog is displayed
+      expect(find.text('Delete Task?'), findsOneWidget);
+      expect(
+        find.text(
+          'Are you sure you want to delete "Daily Exercises"? This action will permanently remove the task.',
+        ),
+        findsOneWidget,
+      );
+
+      // Tap confirm delete button in dialog
+      final confirmDeleteKey = const Key(
+        'confirm_delete_schedule_button_delete-recurring-task-1',
+      );
+      await tester.tap(find.byKey(confirmDeleteKey));
+      await tester.pumpAndSettle();
+
+      // Verify repository delete method was called with correct ID
+      verify(
+        mockTaskRepository.deleteTask('delete-recurring-task-1'),
+      ).called(1);
+    },
+  );
 }

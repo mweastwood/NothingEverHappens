@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import '../logic/task.dart';
 import '../logic/task_repository.dart';
+import '../screens/create_task_screen.dart';
 import 'fun_check_button.dart';
 
 class TaskWidget extends StatefulWidget {
@@ -22,6 +23,7 @@ class _TaskWidgetState extends State<TaskWidget>
   late Animation<double> _sizeFactorAnimation;
   late Animation<double> _contentOpacityAnimation;
   bool _isChecking = false;
+  bool _isDeleting = false;
 
   @override
   void initState() {
@@ -63,7 +65,11 @@ class _TaskWidgetState extends State<TaskWidget>
 
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        context.read<TaskRepository>().completeTask(widget.task.id);
+        if (_isDeleting) {
+          context.read<TaskRepository>().deleteTask(widget.task.id);
+        } else {
+          context.read<TaskRepository>().completeTask(widget.task.id);
+        }
       }
     });
   }
@@ -88,6 +94,41 @@ class _TaskWidgetState extends State<TaskWidget>
         _controller.forward();
       }
     });
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Task?'),
+          content: Text(
+            'Are you sure you want to delete "${widget.task.title}"? This action will permanently remove the task.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              key: const Key('confirm_delete_button'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                setState(() {
+                  _isDeleting = true;
+                });
+                _controller.forward();
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -136,6 +177,35 @@ class _TaskWidgetState extends State<TaskWidget>
           ),
         ),
         subtitle: MarkdownBody(data: widget.task.description, selectable: true),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              key: const Key('edit_pencil_button'),
+              icon: const Icon(Icons.edit, size: 20),
+              tooltip: 'Edit Task',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        CreateTaskScreen(taskToEdit: widget.task),
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              key: const Key('delete_task_button'),
+              icon: Icon(
+                Icons.delete,
+                color: Theme.of(context).colorScheme.error,
+                size: 20,
+              ),
+              tooltip: 'Delete Task',
+              onPressed: () => _confirmDelete(context),
+            ),
+          ],
+        ),
       ),
     );
   }

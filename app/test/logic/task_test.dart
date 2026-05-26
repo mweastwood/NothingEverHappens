@@ -303,4 +303,86 @@ void main() {
       expect(deserialized.estimatedDuration, isNull);
     });
   });
+
+  group('Task Editing and Delta Aggregation', () {
+    test(
+      'Task.edit() returns correctly updated task and delta with only changes',
+      () {
+        final task = Task(
+          id: 'edit-test-task',
+          title: 'Initial Title',
+          description: 'Initial Desc',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 3, day: 8),
+          ),
+          estimatedDuration: const Duration(minutes: 30),
+        );
+
+        final result = task.edit(
+          newTitle: 'Updated Title',
+          newDescription: 'Initial Desc', // unchanged
+          newStartRelativeTime: const RelativeTime(
+            dayOffset: -1,
+            time: TimeOfDay(hour: 10, minute: 0),
+          ),
+          newDueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 18, minute: 0),
+          ),
+          newSchedule: OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 3, day: 9),
+          ),
+          newDailyTimes: const [
+            DailyOccurrenceTime(
+              startTime: TimeOfDay(hour: 10, minute: 0),
+              dueTime: TimeOfDay(hour: 18, minute: 0),
+            ),
+          ],
+          newEstimatedDuration: null, // cleared
+          userId: 'test-user-id',
+        );
+
+        final newTask = result.newTask;
+        final delta = result.delta;
+
+        // 1. Verify updated Task properties
+        expect(newTask.id, 'edit-test-task');
+        expect(newTask.title, 'Updated Title');
+        expect(newTask.description, 'Initial Desc');
+        expect(newTask.startRelativeTime.dayOffset, -1);
+        expect(newTask.startRelativeTime.time.hour, 10);
+        expect(newTask.dueRelativeTime.time.hour, 18);
+        expect(newTask.schedule, isA<OneOffSchedule>());
+        expect((newTask.schedule as OneOffSchedule).date.day, 9);
+        expect(newTask.dailyTimes.length, 1);
+        expect(newTask.estimatedDuration, isNull);
+
+        // 2. Verify Delta properties and changedFields
+        expect(delta.taskId, 'edit-test-task');
+        expect(delta.operation, 'update');
+        expect(delta.userId, 'test-user-id');
+
+        final changes = delta.changedFields;
+        expect(changes['title'], 'Updated Title');
+        expect(
+          changes.containsKey('description'),
+          isFalse,
+        ); // description didn't change
+        expect(changes['startRelativeTime']['dayOffset'], -1);
+        expect(changes['startRelativeTime']['hour'], 10);
+        expect(changes['dueRelativeTime']['hour'], 18);
+        expect(changes['schedule']['date']['day'], 9);
+        expect(changes['dailyTimes'][0]['startHour'], 10);
+        expect(changes['estimatedDuration'], isNull);
+      },
+    );
+  });
 }

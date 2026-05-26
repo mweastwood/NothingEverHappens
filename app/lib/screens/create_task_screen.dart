@@ -16,7 +16,9 @@ class CreateTaskScreen extends StatefulWidget {
   static Duration saveTimeout = const Duration(seconds: 10);
   static bool debugDisableAnimations = false;
 
-  const CreateTaskScreen({super.key});
+  final Task? taskToEdit;
+
+  const CreateTaskScreen({super.key, this.taskToEdit});
 
   @override
   State<CreateTaskScreen> createState() => _CreateTaskScreenState();
@@ -77,6 +79,71 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Set<int> _selectedWeekdays = {};
 
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.taskToEdit != null) {
+      final task = widget.taskToEdit!;
+      _titleController.text = task.title;
+      _descriptionController.text = task.description;
+      if (task.estimatedDuration != null) {
+        _estimatedDurationController.text = task.estimatedDuration!.inMinutes
+            .toString();
+      }
+
+      if (task.schedule is OneOffSchedule) {
+        _scheduleType = RecurrenceType.oneOff;
+        final oneOff = task.schedule as OneOffSchedule;
+
+        final dueTime = task.dueRelativeTime.time;
+        _dueDateTimeController.value = DateTime(
+          oneOff.date.year,
+          oneOff.date.month,
+          oneOff.date.day,
+          dueTime.hour,
+          dueTime.minute,
+        );
+
+        final dueDateTime = _dueDateTimeController.value;
+        final startMidnight = DateTime(
+          dueDateTime.year,
+          dueDateTime.month,
+          dueDateTime.day,
+        ).add(Duration(days: task.startRelativeTime.dayOffset));
+
+        final startTime = task.startRelativeTime.time;
+        _startDateTimeController.value = DateTime(
+          startMidnight.year,
+          startMidnight.month,
+          startMidnight.day,
+          startTime.hour,
+          startTime.minute,
+        );
+      } else if (task.schedule is DailySchedule) {
+        _scheduleType = RecurrenceType.daily;
+        final daily = task.schedule as DailySchedule;
+        _startDate = DateTime(
+          daily.startDate.year,
+          daily.startDate.month,
+          daily.startDate.day,
+        );
+        _intervalController.text = daily.interval.toString();
+        _dailyTimesController.value = List.from(task.dailyTimes);
+      } else if (task.schedule is WeeklySchedule) {
+        _scheduleType = RecurrenceType.weekly;
+        final weekly = task.schedule as WeeklySchedule;
+        _startDate = DateTime(
+          weekly.startDate.year,
+          weekly.startDate.month,
+          weekly.startDate.day,
+        );
+        _intervalController.text = weekly.interval.toString();
+        _selectedWeekdays = Set.from(weekly.daysOfWeek);
+        _dailyTimesController.value = List.from(task.dailyTimes);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -210,15 +277,37 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
         final repository = context.read<TaskRepository?>();
         if (repository != null) {
-          // Add a timeout to catch cases where Firestore might be hanging due to persistence/sync issues
-          await repository
-              .addTask(newTask)
-              .timeout(
-                CreateTaskScreen.saveTimeout,
-                onTimeout: () => throw Exception(
-                  'Save operation timed out. This may be due to a connectivity issue or a failure to sync with the database.',
-                ),
-              );
+          if (widget.taskToEdit != null) {
+            final modification = widget.taskToEdit!.edit(
+              newTitle: _titleController.text,
+              newDescription: _descriptionController.text,
+              newStartRelativeTime: startRelative,
+              newDueRelativeTime: dueRelative,
+              newSchedule: schedule,
+              newDailyTimes: _scheduleType == RecurrenceType.oneOff
+                  ? const []
+                  : _dailyTimesController.value,
+              newEstimatedDuration: estimatedDuration,
+              userId: repository.userId,
+            );
+            await repository
+                .updateTask(modification)
+                .timeout(
+                  CreateTaskScreen.saveTimeout,
+                  onTimeout: () => throw Exception(
+                    'Save operation timed out. This may be due to a connectivity issue or a failure to sync with the database.',
+                  ),
+                );
+          } else {
+            await repository
+                .addTask(newTask)
+                .timeout(
+                  CreateTaskScreen.saveTimeout,
+                  onTimeout: () => throw Exception(
+                    'Save operation timed out. This may be due to a connectivity issue or a failure to sync with the database.',
+                  ),
+                );
+          }
         }
 
         if (mounted) {
@@ -262,7 +351,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           ),
         },
         child: Scaffold(
-          appBar: AppBar(title: const Text('New Task')),
+          appBar: AppBar(
+            title: Text(widget.taskToEdit != null ? 'Edit Task' : 'New Task'),
+          ),
           body: Column(
             children: [
               Expanded(

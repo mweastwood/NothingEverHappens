@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/task.dart';
 import '../logic/task_repository.dart';
+import 'create_task_screen.dart';
 
 class TaskScheduleScreen extends StatelessWidget {
   const TaskScheduleScreen({super.key});
@@ -87,7 +88,11 @@ class TaskScheduleScreen extends StatelessWidget {
                             index,
                           ) {
                             final task = recurringTasks[index];
-                            return _buildScheduleCard(context, task);
+                            return _buildScheduleCard(
+                              context,
+                              taskRepository,
+                              task,
+                            );
                           }, childCount: recurringTasks.length),
                         ),
                       ],
@@ -99,7 +104,11 @@ class TaskScheduleScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildScheduleCard(BuildContext context, Task task) {
+  Widget _buildScheduleCard(
+    BuildContext context,
+    TaskRepository taskRepository,
+    Task task,
+  ) {
     String intervalStr = '';
     String startStr = '';
     String daysStr = '';
@@ -150,23 +159,55 @@ class TaskScheduleScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    task.schedule is DailySchedule ? 'Daily' : 'Weekly',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      key: Key('edit_schedule_button_${task.id}'),
+                      icon: const Icon(Icons.edit_calendar),
+                      tooltip: 'Edit Schedule',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                CreateTaskScreen(taskToEdit: task),
+                          ),
+                        );
+                      },
                     ),
-                  ),
+                    IconButton(
+                      key: Key('delete_schedule_button_${task.id}'),
+                      icon: Icon(
+                        Icons.delete,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      tooltip: 'Delete Task',
+                      onPressed: () =>
+                          _confirmDelete(context, taskRepository, task),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        task.schedule is DailySchedule ? 'Daily' : 'Weekly',
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -271,6 +312,42 @@ class TaskScheduleScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _confirmDelete(
+    BuildContext context,
+    TaskRepository repository,
+    Task task,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Task?'),
+          content: Text(
+            'Are you sure you want to delete "${task.title}"? This action will permanently remove the task.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              key: Key('confirm_delete_schedule_button_${task.id}'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                repository.deleteTask(task.id);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

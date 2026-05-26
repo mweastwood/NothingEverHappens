@@ -353,6 +353,74 @@ class Task {
 
   static final _uuid = Uuid();
 
+  /// Updates multiple fields of the task and returns the modified task and delta.
+  TaskModification edit({
+    required String newTitle,
+    required String newDescription,
+    required RelativeTime newStartRelativeTime,
+    required RelativeTime newDueRelativeTime,
+    required TaskSchedule newSchedule,
+    required List<DailyOccurrenceTime> newDailyTimes,
+    required Duration? newEstimatedDuration,
+    required String userId,
+  }) {
+    final newTask = _copyWith(
+      title: newTitle,
+      description: newDescription,
+      startRelativeTime: newStartRelativeTime,
+      dueRelativeTime: newDueRelativeTime,
+      schedule: newSchedule,
+      dailyTimes: newDailyTimes,
+      estimatedDuration: newEstimatedDuration,
+      clearEstimatedDuration: newEstimatedDuration == null,
+    );
+
+    final changes = <String, dynamic>{};
+    if (newTitle != title) changes['title'] = newTitle;
+    if (newDescription != description) changes['description'] = newDescription;
+    if (newStartRelativeTime != startRelativeTime) {
+      changes['startRelativeTime'] = newStartRelativeTime.toJson();
+    }
+    if (newDueRelativeTime != dueRelativeTime) {
+      changes['dueRelativeTime'] = newDueRelativeTime.toJson();
+    }
+
+    final oldScheduleJson = schedule.toJson();
+    final newScheduleJson = newSchedule.toJson();
+    if (oldScheduleJson.toString() != newScheduleJson.toString()) {
+      changes['schedule'] = newScheduleJson;
+    }
+
+    final oldDailyTimesJson = dailyTimes
+        .map((t) => t.toJson())
+        .toList()
+        .toString();
+    final newDailyTimesJson = newDailyTimes
+        .map((t) => t.toJson())
+        .toList()
+        .toString();
+    if (oldDailyTimesJson != newDailyTimesJson) {
+      changes['dailyTimes'] = newDailyTimes.map((t) => t.toJson()).toList();
+    }
+
+    if (estimatedDuration != newEstimatedDuration) {
+      changes['estimatedDuration'] = newEstimatedDuration?.inMinutes;
+    }
+
+    final now = AppClock.now;
+    final delta = TaskDelta(
+      id: _uuid.v4(),
+      taskId: id,
+      timestamp: now,
+      expiresAt: now.add(const Duration(days: 90)),
+      operation: 'update',
+      changedFields: changes,
+      userId: userId,
+    );
+
+    return (newTask: newTask, delta: delta);
+  }
+
   /// Updates the title and returns the modified task and delta.
   TaskModification updateTitle(String newTitle, String userId) {
     final newTask = _copyWith(title: newTitle);
