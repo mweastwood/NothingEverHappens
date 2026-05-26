@@ -11,6 +11,7 @@ import 'screens/login_screen.dart';
 import 'logic/auth_repository.dart';
 import 'logic/task_repository.dart';
 import 'logic/error_handler.dart';
+import 'logic/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,15 +41,21 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<ErrorHandler>(create: (_) => ErrorHandler()),
+        Provider<NotificationService>(
+          create: (_) => PlatformNotificationService(),
+        ),
         Provider<AuthRepository>(create: (_) => AuthRepository()),
         StreamProvider<User?>(
           create: (context) => context.read<AuthRepository>().authStateChanges,
           initialData: null,
         ),
-        ProxyProvider<User?, TaskRepository?>(
-          update: (context, user, previous) {
+        ProxyProvider2<User?, NotificationService, TaskRepository?>(
+          update: (context, user, notificationService, previous) {
             if (user == null) return null;
-            return TaskRepository(userId: user.uid);
+            return TaskRepository(
+              userId: user.uid,
+              notificationService: notificationService,
+            );
           },
         ),
       ],

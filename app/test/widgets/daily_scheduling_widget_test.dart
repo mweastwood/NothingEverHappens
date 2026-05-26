@@ -88,7 +88,7 @@ void main() {
       ]);
       final intervalController = TextEditingController(text: '1');
 
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1.5)
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1.1)
         ..addScenario(
           'Default',
           DailySchedulingWidget(
@@ -102,6 +102,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: materialAppWrapper(),
+        surfaceSize: const Size(800, 1000),
       );
       await screenMatchesGolden(tester, 'daily_scheduling_widget');
     });

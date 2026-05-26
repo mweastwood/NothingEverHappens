@@ -6,6 +6,7 @@ import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/notification_service.dart';
 
 void main() {
   group('TaskRepository', () {
@@ -171,6 +172,144 @@ void main() {
       // 1 from add, 1 from complete
       expect(historySnapshot.docs.length, 2);
       expect(historySnapshot.docs.last.data()['operation'], 'complete');
+    });
+  });
+
+  group('TaskRepository with NotificationService', () {
+    late FakeFirebaseFirestore firestore;
+    late LoggingNotificationService notificationService;
+    late TaskRepository repository;
+    const userId = 'test-user-id';
+
+    setUp(() {
+      firestore = FakeFirebaseFirestore();
+      notificationService = LoggingNotificationService();
+      repository = TaskRepository(
+        firestore: firestore,
+        userId: userId,
+        notificationService: notificationService,
+      );
+    });
+
+    final notifTask = Task(
+      id: 'notif-task-1',
+      title: 'Notify Me',
+      description: 'Check notifications',
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      schedule: DailySchedule(
+        startDate: const CivilDay(year: 2024, month: 1, day: 1),
+        interval: 1,
+      ),
+      dailyTimes: const [
+        DailyOccurrenceTime(
+          startTime: TimeOfDay(hour: 9, minute: 0),
+          dueTime: TimeOfDay(hour: 17, minute: 0),
+          notificationTime: TimeOfDay(hour: 8, minute: 45),
+        ),
+      ],
+    );
+
+    test('addTask schedules notifications', () async {
+      await repository.addTask(notifTask);
+      expect(
+        notificationService.scheduledTasks.containsKey(notifTask.id),
+        isTrue,
+      );
+      expect(
+        notificationService
+            .scheduledTasks[notifTask.id]!
+            .dailyTimes
+            .first
+            .notificationTime,
+        equals(const TimeOfDay(hour: 8, minute: 45)),
+      );
+    });
+
+    test('updateTask updates scheduled notifications', () async {
+      await repository.addTask(notifTask);
+
+      final updatedTask = Task(
+        id: notifTask.id,
+        title: 'Notify Me (Updated)',
+        description: notifTask.description,
+        startRelativeTime: notifTask.startRelativeTime,
+        dueRelativeTime: notifTask.dueRelativeTime,
+        schedule: notifTask.schedule,
+        dailyTimes: const [
+          DailyOccurrenceTime(
+            startTime: TimeOfDay(hour: 9, minute: 0),
+            dueTime: TimeOfDay(hour: 17, minute: 0),
+            notificationTime: TimeOfDay(hour: 8, minute: 30), // updated
+          ),
+        ],
+      );
+
+      final modification = (
+        newTask: updatedTask,
+        delta: TaskDelta(
+          id: 'delta-1',
+          taskId: notifTask.id,
+          timestamp: DateTime.now(),
+          expiresAt: DateTime.now().add(const Duration(days: 90)),
+          operation: 'update',
+          changedFields: {
+            'dailyTimes': updatedTask.dailyTimes
+                .map((t) => t.toJson())
+                .toList(),
+          },
+          userId: userId,
+        ),
+      );
+
+      await repository.updateTask(modification);
+      expect(
+        notificationService.scheduledTasks.containsKey(notifTask.id),
+        isTrue,
+      );
+      expect(
+        notificationService
+            .scheduledTasks[notifTask.id]!
+            .dailyTimes
+            .first
+            .notificationTime,
+        equals(const TimeOfDay(hour: 8, minute: 30)),
+      );
+    });
+
+    test('deleteTask cancels scheduled notifications', () async {
+      await repository.addTask(notifTask);
+      expect(
+        notificationService.scheduledTasks.containsKey(notifTask.id),
+        isTrue,
+      );
+
+      await repository.deleteTask(notifTask.id);
+      expect(
+        notificationService.scheduledTasks.containsKey(notifTask.id),
+        isFalse,
+      );
+    });
+
+    test('completeTask schedules next occurrence if recurring', () async {
+      await repository.addTask(notifTask);
+      expect(
+        notificationService.scheduledTasks.containsKey(notifTask.id),
+        isTrue,
+      );
+
+      await repository.completeTask(notifTask.id);
+      // Still scheduled because it's recurring and advances to the next occurrence
+      expect(
+        notificationService.scheduledTasks.containsKey(notifTask.id),
+        isTrue,
+      );
     });
   });
 }
