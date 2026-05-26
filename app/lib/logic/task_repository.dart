@@ -7,6 +7,8 @@ class TaskRepository {
   final FirebaseFirestore _firestore;
   final String _userId;
 
+  String get userId => _userId;
+
   TaskRepository({FirebaseFirestore? firestore, required String userId})
     : _firestore = firestore ?? FirebaseFirestore.instance,
       _userId = userId;

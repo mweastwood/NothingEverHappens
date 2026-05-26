@@ -208,4 +208,83 @@ void main() {
       matchesGoldenFile('goldens/task_widget_frame_4.png'),
     );
   });
+
+  testWidgets('TaskWidget exposes edit and delete buttons by default', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Provider<TaskRepository>.value(
+            value: mockTaskRepository,
+            child: TaskWidget(task: testTask),
+          ),
+        ),
+      ),
+    );
+
+    // Exposes action buttons
+    expect(find.byKey(const Key('edit_pencil_button')), findsOneWidget);
+    expect(find.byKey(const Key('delete_task_button')), findsOneWidget);
+  });
+
+  testWidgets('TaskWidget delete action opens confirmation dialog and deletes', (
+    tester,
+  ) async {
+    when(mockTaskRepository.deleteTask(any)).thenAnswer((_) async {});
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Provider<TaskRepository>.value(
+            value: mockTaskRepository,
+            child: TaskWidget(task: testTask),
+          ),
+        ),
+      ),
+    );
+
+    // Tap Delete button
+    await tester.tap(find.byKey(const Key('delete_task_button')));
+    await tester.pumpAndSettle();
+
+    // Verify dialog shows up
+    expect(find.text('Delete Task?'), findsOneWidget);
+    expect(
+      find.text(
+        'Are you sure you want to delete "Test Task"? This action will permanently remove the task.',
+      ),
+      findsOneWidget,
+    );
+
+    // Tap confirm delete
+    await tester.tap(find.byKey(const Key('confirm_delete_button')));
+    await tester.pump(); // Start collapse animation
+
+    // Wait for ticker (200ms)
+    await tester.pump(const Duration(milliseconds: 210));
+    await tester.pump(); // Allow completion listener to run
+
+    // Verify repository deleteTask is called
+    verify(mockTaskRepository.deleteTask(testTask.id)).called(1);
+  });
+
+  testGoldens('TaskWidget focused state golden', (tester) async {
+    await tester.pumpWidgetBuilder(
+      Provider<TaskRepository>.value(
+        value: mockTaskRepository,
+        child: Container(
+          color: Colors.white,
+          child: TaskWidget(task: testTask),
+        ),
+      ),
+      wrapper: materialAppWrapper(),
+      surfaceSize: const Size(400, 200),
+    );
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_focused.png'),
+    );
+  });
 }
