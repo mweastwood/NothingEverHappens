@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyC5CxNBwjTFuEuOanfOdIyoIHWIOSLnNaY',
-    appId: '1:631207034652:android:2cbd5974865538b82384d9',
+    appId: '1:631207034652:android:0cb5dc90de13c9472384d9',
     messagingSenderId: '631207034652',
     projectId: 'nothing-ever-happens-dev',
     storageBucket: 'nothing-ever-happens-dev.firebasestorage.app',
@@ -60,24 +60,24 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyD4M5bmQyOh4MGKsJPy7EfXpN8oml1a8wQ',
-    appId: '1:631207034652:ios:69d11a7dc2e065be2384d9',
+    appId: '1:631207034652:ios:09e3654137f51d262384d9',
     messagingSenderId: '631207034652',
     projectId: 'nothing-ever-happens-dev',
     storageBucket: 'nothing-ever-happens-dev.firebasestorage.app',
     iosClientId:
-        '631207034652-9h6g86qqrftu7ti16vn3j197qr36pmk4.apps.googleusercontent.com',
-    iosBundleId: 'com.example.nothingEverHappens',
+        '631207034652-p1rat0d0usrn68fsmfiai7o9ospf2lue.apps.googleusercontent.com',
+    iosBundleId: 'com.mweastwood.nothingEverHappens',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyD4M5bmQyOh4MGKsJPy7EfXpN8oml1a8wQ',
-    appId: '1:631207034652:ios:69d11a7dc2e065be2384d9',
+    appId: '1:631207034652:ios:09e3654137f51d262384d9',
     messagingSenderId: '631207034652',
     projectId: 'nothing-ever-happens-dev',
     storageBucket: 'nothing-ever-happens-dev.firebasestorage.app',
     iosClientId:
-        '631207034652-9h6g86qqrftu7ti16vn3j197qr36pmk4.apps.googleusercontent.com',
-    iosBundleId: 'com.example.nothingEverHappens',
+        '631207034652-p1rat0d0usrn68fsmfiai7o9ospf2lue.apps.googleusercontent.com',
+    iosBundleId: 'com.mweastwood.nothingEverHappens',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

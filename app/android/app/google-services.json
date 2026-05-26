@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:936469690744:android:ecb6064b221029d4f8708d",
         "android_client_info": {
-          "package_name": "com.example.nothing_ever_happens"
+          "package_name": "com.mweastwood.nothing_ever_happens"
         }
       },
       "oauth_client": [
@@ -34,7 +34,7 @@
               "client_id": "936469690744-6nd0vutnnco8b1f1h0mutptnbo78hnsq.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.nothingEverHappens"
+                "bundle_id": "com.mweastwood.nothingEverHappens"
               }
             }
           ]

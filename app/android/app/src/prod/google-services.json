@@ -12,7 +12,12 @@
           "package_name": "com.example.nothing_ever_happens"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "936469690744-8bthibeb317ifso2jc25ra9jmlaggdac.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBFLZZibTK72dF5wuCKPRarPQSF4SwZsUo"
@@ -20,7 +25,55 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "936469690744-8bthibeb317ifso2jc25ra9jmlaggdac.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "936469690744-6nd0vutnnco8b1f1h0mutptnbo78hnsq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.nothingEverHappens"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:936469690744:android:a69a056ea58c5fd1f8708d",
+        "android_client_info": {
+          "package_name": "com.mweastwood.nothing_ever_happens"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "936469690744-8bthibeb317ifso2jc25ra9jmlaggdac.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFLZZibTK72dF5wuCKPRarPQSF4SwZsUo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "936469690744-8bthibeb317ifso2jc25ra9jmlaggdac.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "936469690744-6nd0vutnnco8b1f1h0mutptnbo78hnsq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.nothingEverHappens"
+              }
+            }
+          ]
         }
       }
     }
