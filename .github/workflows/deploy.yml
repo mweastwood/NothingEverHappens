@@ -76,7 +76,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
 
       - name: Upload to Firebase App Distribution
-        uses: wzieba/Firebase-App-Distribution@v2
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: "1:936469690744:android:a69a056ea58c5fd1f8708d"
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
