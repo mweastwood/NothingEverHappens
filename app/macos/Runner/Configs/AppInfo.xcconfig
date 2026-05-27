@@ -8,7 +8,7 @@
 PRODUCT_NAME = nothing_ever_happens
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.nothingEverHappens
+PRODUCT_BUNDLE_IDENTIFIER = com.mweastwood.nothingEverHappens
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.mweastwood. All rights reserved.
