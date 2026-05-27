@@ -38,3 +38,48 @@ jobs:
           projectId: nothing-ever-happens-prod
         env:
           FIREBASE_CLI_PREVIEWS: hostingchannels
+
+  deploy_android:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    defaults:
+      run:
+        working-directory: ./app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Decode Android Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
+
+      - name: Build Android AppBundle
+        run: flutter build appbundle --release --flavor prod --target lib/main_prod.dart
+        env:
+          ANDROID_KEYSTORE_PATH: "release.keystore"
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-App-Distribution@v2
+        with:
+          appId: "1:936469690744:android:a69a056ea58c5fd1f8708d"
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
+          groups: testers
+          file: app/build/app/outputs/bundle/prodRelease/app-prod-release.aab
+
