@@ -119,7 +119,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
 
       - name: Upload to Google Play (Internal Track)
-        uses: r0adkll/upload-google-play@v2
+        uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonRaw: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
           packageName: "com.mweastwood.nothing_ever_happens"
