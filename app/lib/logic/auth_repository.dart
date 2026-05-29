@@ -54,8 +54,23 @@ class AuthRepository {
       if (!kIsWeb &&
           e is GoogleSignInException &&
           e.code == GoogleSignInExceptionCode.canceled) {
-        // User canceled the sign-in flow
-        return null;
+        // Log details to console to assist development/diagnostics
+        debugPrint('Google Sign-In canceled catch block triggered:');
+        debugPrint('  Error: $e');
+        debugPrint('  Description: ${e.description}');
+        debugPrint('  Details: ${e.details}');
+
+        // Throw a descriptive exception so the user/developer is informed
+        // that a cancellation code can represent a signing certificate/SHA-1 mismatch.
+        throw GoogleSignInException(
+          code: e.code,
+          description:
+              'Sign-in was canceled or failed due to configuration. If you selected '
+              'an account and this happened, it is likely due to a developer configuration '
+              'mismatch (e.g., missing SHA-1 signature fingerprint in the Firebase Console '
+              'for your debug or release signing key).',
+          details: e.details,
+        );
       }
       // Handle other errors (log it, rethrow it, etc.)
       debugPrint('Error signing in with Google: $e');

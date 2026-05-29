@@ -88,6 +88,29 @@ void main() {
     });
 
     test(
+      'signInWithGoogle throws detailed exception on Mobile flow when canceled',
+      () async {
+        when(mockGoogleSignIn.authenticate()).thenThrow(
+          GoogleSignInException(
+            code: GoogleSignInExceptionCode.canceled,
+            description: 'canceled',
+          ),
+        );
+
+        expect(
+          () => authRepository.signInWithGoogle(),
+          throwsA(
+            isA<GoogleSignInException>().having(
+              (e) => e.description,
+              'description',
+              contains('configuration'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
       'signInWithGoogle initializes GoogleSignIn with dev client ID when AppConfig.environment is dev',
       () async {
         AppConfig.environment = AppEnvironment.dev;
