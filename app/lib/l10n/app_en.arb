@@ -1,0 +1,102 @@
+{
+  "appName": "Nothing Ever Happens",
+  "errorOccurred": "Error Occurred",
+  "somethingWentWrong": "Something went wrong. Please share this error code with the developer:",
+  "details": "Details:",
+  "close": "Close",
+  "pleaseSignInToContinue": "Please sign in to continue",
+  "signingIn": "Signing in...",
+  "signInWithGoogle": "Sign in with Google",
+  "tasksTab": "Tasks",
+  "scheduleTab": "Schedule",
+  "historyTab": "History",
+  "addTaskTooltip": "Add Task",
+  "menu": "Menu",
+  "logout": "Logout",
+  "editTaskTitle": "Edit Task",
+  "newTaskTitle": "New Task",
+  "titleFieldLabel": "Title",
+  "titleRequiredError": "Please enter a title",
+  "descriptionFieldLabel": "Description",
+  "estimatedEffortFieldLabel": "Estimated Effort (Minutes)",
+  "estimatedEffortHelper": "Optional. Enter the estimated time in minutes.",
+  "estimatedEffortValidationError": "Please enter a positive number of minutes",
+  "scheduleHeader": "Schedule",
+  "oneOffLabel": "One-off",
+  "dailyLabel": "Daily",
+  "weeklyLabel": "Weekly",
+  "discardButton": "Discard",
+  "saveButton": "Save",
+  "selectAtLeastOneDayError": "Please select at least one day of the week",
+  "dueLabel": "Due: ",
+  "dueDescription": "When does this task need to be completed before it should be considered overdue?",
+  "advancedHeader": "Advanced",
+  "snoozeUntilLabel": "Snooze Until: ",
+  "snoozeUntilDescription": "The task will be hidden from your primary list of tasks until this time.",
+  "startDateLabel": "Start Date",
+  "daysIntervalLabel": "Days Interval",
+  "daysIntervalHelper": "E.g., 1 for every day, 2 for every other day",
+  "weeksIntervalLabel": "Weeks Interval",
+  "weeksIntervalHelper": "E.g., 1 for every week",
+  "repeatsOnLabel": "Repeats on",
+  "dailyOccurrencesHeader": "Daily Occurrences",
+  "startTimeLabel": "Start Time",
+  "dueTimeLabel": "Due Time",
+  "notificationTimeLabel": "Notification Time",
+  "noneLabel": "None",
+  "clearNotificationTimeTooltip": "Clear notification time",
+  "removeTimeSlotTooltip": "Remove time slot",
+  "addTimeSlotButton": "Add Time Slot",
+  "noTasksYet": "No tasks yet. Add one!",
+  "noHistoryYet": "No history yet",
+  "noRecurringTasksScheduled": "No recurring tasks scheduled",
+  "deleteTaskConfirmTitle": "Delete Task?",
+  "deleteTaskConfirmBody": "Are you sure you want to delete \"{title}\"? This action will permanently remove the task.",
+  "@deleteTaskConfirmBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "cancelButton": "Cancel",
+  "deleteButton": "Delete",
+  "editScheduleTooltip": "Edit Schedule",
+  "deleteTaskTooltip": "Delete Task",
+  "dailyRecurrence": "Daily",
+  "weeklyRecurrence": "Weekly",
+  "everyDay": "Every day",
+  "everyNDays": "Every {count} days",
+  "@everyNDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "everyWeek": "Every week",
+  "everyNWeeks": "Every {count} weeks",
+  "@everyNWeeks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startingDate": "Starting: {date}",
+  "@startingDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "onDaysOfWeek": "On: {days}",
+  "@onDaysOfWeek": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  }
+}

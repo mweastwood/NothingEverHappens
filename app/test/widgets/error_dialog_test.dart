@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import '../test_helper.dart';
 
 void main() {
   group('ErrorHandler Dialog Golden Test', () {
@@ -29,7 +30,7 @@ void main() {
             );
           },
         ),
-        wrapper: materialAppWrapper(
+        wrapper: l10nMaterialAppWrapper(
           theme: ThemeData.light(useMaterial3: true).copyWith(
             shadowColor: Colors.transparent,
             textTheme: ThemeData.light(

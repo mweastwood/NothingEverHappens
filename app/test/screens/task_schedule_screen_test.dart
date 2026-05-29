@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:rxdart/rxdart.dart';
+import '../test_helper.dart';
 
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
@@ -38,7 +39,9 @@ void main() {
         Provider<AuthRepository>.value(value: mockAuthRepository),
         Provider<TaskRepository>.value(value: mockTaskRepository),
       ],
-      child: const MaterialApp(home: Scaffold(body: TaskScheduleScreen())),
+      child: buildTestableWidget(
+        child: const Scaffold(body: TaskScheduleScreen()),
+      ),
     );
   }
 
@@ -145,7 +148,7 @@ void main() {
         ],
         child: const Scaffold(body: TaskScheduleScreen()),
       ),
-      wrapper: materialAppWrapper(),
+      wrapper: l10nMaterialAppWrapper(),
       surfaceSize: const Size(400, 800),
     );
 
@@ -205,7 +208,7 @@ void main() {
         ],
         child: const Scaffold(body: TaskScheduleScreen()),
       ),
-      wrapper: materialAppWrapper(),
+      wrapper: l10nMaterialAppWrapper(),
       surfaceSize: const Size(400, 800),
     );
 

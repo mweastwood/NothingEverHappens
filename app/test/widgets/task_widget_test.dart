@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
@@ -10,6 +10,7 @@ import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:provider/provider.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
+import '../test_helper.dart';
 
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
 
@@ -43,8 +44,8 @@ void main() {
   });
 
   Widget createWidget(Task task) {
-    return MaterialApp(
-      home: Scaffold(
+    return buildTestableWidget(
+      child: Scaffold(
         body: Provider<TaskRepository>.value(
           value: mockTaskRepository,
           child: TaskWidget(task: task),
@@ -148,7 +149,7 @@ void main() {
           ),
         ),
       ),
-      wrapper: materialAppWrapper(),
+      wrapper: l10nMaterialAppWrapper(),
       surfaceSize: const Size(400, 400),
     );
 
@@ -213,8 +214,8 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      buildTestableWidget(
+        child: Scaffold(
           body: Provider<TaskRepository>.value(
             value: mockTaskRepository,
             child: TaskWidget(task: testTask),
@@ -234,8 +235,8 @@ void main() {
     when(mockTaskRepository.deleteTask(any)).thenAnswer((_) async {});
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      buildTestableWidget(
+        child: Scaffold(
           body: Provider<TaskRepository>.value(
             value: mockTaskRepository,
             child: TaskWidget(task: testTask),
@@ -278,7 +279,7 @@ void main() {
           child: TaskWidget(task: testTask),
         ),
       ),
-      wrapper: materialAppWrapper(),
+      wrapper: l10nMaterialAppWrapper(),
       surfaceSize: const Size(400, 200),
     );
 

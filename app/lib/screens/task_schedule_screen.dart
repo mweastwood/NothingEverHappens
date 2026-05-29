@@ -5,6 +5,7 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/task.dart';
 import '../logic/task_repository.dart';
 import 'create_task_screen.dart';
+import '../logic/l10n_extension.dart';
 
 class TaskScheduleScreen extends StatelessWidget {
   const TaskScheduleScreen({super.key});
@@ -35,7 +36,11 @@ class TaskScheduleScreen extends StatelessWidget {
                   stream: taskRepository.getTasks(),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
+                      return Center(
+                        child: Text(
+                          '${context.l10n.errorOccurred}: ${snapshot.error}',
+                        ),
+                      );
                     }
 
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -48,8 +53,8 @@ class TaskScheduleScreen extends StatelessWidget {
                         .toList();
 
                     if (recurringTasks.isEmpty) {
-                      return const CustomScrollView(
-                        key: PageStorageKey('scheduleView'),
+                      return CustomScrollView(
+                        key: const PageStorageKey('scheduleView'),
                         slivers: [
                           SliverFillRemaining(
                             hasScrollBody: false,
@@ -57,15 +62,15 @@ class TaskScheduleScreen extends StatelessWidget {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.calendar_month_outlined,
                                     size: 64,
                                     color: Colors.grey,
                                   ),
-                                  SizedBox(height: 16),
+                                  const SizedBox(height: 16),
                                   Text(
-                                    'No recurring tasks scheduled',
-                                    style: TextStyle(
+                                    context.l10n.noRecurringTasksScheduled,
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       color: Colors.grey,
                                       fontWeight: FontWeight.w500,
@@ -116,17 +121,19 @@ class TaskScheduleScreen extends StatelessWidget {
     if (task.schedule is DailySchedule) {
       final ds = task.schedule as DailySchedule;
       intervalStr = ds.interval == 1
-          ? 'Every day'
-          : 'Every ${ds.interval} days';
-      startStr =
-          'Starting: ${ds.startDate.year}-${ds.startDate.month.toString().padLeft(2, '0')}-${ds.startDate.day.toString().padLeft(2, '0')}';
+          ? context.l10n.everyDay
+          : context.l10n.everyNDays(ds.interval);
+      final dateStr =
+          '${ds.startDate.year}-${ds.startDate.month.toString().padLeft(2, '0')}-${ds.startDate.day.toString().padLeft(2, '0')}';
+      startStr = context.l10n.startingDate(dateStr);
     } else if (task.schedule is WeeklySchedule) {
       final ws = task.schedule as WeeklySchedule;
       intervalStr = ws.interval == 1
-          ? 'Every week'
-          : 'Every ${ws.interval} weeks';
-      startStr =
-          'Starting: ${ws.startDate.year}-${ws.startDate.month.toString().padLeft(2, '0')}-${ws.startDate.day.toString().padLeft(2, '0')}';
+          ? context.l10n.everyWeek
+          : context.l10n.everyNWeeks(ws.interval);
+      final dateStr =
+          '${ws.startDate.year}-${ws.startDate.month.toString().padLeft(2, '0')}-${ws.startDate.day.toString().padLeft(2, '0')}';
+      startStr = context.l10n.startingDate(dateStr);
 
       final dayNames = {
         1: 'Mon',
@@ -138,7 +145,8 @@ class TaskScheduleScreen extends StatelessWidget {
         7: 'Sun',
       };
       final selectedDays = ws.daysOfWeek.toList()..sort();
-      daysStr = selectedDays.map((d) => dayNames[d]).join(', ');
+      final joinedDays = selectedDays.map((d) => dayNames[d]).join(', ');
+      daysStr = context.l10n.onDaysOfWeek(joinedDays);
     }
 
     return Card(
@@ -165,7 +173,7 @@ class TaskScheduleScreen extends StatelessWidget {
                     IconButton(
                       key: Key('edit_schedule_button_${task.id}'),
                       icon: const Icon(Icons.edit_calendar),
-                      tooltip: 'Edit Schedule',
+                      tooltip: context.l10n.editScheduleTooltip,
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -182,7 +190,7 @@ class TaskScheduleScreen extends StatelessWidget {
                         Icons.delete,
                         color: Theme.of(context).colorScheme.error,
                       ),
-                      tooltip: 'Delete Task',
+                      tooltip: context.l10n.deleteTaskTooltip,
                       onPressed: () =>
                           _confirmDelete(context, taskRepository, task),
                     ),
@@ -197,7 +205,9 @@ class TaskScheduleScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        task.schedule is DailySchedule ? 'Daily' : 'Weekly',
+                        task.schedule is DailySchedule
+                            ? context.l10n.dailyRecurrence
+                            : context.l10n.weeklyRecurrence,
                         style: TextStyle(
                           color: Theme.of(
                             context,
@@ -241,7 +251,7 @@ class TaskScheduleScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'On: $daysStr',
+                    daysStr,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -268,7 +278,7 @@ class TaskScheduleScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Daily Occurrences:',
+              context.l10n.dailyOccurrencesHeader,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Colors.grey,
@@ -324,14 +334,12 @@ class TaskScheduleScreen extends StatelessWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Delete Task?'),
-          content: Text(
-            'Are you sure you want to delete "${task.title}"? This action will permanently remove the task.',
-          ),
+          title: Text(context.l10n.deleteTaskConfirmTitle),
+          content: Text(context.l10n.deleteTaskConfirmBody(task.title)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.cancelButton),
             ),
             FilledButton(
               key: Key('confirm_delete_schedule_button_${task.id}'),
@@ -343,7 +351,7 @@ class TaskScheduleScreen extends StatelessWidget {
                 Navigator.pop(dialogContext);
                 repository.deleteTask(task.id);
               },
-              child: const Text('Delete'),
+              child: Text(context.l10n.deleteButton),
             ),
           ],
         );

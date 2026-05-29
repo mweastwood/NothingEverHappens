@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
+import '../test_helper.dart';
 
 void main() {
   testWidgets('FunCheckButton shows check icon when true', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      buildTestableWidget(
+        child: Scaffold(
           body: FunCheckButton(value: true, onChanged: (value) {}),
         ),
       ),
@@ -22,8 +23,8 @@ void main() {
     'FunCheckButton does not show check icon when false and not hovering',
     (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: FunCheckButton(value: false, onChanged: (value) {}),
           ),
         ),
@@ -39,8 +40,8 @@ void main() {
   ) async {
     bool? changedValue;
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      buildTestableWidget(
+        child: Scaffold(
           body: FunCheckButton(
             value: false,
             onChanged: (value) {
@@ -69,7 +70,7 @@ void main() {
 
     await tester.pumpWidgetBuilder(
       builder.build(),
-      wrapper: materialAppWrapper(),
+      wrapper: l10nMaterialAppWrapper(),
     );
     await screenMatchesGolden(tester, 'fun_check_button');
   });

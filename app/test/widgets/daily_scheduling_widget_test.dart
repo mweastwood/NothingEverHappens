@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/widgets/daily_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/daily_time_list_widget.dart';
+import '../test_helper.dart';
 import 'daily_scheduling_widget_robot.dart';
 
 void main() {
@@ -19,8 +20,8 @@ void main() {
       final intervalController = TextEditingController(text: '1');
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: SingleChildScrollView(
               child: DailySchedulingWidget(
                 startDate: startDate,
@@ -57,8 +58,8 @@ void main() {
       final robot = DailySchedulingWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: SingleChildScrollView(
               child: DailySchedulingWidget(
                 startDate: startDate,
@@ -101,7 +102,7 @@ void main() {
 
       await tester.pumpWidgetBuilder(
         builder.build(),
-        wrapper: materialAppWrapper(),
+        wrapper: l10nMaterialAppWrapper(),
         surfaceSize: const Size(800, 1000),
       );
       await screenMatchesGolden(tester, 'daily_scheduling_widget');

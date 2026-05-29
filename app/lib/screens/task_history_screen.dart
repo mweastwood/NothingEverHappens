@@ -4,6 +4,7 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/task_delta.dart';
 import '../widgets/task_delta_widget.dart';
 import '../logic/task_repository.dart';
+import '../logic/l10n_extension.dart';
 
 class TaskHistoryScreen extends StatelessWidget {
   const TaskHistoryScreen({super.key});
@@ -37,17 +38,21 @@ class TaskHistoryScreen extends StatelessWidget {
       stream: taskRepository.getHistory(),
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SliverFillRemaining(
+          return SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.history_outlined, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
+                  const Icon(
+                    Icons.history_outlined,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
                   Text(
-                    'No history yet',
-                    style: TextStyle(
+                    context.l10n.noHistoryYet,
+                    style: const TextStyle(
                       fontSize: 16,
                       color: Colors.grey,
                       fontWeight: FontWeight.w500,

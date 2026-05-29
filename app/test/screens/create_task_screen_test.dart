@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/screens/create_task_screen.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 import 'create_task_screen_test.mocks.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import '../test_helper.dart';
 
 @GenerateMocks([TaskRepository])
 void main() {
@@ -24,8 +25,8 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Provider<ErrorHandler>(
+      buildTestableWidget(
+        child: Provider<ErrorHandler>(
           create: (_) => ErrorHandler(),
           child: const CreateTaskScreen(),
         ),
@@ -68,8 +69,8 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Provider<ErrorHandler>(
+      buildTestableWidget(
+        child: Provider<ErrorHandler>(
           create: (_) => ErrorHandler(),
           child: const CreateTaskScreen(),
         ),
@@ -96,8 +97,8 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Provider<ErrorHandler>(
+      buildTestableWidget(
+        child: Provider<ErrorHandler>(
           create: (_) => ErrorHandler(),
           child: const CreateTaskScreen(),
         ),
@@ -117,7 +118,7 @@ void main() {
   testGoldens('CreateTaskScreen renders correctly', (tester) async {
     await tester.pumpWidgetBuilder(
       const CreateTaskScreen(),
-      wrapper: (child) => materialAppWrapper(
+      wrapper: (child) => l10nMaterialAppWrapper(
         theme: ThemeData.light(useMaterial3: true).copyWith(
           shadowColor: Colors.transparent,
           textTheme: ThemeData.light(
@@ -144,7 +145,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         const CreateTaskScreen(),
         wrapper: (child) =>
-            materialAppWrapper(
+            l10nMaterialAppWrapper(
               theme: ThemeData.light(useMaterial3: true).copyWith(
                 shadowColor: Colors.transparent,
                 textTheme: ThemeData.light(
@@ -197,8 +198,8 @@ void main() {
     });
 
     Widget createWidgetUnderTest() {
-      return MaterialApp(
-        home: MultiProvider(
+      return buildTestableWidget(
+        child: MultiProvider(
           providers: [
             Provider<ErrorHandler>(create: (_) => ErrorHandler()),
             Provider<TaskRepository?>.value(value: mockRepository),

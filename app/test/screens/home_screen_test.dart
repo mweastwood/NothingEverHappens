@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:rxdart/rxdart.dart';
+import '../test_helper.dart';
 
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
@@ -46,7 +47,7 @@ void main() {
         Provider<AuthRepository>.value(value: mockAuthRepository),
         Provider<TaskRepository>.value(value: mockTaskRepository),
       ],
-      child: const MaterialApp(home: HomeScreen()),
+      child: buildTestableWidget(child: const HomeScreen()),
     );
   }
 

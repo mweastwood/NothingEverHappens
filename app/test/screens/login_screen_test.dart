@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/screens/login_screen.dart';
 import 'package:provider/provider.dart';
+import '../test_helper.dart';
 
 @GenerateNiceMocks([MockSpec<AuthRepository>()])
 import 'login_screen_test.mocks.dart';
@@ -39,7 +40,7 @@ void main() {
   testGoldens('LoginScreen renders correctly in initial state', (tester) async {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
-      wrapper: materialAppWrapper(),
+      wrapper: l10nMaterialAppWrapper(),
       surfaceSize: const Size(400, 800),
     );
     await screenMatchesGolden(tester, 'login_screen');
@@ -58,7 +59,7 @@ void main() {
 
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
-      wrapper: materialAppWrapper(
+      wrapper: l10nMaterialAppWrapper(
         theme: ThemeData.light(useMaterial3: true).copyWith(
           shadowColor: Colors.transparent,
           textTheme: ThemeData.light(
@@ -96,7 +97,7 @@ void main() {
 
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
-      wrapper: materialAppWrapper(
+      wrapper: l10nMaterialAppWrapper(
         theme: ThemeData.light(useMaterial3: true).copyWith(
           shadowColor: Colors.transparent,
           textTheme: ThemeData.light(
