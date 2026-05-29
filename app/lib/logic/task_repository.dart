@@ -1,8 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:uuid/uuid.dart';
-import 'app_clock.dart';
-import 'civil_day.dart';
-import 'relative_time.dart';
 import 'task.dart';
 import 'task_delta.dart';
 import 'task_list.dart';
@@ -97,7 +93,9 @@ class TaskRepository {
     batch.delete(_tasksRef.doc(id));
     batch.set(_historyRef.doc(delta.id), delta);
 
-    final spawnedDocs = await _tasksRef.where('parentTaskId', isEqualTo: id).get();
+    final spawnedDocs = await _tasksRef
+        .where('parentTaskId', isEqualTo: id)
+        .get();
     for (final doc in spawnedDocs.docs) {
       batch.delete(doc.reference);
     }

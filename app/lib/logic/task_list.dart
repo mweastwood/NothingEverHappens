@@ -1,6 +1,5 @@
 import 'package:uuid/uuid.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
-import 'civil_day.dart';
 import 'task.dart';
 import 'task_delta.dart';
 import 'relative_time.dart';
@@ -90,9 +89,9 @@ class TaskList {
       } else {
         // We either have no dailyTimes (fallback/compatibility), or we have completed the last daily occurrence.
         // Reschedule the recurring task to the next occurrence day.
-        final today = CivilDay.fromDateTime(now);
-        
-        final nextOccur = task.schedule.nextOccurrenceAfter(task.schedule.scheduledDate);
+        final nextOccur = task.schedule.nextOccurrenceAfter(
+          task.schedule.scheduledDate,
+        );
 
         TaskSchedule newSchedule;
         if (task.schedule is DailySchedule) {

@@ -277,10 +277,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           missedPolicy: _scheduleType == RecurrenceType.oneOff
               ? MissedPolicy.rollover
               : _missedPolicy,
-          isMaster: _scheduleType != RecurrenceType.oneOff &&
+          isMaster:
+              _scheduleType != RecurrenceType.oneOff &&
               _missedPolicy == MissedPolicy.stack,
-          lastSpawnedDate: _scheduleType != RecurrenceType.oneOff &&
-              _missedPolicy == MissedPolicy.stack
+          lastSpawnedDate:
+              _scheduleType != RecurrenceType.oneOff &&
+                  _missedPolicy == MissedPolicy.stack
               ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
               : null,
         );
@@ -302,9 +304,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               newMissedPolicy: _scheduleType == RecurrenceType.oneOff
                   ? MissedPolicy.rollover
                   : _missedPolicy,
-              newIsMaster: _scheduleType != RecurrenceType.oneOff &&
+              newIsMaster:
+                  _scheduleType != RecurrenceType.oneOff &&
                   _missedPolicy == MissedPolicy.stack,
-              newLastSpawnedDate: widget.taskToEdit!.lastSpawnedDate ??
+              newLastSpawnedDate:
+                  widget.taskToEdit!.lastSpawnedDate ??
                   (_scheduleType != RecurrenceType.oneOff &&
                           _missedPolicy == MissedPolicy.stack
                       ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
@@ -531,10 +535,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                   DropdownButtonFormField<MissedPolicy>(
                                     key: const Key('missed_policy_dropdown'),
                                     isExpanded: true,
-                                    value: _missedPolicy,
+                                    initialValue: _missedPolicy,
                                     decoration: InputDecoration(
                                       border: const OutlineInputBorder(),
-                                      helperText: context.l10n.missedPolicyHelper,
+                                      helperText:
+                                          context.l10n.missedPolicyHelper,
                                     ),
                                     items: [
                                       DropdownMenuItem(
@@ -564,10 +569,16 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    _getMissedPolicyDescription(context, _missedPolicy),
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.outline,
+                                    _getMissedPolicyDescription(
+                                      context,
+                                      _missedPolicy,
                                     ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.outline,
+                                        ),
                                   ),
                                 ],
                               ],
@@ -618,7 +629,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     );
   }
 
-  String _getMissedPolicyDescription(BuildContext context, MissedPolicy policy) {
+  String _getMissedPolicyDescription(
+    BuildContext context,
+    MissedPolicy policy,
+  ) {
     switch (policy) {
       case MissedPolicy.rollover:
         return context.l10n.rolloverDescription;

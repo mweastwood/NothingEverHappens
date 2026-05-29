@@ -4,8 +4,6 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_list.dart';
-import 'package:nothing_ever_happens/logic/task_repository.dart';
-import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 
 void main() {
@@ -467,29 +465,43 @@ void main() {
   });
 
   group('Missed Occurrence Policies Strategy Unit Tests', () {
-    test('1. Rollover (Push to Next Day): Overdue Monday task completed on Tuesday reschedules to Tuesday (original path)', () {
-      // Create a daily task scheduled for Monday
-      final monday = const CivilDay(year: 2026, month: 5, day: 25);
-      final task = Task(
-        id: 'rollover-task',
-        title: 'Water Plants',
-        description: 'Every day',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: DailySchedule(startDate: monday, interval: 1),
-        missedPolicy: MissedPolicy.rollover,
-      );
+    test(
+      '1. Rollover (Push to Next Day): Overdue Monday task completed on Tuesday reschedules to Tuesday (original path)',
+      () {
+        // Create a daily task scheduled for Monday
+        final monday = const CivilDay(year: 2026, month: 5, day: 25);
+        final task = Task(
+          id: 'rollover-task',
+          title: 'Water Plants',
+          description: 'Every day',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: DailySchedule(startDate: monday, interval: 1),
+          missedPolicy: MissedPolicy.rollover,
+        );
 
-      // Verify that on Tuesday, it is overdue
-      final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
-      expect(task.isOverdue(tuesdayDateTime), isTrue);
+        // Verify that on Tuesday, it is overdue
+        final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
+        expect(task.isOverdue(tuesdayDateTime), isTrue);
 
-      // Simulate completion on Tuesday
-      final state = TaskList([task]).complete('rollover-task', 'user-1');
+        // Simulate completion on Tuesday
+        final state = TaskList([task]).complete('rollover-task', 'user-1');
 
-      // The next occurrence should continue from its original path (strictly after Monday -> Tuesday)
-      final completedTask = state.activeTasks.firstWhere((t) => t.id == 'rollover-task');
-      expect(completedTask.schedule.scheduledDate, const CivilDay(year: 2026, month: 5, day: 26));
-    });
+        // The next occurrence should continue from its original path (strictly after Monday -> Tuesday)
+        final completedTask = state.activeTasks.firstWhere(
+          (t) => t.id == 'rollover-task',
+        );
+        expect(
+          completedTask.schedule.scheduledDate,
+          const CivilDay(year: 2026, month: 5, day: 26),
+        );
+      },
+    );
   });
 }
