@@ -59,7 +59,9 @@ class ErrorHandler {
           children: [
             const Icon(Icons.error_outline, color: Colors.red),
             const SizedBox(width: 8),
-            const Text('Error Occurred'),
+            const Expanded(
+              child: Text('Error Occurred'),
+            ),
           ],
         ),
         content: Column(
