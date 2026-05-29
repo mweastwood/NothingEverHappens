@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/widgets/daily_time_list_widget.dart';
+import '../test_helper.dart';
 
 void main() {
   group('DailyTimeListWidget Goldens', () {
@@ -47,7 +48,7 @@ void main() {
 
       await tester.pumpWidgetBuilder(
         builder.build(),
-        wrapper: materialAppWrapper(),
+        wrapper: l10nMaterialAppWrapper(),
         surfaceSize: const Size(800, 1600),
       );
       await screenMatchesGolden(tester, 'daily_time_list_widget_scenarios');
@@ -67,8 +68,8 @@ void main() {
       ]);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: DailyTimeListWidget(controller: controller)),
+        buildTestableWidget(
+          child: Scaffold(body: DailyTimeListWidget(controller: controller)),
         ),
       );
 

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/absolute_time_widget.dart';
+import '../test_helper.dart';
 import 'absolute_time_widget_robot.dart';
 
 void main() {
@@ -11,8 +12,8 @@ void main() {
       final controller = ValueNotifier(initialDate);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: AbsoluteTimeWidget(controller: controller)),
+        buildTestableWidget(
+          child: Scaffold(body: AbsoluteTimeWidget(controller: controller)),
         ),
       );
 
@@ -25,8 +26,8 @@ void main() {
       final controller = ValueNotifier(initialDate);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: AbsoluteTimeWidget(controller: controller)),
+        buildTestableWidget(
+          child: Scaffold(body: AbsoluteTimeWidget(controller: controller)),
         ),
       );
 
@@ -44,8 +45,8 @@ void main() {
       final robot = AbsoluteTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: AbsoluteTimeWidget(controller: controller)),
+        buildTestableWidget(
+          child: Scaffold(body: AbsoluteTimeWidget(controller: controller)),
         ),
       );
 
@@ -63,8 +64,8 @@ void main() {
       final robot = AbsoluteTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: AbsoluteTimeWidget(controller: controller)),
+        buildTestableWidget(
+          child: Scaffold(body: AbsoluteTimeWidget(controller: controller)),
         ),
       );
 
@@ -87,7 +88,7 @@ void main() {
 
       await tester.pumpWidgetBuilder(
         builder.build(),
-        wrapper: materialAppWrapper(),
+        wrapper: l10nMaterialAppWrapper(),
       );
       await screenMatchesGolden(tester, 'absolute_time_widget');
     });

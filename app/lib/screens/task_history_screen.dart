@@ -51,7 +51,7 @@ class TaskHistoryScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    context.l10n?.noHistoryYet ?? 'No history yet',
+                    context.l10n.noHistoryYet,
                     style: const TextStyle(
                       fontSize: 16,
                       color: Colors.grey,

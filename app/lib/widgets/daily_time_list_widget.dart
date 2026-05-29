@@ -103,7 +103,7 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          context.l10n?.dailyOccurrencesHeader ?? 'Daily Occurrences',
+          context.l10n.dailyOccurrencesHeader,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -138,7 +138,7 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  context.l10n?.startTimeLabel ?? 'Start Time',
+                                  context.l10n.startTimeLabel,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
@@ -173,7 +173,7 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  context.l10n?.dueTimeLabel ?? 'Due Time',
+                                  context.l10n.dueTimeLabel,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
@@ -208,8 +208,7 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  context.l10n?.notificationTimeLabel ??
-                                      'Notification Time',
+                                  context.l10n.notificationTimeLabel,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
@@ -236,7 +235,7 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                                       size: 16,
                                     ),
                                     label: Text(
-                                      context.l10n?.noneLabel ?? 'None',
+                                      context.l10n.noneLabel,
                                       style: const TextStyle(fontSize: 13),
                                     ),
                                   )
@@ -278,11 +277,9 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                                         visualDensity: VisualDensity.compact,
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(),
-                                        tooltip:
-                                            context
-                                                .l10n
-                                                ?.clearNotificationTimeTooltip ??
-                                            'Clear notification time',
+                                        tooltip: context
+                                            .l10n
+                                            .clearNotificationTimeTooltip,
                                       ),
                                     ],
                                   ),
@@ -299,9 +296,7 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                             color: Theme.of(context).colorScheme.error,
                           ),
                           onPressed: () => _removeTimeSlot(index),
-                          tooltip:
-                              context.l10n?.removeTimeSlotTooltip ??
-                              'Remove time slot',
+                          tooltip: context.l10n.removeTimeSlotTooltip,
                         ),
                       ],
                     ],
@@ -315,7 +310,7 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
         OutlinedButton.icon(
           onPressed: _addTimeSlot,
           icon: const Icon(Icons.add, size: 18),
-          label: Text(context.l10n?.addTimeSlotButton ?? 'Add Time Slot'),
+          label: Text(context.l10n.addTimeSlotButton),
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(double.infinity, 44),
             shape: RoundedRectangleBorder(

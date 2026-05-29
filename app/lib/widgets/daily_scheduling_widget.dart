@@ -44,7 +44,7 @@ class _DailySchedulingWidgetState extends State<DailySchedulingWidget> {
         Material(
           color: Colors.transparent,
           child: ListTile(
-            title: Text(context.l10n?.startDateLabel ?? 'Start Date'),
+            title: Text(context.l10n.startDateLabel),
             subtitle: Text(
               '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
             ),
@@ -60,11 +60,9 @@ class _DailySchedulingWidgetState extends State<DailySchedulingWidget> {
         TextFormField(
           controller: widget.intervalController,
           decoration: InputDecoration(
-            labelText: context.l10n?.daysIntervalLabel ?? 'Days Interval',
+            labelText: context.l10n.daysIntervalLabel,
             border: const OutlineInputBorder(),
-            helperText:
-                context.l10n?.daysIntervalHelper ??
-                'E.g., 1 for every day, 2 for every other day',
+            helperText: context.l10n.daysIntervalHelper,
           ),
           keyboardType: TextInputType.number,
         ),

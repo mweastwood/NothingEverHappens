@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/widgets/task_delta_widget.dart';
+import '../test_helper.dart';
 
 void main() {
   testWidgets('TaskDeltaWidget shows operation in title', (tester) async {
@@ -18,8 +19,8 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: TaskDeltaWidget(delta: delta)),
+      buildTestableWidget(
+        child: Scaffold(body: TaskDeltaWidget(delta: delta)),
       ),
     );
 
@@ -38,8 +39,8 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: TaskDeltaWidget(delta: delta)),
+      buildTestableWidget(
+        child: Scaffold(body: TaskDeltaWidget(delta: delta)),
       ),
     );
 
@@ -70,8 +71,8 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: TaskDeltaWidget(delta: delta)),
+      buildTestableWidget(
+        child: Scaffold(body: TaskDeltaWidget(delta: delta)),
       ),
     );
 
@@ -108,7 +109,7 @@ void main() {
 
     await tester.pumpWidgetBuilder(
       builder.build(),
-      wrapper: materialAppWrapper(),
+      wrapper: l10nMaterialAppWrapper(),
     );
     await screenMatchesGolden(tester, 'task_delta_widget');
   });

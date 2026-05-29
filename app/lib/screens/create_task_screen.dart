@@ -232,12 +232,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           case RecurrenceType.weekly:
             if (_selectedWeekdays.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    context.l10n?.selectAtLeastOneDayError ??
-                        'Please select at least one day of the week',
-                  ),
-                ),
+                SnackBar(content: Text(context.l10n.selectAtLeastOneDayError)),
               );
               return;
             }
@@ -358,8 +353,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           appBar: AppBar(
             title: Text(
               widget.taskToEdit != null
-                  ? (context.l10n?.editTaskTitle ?? 'Edit Task')
-                  : (context.l10n?.newTaskTitle ?? 'New Task'),
+                  ? context.l10n.editTaskTitle
+                  : context.l10n.newTaskTitle,
             ),
           ),
           body: Column(
@@ -382,15 +377,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                   focusNode: _titleFocusNode,
                                   autofocus: true,
                                   decoration: InputDecoration(
-                                    labelText:
-                                        context.l10n?.titleFieldLabel ??
-                                        'Title',
+                                    labelText: context.l10n.titleFieldLabel,
                                     border: const OutlineInputBorder(),
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return context.l10n?.titleRequiredError ??
-                                          'Please enter a title';
+                                      return context.l10n.titleRequiredError;
                                     }
                                     return null;
                                   },
@@ -400,8 +392,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                   controller: _descriptionController,
                                   decoration: InputDecoration(
                                     labelText:
-                                        context.l10n?.descriptionFieldLabel ??
-                                        'Description',
+                                        context.l10n.descriptionFieldLabel,
                                     border: const OutlineInputBorder(),
                                   ),
                                   maxLines: 3,
@@ -412,14 +403,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                   controller: _estimatedDurationController,
                                   decoration: InputDecoration(
                                     labelText:
-                                        context
-                                            .l10n
-                                            ?.estimatedEffortFieldLabel ??
-                                        'Estimated Effort (Minutes)',
+                                        context.l10n.estimatedEffortFieldLabel,
                                     border: const OutlineInputBorder(),
                                     helperText:
-                                        context.l10n?.estimatedEffortHelper ??
-                                        'Optional. Enter the estimated time in minutes.',
+                                        context.l10n.estimatedEffortHelper,
                                   ),
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
@@ -430,9 +417,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                       final val = int.tryParse(value);
                                       if (val == null || val <= 0) {
                                         return context
-                                                .l10n
-                                                ?.estimatedEffortValidationError ??
-                                            'Please enter a positive number of minutes';
+                                            .l10n
+                                            .estimatedEffortValidationError;
                                       }
                                     }
                                     return null;
@@ -450,7 +436,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  context.l10n?.scheduleHeader ?? 'Schedule',
+                                  context.l10n.scheduleHeader,
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -463,22 +449,15 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                     segments: [
                                       ButtonSegment<RecurrenceType>(
                                         value: RecurrenceType.oneOff,
-                                        label: Text(
-                                          context.l10n?.oneOffLabel ??
-                                              'One-off',
-                                        ),
+                                        label: Text(context.l10n.oneOffLabel),
                                       ),
                                       ButtonSegment<RecurrenceType>(
                                         value: RecurrenceType.daily,
-                                        label: Text(
-                                          context.l10n?.dailyLabel ?? 'Daily',
-                                        ),
+                                        label: Text(context.l10n.dailyLabel),
                                       ),
                                       ButtonSegment<RecurrenceType>(
                                         value: RecurrenceType.weekly,
-                                        label: Text(
-                                          context.l10n?.weeklyLabel ?? 'Weekly',
-                                        ),
+                                        label: Text(context.l10n.weeklyLabel),
                                       ),
                                     ],
                                     selected: <RecurrenceType>{_scheduleType},
@@ -536,7 +515,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                       onPressed: _isSaving
                           ? null
                           : () => Navigator.pop(context),
-                      child: Text(context.l10n?.discardButton ?? 'Discard'),
+                      child: Text(context.l10n.discardButton),
                     ),
                     const SizedBox(width: 16),
                     FilledButton(
@@ -554,7 +533,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : Text(context.l10n?.saveButton ?? 'Save'),
+                          : Text(context.l10n.saveButton),
                     ),
                   ],
                 ),

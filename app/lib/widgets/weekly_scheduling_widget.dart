@@ -48,7 +48,7 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
         Material(
           color: Colors.transparent,
           child: ListTile(
-            title: Text(context.l10n?.startDateLabel ?? 'Start Date'),
+            title: Text(context.l10n.startDateLabel),
             subtitle: Text(
               '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
             ),
@@ -64,15 +64,14 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
         TextFormField(
           controller: widget.intervalController,
           decoration: InputDecoration(
-            labelText: context.l10n?.weeksIntervalLabel ?? 'Weeks Interval',
+            labelText: context.l10n.weeksIntervalLabel,
             border: const OutlineInputBorder(),
-            helperText:
-                context.l10n?.weeksIntervalHelper ?? 'E.g., 1 for every week',
+            helperText: context.l10n.weeksIntervalHelper,
           ),
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 16),
-        Text(context.l10n?.repeatsOnLabel ?? 'Repeats on'),
+        Text(context.l10n.repeatsOnLabel),
         Wrap(
           spacing: 8.0,
           children: List.generate(7, (index) {

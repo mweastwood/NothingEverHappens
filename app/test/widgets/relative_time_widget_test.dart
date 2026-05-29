@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
+import '../test_helper.dart';
 import 'relative_time_widget_robot.dart';
 
 void main() {
@@ -20,8 +21,8 @@ void main() {
       final robot = RelativeTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: RelativeTimeWidget(
               controller: controller,
               constraint: RelativeTimeConstraint.dayOfOrAfter,
@@ -49,8 +50,8 @@ void main() {
       final robot = RelativeTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: RelativeTimeWidget(
               controller: controller,
               constraint: RelativeTimeConstraint.dayOfOrAfter,
@@ -76,8 +77,8 @@ void main() {
       final robot = RelativeTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: RelativeTimeWidget(
               controller: controller,
               constraint: RelativeTimeConstraint.dayOfOrAfter,
@@ -104,8 +105,8 @@ void main() {
         final robot = RelativeTimeWidgetRobot(tester);
 
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
+          buildTestableWidget(
+            child: Scaffold(
               body: RelativeTimeWidget(
                 controller: controller,
                 constraint: RelativeTimeConstraint.dayOfOrAfter,
@@ -140,8 +141,8 @@ void main() {
         final robot = RelativeTimeWidgetRobot(tester);
 
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
+          buildTestableWidget(
+            child: Scaffold(
               body: RelativeTimeWidget(
                 controller: controller,
                 constraint: RelativeTimeConstraint.dayOfOrAfter,
@@ -168,8 +169,8 @@ void main() {
       final robot = RelativeTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: RelativeTimeWidget(
               controller: controller,
               constraint: RelativeTimeConstraint.dayOfOrAfter,
@@ -197,8 +198,8 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: RelativeTimeWidget(
               controller: controller,
               constraint: RelativeTimeConstraint.dayOfOrAfter,
@@ -227,8 +228,8 @@ void main() {
       final robot = RelativeTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: RelativeTimeWidget(
               controller: controller,
               constraint: RelativeTimeConstraint.dayOfOrBefore,
@@ -254,8 +255,8 @@ void main() {
       final robot = RelativeTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: RelativeTimeWidget(
               controller: controller,
               constraint: RelativeTimeConstraint.dayOfOrBefore,
@@ -285,8 +286,8 @@ void main() {
       final robot = RelativeTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: RelativeTimeWidget(
               controller: controller,
               constraint: RelativeTimeConstraint.dayOfOrBefore,
@@ -338,7 +339,7 @@ void main() {
 
     await tester.pumpWidgetBuilder(
       builder.build(),
-      wrapper: materialAppWrapper(),
+      wrapper: l10nMaterialAppWrapper(),
     );
     await screenMatchesGolden(tester, 'relative_time_widget');
   });

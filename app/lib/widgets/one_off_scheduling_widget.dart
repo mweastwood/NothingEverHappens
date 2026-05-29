@@ -25,10 +25,7 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              context.l10n?.dueLabel ?? 'Due: ',
-              style: const TextStyle(fontSize: 18),
-            ),
+            Text(context.l10n.dueLabel, style: const TextStyle(fontSize: 18)),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -47,8 +44,7 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          context.l10n?.dueDescription ??
-                              'When does this task need to be completed before it should be considered overdue?',
+                          context.l10n.dueDescription,
                           style: const TextStyle(fontStyle: FontStyle.italic),
                         ),
                       ),
@@ -63,7 +59,7 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
         const Divider(),
         const SizedBox(height: 24),
         Text(
-          context.l10n?.advancedHeader ?? 'Advanced',
+          context.l10n.advancedHeader,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
@@ -71,7 +67,7 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              context.l10n?.snoozeUntilLabel ?? 'Snooze Until: ',
+              context.l10n.snoozeUntilLabel,
               style: const TextStyle(fontSize: 18),
             ),
             const SizedBox(width: 8),
@@ -92,8 +88,7 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          context.l10n?.snoozeUntilDescription ??
-                              'The task will be hidden from your primary list of tasks until this time.',
+                          context.l10n.snoozeUntilDescription,
                           style: const TextStyle(fontStyle: FontStyle.italic),
                         ),
                       ),

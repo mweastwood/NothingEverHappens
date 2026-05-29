@@ -5,7 +5,7 @@ import 'package:nothing_ever_happens/l10n/app_localizations.dart';
 import 'package:nothing_ever_happens/logic/l10n_extension.dart';
 
 void main() {
-  group('AppLocalizations Tests', () {
+  group('AppLocalizations Strict Enforcement & Templating Tests', () {
     Widget buildTestWidget({Locale locale = const Locale('en')}) {
       return MaterialApp(
         locale: locale,
@@ -21,18 +21,30 @@ void main() {
             builder: (context) {
               return Column(
                 children: [
+                  Text(context.l10n.appName, key: const Key('app_name_text')),
                   Text(
-                    context.l10n?.appName ?? 'Fallback App Name',
-                    key: const Key('app_name_text'),
-                  ),
-                  Text(
-                    context.l10n?.errorOccurred ?? 'Fallback Error Occurred',
+                    context.l10n.errorOccurred,
                     key: const Key('error_occurred_text'),
                   ),
                   Text(
-                    context.l10n?.deleteTaskConfirmBody('Task Alpha') ??
-                        'Fallback Delete Body',
+                    context.l10n.deleteTaskConfirmBody('Task Alpha'),
                     key: const Key('delete_body_text'),
+                  ),
+                  Text(
+                    context.l10n.everyNDays(3),
+                    key: const Key('every_n_days_text'),
+                  ),
+                  Text(
+                    context.l10n.everyNWeeks(4),
+                    key: const Key('every_n_weeks_text'),
+                  ),
+                  Text(
+                    context.l10n.startingDate('2026-05-29'),
+                    key: const Key('starting_date_text'),
+                  ),
+                  Text(
+                    context.l10n.onDaysOfWeek('Mon, Wed'),
+                    key: const Key('on_days_text'),
                   ),
                 ],
               );
@@ -42,63 +54,105 @@ void main() {
       );
     }
 
-    testWidgets('AppLocalizations loads English translations correctly', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(buildTestWidget(locale: const Locale('en')));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'AppLocalizations loads English translations and templates correctly',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(buildTestWidget(locale: const Locale('en')));
+        await tester.pumpAndSettle();
 
-      final appNameFinder = find.byKey(const Key('app_name_text'));
-      final errorOccurredFinder = find.byKey(const Key('error_occurred_text'));
-      final deleteBodyFinder = find.byKey(const Key('delete_body_text'));
+        expect(
+          tester.widget<Text>(find.byKey(const Key('app_name_text'))).data,
+          'Nothing Ever Happens',
+        );
+        expect(
+          tester
+              .widget<Text>(find.byKey(const Key('error_occurred_text')))
+              .data,
+          'Error Occurred',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const Key('delete_body_text'))).data,
+          'Are you sure you want to delete "Task Alpha"? This action will permanently remove the task.',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const Key('every_n_days_text'))).data,
+          'Every 3 days',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const Key('every_n_weeks_text'))).data,
+          'Every 4 weeks',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const Key('starting_date_text'))).data,
+          'Starting: 2026-05-29',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const Key('on_days_text'))).data,
+          'On: Mon, Wed',
+        );
+      },
+    );
 
-      expect(tester.widget<Text>(appNameFinder).data, 'Nothing Ever Happens');
-      expect(tester.widget<Text>(errorOccurredFinder).data, 'Error Occurred');
-      expect(
-        tester.widget<Text>(deleteBodyFinder).data,
-        'Are you sure you want to delete "Task Alpha"? This action will permanently remove the task.',
-      );
-    });
+    testWidgets(
+      'AppLocalizations loads Spanish translations and templates correctly',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(buildTestWidget(locale: const Locale('es')));
+        await tester.pumpAndSettle();
 
-    testWidgets('AppLocalizations loads Spanish translations correctly', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(buildTestWidget(locale: const Locale('es')));
-      await tester.pumpAndSettle();
+        expect(
+          tester.widget<Text>(find.byKey(const Key('app_name_text'))).data,
+          'Nunca Pasa Nada',
+        );
+        expect(
+          tester
+              .widget<Text>(find.byKey(const Key('error_occurred_text')))
+              .data,
+          'Ocurrió un error',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const Key('delete_body_text'))).data,
+          '¿Estás seguro de que quieres eliminar "Task Alpha"? Esta acción eliminará permanentemente la tarea.',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const Key('every_n_days_text'))).data,
+          'Cada 3 días',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const Key('every_n_weeks_text'))).data,
+          'Cada 4 semanas',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const Key('starting_date_text'))).data,
+          'Comenzando: 2026-05-29',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const Key('on_days_text'))).data,
+          'En: Mon, Wed',
+        );
+      },
+    );
 
-      final appNameFinder = find.byKey(const Key('app_name_text'));
-      final errorOccurredFinder = find.byKey(const Key('error_occurred_text'));
-      final deleteBodyFinder = find.byKey(const Key('delete_body_text'));
-
-      expect(tester.widget<Text>(appNameFinder).data, 'Nunca Pasa Nada');
-      expect(tester.widget<Text>(errorOccurredFinder).data, 'Ocurrió un error');
-      expect(
-        tester.widget<Text>(deleteBodyFinder).data,
-        '¿Estás seguro de que quieres eliminar "Task Alpha"? Esta acción eliminará permanentemente la tarea.',
-      );
-    });
-
-    testWidgets('L10n fallback pattern works when localizations are absent', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) {
-                return Text(
-                  context.l10n?.appName ?? 'Fallback App Name',
-                  key: const Key('fallback_text'),
-                );
-              },
+    testWidgets(
+      'Strict enforcement throws an exception when localizations are absent',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  // Accessing context.l10n should throw a null assertion/type error
+                  // because localizations are not provided in this tree.
+                  final _ = context.l10n.appName;
+                  return const Text('Should not render');
+                },
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
 
-      final fallbackTextFinder = find.byKey(const Key('fallback_text'));
-      expect(tester.widget<Text>(fallbackTextFinder).data, 'Fallback App Name');
-    });
+        // Verify that building the widget threw an assertion or type error
+        expect(tester.takeException(), isNotNull);
+      },
+    );
   });
 }

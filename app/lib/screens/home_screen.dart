@@ -30,9 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(
-            title: Text(context.l10n?.appName ?? 'Nothing Ever Happens'),
-          ),
+          appBar: AppBar(title: Text(context.l10n.appName)),
           drawer: _buildDrawer(context),
           body: _currentIndex == 0
               ? const TaskListScreen()
@@ -50,24 +48,24 @@ class _HomeScreenState extends State<HomeScreen> {
               NavigationDestination(
                 icon: const Icon(Icons.list_outlined),
                 selectedIcon: const Icon(Icons.list),
-                label: context.l10n?.tasksTab ?? 'Tasks',
+                label: context.l10n.tasksTab,
               ),
               NavigationDestination(
                 icon: const Icon(Icons.calendar_month_outlined),
                 selectedIcon: const Icon(Icons.calendar_month),
-                label: context.l10n?.scheduleTab ?? 'Schedule',
+                label: context.l10n.scheduleTab,
               ),
               NavigationDestination(
                 icon: const Icon(Icons.history_outlined),
                 selectedIcon: const Icon(Icons.history),
-                label: context.l10n?.historyTab ?? 'History',
+                label: context.l10n.historyTab,
               ),
             ],
           ),
           floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
               ? FloatingActionButton(
                   onPressed: _addNewTask,
-                  tooltip: context.l10n?.addTaskTooltip ?? 'Add Task',
+                  tooltip: context.l10n.addTaskTooltip,
                   child: const Icon(Icons.add),
                 )
               : null,
@@ -84,11 +82,11 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           DrawerHeader(
             decoration: const BoxDecoration(color: Colors.blue),
-            child: Text(context.l10n?.menu ?? 'Menu'),
+            child: Text(context.l10n.menu),
           ),
           ListTile(
             leading: const Icon(Icons.logout),
-            title: Text(context.l10n?.logout ?? 'Logout'),
+            title: Text(context.l10n.logout),
             onTap: () async {
               await context.read<AuthRepository>().signOut();
             },

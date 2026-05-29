@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:provider/provider.dart';
+import '../test_helper.dart';
 
 import 'task_widget_test.mocks.dart';
 
@@ -43,7 +44,7 @@ void main() {
             body: Center(child: TaskWidget(task: testTask)),
           ),
         ),
-        wrapper: materialAppWrapper(
+        wrapper: l10nMaterialAppWrapper(
           theme: ThemeData.light(useMaterial3: true).copyWith(
             shadowColor: Colors.transparent,
             textTheme: ThemeData.light(

@@ -26,14 +26,13 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                context.l10n?.appName ?? 'Nothing Ever Happens',
+                context.l10n.appName,
                 style: Theme.of(context).textTheme.headlineMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               Text(
-                context.l10n?.pleaseSignInToContinue ??
-                    'Please sign in to continue',
+                context.l10n.pleaseSignInToContinue,
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 32),
@@ -84,9 +83,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     : const Icon(Icons.login),
                 label: Text(
                   _isLoading
-                      ? (context.l10n?.signingIn ?? 'Signing in...')
-                      : (context.l10n?.signInWithGoogle ??
-                            'Sign in with Google'),
+                      ? context.l10n.signingIn
+                      : context.l10n.signInWithGoogle,
                 ),
               ),
             ],

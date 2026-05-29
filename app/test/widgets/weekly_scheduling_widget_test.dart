@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/widgets/weekly_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/daily_time_list_widget.dart';
+import '../test_helper.dart';
 import 'weekly_scheduling_widget_robot.dart';
 
 void main() {
@@ -20,8 +21,8 @@ void main() {
       final selectedWeekdays = {1, 3, 5}; // Mon, Wed, Fri
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: SingleChildScrollView(
               child: WeeklySchedulingWidget(
                 startDate: startDate,
@@ -67,8 +68,8 @@ void main() {
       final robot = WeeklySchedulingWidgetRobot(tester);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
+        buildTestableWidget(
+          child: Scaffold(
             body: SingleChildScrollView(
               child: StatefulBuilder(
                 builder: (context, setState) {
@@ -128,7 +129,7 @@ void main() {
 
       await tester.pumpWidgetBuilder(
         builder.build(),
-        wrapper: materialAppWrapper(),
+        wrapper: l10nMaterialAppWrapper(),
         surfaceSize: const Size(800, 1000),
       );
       await screenMatchesGolden(tester, 'weekly_scheduling_widget');
