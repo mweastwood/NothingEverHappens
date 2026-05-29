@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../logic/auth_repository.dart';
+import '../logic/error_handler.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  static bool debugDisableAnimations = false;
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -26,15 +36,53 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               FilledButton.icon(
-                onPressed: () {
-                  final authRepo = Provider.of<AuthRepository>(
-                    context,
-                    listen: false,
-                  );
-                  authRepo.signInWithGoogle();
-                },
-                icon: const Icon(Icons.login),
-                label: const Text('Sign in with Google'),
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        setState(() {
+                          _isLoading = true;
+                        });
+                        try {
+                          final authRepo = Provider.of<AuthRepository>(
+                            context,
+                            listen: false,
+                          );
+                          await authRepo.signInWithGoogle();
+                        } catch (e, stackTrace) {
+                          if (context.mounted) {
+                            final errorHandler = Provider.of<ErrorHandler>(
+                              context,
+                              listen: false,
+                            );
+                            final report = errorHandler.report(
+                              e,
+                              stackTrace: stackTrace,
+                            );
+                            errorHandler.showErrorDialog(context, report);
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isLoading = false;
+                            });
+                          }
+                        }
+                      },
+                icon: _isLoading
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          value: LoginScreen.debugDisableAnimations
+                              ? 0.8
+                              : null,
+                          strokeWidth: 2.0,
+                        ),
+                      )
+                    : const Icon(Icons.login),
+                label: Text(
+                  _isLoading ? 'Signing in...' : 'Sign in with Google',
+                ),
               ),
             ],
           ),
