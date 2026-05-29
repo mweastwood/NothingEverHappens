@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: Deploy (Dev)
 
 on:
   workflow_run:
@@ -7,8 +7,12 @@ on:
     types: 
       - completed
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  deploy:
+  deploy_dev_firebase_web:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
@@ -27,19 +31,19 @@ jobs:
         run: flutter pub get
 
       - name: Build Web App
-        run: flutter build web --release --target lib/main_prod.dart
+        run: flutter build web --release --target lib/main_dev.dart
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           entryPoint: ./app
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV }}'
           channelId: live
-          projectId: nothing-ever-happens-prod
+          projectId: nothing-ever-happens-dev
         env:
           FIREBASE_CLI_PREVIEWS: hostingchannels
 
-  deploy_android:
+  deploy_dev_firebase_android:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
@@ -68,7 +72,7 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
 
       - name: Build Android APK
-        run: flutter build apk --release --flavor prod --target lib/main_prod.dart
+        run: flutter build apk --release --flavor dev --target lib/main_dev.dart
         env:
           ANDROID_KEYSTORE_PATH: "release.keystore"
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -78,8 +82,8 @@ jobs:
       - name: Upload to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
-          appId: "1:936469690744:android:a69a056ea58c5fd1f8708d"
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
+          appId: "1:631207034652:android:0cb5dc90de13c9472384d9"
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV }}
           groups: testers
-          file: app/build/app/outputs/flutter-apk/app-prod-release.apk
+          file: app/build/app/outputs/flutter-apk/app-dev-release.apk
 
