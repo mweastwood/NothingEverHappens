@@ -30,7 +30,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(title: Text(context.l10n?.appName ?? 'Nothing Ever Happens')),
+          appBar: AppBar(
+            title: Text(context.l10n?.appName ?? 'Nothing Ever Happens'),
+          ),
           drawer: _buildDrawer(context),
           body: _currentIndex == 0
               ? const TaskListScreen()

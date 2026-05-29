@@ -15,10 +15,7 @@ void main() {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        supportedLocales: const [
-          Locale('en'),
-          Locale('es'),
-        ],
+        supportedLocales: const [Locale('en'), Locale('es')],
         home: Scaffold(
           body: Builder(
             builder: (context) {
@@ -33,7 +30,8 @@ void main() {
                     key: const Key('error_occurred_text'),
                   ),
                   Text(
-                    context.l10n?.deleteTaskConfirmBody('Task Alpha') ?? 'Fallback Delete Body',
+                    context.l10n?.deleteTaskConfirmBody('Task Alpha') ??
+                        'Fallback Delete Body',
                     key: const Key('delete_body_text'),
                   ),
                 ],

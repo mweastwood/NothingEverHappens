@@ -66,7 +66,8 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
           decoration: InputDecoration(
             labelText: context.l10n?.weeksIntervalLabel ?? 'Weeks Interval',
             border: const OutlineInputBorder(),
-            helperText: context.l10n?.weeksIntervalHelper ?? 'E.g., 1 for every week',
+            helperText:
+                context.l10n?.weeksIntervalHelper ?? 'E.g., 1 for every week',
           ),
           keyboardType: TextInputType.number,
         ),

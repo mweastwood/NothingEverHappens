@@ -32,7 +32,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                context.l10n?.pleaseSignInToContinue ?? 'Please sign in to continue',
+                context.l10n?.pleaseSignInToContinue ??
+                    'Please sign in to continue',
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 32),
@@ -84,7 +85,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 label: Text(
                   _isLoading
                       ? (context.l10n?.signingIn ?? 'Signing in...')
-                      : (context.l10n?.signInWithGoogle ?? 'Sign in with Google'),
+                      : (context.l10n?.signInWithGoogle ??
+                            'Sign in with Google'),
                 ),
               ),
             ],

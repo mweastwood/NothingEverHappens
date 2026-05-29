@@ -62,7 +62,9 @@ class _DailySchedulingWidgetState extends State<DailySchedulingWidget> {
           decoration: InputDecoration(
             labelText: context.l10n?.daysIntervalLabel ?? 'Days Interval',
             border: const OutlineInputBorder(),
-            helperText: context.l10n?.daysIntervalHelper ?? 'E.g., 1 for every day, 2 for every other day',
+            helperText:
+                context.l10n?.daysIntervalHelper ??
+                'E.g., 1 for every day, 2 for every other day',
           ),
           keyboardType: TextInputType.number,
         ),

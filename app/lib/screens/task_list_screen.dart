@@ -48,7 +48,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return SliverToBoxAdapter(
-            child: Center(child: Text('${context.l10n?.errorOccurred ?? 'Error'}: ${snapshot.error}')),
+            child: Center(
+              child: Text(
+                '${context.l10n?.errorOccurred ?? 'Error'}: ${snapshot.error}',
+              ),
+            ),
           );
         }
 
@@ -67,7 +71,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
           return SliverToBoxAdapter(
             child: SizedBox(
               height: 200,
-              child: Center(child: Text(context.l10n?.noTasksYet ?? 'No tasks yet. Add one!')),
+              child: Center(
+                child: Text(
+                  context.l10n?.noTasksYet ?? 'No tasks yet. Add one!',
+                ),
+              ),
             ),
           );
         }

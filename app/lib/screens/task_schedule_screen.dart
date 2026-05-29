@@ -36,7 +36,11 @@ class TaskScheduleScreen extends StatelessWidget {
                   stream: taskRepository.getTasks(),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
-                      return Center(child: Text('${context.l10n?.errorOccurred ?? 'Error'}: ${snapshot.error}'));
+                      return Center(
+                        child: Text(
+                          '${context.l10n?.errorOccurred ?? 'Error'}: ${snapshot.error}',
+                        ),
+                      );
                     }
 
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -64,8 +68,9 @@ class TaskScheduleScreen extends StatelessWidget {
                                     color: Colors.grey,
                                   ),
                                   const SizedBox(height: 16),
-                                   Text(
-                                    context.l10n?.noRecurringTasksScheduled ?? 'No recurring tasks scheduled',
+                                  Text(
+                                    context.l10n?.noRecurringTasksScheduled ??
+                                        'No recurring tasks scheduled',
                                     style: const TextStyle(
                                       fontSize: 16,
                                       color: Colors.grey,
@@ -118,15 +123,19 @@ class TaskScheduleScreen extends StatelessWidget {
       final ds = task.schedule as DailySchedule;
       intervalStr = ds.interval == 1
           ? (context.l10n?.everyDay ?? 'Every day')
-          : (context.l10n?.everyNDays(ds.interval) ?? 'Every ${ds.interval} days');
-      final dateStr = '${ds.startDate.year}-${ds.startDate.month.toString().padLeft(2, '0')}-${ds.startDate.day.toString().padLeft(2, '0')}';
+          : (context.l10n?.everyNDays(ds.interval) ??
+                'Every ${ds.interval} days');
+      final dateStr =
+          '${ds.startDate.year}-${ds.startDate.month.toString().padLeft(2, '0')}-${ds.startDate.day.toString().padLeft(2, '0')}';
       startStr = context.l10n?.startingDate(dateStr) ?? 'Starting: $dateStr';
     } else if (task.schedule is WeeklySchedule) {
       final ws = task.schedule as WeeklySchedule;
       intervalStr = ws.interval == 1
           ? (context.l10n?.everyWeek ?? 'Every week')
-          : (context.l10n?.everyNWeeks(ws.interval) ?? 'Every ${ws.interval} weeks');
-      final dateStr = '${ws.startDate.year}-${ws.startDate.month.toString().padLeft(2, '0')}-${ws.startDate.day.toString().padLeft(2, '0')}';
+          : (context.l10n?.everyNWeeks(ws.interval) ??
+                'Every ${ws.interval} weeks');
+      final dateStr =
+          '${ws.startDate.year}-${ws.startDate.month.toString().padLeft(2, '0')}-${ws.startDate.day.toString().padLeft(2, '0')}';
       startStr = context.l10n?.startingDate(dateStr) ?? 'Starting: $dateStr';
 
       final dayNames = {
@@ -167,7 +176,8 @@ class TaskScheduleScreen extends StatelessWidget {
                     IconButton(
                       key: Key('edit_schedule_button_${task.id}'),
                       icon: const Icon(Icons.edit_calendar),
-                      tooltip: context.l10n?.editScheduleTooltip ?? 'Edit Schedule',
+                      tooltip:
+                          context.l10n?.editScheduleTooltip ?? 'Edit Schedule',
                       onPressed: () {
                         Navigator.push(
                           context,

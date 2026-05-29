@@ -233,7 +233,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             if (_selectedWeekdays.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(context.l10n?.selectAtLeastOneDayError ?? 'Please select at least one day of the week'),
+                  content: Text(
+                    context.l10n?.selectAtLeastOneDayError ??
+                        'Please select at least one day of the week',
+                  ),
                 ),
               );
               return;
@@ -353,9 +356,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         },
         child: Scaffold(
           appBar: AppBar(
-            title: Text(widget.taskToEdit != null
-                ? (context.l10n?.editTaskTitle ?? 'Edit Task')
-                : (context.l10n?.newTaskTitle ?? 'New Task')),
+            title: Text(
+              widget.taskToEdit != null
+                  ? (context.l10n?.editTaskTitle ?? 'Edit Task')
+                  : (context.l10n?.newTaskTitle ?? 'New Task'),
+            ),
           ),
           body: Column(
             children: [
@@ -377,12 +382,15 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                   focusNode: _titleFocusNode,
                                   autofocus: true,
                                   decoration: InputDecoration(
-                                    labelText: context.l10n?.titleFieldLabel ?? 'Title',
+                                    labelText:
+                                        context.l10n?.titleFieldLabel ??
+                                        'Title',
                                     border: const OutlineInputBorder(),
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return context.l10n?.titleRequiredError ?? 'Please enter a title';
+                                      return context.l10n?.titleRequiredError ??
+                                          'Please enter a title';
                                     }
                                     return null;
                                   },
@@ -391,7 +399,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                 TextFormField(
                                   controller: _descriptionController,
                                   decoration: InputDecoration(
-                                    labelText: context.l10n?.descriptionFieldLabel ?? 'Description',
+                                    labelText:
+                                        context.l10n?.descriptionFieldLabel ??
+                                        'Description',
                                     border: const OutlineInputBorder(),
                                   ),
                                   maxLines: 3,
@@ -401,9 +411,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                   key: const Key('estimated_effort_field'),
                                   controller: _estimatedDurationController,
                                   decoration: InputDecoration(
-                                    labelText: context.l10n?.estimatedEffortFieldLabel ?? 'Estimated Effort (Minutes)',
+                                    labelText:
+                                        context
+                                            .l10n
+                                            ?.estimatedEffortFieldLabel ??
+                                        'Estimated Effort (Minutes)',
                                     border: const OutlineInputBorder(),
-                                    helperText: context.l10n?.estimatedEffortHelper ??
+                                    helperText:
+                                        context.l10n?.estimatedEffortHelper ??
                                         'Optional. Enter the estimated time in minutes.',
                                   ),
                                   keyboardType: TextInputType.number,
@@ -414,7 +429,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                     if (value != null && value.isNotEmpty) {
                                       final val = int.tryParse(value);
                                       if (val == null || val <= 0) {
-                                          return context.l10n?.estimatedEffortValidationError ?? 'Please enter a positive number of minutes';
+                                        return context
+                                                .l10n
+                                                ?.estimatedEffortValidationError ??
+                                            'Please enter a positive number of minutes';
                                       }
                                     }
                                     return null;
@@ -431,7 +449,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                 Text(
+                                Text(
                                   context.l10n?.scheduleHeader ?? 'Schedule',
                                   style: const TextStyle(
                                     fontSize: 18,
@@ -445,15 +463,22 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                     segments: [
                                       ButtonSegment<RecurrenceType>(
                                         value: RecurrenceType.oneOff,
-                                        label: Text(context.l10n?.oneOffLabel ?? 'One-off'),
+                                        label: Text(
+                                          context.l10n?.oneOffLabel ??
+                                              'One-off',
+                                        ),
                                       ),
                                       ButtonSegment<RecurrenceType>(
                                         value: RecurrenceType.daily,
-                                        label: Text(context.l10n?.dailyLabel ?? 'Daily'),
+                                        label: Text(
+                                          context.l10n?.dailyLabel ?? 'Daily',
+                                        ),
                                       ),
                                       ButtonSegment<RecurrenceType>(
                                         value: RecurrenceType.weekly,
-                                        label: Text(context.l10n?.weeklyLabel ?? 'Weekly'),
+                                        label: Text(
+                                          context.l10n?.weeklyLabel ?? 'Weekly',
+                                        ),
                                       ),
                                     ],
                                     selected: <RecurrenceType>{_scheduleType},

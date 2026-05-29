@@ -208,7 +208,8 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  context.l10n?.notificationTimeLabel ?? 'Notification Time',
+                                  context.l10n?.notificationTimeLabel ??
+                                      'Notification Time',
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
@@ -277,7 +278,11 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                                         visualDensity: VisualDensity.compact,
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(),
-                                        tooltip: context.l10n?.clearNotificationTimeTooltip ?? 'Clear notification time',
+                                        tooltip:
+                                            context
+                                                .l10n
+                                                ?.clearNotificationTimeTooltip ??
+                                            'Clear notification time',
                                       ),
                                     ],
                                   ),
@@ -294,7 +299,9 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
                             color: Theme.of(context).colorScheme.error,
                           ),
                           onPressed: () => _removeTimeSlot(index),
-                          tooltip: context.l10n?.removeTimeSlotTooltip ?? 'Remove time slot',
+                          tooltip:
+                              context.l10n?.removeTimeSlotTooltip ??
+                              'Remove time slot',
                         ),
                       ],
                     ],

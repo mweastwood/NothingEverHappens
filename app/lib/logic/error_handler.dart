@@ -60,7 +60,9 @@ class ErrorHandler {
           children: [
             const Icon(Icons.error_outline, color: Colors.red),
             const SizedBox(width: 8),
-            Expanded(child: Text(context.l10n?.errorOccurred ?? 'Error Occurred')),
+            Expanded(
+              child: Text(context.l10n?.errorOccurred ?? 'Error Occurred'),
+            ),
           ],
         ),
         content: Column(
@@ -68,7 +70,8 @@ class ErrorHandler {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              context.l10n?.somethingWentWrong ?? 'Something went wrong. Please share this error code with the developer:',
+              context.l10n?.somethingWentWrong ??
+                  'Something went wrong. Please share this error code with the developer:',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
