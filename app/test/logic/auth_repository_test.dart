@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
+import 'package:nothing_ever_happens/main.dart';
 
 @GenerateNiceMocks([
   MockSpec<FirebaseAuth>(),
@@ -28,6 +29,8 @@ void main() {
         firebaseAuth: mockFirebaseAuth,
         googleSignIn: mockGoogleSignIn,
       );
+      // Reset environment to dev for each test
+      AppConfig.environment = AppEnvironment.dev;
     });
 
     test('currentUser returns firebaseAuth currentUser', () {
@@ -74,8 +77,74 @@ void main() {
       final user = await authRepository.signInWithGoogle();
 
       expect(user, mockUser);
+      verify(
+        mockGoogleSignIn.initialize(
+          serverClientId:
+              '631207034652-91uutp0kkbmaaltqlg5858et5pal7era.apps.googleusercontent.com',
+        ),
+      ).called(1);
       verify(mockGoogleSignIn.authenticate()).called(1);
       verify(mockFirebaseAuth.signInWithCredential(any)).called(1);
     });
+
+    test(
+      'signInWithGoogle initializes GoogleSignIn with dev client ID when AppConfig.environment is dev',
+      () async {
+        AppConfig.environment = AppEnvironment.dev;
+        final mockGoogleUser = MockGoogleSignInAccount();
+        final mockGoogleAuth = MockGoogleSignInAuthentication();
+        final mockUserCredential = MockUserCredential();
+        final mockUser = MockUser();
+
+        when(
+          mockGoogleSignIn.authenticate(),
+        ).thenAnswer((_) => Future.value(mockGoogleUser));
+        when(mockGoogleUser.authentication).thenReturn(mockGoogleAuth);
+        when(mockGoogleAuth.idToken).thenReturn('mock-id-token');
+        when(
+          mockFirebaseAuth.signInWithCredential(any),
+        ).thenAnswer((_) => Future.value(mockUserCredential));
+        when(mockUserCredential.user).thenReturn(mockUser);
+
+        await authRepository.signInWithGoogle();
+
+        verify(
+          mockGoogleSignIn.initialize(
+            serverClientId:
+                '631207034652-91uutp0kkbmaaltqlg5858et5pal7era.apps.googleusercontent.com',
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'signInWithGoogle initializes GoogleSignIn with prod client ID when AppConfig.environment is prod',
+      () async {
+        AppConfig.environment = AppEnvironment.prod;
+        final mockGoogleUser = MockGoogleSignInAccount();
+        final mockGoogleAuth = MockGoogleSignInAuthentication();
+        final mockUserCredential = MockUserCredential();
+        final mockUser = MockUser();
+
+        when(
+          mockGoogleSignIn.authenticate(),
+        ).thenAnswer((_) => Future.value(mockGoogleUser));
+        when(mockGoogleUser.authentication).thenReturn(mockGoogleAuth);
+        when(mockGoogleAuth.idToken).thenReturn('mock-id-token');
+        when(
+          mockFirebaseAuth.signInWithCredential(any),
+        ).thenAnswer((_) => Future.value(mockUserCredential));
+        when(mockUserCredential.user).thenReturn(mockUser);
+
+        await authRepository.signInWithGoogle();
+
+        verify(
+          mockGoogleSignIn.initialize(
+            serverClientId:
+                '936469690744-8bthibeb317ifso2jc25ra9jmlaggdac.apps.googleusercontent.com',
+          ),
+        ).called(1);
+      },
+    );
   });
 }

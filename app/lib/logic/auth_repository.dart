@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:nothing_ever_happens/main.dart';
 
 class AuthRepository {
   final FirebaseAuth _firebaseAuth;
@@ -9,6 +10,8 @@ class AuthRepository {
   AuthRepository({FirebaseAuth? firebaseAuth, GoogleSignIn? googleSignIn})
     : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
       _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
+
+  bool _googleSignInInitialized = false;
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
@@ -22,6 +25,15 @@ class AuthRepository {
             .signInWithPopup(GoogleAuthProvider());
         return userCredential.user;
       } else {
+        if (!_googleSignInInitialized) {
+          final String serverClientId =
+              AppConfig.environment == AppEnvironment.prod
+              ? '936469690744-8bthibeb317ifso2jc25ra9jmlaggdac.apps.googleusercontent.com'
+              : '631207034652-91uutp0kkbmaaltqlg5858et5pal7era.apps.googleusercontent.com';
+          await _googleSignIn.initialize(serverClientId: serverClientId);
+          _googleSignInInitialized = true;
+        }
+
         // On Mobile, use the native Google Sign In flow
         // GoogleSignIn 7.x uses authenticate() instead of signIn()
         final GoogleSignInAccount googleUser = await _googleSignIn
