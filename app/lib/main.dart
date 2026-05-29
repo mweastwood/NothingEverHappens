@@ -12,6 +12,8 @@ import 'logic/auth_repository.dart';
 import 'logic/task_repository.dart';
 import 'logic/error_handler.dart';
 import 'logic/notification_service.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -81,6 +83,8 @@ class MyApp extends StatelessWidget {
             builder: (context, user, _) {
               return MaterialApp(
                 title: 'Nothing Ever Happens',
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
                 theme: ThemeData(colorScheme: lightScheme, useMaterial3: true),
                 darkTheme: ThemeData(
                   colorScheme: darkScheme,

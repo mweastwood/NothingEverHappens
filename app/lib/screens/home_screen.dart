@@ -6,6 +6,7 @@ import 'create_task_screen.dart';
 import 'task_list_screen.dart';
 import 'task_schedule_screen.dart';
 import 'task_history_screen.dart';
+import '../logic/l10n_extension.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(title: const Text('Nothing Ever Happens')),
+          appBar: AppBar(title: Text(context.l10n?.appName ?? 'Nothing Ever Happens')),
           drawer: _buildDrawer(context),
           body: _currentIndex == 0
               ? const TaskListScreen()
@@ -43,28 +44,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 _currentIndex = index;
               });
             },
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                icon: Icon(Icons.list_outlined),
-                selectedIcon: Icon(Icons.list),
-                label: 'Tasks',
+                icon: const Icon(Icons.list_outlined),
+                selectedIcon: const Icon(Icons.list),
+                label: context.l10n?.tasksTab ?? 'Tasks',
               ),
               NavigationDestination(
-                icon: Icon(Icons.calendar_month_outlined),
-                selectedIcon: Icon(Icons.calendar_month),
-                label: 'Schedule',
+                icon: const Icon(Icons.calendar_month_outlined),
+                selectedIcon: const Icon(Icons.calendar_month),
+                label: context.l10n?.scheduleTab ?? 'Schedule',
               ),
               NavigationDestination(
-                icon: Icon(Icons.history_outlined),
-                selectedIcon: Icon(Icons.history),
-                label: 'History',
+                icon: const Icon(Icons.history_outlined),
+                selectedIcon: const Icon(Icons.history),
+                label: context.l10n?.historyTab ?? 'History',
               ),
             ],
           ),
           floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
               ? FloatingActionButton(
                   onPressed: _addNewTask,
-                  tooltip: 'Add Task',
+                  tooltip: context.l10n?.addTaskTooltip ?? 'Add Task',
                   child: const Icon(Icons.add),
                 )
               : null,
@@ -79,13 +80,13 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Colors.blue),
-            child: Text('Menu'),
+          DrawerHeader(
+            decoration: const BoxDecoration(color: Colors.blue),
+            child: Text(context.l10n?.menu ?? 'Menu'),
           ),
           ListTile(
             leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
+            title: Text(context.l10n?.logout ?? 'Logout'),
             onTap: () async {
               await context.read<AuthRepository>().signOut();
             },

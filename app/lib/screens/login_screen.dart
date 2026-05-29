@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../logic/auth_repository.dart';
 import '../logic/error_handler.dart';
+import '../logic/l10n_extension.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,13 +26,13 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Nothing Ever Happens',
+                context.l10n?.appName ?? 'Nothing Ever Happens',
                 style: Theme.of(context).textTheme.headlineMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               Text(
-                'Please sign in to continue',
+                context.l10n?.pleaseSignInToContinue ?? 'Please sign in to continue',
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 32),
@@ -81,7 +82,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       )
                     : const Icon(Icons.login),
                 label: Text(
-                  _isLoading ? 'Signing in...' : 'Sign in with Google',
+                  _isLoading
+                      ? (context.l10n?.signingIn ?? 'Signing in...')
+                      : (context.l10n?.signInWithGoogle ?? 'Sign in with Google'),
                 ),
               ),
             ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../logic/task.dart';
 import 'daily_time_list_widget.dart';
+import '../logic/l10n_extension.dart';
 
 class WeeklySchedulingWidget extends StatefulWidget {
   final DateTime startDate;
@@ -47,7 +48,7 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
         Material(
           color: Colors.transparent,
           child: ListTile(
-            title: const Text('Start Date'),
+            title: Text(context.l10n?.startDateLabel ?? 'Start Date'),
             subtitle: Text(
               '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
             ),
@@ -62,15 +63,15 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
         const SizedBox(height: 16),
         TextFormField(
           controller: widget.intervalController,
-          decoration: const InputDecoration(
-            labelText: 'Weeks Interval',
-            border: OutlineInputBorder(),
-            helperText: 'E.g., 1 for every week',
+          decoration: InputDecoration(
+            labelText: context.l10n?.weeksIntervalLabel ?? 'Weeks Interval',
+            border: const OutlineInputBorder(),
+            helperText: context.l10n?.weeksIntervalHelper ?? 'E.g., 1 for every week',
           ),
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 16),
-        const Text('Repeats on'),
+        Text(context.l10n?.repeatsOnLabel ?? 'Repeats on'),
         Wrap(
           spacing: 8.0,
           children: List.generate(7, (index) {

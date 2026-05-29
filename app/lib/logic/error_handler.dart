@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'l10n_extension.dart';
 
 class ErrorReport {
   final String code;
@@ -59,7 +60,7 @@ class ErrorHandler {
           children: [
             const Icon(Icons.error_outline, color: Colors.red),
             const SizedBox(width: 8),
-            const Expanded(child: Text('Error Occurred')),
+            Expanded(child: Text(context.l10n?.errorOccurred ?? 'Error Occurred')),
           ],
         ),
         content: Column(
@@ -67,7 +68,7 @@ class ErrorHandler {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Something went wrong. Please share this error code with the developer:',
+              context.l10n?.somethingWentWrong ?? 'Something went wrong. Please share this error code with the developer:',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
@@ -88,7 +89,7 @@ class ErrorHandler {
             ),
             const SizedBox(height: 16),
             Text(
-              'Details:',
+              context.l10n?.details ?? 'Details:',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
@@ -107,7 +108,7 @@ class ErrorHandler {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+            child: Text(context.l10n?.close ?? 'Close'),
           ),
         ],
       ),

@@ -4,6 +4,7 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/task.dart';
 import '../widgets/task_widget.dart';
 import '../logic/task_repository.dart';
+import '../logic/l10n_extension.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({super.key});
@@ -47,7 +48,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return SliverToBoxAdapter(
-            child: Center(child: Text('Error: ${snapshot.error}')),
+            child: Center(child: Text('${context.l10n?.errorOccurred ?? 'Error'}: ${snapshot.error}')),
           );
         }
 
@@ -63,10 +64,10 @@ class _TaskListScreenState extends State<TaskListScreen> {
         final tasks = snapshot.data ?? [];
 
         if (tasks.isEmpty) {
-          return const SliverToBoxAdapter(
+          return SliverToBoxAdapter(
             child: SizedBox(
               height: 200,
-              child: Center(child: Text('No tasks yet. Add one!')),
+              child: Center(child: Text(context.l10n?.noTasksYet ?? 'No tasks yet. Add one!')),
             ),
           );
         }

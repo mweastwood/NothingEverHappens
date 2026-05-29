@@ -1,0 +1,222 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Spanish Castilian (`es`).
+class AppLocalizationsEs extends AppLocalizations {
+  AppLocalizationsEs([String locale = 'es']) : super(locale);
+
+  @override
+  String get appName => 'Nunca Pasa Nada';
+
+  @override
+  String get errorOccurred => 'Ocurrió un error';
+
+  @override
+  String get somethingWentWrong =>
+      'Algo salió mal. Por favor comparte este código de error con el desarrollador:';
+
+  @override
+  String get details => 'Detalles:';
+
+  @override
+  String get close => 'Cerrar';
+
+  @override
+  String get pleaseSignInToContinue => 'Por favor inicia sesión para continuar';
+
+  @override
+  String get signingIn => 'Iniciando sesión...';
+
+  @override
+  String get signInWithGoogle => 'Iniciar sesión con Google';
+
+  @override
+  String get tasksTab => 'Tareas';
+
+  @override
+  String get scheduleTab => 'Calendario';
+
+  @override
+  String get historyTab => 'Historial';
+
+  @override
+  String get addTaskTooltip => 'Agregar Tarea';
+
+  @override
+  String get menu => 'Menú';
+
+  @override
+  String get logout => 'Cerrar sesión';
+
+  @override
+  String get editTaskTitle => 'Editar Tarea';
+
+  @override
+  String get newTaskTitle => 'Nueva Tarea';
+
+  @override
+  String get titleFieldLabel => 'Título';
+
+  @override
+  String get titleRequiredError => 'Por favor ingresa un título';
+
+  @override
+  String get descriptionFieldLabel => 'Descripción';
+
+  @override
+  String get estimatedEffortFieldLabel => 'Esfuerzo Estimado (Minutos)';
+
+  @override
+  String get estimatedEffortHelper =>
+      'Opcional. Ingresa el tiempo estimado en minutos.';
+
+  @override
+  String get estimatedEffortValidationError =>
+      'Por favor ingresa un número positivo de minutos';
+
+  @override
+  String get scheduleHeader => 'Calendario';
+
+  @override
+  String get oneOffLabel => 'Una vez';
+
+  @override
+  String get dailyLabel => 'Diario';
+
+  @override
+  String get weeklyLabel => 'Semanal';
+
+  @override
+  String get discardButton => 'Descartar';
+
+  @override
+  String get saveButton => 'Guardar';
+
+  @override
+  String get selectAtLeastOneDayError =>
+      'Por favor selecciona al menos un día de la semana';
+
+  @override
+  String get dueLabel => 'Vence: ';
+
+  @override
+  String get dueDescription =>
+      '¿Cuándo debe completarse esta tarea antes de considerarse atrasada?';
+
+  @override
+  String get advancedHeader => 'Avanzado';
+
+  @override
+  String get snoozeUntilLabel => 'Posponer hasta: ';
+
+  @override
+  String get snoozeUntilDescription =>
+      'La tarea estará oculta de tu lista principal de tareas hasta esta hora.';
+
+  @override
+  String get startDateLabel => 'Fecha de inicio';
+
+  @override
+  String get daysIntervalLabel => 'Intervalo de días';
+
+  @override
+  String get daysIntervalHelper => 'Ej., 1 para cada día, 2 para días alternos';
+
+  @override
+  String get weeksIntervalLabel => 'Intervalo de semanas';
+
+  @override
+  String get weeksIntervalHelper => 'Ej., 1 para cada semana';
+
+  @override
+  String get repeatsOnLabel => 'Se repite en';
+
+  @override
+  String get dailyOccurrencesHeader => 'Ocurrencias Diarias';
+
+  @override
+  String get startTimeLabel => 'Hora de inicio';
+
+  @override
+  String get dueTimeLabel => 'Hora de vencimiento';
+
+  @override
+  String get notificationTimeLabel => 'Hora de notificación';
+
+  @override
+  String get noneLabel => 'Ninguna';
+
+  @override
+  String get clearNotificationTimeTooltip => 'Borrar hora de notificación';
+
+  @override
+  String get removeTimeSlotTooltip => 'Eliminar intervalo de tiempo';
+
+  @override
+  String get addTimeSlotButton => 'Agregar intervalo de tiempo';
+
+  @override
+  String get noTasksYet => 'No hay tareas aún. ¡Agrega una!';
+
+  @override
+  String get noHistoryYet => 'No hay historial aún';
+
+  @override
+  String get noRecurringTasksScheduled =>
+      'No hay tareas recurrentes programadas';
+
+  @override
+  String get deleteTaskConfirmTitle => '¿Eliminar Tarea?';
+
+  @override
+  String deleteTaskConfirmBody(String title) {
+    return '¿Estás seguro de que quieres eliminar \"$title\"? Esta acción eliminará permanentemente la tarea.';
+  }
+
+  @override
+  String get cancelButton => 'Cancelar';
+
+  @override
+  String get deleteButton => 'Eliminar';
+
+  @override
+  String get editScheduleTooltip => 'Editar Calendario';
+
+  @override
+  String get deleteTaskTooltip => 'Eliminar Tarea';
+
+  @override
+  String get dailyRecurrence => 'Diario';
+
+  @override
+  String get weeklyRecurrence => 'Semanal';
+
+  @override
+  String get everyDay => 'Todos los días';
+
+  @override
+  String everyNDays(int count) {
+    return 'Cada $count días';
+  }
+
+  @override
+  String get everyWeek => 'Cada semana';
+
+  @override
+  String everyNWeeks(int count) {
+    return 'Cada $count semanas';
+  }
+
+  @override
+  String startingDate(String date) {
+    return 'Comenzando: $date';
+  }
+
+  @override
+  String onDaysOfWeek(String days) {
+    return 'En: $days';
+  }
+}

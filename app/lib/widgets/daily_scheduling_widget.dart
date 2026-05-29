@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../logic/task.dart';
 import 'daily_time_list_widget.dart';
+import '../logic/l10n_extension.dart';
 
 class DailySchedulingWidget extends StatefulWidget {
   final DateTime startDate;
@@ -43,7 +44,7 @@ class _DailySchedulingWidgetState extends State<DailySchedulingWidget> {
         Material(
           color: Colors.transparent,
           child: ListTile(
-            title: const Text('Start Date'),
+            title: Text(context.l10n?.startDateLabel ?? 'Start Date'),
             subtitle: Text(
               '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
             ),
@@ -58,10 +59,10 @@ class _DailySchedulingWidgetState extends State<DailySchedulingWidget> {
         const SizedBox(height: 16),
         TextFormField(
           controller: widget.intervalController,
-          decoration: const InputDecoration(
-            labelText: 'Days Interval',
-            border: OutlineInputBorder(),
-            helperText: 'E.g., 1 for every day, 2 for every other day',
+          decoration: InputDecoration(
+            labelText: context.l10n?.daysIntervalLabel ?? 'Days Interval',
+            border: const OutlineInputBorder(),
+            helperText: context.l10n?.daysIntervalHelper ?? 'E.g., 1 for every day, 2 for every other day',
           ),
           keyboardType: TextInputType.number,
         ),
