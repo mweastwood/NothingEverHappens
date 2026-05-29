@@ -41,43 +41,46 @@ class _TaskListScreenState extends State<TaskListScreen> {
   }
 
   Widget _buildTaskListSliver(TaskRepository taskRepository) {
-    return SliverToBoxAdapter(
+    return StreamBuilder<List<Task>>(
       key: _taskListKey,
-      child: StreamBuilder<List<Task>>(
-        stream: taskRepository.getTasks(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+      stream: taskRepository.getTasks(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return SliverToBoxAdapter(
+            child: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SizedBox(
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SliverToBoxAdapter(
+            child: SizedBox(
               height: 200,
               child: Center(child: CircularProgressIndicator()),
-            );
-          }
-
-          final tasks = snapshot.data ?? [];
-
-          if (tasks.isEmpty) {
-            return const SizedBox(
-              height: 200,
-              child: Center(child: Text('No tasks yet. Add one!')),
-            );
-          }
-
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ListView.builder(
-              physics:
-                  const NeverScrollableScrollPhysics(), // Let the CustomScrollView handle scrolling
-              shrinkWrap: true,
-              itemCount: tasks.length,
-              itemBuilder: (context, index) => _buildTaskItem(tasks[index]),
             ),
           );
-        },
-      ),
+        }
+
+        final tasks = snapshot.data ?? [];
+
+        if (tasks.isEmpty) {
+          return const SliverToBoxAdapter(
+            child: SizedBox(
+              height: 200,
+              child: Center(child: Text('No tasks yet. Add one!')),
+            ),
+          );
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.all(8.0),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _buildTaskItem(tasks[index]),
+              childCount: tasks.length,
+            ),
+          ),
+        );
+      },
     );
   }
 
