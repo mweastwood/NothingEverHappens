@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_list.dart';
+import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 
 void main() {
@@ -348,6 +351,9 @@ void main() {
           ],
           newEstimatedDuration: null, // cleared
           userId: 'test-user-id',
+          newMissedPolicy: MissedPolicy.rollover,
+          newIsMaster: false,
+          newLastSpawnedDate: null,
         );
 
         final newTask = result.newTask;
@@ -457,6 +463,155 @@ void main() {
         slot.toString(),
         contains('start: 13:05, due: 14:20, notification: 12:50'),
       );
+    });
+  });
+
+  group('Missed Occurrence Policies Strategy Unit Tests', () {
+    test('1. Rollover (Push to Next Day): Overdue Monday task completed on Tuesday reschedules to Tuesday (original path)', () {
+      // Create a daily task scheduled for Monday
+      final monday = const CivilDay(year: 2026, month: 5, day: 25);
+      final task = Task(
+        id: 'rollover-task',
+        title: 'Water Plants',
+        description: 'Every day',
+        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
+        schedule: DailySchedule(startDate: monday, interval: 1),
+        missedPolicy: MissedPolicy.rollover,
+      );
+
+      // Verify that on Tuesday, it is overdue
+      final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
+      expect(task.isOverdue(tuesdayDateTime), isTrue);
+
+      // Simulate completion on Tuesday
+      final state = TaskList([task]).complete('rollover-task', 'user-1');
+
+      // The next occurrence should continue from its original path (strictly after Monday -> Tuesday)
+      final completedTask = state.activeTasks.firstWhere((t) => t.id == 'rollover-task');
+      expect(completedTask.schedule.scheduledDate, const CivilDay(year: 2026, month: 5, day: 26));
+    });
+
+    test('2. Shift Schedule (Push Out Future Dates): Bi-daily Monday task completed late on Wednesday shifts next date to Friday (Wednesday + 2 days)', () {
+      // Create a bi-daily task scheduled for Monday
+      final monday = const CivilDay(year: 2026, month: 5, day: 25);
+      final task = Task(
+        id: 'shift-task',
+        title: 'Mow the Lawn',
+        description: 'Every 2 days',
+        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
+        schedule: DailySchedule(startDate: monday, interval: 2),
+        missedPolicy: MissedPolicy.shift,
+      );
+
+      // Verify that on Wednesday, it is overdue
+      final wednesdayDateTime = DateTime(2026, 5, 27, 10, 0);
+      expect(task.isOverdue(wednesdayDateTime), isTrue);
+
+      // Simulate completion on Wednesday
+      AppClock.setMockTime(wednesdayDateTime);
+      final state = TaskList([task]).complete('shift-task', 'user-1');
+      AppClock.reset();
+
+      // The next occurrence should shift relative to completion date (strictly after Wednesday -> Friday)
+      final completedTask = state.activeTasks.firstWhere((t) => t.id == 'shift-task');
+      expect(completedTask.schedule.scheduledDate, const CivilDay(year: 2026, month: 5, day: 29));
+    });
+
+    test('3. Skip (Drop Occurrence): Overdue Monday task is automatically skipped/expired and rescheduled to next calendar occurrence', () async {
+      final firestore = FakeFirebaseFirestore();
+      final repository = TaskRepository(firestore: firestore, userId: 'user-1');
+
+      // Create a daily task scheduled for Monday
+      final monday = const CivilDay(year: 2026, month: 5, day: 25);
+      final task = Task(
+        id: 'skip-task',
+        title: 'Take out trash',
+        description: 'Every day',
+        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
+        schedule: DailySchedule(startDate: monday, interval: 1),
+        missedPolicy: MissedPolicy.skip,
+      );
+
+      // Save to database
+      await repository.addTask(task);
+
+      // Set AppClock to Tuesday 10:00 AM - past due time of Monday (17:00), but before Tuesday (17:00)
+      final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
+      AppClock.setMockTime(tuesdayDateTime);
+
+      // Get tasks stream and wait for auto-process check to trigger
+      await repository.getTasks().first;
+      
+      // Let's yield to background tasks so Firestore batch completes
+      await Future.delayed(Duration.zero);
+
+      // Fetch the updated task from database
+      final updatedTaskSnap = await firestore.collection('users').doc('user-1').collection('tasks').doc('skip-task').get();
+      final updatedTask = Task.fromFirestore(updatedTaskSnap);
+
+      // It should be rescheduled to Tuesday (today + 1 -> Tuesday nextOccurrenceAfter since today is Tuesday)
+      expect(updatedTask.schedule.scheduledDate, const CivilDay(year: 2026, month: 5, day: 26));
+
+      // Verify that skipped was logged in history
+      final historySnap = await firestore.collection('users').doc('user-1').collection('history').get();
+      expect(historySnap.docs.length, 2); // 1 create + 1 skipped
+      expect(historySnap.docs.any((doc) => doc.data()['operation'] == 'skipped'), isTrue);
+      
+      AppClock.reset();
+    });
+
+    test('4. Stack/Overlap (Allow Concurrency): Master task missed for Monday and Tuesday spawns separate cards on Wednesday', () async {
+      final firestore = FakeFirebaseFirestore();
+      final repository = TaskRepository(firestore: firestore, userId: 'user-1');
+
+      // Create a daily master task scheduled for Monday
+      final monday = const CivilDay(year: 2026, month: 5, day: 25);
+      final task = Task(
+        id: 'stack-task',
+        title: 'Read a book',
+        description: 'Every day',
+        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
+        schedule: DailySchedule(startDate: monday, interval: 1),
+        missedPolicy: MissedPolicy.stack,
+        isMaster: true,
+      );
+
+      // Save master task to database
+      await repository.addTask(task);
+
+      // Set AppClock to Wednesday (May 27)
+      final wednesdayDateTime = DateTime(2026, 5, 27, 10, 0);
+      AppClock.setMockTime(wednesdayDateTime);
+
+      // Fetch tasks list (triggers spawning check in getTasks stream)
+      await repository.getTasks().first;
+      await Future.delayed(Duration.zero);
+
+      // Query active tasks in Firestore
+      final tasksSnap = await firestore.collection('users').doc('user-1').collection('tasks').get();
+      final allTasks = tasksSnap.docs.map((doc) => Task.fromFirestore(doc)).toList();
+
+      // We should have 1 master task + 3 spawned active cards (Monday, Tuesday, Wednesday)
+      expect(allTasks.length, 4);
+
+      final spawnedCards = allTasks.where((t) => !t.isMaster).toList();
+      expect(spawnedCards.length, 3);
+
+      // Assert that spawned cards have deterministic IDs and correct occurrence dates
+      expect(spawnedCards.any((t) => t.id == 'stack-task_2026-05-25'), isTrue);
+      expect(spawnedCards.any((t) => t.id == 'stack-task_2026-05-26'), isTrue);
+      expect(spawnedCards.any((t) => t.id == 'stack-task_2026-05-27'), isTrue);
+
+      // Verify master task lastSpawnedDate is updated to Wednesday
+      final masterTaskDoc = await firestore.collection('users').doc('user-1').collection('tasks').doc('stack-task').get();
+      final updatedMaster = Task.fromFirestore(masterTaskDoc);
+      expect(updatedMaster.lastSpawnedDate, const CivilDay(year: 2026, month: 5, day: 27));
+
+      AppClock.reset();
     });
   });
 }

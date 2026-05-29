@@ -487,6 +487,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'On: {days}'**
   String onDaysOfWeek(String days);
+
+  /// No description provided for @missedPolicyHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed Occurrence Policy'**
+  String get missedPolicyHeader;
+
+  /// No description provided for @missedPolicyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Define what happens if a recurring task is not completed by its due time.'**
+  String get missedPolicyHelper;
+
+  /// No description provided for @rolloverLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollover (Push to Next Day)'**
+  String get rolloverLabel;
+
+  /// No description provided for @rolloverDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue task rolls forward to today and remains overdue until completed.'**
+  String get rolloverDescription;
+
+  /// No description provided for @skipLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip (Drop Occurrence)'**
+  String get skipLabel;
+
+  /// No description provided for @skipDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue task is automatically skipped, logged in history, and rescheduled.'**
+  String get skipDescription;
+
+  /// No description provided for @shiftLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift Schedule (Push Out Future Dates)'**
+  String get shiftLabel;
+
+  /// No description provided for @shiftDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Next occurrence is calculated relative to when the task was completed late.'**
+  String get shiftDescription;
+
+  /// No description provided for @stackLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stack/Overlap (Allow Concurrency)'**
+  String get stackLabel;
+
+  /// No description provided for @stackDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed occurrences remain active, letting multiple instances stack up.'**
+  String get stackDescription;
 }
 
 class _AppLocalizationsDelegate

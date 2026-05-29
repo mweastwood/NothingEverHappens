@@ -98,5 +98,15 @@
         "type": "String"
       }
     }
-  }
+  },
+  "missedPolicyHeader": "Missed Occurrence Policy",
+  "missedPolicyHelper": "Define what happens if a recurring task is not completed by its due time.",
+  "rolloverLabel": "Rollover (Push to Next Day)",
+  "rolloverDescription": "Overdue task rolls forward to today and remains overdue until completed.",
+  "skipLabel": "Skip (Drop Occurrence)",
+  "skipDescription": "Overdue task is automatically skipped, logged in history, and rescheduled.",
+  "shiftLabel": "Shift Schedule (Push Out Future Dates)",
+  "shiftDescription": "Next occurrence is calculated relative to when the task was completed late.",
+  "stackLabel": "Stack/Overlap (Allow Concurrency)",
+  "stackDescription": "Missed occurrences remain active, letting multiple instances stack up."
 }

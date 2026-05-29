@@ -63,7 +63,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
           );
         }
 
-        final tasks = snapshot.data ?? [];
+        final tasks = (snapshot.data ?? []).where((t) => !t.isMaster).toList();
 
         if (tasks.isEmpty) {
           return SliverToBoxAdapter(

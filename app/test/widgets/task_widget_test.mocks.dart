@@ -3,11 +3,12 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i3;
+import 'dart:async' as _i4;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:nothing_ever_happens/logic/task.dart' as _i4;
-import 'package:nothing_ever_happens/logic/task_delta.dart' as _i5;
+import 'package:mockito/src/dummies.dart' as _i3;
+import 'package:nothing_ever_happens/logic/task.dart' as _i5;
+import 'package:nothing_ever_happens/logic/task_delta.dart' as _i6;
 import 'package:nothing_ever_happens/logic/task_repository.dart' as _i2;
 
 // ignore_for_file: type=lint
@@ -30,58 +31,73 @@ import 'package:nothing_ever_happens/logic/task_repository.dart' as _i2;
 /// See the documentation for Mockito's code generation for more information.
 class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
   @override
-  _i3.Stream<List<_i4.Task>> getTasks() =>
+  String get userId =>
+      (super.noSuchMethod(
+            Invocation.getter(#userId),
+            returnValue: _i3.dummyValue<String>(
+              this,
+              Invocation.getter(#userId),
+            ),
+            returnValueForMissingStub: _i3.dummyValue<String>(
+              this,
+              Invocation.getter(#userId),
+            ),
+          )
+          as String);
+
+  @override
+  _i4.Stream<List<_i5.Task>> getTasks() =>
       (super.noSuchMethod(
             Invocation.method(#getTasks, []),
-            returnValue: _i3.Stream<List<_i4.Task>>.empty(),
-            returnValueForMissingStub: _i3.Stream<List<_i4.Task>>.empty(),
+            returnValue: _i4.Stream<List<_i5.Task>>.empty(),
+            returnValueForMissingStub: _i4.Stream<List<_i5.Task>>.empty(),
           )
-          as _i3.Stream<List<_i4.Task>>);
+          as _i4.Stream<List<_i5.Task>>);
 
   @override
-  _i3.Stream<List<_i5.TaskDelta>> getHistory() =>
+  _i4.Stream<List<_i6.TaskDelta>> getHistory() =>
       (super.noSuchMethod(
             Invocation.method(#getHistory, []),
-            returnValue: _i3.Stream<List<_i5.TaskDelta>>.empty(),
-            returnValueForMissingStub: _i3.Stream<List<_i5.TaskDelta>>.empty(),
+            returnValue: _i4.Stream<List<_i6.TaskDelta>>.empty(),
+            returnValueForMissingStub: _i4.Stream<List<_i6.TaskDelta>>.empty(),
           )
-          as _i3.Stream<List<_i5.TaskDelta>>);
+          as _i4.Stream<List<_i6.TaskDelta>>);
 
   @override
-  _i3.Future<void> addTask(_i4.Task? task) =>
+  _i4.Future<void> addTask(_i5.Task? task) =>
       (super.noSuchMethod(
             Invocation.method(#addTask, [task]),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
           )
-          as _i3.Future<void>);
+          as _i4.Future<void>);
 
   @override
-  _i3.Future<void> updateTask(
-    ({_i5.TaskDelta delta, _i4.Task newTask})? modification,
+  _i4.Future<void> updateTask(
+    ({_i6.TaskDelta delta, _i5.Task newTask})? modification,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateTask, [modification]),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
           )
-          as _i3.Future<void>);
+          as _i4.Future<void>);
 
   @override
-  _i3.Future<void> deleteTask(String? id) =>
+  _i4.Future<void> deleteTask(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#deleteTask, [id]),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
           )
-          as _i3.Future<void>);
+          as _i4.Future<void>);
 
   @override
-  _i3.Future<void> completeTask(String? id) =>
+  _i4.Future<void> completeTask(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#completeTask, [id]),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
           )
-          as _i3.Future<void>);
+          as _i4.Future<void>);
 }

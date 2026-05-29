@@ -219,4 +219,39 @@ class AppLocalizationsEs extends AppLocalizations {
   String onDaysOfWeek(String days) {
     return 'En: $days';
   }
+
+  @override
+  String get missedPolicyHeader => 'Política de Ocurrencias Perdidas';
+
+  @override
+  String get missedPolicyHelper =>
+      'Define qué pasa si una tarea recurrente no se completa a su hora de vencimiento.';
+
+  @override
+  String get rolloverLabel => 'Reasignar (Pasar al día siguiente)';
+
+  @override
+  String get rolloverDescription =>
+      'La tarea atrasada se pasa a hoy y sigue atrasada hasta que se complete.';
+
+  @override
+  String get skipLabel => 'Omitir (Descartar ocurrencia)';
+
+  @override
+  String get skipDescription =>
+      'La tarea atrasada se omite automáticamente, se registra en el historial y se reprograma.';
+
+  @override
+  String get shiftLabel => 'Cambiar calendario (Retrasar fechas futuras)';
+
+  @override
+  String get shiftDescription =>
+      'La siguiente ocurrencia se calcula en relación a cuándo se completó tarde la tarea.';
+
+  @override
+  String get stackLabel => 'Acumular (Permitir concurrencia)';
+
+  @override
+  String get stackDescription =>
+      'Las ocurrencias perdidas siguen activas, permitiendo que se acumulen múltiples instancias.';
 }

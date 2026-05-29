@@ -63,5 +63,15 @@
   "everyWeek": "Cada semana",
   "everyNWeeks": "Cada {count} semanas",
   "startingDate": "Comenzando: {date}",
-  "onDaysOfWeek": "En: {days}"
+  "onDaysOfWeek": "En: {days}",
+  "missedPolicyHeader": "Política de Ocurrencias Perdidas",
+  "missedPolicyHelper": "Define qué pasa si una tarea recurrente no se completa a su hora de vencimiento.",
+  "rolloverLabel": "Reasignar (Pasar al día siguiente)",
+  "rolloverDescription": "La tarea atrasada se pasa a hoy y sigue atrasada hasta que se complete.",
+  "skipLabel": "Omitir (Descartar ocurrencia)",
+  "skipDescription": "La tarea atrasada se omite automáticamente, se registra en el historial y se reprograma.",
+  "shiftLabel": "Cambiar calendario (Retrasar fechas futuras)",
+  "shiftDescription": "La siguiente ocurrencia se calcula en relación a cuándo se completó tarde la tarea.",
+  "stackLabel": "Acumular (Permitir concurrencia)",
+  "stackDescription": "Las ocurrencias perdidas siguen activas, permitiendo que se acumulen múltiples instancias."
 }
