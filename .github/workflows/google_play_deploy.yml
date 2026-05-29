@@ -1,0 +1,51 @@
+name: Deploy to Google Play
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy_play_store:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Decode Android Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
+
+      - name: Build Android AppBundle
+        run: flutter build appbundle --release --flavor prod --target lib/main_prod.dart
+        env:
+          ANDROID_KEYSTORE_PATH: "release.keystore"
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+
+      - name: Upload to Google Play (Internal Track)
+        uses: r0adkll/upload-google-play@v2
+        with:
+          serviceAccountJsonRaw: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
+          packageName: "com.mweastwood.nothing_ever_happens"
+          releaseFiles: app/build/app/outputs/bundle/prodRelease/app-prod-release.aab
+          track: internal
+          status: completed
