@@ -12,7 +12,6 @@ import 'logic/auth_repository.dart';
 import 'logic/task_repository.dart';
 import 'logic/error_handler.dart';
 import 'logic/notification_service.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
