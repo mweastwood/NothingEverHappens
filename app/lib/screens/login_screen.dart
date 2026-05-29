@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                           await authRepo.signInWithGoogle();
                         } catch (e, stackTrace) {
-                          if (mounted) {
+                          if (context.mounted) {
                             final errorHandler = Provider.of<ErrorHandler>(
                               context,
                               listen: false,
@@ -73,7 +73,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
-                          value: LoginScreen.debugDisableAnimations ? 0.8 : null,
+                          value: LoginScreen.debugDisableAnimations
+                              ? 0.8
+                              : null,
                           strokeWidth: 2.0,
                         ),
                       )

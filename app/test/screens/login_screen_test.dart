@@ -45,9 +45,16 @@ void main() {
     await screenMatchesGolden(tester, 'login_screen');
   });
 
-  testGoldens('LoginScreen renders loading state when sign-in is in progress', (tester) async {
-    final completer = Completer<dynamic>(); // Using dynamic to avoid needing FirebaseAuth mock imports here
-    when(mockAuthRepository.signInWithGoogle()).thenAnswer((_) async => await completer.future);
+  testGoldens('LoginScreen renders loading state when sign-in is in progress', (
+    tester,
+  ) async {
+    final completer =
+        Completer<
+          dynamic
+        >(); // Using dynamic to avoid needing FirebaseAuth mock imports here
+    when(
+      mockAuthRepository.signInWithGoogle(),
+    ).thenAnswer((_) async => await completer.future);
 
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
@@ -78,10 +85,13 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testGoldens('LoginScreen renders error dialog when sign-in fails', (tester) async {
+  testGoldens('LoginScreen renders error dialog when sign-in fails', (
+    tester,
+  ) async {
     // Force the repository to throw an exception
     when(mockAuthRepository.signInWithGoogle()).thenAnswer(
-      (_) => Future.error(Exception('Failed to connect to authentication server')),
+      (_) =>
+          Future.error(Exception('Failed to connect to authentication server')),
     );
 
     await tester.pumpWidgetBuilder(
@@ -99,11 +109,15 @@ void main() {
 
     // Tap the sign-in button
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in with Google'));
-    await tester.pumpAndSettle(); // Complete async operation and transition to error state
+    await tester
+        .pumpAndSettle(); // Complete async operation and transition to error state
 
     // Verify error dialog elements exist
     expect(find.text('Error Occurred'), findsOneWidget);
-    expect(find.text('Exception: Failed to connect to authentication server'), findsOneWidget);
+    expect(
+      find.text('Exception: Failed to connect to authentication server'),
+      findsOneWidget,
+    );
 
     // Capture error state screenshot
     await screenMatchesGolden(tester, 'login_screen_error');
