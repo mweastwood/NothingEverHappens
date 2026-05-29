@@ -4,6 +4,8 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_list.dart';
+import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 
 void main() {
@@ -501,6 +503,77 @@ void main() {
           completedTask.schedule.scheduledDate,
           const CivilDay(year: 2026, month: 5, day: 26),
         );
+      },
+    );
+
+    test(
+      '3. Skip (Drop Occurrence): Overdue Monday task is automatically skipped/expired and rescheduled to next calendar occurrence',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(
+          firestore: firestore,
+          userId: 'user-1',
+        );
+
+        // Create a daily task scheduled for Monday
+        final monday = const CivilDay(year: 2026, month: 5, day: 25);
+        final task = Task(
+          id: 'skip-task',
+          title: 'Take out trash',
+          description: 'Every day',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: DailySchedule(startDate: monday, interval: 1),
+          missedPolicy: MissedPolicy.skip,
+        );
+
+        // Save to database
+        await repository.addTask(task);
+
+        // Set AppClock to Tuesday 10:00 AM - past due time of Monday (17:00), but before Tuesday (17:00)
+        final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
+        AppClock.setMockTime(tuesdayDateTime);
+
+        // Get tasks stream and wait for auto-process check to trigger
+        await repository.getTasks().first;
+
+        // Let's yield to background tasks so Firestore batch completes
+        await Future.delayed(Duration.zero);
+
+        // Fetch the updated task from database
+        final updatedTaskSnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('tasks')
+            .doc('skip-task')
+            .get();
+        final updatedTask = Task.fromFirestore(updatedTaskSnap);
+
+        // It should be rescheduled to Tuesday (today + 1 -> Tuesday nextOccurrenceAfter since today is Tuesday)
+        expect(
+          updatedTask.schedule.scheduledDate,
+          const CivilDay(year: 2026, month: 5, day: 26),
+        );
+
+        // Verify that skipped was logged in history
+        final historySnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('history')
+            .get();
+        expect(historySnap.docs.length, 2); // 1 create + 1 skipped
+        expect(
+          historySnap.docs.any((doc) => doc.data()['operation'] == 'skipped'),
+          isTrue,
+        );
+
+        AppClock.reset();
       },
     );
   });
