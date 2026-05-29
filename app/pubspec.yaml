@@ -115,4 +115,9 @@ flutter_launcher_icons:
   adaptive_icon_background: "#ffffff"
   adaptive_icon_foreground: "../assets/SQUARE APP ICON/PNG NO BACKGROUND/COLORED_512.png"
   adaptive_icon_monochrome: "../assets/SQUARE APP ICON/PNG NO BACKGROUND/WHITE BLACK_512.png"
+  web:
+    generate: true
+    image_path: "../assets/SQUARE APP ICON/PNG/COLORED_1024.png"
+    background_color: "#ffffff"
+    theme_color: "#e94d51"
 
