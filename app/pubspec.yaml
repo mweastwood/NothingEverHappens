@@ -62,6 +62,7 @@ dev_dependencies:
   build_runner: ^2.10.5
   fake_cloud_firestore: ^4.0.1
   rxdart: ^0.28.0
+  flutter_launcher_icons: ^0.14.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -105,3 +106,18 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "../assets/SQUARE APP ICON/PNG/COLORED_1024.png"
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "../assets/SQUARE APP ICON/PNG NO BACKGROUND/COLORED_512.png"
+  adaptive_icon_monochrome: "../assets/SQUARE APP ICON/PNG NO BACKGROUND/WHITE BLACK_512.png"
+  web:
+    generate: true
+    image_path: "../assets/SQUARE APP ICON/PNG/COLORED_1024.png"
+    background_color: "#ffffff"
+    theme_color: "#e94d51"
+
