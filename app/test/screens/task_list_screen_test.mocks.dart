@@ -7,9 +7,10 @@ import 'dart:async' as _i3;
 
 import 'package:firebase_auth/firebase_auth.dart' as _i4;
 import 'package:mockito/mockito.dart' as _i1;
+import 'package:mockito/src/dummies.dart' as _i6;
 import 'package:nothing_ever_happens/logic/auth_repository.dart' as _i2;
-import 'package:nothing_ever_happens/logic/task.dart' as _i6;
-import 'package:nothing_ever_happens/logic/task_delta.dart' as _i7;
+import 'package:nothing_ever_happens/logic/task.dart' as _i7;
+import 'package:nothing_ever_happens/logic/task_delta.dart' as _i8;
 import 'package:nothing_ever_happens/logic/task_repository.dart' as _i5;
 
 // ignore_for_file: type=lint
@@ -64,25 +65,40 @@ class MockAuthRepository extends _i1.Mock implements _i2.AuthRepository {
 /// See the documentation for Mockito's code generation for more information.
 class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
   @override
-  _i3.Stream<List<_i6.Task>> getTasks() =>
+  String get userId =>
+      (super.noSuchMethod(
+            Invocation.getter(#userId),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#userId),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#userId),
+            ),
+          )
+          as String);
+
+  @override
+  _i3.Stream<List<_i7.Task>> getTasks() =>
       (super.noSuchMethod(
             Invocation.method(#getTasks, []),
-            returnValue: _i3.Stream<List<_i6.Task>>.empty(),
-            returnValueForMissingStub: _i3.Stream<List<_i6.Task>>.empty(),
+            returnValue: _i3.Stream<List<_i7.Task>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i7.Task>>.empty(),
           )
-          as _i3.Stream<List<_i6.Task>>);
+          as _i3.Stream<List<_i7.Task>>);
 
   @override
-  _i3.Stream<List<_i7.TaskDelta>> getHistory() =>
+  _i3.Stream<List<_i8.TaskDelta>> getHistory() =>
       (super.noSuchMethod(
             Invocation.method(#getHistory, []),
-            returnValue: _i3.Stream<List<_i7.TaskDelta>>.empty(),
-            returnValueForMissingStub: _i3.Stream<List<_i7.TaskDelta>>.empty(),
+            returnValue: _i3.Stream<List<_i8.TaskDelta>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i8.TaskDelta>>.empty(),
           )
-          as _i3.Stream<List<_i7.TaskDelta>>);
+          as _i3.Stream<List<_i8.TaskDelta>>);
 
   @override
-  _i3.Future<void> addTask(_i6.Task? task) =>
+  _i3.Future<void> addTask(_i7.Task? task) =>
       (super.noSuchMethod(
             Invocation.method(#addTask, [task]),
             returnValue: _i3.Future<void>.value(),
@@ -92,7 +108,7 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
 
   @override
   _i3.Future<void> updateTask(
-    ({_i7.TaskDelta delta, _i6.Task newTask})? modification,
+    ({_i8.TaskDelta delta, _i7.Task newTask})? modification,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateTask, [modification]),

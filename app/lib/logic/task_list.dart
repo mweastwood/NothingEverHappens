@@ -76,6 +76,11 @@ class TaskList {
           schedule: task.schedule, // same schedule (same startDate!)
           dailyTimes: task.dailyTimes,
           activeOccurrenceIndex: nextIndex,
+          estimatedDuration: task.estimatedDuration,
+          missedPolicy: task.missedPolicy,
+          isMaster: task.isMaster,
+          lastSpawnedDate: task.lastSpawnedDate,
+          parentTaskId: task.parentTaskId,
         );
 
         final updatedTasks = List<Task>.from(activeTasks);
@@ -86,7 +91,8 @@ class TaskList {
         // We either have no dailyTimes (fallback/compatibility), or we have completed the last daily occurrence.
         // Reschedule the recurring task to the next occurrence day.
         final today = CivilDay.fromDateTime(now);
-        final nextOccur = task.schedule.nextOccurrenceAfter(today);
+        
+        final nextOccur = task.schedule.nextOccurrenceAfter(task.schedule.scheduledDate);
 
         TaskSchedule newSchedule;
         if (task.schedule is DailySchedule) {
@@ -123,6 +129,11 @@ class TaskList {
           schedule: newSchedule,
           dailyTimes: task.dailyTimes,
           activeOccurrenceIndex: 0, // reset
+          estimatedDuration: task.estimatedDuration,
+          missedPolicy: task.missedPolicy,
+          isMaster: task.isMaster,
+          lastSpawnedDate: task.lastSpawnedDate,
+          parentTaskId: task.parentTaskId,
         );
 
         final updatedTasks = List<Task>.from(activeTasks);

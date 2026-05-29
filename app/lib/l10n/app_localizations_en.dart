@@ -219,4 +219,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String onDaysOfWeek(String days) {
     return 'On: $days';
   }
+
+  @override
+  String get missedPolicyHeader => 'Missed Occurrence Policy';
+
+  @override
+  String get missedPolicyHelper =>
+      'Define what happens if a recurring task is not completed by its due time.';
+
+  @override
+  String get rolloverLabel => 'Rollover (Push to Next Day)';
+
+  @override
+  String get rolloverDescription =>
+      'Overdue task rolls forward to today and remains overdue until completed.';
+
+  @override
+  String get skipLabel => 'Skip (Drop Occurrence)';
+
+  @override
+  String get skipDescription =>
+      'Overdue task is automatically skipped, logged in history, and rescheduled.';
+
+  @override
+  String get shiftLabel => 'Shift Schedule (Push Out Future Dates)';
+
+  @override
+  String get shiftDescription =>
+      'Next occurrence is calculated relative to when the task was completed late.';
+
+  @override
+  String get stackLabel => 'Stack/Overlap (Allow Concurrency)';
+
+  @override
+  String get stackDescription =>
+      'Missed occurrences remain active, letting multiple instances stack up.';
 }
