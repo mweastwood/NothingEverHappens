@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import 'app_clock.dart';
+import 'civil_day.dart';
 import 'relative_time.dart';
 import 'task.dart';
 import 'task_delta.dart';
@@ -59,6 +60,7 @@ class TaskRepository {
 
     try {
       final now = AppClock.now;
+      final today = CivilDay.fromDateTime(now);
 
       final batch = _firestore.batch();
       bool hasChanges = false;
@@ -110,6 +112,91 @@ class TaskRepository {
 
           batch.set(_tasksRef.doc(task.id), updatedTask);
           hasChanges = true;
+        }
+
+        // 2. Stack policy
+        if (task.isMaster && task.missedPolicy == MissedPolicy.stack) {
+          final startDate = task.schedule.scheduledDate;
+          final lastSpawned = task.lastSpawnedDate;
+
+          CivilDay checkDate = lastSpawned != null
+              ? lastSpawned.addDays(1)
+              : startDate;
+
+          List<CivilDay> datesToSpawn = [];
+          while (checkDate.isBefore(today) || checkDate == today) {
+            if (task.schedule.occursOn(checkDate)) {
+              datesToSpawn.add(checkDate);
+              if (datesToSpawn.length >= 30) {
+                break;
+              }
+            }
+            checkDate = checkDate.addDays(1);
+          }
+
+          if (datesToSpawn.isNotEmpty) {
+            for (final date in datesToSpawn) {
+              final dateStr =
+                  '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+              final spawnedId = '${task.id}_$dateStr';
+
+              if (task.dailyTimes.isNotEmpty) {
+                for (int i = 0; i < task.dailyTimes.length; i++) {
+                  final timeSlot = task.dailyTimes[i];
+                  final slotId = '${spawnedId}_$i';
+
+                  final spawnedTask = Task(
+                    id: slotId,
+                    title: task.title,
+                    description: task.description,
+                    startRelativeTime: RelativeTime(
+                      dayOffset: 0,
+                      time: timeSlot.startTime,
+                    ),
+                    dueRelativeTime: RelativeTime(
+                      dayOffset: 0,
+                      time: timeSlot.dueTime,
+                    ),
+                    schedule: OneOffSchedule(date: date),
+                    parentTaskId: task.id,
+                    missedPolicy: task.missedPolicy,
+                    estimatedDuration: task.estimatedDuration,
+                  );
+                  batch.set(_tasksRef.doc(slotId), spawnedTask);
+                }
+              } else {
+                final spawnedTask = Task(
+                  id: spawnedId,
+                  title: task.title,
+                  description: task.description,
+                  startRelativeTime: task.startRelativeTime,
+                  dueRelativeTime: task.dueRelativeTime,
+                  schedule: OneOffSchedule(date: date),
+                  parentTaskId: task.id,
+                  missedPolicy: task.missedPolicy,
+                  estimatedDuration: task.estimatedDuration,
+                );
+                batch.set(_tasksRef.doc(spawnedId), spawnedTask);
+              }
+            }
+
+            final updatedMaster = Task(
+              id: task.id,
+              title: task.title,
+              description: task.description,
+              startRelativeTime: task.startRelativeTime,
+              dueRelativeTime: task.dueRelativeTime,
+              schedule: task.schedule,
+              dailyTimes: task.dailyTimes,
+              activeOccurrenceIndex: task.activeOccurrenceIndex,
+              missedPolicy: task.missedPolicy,
+              isMaster: true,
+              lastSpawnedDate: datesToSpawn.last,
+              estimatedDuration: task.estimatedDuration,
+            );
+            batch.set(_tasksRef.doc(task.id), updatedMaster);
+            hasChanges = true;
+          }
         }
       }
 
