@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import '../logic/civil_day.dart';
 import '../logic/task.dart';
 import '../widgets/task_widget.dart';
 import '../logic/task_repository.dart';
@@ -63,7 +64,13 @@ class _TaskListScreenState extends State<TaskListScreen> {
           );
         }
 
-        final tasks = (snapshot.data ?? []).where((t) => !t.isMaster).toList();
+        final today = CivilDay.fromDateTime(AppClock.now);
+        final tasks = (snapshot.data ?? [])
+            .where((t) =>
+                !t.isMaster &&
+                (t.schedule.scheduledDate == today ||
+                    t.schedule.scheduledDate.isBefore(today)))
+            .toList();
 
         if (tasks.isEmpty) {
           return SliverToBoxAdapter(

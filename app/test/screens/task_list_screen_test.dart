@@ -14,6 +14,7 @@ import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/main.dart';
 import 'package:nothing_ever_happens/widgets/dev_clock_widget.dart';
 import '../widgets/task_widget_robot.dart';
@@ -95,6 +96,9 @@ void main() {
   testWidgets('Task list shows FAB and navigates to CreateTaskScreen', (
     WidgetTester tester,
   ) async {
+    AppConfig.environment = AppEnvironment.prod; // Hide dev clock banner/bottom sheet from blocking hits
+    AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+
     await tester.pumpWidget(createScreen());
     await tester.pumpAndSettle();
 
@@ -118,7 +122,15 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
+    // The newly created task defaults to tomorrow (March 9).
+    // Advance the mock clock to March 9 so it passes the scheduledDate <= today filter on TaskListScreen!
+    AppClock.setMockTime(DateTime(2026, 3, 9, 9, 0));
+    await tester.pumpAndSettle();
+
     expect(find.text('New Task Title'), findsOneWidget);
+
+    AppClock.reset();
+    AppConfig.environment = AppEnvironment.dev; // Restore dev env
   });
 
   testWidgets('Task list mobile layout (ListView)', (
@@ -197,6 +209,127 @@ void main() {
     // Verify completeTask was called
     verify(mockTaskRepository.completeTask('1')).called(1);
   });
+
+  testWidgets(
+    'Completing a recurring task advances its schedule and does not reappear on screen',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+
+      final recurringTask = Task(
+        id: 'recur-1',
+        title: 'Daily Repeating Task',
+        description: 'Do daily',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 3, day: 8),
+          interval: 1,
+        ),
+      );
+
+      tasksSubject.add([recurringTask]);
+
+      when(mockTaskRepository.completeTask('recur-1')).thenAnswer((_) async {
+        final advancedTask = Task(
+          id: 'recur-1',
+          title: 'Daily Repeating Task',
+          description: 'Do daily',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 3, day: 9),
+            interval: 1,
+          ),
+        );
+        tasksSubject.add([advancedTask]);
+      });
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      final robot = TaskWidgetRobot.fromTitle(tester, 'Daily Repeating Task');
+      robot.expectVisible();
+
+      await robot.tapCheckbox();
+      await robot.waitForCompletion();
+
+      await tester.pumpAndSettle();
+
+      robot.expectGone();
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+      robot.expectGone();
+
+      AppClock.reset();
+    },
+  );
+
+  testWidgets(
+    'Task list screen filters out tasks scheduled in the future',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+
+      final todayTask = Task(
+        id: 'today-task',
+        title: 'Today Task',
+        description: 'Due today',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 3, day: 8),
+        ),
+      );
+
+      final tomorrowTask = Task(
+        id: 'tomorrow-task',
+        title: 'Tomorrow Task',
+        description: 'Due tomorrow',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 3, day: 9),
+        ),
+      );
+
+      tasksSubject.add([todayTask, tomorrowTask]);
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      // Today's task should be shown
+      expect(find.text('Today Task'), findsOneWidget);
+
+      // Tomorrow's task should be filtered out
+      expect(find.text('Tomorrow Task'), findsNothing);
+
+      AppClock.reset();
+    },
+  );
 
   testWidgets(
     'Completing a task does not affect the next task state (bug repro)',
