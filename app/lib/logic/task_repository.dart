@@ -1,4 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
+import 'app_clock.dart';
+import 'relative_time.dart';
 import 'task.dart';
 import 'task_delta.dart';
 import 'task_list.dart';
@@ -8,6 +11,7 @@ class TaskRepository {
   final FirebaseFirestore _firestore;
   final String _userId;
   final NotificationService? _notificationService;
+  bool _isProcessingMissedPolicies = false;
 
   String get userId => _userId;
 
@@ -50,7 +54,76 @@ class TaskRepository {
   }
 
   void _checkAndProcessMissedPolicies(List<Task> tasks) async {
-    // Will be implemented in subsequent policy-specific PRs.
+    if (_isProcessingMissedPolicies) return;
+    _isProcessingMissedPolicies = true;
+
+    try {
+      final now = AppClock.now;
+
+      final batch = _firestore.batch();
+      bool hasChanges = false;
+
+      for (final task in tasks) {
+        // 1. Skip policy
+        if (task.schedule is! OneOffSchedule &&
+            task.missedPolicy == MissedPolicy.skip &&
+            task.isOverdue(now)) {
+          final deltaId = const Uuid().v4();
+          final delta = TaskDelta(
+            id: deltaId,
+            taskId: task.id,
+            timestamp: now,
+            expiresAt: now.add(const Duration(days: 90)),
+            operation: 'skipped',
+            changedFields: {},
+            userId: _userId,
+          );
+          batch.set(_historyRef.doc(deltaId), delta);
+
+          final nextOccur = task.schedule.nextOccurrenceAfter(
+            task.schedule.scheduledDate,
+          );
+          final newSchedule = task.schedule.copyWithStartDate(nextOccur);
+
+          final firstOccurStart = task.dailyTimes.isNotEmpty
+              ? RelativeTime(dayOffset: 0, time: task.dailyTimes[0].startTime)
+              : task.startRelativeTime;
+          final firstOccurDue = task.dailyTimes.isNotEmpty
+              ? RelativeTime(dayOffset: 0, time: task.dailyTimes[0].dueTime)
+              : task.dueRelativeTime;
+
+          final updatedTask = Task(
+            id: task.id,
+            title: task.title,
+            description: task.description,
+            startRelativeTime: firstOccurStart,
+            dueRelativeTime: firstOccurDue,
+            schedule: newSchedule,
+            dailyTimes: task.dailyTimes,
+            activeOccurrenceIndex: 0,
+            missedPolicy: task.missedPolicy,
+            isMaster: task.isMaster,
+            lastSpawnedDate: task.lastSpawnedDate,
+            parentTaskId: task.parentTaskId,
+            estimatedDuration: task.estimatedDuration,
+          );
+
+          batch.set(_tasksRef.doc(task.id), updatedTask);
+          hasChanges = true;
+        }
+      }
+
+      if (hasChanges) {
+        try {
+          await batch.commit();
+        } catch (e) {
+          // ignore: avoid_print
+          print('Error in auto-processing missed policies: $e');
+        }
+      }
+    } finally {
+      _isProcessingMissedPolicies = false;
+    }
   }
 
   Stream<List<TaskDelta>> getHistory() {
