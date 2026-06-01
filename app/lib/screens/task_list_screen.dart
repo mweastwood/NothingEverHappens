@@ -66,10 +66,12 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
         final today = CivilDay.fromDateTime(AppClock.now);
         final tasks = (snapshot.data ?? [])
-            .where((t) =>
-                !t.isMaster &&
-                (t.schedule.scheduledDate == today ||
-                    t.schedule.scheduledDate.isBefore(today)))
+            .where(
+              (t) =>
+                  !t.isMaster &&
+                  (t.schedule.scheduledDate == today ||
+                      t.schedule.scheduledDate.isBefore(today)),
+            )
             .toList();
 
         if (tasks.isEmpty) {

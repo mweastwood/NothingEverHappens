@@ -96,7 +96,8 @@ void main() {
   testWidgets('Task list shows FAB and navigates to CreateTaskScreen', (
     WidgetTester tester,
   ) async {
-    AppConfig.environment = AppEnvironment.prod; // Hide dev clock banner/bottom sheet from blocking hits
+    AppConfig.environment = AppEnvironment
+        .prod; // Hide dev clock banner/bottom sheet from blocking hits
     AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
 
     await tester.pumpWidget(createScreen());
@@ -277,59 +278,58 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Task list screen filters out tasks scheduled in the future',
-    (WidgetTester tester) async {
-      AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+  testWidgets('Task list screen filters out tasks scheduled in the future', (
+    WidgetTester tester,
+  ) async {
+    AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
 
-      final todayTask = Task(
-        id: 'today-task',
-        title: 'Today Task',
-        description: 'Due today',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 3, day: 8),
-        ),
-      );
+    final todayTask = Task(
+      id: 'today-task',
+      title: 'Today Task',
+      description: 'Due today',
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      schedule: OneOffSchedule(
+        date: const CivilDay(year: 2026, month: 3, day: 8),
+      ),
+    );
 
-      final tomorrowTask = Task(
-        id: 'tomorrow-task',
-        title: 'Tomorrow Task',
-        description: 'Due tomorrow',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 3, day: 9),
-        ),
-      );
+    final tomorrowTask = Task(
+      id: 'tomorrow-task',
+      title: 'Tomorrow Task',
+      description: 'Due tomorrow',
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      schedule: OneOffSchedule(
+        date: const CivilDay(year: 2026, month: 3, day: 9),
+      ),
+    );
 
-      tasksSubject.add([todayTask, tomorrowTask]);
+    tasksSubject.add([todayTask, tomorrowTask]);
 
-      await tester.pumpWidget(createScreen());
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle();
 
-      // Today's task should be shown
-      expect(find.text('Today Task'), findsOneWidget);
+    // Today's task should be shown
+    expect(find.text('Today Task'), findsOneWidget);
 
-      // Tomorrow's task should be filtered out
-      expect(find.text('Tomorrow Task'), findsNothing);
+    // Tomorrow's task should be filtered out
+    expect(find.text('Tomorrow Task'), findsNothing);
 
-      AppClock.reset();
-    },
-  );
+    AppClock.reset();
+  });
 
   testWidgets(
     'Completing a task does not affect the next task state (bug repro)',
