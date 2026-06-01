@@ -507,6 +507,47 @@ void main() {
     );
 
     test(
+      '2. Shift Schedule (Push Out Future Dates): Bi-daily Monday task completed late on Wednesday shifts next date to Friday (Wednesday + 2 days)',
+      () {
+        // Create a bi-daily task scheduled for Monday
+        final monday = const CivilDay(year: 2026, month: 5, day: 25);
+        final task = Task(
+          id: 'shift-task',
+          title: 'Mow the Lawn',
+          description: 'Every 2 days',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: DailySchedule(startDate: monday, interval: 2),
+          missedPolicy: MissedPolicy.shift,
+        );
+
+        // Verify that on Wednesday, it is overdue
+        final wednesdayDateTime = DateTime(2026, 5, 27, 10, 0);
+        expect(task.isOverdue(wednesdayDateTime), isTrue);
+
+        // Simulate completion on Wednesday
+        AppClock.setMockTime(wednesdayDateTime);
+        final state = TaskList([task]).complete('shift-task', 'user-1');
+        AppClock.reset();
+
+        // The next occurrence should shift relative to completion date (strictly after Wednesday -> Friday)
+        final completedTask = state.activeTasks.firstWhere(
+          (t) => t.id == 'shift-task',
+        );
+        expect(
+          completedTask.schedule.scheduledDate,
+          const CivilDay(year: 2026, month: 5, day: 29),
+        );
+      },
+    );
+
+    test(
       '3. Skip (Drop Occurrence): Overdue Monday task is automatically skipped/expired and rescheduled to next calendar occurrence',
       () async {
         final firestore = FakeFirebaseFirestore();
