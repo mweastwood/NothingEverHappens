@@ -89,6 +89,9 @@ abstract class TaskSchedule {
   /// Calculates the next occurrence of the task strictly after [date].
   CivilDay nextOccurrenceAfter(CivilDay date);
 
+  /// Creates a copy of this schedule with a new scheduled/start date.
+  TaskSchedule copyWithStartDate(CivilDay newStartDate);
+
   Map<String, dynamic> toJson();
 
   factory TaskSchedule.fromJson(Map<String, dynamic> json) {
@@ -133,6 +136,11 @@ class OneOffSchedule extends TaskSchedule {
   @override
   CivilDay nextOccurrenceAfter(CivilDay date) {
     return this.date;
+  }
+
+  @override
+  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
+    return OneOffSchedule(date: newStartDate);
   }
 
   @override
@@ -193,6 +201,11 @@ class DailySchedule extends TaskSchedule {
         : startUtc.add(Duration(days: (intervals + 1) * interval));
 
     return CivilDay(year: nextUtc.year, month: nextUtc.month, day: nextUtc.day);
+  }
+
+  @override
+  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
+    return DailySchedule(startDate: newStartDate, interval: interval);
   }
 
   @override
@@ -280,6 +293,15 @@ class WeeklySchedule extends TaskSchedule {
         return current;
       }
     }
+  }
+
+  @override
+  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
+    return WeeklySchedule(
+      startDate: newStartDate,
+      interval: interval,
+      daysOfWeek: daysOfWeek,
+    );
   }
 
   @override
@@ -449,6 +471,7 @@ class Task {
       missedPolicy: newMissedPolicy,
       isMaster: newIsMaster,
       lastSpawnedDate: newLastSpawnedDate,
+      clearLastSpawnedDate: newLastSpawnedDate == null,
     );
 
     final changes = <String, dynamic>{};
@@ -577,6 +600,7 @@ class Task {
     MissedPolicy? missedPolicy,
     bool? isMaster,
     CivilDay? lastSpawnedDate,
+    bool clearLastSpawnedDate = false,
     String? parentTaskId,
   }) {
     return Task(
@@ -594,7 +618,9 @@ class Task {
           : (estimatedDuration ?? this.estimatedDuration),
       missedPolicy: missedPolicy ?? this.missedPolicy,
       isMaster: isMaster ?? this.isMaster,
-      lastSpawnedDate: lastSpawnedDate ?? this.lastSpawnedDate,
+      lastSpawnedDate: clearLastSpawnedDate
+          ? null
+          : (lastSpawnedDate ?? this.lastSpawnedDate),
       parentTaskId: parentTaskId ?? this.parentTaskId,
     );
   }

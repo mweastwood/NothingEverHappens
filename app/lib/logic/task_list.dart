@@ -93,23 +93,7 @@ class TaskList {
           task.schedule.scheduledDate,
         );
 
-        TaskSchedule newSchedule;
-        if (task.schedule is DailySchedule) {
-          final ds = task.schedule as DailySchedule;
-          newSchedule = DailySchedule(
-            startDate: nextOccur,
-            interval: ds.interval,
-          );
-        } else if (task.schedule is WeeklySchedule) {
-          final ws = task.schedule as WeeklySchedule;
-          newSchedule = WeeklySchedule(
-            startDate: nextOccur,
-            interval: ws.interval,
-            daysOfWeek: ws.daysOfWeek,
-          );
-        } else {
-          newSchedule = task.schedule;
-        }
+        final newSchedule = task.schedule.copyWithStartDate(nextOccur);
 
         // Reset to the first occurrence time (or keep existing startRelativeTime / dueRelativeTime if dailyTimes is empty)
         final firstOccurStart = task.dailyTimes.isNotEmpty
