@@ -617,5 +617,91 @@ void main() {
         AppClock.reset();
       },
     );
+
+    test(
+      '4. Stack/Overlap (Allow Concurrency): Master task missed for Monday and Tuesday spawns separate cards on Wednesday',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(
+          firestore: firestore,
+          userId: 'user-1',
+        );
+
+        // Create a daily master task scheduled for Monday
+        final monday = const CivilDay(year: 2026, month: 5, day: 25);
+        final task = Task(
+          id: 'stack-task',
+          title: 'Read a book',
+          description: 'Every day',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: DailySchedule(startDate: monday, interval: 1),
+          missedPolicy: MissedPolicy.stack,
+          isMaster: true,
+        );
+
+        // Save master task to database
+        await repository.addTask(task);
+
+        // Set AppClock to Wednesday (May 27)
+        final wednesdayDateTime = DateTime(2026, 5, 27, 10, 0);
+        AppClock.setMockTime(wednesdayDateTime);
+
+        // Fetch tasks list (triggers spawning check in getTasks stream)
+        await repository.getTasks().first;
+        await Future.delayed(Duration.zero);
+
+        // Query active tasks in Firestore
+        final tasksSnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('tasks')
+            .get();
+        final allTasks = tasksSnap.docs
+            .map((doc) => Task.fromFirestore(doc))
+            .toList();
+
+        // We should have 1 master task + 3 spawned active cards (Monday, Tuesday, Wednesday)
+        expect(allTasks.length, 4);
+
+        final spawnedCards = allTasks.where((t) => !t.isMaster).toList();
+        expect(spawnedCards.length, 3);
+
+        // Assert that spawned cards have deterministic IDs and correct occurrence dates
+        expect(
+          spawnedCards.any((t) => t.id == 'stack-task_2026-05-25'),
+          isTrue,
+        );
+        expect(
+          spawnedCards.any((t) => t.id == 'stack-task_2026-05-26'),
+          isTrue,
+        );
+        expect(
+          spawnedCards.any((t) => t.id == 'stack-task_2026-05-27'),
+          isTrue,
+        );
+
+        // Verify master task lastSpawnedDate is updated to Wednesday
+        final masterTaskDoc = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('tasks')
+            .doc('stack-task')
+            .get();
+        final updatedMaster = Task.fromFirestore(masterTaskDoc);
+        expect(
+          updatedMaster.lastSpawnedDate,
+          const CivilDay(year: 2026, month: 5, day: 27),
+        );
+
+        AppClock.reset();
+      },
+    );
   });
 }
