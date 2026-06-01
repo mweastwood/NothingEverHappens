@@ -52,6 +52,38 @@ class FakeFlutterLocalNotificationsPlugin extends Fake
   Future<void> cancel({required int id, String? tag}) async {
     cancelled.add(id);
   }
+
+  FakeAndroidFlutterLocalNotificationsPlugin? androidImplementation;
+
+  @override
+  T? resolvePlatformSpecificImplementation<
+    T extends FlutterLocalNotificationsPlatform
+  >() {
+    if (T == AndroidFlutterLocalNotificationsPlugin) {
+      return (androidImplementation ??=
+              FakeAndroidFlutterLocalNotificationsPlugin())
+          as T;
+    }
+    return null;
+  }
+}
+
+class FakeAndroidFlutterLocalNotificationsPlugin extends Fake
+    implements AndroidFlutterLocalNotificationsPlugin {
+  bool requestNotificationsPermissionCalled = false;
+  bool requestExactAlarmsPermissionCalled = false;
+
+  @override
+  Future<bool?> requestNotificationsPermission() async {
+    requestNotificationsPermissionCalled = true;
+    return true;
+  }
+
+  @override
+  Future<bool?> requestExactAlarmsPermission() async {
+    requestExactAlarmsPermissionCalled = true;
+    return true;
+  }
 }
 
 void main() {
@@ -117,6 +149,34 @@ void main() {
 
         // Should attempt to cancel all associated slot IDs (0 through 9)
         expect(mockPlugin.cancelled.length, 10);
+      },
+    );
+
+    test(
+      'Fake plugin resolves Android implementation and registers permissions',
+      () async {
+        final androidPlugin = mockPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+        expect(androidPlugin, isNotNull);
+
+        final notifGranted = await androidPlugin!
+            .requestNotificationsPermission();
+        final exactGranted = await androidPlugin.requestExactAlarmsPermission();
+
+        expect(notifGranted, true);
+        expect(exactGranted, true);
+        expect(
+          mockPlugin
+              .androidImplementation!
+              .requestNotificationsPermissionCalled,
+          true,
+        );
+        expect(
+          mockPlugin.androidImplementation!.requestExactAlarmsPermissionCalled,
+          true,
+        );
       },
     );
   });
