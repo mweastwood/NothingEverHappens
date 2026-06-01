@@ -6,6 +6,8 @@ import 'civil_day.dart';
 import 'relative_time.dart';
 import 'task_delta.dart';
 
+enum MissedPolicy { rollover, skip, shift, stack }
+
 /// Result of a task update operation.
 typedef TaskModification = ({Task newTask, TaskDelta delta});
 
@@ -78,11 +80,17 @@ class DailyOccurrenceTime {
 abstract class TaskSchedule {
   const TaskSchedule();
 
+  /// The scheduled date of this occurrence.
+  CivilDay get scheduledDate;
+
   /// Checks if the task occurs on the given [date].
   bool occursOn(CivilDay date);
 
   /// Calculates the next occurrence of the task strictly after [date].
   CivilDay nextOccurrenceAfter(CivilDay date);
+
+  /// Creates a copy of this schedule with a new scheduled/start date.
+  TaskSchedule copyWithStartDate(CivilDay newStartDate);
 
   Map<String, dynamic> toJson();
 
@@ -111,6 +119,9 @@ class OneOffSchedule extends TaskSchedule {
 
   OneOffSchedule({required this.date});
 
+  @override
+  CivilDay get scheduledDate => date;
+
   factory OneOffSchedule.fromJson(Map<String, dynamic> json) {
     return OneOffSchedule(
       date: CivilDay.fromJson(json['date'] as Map<String, dynamic>),
@@ -128,6 +139,11 @@ class OneOffSchedule extends TaskSchedule {
   }
 
   @override
+  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
+    return OneOffSchedule(date: newStartDate);
+  }
+
+  @override
   Map<String, dynamic> toJson() {
     return {'type': 'oneOff', 'date': date.toJson()};
   }
@@ -142,6 +158,9 @@ class DailySchedule extends TaskSchedule {
   int interval;
 
   DailySchedule({required this.startDate, required this.interval});
+
+  @override
+  CivilDay get scheduledDate => startDate;
 
   factory DailySchedule.fromJson(Map<String, dynamic> json) {
     return DailySchedule(
@@ -185,6 +204,11 @@ class DailySchedule extends TaskSchedule {
   }
 
   @override
+  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
+    return DailySchedule(startDate: newStartDate, interval: interval);
+  }
+
+  @override
   Map<String, dynamic> toJson() {
     return {
       'type': 'daily',
@@ -210,6 +234,9 @@ class WeeklySchedule extends TaskSchedule {
     required this.interval,
     required this.daysOfWeek,
   });
+
+  @override
+  CivilDay get scheduledDate => startDate;
 
   factory WeeklySchedule.fromJson(Map<String, dynamic> json) {
     return WeeklySchedule(
@@ -269,6 +296,15 @@ class WeeklySchedule extends TaskSchedule {
   }
 
   @override
+  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
+    return WeeklySchedule(
+      startDate: newStartDate,
+      interval: interval,
+      daysOfWeek: daysOfWeek,
+    );
+  }
+
+  @override
   Map<String, dynamic> toJson() {
     return {
       'type': 'weekly',
@@ -308,6 +344,18 @@ class Task {
   /// The estimated effort for the task (optional).
   Duration? estimatedDuration;
 
+  /// The policy to apply when a task occurrence is missed.
+  MissedPolicy missedPolicy;
+
+  /// Whether this task represents a master/template recurring schedule.
+  bool isMaster;
+
+  /// The date up to which stack occurrences have been spawned.
+  CivilDay? lastSpawnedDate;
+
+  /// If this task is a spawned occurrence of a master task, this is the parent task's ID.
+  String? parentTaskId;
+
   Task({
     required this.id,
     required this.title,
@@ -318,6 +366,10 @@ class Task {
     this.dailyTimes = const [],
     this.activeOccurrenceIndex = 0,
     this.estimatedDuration,
+    this.missedPolicy = MissedPolicy.rollover,
+    this.isMaster = false,
+    this.lastSpawnedDate,
+    this.parentTaskId,
   });
 
   factory Task.fromFirestore(
@@ -338,6 +390,19 @@ class Task {
               .toList()
         : <DailyOccurrenceTime>[];
 
+    final missedPolicyStr = data['missedPolicy'] as String? ?? 'rollover';
+    final missedPolicy = MissedPolicy.values.firstWhere(
+      (e) => e.name == missedPolicyStr,
+      orElse: () => MissedPolicy.rollover,
+    );
+
+    final isMaster = data['isMaster'] as bool? ?? false;
+    final lastSpawnedDateRaw = data['lastSpawnedDate'] as Map<String, dynamic>?;
+    final lastSpawnedDate = lastSpawnedDateRaw != null
+        ? CivilDay.fromJson(lastSpawnedDateRaw)
+        : null;
+    final parentTaskId = data['parentTaskId'] as String?;
+
     return Task(
       id: snapshot.id,
       title: data['title'] as String? ?? 'Untitled',
@@ -354,6 +419,10 @@ class Task {
       estimatedDuration: data['estimatedDuration'] != null
           ? Duration(minutes: data['estimatedDuration'] as int)
           : null,
+      missedPolicy: missedPolicy,
+      isMaster: isMaster,
+      lastSpawnedDate: lastSpawnedDate,
+      parentTaskId: parentTaskId,
     );
   }
 
@@ -367,6 +436,10 @@ class Task {
       'dailyTimes': dailyTimes.map((t) => t.toJson()).toList(),
       'activeOccurrenceIndex': activeOccurrenceIndex,
       'estimatedDuration': estimatedDuration?.inMinutes,
+      'missedPolicy': missedPolicy.name,
+      'isMaster': isMaster,
+      if (lastSpawnedDate != null) 'lastSpawnedDate': lastSpawnedDate!.toJson(),
+      if (parentTaskId != null) 'parentTaskId': parentTaskId,
     };
   }
 
@@ -382,6 +455,9 @@ class Task {
     required List<DailyOccurrenceTime> newDailyTimes,
     required Duration? newEstimatedDuration,
     required String userId,
+    required MissedPolicy newMissedPolicy,
+    required bool newIsMaster,
+    required CivilDay? newLastSpawnedDate,
   }) {
     final newTask = _copyWith(
       title: newTitle,
@@ -392,6 +468,10 @@ class Task {
       dailyTimes: newDailyTimes,
       estimatedDuration: newEstimatedDuration,
       clearEstimatedDuration: newEstimatedDuration == null,
+      missedPolicy: newMissedPolicy,
+      isMaster: newIsMaster,
+      lastSpawnedDate: newLastSpawnedDate,
+      clearLastSpawnedDate: newLastSpawnedDate == null,
     );
 
     final changes = <String, dynamic>{};
@@ -424,6 +504,18 @@ class Task {
 
     if (estimatedDuration != newEstimatedDuration) {
       changes['estimatedDuration'] = newEstimatedDuration?.inMinutes;
+    }
+
+    if (missedPolicy != newMissedPolicy) {
+      changes['missedPolicy'] = newMissedPolicy.name;
+    }
+
+    if (isMaster != newIsMaster) {
+      changes['isMaster'] = newIsMaster;
+    }
+
+    if (lastSpawnedDate != newLastSpawnedDate) {
+      changes['lastSpawnedDate'] = newLastSpawnedDate?.toJson();
     }
 
     final now = AppClock.now;
@@ -505,6 +597,11 @@ class Task {
     int? activeOccurrenceIndex,
     Duration? estimatedDuration,
     bool clearEstimatedDuration = false,
+    MissedPolicy? missedPolicy,
+    bool? isMaster,
+    CivilDay? lastSpawnedDate,
+    bool clearLastSpawnedDate = false,
+    String? parentTaskId,
   }) {
     return Task(
       id: id,
@@ -519,6 +616,12 @@ class Task {
       estimatedDuration: clearEstimatedDuration
           ? null
           : (estimatedDuration ?? this.estimatedDuration),
+      missedPolicy: missedPolicy ?? this.missedPolicy,
+      isMaster: isMaster ?? this.isMaster,
+      lastSpawnedDate: clearLastSpawnedDate
+          ? null
+          : (lastSpawnedDate ?? this.lastSpawnedDate),
+      parentTaskId: parentTaskId ?? this.parentTaskId,
     );
   }
 
@@ -541,12 +644,7 @@ class Task {
 
   /// Checks if the task is overdue at [current] time.
   bool isOverdue(DateTime current) {
-    final today = CivilDay.fromDateTime(current);
-
-    if (schedule.occursOn(today)) {
-      final dueTime = dueRelativeTime.referenceTo(today);
-      return current.isAfter(dueTime);
-    }
-    return false;
+    final dueDateTime = dueRelativeTime.referenceTo(schedule.scheduledDate);
+    return current.isAfter(dueDateTime);
   }
 }

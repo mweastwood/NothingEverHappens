@@ -43,8 +43,14 @@ class TaskRepository {
 
   Stream<List<Task>> getTasks() {
     return _tasksRef.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => doc.data()).toList();
+      final tasks = snapshot.docs.map((doc) => doc.data()).toList();
+      _checkAndProcessMissedPolicies(tasks);
+      return tasks;
     });
+  }
+
+  void _checkAndProcessMissedPolicies(List<Task> tasks) async {
+    // Will be implemented in subsequent policy-specific PRs.
   }
 
   Stream<List<TaskDelta>> getHistory() {
@@ -86,6 +92,13 @@ class TaskRepository {
 
     batch.delete(_tasksRef.doc(id));
     batch.set(_historyRef.doc(delta.id), delta);
+
+    final spawnedDocs = await _tasksRef
+        .where('parentTaskId', isEqualTo: id)
+        .get();
+    for (final doc in spawnedDocs.docs) {
+      batch.delete(doc.reference);
+    }
 
     await batch.commit();
     await _notificationService?.cancelNotifications(id);

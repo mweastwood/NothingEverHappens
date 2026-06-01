@@ -55,6 +55,17 @@ class CivilDay {
   @override
   int get hashCode => Object.hash(year, month, day);
 
+  bool isBefore(CivilDay other) {
+    if (year != other.year) return year < other.year;
+    if (month != other.month) return month < other.month;
+    return day < other.day;
+  }
+
+  CivilDay addDays(int days) {
+    final utc = toUtcDateTime().add(Duration(days: days));
+    return CivilDay(year: utc.year, month: utc.month, day: utc.day);
+  }
+
   @override
   String toString() {
     return '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';

@@ -78,6 +78,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   RecurrenceType _scheduleType = RecurrenceType.oneOff;
   DateTime _startDate = AppClock.now; // For Daily/Weekly start date
   Set<int> _selectedWeekdays = {};
+  MissedPolicy _missedPolicy = MissedPolicy.rollover;
 
   bool _isSaving = false;
 
@@ -88,6 +89,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       final task = widget.taskToEdit!;
       _titleController.text = task.title;
       _descriptionController.text = task.description;
+      _missedPolicy = task.missedPolicy;
       if (task.estimatedDuration != null) {
         _estimatedDurationController.text = task.estimatedDuration!.inMinutes
             .toString();
@@ -272,6 +274,17 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               : _dailyTimesController.value,
           activeOccurrenceIndex: 0,
           estimatedDuration: estimatedDuration,
+          missedPolicy: _scheduleType == RecurrenceType.oneOff
+              ? MissedPolicy.rollover
+              : _missedPolicy,
+          isMaster:
+              _scheduleType != RecurrenceType.oneOff &&
+              _missedPolicy == MissedPolicy.stack,
+          lastSpawnedDate:
+              _scheduleType != RecurrenceType.oneOff &&
+                  _missedPolicy == MissedPolicy.stack
+              ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
+              : null,
         );
 
         final repository = context.read<TaskRepository?>();
@@ -288,6 +301,18 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   : _dailyTimesController.value,
               newEstimatedDuration: estimatedDuration,
               userId: repository.userId,
+              newMissedPolicy: _scheduleType == RecurrenceType.oneOff
+                  ? MissedPolicy.rollover
+                  : _missedPolicy,
+              newIsMaster:
+                  _scheduleType != RecurrenceType.oneOff &&
+                  _missedPolicy == MissedPolicy.stack,
+              newLastSpawnedDate:
+                  widget.taskToEdit!.lastSpawnedDate ??
+                  (_scheduleType != RecurrenceType.oneOff &&
+                          _missedPolicy == MissedPolicy.stack
+                      ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
+                      : null),
             );
             await repository
                 .updateTask(modification)
@@ -497,6 +522,65 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                       setState(() => _selectedWeekdays = days);
                                     },
                                   ),
+                                if (_scheduleType != RecurrenceType.oneOff) ...[
+                                  const Divider(height: 32),
+                                  Text(
+                                    context.l10n.missedPolicyHeader,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  DropdownButtonFormField<MissedPolicy>(
+                                    key: const Key('missed_policy_dropdown'),
+                                    isExpanded: true,
+                                    initialValue: _missedPolicy,
+                                    decoration: InputDecoration(
+                                      border: const OutlineInputBorder(),
+                                      helperText:
+                                          context.l10n.missedPolicyHelper,
+                                    ),
+                                    items: [
+                                      DropdownMenuItem(
+                                        value: MissedPolicy.rollover,
+                                        child: Text(context.l10n.rolloverLabel),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: MissedPolicy.skip,
+                                        child: Text(context.l10n.skipLabel),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: MissedPolicy.shift,
+                                        child: Text(context.l10n.shiftLabel),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: MissedPolicy.stack,
+                                        child: Text(context.l10n.stackLabel),
+                                      ),
+                                    ],
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        setState(() {
+                                          _missedPolicy = value;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _getMissedPolicyDescription(
+                                      context,
+                                      _missedPolicy,
+                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.outline,
+                                        ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -543,5 +627,21 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         ),
       ),
     );
+  }
+
+  String _getMissedPolicyDescription(
+    BuildContext context,
+    MissedPolicy policy,
+  ) {
+    switch (policy) {
+      case MissedPolicy.rollover:
+        return context.l10n.rolloverDescription;
+      case MissedPolicy.skip:
+        return context.l10n.skipDescription;
+      case MissedPolicy.shift:
+        return context.l10n.shiftDescription;
+      case MissedPolicy.stack:
+        return context.l10n.stackDescription;
+    }
   }
 }

@@ -1,6 +1,5 @@
 import 'package:uuid/uuid.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
-import 'civil_day.dart';
 import 'task.dart';
 import 'task_delta.dart';
 import 'relative_time.dart';
@@ -76,6 +75,11 @@ class TaskList {
           schedule: task.schedule, // same schedule (same startDate!)
           dailyTimes: task.dailyTimes,
           activeOccurrenceIndex: nextIndex,
+          estimatedDuration: task.estimatedDuration,
+          missedPolicy: task.missedPolicy,
+          isMaster: task.isMaster,
+          lastSpawnedDate: task.lastSpawnedDate,
+          parentTaskId: task.parentTaskId,
         );
 
         final updatedTasks = List<Task>.from(activeTasks);
@@ -85,26 +89,11 @@ class TaskList {
       } else {
         // We either have no dailyTimes (fallback/compatibility), or we have completed the last daily occurrence.
         // Reschedule the recurring task to the next occurrence day.
-        final today = CivilDay.fromDateTime(now);
-        final nextOccur = task.schedule.nextOccurrenceAfter(today);
+        final nextOccur = task.schedule.nextOccurrenceAfter(
+          task.schedule.scheduledDate,
+        );
 
-        TaskSchedule newSchedule;
-        if (task.schedule is DailySchedule) {
-          final ds = task.schedule as DailySchedule;
-          newSchedule = DailySchedule(
-            startDate: nextOccur,
-            interval: ds.interval,
-          );
-        } else if (task.schedule is WeeklySchedule) {
-          final ws = task.schedule as WeeklySchedule;
-          newSchedule = WeeklySchedule(
-            startDate: nextOccur,
-            interval: ws.interval,
-            daysOfWeek: ws.daysOfWeek,
-          );
-        } else {
-          newSchedule = task.schedule;
-        }
+        final newSchedule = task.schedule.copyWithStartDate(nextOccur);
 
         // Reset to the first occurrence time (or keep existing startRelativeTime / dueRelativeTime if dailyTimes is empty)
         final firstOccurStart = task.dailyTimes.isNotEmpty
@@ -123,6 +112,11 @@ class TaskList {
           schedule: newSchedule,
           dailyTimes: task.dailyTimes,
           activeOccurrenceIndex: 0, // reset
+          estimatedDuration: task.estimatedDuration,
+          missedPolicy: task.missedPolicy,
+          isMaster: task.isMaster,
+          lastSpawnedDate: task.lastSpawnedDate,
+          parentTaskId: task.parentTaskId,
         );
 
         final updatedTasks = List<Task>.from(activeTasks);
