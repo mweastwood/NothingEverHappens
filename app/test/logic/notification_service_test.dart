@@ -57,10 +57,12 @@ class FakeFlutterLocalNotificationsPlugin extends Fake
 
   @override
   T? resolvePlatformSpecificImplementation<
-      T extends FlutterLocalNotificationsPlatform>() {
+    T extends FlutterLocalNotificationsPlatform
+  >() {
     if (T == AndroidFlutterLocalNotificationsPlugin) {
       return (androidImplementation ??=
-          FakeAndroidFlutterLocalNotificationsPlugin()) as T;
+              FakeAndroidFlutterLocalNotificationsPlugin())
+          as T;
     }
     return null;
   }
@@ -153,11 +155,14 @@ void main() {
     test(
       'Fake plugin resolves Android implementation and registers permissions',
       () async {
-        final androidPlugin = mockPlugin.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+        final androidPlugin = mockPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
         expect(androidPlugin, isNotNull);
 
-        final notifGranted = await androidPlugin!.requestNotificationsPermission();
+        final notifGranted = await androidPlugin!
+            .requestNotificationsPermission();
         final exactGranted = await androidPlugin.requestExactAlarmsPermission();
 
         expect(notifGranted, true);
@@ -169,9 +174,7 @@ void main() {
           true,
         );
         expect(
-          mockPlugin
-              .androidImplementation!
-              .requestExactAlarmsPermissionCalled,
+          mockPlugin.androidImplementation!.requestExactAlarmsPermissionCalled,
           true,
         );
       },
