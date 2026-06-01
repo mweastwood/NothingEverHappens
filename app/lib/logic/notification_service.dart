@@ -46,11 +46,12 @@ class PlatformNotificationService implements NotificationService {
       await _plugin.initialize(settings: initializationSettings);
 
       if (Platform.isAndroid) {
-        await _plugin
+        final androidPlugin = _plugin
             .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin
-            >()
-            ?.requestNotificationsPermission();
+            >();
+        await androidPlugin?.requestNotificationsPermission();
+        await androidPlugin?.requestExactAlarmsPermission();
       }
     } catch (e) {
       debugPrint('Failed to initialize platform notifications: $e');
