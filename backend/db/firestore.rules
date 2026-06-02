@@ -20,6 +20,11 @@ service cloud.firestore {
       match /history/{deltaId} {
         allow read, write: if isUser(userId);
       }
+
+      // Settings: Users can read/write their own settings
+      match /settings/{settingsId} {
+        allow read, write: if isUser(userId);
+      }
     }
   }
 }

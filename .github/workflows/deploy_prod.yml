@@ -12,6 +12,7 @@ concurrency:
 jobs:
   deploy_prod_firebase_web:
     runs-on: ubuntu-latest
+    needs: deploy_prod_firebase_rules
     
     defaults:
       run:
@@ -58,6 +59,7 @@ jobs:
 
   deploy_prod_firebase_android:
     runs-on: ubuntu-latest
+    needs: deploy_prod_firebase_rules
     
     defaults:
       run:
@@ -117,6 +119,7 @@ jobs:
 
   deploy_prod_google_play:
     runs-on: ubuntu-latest
+    needs: deploy_prod_firebase_rules
     
     defaults:
       run:
@@ -174,3 +177,17 @@ jobs:
           releaseFiles: app/build/app/outputs/bundle/prodRelease/app-prod-release.aab
           track: internal
           status: completed
+
+  deploy_prod_firebase_rules:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Firestore Rules
+        run: |
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}" > service-account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=service-account.json
+          npx firebase-tools deploy --only firestore:rules --project nothing-ever-happens-prod
+        working-directory: ./backend
+
