@@ -432,4 +432,86 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get leaveFamilyConfirmBody =>
       'Are you sure you want to leave the family?';
+
+  @override
+  String get taskPriorityLabel => 'Priority';
+
+  @override
+  String get priorityLow => 'Low';
+
+  @override
+  String get priorityMedium => 'Medium';
+
+  @override
+  String get priorityHigh => 'High';
+
+  @override
+  String get familyTaskLabel => 'Family Task';
+
+  @override
+  String get familyTaskHelper => 'Share this task with all family members.';
+
+  @override
+  String get viewTaskTitle => 'View Task';
+
+  @override
+  String get onlyParentsCanEditFamilyTasks =>
+      'Only parents can edit family tasks';
+
+  @override
+  String get sprintDashboardTitle => 'Sprint Dashboard';
+
+  @override
+  String get autoAllocateButton => 'Auto-Allocate Chores';
+
+  @override
+  String get choresAllocatedSuccess => 'Chores auto-allocated successfully!';
+
+  @override
+  String get removeFromCycleTooltip => 'Remove from cycle';
+
+  @override
+  String get addToCycleTooltip => 'Add to cycle';
+
+  @override
+  String get backlogTab => 'Backlog';
+
+  @override
+  String get activeCycleTab => 'Active Cycle';
+
+  @override
+  String get weeklyCapacityLabel => 'Weekly Capacity';
+
+  @override
+  String personalTasksLabel(int effort) {
+    return 'Personal Tasks: $effort min';
+  }
+
+  @override
+  String familyChoresLabel(int effort) {
+    return 'Family Chores: $effort min';
+  }
+
+  @override
+  String remainingCapacityLabel(int effort) {
+    return 'Remaining Capacity: $effort min';
+  }
+
+  @override
+  String get noActiveTasks =>
+      'No active tasks in this cycle. Move some from the backlog!';
+
+  @override
+  String get noBacklogTasks => 'No tasks in the backlog.';
+
+  @override
+  String get unassigned => 'Unassigned';
+
+  @override
+  String assignedTo(String name) {
+    return 'Assigned to $name';
+  }
+
+  @override
+  String get starTooltip => 'Toggle preference';
 }

@@ -8,6 +8,8 @@ import 'task_delta.dart';
 
 enum MissedPolicy { rollover, skip, shift, stack }
 
+enum TaskPriority { low, medium, high }
+
 /// Result of a task update operation.
 typedef TaskModification = ({Task newTask, TaskDelta delta});
 
@@ -587,6 +589,21 @@ class Task {
   /// If this task is a spawned occurrence of a master task, this is the parent task's ID.
   String? parentTaskId;
 
+  /// Whether this task is shared with the family.
+  bool isFamily;
+
+  /// The priority of the task.
+  TaskPriority priority;
+
+  /// The cycle this task is scheduled for (null if in backlog).
+  String? cycleId;
+
+  /// Map of user IDs to starring preference (true if starred).
+  Map<String, bool> preferredBy;
+
+  /// The ID of the user assigned to this task (null if unassigned).
+  String? assignedUserId;
+
   Task({
     required this.id,
     required this.title,
@@ -601,6 +618,11 @@ class Task {
     this.isMaster = false,
     this.lastSpawnedDate,
     this.parentTaskId,
+    this.isFamily = false,
+    this.priority = TaskPriority.medium,
+    this.cycleId,
+    this.preferredBy = const {},
+    this.assignedUserId,
   });
 
   /// The starting day of this occurrence.
@@ -639,6 +661,16 @@ class Task {
         ? CivilDay.fromJson(lastSpawnedDateRaw)
         : null;
     final parentTaskId = data['parentTaskId'] as String?;
+    final isFamily = data['isFamily'] as bool? ?? false;
+    final priorityStr = data['priority'] as String? ?? 'medium';
+    final priority = TaskPriority.values.firstWhere(
+      (e) => e.name == priorityStr,
+      orElse: () => TaskPriority.medium,
+    );
+    final cycleId = data['cycleId'] as String?;
+    final preferredByRaw = data['preferredBy'] as Map<String, dynamic>? ?? {};
+    final preferredBy = preferredByRaw.map((k, v) => MapEntry(k, v as bool));
+    final assignedUserId = data['assignedUserId'] as String?;
 
     return Task(
       id: snapshot.id,
@@ -660,6 +692,11 @@ class Task {
       isMaster: isMaster,
       lastSpawnedDate: lastSpawnedDate,
       parentTaskId: parentTaskId,
+      isFamily: isFamily,
+      priority: priority,
+      cycleId: cycleId,
+      preferredBy: preferredBy,
+      assignedUserId: assignedUserId,
     );
   }
 
@@ -677,6 +714,11 @@ class Task {
       'isMaster': isMaster,
       if (lastSpawnedDate != null) 'lastSpawnedDate': lastSpawnedDate!.toJson(),
       if (parentTaskId != null) 'parentTaskId': parentTaskId,
+      'isFamily': isFamily,
+      'priority': priority.name,
+      if (cycleId != null) 'cycleId': cycleId,
+      'preferredBy': preferredBy,
+      if (assignedUserId != null) 'assignedUserId': assignedUserId,
     };
   }
 
@@ -695,6 +737,11 @@ class Task {
     required MissedPolicy newMissedPolicy,
     required bool newIsMaster,
     required CivilDay? newLastSpawnedDate,
+    required bool newIsFamily,
+    required TaskPriority newPriority,
+    String? newCycleId,
+    Map<String, bool>? newPreferredBy,
+    String? newAssignedUserId,
   }) {
     final newTask = _copyWith(
       title: newTitle,
@@ -709,6 +756,13 @@ class Task {
       isMaster: newIsMaster,
       lastSpawnedDate: newLastSpawnedDate,
       clearLastSpawnedDate: newLastSpawnedDate == null,
+      isFamily: newIsFamily,
+      priority: newPriority,
+      cycleId: newCycleId,
+      clearCycleId: newCycleId == null,
+      preferredBy: newPreferredBy,
+      assignedUserId: newAssignedUserId,
+      clearAssignedUserId: newAssignedUserId == null,
     );
 
     final changes = <String, dynamic>{};
@@ -753,6 +807,28 @@ class Task {
 
     if (lastSpawnedDate != newLastSpawnedDate) {
       changes['lastSpawnedDate'] = newLastSpawnedDate?.toJson();
+    }
+
+    if (isFamily != newIsFamily) {
+      changes['isFamily'] = newIsFamily;
+    }
+
+    if (priority != newPriority) {
+      changes['priority'] = newPriority.name;
+    }
+
+    if (cycleId != newCycleId) {
+      changes['cycleId'] = newCycleId;
+    }
+
+    final oldPrefStr = preferredBy.toString();
+    final newPrefStr = (newPreferredBy ?? preferredBy).toString();
+    if (oldPrefStr != newPrefStr) {
+      changes['preferredBy'] = newPreferredBy ?? preferredBy;
+    }
+
+    if (assignedUserId != newAssignedUserId) {
+      changes['assignedUserId'] = newAssignedUserId;
     }
 
     final now = AppClock.now;
@@ -824,6 +900,45 @@ class Task {
     return (newTask: newTask, delta: delta);
   }
 
+  /// Updates the cycle ID and returns the modified task and delta.
+  TaskModification updateCycleId(String? newCycleId, String userId) {
+    final newTask = _copyWith(
+      cycleId: newCycleId,
+      clearCycleId: newCycleId == null,
+    );
+    final delta = _createUpdateDelta(
+      field: 'cycleId',
+      newValue: newCycleId,
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the assigned user ID and returns the modified task and delta.
+  TaskModification updateAssignedUserId(String? newAssignedUserId, String userId) {
+    final newTask = _copyWith(
+      assignedUserId: newAssignedUserId,
+      clearAssignedUserId: newAssignedUserId == null,
+    );
+    final delta = _createUpdateDelta(
+      field: 'assignedUserId',
+      newValue: newAssignedUserId,
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the preferredBy map and returns the modified task and delta.
+  TaskModification updatePreferredBy(Map<String, bool> newPreferredBy, String userId) {
+    final newTask = _copyWith(preferredBy: newPreferredBy);
+    final delta = _createUpdateDelta(
+      field: 'preferredBy',
+      newValue: newPreferredBy,
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
   Task _copyWith({
     String? title,
     String? description,
@@ -839,6 +954,13 @@ class Task {
     CivilDay? lastSpawnedDate,
     bool clearLastSpawnedDate = false,
     String? parentTaskId,
+    bool? isFamily,
+    TaskPriority? priority,
+    String? cycleId,
+    bool clearCycleId = false,
+    Map<String, bool>? preferredBy,
+    String? assignedUserId,
+    bool clearAssignedUserId = false,
   }) {
     return Task(
       id: id,
@@ -859,6 +981,13 @@ class Task {
           ? null
           : (lastSpawnedDate ?? this.lastSpawnedDate),
       parentTaskId: parentTaskId ?? this.parentTaskId,
+      isFamily: isFamily ?? this.isFamily,
+      priority: priority ?? this.priority,
+      cycleId: clearCycleId ? null : (cycleId ?? this.cycleId),
+      preferredBy: preferredBy ?? this.preferredBy,
+      assignedUserId: clearAssignedUserId
+          ? null
+          : (assignedUserId ?? this.assignedUserId),
     );
   }
 

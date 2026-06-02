@@ -81,6 +81,11 @@ class TaskList {
           isMaster: task.isMaster,
           lastSpawnedDate: task.lastSpawnedDate,
           parentTaskId: task.parentTaskId,
+          isFamily: task.isFamily,
+          priority: task.priority,
+          cycleId: task.cycleId,
+          preferredBy: task.preferredBy,
+          assignedUserId: task.assignedUserId,
         );
 
         final updatedTasks = List<Task>.from(activeTasks);
@@ -125,6 +130,11 @@ class TaskList {
           isMaster: task.isMaster,
           lastSpawnedDate: task.lastSpawnedDate,
           parentTaskId: task.parentTaskId,
+          isFamily: task.isFamily,
+          priority: task.priority,
+          cycleId: task.cycleId,
+          preferredBy: task.preferredBy,
+          assignedUserId: task.assignedUserId,
         );
 
         final updatedTasks = List<Task>.from(activeTasks);

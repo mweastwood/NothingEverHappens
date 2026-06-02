@@ -865,6 +865,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Are you sure you want to leave the family?'**
   String get leaveFamilyConfirmBody;
+
+  /// No description provided for @taskPriorityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get taskPriorityLabel;
+
+  /// No description provided for @priorityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get priorityLow;
+
+  /// No description provided for @priorityMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get priorityMedium;
+
+  /// No description provided for @priorityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get priorityHigh;
+
+  /// No description provided for @familyTaskLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Family Task'**
+  String get familyTaskLabel;
+
+  /// No description provided for @familyTaskHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this task with all family members.'**
+  String get familyTaskHelper;
+
+  /// No description provided for @viewTaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View Task'**
+  String get viewTaskTitle;
+
+  /// No description provided for @onlyParentsCanEditFamilyTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Only parents can edit family tasks'**
+  String get onlyParentsCanEditFamilyTasks;
+
+  /// No description provided for @sprintDashboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sprint Dashboard'**
+  String get sprintDashboardTitle;
+
+  /// No description provided for @autoAllocateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-Allocate Chores'**
+  String get autoAllocateButton;
+
+  /// No description provided for @choresAllocatedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Chores auto-allocated successfully!'**
+  String get choresAllocatedSuccess;
+
+  /// No description provided for @removeFromCycleTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from cycle'**
+  String get removeFromCycleTooltip;
+
+  /// No description provided for @addToCycleTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to cycle'**
+  String get addToCycleTooltip;
+
+  /// No description provided for @backlogTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Backlog'**
+  String get backlogTab;
+
+  /// No description provided for @activeCycleTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Cycle'**
+  String get activeCycleTab;
+
+  /// No description provided for @weeklyCapacityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly Capacity'**
+  String get weeklyCapacityLabel;
+
+  /// No description provided for @personalTasksLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal Tasks: {effort} min'**
+  String personalTasksLabel(int effort);
+
+  /// No description provided for @familyChoresLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Family Chores: {effort} min'**
+  String familyChoresLabel(int effort);
+
+  /// No description provided for @remainingCapacityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining Capacity: {effort} min'**
+  String remainingCapacityLabel(int effort);
+
+  /// No description provided for @noActiveTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No active tasks in this cycle. Move some from the backlog!'**
+  String get noActiveTasks;
+
+  /// No description provided for @noBacklogTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks in the backlog.'**
+  String get noBacklogTasks;
+
+  /// No description provided for @unassigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Unassigned'**
+  String get unassigned;
+
+  /// No description provided for @assignedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to {name}'**
+  String assignedTo(String name);
+
+  /// No description provided for @starTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle preference'**
+  String get starTooltip;
 }
 
 class _AppLocalizationsDelegate
