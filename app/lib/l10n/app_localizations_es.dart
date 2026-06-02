@@ -254,4 +254,95 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get stackDescription =>
       'Las ocurrencias perdidas siguen activas, permitiendo que se acumulen múltiples instancias.';
+
+  @override
+  String get monthlyLabel => 'Mensual';
+
+  @override
+  String get yearlyLabel => 'Anual';
+
+  @override
+  String get dayOfMonthLabel => 'Día del Mes';
+
+  @override
+  String get nthDayOfWeekLabel => 'N-ésimo Día de la Semana';
+
+  @override
+  String get monthlyRecurrenceTypeLabel => 'Regla de Recurrencia';
+
+  @override
+  String get monthsIntervalLabel => 'Intervalo de Meses';
+
+  @override
+  String get yearsIntervalLabel => 'Intervalo de Años';
+
+  @override
+  String get dayOfMonthFieldLabel => 'Día del Mes (1-28, o -1 a -28)';
+
+  @override
+  String get dayOfMonthValidationError =>
+      'Por favor ingresa un número de día válido: 1 a 28, o -1 a -28';
+
+  @override
+  String get nthOccurrenceLabel => 'Ocurrencia';
+
+  @override
+  String get firstOccurrence => '1ro';
+
+  @override
+  String get secondOccurrence => '2do';
+
+  @override
+  String get thirdOccurrence => '3ro';
+
+  @override
+  String get fourthOccurrence => '4to';
+
+  @override
+  String get lastOccurrence => 'Último';
+
+  @override
+  String get dayOfWeekLabel => 'Día de la Semana';
+
+  @override
+  String get monthLabel => 'Mes';
+
+  @override
+  String get dayLabel => 'Día';
+
+  @override
+  String get everyMonth => 'Cada mes';
+
+  @override
+  String everyNMonths(int count) {
+    return 'Cada $count meses';
+  }
+
+  @override
+  String get everyYear => 'Cada año';
+
+  @override
+  String everyNYears(int count) {
+    return 'Cada $count años';
+  }
+
+  @override
+  String dayOfMonthOnDay(Object day) {
+    return 'El día $day';
+  }
+
+  @override
+  String dayOfMonthFromEnd(Object day) {
+    return 'El día $day desde el final';
+  }
+
+  @override
+  String nthDayOfWeekOccurrence(Object dayOfWeek, Object occurrence) {
+    return 'El $occurrence $dayOfWeek';
+  }
+
+  @override
+  String yearlyOn(Object day, Object month) {
+    return 'En: $month $day';
+  }
 }

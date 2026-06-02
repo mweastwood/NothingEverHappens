@@ -547,6 +547,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Missed occurrences remain active, letting multiple instances stack up.'**
   String get stackDescription;
+
+  /// No description provided for @monthlyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get monthlyLabel;
+
+  /// No description provided for @yearlyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly'**
+  String get yearlyLabel;
+
+  /// No description provided for @dayOfMonthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Day of Month'**
+  String get dayOfMonthLabel;
+
+  /// No description provided for @nthDayOfWeekLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Nth Day of Week'**
+  String get nthDayOfWeekLabel;
+
+  /// No description provided for @monthlyRecurrenceTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurrence Rule'**
+  String get monthlyRecurrenceTypeLabel;
+
+  /// No description provided for @monthsIntervalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Months Interval'**
+  String get monthsIntervalLabel;
+
+  /// No description provided for @yearsIntervalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Years Interval'**
+  String get yearsIntervalLabel;
+
+  /// No description provided for @dayOfMonthFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Day of Month (1-28, or -1 to -28)'**
+  String get dayOfMonthFieldLabel;
+
+  /// No description provided for @dayOfMonthValidationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid day number: 1 to 28, or -1 to -28'**
+  String get dayOfMonthValidationError;
+
+  /// No description provided for @nthOccurrenceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Occurrence'**
+  String get nthOccurrenceLabel;
+
+  /// No description provided for @firstOccurrence.
+  ///
+  /// In en, this message translates to:
+  /// **'1st'**
+  String get firstOccurrence;
+
+  /// No description provided for @secondOccurrence.
+  ///
+  /// In en, this message translates to:
+  /// **'2nd'**
+  String get secondOccurrence;
+
+  /// No description provided for @thirdOccurrence.
+  ///
+  /// In en, this message translates to:
+  /// **'3rd'**
+  String get thirdOccurrence;
+
+  /// No description provided for @fourthOccurrence.
+  ///
+  /// In en, this message translates to:
+  /// **'4th'**
+  String get fourthOccurrence;
+
+  /// No description provided for @lastOccurrence.
+  ///
+  /// In en, this message translates to:
+  /// **'Last'**
+  String get lastOccurrence;
+
+  /// No description provided for @dayOfWeekLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Day of Week'**
+  String get dayOfWeekLabel;
+
+  /// No description provided for @monthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get monthLabel;
+
+  /// No description provided for @dayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get dayLabel;
+
+  /// No description provided for @everyMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Every month'**
+  String get everyMonth;
+
+  /// No description provided for @everyNMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} months'**
+  String everyNMonths(int count);
+
+  /// No description provided for @everyYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Every year'**
+  String get everyYear;
+
+  /// No description provided for @everyNYears.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} years'**
+  String everyNYears(int count);
+
+  /// No description provided for @dayOfMonthOnDay.
+  ///
+  /// In en, this message translates to:
+  /// **'On day {day}'**
+  String dayOfMonthOnDay(Object day);
+
+  /// No description provided for @dayOfMonthFromEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'On the {day} day from the end'**
+  String dayOfMonthFromEnd(Object day);
+
+  /// No description provided for @nthDayOfWeekOccurrence.
+  ///
+  /// In en, this message translates to:
+  /// **'On the {occurrence} {dayOfWeek}'**
+  String nthDayOfWeekOccurrence(Object dayOfWeek, Object occurrence);
+
+  /// No description provided for @yearlyOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On: {month} {day}'**
+  String yearlyOn(Object day, Object month);
 }
 
 class _AppLocalizationsDelegate

@@ -172,6 +172,189 @@ void main() {
         );
       },
     );
+
+    test(
+      'MonthlySchedule checks intervals and dayOfMonth (positive) correctly',
+      () {
+        const start = CivilDay(year: 2024, month: 1, day: 10);
+        final schedule = MonthlySchedule(
+          startDate: start,
+          interval: 2,
+          dayOfMonth: 15,
+        );
+
+        expect(
+          schedule.occursOn(const CivilDay(year: 2024, month: 1, day: 15)),
+          isTrue,
+        );
+        expect(
+          schedule.occursOn(const CivilDay(year: 2024, month: 2, day: 15)),
+          isFalse,
+        );
+        expect(
+          schedule.occursOn(const CivilDay(year: 2024, month: 3, day: 15)),
+          isTrue,
+        );
+        expect(
+          schedule.occursOn(const CivilDay(year: 2024, month: 3, day: 16)),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'MonthlySchedule checks intervals and dayOfMonth (negative) correctly',
+      () {
+        const start = CivilDay(year: 2024, month: 1, day: 10);
+        final schedule = MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: -1,
+        );
+
+        expect(
+          schedule.occursOn(const CivilDay(year: 2024, month: 1, day: 31)),
+          isTrue,
+        );
+        expect(
+          schedule.occursOn(const CivilDay(year: 2024, month: 2, day: 29)),
+          isTrue,
+        ); // Leap year
+        expect(
+          schedule.occursOn(const CivilDay(year: 2024, month: 2, day: 28)),
+          isFalse,
+        );
+      },
+    );
+
+    test('MonthlySchedule checks nthDayOfWeek correctly', () {
+      const start = CivilDay(year: 2024, month: 1, day: 1);
+      final schedule = MonthlySchedule(
+        startDate: start,
+        interval: 1,
+        dayOfWeek: 2,
+        occurrence: 2,
+      );
+
+      expect(
+        schedule.occursOn(const CivilDay(year: 2024, month: 1, day: 9)),
+        isTrue,
+      );
+      expect(
+        schedule.occursOn(const CivilDay(year: 2024, month: 1, day: 2)),
+        isFalse,
+      );
+      expect(
+        schedule.occursOn(const CivilDay(year: 2024, month: 2, day: 13)),
+        isTrue,
+      );
+    });
+
+    test('MonthlySchedule nextOccurrenceAfter works correctly', () {
+      const start = CivilDay(year: 2024, month: 1, day: 1);
+      final schedule = MonthlySchedule(
+        startDate: start,
+        interval: 1,
+        dayOfMonth: 15,
+      );
+
+      expect(
+        schedule.nextOccurrenceAfter(
+          const CivilDay(year: 2024, month: 1, day: 10),
+        ),
+        const CivilDay(year: 2024, month: 1, day: 15),
+      );
+      expect(
+        schedule.nextOccurrenceAfter(
+          const CivilDay(year: 2024, month: 1, day: 15),
+        ),
+        const CivilDay(year: 2024, month: 2, day: 15),
+      );
+    });
+
+    test('MonthlySchedule asserts dayOfMonth ranges correctly', () {
+      const start = CivilDay(year: 2024, month: 1, day: 1);
+
+      expect(
+        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 1),
+        returnsNormally,
+      );
+      expect(
+        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 28),
+        returnsNormally,
+      );
+      expect(
+        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: -1),
+        returnsNormally,
+      );
+      expect(
+        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: -28),
+        returnsNormally,
+      );
+
+      expect(
+        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 0),
+        throwsAssertionError,
+      );
+      expect(
+        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 29),
+        throwsAssertionError,
+      );
+      expect(
+        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: -29),
+        throwsAssertionError,
+      );
+    });
+
+    test('YearlySchedule checks intervals, month, and day correctly', () {
+      const start = CivilDay(year: 2024, month: 10, day: 24);
+      final schedule = YearlySchedule(
+        startDate: start,
+        interval: 2,
+        month: 10,
+        day: 24,
+      );
+
+      expect(
+        schedule.occursOn(const CivilDay(year: 2024, month: 10, day: 24)),
+        isTrue,
+      );
+      expect(
+        schedule.occursOn(const CivilDay(year: 2025, month: 10, day: 24)),
+        isFalse,
+      );
+      expect(
+        schedule.occursOn(const CivilDay(year: 2026, month: 10, day: 24)),
+        isTrue,
+      );
+      expect(
+        schedule.occursOn(const CivilDay(year: 2026, month: 10, day: 25)),
+        isFalse,
+      );
+    });
+
+    test('YearlySchedule nextOccurrenceAfter works correctly', () {
+      const start = CivilDay(year: 2024, month: 10, day: 24);
+      final schedule = YearlySchedule(
+        startDate: start,
+        interval: 1,
+        month: 10,
+        day: 24,
+      );
+
+      expect(
+        schedule.nextOccurrenceAfter(
+          const CivilDay(year: 2024, month: 10, day: 20),
+        ),
+        const CivilDay(year: 2024, month: 10, day: 24),
+      );
+      expect(
+        schedule.nextOccurrenceAfter(
+          const CivilDay(year: 2024, month: 10, day: 24),
+        ),
+        const CivilDay(year: 2025, month: 10, day: 24),
+      );
+    });
   });
 
   group('Task Properties', () {

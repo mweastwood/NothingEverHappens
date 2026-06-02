@@ -147,6 +147,67 @@ class TaskScheduleScreen extends StatelessWidget {
       final selectedDays = ws.daysOfWeek.toList()..sort();
       final joinedDays = selectedDays.map((d) => dayNames[d]).join(', ');
       daysStr = context.l10n.onDaysOfWeek(joinedDays);
+    } else if (task.schedule is MonthlySchedule) {
+      final ms = task.schedule as MonthlySchedule;
+      intervalStr = ms.interval == 1
+          ? context.l10n.everyMonth
+          : context.l10n.everyNMonths(ms.interval);
+      final dateStr =
+          '${ms.startDate.year}-${ms.startDate.month.toString().padLeft(2, '0')}-${ms.startDate.day.toString().padLeft(2, '0')}';
+      startStr = context.l10n.startingDate(dateStr);
+
+      if (ms.dayOfMonth != null) {
+        if (ms.dayOfMonth! > 0) {
+          daysStr = context.l10n.dayOfMonthOnDay(ms.dayOfMonth!);
+        } else {
+          daysStr = context.l10n.dayOfMonthFromEnd(ms.dayOfMonth!.abs());
+        }
+      } else {
+        final occurrenceNames = {
+          1: context.l10n.firstOccurrence,
+          2: context.l10n.secondOccurrence,
+          3: context.l10n.thirdOccurrence,
+          4: context.l10n.fourthOccurrence,
+          -1: context.l10n.lastOccurrence,
+        };
+        final dayOfWeekNames = {
+          1: 'Monday',
+          2: 'Tuesday',
+          3: 'Wednesday',
+          4: 'Thursday',
+          5: 'Friday',
+          6: 'Saturday',
+          7: 'Sunday',
+        };
+        final occStr = occurrenceNames[ms.occurrence] ?? '';
+        final dowStr = dayOfWeekNames[ms.dayOfWeek] ?? '';
+        daysStr = context.l10n.nthDayOfWeekOccurrence(occStr, dowStr);
+      }
+    } else if (task.schedule is YearlySchedule) {
+      final ys = task.schedule as YearlySchedule;
+      intervalStr = ys.interval == 1
+          ? context.l10n.everyYear
+          : context.l10n.everyNYears(ys.interval);
+      final dateStr =
+          '${ys.startDate.year}-${ys.startDate.month.toString().padLeft(2, '0')}-${ys.startDate.day.toString().padLeft(2, '0')}';
+      startStr = context.l10n.startingDate(dateStr);
+
+      final monthNames = {
+        1: 'January',
+        2: 'February',
+        3: 'March',
+        4: 'April',
+        5: 'May',
+        6: 'June',
+        7: 'July',
+        8: 'August',
+        9: 'September',
+        10: 'October',
+        11: 'November',
+        12: 'December',
+      };
+      final mStr = monthNames[ys.month] ?? '';
+      daysStr = context.l10n.yearlyOn(mStr, ys.day);
     }
 
     return Card(
@@ -207,7 +268,11 @@ class TaskScheduleScreen extends StatelessWidget {
                       child: Text(
                         task.schedule is DailySchedule
                             ? context.l10n.dailyRecurrence
-                            : context.l10n.weeklyRecurrence,
+                            : task.schedule is WeeklySchedule
+                            ? context.l10n.weeklyRecurrence
+                            : task.schedule is MonthlySchedule
+                            ? context.l10n.monthlyLabel
+                            : context.l10n.yearlyLabel,
                         style: TextStyle(
                           color: Theme.of(
                             context,
@@ -240,12 +305,18 @@ class TaskScheduleScreen extends StatelessWidget {
                 ),
               ],
             ),
-            if (task.schedule is WeeklySchedule) ...[
+            if (task.schedule is WeeklySchedule ||
+                task.schedule is MonthlySchedule ||
+                task.schedule is YearlySchedule) ...[
               const SizedBox(height: 4),
               Row(
                 children: [
                   Icon(
-                    Icons.calendar_view_week,
+                    task.schedule is WeeklySchedule
+                        ? Icons.calendar_view_week
+                        : task.schedule is MonthlySchedule
+                        ? Icons.calendar_view_month
+                        : Icons.calendar_today,
                     size: 16,
                     color: Theme.of(context).colorScheme.secondary,
                   ),
