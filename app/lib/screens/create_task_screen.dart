@@ -50,7 +50,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   ]);
 
   // Absolute Time fields (for One-off)
-  // Default to tomorrow 5pm for due, tomorrow 9am for start (snooze)
+  // Default to tomorrow 5pm for due, today (now) for start (no snooze)
   final _dueDateTimeController = ValueNotifier(
     AppClock.now
         .add(const Duration(days: 1))
@@ -63,15 +63,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         ),
   );
   final _startDateTimeController = ValueNotifier(
-    AppClock.now
-        .add(const Duration(days: 1))
-        .copyWith(
-          hour: 9,
-          minute: 0,
-          second: 0,
-          millisecond: 0,
-          microsecond: 0,
-        ),
+    AppClock.now.copyWith(second: 0, millisecond: 0, microsecond: 0),
   );
 
   // Schedule fields

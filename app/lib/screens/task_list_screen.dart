@@ -69,8 +69,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
             .where(
               (t) =>
                   !t.isMaster &&
-                  (t.schedule.scheduledDate == today ||
-                      t.schedule.scheduledDate.isBefore(today)),
+                  (t.startDate == today || t.startDate.isBefore(today)),
             )
             .toList();
 
