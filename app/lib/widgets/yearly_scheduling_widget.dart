@@ -94,7 +94,7 @@ class _YearlySchedulingWidgetState extends State<YearlySchedulingWidget> {
                 valueListenable: widget.monthController,
                 builder: (context, month, _) {
                   return DropdownButtonFormField<int>(
-                    value: month,
+                    initialValue: month,
                     decoration: InputDecoration(
                       labelText: context.l10n.monthLabel,
                       border: const OutlineInputBorder(),

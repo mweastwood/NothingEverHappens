@@ -84,7 +84,7 @@ class _MonthlySchedulingWidgetState extends State<MonthlySchedulingWidget> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<String>(
-                  value: ruleType,
+                  initialValue: ruleType,
                   decoration: InputDecoration(
                     labelText: context.l10n.monthlyRecurrenceTypeLabel,
                     border: const OutlineInputBorder(),
@@ -135,7 +135,7 @@ class _MonthlySchedulingWidgetState extends State<MonthlySchedulingWidget> {
                           valueListenable: widget.nthOccurrenceController,
                           builder: (context, occurrence, _) {
                             return DropdownButtonFormField<int>(
-                              value: occurrence,
+                              initialValue: occurrence,
                               decoration: InputDecoration(
                                 labelText: context.l10n.nthOccurrenceLabel,
                                 border: const OutlineInputBorder(),
@@ -177,7 +177,7 @@ class _MonthlySchedulingWidgetState extends State<MonthlySchedulingWidget> {
                           valueListenable: widget.dayOfWeekController,
                           builder: (context, dayOfWeek, _) {
                             return DropdownButtonFormField<int>(
-                              value: dayOfWeek,
+                              initialValue: dayOfWeek,
                               decoration: InputDecoration(
                                 labelText: context.l10n.dayOfWeekLabel,
                                 border: const OutlineInputBorder(),
