@@ -37,11 +37,7 @@ class Family {
   final String name;
   final Map<String, FamilyMember> members;
 
-  const Family({
-    required this.id,
-    required this.name,
-    required this.members,
-  });
+  const Family({required this.id, required this.name, required this.members});
 
   factory Family.fromJson(Map<String, dynamic> json, String documentId) {
     final membersJson = json['members'] as Map<String, dynamic>? ?? {};

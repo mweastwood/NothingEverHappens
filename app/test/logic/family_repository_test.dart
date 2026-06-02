@@ -63,24 +63,30 @@ void main() {
       );
     });
 
-    test('createFamily creates a family document and updates user profile', () async {
-      await repository.createFamily('The Simpsons');
+    test(
+      'createFamily creates a family document and updates user profile',
+      () async {
+        await repository.createFamily('The Simpsons');
 
-      // Check user document
-      final userDoc = await firestore.collection('users').doc(userId).get();
-      expect(userDoc.exists, isTrue);
-      final familyId = userDoc.data()?['familyId'] as String;
-      expect(familyId, isNotEmpty);
-      expect(userDoc.data()?['familyRole'], 'parent');
+        // Check user document
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        expect(userDoc.exists, isTrue);
+        final familyId = userDoc.data()?['familyId'] as String;
+        expect(familyId, isNotEmpty);
+        expect(userDoc.data()?['familyRole'], 'parent');
 
-      // Check family document
-      final familyDoc = await firestore.collection('families').doc(familyId).get();
-      expect(familyDoc.exists, isTrue);
-      final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
-      expect(family.name, 'The Simpsons');
-      expect(family.members[userId]?.displayName, userName);
-      expect(family.members[userId]?.role, 'parent');
-    });
+        // Check family document
+        final familyDoc = await firestore
+            .collection('families')
+            .doc(familyId)
+            .get();
+        expect(familyDoc.exists, isTrue);
+        final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
+        expect(family.name, 'The Simpsons');
+        expect(family.members[userId]?.displayName, userName);
+        expect(family.members[userId]?.role, 'parent');
+      },
+    );
 
     test('inviteMember creates an invite document in Firestore', () async {
       await repository.inviteMember(
@@ -140,15 +146,20 @@ void main() {
       expect(bobDoc.data()?['familyRole'], 'non-parent');
 
       // Family members should now include Bob
-      final familyDoc = await firestore.collection('families').doc(familyId).get();
+      final familyDoc = await firestore
+          .collection('families')
+          .doc(familyId)
+          .get();
       final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
       expect(family.members.length, 2);
       expect(family.members[bobUserId]?.displayName, 'Bob');
       expect(family.members[bobUserId]?.role, 'non-parent');
 
       // Invite should be accepted
-      final updatedInviteDoc =
-          await firestore.collection('invites').doc(invite.id).get();
+      final updatedInviteDoc = await firestore
+          .collection('invites')
+          .doc(invite.id)
+          .get();
       expect(updatedInviteDoc.data()?['status'], 'accepted');
     });
 
@@ -168,27 +179,38 @@ void main() {
 
       await repository.declineInvite(invite);
 
-      final updatedInviteDoc =
-          await firestore.collection('invites').doc(invite.id).get();
+      final updatedInviteDoc = await firestore
+          .collection('invites')
+          .doc(invite.id)
+          .get();
       expect(updatedInviteDoc.data()?['status'], 'declined');
     });
 
-    test('leaveFamily removes user from family and clears user profile', () async {
-      await repository.createFamily('The Simpsons');
-      final userDoc = await firestore.collection('users').doc(userId).get();
-      final familyId = userDoc.data()?['familyId'] as String;
+    test(
+      'leaveFamily removes user from family and clears user profile',
+      () async {
+        await repository.createFamily('The Simpsons');
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        final familyId = userDoc.data()?['familyId'] as String;
 
-      await repository.leaveFamily(familyId);
+        await repository.leaveFamily(familyId);
 
-      // User profile cleared
-      final updatedUserDoc = await firestore.collection('users').doc(userId).get();
-      expect(updatedUserDoc.data()?['familyId'], isNull);
-      expect(updatedUserDoc.data()?['familyRole'], isNull);
+        // User profile cleared
+        final updatedUserDoc = await firestore
+            .collection('users')
+            .doc(userId)
+            .get();
+        expect(updatedUserDoc.data()?['familyId'], isNull);
+        expect(updatedUserDoc.data()?['familyRole'], isNull);
 
-      // Family members should be empty
-      final familyDoc = await firestore.collection('families').doc(familyId).get();
-      final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
-      expect(family.members.containsKey(userId), isFalse);
-    });
+        // Family members should be empty
+        final familyDoc = await firestore
+            .collection('families')
+            .doc(familyId)
+            .get();
+        final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
+        expect(family.members.containsKey(userId), isFalse);
+      },
+    );
   });
 }

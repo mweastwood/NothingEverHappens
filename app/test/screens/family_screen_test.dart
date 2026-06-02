@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:provider/provider.dart';
-import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/screens/family_screen.dart';
@@ -107,8 +106,8 @@ void main() {
           'displayName': 'Bob',
           'email': 'bob@example.com',
           'role': 'non-parent',
-        }
-      }
+        },
+      },
     });
 
     await tester.pumpWidget(buildTestWidget());
@@ -189,8 +188,8 @@ void main() {
           'displayName': 'Bob',
           'email': 'bob@example.com',
           'role': 'non-parent',
-        }
-      }
+        },
+      },
     });
 
     await tester.pumpWidgetBuilder(

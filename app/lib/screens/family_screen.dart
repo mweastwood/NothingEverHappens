@@ -118,7 +118,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   key: const Key('invite_role_dropdown'),
-                  value: selectedRole,
+                  initialValue: selectedRole,
                   decoration: InputDecoration(
                     labelText: context.l10n.inviteMemberRoleLabel,
                     border: const OutlineInputBorder(),
@@ -198,7 +198,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
     }
   }
 
-  Future<void> _leaveFamily(FamilyRepository repository, String familyId) async {
+  Future<void> _leaveFamily(
+    FamilyRepository repository,
+    String familyId,
+  ) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -290,7 +293,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
       builder: (context, profileSnapshot) {
         if (profileSnapshot.hasError) {
           return Center(
-            child: Text('${context.l10n.errorOccurred}: ${profileSnapshot.error}'),
+            child: Text(
+              '${context.l10n.errorOccurred}: ${profileSnapshot.error}',
+            ),
           );
         }
 
@@ -325,8 +330,12 @@ class _FamilyScreenState extends State<FamilyScreen> {
               borderRadius: BorderRadius.circular(16),
               gradient: LinearGradient(
                 colors: [
-                  Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
-                  Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.2),
+                  Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.4),
+                  Theme.of(
+                    context,
+                  ).colorScheme.secondaryContainer.withValues(alpha: 0.2),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -345,8 +354,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   Text(
                     context.l10n.familyScreenTitle,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
@@ -379,9 +388,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
         const SizedBox(height: 24),
         Text(
           context.l10n.pendingInvitesHeader,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         StreamBuilder<List<FamilyInvite>>(
@@ -401,8 +410,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   child: Text(
                     context.l10n.noPendingInvites,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).disabledColor,
-                        ),
+                      color: Theme.of(context).disabledColor,
+                    ),
                   ),
                 ),
               );
@@ -427,9 +436,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                             Expanded(
                               child: Text(
                                 invite.familyName,
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                             ),
                             Container(
@@ -438,15 +446,20 @@ class _FamilyScreenState extends State<FamilyScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primaryContainer,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primaryContainer,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 invite.role == 'parent'
                                     ? context.l10n.parentRole
                                     : context.l10n.nonParentRole,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimaryContainer,
                                     ),
                               ),
                             ),
@@ -454,7 +467,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          context.l10n.invitedBy(invite.fromName, invite.fromEmail),
+                          context.l10n.invitedBy(
+                            invite.fromName,
+                            invite.fromEmail,
+                          ),
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 16),
@@ -463,7 +479,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                           children: [
                             TextButton(
                               key: Key('decline_invite_${invite.id}'),
-                              onPressed: () => _handleInvite(repository, invite, false),
+                              onPressed: () =>
+                                  _handleInvite(repository, invite, false),
                               child: Text(
                                 context.l10n.declineInviteButton,
                                 style: TextStyle(
@@ -474,7 +491,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                             const SizedBox(width: 8),
                             ElevatedButton(
                               key: Key('accept_invite_${invite.id}'),
-                              onPressed: () => _handleInvite(repository, invite, true),
+                              onPressed: () =>
+                                  _handleInvite(repository, invite, true),
                               child: Text(context.l10n.acceptInviteButton),
                             ),
                           ],
@@ -541,7 +559,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                     children: [
                       Text(
                         family.name,
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
                               color: Theme.of(context).colorScheme.onPrimary,
                               fontWeight: FontWeight.bold,
                             ),
@@ -549,8 +568,11 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       const SizedBox(height: 8),
                       Text(
                         '${family.members.length} members',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimary.withValues(alpha: 0.8),
                             ),
                       ),
                     ],
@@ -564,9 +586,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
               children: [
                 Text(
                   context.l10n.membersHeader,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 if (isParent)
                   TextButton.icon(
@@ -619,7 +641,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
                         fontWeight: FontWeight.bold,
                         color: memberIsParent
                             ? Theme.of(context).colorScheme.onPrimaryContainer
-                            : Theme.of(context).colorScheme.onSecondaryContainer,
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSecondaryContainer,
                       ),
                     ),
                   ),
@@ -632,7 +656,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 key: const Key('leave_family_button'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.errorContainer,
-                  foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onErrorContainer,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 12,

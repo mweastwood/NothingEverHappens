@@ -12,10 +12,10 @@ class FamilyRepository {
     required String userId,
     String? userEmail,
     String? userDisplayName,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _userId = userId,
-        _userEmail = userEmail,
-        _userDisplayName = userDisplayName;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _userId = userId,
+       _userEmail = userEmail,
+       _userDisplayName = userDisplayName;
 
   Stream<DocumentSnapshot<Map<String, dynamic>>> getProfile() {
     return _firestore.collection('users').doc(_userId).snapshots();
@@ -23,28 +23,26 @@ class FamilyRepository {
 
   Stream<Family?> getFamily(String familyId) {
     if (familyId.isEmpty) return Stream.value(null);
-    return _firestore
-        .collection('families')
-        .doc(familyId)
-        .snapshots()
-        .map((snapshot) {
+    return _firestore.collection('families').doc(familyId).snapshots().map((
+      snapshot,
+    ) {
       if (!snapshot.exists || snapshot.data() == null) return null;
       return Family.fromJson(snapshot.data()!, snapshot.id);
     });
   }
 
   Stream<List<FamilyInvite>> getPendingInvites() {
-    if (_userEmail == null || _userEmail!.isEmpty) return Stream.value([]);
+    if (_userEmail == null || _userEmail.isEmpty) return Stream.value([]);
     return _firestore
         .collection('invites')
         .where('toEmail', isEqualTo: _userEmail)
         .where('status', isEqualTo: 'pending')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => FamilyInvite.fromJson(doc.data(), doc.id))
-          .toList();
-    });
+          return snapshot.docs
+              .map((doc) => FamilyInvite.fromJson(doc.data(), doc.id))
+              .toList();
+        });
   }
 
   Future<void> createFamily(String name) async {
@@ -66,14 +64,10 @@ class FamilyRepository {
 
     final batch = _firestore.batch();
     batch.set(familyRef, family.toJson());
-    batch.set(
-      _firestore.collection('users').doc(_userId),
-      {
-        'familyId': familyId,
-        'familyRole': 'parent',
-      },
-      SetOptions(merge: true),
-    );
+    batch.set(_firestore.collection('users').doc(_userId), {
+      'familyId': familyId,
+      'familyRole': 'parent',
+    }, SetOptions(merge: true));
 
     await batch.commit();
   }
@@ -102,7 +96,7 @@ class FamilyRepository {
 
   Future<void> acceptInvite(FamilyInvite invite) async {
     final familyRef = _firestore.collection('families').doc(invite.familyId);
-    
+
     final newMember = FamilyMember(
       userId: _userId,
       displayName: _userDisplayName ?? _userEmail ?? 'Member',
@@ -111,19 +105,13 @@ class FamilyRepository {
     );
 
     final batch = _firestore.batch();
-    
-    batch.update(familyRef, {
-      'members.$_userId': newMember.toJson(),
-    });
 
-    batch.set(
-      _firestore.collection('users').doc(_userId),
-      {
-        'familyId': invite.familyId,
-        'familyRole': invite.role,
-      },
-      SetOptions(merge: true),
-    );
+    batch.update(familyRef, {'members.$_userId': newMember.toJson()});
+
+    batch.set(_firestore.collection('users').doc(_userId), {
+      'familyId': invite.familyId,
+      'familyRole': invite.role,
+    }, SetOptions(merge: true));
 
     batch.update(_firestore.collection('invites').doc(invite.id), {
       'status': 'accepted',
@@ -140,19 +128,15 @@ class FamilyRepository {
 
   Future<void> leaveFamily(String familyId) async {
     final batch = _firestore.batch();
-    
+
     batch.update(_firestore.collection('families').doc(familyId), {
       'members.$_userId': FieldValue.delete(),
     });
 
-    batch.set(
-      _firestore.collection('users').doc(_userId),
-      {
-        'familyId': FieldValue.delete(),
-        'familyRole': FieldValue.delete(),
-      },
-      SetOptions(merge: true),
-    );
+    batch.set(_firestore.collection('users').doc(_userId), {
+      'familyId': FieldValue.delete(),
+      'familyRole': FieldValue.delete(),
+    }, SetOptions(merge: true));
 
     await batch.commit();
   }
