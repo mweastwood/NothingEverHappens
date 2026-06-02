@@ -345,4 +345,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String yearlyOn(Object day, Object month) {
     return 'On: $month $day';
   }
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get hoursAvailableLabel => 'Available Hours per Day';
+
+  @override
+  String get hoursAvailableHelper =>
+      'Number of hours available for agile-based scheduling.';
+
+  @override
+  String get hoursAvailableValidationError =>
+      'Please enter a number between 0 and 24';
+
+  @override
+  String get settingsSavedSuccessfully => 'Settings saved successfully';
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
+import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:rxdart/rxdart.dart';
@@ -7,38 +9,56 @@ import '../test_helper.dart';
 
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/screens/home_screen.dart';
+import 'package:nothing_ever_happens/screens/settings_screen.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
 import 'package:nothing_ever_happens/screens/task_history_screen.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 
-import 'task_list_screen_test.mocks.dart';
+@GenerateNiceMocks([
+  MockSpec<AuthRepository>(),
+  MockSpec<TaskRepository>(),
+  MockSpec<UserSettingsRepository>(),
+])
+import 'home_screen_test.mocks.dart';
 
 void main() {
   late MockAuthRepository mockAuthRepository;
   late MockTaskRepository mockTaskRepository;
+  late MockUserSettingsRepository mockUserSettingsRepository;
   late BehaviorSubject<List<Task>> tasksSubject;
   late BehaviorSubject<List<TaskDelta>> historySubject;
+  late BehaviorSubject<UserSettings> settingsSubject;
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
     mockTaskRepository = MockTaskRepository();
+    mockUserSettingsRepository = MockUserSettingsRepository();
 
     tasksSubject = BehaviorSubject<List<Task>>.seeded([]);
     historySubject = BehaviorSubject<List<TaskDelta>>.seeded([]);
+    settingsSubject = BehaviorSubject<UserSettings>.seeded(
+      const UserSettings(hoursAvailable: 8.0),
+    );
 
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
     when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubject.stream);
     when(
       mockTaskRepository.getHistory(),
     ).thenAnswer((_) => historySubject.stream);
+    when(
+      mockUserSettingsRepository.getSettings(),
+    ).thenAnswer((_) => settingsSubject.stream);
   });
 
   tearDown(() {
     tasksSubject.close();
     historySubject.close();
+    settingsSubject.close();
   });
 
   Widget createScreen() {
@@ -46,6 +66,9 @@ void main() {
       providers: [
         Provider<AuthRepository>.value(value: mockAuthRepository),
         Provider<TaskRepository>.value(value: mockTaskRepository),
+        Provider<UserSettingsRepository>.value(
+          value: mockUserSettingsRepository,
+        ),
       ],
       child: buildTestableWidget(child: const HomeScreen()),
     );
@@ -122,5 +145,52 @@ void main() {
     // Verify TaskListScreen is visible again and FAB is back
     expect(find.byType(TaskListScreen), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);
+  });
+
+  testWidgets('HomeScreen drawer opens and navigates to settings', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle();
+
+    // Verify drawer is closed initially
+    expect(find.byType(Drawer), findsNothing);
+
+    // Open drawer using the menu icon
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    // Verify drawer is now open
+    expect(find.byType(Drawer), findsOneWidget);
+
+    // Verify drawer header and list tiles
+    expect(
+      find.descendant(of: find.byType(Drawer), matching: find.text('Menu')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('drawer_settings_tile')), findsOneWidget);
+    expect(find.byKey(const Key('drawer_logout_tile')), findsOneWidget);
+
+    // Tap on settings tile and verify navigation
+    await tester.tap(find.byKey(const Key('drawer_settings_tile')));
+    await tester.pumpAndSettle();
+
+    // Verify SettingsScreen is visible
+    expect(find.byType(SettingsScreen), findsOneWidget);
+  });
+
+  testGoldens('HomeScreen drawer open state golden', (tester) async {
+    await tester.pumpWidgetBuilder(
+      createScreen(),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    // Open drawer
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    // Match golden
+    await screenMatchesGolden(tester, 'home_screen_drawer_open');
   });
 }

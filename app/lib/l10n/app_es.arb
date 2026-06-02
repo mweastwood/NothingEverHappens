@@ -99,5 +99,10 @@
   "dayOfMonthOnDay": "El día {day}",
   "dayOfMonthFromEnd": "El día {day} desde el final",
   "nthDayOfWeekOccurrence": "El {occurrence} {dayOfWeek}",
-  "yearlyOn": "En: {month} {day}"
+  "yearlyOn": "En: {month} {day}",
+  "settingsTitle": "Configuración",
+  "hoursAvailableLabel": "Horas Disponibles por Día",
+  "hoursAvailableHelper": "Número de horas disponibles para la programación ágil.",
+  "hoursAvailableValidationError": "Por favor ingresa un número entre 0 y 24",
+  "settingsSavedSuccessfully": "Configuración guardada exitosamente"
 }

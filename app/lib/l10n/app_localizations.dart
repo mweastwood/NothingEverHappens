@@ -703,6 +703,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'On: {month} {day}'**
   String yearlyOn(Object day, Object month);
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @hoursAvailableLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Available Hours per Day'**
+  String get hoursAvailableLabel;
+
+  /// No description provided for @hoursAvailableHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of hours available for agile-based scheduling.'**
+  String get hoursAvailableHelper;
+
+  /// No description provided for @hoursAvailableValidationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a number between 0 and 24'**
+  String get hoursAvailableValidationError;
+
+  /// No description provided for @settingsSavedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings saved successfully'**
+  String get settingsSavedSuccessfully;
 }
 
 class _AppLocalizationsDelegate

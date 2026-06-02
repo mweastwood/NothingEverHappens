@@ -10,6 +10,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'logic/auth_repository.dart';
 import 'logic/task_repository.dart';
+import 'logic/user_settings_repository.dart';
 import 'logic/error_handler.dart';
 import 'logic/notification_service.dart';
 import 'l10n/app_localizations.dart';
@@ -57,6 +58,12 @@ class MyApp extends StatelessWidget {
               userId: user.uid,
               notificationService: notificationService,
             );
+          },
+        ),
+        ProxyProvider<User?, UserSettingsRepository?>(
+          update: (context, user, previous) {
+            if (user == null) return null;
+            return UserSettingsRepository(userId: user.uid);
           },
         ),
       ],
