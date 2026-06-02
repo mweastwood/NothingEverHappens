@@ -26,5 +26,40 @@ service cloud.firestore {
         allow read, write: if isUser(userId);
       }
     }
+
+    // Families: Users can read if they are members. Any authenticated user can create.
+    // Existing members can update, or joining members can add themselves.
+    match /families/{familyId} {
+      allow read: if request.auth != null && (
+        resource == null || resource.data.members[request.auth.uid] != null
+      );
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        // Existing member
+        resource.data.members[request.auth.uid] != null
+        ||
+        // Joining user adding themselves
+        (request.resource.data.members[request.auth.uid] != null && resource.data.members[request.auth.uid] == null)
+      );
+    }
+
+    // Invites: users can read/write if they are sender or recipient
+    match /invites/{inviteId} {
+      allow read: if request.auth != null && (
+        resource.data.toEmail == request.auth.token.email
+        ||
+        resource.data.fromEmail == request.auth.token.email
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.fromEmail == request.auth.token.email
+      );
+      allow update, delete: if request.auth != null && (
+        // Recipient can update status or delete
+        resource.data.toEmail == request.auth.token.email
+        ||
+        // Sender can cancel
+        resource.data.fromEmail == request.auth.token.email
+      );
+    }
   }
 }

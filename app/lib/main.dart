@@ -11,6 +11,7 @@ import 'screens/login_screen.dart';
 import 'logic/auth_repository.dart';
 import 'logic/task_repository.dart';
 import 'logic/user_settings_repository.dart';
+import 'logic/family_repository.dart';
 import 'logic/error_handler.dart';
 import 'logic/notification_service.dart';
 import 'l10n/app_localizations.dart';
@@ -64,6 +65,16 @@ class MyApp extends StatelessWidget {
           update: (context, user, previous) {
             if (user == null) return null;
             return UserSettingsRepository(userId: user.uid);
+          },
+        ),
+        ProxyProvider<User?, FamilyRepository?>(
+          update: (context, user, previous) {
+            if (user == null) return null;
+            return FamilyRepository(
+              userId: user.uid,
+              userEmail: user.email,
+              userDisplayName: user.displayName,
+            );
           },
         ),
       ],

@@ -1,0 +1,654 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../logic/family.dart';
+import '../logic/family_repository.dart';
+import '../logic/error_handler.dart';
+import '../logic/l10n_extension.dart';
+
+class FamilyScreen extends StatefulWidget {
+  const FamilyScreen({super.key});
+
+  @override
+  State<FamilyScreen> createState() => _FamilyScreenState();
+}
+
+class _FamilyScreenState extends State<FamilyScreen> {
+  bool _isProcessing = false;
+
+  Future<void> _createFamily(FamilyRepository repository) async {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.createFamilyTitle),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            key: const Key('family_name_field'),
+            controller: controller,
+            decoration: InputDecoration(
+              labelText: context.l10n.familyUnitNameLabel,
+              border: const OutlineInputBorder(),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter a family name'; // fallback string
+              }
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.cancelButton),
+          ),
+          ElevatedButton(
+            key: const Key('confirm_create_family_button'),
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(context, controller.text.trim());
+              }
+            },
+            child: Text(context.l10n.saveButton),
+          ),
+        ],
+      ),
+    );
+
+    if (name != null && mounted) {
+      setState(() {
+        _isProcessing = true;
+      });
+      try {
+        await repository.createFamily(name);
+      } catch (e, stackTrace) {
+        if (mounted) {
+          final errorHandler = context.read<ErrorHandler>();
+          final report = errorHandler.report(e, stackTrace: stackTrace);
+          errorHandler.showErrorDialog(context, report);
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _inviteMember(FamilyRepository repository, Family family) async {
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    String selectedRole = 'non-parent';
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: Text(context.l10n.inviteMemberTitle),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  key: const Key('invite_email_field'),
+                  controller: emailController,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.inviteMemberEmailLabel,
+                    border: const OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter an email address';
+                    }
+                    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                    if (!emailRegex.hasMatch(value.trim())) {
+                      return 'Please enter a valid email address';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  key: const Key('invite_role_dropdown'),
+                  value: selectedRole,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.inviteMemberRoleLabel,
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'parent',
+                      child: Text(context.l10n.parentRole),
+                    ),
+                    DropdownMenuItem(
+                      value: 'non-parent',
+                      child: Text(context.l10n.nonParentRole),
+                    ),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setStateDialog(() {
+                        selectedRole = val;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.cancelButton),
+            ),
+            ElevatedButton(
+              key: const Key('confirm_invite_button'),
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.pop(context, {
+                    'email': emailController.text.trim(),
+                    'role': selectedRole,
+                  });
+                }
+              },
+              child: Text(context.l10n.saveButton),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _isProcessing = true;
+      });
+      try {
+        await repository.inviteMember(
+          familyId: family.id,
+          familyName: family.name,
+          toEmail: result['email']!,
+          role: result['role']!,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.l10n.inviteSentSuccess)),
+          );
+        }
+      } catch (e, stackTrace) {
+        if (mounted) {
+          final errorHandler = context.read<ErrorHandler>();
+          final report = errorHandler.report(e, stackTrace: stackTrace);
+          errorHandler.showErrorDialog(context, report);
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _leaveFamily(FamilyRepository repository, String familyId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.leaveFamilyConfirmTitle),
+        content: Text(context.l10n.leaveFamilyConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.cancelButton),
+          ),
+          ElevatedButton(
+            key: const Key('confirm_leave_family_button'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.leaveFamilyButton),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      setState(() {
+        _isProcessing = true;
+      });
+      try {
+        await repository.leaveFamily(familyId);
+      } catch (e, stackTrace) {
+        if (mounted) {
+          final errorHandler = context.read<ErrorHandler>();
+          final report = errorHandler.report(e, stackTrace: stackTrace);
+          errorHandler.showErrorDialog(context, report);
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _handleInvite(
+    FamilyRepository repository,
+    FamilyInvite invite,
+    bool accept,
+  ) async {
+    setState(() {
+      _isProcessing = true;
+    });
+    try {
+      if (accept) {
+        await repository.acceptInvite(invite);
+      } else {
+        await repository.declineInvite(invite);
+      }
+    } catch (e, stackTrace) {
+      if (mounted) {
+        final errorHandler = context.read<ErrorHandler>();
+        final report = errorHandler.report(e, stackTrace: stackTrace);
+        errorHandler.showErrorDialog(context, report);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final familyRepo = Provider.of<FamilyRepository?>(context);
+
+    if (familyRepo == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_isProcessing) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: familyRepo.getProfile(),
+      builder: (context, profileSnapshot) {
+        if (profileSnapshot.hasError) {
+          return Center(
+            child: Text('${context.l10n.errorOccurred}: ${profileSnapshot.error}'),
+          );
+        }
+
+        if (profileSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final profileData = profileSnapshot.data?.data() ?? {};
+        final familyId = profileData['familyId'] as String? ?? '';
+        final familyRole = profileData['familyRole'] as String? ?? '';
+
+        if (familyId.isEmpty) {
+          return _buildNoFamilyScreen(familyRepo);
+        } else {
+          return _buildFamilyScreen(familyRepo, familyId, familyRole);
+        }
+      },
+    );
+  }
+
+  Widget _buildNoFamilyScreen(FamilyRepository repository) {
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
+                  Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.2),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.people_outline,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    context.l10n.familyScreenTitle,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    context.l10n.notInFamilyBody,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    key: const Key('create_family_button'),
+                    onPressed: () => _createFamily(repository),
+                    icon: const Icon(Icons.add),
+                    label: Text(context.l10n.createFamilyButton),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          context.l10n.pendingInvitesHeader,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 8),
+        StreamBuilder<List<FamilyInvite>>(
+          stream: repository.getPendingInvites(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('${context.l10n.errorOccurred}: ${snapshot.error}');
+            }
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final invites = snapshot.data ?? [];
+            if (invites.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24.0),
+                child: Center(
+                  child: Text(
+                    context.l10n.noPendingInvites,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).disabledColor,
+                        ),
+                  ),
+                ),
+              );
+            }
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: invites.length,
+              itemBuilder: (context, index) {
+                final invite = invites[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.mail_outline),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                invite.familyName,
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                invite.role == 'parent'
+                                    ? context.l10n.parentRole
+                                    : context.l10n.nonParentRole,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          context.l10n.invitedBy(invite.fromName, invite.fromEmail),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              key: Key('decline_invite_${invite.id}'),
+                              onPressed: () => _handleInvite(repository, invite, false),
+                              child: Text(
+                                context.l10n.declineInviteButton,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              key: Key('accept_invite_${invite.id}'),
+                              onPressed: () => _handleInvite(repository, invite, true),
+                              child: Text(context.l10n.acceptInviteButton),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFamilyScreen(
+    FamilyRepository repository,
+    String familyId,
+    String familyRole,
+  ) {
+    return StreamBuilder<Family?>(
+      stream: repository.getFamily(familyId),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('${context.l10n.errorOccurred}: ${snapshot.error}'),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final family = snapshot.data;
+        if (family == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final isParent = familyRole == 'parent';
+
+        return ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        family.name,
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${family.members.length} members',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  context.l10n.membersHeader,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                if (isParent)
+                  TextButton.icon(
+                    key: const Key('invite_member_button'),
+                    onPressed: () => _inviteMember(repository, family),
+                    icon: const Icon(Icons.person_add),
+                    label: Text(context.l10n.inviteMemberButton),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...family.members.values.map((member) {
+              final memberIsParent = member.role == 'parent';
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: memberIsParent
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : Theme.of(context).colorScheme.secondaryContainer,
+                    child: Icon(
+                      memberIsParent ? Icons.supervisor_account : Icons.person,
+                      color: memberIsParent
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : Theme.of(context).colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                  title: Text(
+                    member.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(member.email),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: memberIsParent
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      memberIsParent
+                          ? context.l10n.parentRole
+                          : context.l10n.nonParentRole,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: memberIsParent
+                            ? Theme.of(context).colorScheme.onPrimaryContainer
+                            : Theme.of(context).colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 32),
+            Center(
+              child: ElevatedButton.icon(
+                key: const Key('leave_family_button'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                  foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => _leaveFamily(repository, family.id),
+                icon: const Icon(Icons.exit_to_app),
+                label: Text(context.l10n.leaveFamilyButton),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

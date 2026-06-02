@@ -7,6 +7,7 @@ import 'task_list_screen.dart';
 import 'task_schedule_screen.dart';
 import 'task_history_screen.dart';
 import 'settings_screen.dart';
+import 'family_screen.dart';
 import '../logic/l10n_extension.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -37,7 +38,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ? const TaskListScreen()
               : _currentIndex == 1
               ? const TaskScheduleScreen()
-              : const TaskHistoryScreen(),
+              : _currentIndex == 2
+              ? const TaskHistoryScreen()
+              : const FamilyScreen(),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _currentIndex,
             onDestinationSelected: (int index) {
@@ -60,6 +63,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.history_outlined),
                 selectedIcon: const Icon(Icons.history),
                 label: context.l10n.historyTab,
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.people_outline),
+                selectedIcon: const Icon(Icons.people),
+                label: context.l10n.familyTab,
               ),
             ],
           ),

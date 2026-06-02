@@ -362,4 +362,74 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSavedSuccessfully => 'Settings saved successfully';
+
+  @override
+  String get familyTab => 'Family';
+
+  @override
+  String get familyScreenTitle => 'Family';
+
+  @override
+  String get createFamilyTitle => 'Create Family';
+
+  @override
+  String get createFamilyButton => 'Create Family';
+
+  @override
+  String get familyUnitNameLabel => 'Family Name';
+
+  @override
+  String get inviteMemberButton => 'Invite Member';
+
+  @override
+  String get inviteMemberTitle => 'Invite Family Member';
+
+  @override
+  String get inviteMemberEmailLabel => 'Email Address';
+
+  @override
+  String get inviteMemberRoleLabel => 'Role';
+
+  @override
+  String get parentRole => 'Parent';
+
+  @override
+  String get nonParentRole => 'Non-Parent';
+
+  @override
+  String get pendingInvitesHeader => 'Pending Invites';
+
+  @override
+  String get acceptInviteButton => 'Accept';
+
+  @override
+  String get declineInviteButton => 'Decline';
+
+  @override
+  String get leaveFamilyButton => 'Leave Family';
+
+  @override
+  String get membersHeader => 'Family Members';
+
+  @override
+  String get notInFamilyBody =>
+      'You are not currently in a family unit. You can create a new family or accept a pending invitation below.';
+
+  @override
+  String get noPendingInvites => 'No pending invitations';
+
+  @override
+  String get inviteSentSuccess => 'Invitation sent successfully';
+
+  @override
+  String invitedBy(String name, String email) {
+    return 'Invited by $name ($email)';
+  }
+
+  @override
+  String get leaveFamilyConfirmTitle => 'Leave Family?';
+
+  @override
+  String get leaveFamilyConfirmBody =>
+      'Are you sure you want to leave the family?';
 }

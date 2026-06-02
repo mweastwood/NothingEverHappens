@@ -733,6 +733,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings saved successfully'**
   String get settingsSavedSuccessfully;
+
+  /// No description provided for @familyTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get familyTab;
+
+  /// No description provided for @familyScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get familyScreenTitle;
+
+  /// No description provided for @createFamilyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Family'**
+  String get createFamilyTitle;
+
+  /// No description provided for @createFamilyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Family'**
+  String get createFamilyButton;
+
+  /// No description provided for @familyUnitNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Family Name'**
+  String get familyUnitNameLabel;
+
+  /// No description provided for @inviteMemberButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite Member'**
+  String get inviteMemberButton;
+
+  /// No description provided for @inviteMemberTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite Family Member'**
+  String get inviteMemberTitle;
+
+  /// No description provided for @inviteMemberEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Address'**
+  String get inviteMemberEmailLabel;
+
+  /// No description provided for @inviteMemberRoleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get inviteMemberRoleLabel;
+
+  /// No description provided for @parentRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent'**
+  String get parentRole;
+
+  /// No description provided for @nonParentRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-Parent'**
+  String get nonParentRole;
+
+  /// No description provided for @pendingInvitesHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending Invites'**
+  String get pendingInvitesHeader;
+
+  /// No description provided for @acceptInviteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get acceptInviteButton;
+
+  /// No description provided for @declineInviteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get declineInviteButton;
+
+  /// No description provided for @leaveFamilyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Family'**
+  String get leaveFamilyButton;
+
+  /// No description provided for @membersHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Family Members'**
+  String get membersHeader;
+
+  /// No description provided for @notInFamilyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You are not currently in a family unit. You can create a new family or accept a pending invitation below.'**
+  String get notInFamilyBody;
+
+  /// No description provided for @noPendingInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'No pending invitations'**
+  String get noPendingInvites;
+
+  /// No description provided for @inviteSentSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation sent successfully'**
+  String get inviteSentSuccess;
+
+  /// No description provided for @invitedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited by {name} ({email})'**
+  String invitedBy(String name, String email);
+
+  /// No description provided for @leaveFamilyConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Family?'**
+  String get leaveFamilyConfirmTitle;
+
+  /// No description provided for @leaveFamilyConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to leave the family?'**
+  String get leaveFamilyConfirmBody;
 }
 
 class _AppLocalizationsDelegate

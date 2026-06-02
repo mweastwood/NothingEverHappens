@@ -153,5 +153,37 @@
   "hoursAvailableLabel": "Available Hours per Day",
   "hoursAvailableHelper": "Number of hours available for agile-based scheduling.",
   "hoursAvailableValidationError": "Please enter a number between 0 and 24",
-  "settingsSavedSuccessfully": "Settings saved successfully"
+  "settingsSavedSuccessfully": "Settings saved successfully",
+  "familyTab": "Family",
+  "familyScreenTitle": "Family",
+  "createFamilyTitle": "Create Family",
+  "createFamilyButton": "Create Family",
+  "familyUnitNameLabel": "Family Name",
+  "inviteMemberButton": "Invite Member",
+  "inviteMemberTitle": "Invite Family Member",
+  "inviteMemberEmailLabel": "Email Address",
+  "inviteMemberRoleLabel": "Role",
+  "parentRole": "Parent",
+  "nonParentRole": "Non-Parent",
+  "pendingInvitesHeader": "Pending Invites",
+  "acceptInviteButton": "Accept",
+  "declineInviteButton": "Decline",
+  "leaveFamilyButton": "Leave Family",
+  "membersHeader": "Family Members",
+  "notInFamilyBody": "You are not currently in a family unit. You can create a new family or accept a pending invitation below.",
+  "noPendingInvites": "No pending invitations",
+  "inviteSentSuccess": "Invitation sent successfully",
+  "invitedBy": "Invited by {name} ({email})",
+  "@invitedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "leaveFamilyConfirmTitle": "Leave Family?",
+  "leaveFamilyConfirmBody": "Are you sure you want to leave the family?"
 }
