@@ -362,4 +362,74 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsSavedSuccessfully => 'Configuración guardada exitosamente';
+
+  @override
+  String get familyTab => 'Familia';
+
+  @override
+  String get familyScreenTitle => 'Familia';
+
+  @override
+  String get createFamilyTitle => 'Crear Familia';
+
+  @override
+  String get createFamilyButton => 'Crear Familia';
+
+  @override
+  String get familyUnitNameLabel => 'Nombre de la Familia';
+
+  @override
+  String get inviteMemberButton => 'Invitar Miembro';
+
+  @override
+  String get inviteMemberTitle => 'Invitar Miembro de la Familia';
+
+  @override
+  String get inviteMemberEmailLabel => 'Dirección de Correo Electrónico';
+
+  @override
+  String get inviteMemberRoleLabel => 'Rol';
+
+  @override
+  String get parentRole => 'Padre/Madre';
+
+  @override
+  String get nonParentRole => 'No Padre/Madre';
+
+  @override
+  String get pendingInvitesHeader => 'Invitaciones Pendientes';
+
+  @override
+  String get acceptInviteButton => 'Aceptar';
+
+  @override
+  String get declineInviteButton => 'Rechazar';
+
+  @override
+  String get leaveFamilyButton => 'Salir de la Familia';
+
+  @override
+  String get membersHeader => 'Miembros de la Familia';
+
+  @override
+  String get notInFamilyBody =>
+      'Actualmente no estás en una unidad familiar. Puedes crear una nueva familia o aceptar una invitación pendiente a continuación.';
+
+  @override
+  String get noPendingInvites => 'Sin invitaciones pendientes';
+
+  @override
+  String get inviteSentSuccess => 'Invitación enviada exitosamente';
+
+  @override
+  String invitedBy(String name, String email) {
+    return 'Invitado por $name ($email)';
+  }
+
+  @override
+  String get leaveFamilyConfirmTitle => '¿Salir de la Familia?';
+
+  @override
+  String get leaveFamilyConfirmBody =>
+      '¿Estás seguro de que deseas salir de la familia?';
 }
