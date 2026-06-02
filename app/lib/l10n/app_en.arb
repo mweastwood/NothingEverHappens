@@ -148,5 +148,10 @@
   "dayOfMonthOnDay": "On day {day}",
   "dayOfMonthFromEnd": "On the {day} day from the end",
   "nthDayOfWeekOccurrence": "On the {occurrence} {dayOfWeek}",
-  "yearlyOn": "On: {month} {day}"
+  "yearlyOn": "On: {month} {day}",
+  "settingsTitle": "Settings",
+  "hoursAvailableLabel": "Available Hours per Day",
+  "hoursAvailableHelper": "Number of hours available for agile-based scheduling.",
+  "hoursAvailableValidationError": "Please enter a number between 0 and 24",
+  "settingsSavedSuccessfully": "Settings saved successfully"
 }

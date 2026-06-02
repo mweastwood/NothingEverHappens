@@ -6,6 +6,7 @@ import 'create_task_screen.dart';
 import 'task_list_screen.dart';
 import 'task_schedule_screen.dart';
 import 'task_history_screen.dart';
+import 'settings_screen.dart';
 import '../logic/l10n_extension.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -77,14 +78,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            decoration: const BoxDecoration(color: Colors.blue),
-            child: Text(context.l10n.menu),
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Text(
+                context.l10n.menu,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
           ),
           ListTile(
+            key: const Key('drawer_settings_tile'),
+            leading: const Icon(Icons.settings),
+            title: Text(context.l10n.settingsTitle),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+          ),
+          ListTile(
+            key: const Key('drawer_logout_tile'),
             leading: const Icon(Icons.logout),
             title: Text(context.l10n.logout),
             onTap: () async {
