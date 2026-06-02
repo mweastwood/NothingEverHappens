@@ -150,5 +150,8 @@
   "noBacklogTasks": "No hay tareas en la lista de espera.",
   "unassigned": "Sin asignar",
   "assignedTo": "Asignado a {name}",
-  "starTooltip": "Alternar preferencia"
+  "starTooltip": "Alternar preferencia",
+  "familyCapacityPool": "Capacidad del Grupo Familiar",
+  "memberRemainingTotal": "{remaining} min restantes / {total} min en total",
+  "memberPersonalChores": "Personal: {personal} min | Tareas Familiares: {family} min"
 }

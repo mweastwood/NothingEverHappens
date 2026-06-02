@@ -1009,6 +1009,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Toggle preference'**
   String get starTooltip;
+
+  /// No description provided for @familyCapacityPool.
+  ///
+  /// In en, this message translates to:
+  /// **'Family Capacity Pool'**
+  String get familyCapacityPool;
+
+  /// No description provided for @memberRemainingTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{remaining} min remaining / {total} min total'**
+  String memberRemainingTotal(int remaining, int total);
+
+  /// No description provided for @memberPersonalChores.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal: {personal} min | Family Chores: {family} min'**
+  String memberPersonalChores(int personal, int family);
 }
 
 class _AppLocalizationsDelegate

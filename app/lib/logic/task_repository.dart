@@ -25,15 +25,23 @@ class TaskRepository {
        _userId = userId,
        _notificationService = notificationService;
 
-  CollectionReference<Task> get _tasksRef {
+  CollectionReference<Task> _tasksRefForUser(String userId) {
     return _firestore
         .collection('users')
-        .doc(_userId)
+        .doc(userId)
         .collection('tasks')
         .withConverter<Task>(
           fromFirestore: (snapshot, _) => Task.fromFirestore(snapshot),
           toFirestore: (task, _) => task.toFirestore(),
         );
+  }
+
+  CollectionReference<Task> get _tasksRef => _tasksRefForUser(_userId);
+
+  Stream<List<Task>> getPersonalTasksForUser(String userId) {
+    return _tasksRefForUser(userId).snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    });
   }
 
   CollectionReference<TaskDelta> get _historyRef {

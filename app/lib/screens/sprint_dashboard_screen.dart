@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -128,6 +129,79 @@ class _SprintDashboardContent extends StatefulWidget {
 class _SprintDashboardContentState extends State<_SprintDashboardContent> {
   bool _isAllocating = false;
 
+  final Map<String, UserSettings> _memberSettings = {};
+  final Map<String, List<Task>> _memberPersonalTasks = {};
+  final Map<String, StreamSubscription<UserSettings>> _settingsSubscriptions =
+      {};
+  final Map<String, StreamSubscription<List<Task>>> _tasksSubscriptions = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _updateSubscriptions();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SprintDashboardContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _updateSubscriptions();
+  }
+
+  @override
+  void dispose() {
+    for (final sub in _settingsSubscriptions.values) {
+      sub.cancel();
+    }
+    for (final sub in _tasksSubscriptions.values) {
+      sub.cancel();
+    }
+    super.dispose();
+  }
+
+  void _updateSubscriptions() {
+    final family = widget.family;
+    final settingsRepo = context.read<UserSettingsRepository>();
+    final taskRepo = widget.taskRepository;
+
+    final currentMembers = family?.members.keys.toSet() ?? {taskRepo.userId};
+
+    // 1. Cancel subscriptions for members no longer present
+    final removedMembers = _settingsSubscriptions.keys
+        .where((uid) => !currentMembers.contains(uid))
+        .toList();
+    for (final uid in removedMembers) {
+      _settingsSubscriptions[uid]?.cancel();
+      _settingsSubscriptions.remove(uid);
+      _memberSettings.remove(uid);
+
+      _tasksSubscriptions[uid]?.cancel();
+      _tasksSubscriptions.remove(uid);
+      _memberPersonalTasks.remove(uid);
+    }
+
+    // 2. Add subscriptions for new members
+    for (final uid in currentMembers) {
+      if (!_settingsSubscriptions.containsKey(uid)) {
+        _settingsSubscriptions[uid] = settingsRepo
+            .getSettingsForUser(uid)
+            .listen((settings) {
+              setState(() {
+                _memberSettings[uid] = settings;
+              });
+            });
+      }
+      if (!_tasksSubscriptions.containsKey(uid)) {
+        _tasksSubscriptions[uid] = taskRepo.getPersonalTasksForUser(uid).listen(
+          (tasks) {
+            setState(() {
+              _memberPersonalTasks[uid] = tasks;
+            });
+          },
+        );
+      }
+    }
+  }
+
   String _formatDateRange(DateTime start, DateTime end) {
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final months = [
@@ -148,10 +222,7 @@ class _SprintDashboardContentState extends State<_SprintDashboardContent> {
         '${weekdays[end.weekday - 1]}, ${months[end.month - 1]} ${end.day}';
   }
 
-  Future<void> _runAutoAllocator(
-    double totalCapacityMins,
-    double personalActiveEffort,
-  ) async {
+  Future<void> _runAutoAllocator() async {
     final family = widget.family;
     if (family == null) return;
 
@@ -187,13 +258,18 @@ class _SprintDashboardContentState extends State<_SprintDashboardContent> {
       final userPersonalEfforts = <String, double>{};
 
       for (final uid in userIds) {
-        if (uid == widget.taskRepository.userId) {
-          userWeeklyCapacities[uid] = totalCapacityMins;
-          userPersonalEfforts[uid] = personalActiveEffort;
-        } else {
-          userWeeklyCapacities[uid] = 8.0 * 7 * 60; // default 56 hours
-          userPersonalEfforts[uid] = 0.0;
+        final settings =
+            _memberSettings[uid] ?? const UserSettings(hoursAvailable: 8.0);
+        userWeeklyCapacities[uid] = settings.hoursAvailable * 7 * 60;
+
+        final personalTasks = _memberPersonalTasks[uid] ?? [];
+        double effort = 0;
+        for (final t in personalTasks) {
+          if (!t.isFamily && t.cycleId == currentCycleId && !t.isMaster) {
+            effort += t.estimatedDuration?.inMinutes.toDouble() ?? 0.0;
+          }
         }
+        userPersonalEfforts[uid] = effort;
       }
 
       final assignments = AutoAllocator.allocate(
@@ -276,6 +352,79 @@ class _SprintDashboardContentState extends State<_SprintDashboardContent> {
         errorHandler.showErrorDialog(context, report);
       }
     }
+  }
+
+  Widget _buildMemberCapacityRow({
+    required String name,
+    required double total,
+    required double personal,
+    required double family,
+    required double remaining,
+    required double fraction,
+  }) {
+    Color progressColor;
+    if (fraction <= 0.8) {
+      progressColor = Theme.of(context).colorScheme.primary;
+    } else if (fraction <= 1.0) {
+      progressColor = Colors.orange;
+    } else {
+      progressColor = Theme.of(context).colorScheme.error;
+    }
+
+    final isCurrentUser = name.contains('(You)');
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                name,
+                style: TextStyle(
+                  fontWeight: isCurrentUser
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              Text(
+                context.l10n.memberRemainingTotal(
+                  remaining.toInt(),
+                  total.toInt(),
+                ),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              height: 8,
+              child: LinearProgressIndicator(
+                value: fraction.clamp(0.0, 1.0),
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            context.l10n.memberPersonalChores(personal.toInt(), family.toInt()),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPriorityBadge(TaskPriority priority) {
@@ -659,121 +808,196 @@ class _SprintDashboardContentState extends State<_SprintDashboardContent> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      context.l10n.weeklyCapacityLabel,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                    ),
-                                    Text(
-                                      '${totalCapacityMins.toInt()} min (${hoursAvailable.toStringAsFixed(1)}h/day)',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: SizedBox(
-                                    height: 12,
-                                    child: LinearProgressIndicator(
-                                      value: fractionUsed.clamp(0.0, 1.0),
-                                      backgroundColor: Theme.of(
-                                        context,
-                                      ).colorScheme.surfaceContainerHighest,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        progressColor,
+                                if (widget.familyId.isNotEmpty &&
+                                    widget.family != null) ...[
+                                  Text(
+                                    context.l10n.familyCapacityPool,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  const Divider(height: 24),
+                                  ...widget.family!.members.values.map((
+                                    member,
+                                  ) {
+                                    final memberUid = member.userId;
+                                    final memberSettings =
+                                        _memberSettings[memberUid] ??
+                                        const UserSettings(hoursAvailable: 8.0);
+                                    final memberTotalCapMins =
+                                        memberSettings.hoursAvailable * 7 * 60;
+
+                                    double memberPersonalEffort = 0.0;
+                                    final memberTasks =
+                                        _memberPersonalTasks[memberUid] ?? [];
+                                    for (final t in memberTasks) {
+                                      if (!t.isFamily &&
+                                          t.cycleId == currentCycleId &&
+                                          !t.isMaster) {
+                                        memberPersonalEffort +=
+                                            t.estimatedDuration?.inMinutes
+                                                .toDouble() ??
+                                            0.0;
+                                      }
+                                    }
+
+                                    double memberFamilyEffort = 0.0;
+                                    for (final t in widget.tasks) {
+                                      if (t.isFamily &&
+                                          t.cycleId == currentCycleId &&
+                                          !t.isMaster &&
+                                          t.assignedUserId == memberUid) {
+                                        memberFamilyEffort +=
+                                            t.estimatedDuration?.inMinutes
+                                                .toDouble() ??
+                                            0.0;
+                                      }
+                                    }
+
+                                    final memberUsedEffort =
+                                        memberPersonalEffort +
+                                        memberFamilyEffort;
+                                    final memberRemaining =
+                                        (memberTotalCapMins - memberUsedEffort)
+                                            .clamp(0.0, double.infinity);
+                                    final memberFraction =
+                                        memberTotalCapMins > 0
+                                        ? (memberUsedEffort /
+                                              memberTotalCapMins)
+                                        : 0.0;
+
+                                    return _buildMemberCapacityRow(
+                                      name:
+                                          memberUid ==
+                                              widget.taskRepository.userId
+                                          ? '${member.displayName} (You)'
+                                          : member.displayName,
+                                      total: memberTotalCapMins,
+                                      personal: memberPersonalEffort,
+                                      family: memberFamilyEffort,
+                                      remaining: memberRemaining,
+                                      fraction: memberFraction,
+                                    );
+                                  }),
+                                ] else ...[
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        context.l10n.weeklyCapacityLabel,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                      Text(
+                                        '${totalCapacityMins.toInt()} min (${hoursAvailable.toStringAsFixed(1)}h/day)',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: SizedBox(
+                                      height: 12,
+                                      child: LinearProgressIndicator(
+                                        value: fractionUsed.clamp(0.0, 1.0),
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).colorScheme.surfaceContainerHighest,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              progressColor,
+                                            ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 16),
-                                Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Container(
-                                              width: 12,
-                                              height: 12,
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.outlineVariant,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              context.l10n.personalTasksLabel(
-                                                personalActiveEffort.toInt(),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Row(
-                                          children: [
-                                            Container(
-                                              width: 12,
-                                              height: 12,
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.tertiary,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              context.l10n.familyChoresLabel(
-                                                familyActiveEffort.toInt(),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    const Divider(height: 24),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          context.l10n.remainingCapacityLabel(
-                                            remainingCapacity.toInt(),
-                                          ),
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: remainingCapacity > 0
-                                                ? Theme.of(
+                                  const SizedBox(height: 16),
+                                  Column(
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                width: 12,
+                                                height: 12,
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(
                                                     context,
-                                                  ).colorScheme.onSurface
-                                                : Theme.of(
-                                                    context,
-                                                  ).colorScheme.error,
+                                                  ).colorScheme.outlineVariant,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                context.l10n.personalTasksLabel(
+                                                  personalActiveEffort.toInt(),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                width: 12,
+                                                height: 12,
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.tertiary,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                context.l10n.familyChoresLabel(
+                                                  familyActiveEffort.toInt(),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      const Divider(height: 24),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            context.l10n.remainingCapacityLabel(
+                                              remainingCapacity.toInt(),
+                                            ),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: remainingCapacity > 0
+                                                  ? Theme.of(
+                                                      context,
+                                                    ).colorScheme.onSurface
+                                                  : Theme.of(
+                                                      context,
+                                                    ).colorScheme.error,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -787,10 +1011,7 @@ class _SprintDashboardContentState extends State<_SprintDashboardContent> {
                             ),
                             child: ElevatedButton.icon(
                               key: const Key('auto_allocate_button'),
-                              onPressed: () => _runAutoAllocator(
-                                totalCapacityMins,
-                                personalActiveEffort,
-                              ),
+                              onPressed: _runAutoAllocator,
                               icon: const Icon(Icons.smart_toy_outlined),
                               label: Text(context.l10n.autoAllocateButton),
                               style: ElevatedButton.styleFrom(
