@@ -254,4 +254,95 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get stackDescription =>
       'Missed occurrences remain active, letting multiple instances stack up.';
+
+  @override
+  String get monthlyLabel => 'Monthly';
+
+  @override
+  String get yearlyLabel => 'Yearly';
+
+  @override
+  String get dayOfMonthLabel => 'Day of Month';
+
+  @override
+  String get nthDayOfWeekLabel => 'Nth Day of Week';
+
+  @override
+  String get monthlyRecurrenceTypeLabel => 'Recurrence Rule';
+
+  @override
+  String get monthsIntervalLabel => 'Months Interval';
+
+  @override
+  String get yearsIntervalLabel => 'Years Interval';
+
+  @override
+  String get dayOfMonthFieldLabel => 'Day of Month (1-28, or -1 to -28)';
+
+  @override
+  String get dayOfMonthValidationError =>
+      'Please enter a valid day number: 1 to 28, or -1 to -28';
+
+  @override
+  String get nthOccurrenceLabel => 'Occurrence';
+
+  @override
+  String get firstOccurrence => '1st';
+
+  @override
+  String get secondOccurrence => '2nd';
+
+  @override
+  String get thirdOccurrence => '3rd';
+
+  @override
+  String get fourthOccurrence => '4th';
+
+  @override
+  String get lastOccurrence => 'Last';
+
+  @override
+  String get dayOfWeekLabel => 'Day of Week';
+
+  @override
+  String get monthLabel => 'Month';
+
+  @override
+  String get dayLabel => 'Day';
+
+  @override
+  String get everyMonth => 'Every month';
+
+  @override
+  String everyNMonths(int count) {
+    return 'Every $count months';
+  }
+
+  @override
+  String get everyYear => 'Every year';
+
+  @override
+  String everyNYears(int count) {
+    return 'Every $count years';
+  }
+
+  @override
+  String dayOfMonthOnDay(Object day) {
+    return 'On day $day';
+  }
+
+  @override
+  String dayOfMonthFromEnd(Object day) {
+    return 'On the $day day from the end';
+  }
+
+  @override
+  String nthDayOfWeekOccurrence(Object dayOfWeek, Object occurrence) {
+    return 'On the $occurrence $dayOfWeek';
+  }
+
+  @override
+  String yearlyOn(Object day, Object month) {
+    return 'On: $month $day';
+  }
 }

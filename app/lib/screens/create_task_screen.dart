@@ -12,6 +12,8 @@ import '../logic/l10n_extension.dart';
 import '../widgets/one_off_scheduling_widget.dart';
 import '../widgets/daily_scheduling_widget.dart';
 import '../widgets/weekly_scheduling_widget.dart';
+import '../widgets/monthly_scheduling_widget.dart';
+import '../widgets/yearly_scheduling_widget.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   static Duration saveTimeout = const Duration(seconds: 10);
@@ -40,6 +42,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _descriptionController = TextEditingController();
   final _intervalController = TextEditingController(text: '1');
   final _estimatedDurationController = TextEditingController();
+
+  // Monthly / Yearly controllers
+  final _monthlyRuleTypeController = ValueNotifier<String>('dayOfMonth');
+  final _monthlyDayOfMonthController = TextEditingController();
+  final _monthlyNthOccurrenceController = ValueNotifier<int>(1);
+  final _monthlyDayOfWeekController = ValueNotifier<int>(1);
+  final _yearlyMonthController = ValueNotifier<int>(1);
+  final _yearlyDayController = TextEditingController();
 
   // Daily/Weekly multiple times
   final _dailyTimesController = ValueNotifier<List<DailyOccurrenceTime>>([
@@ -136,6 +146,36 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         _intervalController.text = weekly.interval.toString();
         _selectedWeekdays = Set.from(weekly.daysOfWeek);
         _dailyTimesController.value = List.from(task.dailyTimes);
+      } else if (task.schedule is MonthlySchedule) {
+        _scheduleType = RecurrenceType.monthly;
+        final monthly = task.schedule as MonthlySchedule;
+        _startDate = DateTime(
+          monthly.startDate.year,
+          monthly.startDate.month,
+          monthly.startDate.day,
+        );
+        _intervalController.text = monthly.interval.toString();
+        _dailyTimesController.value = List.from(task.dailyTimes);
+        if (monthly.dayOfMonth != null) {
+          _monthlyRuleTypeController.value = 'dayOfMonth';
+          _monthlyDayOfMonthController.text = monthly.dayOfMonth.toString();
+        } else {
+          _monthlyRuleTypeController.value = 'nthDayOfWeek';
+          _monthlyNthOccurrenceController.value = monthly.occurrence!;
+          _monthlyDayOfWeekController.value = monthly.dayOfWeek!;
+        }
+      } else if (task.schedule is YearlySchedule) {
+        _scheduleType = RecurrenceType.yearly;
+        final yearly = task.schedule as YearlySchedule;
+        _startDate = DateTime(
+          yearly.startDate.year,
+          yearly.startDate.month,
+          yearly.startDate.day,
+        );
+        _intervalController.text = yearly.interval.toString();
+        _dailyTimesController.value = List.from(task.dailyTimes);
+        _yearlyMonthController.value = yearly.month;
+        _yearlyDayController.text = yearly.day.toString();
       }
     }
   }
@@ -150,6 +190,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     _dueDateTimeController.dispose();
     _startDateTimeController.dispose();
     _estimatedDurationController.dispose();
+    _monthlyRuleTypeController.dispose();
+    _monthlyDayOfMonthController.dispose();
+    _monthlyNthOccurrenceController.dispose();
+    _monthlyDayOfWeekController.dispose();
+    _yearlyMonthController.dispose();
+    _yearlyDayController.dispose();
     super.dispose();
   }
 
@@ -236,6 +282,51 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               startDate: civilDate,
               interval: interval,
               daysOfWeek: Set.from(_selectedWeekdays),
+            );
+            final firstSlot = _dailyTimesController.value.first;
+            startRelative = RelativeTime(
+              dayOffset: 0,
+              time: firstSlot.startTime,
+            );
+            dueRelative = RelativeTime(dayOffset: 0, time: firstSlot.dueTime);
+            break;
+
+          case RecurrenceType.monthly:
+            final civilDate = CivilDay.fromDateTime(_startDate);
+            final interval = int.tryParse(_intervalController.text) ?? 1;
+            if (_monthlyRuleTypeController.value == 'dayOfMonth') {
+              final dom = int.tryParse(_monthlyDayOfMonthController.text) ?? 1;
+              schedule = MonthlySchedule(
+                startDate: civilDate,
+                interval: interval,
+                dayOfMonth: dom,
+              );
+            } else {
+              schedule = MonthlySchedule(
+                startDate: civilDate,
+                interval: interval,
+                dayOfWeek: _monthlyDayOfWeekController.value,
+                occurrence: _monthlyNthOccurrenceController.value,
+              );
+            }
+            final firstSlot = _dailyTimesController.value.first;
+            startRelative = RelativeTime(
+              dayOffset: 0,
+              time: firstSlot.startTime,
+            );
+            dueRelative = RelativeTime(dayOffset: 0, time: firstSlot.dueTime);
+            break;
+
+          case RecurrenceType.yearly:
+            final civilDate = CivilDay.fromDateTime(_startDate);
+            final interval = int.tryParse(_intervalController.text) ?? 1;
+            final yMonth = _yearlyMonthController.value;
+            final yDay = int.tryParse(_yearlyDayController.text) ?? 1;
+            schedule = YearlySchedule(
+              startDate: civilDate,
+              interval: interval,
+              month: yMonth,
+              day: yDay,
             );
             final firstSlot = _dailyTimesController.value.first;
             startRelative = RelativeTime(
@@ -476,6 +567,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                         value: RecurrenceType.weekly,
                                         label: Text(context.l10n.weeklyLabel),
                                       ),
+                                      ButtonSegment<RecurrenceType>(
+                                        value: RecurrenceType.monthly,
+                                        label: Text(context.l10n.monthlyLabel),
+                                      ),
+                                      ButtonSegment<RecurrenceType>(
+                                        value: RecurrenceType.yearly,
+                                        label: Text(context.l10n.yearlyLabel),
+                                      ),
                                     ],
                                     selected: <RecurrenceType>{_scheduleType},
                                     onSelectionChanged:
@@ -513,6 +612,35 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                     onWeekdaysChanged: (days) {
                                       setState(() => _selectedWeekdays = days);
                                     },
+                                  )
+                                else if (_scheduleType ==
+                                    RecurrenceType.monthly)
+                                  MonthlySchedulingWidget(
+                                    startDate: _startDate,
+                                    onStartDateChanged: (date) {
+                                      setState(() => _startDate = date);
+                                    },
+                                    dailyTimesController: _dailyTimesController,
+                                    intervalController: _intervalController,
+                                    ruleTypeController:
+                                        _monthlyRuleTypeController,
+                                    dayOfMonthController:
+                                        _monthlyDayOfMonthController,
+                                    nthOccurrenceController:
+                                        _monthlyNthOccurrenceController,
+                                    dayOfWeekController:
+                                        _monthlyDayOfWeekController,
+                                  )
+                                else if (_scheduleType == RecurrenceType.yearly)
+                                  YearlySchedulingWidget(
+                                    startDate: _startDate,
+                                    onStartDateChanged: (date) {
+                                      setState(() => _startDate = date);
+                                    },
+                                    dailyTimesController: _dailyTimesController,
+                                    intervalController: _intervalController,
+                                    monthController: _yearlyMonthController,
+                                    dayController: _yearlyDayController,
                                   ),
                                 if (_scheduleType != RecurrenceType.oneOff) ...[
                                   const Divider(height: 32),

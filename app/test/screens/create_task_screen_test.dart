@@ -190,6 +190,58 @@ void main() {
     }
   });
 
+  testGoldens('CreateTaskScreen renders monthly configuration correctly', (
+    tester,
+  ) async {
+    await tester.pumpWidgetBuilder(
+      const CreateTaskScreen(),
+      wrapper: (child) => l10nMaterialAppWrapper(
+        theme: ThemeData.light(useMaterial3: true).copyWith(
+          shadowColor: Colors.transparent,
+          textTheme: ThemeData.light(
+            useMaterial3: true,
+          ).textTheme.apply(fontFamily: 'Ahem'),
+        ),
+        platform: TargetPlatform.android,
+      )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
+      surfaceSize: const Size(800, 800),
+    );
+
+    // Switch to Monthly
+    final monthlySegment = find.text('Monthly');
+    await tester.ensureVisible(monthlySegment);
+    await tester.tap(monthlySegment);
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'create_task_screen_monthly');
+  });
+
+  testGoldens('CreateTaskScreen renders yearly configuration correctly', (
+    tester,
+  ) async {
+    await tester.pumpWidgetBuilder(
+      const CreateTaskScreen(),
+      wrapper: (child) => l10nMaterialAppWrapper(
+        theme: ThemeData.light(useMaterial3: true).copyWith(
+          shadowColor: Colors.transparent,
+          textTheme: ThemeData.light(
+            useMaterial3: true,
+          ).textTheme.apply(fontFamily: 'Ahem'),
+        ),
+        platform: TargetPlatform.android,
+      )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
+      surfaceSize: const Size(800, 800),
+    );
+
+    // Switch to Yearly
+    final yearlySegment = find.text('Yearly');
+    await tester.ensureVisible(yearlySegment);
+    await tester.tap(yearlySegment);
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'create_task_screen_yearly');
+  });
+
   group('Shortcuts', () {
     late MockTaskRepository mockRepository;
 
@@ -369,6 +421,123 @@ void main() {
           verify(mockRepository.addTask(captureAny)).captured.single as Task;
       expect(captured.title, 'Test Task');
       expect(captured.estimatedDuration, const Duration(minutes: 45));
+    });
+
+    testWidgets('Configures and saves Monthly day of month task successfully', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(createWidgetUnderTest());
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Title'),
+        'Monthly Task',
+      );
+
+      // Select Monthly recurrence
+      final monthlySegment = find.text('Monthly');
+      await tester.ensureVisible(monthlySegment);
+      await tester.tap(monthlySegment);
+      await tester.pumpAndSettle();
+
+      // Enter Months Interval
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Months Interval'),
+        '3',
+      );
+
+      // Enter Day of Month (e.g. 15)
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Day of Month (1-28, or -1 to -28)'),
+        '15',
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      final captured =
+          verify(mockRepository.addTask(captureAny)).captured.single as Task;
+      expect(captured.title, 'Monthly Task');
+      expect(captured.schedule, isA<MonthlySchedule>());
+      final schedule = captured.schedule as MonthlySchedule;
+      expect(schedule.interval, 3);
+      expect(schedule.dayOfMonth, 15);
+    });
+
+    testWidgets(
+      'Validates day of month cannot exceed 28 on Monthly configuration',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(createWidgetUnderTest());
+
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Title'),
+          'Invalid Monthly Task',
+        );
+
+        // Select Monthly recurrence
+        final monthlySegment = find.text('Monthly');
+        await tester.ensureVisible(monthlySegment);
+        await tester.tap(monthlySegment);
+        await tester.pumpAndSettle();
+
+        // Enter invalid day of month (e.g. 29)
+        await tester.enterText(
+          find.widgetWithText(
+            TextFormField,
+            'Day of Month (1-28, or -1 to -28)',
+          ),
+          '29',
+        );
+        await tester.pump();
+
+        await tester.tap(find.text('Save'));
+        await tester.pump(); // Run validator
+
+        expect(
+          find.text('Please enter a valid day number: 1 to 28, or -1 to -28'),
+          findsOneWidget,
+        );
+        verifyNever(mockRepository.addTask(any));
+      },
+    );
+
+    testWidgets('Configures and saves Yearly task successfully', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(createWidgetUnderTest());
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Title'),
+        'Yearly Task',
+      );
+
+      // Select Yearly recurrence
+      final yearlySegment = find.text('Yearly');
+      await tester.ensureVisible(yearlySegment);
+      await tester.tap(yearlySegment);
+      await tester.pumpAndSettle();
+
+      // Enter Years Interval
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Years Interval'),
+        '2',
+      );
+
+      // Day of month
+      await tester.enterText(find.widgetWithText(TextFormField, 'Day'), '24');
+      await tester.pump();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      final captured =
+          verify(mockRepository.addTask(captureAny)).captured.single as Task;
+      expect(captured.title, 'Yearly Task');
+      expect(captured.schedule, isA<YearlySchedule>());
+      final schedule = captured.schedule as YearlySchedule;
+      expect(schedule.interval, 2);
+      expect(schedule.month, 1); // Default is January (1)
+      expect(schedule.day, 24);
     });
   });
 }

@@ -108,5 +108,45 @@
   "shiftLabel": "Shift Schedule (Push Out Future Dates)",
   "shiftDescription": "Next occurrence is calculated relative to when the task was completed late.",
   "stackLabel": "Stack/Overlap (Allow Concurrency)",
-  "stackDescription": "Missed occurrences remain active, letting multiple instances stack up."
+  "stackDescription": "Missed occurrences remain active, letting multiple instances stack up.",
+  "monthlyLabel": "Monthly",
+  "yearlyLabel": "Yearly",
+  "dayOfMonthLabel": "Day of Month",
+  "nthDayOfWeekLabel": "Nth Day of Week",
+  "monthlyRecurrenceTypeLabel": "Recurrence Rule",
+  "monthsIntervalLabel": "Months Interval",
+  "yearsIntervalLabel": "Years Interval",
+  "dayOfMonthFieldLabel": "Day of Month (1-28, or -1 to -28)",
+  "dayOfMonthValidationError": "Please enter a valid day number: 1 to 28, or -1 to -28",
+  "nthOccurrenceLabel": "Occurrence",
+  "firstOccurrence": "1st",
+  "secondOccurrence": "2nd",
+  "thirdOccurrence": "3rd",
+  "fourthOccurrence": "4th",
+  "lastOccurrence": "Last",
+  "dayOfWeekLabel": "Day of Week",
+  "monthLabel": "Month",
+  "dayLabel": "Day",
+  "everyMonth": "Every month",
+  "everyNMonths": "Every {count} months",
+  "@everyNMonths": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "everyYear": "Every year",
+  "everyNYears": "Every {count} years",
+  "@everyNYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dayOfMonthOnDay": "On day {day}",
+  "dayOfMonthFromEnd": "On the {day} day from the end",
+  "nthDayOfWeekOccurrence": "On the {occurrence} {dayOfWeek}",
+  "yearlyOn": "On: {month} {day}"
 }
