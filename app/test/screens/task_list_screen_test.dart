@@ -123,11 +123,8 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    // The newly created task defaults to tomorrow (March 9).
-    // Advance the mock clock to March 9 so it passes the scheduledDate <= today filter on TaskListScreen!
-    AppClock.setMockTime(DateTime(2026, 3, 9, 9, 0));
-    await tester.pumpAndSettle();
-
+    // The newly created task defaults to starting today (no snooze).
+    // Verify it appears immediately in the task list on March 8!
     expect(find.text('New Task Title'), findsOneWidget);
 
     AppClock.reset();
@@ -330,6 +327,74 @@ void main() {
 
     AppClock.reset();
   });
+
+  testWidgets(
+    'Task list screen shows one-off tasks starting today but due in the future',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+
+      final activeOneOffTask = Task(
+        id: 'active-one-off',
+        title: 'Active One-Off',
+        description: 'Starts today, due tomorrow',
+        startRelativeTime: const RelativeTime(
+          dayOffset: -1, // starts 1 day before due date
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 3, day: 9), // due tomorrow
+        ),
+      );
+
+      tasksSubject.add([activeOneOffTask]);
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      // Since it starts today (March 8), it should be shown
+      expect(find.text('Active One-Off'), findsOneWidget);
+
+      AppClock.reset();
+    },
+  );
+
+  testWidgets(
+    'Task list screen hides one-off tasks due today but snoozed/starting in the future',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+
+      final snoozedOneOffTask = Task(
+        id: 'snoozed-one-off',
+        title: 'Snoozed One-Off',
+        description: 'Due today, starts tomorrow (snoozed)',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 1, // starts 1 day after due date (snoozed)
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 3, day: 8), // due today
+        ),
+      );
+
+      tasksSubject.add([snoozedOneOffTask]);
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      // Since it is snoozed until tomorrow (March 9), it should NOT be shown today
+      expect(find.text('Snoozed One-Off'), findsNothing);
+
+      AppClock.reset();
+    },
+  );
 
   testWidgets(
     'Completing a task does not affect the next task state (bug repro)',

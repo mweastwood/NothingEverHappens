@@ -372,6 +372,12 @@ class Task {
     this.parentTaskId,
   });
 
+  /// The starting day of this occurrence.
+  CivilDay get startDate {
+    final startDateTime = startRelativeTime.referenceTo(schedule.scheduledDate);
+    return CivilDay.fromDateTime(startDateTime);
+  }
+
   factory Task.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot, [
     SnapshotOptions? options,
