@@ -355,6 +355,50 @@ void main() {
         const CivilDay(year: 2025, month: 10, day: 24),
       );
     });
+
+    test('MonthlySchedule checks last occurrence of dayOfWeek correctly', () {
+      const start = CivilDay(year: 2024, month: 1, day: 1);
+      final schedule = MonthlySchedule(
+        startDate: start,
+        interval: 1,
+        dayOfWeek: 5, // Friday
+        occurrence: -1, // Last
+      );
+
+      // January 26, 2024 is the last Friday of January
+      expect(
+        schedule.occursOn(const CivilDay(year: 2024, month: 1, day: 26)),
+        isTrue,
+      );
+      // January 19, 2024 is NOT the last Friday
+      expect(
+        schedule.occursOn(const CivilDay(year: 2024, month: 1, day: 19)),
+        isFalse,
+      );
+      // February 23, 2024 is the last Friday of February
+      expect(
+        schedule.occursOn(const CivilDay(year: 2024, month: 2, day: 23)),
+        isTrue,
+      );
+    });
+
+    test('YearlySchedule nextOccurrenceAfter handles leap years correctly', () {
+      const start = CivilDay(year: 2024, month: 2, day: 29);
+      final schedule = YearlySchedule(
+        startDate: start,
+        interval: 1,
+        month: 2,
+        day: 29,
+      );
+
+      // The next leap year after 2024 is 2028
+      expect(
+        schedule.nextOccurrenceAfter(
+          const CivilDay(year: 2024, month: 2, day: 29),
+        ),
+        const CivilDay(year: 2028, month: 2, day: 29),
+      );
+    });
   });
 
   group('Task Properties', () {

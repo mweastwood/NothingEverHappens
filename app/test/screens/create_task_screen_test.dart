@@ -190,6 +190,58 @@ void main() {
     }
   });
 
+  testGoldens('CreateTaskScreen renders monthly configuration correctly', (
+    tester,
+  ) async {
+    await tester.pumpWidgetBuilder(
+      const CreateTaskScreen(),
+      wrapper: (child) => l10nMaterialAppWrapper(
+        theme: ThemeData.light(useMaterial3: true).copyWith(
+          shadowColor: Colors.transparent,
+          textTheme: ThemeData.light(
+            useMaterial3: true,
+          ).textTheme.apply(fontFamily: 'Ahem'),
+        ),
+        platform: TargetPlatform.android,
+      )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
+      surfaceSize: const Size(800, 800),
+    );
+
+    // Switch to Monthly
+    final monthlySegment = find.text('Monthly');
+    await tester.ensureVisible(monthlySegment);
+    await tester.tap(monthlySegment);
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'create_task_screen_monthly');
+  });
+
+  testGoldens('CreateTaskScreen renders yearly configuration correctly', (
+    tester,
+  ) async {
+    await tester.pumpWidgetBuilder(
+      const CreateTaskScreen(),
+      wrapper: (child) => l10nMaterialAppWrapper(
+        theme: ThemeData.light(useMaterial3: true).copyWith(
+          shadowColor: Colors.transparent,
+          textTheme: ThemeData.light(
+            useMaterial3: true,
+          ).textTheme.apply(fontFamily: 'Ahem'),
+        ),
+        platform: TargetPlatform.android,
+      )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
+      surfaceSize: const Size(800, 800),
+    );
+
+    // Switch to Yearly
+    final yearlySegment = find.text('Yearly');
+    await tester.ensureVisible(yearlySegment);
+    await tester.tap(yearlySegment);
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'create_task_screen_yearly');
+  });
+
   group('Shortcuts', () {
     late MockTaskRepository mockRepository;
 
