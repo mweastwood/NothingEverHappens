@@ -212,5 +212,37 @@ void main() {
         expect(family.members.containsKey(userId), isFalse);
       },
     );
+
+    test('getOutstandingFamilyInvites returns pending invites for the family', () async {
+      await repository.inviteMember(
+        familyId: 'f1',
+        familyName: 'The Simpsons',
+        toEmail: 'bob@example.com',
+        role: 'non-parent',
+      );
+
+      final invites = await repository.getOutstandingFamilyInvites('f1').first;
+      expect(invites.length, 1);
+      expect(invites.first.toEmail, 'bob@example.com');
+      expect(invites.first.status, 'pending');
+    });
+
+    test('revokeInvite deletes the invite document in Firestore', () async {
+      await repository.inviteMember(
+        familyId: 'f1',
+        familyName: 'The Simpsons',
+        toEmail: 'bob@example.com',
+        role: 'non-parent',
+      );
+
+      final invitesSnapshot = await firestore.collection('invites').get();
+      expect(invitesSnapshot.docs.length, 1);
+      final inviteId = invitesSnapshot.docs.first.id;
+
+      await repository.revokeInvite(inviteId);
+
+      final deletedInviteDoc = await firestore.collection('invites').doc(inviteId).get();
+      expect(deletedInviteDoc.exists, isFalse);
+    });
   });
 }

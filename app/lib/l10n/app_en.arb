@@ -173,6 +173,19 @@
   "notInFamilyBody": "You are not currently in a family unit. You can create a new family or accept a pending invitation below.",
   "noPendingInvites": "No pending invitations",
   "inviteSentSuccess": "Invitation sent successfully",
+  "outstandingInvitesHeader": "Outstanding Invitations",
+  "revokeInviteButton": "Revoke",
+  "inviteRevokedSuccess": "Invitation revoked successfully",
+  "noOutstandingInvites": "No outstanding invitations",
+  "revokeInviteConfirmTitle": "Revoke Invitation?",
+  "revokeInviteConfirmBody": "Are you sure you want to revoke the invitation for {email}?",
+  "@revokeInviteConfirmBody": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
   "invitedBy": "Invited by {name} ({email})",
   "@invitedBy": {
     "placeholders": {

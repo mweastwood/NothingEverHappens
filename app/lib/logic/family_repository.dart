@@ -126,6 +126,24 @@ class FamilyRepository {
     });
   }
 
+  Stream<List<FamilyInvite>> getOutstandingFamilyInvites(String familyId) {
+    if (familyId.isEmpty) return Stream.value([]);
+    return _firestore
+        .collection('invites')
+        .where('familyId', isEqualTo: familyId)
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => FamilyInvite.fromJson(doc.data(), doc.id))
+              .toList();
+        });
+  }
+
+  Future<void> revokeInvite(String inviteId) async {
+    await _firestore.collection('invites').doc(inviteId).delete();
+  }
+
   Future<void> leaveFamily(String familyId) async {
     final batch = _firestore.batch();
 

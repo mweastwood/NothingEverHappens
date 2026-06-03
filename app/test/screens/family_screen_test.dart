@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:provider/provider.dart';
@@ -200,5 +201,155 @@ void main() {
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'family_screen_members_list');
+  });
+
+  testWidgets('renders outstanding invites list for parent and handles revoke', (
+    WidgetTester tester,
+  ) async {
+    final familyId = 'fam-123';
+    await firestore.collection('users').doc(userId).set({
+      'familyId': familyId,
+      'familyRole': 'parent',
+    });
+
+    await firestore.collection('families').doc(familyId).set({
+      'name': 'The Simpsons',
+      'members': {
+        userId: {
+          'userId': userId,
+          'displayName': userName,
+          'email': userEmail,
+          'role': 'parent',
+        },
+      },
+    });
+
+    await firestore.collection('invites').doc('invite-abc').set({
+      'familyId': familyId,
+      'familyName': 'The Simpsons',
+      'fromEmail': userEmail,
+      'fromName': userName,
+      'toEmail': 'new@example.com',
+      'role': 'non-parent',
+      'status': 'pending',
+      'createdAt': Timestamp.now(),
+    });
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Outstanding Invitations'), findsOneWidget);
+    expect(find.text('new@example.com'), findsOneWidget);
+    expect(find.byKey(const Key('revoke_invite_invite-abc')), findsOneWidget);
+
+    // Tap revoke button
+    await tester.tap(find.byKey(const Key('revoke_invite_invite-abc')));
+    await tester.pumpAndSettle();
+
+    // Verify confirmation dialog shows
+    expect(find.text('Revoke Invitation?'), findsOneWidget);
+    expect(
+      find.text('Are you sure you want to revoke the invitation for new@example.com?'),
+      findsOneWidget,
+    );
+
+    // Tap confirm revoke
+    await tester.tap(find.byKey(const Key('confirm_revoke_invite_button')));
+    await tester.pumpAndSettle();
+
+    // Verify invite document is deleted from Firestore
+    final invites = await firestore.collection('invites').get();
+    expect(invites.docs.isEmpty, isTrue);
+
+    // Dialog should be dismissed
+    expect(find.text('Revoke Invitation?'), findsNothing);
+  });
+
+  testWidgets('renders family details and does NOT show outstanding invites to non-parent', (
+    WidgetTester tester,
+  ) async {
+    final familyId = 'fam-123';
+    await firestore.collection('users').doc(userId).set({
+      'familyId': familyId,
+      'familyRole': 'non-parent',
+    });
+
+    await firestore.collection('families').doc(familyId).set({
+      'name': 'The Simpsons',
+      'members': {
+        userId: {
+          'userId': userId,
+          'displayName': userName,
+          'email': userEmail,
+          'role': 'non-parent',
+        },
+      },
+    });
+
+    await firestore.collection('invites').doc('invite-abc').set({
+      'familyId': familyId,
+      'familyName': 'The Simpsons',
+      'fromEmail': 'parent@example.com',
+      'fromName': 'Marge',
+      'toEmail': 'new@example.com',
+      'role': 'non-parent',
+      'status': 'pending',
+      'createdAt': Timestamp.now(),
+    });
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Outstanding Invitations'), findsNothing);
+    expect(find.text('new@example.com'), findsNothing);
+  });
+
+  testGoldens('FamilyScreen outstanding invites golden', (tester) async {
+    final familyId = 'fam-123';
+    await firestore.collection('users').doc(userId).set({
+      'familyId': familyId,
+      'familyRole': 'parent',
+    });
+    await firestore.collection('families').doc(familyId).set({
+      'name': 'The Simpsons',
+      'members': {
+        userId: {
+          'userId': userId,
+          'displayName': userName,
+          'email': userEmail,
+          'role': 'parent',
+        },
+      },
+    });
+
+    await firestore.collection('invites').doc('invite-1').set({
+      'familyId': familyId,
+      'familyName': 'The Simpsons',
+      'fromEmail': userEmail,
+      'fromName': userName,
+      'toEmail': 'invited1@example.com',
+      'role': 'non-parent',
+      'status': 'pending',
+      'createdAt': Timestamp.now(),
+    });
+    await firestore.collection('invites').doc('invite-2').set({
+      'familyId': familyId,
+      'familyName': 'The Simpsons',
+      'fromEmail': userEmail,
+      'fromName': userName,
+      'toEmail': 'invited2@example.com',
+      'role': 'parent',
+      'status': 'pending',
+      'createdAt': Timestamp.now(),
+    });
+
+    await tester.pumpWidgetBuilder(
+      buildTestWidget(),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'family_screen_outstanding_invites');
   });
 }

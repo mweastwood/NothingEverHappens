@@ -246,7 +246,6 @@ class _FamilyScreenState extends State<FamilyScreen> {
       }
     }
   }
-
   Future<void> _handleInvite(
     FamilyRepository repository,
     FamilyInvite invite,
@@ -276,6 +275,59 @@ class _FamilyScreenState extends State<FamilyScreen> {
     }
   }
 
+  Future<void> _revokeInvite(
+    FamilyRepository repository,
+    FamilyInvite invite,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.revokeInviteConfirmTitle),
+        content: Text(context.l10n.revokeInviteConfirmBody(invite.toEmail)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.cancelButton),
+          ),
+          ElevatedButton(
+            key: const Key('confirm_revoke_invite_button'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.revokeInviteButton),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      setState(() {
+        _isProcessing = true;
+      });
+      try {
+        await repository.revokeInvite(invite.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.l10n.inviteRevokedSuccess)),
+          );
+        }
+      } catch (e, stackTrace) {
+        if (mounted) {
+          final errorHandler = context.read<ErrorHandler>();
+          final report = errorHandler.report(e, stackTrace: stackTrace);
+          errorHandler.showErrorDialog(context, report);
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
+        }
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final familyRepo = Provider.of<FamilyRepository?>(context);
@@ -650,6 +702,82 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 ),
               );
             }),
+            if (isParent) ...[
+              const SizedBox(height: 24),
+              Text(
+                context.l10n.outstandingInvitesHeader,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              StreamBuilder<List<FamilyInvite>>(
+                stream: repository.getOutstandingFamilyInvites(family.id),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('${context.l10n.errorOccurred}: ${snapshot.error}');
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final invites = snapshot.data ?? [];
+                  if (invites.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Center(
+                        child: Text(
+                          context.l10n.noOutstandingInvites,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).disabledColor,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: invites.length,
+                    itemBuilder: (context, index) {
+                      final invite = invites[index];
+                      final inviteIsParent = invite.role == 'parent';
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                            child: Icon(
+                              Icons.mail_outline,
+                              color: Theme.of(context).colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                          title: Text(
+                            invite.toEmail,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            inviteIsParent
+                                ? context.l10n.parentRole
+                                : context.l10n.nonParentRole,
+                          ),
+                          trailing: TextButton(
+                            key: Key('revoke_invite_${invite.id}'),
+                            onPressed: () => _revokeInvite(repository, invite),
+                            child: Text(
+                              context.l10n.revokeInviteButton,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
             const SizedBox(height: 32),
             Center(
               child: ElevatedButton.icon(
