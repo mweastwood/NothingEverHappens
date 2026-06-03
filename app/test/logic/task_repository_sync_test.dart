@@ -24,40 +24,61 @@ void main() {
     AppClock.reset();
   });
 
-  test('getTasks merges personal and family collections when in a family', () async {
-    // 1. Setup user familyId
-    await firestore.collection('users').doc(userId).set({'familyId': familyId});
+  test(
+    'getTasks merges personal and family collections when in a family',
+    () async {
+      // 1. Setup user familyId
+      await firestore.collection('users').doc(userId).set({
+        'familyId': familyId,
+      });
 
-    // 2. Add personal task
-    final personalTask = Task(
-      id: 't-personal',
-      title: 'Personal task',
-      description: '',
-      startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-      dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-      schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
-      isFamily: false,
-    );
-    await repository.addTask(personalTask);
+      // 2. Add personal task
+      final personalTask = Task(
+        id: 't-personal',
+        title: 'Personal task',
+        description: '',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
+        isFamily: false,
+      );
+      await repository.addTask(personalTask);
 
-    // 3. Add family task
-    final familyTask = Task(
-      id: 't-family',
-      title: 'Family task',
-      description: '',
-      startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-      dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-      schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
-      isFamily: true,
-    );
-    await repository.addTask(familyTask);
+      // 3. Add family task
+      final familyTask = Task(
+        id: 't-family',
+        title: 'Family task',
+        description: '',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
+        isFamily: true,
+      );
+      await repository.addTask(familyTask);
 
-    // 4. Verify streams contain both tasks
-    final tasksList = await repository.getTasks().first;
-    expect(tasksList.length, 2);
-    expect(tasksList.any((t) => t.id == 't-personal'), isTrue);
-    expect(tasksList.any((t) => t.id == 't-family'), isTrue);
-  });
+      // 4. Verify streams contain both tasks
+      final tasksList = await repository.getTasks().first;
+      expect(tasksList.length, 2);
+      expect(tasksList.any((t) => t.id == 't-personal'), isTrue);
+      expect(tasksList.any((t) => t.id == 't-family'), isTrue);
+    },
+  );
 
   test('atomic scope migration: Personal -> Family', () async {
     await firestore.collection('users').doc(userId).set({'familyId': familyId});
@@ -67,15 +88,28 @@ void main() {
       id: 't-migrate',
       title: 'Migrating task',
       description: '',
-      startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-      dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-      schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      schedule: OneOffSchedule(
+        date: const CivilDay(year: 2026, month: 6, day: 1),
+      ),
       isFamily: false,
     );
     await repository.addTask(task);
 
     // Verify it exists in personal tasks collection
-    final personalDoc = await firestore.collection('users').doc(userId).collection('tasks').doc('t-migrate').get();
+    final personalDoc = await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('tasks')
+        .doc('t-migrate')
+        .get();
     expect(personalDoc.exists, isTrue);
 
     // 2. Toggle to Family and save
@@ -100,11 +134,21 @@ void main() {
     await repository.updateTask((newTask: familyTask, delta: delta));
 
     // Verify it was DELETED from personal tasks
-    final personalDocPost = await firestore.collection('users').doc(userId).collection('tasks').doc('t-migrate').get();
+    final personalDocPost = await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('tasks')
+        .doc('t-migrate')
+        .get();
     expect(personalDocPost.exists, isFalse);
 
     // Verify it was CREATED in family tasks
-    final familyDocPost = await firestore.collection('families').doc(familyId).collection('tasks').doc('t-migrate').get();
+    final familyDocPost = await firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('tasks')
+        .doc('t-migrate')
+        .get();
     expect(familyDocPost.exists, isTrue);
   });
 
@@ -116,15 +160,28 @@ void main() {
       id: 't-migrate',
       title: 'Migrating task',
       description: '',
-      startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-      dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-      schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      schedule: OneOffSchedule(
+        date: const CivilDay(year: 2026, month: 6, day: 1),
+      ),
       isFamily: true,
     );
     await repository.addTask(task);
 
     // Verify it exists in family tasks
-    final familyDoc = await firestore.collection('families').doc(familyId).collection('tasks').doc('t-migrate').get();
+    final familyDoc = await firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('tasks')
+        .doc('t-migrate')
+        .get();
     expect(familyDoc.exists, isTrue);
 
     // 2. Toggle to Personal and save
@@ -149,11 +206,21 @@ void main() {
     await repository.updateTask((newTask: personalTask, delta: delta));
 
     // Verify it was DELETED from family tasks
-    final familyDocPost = await firestore.collection('families').doc(familyId).collection('tasks').doc('t-migrate').get();
+    final familyDocPost = await firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('tasks')
+        .doc('t-migrate')
+        .get();
     expect(familyDocPost.exists, isFalse);
 
     // Verify it was CREATED in personal tasks
-    final personalDocPost = await firestore.collection('users').doc(userId).collection('tasks').doc('t-migrate').get();
+    final personalDocPost = await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('tasks')
+        .doc('t-migrate')
+        .get();
     expect(personalDocPost.exists, isTrue);
   });
 
@@ -171,7 +238,12 @@ void main() {
       changedFields: const {},
       userId: userId,
     );
-    await firestore.collection('users').doc(userId).collection('history').doc('pd-1').set(personalDelta.toJson());
+    await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('history')
+        .doc('pd-1')
+        .set(personalDelta.toJson());
 
     // 3. Add family history
     final familyDelta = TaskDelta(
@@ -183,7 +255,12 @@ void main() {
       changedFields: const {},
       userId: userId,
     );
-    await firestore.collection('families').doc(familyId).collection('history').doc('fd-1').set(familyDelta.toJson());
+    await firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('history')
+        .doc('fd-1')
+        .set(familyDelta.toJson());
 
     // 4. Verify streams contain both deltas sorted descending
     final historyList = await repository.getHistory().first;

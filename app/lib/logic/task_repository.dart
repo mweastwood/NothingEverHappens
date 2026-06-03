@@ -67,7 +67,11 @@ class TaskRepository {
     return _tasksRef.doc(task.id);
   }
 
-  DocumentReference<TaskDelta> _historyRefFor(Task task, String? familyId, String deltaId) {
+  DocumentReference<TaskDelta> _historyRefFor(
+    Task task,
+    String? familyId,
+    String deltaId,
+  ) {
     if (task.isFamily && familyId != null && familyId.isNotEmpty) {
       return _firestore
           .collection('families')
@@ -75,7 +79,8 @@ class TaskRepository {
           .collection('history')
           .doc(deltaId)
           .withConverter<TaskDelta>(
-            fromFirestore: (snapshot, _) => TaskDelta.fromJson(snapshot.data()!),
+            fromFirestore: (snapshot, _) =>
+                TaskDelta.fromJson(snapshot.data()!),
             toFirestore: (delta, _) => delta.toJson(),
           );
     }
@@ -106,7 +111,9 @@ class TaskRepository {
   }
 
   Stream<List<Task>> getTasks() {
-    return _firestore.collection('users').doc(_userId).snapshots().switchMap((userDoc) {
+    return _firestore.collection('users').doc(_userId).snapshots().switchMap((
+      userDoc,
+    ) {
       final familyId = userDoc.data()?['familyId'] as String? ?? '';
 
       final personalStream = _tasksRef.snapshots().map((snapshot) {
@@ -326,12 +333,17 @@ class TaskRepository {
   }
 
   Stream<List<TaskDelta>> getHistory() {
-    return _firestore.collection('users').doc(_userId).snapshots().switchMap((userDoc) {
+    return _firestore.collection('users').doc(_userId).snapshots().switchMap((
+      userDoc,
+    ) {
       final familyId = userDoc.data()?['familyId'] as String? ?? '';
 
-      final personalStream = _historyRef.orderBy('timestamp', descending: true).snapshots().map((snapshot) {
-        return snapshot.docs.map((doc) => doc.data()).toList();
-      });
+      final personalStream = _historyRef
+          .orderBy('timestamp', descending: true)
+          .snapshots()
+          .map((snapshot) {
+            return snapshot.docs.map((doc) => doc.data()).toList();
+          });
 
       if (familyId.isEmpty) {
         return personalStream;
@@ -341,23 +353,27 @@ class TaskRepository {
             .doc(familyId)
             .collection('history')
             .withConverter<TaskDelta>(
-              fromFirestore: (snapshot, _) => TaskDelta.fromJson(snapshot.data()!),
+              fromFirestore: (snapshot, _) =>
+                  TaskDelta.fromJson(snapshot.data()!),
               toFirestore: (delta, _) => delta.toJson(),
             );
 
-        final familyStream = familyHistoryRef.orderBy('timestamp', descending: true).snapshots().map((snapshot) {
-          return snapshot.docs.map((doc) => doc.data()).toList();
-        });
+        final familyStream = familyHistoryRef
+            .orderBy('timestamp', descending: true)
+            .snapshots()
+            .map((snapshot) {
+              return snapshot.docs.map((doc) => doc.data()).toList();
+            });
 
-        return Rx.combineLatest2<List<TaskDelta>, List<TaskDelta>, List<TaskDelta>>(
-          personalStream,
-          familyStream,
-          (personal, family) {
-            final all = [...personal, ...family]
-              ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-            return all;
-          },
-        );
+        return Rx.combineLatest2<
+          List<TaskDelta>,
+          List<TaskDelta>,
+          List<TaskDelta>
+        >(personalStream, familyStream, (personal, family) {
+          final all = [...personal, ...family]
+            ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          return all;
+        });
       }
     });
   }
@@ -389,10 +405,10 @@ class TaskRepository {
 
     final familyDocRef = (familyId != null && familyId.isNotEmpty)
         ? _firestore
-            .collection('families')
-            .doc(familyId)
-            .collection('tasks')
-            .doc(newTask.id)
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(newTask.id)
         : null;
 
     bool currentlyFamily = false;
