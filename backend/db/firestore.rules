@@ -14,6 +14,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId == get(/databases/$(database)/documents/users/$(userId)).data.familyId;
     }
 
+    // Helper to check if user is a parent in a family
+    function isParentOfFamily(familyId) {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid].role == 'parent';
+    }
+
     // User Profile: Users can read/write their own profile, and family members can read
     match /users/{userId} {
       allow read: if isUser(userId) || areInSameFamily(userId);
@@ -104,15 +110,19 @@ service cloud.firestore {
       }
     }
 
-    // Invites: users can read/write if they are sender or recipient
+    // Invites: users can read/write if they are sender or recipient, or if they are a parent in the family
     match /invites/{inviteId} {
       allow read: if request.auth != null && (
         resource.data.toEmail == request.auth.token.email
         ||
         resource.data.fromEmail == request.auth.token.email
+        ||
+        isParentOfFamily(resource.data.familyId)
       );
       allow create: if request.auth != null && (
         request.resource.data.fromEmail == request.auth.token.email
+        &&
+        isParentOfFamily(request.resource.data.familyId)
       );
       allow update, delete: if request.auth != null && (
         // Recipient can update status or delete
@@ -120,6 +130,9 @@ service cloud.firestore {
         ||
         // Sender can cancel
         resource.data.fromEmail == request.auth.token.email
+        ||
+        // Any parent in the family can revoke
+        isParentOfFamily(resource.data.familyId)
       );
     }
   }

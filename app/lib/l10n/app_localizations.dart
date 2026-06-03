@@ -848,6 +848,42 @@ abstract class AppLocalizations {
   /// **'Invitation sent successfully'**
   String get inviteSentSuccess;
 
+  /// No description provided for @outstandingInvitesHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding Invitations'**
+  String get outstandingInvitesHeader;
+
+  /// No description provided for @revokeInviteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke'**
+  String get revokeInviteButton;
+
+  /// No description provided for @inviteRevokedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation revoked successfully'**
+  String get inviteRevokedSuccess;
+
+  /// No description provided for @noOutstandingInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'No outstanding invitations'**
+  String get noOutstandingInvites;
+
+  /// No description provided for @revokeInviteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke Invitation?'**
+  String get revokeInviteConfirmTitle;
+
+  /// No description provided for @revokeInviteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to revoke the invitation for {email}?'**
+  String revokeInviteConfirmBody(String email);
+
   /// No description provided for @invitedBy.
   ///
   /// In en, this message translates to:

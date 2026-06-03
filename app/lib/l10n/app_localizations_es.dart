@@ -422,6 +422,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String get inviteSentSuccess => 'Invitación enviada exitosamente';
 
   @override
+  String get outstandingInvitesHeader => 'Invitaciones Pendientes Enviadas';
+
+  @override
+  String get revokeInviteButton => 'Revocar';
+
+  @override
+  String get inviteRevokedSuccess => 'Invitación revocada exitosamente';
+
+  @override
+  String get noOutstandingInvites => 'Sin invitaciones pendientes enviadas';
+
+  @override
+  String get revokeInviteConfirmTitle => '¿Revocar Invitación?';
+
+  @override
+  String revokeInviteConfirmBody(String email) {
+    return '¿Estás seguro de que deseas revocar la invitación para $email?';
+  }
+
+  @override
   String invitedBy(String name, String email) {
     return 'Invitado por $name ($email)';
   }
