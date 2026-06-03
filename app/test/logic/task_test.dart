@@ -532,6 +532,54 @@ void main() {
 
       expect(deserialized.estimatedDuration, isNull);
     });
+
+    test('serializes and deserializes new Agile fields correctly', () async {
+      final task = Task(
+        id: 'task-agile-test',
+        title: 'Agile Task',
+        description: 'Desc',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 3, day: 8),
+        ),
+        isFamily: true,
+        priority: TaskPriority.high,
+        cycleId: '2026-W23',
+        preferredBy: const {'user-1': true, 'user-2': false},
+        assignedUserId: 'user-1',
+      );
+
+      final map = task.toFirestore();
+      expect(map['isFamily'], true);
+      expect(map['priority'], 'high');
+      expect(map['cycleId'], '2026-W23');
+      expect(map['preferredBy']['user-1'], true);
+      expect(map['preferredBy']['user-2'], false);
+      expect(map['assignedUserId'], 'user-1');
+
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('tasks').doc('task-agile-test').set(map);
+      final snapshot = await firestore
+          .collection('tasks')
+          .doc('task-agile-test')
+          .get();
+      final deserialized = Task.fromFirestore(snapshot);
+
+      expect(deserialized.id, 'task-agile-test');
+      expect(deserialized.isFamily, true);
+      expect(deserialized.priority, TaskPriority.high);
+      expect(deserialized.cycleId, '2026-W23');
+      expect(deserialized.preferredBy['user-1'], true);
+      expect(deserialized.preferredBy['user-2'], false);
+      expect(deserialized.assignedUserId, 'user-1');
+    });
   });
 
   group('Task Editing and Delta Aggregation', () {
@@ -581,6 +629,8 @@ void main() {
           newMissedPolicy: MissedPolicy.rollover,
           newIsMaster: false,
           newLastSpawnedDate: null,
+          newIsFamily: true,
+          newPriority: TaskPriority.high,
         );
 
         final newTask = result.newTask;
@@ -597,6 +647,8 @@ void main() {
         expect((newTask.schedule as OneOffSchedule).date.day, 9);
         expect(newTask.dailyTimes.length, 1);
         expect(newTask.estimatedDuration, isNull);
+        expect(newTask.isFamily, isTrue);
+        expect(newTask.priority, TaskPriority.high);
 
         // 2. Verify Delta properties and changedFields
         expect(delta.taskId, 'edit-test-task');
@@ -615,6 +667,102 @@ void main() {
         expect(changes['schedule']['date']['day'], 9);
         expect(changes['dailyTimes'][0]['startHour'], 10);
         expect(changes['estimatedDuration'], isNull);
+        expect(changes['isFamily'], isTrue);
+        expect(changes['priority'], 'high');
+      },
+    );
+
+    test(
+      'updateCycleId modifies cycleId and generates correct update delta',
+      () {
+        final task = Task(
+          id: 't1',
+          title: 'Task 1',
+          description: '',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+          ),
+        );
+
+        final result = task.updateCycleId('2026-W23', 'user1');
+        expect(result.newTask.cycleId, '2026-W23');
+        expect(result.delta.taskId, 't1');
+        expect(result.delta.operation, 'update');
+        expect(result.delta.changedFields['cycleId'], '2026-W23');
+
+        // Test clearing cycleId
+        final resultClear = result.newTask.updateCycleId(null, 'user1');
+        expect(resultClear.newTask.cycleId, isNull);
+        expect(resultClear.delta.changedFields['cycleId'], isNull);
+      },
+    );
+
+    test(
+      'updateAssignedUserId modifies assignedUserId and generates correct update delta',
+      () {
+        final task = Task(
+          id: 't1',
+          title: 'Task 1',
+          description: '',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+          ),
+        );
+
+        final result = task.updateAssignedUserId('user2', 'user1');
+        expect(result.newTask.assignedUserId, 'user2');
+        expect(result.delta.taskId, 't1');
+        expect(result.delta.operation, 'update');
+        expect(result.delta.changedFields['assignedUserId'], 'user2');
+
+        // Test clearing assignedUserId
+        final resultClear = result.newTask.updateAssignedUserId(null, 'user1');
+        expect(resultClear.newTask.assignedUserId, isNull);
+        expect(resultClear.delta.changedFields['assignedUserId'], isNull);
+      },
+    );
+
+    test(
+      'updatePreferredBy modifies preferredBy map and generates correct update delta',
+      () {
+        final task = Task(
+          id: 't1',
+          title: 'Task 1',
+          description: '',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+          ),
+        );
+
+        final result = task.updatePreferredBy(const {'user2': true}, 'user1');
+        expect(result.newTask.preferredBy['user2'], isTrue);
+        expect(result.delta.taskId, 't1');
+        expect(result.delta.operation, 'update');
+        expect(result.delta.changedFields['preferredBy']['user2'], isTrue);
       },
     );
   });

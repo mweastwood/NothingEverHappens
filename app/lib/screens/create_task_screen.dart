@@ -8,6 +8,8 @@ import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../logic/family_repository.dart';
 
 import '../widgets/one_off_scheduling_widget.dart';
 import '../widgets/daily_scheduling_widget.dart';
@@ -84,6 +86,13 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   bool _isSaving = false;
 
+  // New Agile and Scoping variables
+  bool _isFamily = false;
+  TaskPriority _priority = TaskPriority.medium;
+  String? _cycleId;
+  Map<String, bool> _preferredBy = const {};
+  String? _assignedUserId;
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +101,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       _titleController.text = task.title;
       _descriptionController.text = task.description;
       _missedPolicy = task.missedPolicy;
+      _isFamily = task.isFamily;
+      _priority = task.priority;
+      _cycleId = task.cycleId;
+      _preferredBy = Map<String, bool>.from(task.preferredBy);
+      _assignedUserId = task.assignedUserId;
       if (task.estimatedDuration != null) {
         _estimatedDurationController.text = task.estimatedDuration!.inMinutes
             .toString();
@@ -368,6 +382,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   _missedPolicy == MissedPolicy.stack
               ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
               : null,
+          isFamily: _isFamily,
+          priority: _priority,
+          cycleId: _cycleId,
+          preferredBy: _preferredBy,
+          assignedUserId: _assignedUserId,
         );
 
         final repository = context.read<TaskRepository?>();
@@ -396,6 +415,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                           _missedPolicy == MissedPolicy.stack
                       ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
                       : null),
+              newIsFamily: _isFamily,
+              newPriority: _priority,
+              newCycleId: _cycleId,
+              newPreferredBy: _preferredBy,
+              newAssignedUserId: _assignedUserId,
             );
             await repository
                 .updateTask(modification)
@@ -438,314 +462,475 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Shortcuts(
-      shortcuts: <ShortcutActivator, Intent>{
-        const SingleActivator(LogicalKeyboardKey.enter): const SaveIntent(),
-        const SingleActivator(LogicalKeyboardKey.escape): const DiscardIntent(),
-      },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          SaveIntent: CallbackAction<SaveIntent>(
-            onInvoke: (intent) {
-              if (_titleFocusNode.hasFocus) {
-                _saveTask();
-              }
-              return null;
+    final familyRepo = Provider.of<FamilyRepository?>(context);
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: familyRepo?.getProfile() ?? const Stream.empty(),
+      builder: (context, snapshot) {
+        final profileData = snapshot.data?.data() ?? {};
+        final familyId = profileData['familyId'] as String? ?? '';
+        final familyRole = profileData['familyRole'] as String? ?? '';
+        final inFamily = familyId.isNotEmpty;
+        final isParent = familyRole == 'parent';
+
+        final isEditingFamilyTask = widget.taskToEdit?.isFamily ?? false;
+        final hasEditPermission = !isEditingFamilyTask || isParent;
+        final readOnly = !hasEditPermission;
+
+        return Shortcuts(
+          shortcuts: <ShortcutActivator, Intent>{
+            const SingleActivator(LogicalKeyboardKey.enter): const SaveIntent(),
+            const SingleActivator(LogicalKeyboardKey.escape):
+                const DiscardIntent(),
+          },
+          child: Actions(
+            actions: <Type, Action<Intent>>{
+              SaveIntent: CallbackAction<SaveIntent>(
+                onInvoke: (intent) {
+                  if (_titleFocusNode.hasFocus && !readOnly) {
+                    _saveTask();
+                  }
+                  return null;
+                },
+              ),
+              DiscardIntent: CallbackAction<DiscardIntent>(
+                onInvoke: (intent) => Navigator.pop(context),
+              ),
             },
-          ),
-          DiscardIntent: CallbackAction<DiscardIntent>(
-            onInvoke: (intent) => Navigator.pop(context),
-          ),
-        },
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(
-              widget.taskToEdit != null
-                  ? context.l10n.editTaskTitle
-                  : context.l10n.newTaskTitle,
-            ),
-          ),
-          body: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TextFormField(
-                                  controller: _titleController,
-                                  focusNode: _titleFocusNode,
-                                  autofocus: true,
-                                  decoration: InputDecoration(
-                                    labelText: context.l10n.titleFieldLabel,
-                                    border: const OutlineInputBorder(),
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return context.l10n.titleRequiredError;
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                TextFormField(
-                                  controller: _descriptionController,
-                                  decoration: InputDecoration(
-                                    labelText:
-                                        context.l10n.descriptionFieldLabel,
-                                    border: const OutlineInputBorder(),
-                                  ),
-                                  maxLines: 3,
-                                ),
-                                const SizedBox(height: 16),
-                                TextFormField(
-                                  key: const Key('estimated_effort_field'),
-                                  controller: _estimatedDurationController,
-                                  decoration: InputDecoration(
-                                    labelText:
-                                        context.l10n.estimatedEffortFieldLabel,
-                                    border: const OutlineInputBorder(),
-                                    helperText:
-                                        context.l10n.estimatedEffortHelper,
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                  ],
-                                  validator: (value) {
-                                    if (value != null && value.isNotEmpty) {
-                                      final val = int.tryParse(value);
-                                      if (val == null || val <= 0) {
-                                        return context
-                                            .l10n
-                                            .estimatedEffortValidationError;
-                                      }
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
+            child: Scaffold(
+              appBar: AppBar(
+                title: Text(
+                  readOnly
+                      ? context.l10n.viewTaskTitle
+                      : (widget.taskToEdit != null
+                            ? context.l10n.editTaskTitle
+                            : context.l10n.newTaskTitle),
+                ),
+              ),
+              body: Column(
+                children: [
+                  if (readOnly)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 16,
+                      ),
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      child: Text(
+                        context.l10n.onlyParentsCanEditFamilyTasks,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(height: 16),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  context.l10n.scheduleHeader,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: SegmentedButton<RecurrenceType>(
-                                    segments: [
-                                      ButtonSegment<RecurrenceType>(
-                                        value: RecurrenceType.oneOff,
-                                        label: Text(context.l10n.oneOffLabel),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    TextFormField(
+                                      controller: _titleController,
+                                      focusNode: _titleFocusNode,
+                                      autofocus: !readOnly,
+                                      enabled: !readOnly,
+                                      decoration: InputDecoration(
+                                        labelText: context.l10n.titleFieldLabel,
+                                        border: const OutlineInputBorder(),
                                       ),
-                                      ButtonSegment<RecurrenceType>(
-                                        value: RecurrenceType.daily,
-                                        label: Text(context.l10n.dailyLabel),
-                                      ),
-                                      ButtonSegment<RecurrenceType>(
-                                        value: RecurrenceType.weekly,
-                                        label: Text(context.l10n.weeklyLabel),
-                                      ),
-                                      ButtonSegment<RecurrenceType>(
-                                        value: RecurrenceType.monthly,
-                                        label: Text(context.l10n.monthlyLabel),
-                                      ),
-                                      ButtonSegment<RecurrenceType>(
-                                        value: RecurrenceType.yearly,
-                                        label: Text(context.l10n.yearlyLabel),
-                                      ),
-                                    ],
-                                    selected: <RecurrenceType>{_scheduleType},
-                                    onSelectionChanged:
-                                        (Set<RecurrenceType> newSelection) {
-                                          setState(() {
-                                            _scheduleType = newSelection.first;
-                                          });
-                                        },
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                if (_scheduleType == RecurrenceType.oneOff)
-                                  OneOffSchedulingWidget(
-                                    dueDateTime: _dueDateTimeController,
-                                    startDateTime: _startDateTimeController,
-                                  )
-                                else if (_scheduleType == RecurrenceType.daily)
-                                  DailySchedulingWidget(
-                                    startDate: _startDate,
-                                    onStartDateChanged: (date) {
-                                      setState(() => _startDate = date);
-                                    },
-                                    dailyTimesController: _dailyTimesController,
-                                    intervalController: _intervalController,
-                                  )
-                                else if (_scheduleType == RecurrenceType.weekly)
-                                  WeeklySchedulingWidget(
-                                    startDate: _startDate,
-                                    onStartDateChanged: (date) {
-                                      setState(() => _startDate = date);
-                                    },
-                                    dailyTimesController: _dailyTimesController,
-                                    intervalController: _intervalController,
-                                    selectedWeekdays: _selectedWeekdays,
-                                    onWeekdaysChanged: (days) {
-                                      setState(() => _selectedWeekdays = days);
-                                    },
-                                  )
-                                else if (_scheduleType ==
-                                    RecurrenceType.monthly)
-                                  MonthlySchedulingWidget(
-                                    startDate: _startDate,
-                                    onStartDateChanged: (date) {
-                                      setState(() => _startDate = date);
-                                    },
-                                    dailyTimesController: _dailyTimesController,
-                                    intervalController: _intervalController,
-                                    ruleTypeController:
-                                        _monthlyRuleTypeController,
-                                    dayOfMonthController:
-                                        _monthlyDayOfMonthController,
-                                    nthOccurrenceController:
-                                        _monthlyNthOccurrenceController,
-                                    dayOfWeekController:
-                                        _monthlyDayOfWeekController,
-                                  )
-                                else if (_scheduleType == RecurrenceType.yearly)
-                                  YearlySchedulingWidget(
-                                    startDate: _startDate,
-                                    onStartDateChanged: (date) {
-                                      setState(() => _startDate = date);
-                                    },
-                                    dailyTimesController: _dailyTimesController,
-                                    intervalController: _intervalController,
-                                    monthController: _yearlyMonthController,
-                                    dayController: _yearlyDayController,
-                                  ),
-                                if (_scheduleType != RecurrenceType.oneOff) ...[
-                                  const Divider(height: 32),
-                                  Text(
-                                    context.l10n.missedPolicyHeader,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return context
+                                              .l10n
+                                              .titleRequiredError;
+                                        }
+                                        return null;
+                                      },
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  DropdownButtonFormField<MissedPolicy>(
-                                    key: const Key('missed_policy_dropdown'),
-                                    isExpanded: true,
-                                    initialValue: _missedPolicy,
-                                    decoration: InputDecoration(
-                                      border: const OutlineInputBorder(),
-                                      helperText:
-                                          context.l10n.missedPolicyHelper,
+                                    const SizedBox(height: 16),
+                                    TextFormField(
+                                      controller: _descriptionController,
+                                      enabled: !readOnly,
+                                      decoration: InputDecoration(
+                                        labelText:
+                                            context.l10n.descriptionFieldLabel,
+                                        border: const OutlineInputBorder(),
+                                      ),
+                                      maxLines: 3,
                                     ),
-                                    items: [
-                                      DropdownMenuItem(
-                                        value: MissedPolicy.rollover,
-                                        child: Text(context.l10n.rolloverLabel),
+                                    const SizedBox(height: 16),
+                                    TextFormField(
+                                      key: const Key('estimated_effort_field'),
+                                      controller: _estimatedDurationController,
+                                      enabled: !readOnly,
+                                      decoration: InputDecoration(
+                                        labelText: context
+                                            .l10n
+                                            .estimatedEffortFieldLabel,
+                                        border: const OutlineInputBorder(),
+                                        helperText:
+                                            context.l10n.estimatedEffortHelper,
                                       ),
-                                      DropdownMenuItem(
-                                        value: MissedPolicy.skip,
-                                        child: Text(context.l10n.skipLabel),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: MissedPolicy.shift,
-                                        child: Text(context.l10n.shiftLabel),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: MissedPolicy.stack,
-                                        child: Text(context.l10n.stackLabel),
-                                      ),
-                                    ],
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        setState(() {
-                                          _missedPolicy = value;
-                                        });
-                                      }
-                                    },
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    _getMissedPolicyDescription(
-                                      context,
-                                      _missedPolicy,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      validator: (value) {
+                                        if (value != null && value.isNotEmpty) {
+                                          final val = int.tryParse(value);
+                                          if (val == null || val <= 0) {
+                                            return context
+                                                .l10n
+                                                .estimatedEffortValidationError;
+                                          }
+                                        }
+                                        return null;
+                                      },
                                     ),
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.outline,
+                                    const SizedBox(height: 16),
+                                    DropdownButtonFormField<TaskPriority>(
+                                      key: const Key('task_priority_dropdown'),
+                                      initialValue: _priority,
+                                      decoration: InputDecoration(
+                                        labelText:
+                                            context.l10n.taskPriorityLabel,
+                                        border: const OutlineInputBorder(),
+                                      ),
+                                      items: [
+                                        DropdownMenuItem(
+                                          value: TaskPriority.low,
+                                          child: Text(context.l10n.priorityLow),
                                         ),
-                                  ),
-                                ],
-                              ],
+                                        DropdownMenuItem(
+                                          value: TaskPriority.medium,
+                                          child: Text(
+                                            context.l10n.priorityMedium,
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: TaskPriority.high,
+                                          child: Text(
+                                            context.l10n.priorityHigh,
+                                          ),
+                                        ),
+                                      ],
+                                      onChanged: readOnly
+                                          ? null
+                                          : (value) {
+                                              if (value != null) {
+                                                setState(
+                                                  () => _priority = value,
+                                                );
+                                              }
+                                            },
+                                    ),
+                                    if (inFamily) ...[
+                                      const SizedBox(height: 16),
+                                      SwitchListTile(
+                                        key: const Key('is_family_toggle'),
+                                        title: Text(
+                                          context.l10n.familyTaskLabel,
+                                        ),
+                                        subtitle: Text(
+                                          context.l10n.familyTaskHelper,
+                                        ),
+                                        value: _isFamily,
+                                        onChanged: readOnly
+                                            ? null
+                                            : (value) {
+                                                setState(
+                                                  () => _isFamily = value,
+                                                );
+                                              },
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 16),
+                            AbsorbPointer(
+                              absorbing: readOnly,
+                              child: Opacity(
+                                opacity: readOnly ? 0.6 : 1.0,
+                                child: Card(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          context.l10n.scheduleHeader,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child:
+                                              SegmentedButton<RecurrenceType>(
+                                                segments: [
+                                                  ButtonSegment<RecurrenceType>(
+                                                    value:
+                                                        RecurrenceType.oneOff,
+                                                    label: Text(
+                                                      context.l10n.oneOffLabel,
+                                                    ),
+                                                  ),
+                                                  ButtonSegment<RecurrenceType>(
+                                                    value: RecurrenceType.daily,
+                                                    label: Text(
+                                                      context.l10n.dailyLabel,
+                                                    ),
+                                                  ),
+                                                  ButtonSegment<RecurrenceType>(
+                                                    value:
+                                                        RecurrenceType.weekly,
+                                                    label: Text(
+                                                      context.l10n.weeklyLabel,
+                                                    ),
+                                                  ),
+                                                  ButtonSegment<RecurrenceType>(
+                                                    value:
+                                                        RecurrenceType.monthly,
+                                                    label: Text(
+                                                      context.l10n.monthlyLabel,
+                                                    ),
+                                                  ),
+                                                  ButtonSegment<RecurrenceType>(
+                                                    value:
+                                                        RecurrenceType.yearly,
+                                                    label: Text(
+                                                      context.l10n.yearlyLabel,
+                                                    ),
+                                                  ),
+                                                ],
+                                                selected: <RecurrenceType>{
+                                                  _scheduleType,
+                                                },
+                                                onSelectionChanged:
+                                                    (
+                                                      Set<RecurrenceType>
+                                                      newSelection,
+                                                    ) {
+                                                      setState(() {
+                                                        _scheduleType =
+                                                            newSelection.first;
+                                                      });
+                                                    },
+                                              ),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        if (_scheduleType ==
+                                            RecurrenceType.oneOff)
+                                          OneOffSchedulingWidget(
+                                            dueDateTime: _dueDateTimeController,
+                                            startDateTime:
+                                                _startDateTimeController,
+                                          )
+                                        else if (_scheduleType ==
+                                            RecurrenceType.daily)
+                                          DailySchedulingWidget(
+                                            startDate: _startDate,
+                                            onStartDateChanged: (date) {
+                                              setState(() => _startDate = date);
+                                            },
+                                            dailyTimesController:
+                                                _dailyTimesController,
+                                            intervalController:
+                                                _intervalController,
+                                          )
+                                        else if (_scheduleType ==
+                                            RecurrenceType.weekly)
+                                          WeeklySchedulingWidget(
+                                            startDate: _startDate,
+                                            onStartDateChanged: (date) {
+                                              setState(() => _startDate = date);
+                                            },
+                                            dailyTimesController:
+                                                _dailyTimesController,
+                                            intervalController:
+                                                _intervalController,
+                                            selectedWeekdays: _selectedWeekdays,
+                                            onWeekdaysChanged: (days) {
+                                              setState(
+                                                () => _selectedWeekdays = days,
+                                              );
+                                            },
+                                          )
+                                        else if (_scheduleType ==
+                                            RecurrenceType.monthly)
+                                          MonthlySchedulingWidget(
+                                            startDate: _startDate,
+                                            onStartDateChanged: (date) {
+                                              setState(() => _startDate = date);
+                                            },
+                                            dailyTimesController:
+                                                _dailyTimesController,
+                                            intervalController:
+                                                _intervalController,
+                                            ruleTypeController:
+                                                _monthlyRuleTypeController,
+                                            dayOfMonthController:
+                                                _monthlyDayOfMonthController,
+                                            nthOccurrenceController:
+                                                _monthlyNthOccurrenceController,
+                                            dayOfWeekController:
+                                                _monthlyDayOfWeekController,
+                                          )
+                                        else if (_scheduleType ==
+                                            RecurrenceType.yearly)
+                                          YearlySchedulingWidget(
+                                            startDate: _startDate,
+                                            onStartDateChanged: (date) {
+                                              setState(() => _startDate = date);
+                                            },
+                                            dailyTimesController:
+                                                _dailyTimesController,
+                                            intervalController:
+                                                _intervalController,
+                                            monthController:
+                                                _yearlyMonthController,
+                                            dayController: _yearlyDayController,
+                                          ),
+                                        if (_scheduleType !=
+                                            RecurrenceType.oneOff) ...[
+                                          const Divider(height: 32),
+                                          Text(
+                                            context.l10n.missedPolicyHeader,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          DropdownButtonFormField<MissedPolicy>(
+                                            key: const Key(
+                                              'missed_policy_dropdown',
+                                            ),
+                                            isExpanded: true,
+                                            initialValue: _missedPolicy,
+                                            decoration: InputDecoration(
+                                              border:
+                                                  const OutlineInputBorder(),
+                                              helperText: context
+                                                  .l10n
+                                                  .missedPolicyHelper,
+                                            ),
+                                            items: [
+                                              DropdownMenuItem(
+                                                value: MissedPolicy.rollover,
+                                                child: Text(
+                                                  context.l10n.rolloverLabel,
+                                                ),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: MissedPolicy.skip,
+                                                child: Text(
+                                                  context.l10n.skipLabel,
+                                                ),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: MissedPolicy.shift,
+                                                child: Text(
+                                                  context.l10n.shiftLabel,
+                                                ),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: MissedPolicy.stack,
+                                                child: Text(
+                                                  context.l10n.stackLabel,
+                                                ),
+                                              ),
+                                            ],
+                                            onChanged: readOnly
+                                                ? null
+                                                : (value) {
+                                                    if (value != null) {
+                                                      setState(() {
+                                                        _missedPolicy = value;
+                                                      });
+                                                    }
+                                                  },
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            _getMissedPolicyDescription(
+                                              context,
+                                              _missedPolicy,
+                                            ),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.outline,
+                                                ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        OutlinedButton(
+                          onPressed: _isSaving
+                              ? null
+                              : () => Navigator.pop(context),
+                          child: Text(context.l10n.discardButton),
+                        ),
+                        const SizedBox(width: 16),
+                        FilledButton(
+                          key: const Key('save_task_button'),
+                          onPressed: (_isSaving || readOnly) ? null : _saveTask,
+                          child: _isSaving
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    value:
+                                        CreateTaskScreen.debugDisableAnimations
+                                        ? 0.8
+                                        : null,
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(context.l10n.saveButton),
                         ),
                       ],
                     ),
                   ),
-                ),
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton(
-                      onPressed: _isSaving
-                          ? null
-                          : () => Navigator.pop(context),
-                      child: Text(context.l10n.discardButton),
-                    ),
-                    const SizedBox(width: 16),
-                    FilledButton(
-                      key: const Key('save_task_button'),
-                      onPressed: _isSaving ? null : _saveTask,
-                      child: _isSaving
-                          ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                value: CreateTaskScreen.debugDisableAnimations
-                                    ? 0.8
-                                    : null,
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(context.l10n.saveButton),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

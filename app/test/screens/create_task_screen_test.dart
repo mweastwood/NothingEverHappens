@@ -9,6 +9,10 @@ import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:nothing_ever_happens/logic/family_repository.dart';
+import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
 
 import 'create_task_screen_test.mocks.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
@@ -538,6 +542,154 @@ void main() {
       expect(schedule.interval, 2);
       expect(schedule.month, 1); // Default is January (1)
       expect(schedule.day, 24);
+    });
+  });
+
+  group('Agile Scoping and Permissions', () {
+    late FakeFirebaseFirestore firestore;
+    late MockTaskRepository mockTaskRepository;
+    late FamilyRepository familyRepository;
+
+    setUp(() {
+      firestore = FakeFirebaseFirestore();
+      mockTaskRepository = MockTaskRepository();
+      familyRepository = FamilyRepository(
+        firestore: firestore,
+        userId: 'test-user-id',
+        userEmail: 'test@example.com',
+        userDisplayName: 'Test User',
+      );
+    });
+
+    Widget createWidget({Task? taskToEdit}) {
+      return buildTestableWidget(
+        child: MultiProvider(
+          providers: [
+            Provider<ErrorHandler>(create: (_) => ErrorHandler()),
+            Provider<TaskRepository?>.value(value: mockTaskRepository),
+            Provider<FamilyRepository?>.value(value: familyRepository),
+          ],
+          child: CreateTaskScreen(taskToEdit: taskToEdit),
+        ),
+      );
+    }
+
+    testWidgets(
+      'shows family toggle and priority dropdown if user is in a family',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+
+        await tester.pumpWidget(createWidget());
+        await tester.pump();
+
+        expect(find.byKey(const Key('is_family_toggle')), findsOneWidget);
+        expect(find.byKey(const Key('task_priority_dropdown')), findsOneWidget);
+      },
+    );
+
+    testWidgets('hides family toggle if user is not in a family', (
+      WidgetTester tester,
+    ) async {
+      await firestore.collection('users').doc('test-user-id').set({
+        'familyId': '',
+        'familyRole': '',
+      });
+
+      await tester.pumpWidget(createWidget());
+      await tester.pump();
+
+      expect(find.byKey(const Key('is_family_toggle')), findsNothing);
+      expect(find.byKey(const Key('task_priority_dropdown')), findsOneWidget);
+    });
+
+    testWidgets(
+      'disables editing and shows warning if editing family task as non-parent',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'non-parent',
+        });
+
+        final familyTask = Task(
+          id: 'family-task-1',
+          title: 'Family Chore',
+          description: 'Clean the kitchen',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 2),
+          ),
+          isFamily: true,
+        );
+
+        await tester.pumpWidget(createWidget(taskToEdit: familyTask));
+        await tester.pump();
+
+        expect(find.text('View Task'), findsOneWidget);
+        expect(find.text('Only parents can edit family tasks'), findsOneWidget);
+
+        final titleField = tester.widget<TextFormField>(
+          find.widgetWithText(TextFormField, 'Title'),
+        );
+        expect(titleField.enabled, isFalse);
+
+        final saveButton = tester.widget<FilledButton>(
+          find.byKey(const Key('save_task_button')),
+        );
+        expect(saveButton.onPressed, isNull);
+      },
+    );
+
+    testWidgets('allows editing family task if user is a parent', (
+      WidgetTester tester,
+    ) async {
+      await firestore.collection('users').doc('test-user-id').set({
+        'familyId': 'fam-123',
+        'familyRole': 'parent',
+      });
+
+      final familyTask = Task(
+        id: 'family-task-1',
+        title: 'Family Chore',
+        description: 'Clean the kitchen',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 2),
+        ),
+        isFamily: true,
+      );
+
+      await tester.pumpWidget(createWidget(taskToEdit: familyTask));
+      await tester.pump();
+
+      expect(find.text('Edit Task'), findsOneWidget);
+      expect(find.text('Only parents can edit family tasks'), findsNothing);
+
+      final titleField = tester.widget<TextFormField>(
+        find.widgetWithText(TextFormField, 'Title'),
+      );
+      expect(titleField.enabled, isTrue);
+
+      final saveButton = tester.widget<FilledButton>(
+        find.byKey(const Key('save_task_button')),
+      );
+      expect(saveButton.onPressed, isNotNull);
     });
   });
 }

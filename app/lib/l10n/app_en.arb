@@ -185,5 +185,57 @@
     }
   },
   "leaveFamilyConfirmTitle": "Leave Family?",
-  "leaveFamilyConfirmBody": "Are you sure you want to leave the family?"
+  "leaveFamilyConfirmBody": "Are you sure you want to leave the family?",
+  "taskPriorityLabel": "Priority",
+  "priorityLow": "Low",
+  "priorityMedium": "Medium",
+  "priorityHigh": "High",
+  "familyTaskLabel": "Family Task",
+  "familyTaskHelper": "Share this task with all family members.",
+  "viewTaskTitle": "View Task",
+  "onlyParentsCanEditFamilyTasks": "Only parents can edit family tasks",
+  "sprintDashboardTitle": "Sprint Dashboard",
+  "autoAllocateButton": "Auto-Allocate Chores",
+  "choresAllocatedSuccess": "Chores auto-allocated successfully!",
+  "removeFromCycleTooltip": "Remove from cycle",
+  "addToCycleTooltip": "Add to cycle",
+  "backlogTab": "Backlog",
+  "activeCycleTab": "Active Cycle",
+  "weeklyCapacityLabel": "Weekly Capacity",
+  "personalTasksLabel": "Personal Tasks: {effort} min",
+  "@personalTasksLabel": {
+    "placeholders": {
+      "effort": {
+        "type": "int"
+      }
+    }
+  },
+  "familyChoresLabel": "Family Chores: {effort} min",
+  "@familyChoresLabel": {
+    "placeholders": {
+      "effort": {
+        "type": "int"
+      }
+    }
+  },
+  "remainingCapacityLabel": "Remaining Capacity: {effort} min",
+  "@remainingCapacityLabel": {
+    "placeholders": {
+      "effort": {
+        "type": "int"
+      }
+    }
+  },
+  "noActiveTasks": "No active tasks in this cycle. Move some from the backlog!",
+  "noBacklogTasks": "No tasks in the backlog.",
+  "unassigned": "Unassigned",
+  "assignedTo": "Assigned to {name}",
+  "@assignedTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "starTooltip": "Toggle preference"
 }

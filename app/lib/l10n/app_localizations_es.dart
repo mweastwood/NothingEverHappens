@@ -432,4 +432,88 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get leaveFamilyConfirmBody =>
       '¿Estás seguro de que deseas salir de la familia?';
+
+  @override
+  String get taskPriorityLabel => 'Prioridad';
+
+  @override
+  String get priorityLow => 'Baja';
+
+  @override
+  String get priorityMedium => 'Media';
+
+  @override
+  String get priorityHigh => 'Alta';
+
+  @override
+  String get familyTaskLabel => 'Tarea Familiar';
+
+  @override
+  String get familyTaskHelper =>
+      'Comparte esta tarea con todos los miembros de la familia.';
+
+  @override
+  String get viewTaskTitle => 'Ver Tarea';
+
+  @override
+  String get onlyParentsCanEditFamilyTasks =>
+      'Solo los padres pueden editar tareas familiares';
+
+  @override
+  String get sprintDashboardTitle => 'Panel del Sprint';
+
+  @override
+  String get autoAllocateButton => 'Asignar Tareas Automáticamente';
+
+  @override
+  String get choresAllocatedSuccess =>
+      '¡Tareas asignadas automáticamente con éxito!';
+
+  @override
+  String get removeFromCycleTooltip => 'Eliminar del ciclo';
+
+  @override
+  String get addToCycleTooltip => 'Agregar al ciclo';
+
+  @override
+  String get backlogTab => 'Lista de Espera';
+
+  @override
+  String get activeCycleTab => 'Ciclo Activo';
+
+  @override
+  String get weeklyCapacityLabel => 'Capacidad Semanal';
+
+  @override
+  String personalTasksLabel(int effort) {
+    return 'Tareas Personales: $effort min';
+  }
+
+  @override
+  String familyChoresLabel(int effort) {
+    return 'Tareas Familiares: $effort min';
+  }
+
+  @override
+  String remainingCapacityLabel(int effort) {
+    return 'Capacidad Restante: $effort min';
+  }
+
+  @override
+  String get noActiveTasks =>
+      'No hay tareas activas en este ciclo. ¡Mueve algunas de la lista de espera!';
+
+  @override
+  String get noBacklogTasks => 'No hay tareas en la lista de espera.';
+
+  @override
+  String get unassigned => 'Sin asignar';
+
+  @override
+  String assignedTo(String name) {
+    return 'Asignado a $name';
+  }
+
+  @override
+  String get starTooltip => 'Alternar preferencia';
 }
