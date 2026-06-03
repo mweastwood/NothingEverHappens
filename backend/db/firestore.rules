@@ -7,13 +7,22 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // User Profile: Users can read/write their own profile
-    match /users/{userId} {
-      allow read, write: if isUser(userId);
+    // Helper to check if two users share the same familyId
+    function areInSameFamily(userId) {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyId == get(/databases/$(database)/documents/users/$(userId)).data.familyId;
+    }
 
-      // Private Tasks: Users can read/write their own tasks
+    // User Profile: Users can read/write their own profile, and family members can read
+    match /users/{userId} {
+      allow read: if isUser(userId) || areInSameFamily(userId);
+      allow write: if isUser(userId);
+
+      // Private Tasks: Users can read/write their own tasks, and family members can read
       match /tasks/{taskId} {
-        allow read, write: if isUser(userId);
+        allow read: if isUser(userId) || areInSameFamily(userId);
+        allow write: if isUser(userId);
       }
 
       // History: Users can read/write their own history/deltas
@@ -21,9 +30,10 @@ service cloud.firestore {
         allow read, write: if isUser(userId);
       }
 
-      // Settings: Users can read/write their own settings
+      // Settings: Users can read/write their own settings, and family members can read
       match /settings/{settingsId} {
-        allow read, write: if isUser(userId);
+        allow read: if isUser(userId) || areInSameFamily(userId);
+        allow write: if isUser(userId);
       }
     }
 

@@ -9,10 +9,10 @@ class UserSettingsRepository {
     : _firestore = firestore ?? FirebaseFirestore.instance,
       _userId = userId;
 
-  DocumentReference<UserSettings> get _settingsRef {
+  DocumentReference<UserSettings> _settingsRefForUser(String userId) {
     return _firestore
         .collection('users')
-        .doc(_userId)
+        .doc(userId)
         .collection('settings')
         .doc('agile')
         .withConverter<UserSettings>(
@@ -22,8 +22,15 @@ class UserSettingsRepository {
         );
   }
 
+  DocumentReference<UserSettings> get _settingsRef =>
+      _settingsRefForUser(_userId);
+
   Stream<UserSettings> getSettings() {
-    return _settingsRef.snapshots().map((snapshot) {
+    return getSettingsForUser(_userId);
+  }
+
+  Stream<UserSettings> getSettingsForUser(String userId) {
+    return _settingsRefForUser(userId).snapshots().map((snapshot) {
       return snapshot.data() ?? const UserSettings(hoursAvailable: 8.0);
     });
   }

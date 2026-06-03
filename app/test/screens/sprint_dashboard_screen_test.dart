@@ -369,6 +369,124 @@ void main() {
       expect(allocatedTask.assignedUserId, isNotNull);
       expect(allocatedTask.assignedUserId!.isNotEmpty, isTrue);
     });
+
+    testWidgets('renders pooled capacities for all family members', (
+      WidgetTester tester,
+    ) async {
+      // 1. Setup user settings and user profile
+      await firestore.collection('users').doc(userId).set({
+        'familyId': familyId,
+        'familyRole': 'parent',
+      });
+      await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('settings')
+          .doc('agile')
+          .set({'hoursAvailable': 4.0}); // 4 * 7 * 60 = 1680 mins
+
+      // 2. Setup another user profile and settings
+      await firestore.collection('users').doc('user-2').set({
+        'familyId': familyId,
+        'familyRole': 'non-parent',
+      });
+      await firestore
+          .collection('users')
+          .doc('user-2')
+          .collection('settings')
+          .doc('agile')
+          .set({'hoursAvailable': 2.0}); // 2 * 7 * 60 = 840 mins
+
+      // 3. Setup family document
+      await firestore.collection('families').doc(familyId).set({
+        'name': 'The Simpsons',
+        'members': {
+          userId: {
+            'userId': userId,
+            'displayName': 'Alice',
+            'email': userEmail,
+            'role': 'parent',
+          },
+          'user-2': {
+            'userId': 'user-2',
+            'displayName': 'Bob',
+            'email': 'bob@example.com',
+            'role': 'non-parent',
+          },
+        },
+      });
+
+      // 4. Setup some personal tasks for Bob
+      final bobTask = Task(
+        id: 't-bob-personal',
+        title: 'Bob Personal Task',
+        description: '',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
+        estimatedDuration: const Duration(minutes: 120),
+        isFamily: false,
+        cycleId: '2026-W23',
+      );
+      await firestore
+          .collection('users')
+          .doc('user-2')
+          .collection('tasks')
+          .doc('t-bob-personal')
+          .set(bobTask.toFirestore());
+
+      // 5. Setup family task assigned to Bob
+      final familyTask = Task(
+        id: 't-fam-assigned',
+        title: 'Shared Task',
+        description: '',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
+        estimatedDuration: const Duration(minutes: 180),
+        isFamily: true,
+        cycleId: '2026-W23',
+        assignedUserId: 'user-2',
+      );
+      await taskRepo.addTask(familyTask);
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // Check header
+      expect(find.text('Family Capacity Pool'), findsOneWidget);
+
+      // Check Alice (You) row
+      expect(find.text('Alice (You)'), findsOneWidget);
+      // Alice has 4h/day = 1680 min total.
+      expect(find.textContaining('1680 min total'), findsOneWidget);
+
+      // Check Bob row
+      expect(find.text('Bob'), findsOneWidget);
+      // Bob has 2h/day = 840 min total. Remaining is 840 - 120 (personal) - 180 (family) = 540 min.
+      expect(find.textContaining('540 min remaining'), findsOneWidget);
+      expect(find.textContaining('840 min total'), findsOneWidget);
+      expect(
+        find.textContaining('Personal: 120 min | Family Chores: 180 min'),
+        findsOneWidget,
+      );
+    });
   });
 
   group('SprintDashboardScreen Goldens', () {
@@ -447,6 +565,112 @@ void main() {
       await tester.pumpAndSettle();
 
       await screenMatchesGolden(tester, 'sprint_dashboard_screen_with_tasks');
+    });
+
+    testGoldens('SprintDashboardScreen family capacity pool golden', (
+      tester,
+    ) async {
+      // 1. Setup user settings and user profile
+      await firestore.collection('users').doc(userId).set({
+        'familyId': familyId,
+        'familyRole': 'parent',
+      });
+      await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('settings')
+          .doc('agile')
+          .set({'hoursAvailable': 4.0}); // 4 * 7 * 60 = 1680 mins
+
+      // 2. Setup another user profile and settings
+      await firestore.collection('users').doc('user-2').set({
+        'familyId': familyId,
+        'familyRole': 'non-parent',
+      });
+      await firestore
+          .collection('users')
+          .doc('user-2')
+          .collection('settings')
+          .doc('agile')
+          .set({'hoursAvailable': 2.0}); // 2 * 7 * 60 = 840 mins
+
+      // 3. Setup family document
+      await firestore.collection('families').doc(familyId).set({
+        'name': 'The Simpsons',
+        'members': {
+          userId: {
+            'userId': userId,
+            'displayName': 'Alice',
+            'email': userEmail,
+            'role': 'parent',
+          },
+          'user-2': {
+            'userId': 'user-2',
+            'displayName': 'Bob',
+            'email': 'bob@example.com',
+            'role': 'non-parent',
+          },
+        },
+      });
+
+      // 4. Setup some personal tasks for Bob
+      final bobTask = Task(
+        id: 't-bob-personal',
+        title: 'Bob Personal Task',
+        description: '',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
+        estimatedDuration: const Duration(minutes: 120),
+        isFamily: false,
+        cycleId: '2026-W23',
+      );
+      await firestore
+          .collection('users')
+          .doc('user-2')
+          .collection('tasks')
+          .doc('t-bob-personal')
+          .set(bobTask.toFirestore());
+
+      // 5. Setup family task assigned to Bob
+      final familyTask = Task(
+        id: 't-fam-assigned',
+        title: 'Shared Task',
+        description: '',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
+        estimatedDuration: const Duration(minutes: 180),
+        isFamily: true,
+        cycleId: '2026-W23',
+        assignedUserId: 'user-2',
+      );
+      await taskRepo.addTask(familyTask);
+
+      await tester.pumpWidgetBuilder(
+        buildTestWidget(),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(400, 800),
+      );
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'sprint_dashboard_screen_family_pool');
     });
   });
 }

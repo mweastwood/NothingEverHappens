@@ -237,5 +237,28 @@
       }
     }
   },
-  "starTooltip": "Toggle preference"
+  "starTooltip": "Toggle preference",
+  "familyCapacityPool": "Family Capacity Pool",
+  "memberRemainingTotal": "{remaining} min remaining / {total} min total",
+  "@memberRemainingTotal": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "memberPersonalChores": "Personal: {personal} min | Family Chores: {family} min",
+  "@memberPersonalChores": {
+    "placeholders": {
+      "personal": {
+        "type": "int"
+      },
+      "family": {
+        "type": "int"
+      }
+    }
+  }
 }

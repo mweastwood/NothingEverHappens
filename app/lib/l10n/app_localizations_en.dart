@@ -514,4 +514,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get starTooltip => 'Toggle preference';
+
+  @override
+  String get familyCapacityPool => 'Family Capacity Pool';
+
+  @override
+  String memberRemainingTotal(int remaining, int total) {
+    return '$remaining min remaining / $total min total';
+  }
+
+  @override
+  String memberPersonalChores(int personal, int family) {
+    return 'Personal: $personal min | Family Chores: $family min';
+  }
 }
