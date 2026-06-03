@@ -41,6 +41,57 @@ service cloud.firestore {
         // Joining user adding themselves
         (request.resource.data.members[request.auth.uid] != null && resource.data.members[request.auth.uid] == null)
       );
+
+      // Helper function to check if user is a member of the family
+      function isFamilyMember() {
+        return request.auth != null && resource == null || (
+          get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid] != null
+        );
+      }
+
+      // Helper function to check if user is a parent in the family
+      function isFamilyParent() {
+        return request.auth != null && (
+          get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid].role == 'parent'
+        );
+      }
+
+      // Family-scoped Tasks
+      match /tasks/{taskId} {
+        allow read: if request.auth != null && (
+          get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid] != null
+        );
+        allow create: if request.auth != null && (
+          get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid].role == 'parent'
+        );
+        allow delete: if request.auth != null && (
+          get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid].role == 'parent'
+          ||
+          (get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid] != null && resource.data.schedule.type == 'oneOff')
+        );
+        allow update: if request.auth != null && (
+          get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid].role == 'parent'
+          ||
+          (
+            get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid] != null
+            &&
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+              'title', 'description', 'estimatedDuration', 'priority', 'isFamily', 'missedPolicy', 'isMaster', 'dailyTimes', 'cycleId'
+            ])
+          )
+        );
+      }
+
+      // Family-scoped History / Deltas
+      match /history/{deltaId} {
+        allow read: if request.auth != null && (
+          get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid] != null
+        );
+        allow create: if request.auth != null && (
+          get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid] != null
+        );
+        allow update, delete: if false; // Append-only
+      }
     }
 
     // Invites: users can read/write if they are sender or recipient
