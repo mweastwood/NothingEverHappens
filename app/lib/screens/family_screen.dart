@@ -246,6 +246,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
       }
     }
   }
+
   Future<void> _handleInvite(
     FamilyRepository repository,
     FamilyInvite invite,
@@ -328,6 +329,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
       }
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final familyRepo = Provider.of<FamilyRepository?>(context);
@@ -715,7 +717,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 stream: repository.getOutstandingFamilyInvites(family.id),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
-                    return Text('${context.l10n.errorOccurred}: ${snapshot.error}');
+                    return Text(
+                      '${context.l10n.errorOccurred}: ${snapshot.error}',
+                    );
                   }
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -727,9 +731,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       child: Center(
                         child: Text(
                           context.l10n.noOutstandingInvites,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).disabledColor,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(context).disabledColor,
+                              ),
                         ),
                       ),
                     );
@@ -745,10 +750,14 @@ class _FamilyScreenState extends State<FamilyScreen> {
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.secondaryContainer,
                             child: Icon(
                               Icons.mail_outline,
-                              color: Theme.of(context).colorScheme.onSecondaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSecondaryContainer,
                             ),
                           ),
                           title: Text(

@@ -213,19 +213,24 @@ void main() {
       },
     );
 
-    test('getOutstandingFamilyInvites returns pending invites for the family', () async {
-      await repository.inviteMember(
-        familyId: 'f1',
-        familyName: 'The Simpsons',
-        toEmail: 'bob@example.com',
-        role: 'non-parent',
-      );
+    test(
+      'getOutstandingFamilyInvites returns pending invites for the family',
+      () async {
+        await repository.inviteMember(
+          familyId: 'f1',
+          familyName: 'The Simpsons',
+          toEmail: 'bob@example.com',
+          role: 'non-parent',
+        );
 
-      final invites = await repository.getOutstandingFamilyInvites('f1').first;
-      expect(invites.length, 1);
-      expect(invites.first.toEmail, 'bob@example.com');
-      expect(invites.first.status, 'pending');
-    });
+        final invites = await repository
+            .getOutstandingFamilyInvites('f1')
+            .first;
+        expect(invites.length, 1);
+        expect(invites.first.toEmail, 'bob@example.com');
+        expect(invites.first.status, 'pending');
+      },
+    );
 
     test('revokeInvite deletes the invite document in Firestore', () async {
       await repository.inviteMember(
@@ -241,7 +246,10 @@ void main() {
 
       await repository.revokeInvite(inviteId);
 
-      final deletedInviteDoc = await firestore.collection('invites').doc(inviteId).get();
+      final deletedInviteDoc = await firestore
+          .collection('invites')
+          .doc(inviteId)
+          .get();
       expect(deletedInviteDoc.exists, isFalse);
     });
   });

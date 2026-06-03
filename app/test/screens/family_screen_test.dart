@@ -203,106 +203,110 @@ void main() {
     await screenMatchesGolden(tester, 'family_screen_members_list');
   });
 
-  testWidgets('renders outstanding invites list for parent and handles revoke', (
-    WidgetTester tester,
-  ) async {
-    final familyId = 'fam-123';
-    await firestore.collection('users').doc(userId).set({
-      'familyId': familyId,
-      'familyRole': 'parent',
-    });
+  testWidgets(
+    'renders outstanding invites list for parent and handles revoke',
+    (WidgetTester tester) async {
+      final familyId = 'fam-123';
+      await firestore.collection('users').doc(userId).set({
+        'familyId': familyId,
+        'familyRole': 'parent',
+      });
 
-    await firestore.collection('families').doc(familyId).set({
-      'name': 'The Simpsons',
-      'members': {
-        userId: {
-          'userId': userId,
-          'displayName': userName,
-          'email': userEmail,
-          'role': 'parent',
+      await firestore.collection('families').doc(familyId).set({
+        'name': 'The Simpsons',
+        'members': {
+          userId: {
+            'userId': userId,
+            'displayName': userName,
+            'email': userEmail,
+            'role': 'parent',
+          },
         },
-      },
-    });
+      });
 
-    await firestore.collection('invites').doc('invite-abc').set({
-      'familyId': familyId,
-      'familyName': 'The Simpsons',
-      'fromEmail': userEmail,
-      'fromName': userName,
-      'toEmail': 'new@example.com',
-      'role': 'non-parent',
-      'status': 'pending',
-      'createdAt': Timestamp.now(),
-    });
+      await firestore.collection('invites').doc('invite-abc').set({
+        'familyId': familyId,
+        'familyName': 'The Simpsons',
+        'fromEmail': userEmail,
+        'fromName': userName,
+        'toEmail': 'new@example.com',
+        'role': 'non-parent',
+        'status': 'pending',
+        'createdAt': Timestamp.now(),
+      });
 
-    await tester.pumpWidget(buildTestWidget());
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
 
-    expect(find.text('Outstanding Invitations'), findsOneWidget);
-    expect(find.text('new@example.com'), findsOneWidget);
-    expect(find.byKey(const Key('revoke_invite_invite-abc')), findsOneWidget);
+      expect(find.text('Outstanding Invitations'), findsOneWidget);
+      expect(find.text('new@example.com'), findsOneWidget);
+      expect(find.byKey(const Key('revoke_invite_invite-abc')), findsOneWidget);
 
-    // Tap revoke button
-    await tester.tap(find.byKey(const Key('revoke_invite_invite-abc')));
-    await tester.pumpAndSettle();
+      // Tap revoke button
+      await tester.tap(find.byKey(const Key('revoke_invite_invite-abc')));
+      await tester.pumpAndSettle();
 
-    // Verify confirmation dialog shows
-    expect(find.text('Revoke Invitation?'), findsOneWidget);
-    expect(
-      find.text('Are you sure you want to revoke the invitation for new@example.com?'),
-      findsOneWidget,
-    );
+      // Verify confirmation dialog shows
+      expect(find.text('Revoke Invitation?'), findsOneWidget);
+      expect(
+        find.text(
+          'Are you sure you want to revoke the invitation for new@example.com?',
+        ),
+        findsOneWidget,
+      );
 
-    // Tap confirm revoke
-    await tester.tap(find.byKey(const Key('confirm_revoke_invite_button')));
-    await tester.pumpAndSettle();
+      // Tap confirm revoke
+      await tester.tap(find.byKey(const Key('confirm_revoke_invite_button')));
+      await tester.pumpAndSettle();
 
-    // Verify invite document is deleted from Firestore
-    final invites = await firestore.collection('invites').get();
-    expect(invites.docs.isEmpty, isTrue);
+      // Verify invite document is deleted from Firestore
+      final invites = await firestore.collection('invites').get();
+      expect(invites.docs.isEmpty, isTrue);
 
-    // Dialog should be dismissed
-    expect(find.text('Revoke Invitation?'), findsNothing);
-  });
+      // Dialog should be dismissed
+      expect(find.text('Revoke Invitation?'), findsNothing);
+    },
+  );
 
-  testWidgets('renders family details and does NOT show outstanding invites to non-parent', (
-    WidgetTester tester,
-  ) async {
-    final familyId = 'fam-123';
-    await firestore.collection('users').doc(userId).set({
-      'familyId': familyId,
-      'familyRole': 'non-parent',
-    });
+  testWidgets(
+    'renders family details and does NOT show outstanding invites to non-parent',
+    (WidgetTester tester) async {
+      final familyId = 'fam-123';
+      await firestore.collection('users').doc(userId).set({
+        'familyId': familyId,
+        'familyRole': 'non-parent',
+      });
 
-    await firestore.collection('families').doc(familyId).set({
-      'name': 'The Simpsons',
-      'members': {
-        userId: {
-          'userId': userId,
-          'displayName': userName,
-          'email': userEmail,
-          'role': 'non-parent',
+      await firestore.collection('families').doc(familyId).set({
+        'name': 'The Simpsons',
+        'members': {
+          userId: {
+            'userId': userId,
+            'displayName': userName,
+            'email': userEmail,
+            'role': 'non-parent',
+          },
         },
-      },
-    });
+      });
 
-    await firestore.collection('invites').doc('invite-abc').set({
-      'familyId': familyId,
-      'familyName': 'The Simpsons',
-      'fromEmail': 'parent@example.com',
-      'fromName': 'Marge',
-      'toEmail': 'new@example.com',
-      'role': 'non-parent',
-      'status': 'pending',
-      'createdAt': Timestamp.now(),
-    });
+      await firestore.collection('invites').doc('invite-abc').set({
+        'familyId': familyId,
+        'familyName': 'The Simpsons',
+        'fromEmail': 'parent@example.com',
+        'fromName': 'Marge',
+        'toEmail': 'new@example.com',
+        'role': 'non-parent',
+        'status': 'pending',
+        'createdAt': Timestamp.now(),
+      });
 
-    await tester.pumpWidget(buildTestWidget());
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
 
-    expect(find.text('Outstanding Invitations'), findsNothing);
-    expect(find.text('new@example.com'), findsNothing);
-  });
+      expect(find.text('Outstanding Invitations'), findsNothing);
+      expect(find.text('new@example.com'), findsNothing);
+    },
+  );
 
   testGoldens('FamilyScreen outstanding invites golden', (tester) async {
     final familyId = 'fam-123';
