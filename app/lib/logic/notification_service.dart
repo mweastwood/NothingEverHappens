@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 import 'task.dart';
 import 'civil_day.dart';
@@ -16,6 +17,9 @@ abstract class NotificationService {
 
   /// Cancels all scheduled notifications for the task with [taskId].
   Future<void> cancelNotifications(String taskId);
+
+  /// Disposes of any resources held by this service.
+  Future<void> dispose();
 }
 
 /// Production implementation of NotificationService for Android and Web (Chrome).
@@ -36,6 +40,13 @@ class PlatformNotificationService implements NotificationService {
 
     try {
       tz.initializeTimeZones();
+      try {
+        final tzInfo = await FlutterTimezone.getLocalTimezone();
+        tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
+      } catch (e) {
+        debugPrint('PlatformNotificationService: Failed to set local location, defaulting to UTC: $e');
+        tz.setLocalLocation(tz.UTC);
+      }
 
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -208,6 +219,17 @@ class PlatformNotificationService implements NotificationService {
 
     return now.add(const Duration(days: 1));
   }
+
+  @override
+  Future<void> dispose() async {
+    debugPrint('PlatformNotificationService: Disposing and cancelling active web timers');
+    for (final timers in _webTimers.values) {
+      for (final timer in timers) {
+        timer.cancel();
+      }
+    }
+    _webTimers.clear();
+  }
 }
 
 /// Simulated Notification Service that prints log statements to debug console
@@ -245,5 +267,10 @@ class LoggingNotificationService implements NotificationService {
   /// Clears all scheduled tasks in memory.
   void clear() {
     _scheduledTasks.clear();
+  }
+
+  @override
+  Future<void> dispose() async {
+    clear();
   }
 }
