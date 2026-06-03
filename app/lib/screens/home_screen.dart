@@ -108,7 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.pop(context); // Close drawer
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SprintDashboardScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const SprintDashboardScreen(),
+                ),
               );
             },
           ),

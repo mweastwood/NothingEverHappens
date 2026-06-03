@@ -6,9 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
-import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
-import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -59,7 +57,9 @@ void main() {
   }
 
   group('SprintDashboardScreen Unit and Widget Tests', () {
-    testWidgets('renders empty active cycle and backlog', (WidgetTester tester) async {
+    testWidgets('renders empty active cycle and backlog', (
+      WidgetTester tester,
+    ) async {
       await firestore.collection('users').doc(userId).set({
         'familyId': familyId,
         'familyRole': 'parent',
@@ -74,10 +74,16 @@ void main() {
 
       // Check capacity card
       expect(find.text('Weekly Capacity'), findsOneWidget);
-      expect(find.text('3360 min (8.0h/day)'), findsOneWidget); // Default 8 hours -> 56h -> 3360m
+      expect(
+        find.text('3360 min (8.0h/day)'),
+        findsOneWidget,
+      ); // Default 8 hours -> 56h -> 3360m
 
       // Check empty state
-      expect(find.text('No active tasks in this cycle. Move some from the backlog!'), findsOneWidget);
+      expect(
+        find.text('No active tasks in this cycle. Move some from the backlog!'),
+        findsOneWidget,
+      );
 
       // Switch to Backlog
       await tester.tap(find.text('Backlog'));
@@ -86,7 +92,9 @@ void main() {
       expect(find.text('No tasks in the backlog.'), findsOneWidget);
     });
 
-    testWidgets('renders active and backlog tasks, updates capacity math', (WidgetTester tester) async {
+    testWidgets('renders active and backlog tasks, updates capacity math', (
+      WidgetTester tester,
+    ) async {
       // Set settings to 2 hours per day
       await firestore
           .collection('users')
@@ -105,9 +113,17 @@ void main() {
         id: 't-personal',
         title: 'Personal Chore',
         description: 'Clean room',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
         estimatedDuration: const Duration(minutes: 30),
         isFamily: false,
         cycleId: '2026-W23',
@@ -119,9 +135,17 @@ void main() {
         id: 't-family-active',
         title: 'Family Dishwashing',
         description: 'Wash plates',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
         estimatedDuration: const Duration(minutes: 45),
         isFamily: true,
         cycleId: '2026-W23',
@@ -134,9 +158,17 @@ void main() {
         id: 't-backlog',
         title: 'Backlog Chore',
         description: 'Clean attic',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
         estimatedDuration: const Duration(minutes: 60),
         isFamily: true,
         cycleId: null,
@@ -168,9 +200,17 @@ void main() {
         id: 't-personal',
         title: 'Personal Chore',
         description: 'Clean room',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
         estimatedDuration: const Duration(minutes: 30),
         isFamily: false,
         cycleId: '2026-W23',
@@ -187,7 +227,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check active list is empty
-      expect(find.text('No active tasks in this cycle. Move some from the backlog!'), findsOneWidget);
+      expect(
+        find.text('No active tasks in this cycle. Move some from the backlog!'),
+        findsOneWidget,
+      );
 
       // Check backlog list has the task
       await tester.tap(find.text('Backlog'));
@@ -201,7 +244,9 @@ void main() {
       expect(find.text('No tasks in the backlog.'), findsOneWidget);
     });
 
-    testWidgets('stars/unstars family backlog task', (WidgetTester tester) async {
+    testWidgets('stars/unstars family backlog task', (
+      WidgetTester tester,
+    ) async {
       await firestore.collection('users').doc(userId).set({
         'familyId': familyId,
         'familyRole': 'parent',
@@ -211,9 +256,17 @@ void main() {
         id: 't-family',
         title: 'Family Chore',
         description: 'Mow lawn',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
         isFamily: true,
         cycleId: null,
       );
@@ -245,7 +298,9 @@ void main() {
       expect(updated.preferredBy[userId], isTrue);
     });
 
-    testWidgets('auto-allocate button runs allocator and assigns chores', (WidgetTester tester) async {
+    testWidgets('auto-allocate button runs allocator and assigns chores', (
+      WidgetTester tester,
+    ) async {
       // 1. Setup user in a family
       await firestore.collection('users').doc(userId).set({
         'familyId': familyId,
@@ -276,9 +331,17 @@ void main() {
         id: 't1',
         title: 'Task 1',
         description: '',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
         estimatedDuration: const Duration(minutes: 60),
         isFamily: true,
         priority: TaskPriority.high,
@@ -325,7 +388,9 @@ void main() {
       await screenMatchesGolden(tester, 'sprint_dashboard_screen_empty');
     });
 
-    testGoldens('SprintDashboardScreen with active tasks golden', (tester) async {
+    testGoldens('SprintDashboardScreen with active tasks golden', (
+      tester,
+    ) async {
       await firestore.collection('users').doc(userId).set({
         'familyId': familyId,
         'familyRole': 'parent',
@@ -335,9 +400,17 @@ void main() {
         id: 't-personal',
         title: 'Personal Chore',
         description: 'Clean room',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
         estimatedDuration: const Duration(minutes: 30),
         isFamily: false,
         cycleId: '2026-W23',
@@ -348,9 +421,17 @@ void main() {
         id: 't-family',
         title: 'Family Dishwashing',
         description: 'Wash plates',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        schedule: OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+        ),
         estimatedDuration: const Duration(minutes: 45),
         isFamily: true,
         cycleId: '2026-W23',

@@ -26,9 +26,16 @@ class CycleHelper {
   /// Calculates the start and end dates of the cycle containing [date].
   /// [startWeekday] defaults to [DateTime.monday] (1).
   /// The start date is at 00:00:00, and the end date is at 23:59:59.999.
-  static DateTimeRange getCycleRange(DateTime date, {int startWeekday = DateTime.monday}) {
+  static DateTimeRange getCycleRange(
+    DateTime date, {
+    int startWeekday = DateTime.monday,
+  }) {
     final diff = (date.weekday - startWeekday + 7) % 7;
-    final start = DateTime(date.year, date.month, date.day).subtract(Duration(days: diff));
+    final start = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: diff));
     final end = start.add(const Duration(days: 6));
     return DateTimeRange(
       start: start,

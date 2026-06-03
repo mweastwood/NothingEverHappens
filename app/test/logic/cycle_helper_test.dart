@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/cycle_helper.dart';
 
@@ -21,19 +20,25 @@ void main() {
       expect(CycleHelper.getCycleId(DateTime(2026, 6, 8)), '2026-W24');
     });
 
-    test('getCycleRange returns start and end range for default Monday start', () {
-      // 2026-06-03 is a Wednesday
-      final range = CycleHelper.getCycleRange(DateTime(2026, 6, 3));
-      // Start should be Monday 2026-06-01 00:00:00
-      expect(range.start, DateTime(2026, 6, 1));
-      // End should be Sunday 2026-06-07 23:59:59.999
-      expect(range.end, DateTime(2026, 6, 7, 23, 59, 59, 999));
-    });
+    test(
+      'getCycleRange returns start and end range for default Monday start',
+      () {
+        // 2026-06-03 is a Wednesday
+        final range = CycleHelper.getCycleRange(DateTime(2026, 6, 3));
+        // Start should be Monday 2026-06-01 00:00:00
+        expect(range.start, DateTime(2026, 6, 1));
+        // End should be Sunday 2026-06-07 23:59:59.999
+        expect(range.end, DateTime(2026, 6, 7, 23, 59, 59, 999));
+      },
+    );
 
     test('getCycleRange allows customizable starting weekday', () {
       // 2026-06-03 is a Wednesday
       // Let's set start weekday to Wednesday (3)
-      final range = CycleHelper.getCycleRange(DateTime(2026, 6, 3), startWeekday: DateTime.wednesday);
+      final range = CycleHelper.getCycleRange(
+        DateTime(2026, 6, 3),
+        startWeekday: DateTime.wednesday,
+      );
       expect(range.start, DateTime(2026, 6, 3));
       expect(range.end, DateTime(2026, 6, 9, 23, 59, 59, 999));
     });

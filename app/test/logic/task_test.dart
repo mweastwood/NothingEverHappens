@@ -672,66 +672,99 @@ void main() {
       },
     );
 
-    test('updateCycleId modifies cycleId and generates correct update delta', () {
-      final task = Task(
-        id: 't1',
-        title: 'Task 1',
-        description: '',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
-      );
+    test(
+      'updateCycleId modifies cycleId and generates correct update delta',
+      () {
+        final task = Task(
+          id: 't1',
+          title: 'Task 1',
+          description: '',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+          ),
+        );
 
-      final result = task.updateCycleId('2026-W23', 'user1');
-      expect(result.newTask.cycleId, '2026-W23');
-      expect(result.delta.taskId, 't1');
-      expect(result.delta.operation, 'update');
-      expect(result.delta.changedFields['cycleId'], '2026-W23');
+        final result = task.updateCycleId('2026-W23', 'user1');
+        expect(result.newTask.cycleId, '2026-W23');
+        expect(result.delta.taskId, 't1');
+        expect(result.delta.operation, 'update');
+        expect(result.delta.changedFields['cycleId'], '2026-W23');
 
-      // Test clearing cycleId
-      final resultClear = result.newTask.updateCycleId(null, 'user1');
-      expect(resultClear.newTask.cycleId, isNull);
-      expect(resultClear.delta.changedFields['cycleId'], isNull);
-    });
+        // Test clearing cycleId
+        final resultClear = result.newTask.updateCycleId(null, 'user1');
+        expect(resultClear.newTask.cycleId, isNull);
+        expect(resultClear.delta.changedFields['cycleId'], isNull);
+      },
+    );
 
-    test('updateAssignedUserId modifies assignedUserId and generates correct update delta', () {
-      final task = Task(
-        id: 't1',
-        title: 'Task 1',
-        description: '',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
-      );
+    test(
+      'updateAssignedUserId modifies assignedUserId and generates correct update delta',
+      () {
+        final task = Task(
+          id: 't1',
+          title: 'Task 1',
+          description: '',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+          ),
+        );
 
-      final result = task.updateAssignedUserId('user2', 'user1');
-      expect(result.newTask.assignedUserId, 'user2');
-      expect(result.delta.taskId, 't1');
-      expect(result.delta.operation, 'update');
-      expect(result.delta.changedFields['assignedUserId'], 'user2');
+        final result = task.updateAssignedUserId('user2', 'user1');
+        expect(result.newTask.assignedUserId, 'user2');
+        expect(result.delta.taskId, 't1');
+        expect(result.delta.operation, 'update');
+        expect(result.delta.changedFields['assignedUserId'], 'user2');
 
-      // Test clearing assignedUserId
-      final resultClear = result.newTask.updateAssignedUserId(null, 'user1');
-      expect(resultClear.newTask.assignedUserId, isNull);
-      expect(resultClear.delta.changedFields['assignedUserId'], isNull);
-    });
+        // Test clearing assignedUserId
+        final resultClear = result.newTask.updateAssignedUserId(null, 'user1');
+        expect(resultClear.newTask.assignedUserId, isNull);
+        expect(resultClear.delta.changedFields['assignedUserId'], isNull);
+      },
+    );
 
-    test('updatePreferredBy modifies preferredBy map and generates correct update delta', () {
-      final task = Task(
-        id: 't1',
-        title: 'Task 1',
-        description: '',
-        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
-        schedule: OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
-      );
+    test(
+      'updatePreferredBy modifies preferredBy map and generates correct update delta',
+      () {
+        final task = Task(
+          id: 't1',
+          title: 'Task 1',
+          description: '',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+          ),
+        );
 
-      final result = task.updatePreferredBy(const {'user2': true}, 'user1');
-      expect(result.newTask.preferredBy['user2'], isTrue);
-      expect(result.delta.taskId, 't1');
-      expect(result.delta.operation, 'update');
-      expect(result.delta.changedFields['preferredBy']['user2'], isTrue);
-    });
+        final result = task.updatePreferredBy(const {'user2': true}, 'user1');
+        expect(result.newTask.preferredBy['user2'], isTrue);
+        expect(result.delta.taskId, 't1');
+        expect(result.delta.operation, 'update');
+        expect(result.delta.changedFields['preferredBy']['user2'], isTrue);
+      },
+    );
   });
 
   group('DailyOccurrenceTime Custom Notifications', () {

@@ -574,20 +574,21 @@ void main() {
       );
     }
 
-    testWidgets('shows family toggle and priority dropdown if user is in a family', (
-      WidgetTester tester,
-    ) async {
-      await firestore.collection('users').doc('test-user-id').set({
-        'familyId': 'fam-123',
-        'familyRole': 'parent',
-      });
+    testWidgets(
+      'shows family toggle and priority dropdown if user is in a family',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
 
-      await tester.pumpWidget(createWidget());
-      await tester.pump();
+        await tester.pumpWidget(createWidget());
+        await tester.pump();
 
-      expect(find.byKey(const Key('is_family_toggle')), findsOneWidget);
-      expect(find.byKey(const Key('task_priority_dropdown')), findsOneWidget);
-    });
+        expect(find.byKey(const Key('is_family_toggle')), findsOneWidget);
+        expect(find.byKey(const Key('task_priority_dropdown')), findsOneWidget);
+      },
+    );
 
     testWidgets('hides family toggle if user is not in a family', (
       WidgetTester tester,
@@ -604,48 +605,49 @@ void main() {
       expect(find.byKey(const Key('task_priority_dropdown')), findsOneWidget);
     });
 
-    testWidgets('disables editing and shows warning if editing family task as non-parent', (
-      WidgetTester tester,
-    ) async {
-      await firestore.collection('users').doc('test-user-id').set({
-        'familyId': 'fam-123',
-        'familyRole': 'non-parent',
-      });
+    testWidgets(
+      'disables editing and shows warning if editing family task as non-parent',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'non-parent',
+        });
 
-      final familyTask = Task(
-        id: 'family-task-1',
-        title: 'Family Chore',
-        description: 'Clean the kitchen',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 2),
-        ),
-        isFamily: true,
-      );
+        final familyTask = Task(
+          id: 'family-task-1',
+          title: 'Family Chore',
+          description: 'Clean the kitchen',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 2),
+          ),
+          isFamily: true,
+        );
 
-      await tester.pumpWidget(createWidget(taskToEdit: familyTask));
-      await tester.pump();
+        await tester.pumpWidget(createWidget(taskToEdit: familyTask));
+        await tester.pump();
 
-      expect(find.text('View Task'), findsOneWidget);
-      expect(find.text('Only parents can edit family tasks'), findsOneWidget);
+        expect(find.text('View Task'), findsOneWidget);
+        expect(find.text('Only parents can edit family tasks'), findsOneWidget);
 
-      final titleField = tester.widget<TextFormField>(
-        find.widgetWithText(TextFormField, 'Title'),
-      );
-      expect(titleField.enabled, isFalse);
+        final titleField = tester.widget<TextFormField>(
+          find.widgetWithText(TextFormField, 'Title'),
+        );
+        expect(titleField.enabled, isFalse);
 
-      final saveButton = tester.widget<FilledButton>(
-        find.byKey(const Key('save_task_button')),
-      );
-      expect(saveButton.onPressed, isNull);
-    });
+        final saveButton = tester.widget<FilledButton>(
+          find.byKey(const Key('save_task_button')),
+        );
+        expect(saveButton.onPressed, isNull);
+      },
+    );
 
     testWidgets('allows editing family task if user is a parent', (
       WidgetTester tester,

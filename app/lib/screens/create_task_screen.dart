@@ -479,7 +479,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         return Shortcuts(
           shortcuts: <ShortcutActivator, Intent>{
             const SingleActivator(LogicalKeyboardKey.enter): const SaveIntent(),
-            const SingleActivator(LogicalKeyboardKey.escape): const DiscardIntent(),
+            const SingleActivator(LogicalKeyboardKey.escape):
+                const DiscardIntent(),
           },
           child: Actions(
             actions: <Type, Action<Intent>>{
@@ -501,8 +502,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   readOnly
                       ? context.l10n.viewTaskTitle
                       : (widget.taskToEdit != null
-                          ? context.l10n.editTaskTitle
-                          : context.l10n.newTaskTitle),
+                            ? context.l10n.editTaskTitle
+                            : context.l10n.newTaskTitle),
                 ),
               ),
               body: Column(
@@ -510,7 +511,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   if (readOnly)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 16,
+                      ),
                       color: Theme.of(context).colorScheme.errorContainer,
                       child: Text(
                         context.l10n.onlyParentsCanEditFamilyTasks,
@@ -545,7 +549,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                       ),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return context.l10n.titleRequiredError;
+                                          return context
+                                              .l10n
+                                              .titleRequiredError;
                                         }
                                         return null;
                                       },
@@ -567,8 +573,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                       controller: _estimatedDurationController,
                                       enabled: !readOnly,
                                       decoration: InputDecoration(
-                                        labelText:
-                                            context.l10n.estimatedEffortFieldLabel,
+                                        labelText: context
+                                            .l10n
+                                            .estimatedEffortFieldLabel,
                                         border: const OutlineInputBorder(),
                                         helperText:
                                             context.l10n.estimatedEffortHelper,
@@ -592,9 +599,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                     const SizedBox(height: 16),
                                     DropdownButtonFormField<TaskPriority>(
                                       key: const Key('task_priority_dropdown'),
-                                      value: _priority,
+                                      initialValue: _priority,
                                       decoration: InputDecoration(
-                                        labelText: context.l10n.taskPriorityLabel,
+                                        labelText:
+                                            context.l10n.taskPriorityLabel,
                                         border: const OutlineInputBorder(),
                                       ),
                                       items: [
@@ -604,18 +612,24 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                         ),
                                         DropdownMenuItem(
                                           value: TaskPriority.medium,
-                                          child: Text(context.l10n.priorityMedium),
+                                          child: Text(
+                                            context.l10n.priorityMedium,
+                                          ),
                                         ),
                                         DropdownMenuItem(
                                           value: TaskPriority.high,
-                                          child: Text(context.l10n.priorityHigh),
+                                          child: Text(
+                                            context.l10n.priorityHigh,
+                                          ),
                                         ),
                                       ],
                                       onChanged: readOnly
                                           ? null
                                           : (value) {
                                               if (value != null) {
-                                                setState(() => _priority = value);
+                                                setState(
+                                                  () => _priority = value,
+                                                );
                                               }
                                             },
                                     ),
@@ -623,13 +637,19 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                       const SizedBox(height: 16),
                                       SwitchListTile(
                                         key: const Key('is_family_toggle'),
-                                        title: Text(context.l10n.familyTaskLabel),
-                                        subtitle: Text(context.l10n.familyTaskHelper),
+                                        title: Text(
+                                          context.l10n.familyTaskLabel,
+                                        ),
+                                        subtitle: Text(
+                                          context.l10n.familyTaskHelper,
+                                        ),
                                         value: _isFamily,
                                         onChanged: readOnly
                                             ? null
                                             : (value) {
-                                                setState(() => _isFamily = value);
+                                                setState(
+                                                  () => _isFamily = value,
+                                                );
                                               },
                                       ),
                                     ],
@@ -646,7 +666,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                   child: Padding(
                                     padding: const EdgeInsets.all(16.0),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           context.l10n.scheduleHeader,
@@ -658,64 +679,95 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                         const SizedBox(height: 16),
                                         SizedBox(
                                           width: double.infinity,
-                                          child: SegmentedButton<RecurrenceType>(
-                                            segments: [
-                                              ButtonSegment<RecurrenceType>(
-                                                value: RecurrenceType.oneOff,
-                                                label: Text(context.l10n.oneOffLabel),
-                                              ),
-                                              ButtonSegment<RecurrenceType>(
-                                                value: RecurrenceType.daily,
-                                                label: Text(context.l10n.dailyLabel),
-                                              ),
-                                              ButtonSegment<RecurrenceType>(
-                                                value: RecurrenceType.weekly,
-                                                label: Text(context.l10n.weeklyLabel),
-                                              ),
-                                              ButtonSegment<RecurrenceType>(
-                                                value: RecurrenceType.monthly,
-                                                label: Text(context.l10n.monthlyLabel),
-                                              ),
-                                              ButtonSegment<RecurrenceType>(
-                                                value: RecurrenceType.yearly,
-                                                label: Text(context.l10n.yearlyLabel),
-                                              ),
-                                            ],
-                                            selected: <RecurrenceType>{_scheduleType},
-                                            onSelectionChanged:
-                                                (Set<RecurrenceType> newSelection) {
-                                                  setState(() {
-                                                    _scheduleType = newSelection.first;
-                                                  });
+                                          child:
+                                              SegmentedButton<RecurrenceType>(
+                                                segments: [
+                                                  ButtonSegment<RecurrenceType>(
+                                                    value:
+                                                        RecurrenceType.oneOff,
+                                                    label: Text(
+                                                      context.l10n.oneOffLabel,
+                                                    ),
+                                                  ),
+                                                  ButtonSegment<RecurrenceType>(
+                                                    value: RecurrenceType.daily,
+                                                    label: Text(
+                                                      context.l10n.dailyLabel,
+                                                    ),
+                                                  ),
+                                                  ButtonSegment<RecurrenceType>(
+                                                    value:
+                                                        RecurrenceType.weekly,
+                                                    label: Text(
+                                                      context.l10n.weeklyLabel,
+                                                    ),
+                                                  ),
+                                                  ButtonSegment<RecurrenceType>(
+                                                    value:
+                                                        RecurrenceType.monthly,
+                                                    label: Text(
+                                                      context.l10n.monthlyLabel,
+                                                    ),
+                                                  ),
+                                                  ButtonSegment<RecurrenceType>(
+                                                    value:
+                                                        RecurrenceType.yearly,
+                                                    label: Text(
+                                                      context.l10n.yearlyLabel,
+                                                    ),
+                                                  ),
+                                                ],
+                                                selected: <RecurrenceType>{
+                                                  _scheduleType,
                                                 },
-                                          ),
+                                                onSelectionChanged:
+                                                    (
+                                                      Set<RecurrenceType>
+                                                      newSelection,
+                                                    ) {
+                                                      setState(() {
+                                                        _scheduleType =
+                                                            newSelection.first;
+                                                      });
+                                                    },
+                                              ),
                                         ),
                                         const SizedBox(height: 24),
-                                        if (_scheduleType == RecurrenceType.oneOff)
+                                        if (_scheduleType ==
+                                            RecurrenceType.oneOff)
                                           OneOffSchedulingWidget(
                                             dueDateTime: _dueDateTimeController,
-                                            startDateTime: _startDateTimeController,
+                                            startDateTime:
+                                                _startDateTimeController,
                                           )
-                                        else if (_scheduleType == RecurrenceType.daily)
+                                        else if (_scheduleType ==
+                                            RecurrenceType.daily)
                                           DailySchedulingWidget(
                                             startDate: _startDate,
                                             onStartDateChanged: (date) {
                                               setState(() => _startDate = date);
                                             },
-                                            dailyTimesController: _dailyTimesController,
-                                            intervalController: _intervalController,
+                                            dailyTimesController:
+                                                _dailyTimesController,
+                                            intervalController:
+                                                _intervalController,
                                           )
-                                        else if (_scheduleType == RecurrenceType.weekly)
+                                        else if (_scheduleType ==
+                                            RecurrenceType.weekly)
                                           WeeklySchedulingWidget(
                                             startDate: _startDate,
                                             onStartDateChanged: (date) {
                                               setState(() => _startDate = date);
                                             },
-                                            dailyTimesController: _dailyTimesController,
-                                            intervalController: _intervalController,
+                                            dailyTimesController:
+                                                _dailyTimesController,
+                                            intervalController:
+                                                _intervalController,
                                             selectedWeekdays: _selectedWeekdays,
                                             onWeekdaysChanged: (days) {
-                                              setState(() => _selectedWeekdays = days);
+                                              setState(
+                                                () => _selectedWeekdays = days,
+                                              );
                                             },
                                           )
                                         else if (_scheduleType ==
@@ -725,8 +777,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                             onStartDateChanged: (date) {
                                               setState(() => _startDate = date);
                                             },
-                                            dailyTimesController: _dailyTimesController,
-                                            intervalController: _intervalController,
+                                            dailyTimesController:
+                                                _dailyTimesController,
+                                            intervalController:
+                                                _intervalController,
                                             ruleTypeController:
                                                 _monthlyRuleTypeController,
                                             dayOfMonthController:
@@ -736,18 +790,23 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                             dayOfWeekController:
                                                 _monthlyDayOfWeekController,
                                           )
-                                        else if (_scheduleType == RecurrenceType.yearly)
+                                        else if (_scheduleType ==
+                                            RecurrenceType.yearly)
                                           YearlySchedulingWidget(
                                             startDate: _startDate,
                                             onStartDateChanged: (date) {
                                               setState(() => _startDate = date);
                                             },
-                                            dailyTimesController: _dailyTimesController,
-                                            intervalController: _intervalController,
-                                            monthController: _yearlyMonthController,
+                                            dailyTimesController:
+                                                _dailyTimesController,
+                                            intervalController:
+                                                _intervalController,
+                                            monthController:
+                                                _yearlyMonthController,
                                             dayController: _yearlyDayController,
                                           ),
-                                        if (_scheduleType != RecurrenceType.oneOff) ...[
+                                        if (_scheduleType !=
+                                            RecurrenceType.oneOff) ...[
                                           const Divider(height: 32),
                                           Text(
                                             context.l10n.missedPolicyHeader,
@@ -758,30 +817,42 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                           ),
                                           const SizedBox(height: 8),
                                           DropdownButtonFormField<MissedPolicy>(
-                                            key: const Key('missed_policy_dropdown'),
+                                            key: const Key(
+                                              'missed_policy_dropdown',
+                                            ),
                                             isExpanded: true,
                                             initialValue: _missedPolicy,
                                             decoration: InputDecoration(
-                                              border: const OutlineInputBorder(),
-                                              helperText:
-                                                  context.l10n.missedPolicyHelper,
+                                              border:
+                                                  const OutlineInputBorder(),
+                                              helperText: context
+                                                  .l10n
+                                                  .missedPolicyHelper,
                                             ),
                                             items: [
                                               DropdownMenuItem(
                                                 value: MissedPolicy.rollover,
-                                                child: Text(context.l10n.rolloverLabel),
+                                                child: Text(
+                                                  context.l10n.rolloverLabel,
+                                                ),
                                               ),
                                               DropdownMenuItem(
                                                 value: MissedPolicy.skip,
-                                                child: Text(context.l10n.skipLabel),
+                                                child: Text(
+                                                  context.l10n.skipLabel,
+                                                ),
                                               ),
                                               DropdownMenuItem(
                                                 value: MissedPolicy.shift,
-                                                child: Text(context.l10n.shiftLabel),
+                                                child: Text(
+                                                  context.l10n.shiftLabel,
+                                                ),
                                               ),
                                               DropdownMenuItem(
                                                 value: MissedPolicy.stack,
-                                                child: Text(context.l10n.stackLabel),
+                                                child: Text(
+                                                  context.l10n.stackLabel,
+                                                ),
                                               ),
                                             ],
                                             onChanged: readOnly
@@ -800,7 +871,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                               context,
                                               _missedPolicy,
                                             ),
-                                            style: Theme.of(context).textTheme.bodySmall
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
                                                 ?.copyWith(
                                                   color: Theme.of(
                                                     context,
@@ -839,7 +912,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
-                                    value: CreateTaskScreen.debugDisableAnimations
+                                    value:
+                                        CreateTaskScreen.debugDisableAnimations
                                         ? 0.8
                                         : null,
                                     strokeWidth: 2,

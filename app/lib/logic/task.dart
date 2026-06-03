@@ -915,7 +915,10 @@ class Task {
   }
 
   /// Updates the assigned user ID and returns the modified task and delta.
-  TaskModification updateAssignedUserId(String? newAssignedUserId, String userId) {
+  TaskModification updateAssignedUserId(
+    String? newAssignedUserId,
+    String userId,
+  ) {
     final newTask = _copyWith(
       assignedUserId: newAssignedUserId,
       clearAssignedUserId: newAssignedUserId == null,
@@ -929,7 +932,10 @@ class Task {
   }
 
   /// Updates the preferredBy map and returns the modified task and delta.
-  TaskModification updatePreferredBy(Map<String, bool> newPreferredBy, String userId) {
+  TaskModification updatePreferredBy(
+    Map<String, bool> newPreferredBy,
+    String userId,
+  ) {
     final newTask = _copyWith(preferredBy: newPreferredBy);
     final delta = _createUpdateDelta(
       field: 'preferredBy',
