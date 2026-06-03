@@ -35,7 +35,7 @@ class FamilyRepository {
     if (_userEmail == null || _userEmail.isEmpty) return Stream.value([]);
     return _firestore
         .collection('invites')
-        .where('toEmail', isEqualTo: _userEmail)
+        .where('toEmail', isEqualTo: _userEmail.trim().toLowerCase())
         .where('status', isEqualTo: 'pending')
         .snapshots()
         .map((snapshot) {
@@ -52,7 +52,7 @@ class FamilyRepository {
     final creator = FamilyMember(
       userId: _userId,
       displayName: _userDisplayName ?? _userEmail ?? 'Parent',
-      email: _userEmail ?? '',
+      email: _userEmail?.trim().toLowerCase() ?? '',
       role: 'parent',
     );
 
@@ -83,9 +83,9 @@ class FamilyRepository {
       id: inviteRef.id,
       familyId: familyId,
       familyName: familyName,
-      fromEmail: _userEmail ?? '',
+      fromEmail: _userEmail?.trim().toLowerCase() ?? '',
       fromName: _userDisplayName ?? _userEmail ?? 'Parent',
-      toEmail: toEmail.trim(),
+      toEmail: toEmail.trim().toLowerCase(),
       role: role,
       status: 'pending',
       createdAt: DateTime.now(),
@@ -100,7 +100,7 @@ class FamilyRepository {
     final newMember = FamilyMember(
       userId: _userId,
       displayName: _userDisplayName ?? _userEmail ?? 'Member',
-      email: _userEmail ?? '',
+      email: _userEmail?.trim().toLowerCase() ?? '',
       role: invite.role,
     );
 

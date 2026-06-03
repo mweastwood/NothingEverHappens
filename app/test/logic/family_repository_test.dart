@@ -106,6 +106,31 @@ void main() {
       expect(inviteData['status'], 'pending');
     });
 
+    test('inviteMember and getPendingInvites normalize email casing', () async {
+      await repository.inviteMember(
+        familyId: 'f1',
+        familyName: 'The Simpsons',
+        toEmail: 'Bob@Example.Com ',
+        role: 'non-parent',
+      );
+
+      final invitesSnapshot = await firestore.collection('invites').get();
+      expect(invitesSnapshot.docs.length, 1);
+      final inviteData = invitesSnapshot.docs.first.data();
+      expect(inviteData['toEmail'], 'bob@example.com');
+
+      final bobRepository = FamilyRepository(
+        firestore: firestore,
+        userId: 'user-bob',
+        userEmail: ' BOB@example.com',
+        userDisplayName: 'Bob',
+      );
+
+      final pending = await bobRepository.getPendingInvites().first;
+      expect(pending.length, 1);
+      expect(pending.first.toEmail, 'bob@example.com');
+    });
+
     test('acceptInvite updates family, user doc, and invite status', () async {
       // 1. Create a family
       await repository.createFamily('The Simpsons');

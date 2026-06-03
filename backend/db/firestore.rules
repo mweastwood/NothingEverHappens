@@ -17,6 +17,7 @@ service cloud.firestore {
     // Helper to check if user is a parent in a family
     function isParentOfFamily(familyId) {
       return request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/families/$(familyId)).data.members &&
         get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid].role == 'parent';
     }
 
@@ -67,9 +68,9 @@ service cloud.firestore {
 
       // Helper function to check if user is a parent in the family
       function isFamilyParent() {
-        return request.auth != null && (
-          get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid].role == 'parent'
-        );
+        return request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/families/$(familyId)).data.members &&
+          get(/databases/$(database)/documents/families/$(familyId)).data.members[request.auth.uid].role == 'parent';
       }
 
       // Family-scoped Tasks
