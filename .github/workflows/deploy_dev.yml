@@ -2,7 +2,7 @@ name: Deploy (Dev)
 
 on:
   workflow_run:
-    workflows: ["Test (Flutter)"]
+    workflows: ["Test Suite"]
     branches: [main]
     types: 
       - completed
