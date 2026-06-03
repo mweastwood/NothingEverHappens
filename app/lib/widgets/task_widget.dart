@@ -121,8 +121,14 @@ class _TaskWidgetState extends State<TaskWidget>
     }
 
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(assigneeId).get();
-      final name = doc.data()?['displayName'] as String? ?? doc.data()?['email'] as String? ?? 'User';
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(assigneeId)
+          .get();
+      final name =
+          doc.data()?['displayName'] as String? ??
+          doc.data()?['email'] as String? ??
+          'User';
       _userNameCache[assigneeId] = name;
       if (mounted) {
         setState(() {
@@ -295,8 +301,12 @@ class _TaskWidgetState extends State<TaskWidget>
             colors: alignment == Alignment.centerLeft
                 ? [color.withOpacity(0.25), color.withOpacity(0.02)]
                 : [color.withOpacity(0.02), color.withOpacity(0.25)],
-            begin: alignment == Alignment.centerLeft ? Alignment.centerLeft : Alignment.centerRight,
-            end: alignment == Alignment.centerLeft ? Alignment.centerRight : Alignment.centerLeft,
+            begin: alignment == Alignment.centerLeft
+                ? Alignment.centerLeft
+                : Alignment.centerRight,
+            end: alignment == Alignment.centerLeft
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
           ),
         ),
         child: Row(
@@ -307,19 +317,13 @@ class _TaskWidgetState extends State<TaskWidget>
                   const SizedBox(width: 8),
                   Text(
                     label,
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: color, fontWeight: FontWeight.bold),
                   ),
                 ]
               : [
                   Text(
                     label,
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: color, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 8),
                   Icon(icon, color: color, size: 24),
@@ -412,9 +416,13 @@ class _TaskWidgetState extends State<TaskWidget>
                   // Scope (Family vs Personal)
                   _buildBadge(
                     context,
-                    icon: widget.task.isFamily ? Icons.people_alt : Icons.person,
+                    icon: widget.task.isFamily
+                        ? Icons.people_alt
+                        : Icons.person,
                     label: widget.task.isFamily ? 'Family' : 'Personal',
-                    color: widget.task.isFamily ? Colors.deepPurple : Colors.teal,
+                    color: widget.task.isFamily
+                        ? Colors.deepPurple
+                        : Colors.teal,
                   ),
                   // Priority
                   _buildBadge(
@@ -443,17 +451,21 @@ class _TaskWidgetState extends State<TaskWidget>
                     _buildBadge(
                       context,
                       icon: Icons.refresh,
-                      label: 'Policy: ${_getMissedPolicyLabel(widget.task.missedPolicy)}',
+                      label:
+                          'Policy: ${_getMissedPolicyLabel(widget.task.missedPolicy)}',
                       color: Colors.blueGrey,
                     ),
                   // Assignee (if family & assigned)
-                  if (widget.task.isFamily && widget.task.assignedUserId != null)
+                  if (widget.task.isFamily &&
+                      widget.task.assignedUserId != null)
                     _buildBadge(
                       context,
                       icon: Icons.assignment_ind,
                       label: _isLoadingAssignee
                           ? 'Loading...'
-                          : (_assigneeName != null ? 'Assigned: $_assigneeName' : 'Assigned'),
+                          : (_assigneeName != null
+                                ? 'Assigned: $_assigneeName'
+                                : 'Assigned'),
                       color: Colors.amber[800] ?? Colors.amber,
                     ),
                 ],
