@@ -18,9 +18,11 @@ import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: dev.DefaultFirebaseOptions.currentPlatform,
-  );
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: dev.DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
   // Enable persistence for Web
   if (kIsWeb) {
@@ -46,6 +48,7 @@ class MyApp extends StatelessWidget {
         Provider<ErrorHandler>(create: (_) => ErrorHandler()),
         Provider<NotificationService>(
           create: (_) => PlatformNotificationService(),
+          dispose: (_, service) => service.dispose(),
         ),
         Provider<AuthRepository>(create: (_) => AuthRepository()),
         StreamProvider<User?>(
