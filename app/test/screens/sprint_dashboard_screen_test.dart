@@ -236,8 +236,8 @@ void main() {
 
       // Verify in database that it is starred
       final doc = await firestore
-          .collection('families')
-          .doc(familyId)
+          .collection('users')
+          .doc(userId)
           .collection('tasks')
           .doc('t-family')
           .get();
@@ -297,8 +297,8 @@ void main() {
 
       // Verify that task is allocated to either Alice or Bob in database
       final doc = await firestore
-          .collection('families')
-          .doc(familyId)
+          .collection('users')
+          .doc(userId)
           .collection('tasks')
           .doc('t1')
           .get();
