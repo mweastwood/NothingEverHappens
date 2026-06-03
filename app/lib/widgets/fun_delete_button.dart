@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 class FunDeleteButton extends StatefulWidget {
   final VoidCallback onTap;
 
-  const FunDeleteButton({super.key, required this.onTap});
+  const FunDeleteButton({
+    super.key,
+    required this.onTap,
+  });
 
   @override
   State<FunDeleteButton> createState() => _FunDeleteButtonState();
@@ -80,13 +83,18 @@ class _FunDeleteButtonState extends State<FunDeleteButton>
             return Transform.scale(
               scale: _scaleAnimation.value,
               child: CustomPaint(
-                foregroundPainter: PoofPainter(animation: _poofController),
+                foregroundPainter: PoofPainter(
+                  animation: _poofController,
+                ),
                 child: Container(
                   width: 24,
                   height: 24,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: errorColor, width: 2),
+                    border: Border.all(
+                      color: errorColor,
+                      width: 2,
+                    ),
                     color: _isHovering
                         ? errorColor.withValues(alpha: 0.1)
                         : Colors.transparent,
@@ -141,8 +149,7 @@ class PoofPainter extends CustomPainter {
 
     for (final particle in particles) {
       final distance = particle.speed * progress * 2.5;
-      final particleCenter =
-          center +
+      final particleCenter = center +
           Offset(
             cos(particle.angle) * distance,
             sin(particle.angle) * distance,
