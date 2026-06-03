@@ -44,7 +44,9 @@ class PlatformNotificationService implements NotificationService {
         final tzInfo = await FlutterTimezone.getLocalTimezone();
         tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
       } catch (e) {
-        debugPrint('PlatformNotificationService: Failed to set local location, defaulting to UTC: $e');
+        debugPrint(
+          'PlatformNotificationService: Failed to set local location, defaulting to UTC: $e',
+        );
         tz.setLocalLocation(tz.UTC);
       }
 
@@ -222,7 +224,9 @@ class PlatformNotificationService implements NotificationService {
 
   @override
   Future<void> dispose() async {
-    debugPrint('PlatformNotificationService: Disposing and cancelling active web timers');
+    debugPrint(
+      'PlatformNotificationService: Disposing and cancelling active web timers',
+    );
     for (final timers in _webTimers.values) {
       for (final timer in timers) {
         timer.cancel();
