@@ -275,5 +275,6 @@
     }
   },
   "helpTitle": "Help & Documentation",
-  "helpTabInteractions": "Interactions"
+  "helpTabInteractions": "Interactions",
+  "helpTabSchedules": "Schedules"
 }

@@ -553,4 +553,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get helpTabInteractions => 'Interactions';
+
+  @override
+  String get helpTabSchedules => 'Schedules';
 }

@@ -10,20 +10,30 @@ void main() {
     return buildTestableWidget(child: const HelpScreen());
   }
 
-  testWidgets('HelpScreen displays Interactions tab and navigates correctly', (WidgetTester tester) async {
+  testWidgets('HelpScreen displays tabs and navigates correctly', (WidgetTester tester) async {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
-    // Verify Interactions tab label is visible
+    // Verify tab labels are visible
+    expect(find.text('Schedules'), findsOneWidget);
     expect(find.text('Interactions'), findsOneWidget);
 
-    // Verify task text is shown
+    // Initial tab is Schedules: Verify text details
+    expect(find.textContaining('Recurring schedules'), findsOneWidget);
+
+    // Navigate to Interactions tab
+    await tester.tap(find.text('Interactions'));
+    await tester.pumpAndSettle();
     expect(find.text('Water the Houseplants'), findsOneWidget);
     expect(find.text('Clean the Attic Chores'), findsOneWidget);
   });
 
   testWidgets('Interactions Tab check and delete buttons work', (WidgetTester tester) async {
     await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    // Navigate to Interactions tab
+    await tester.tap(find.text('Interactions'));
     await tester.pumpAndSettle();
 
     // Verify initial check button state
