@@ -11,31 +11,36 @@ void main() {
     return buildTestableWidget(child: const HelpScreen());
   }
 
-  testWidgets('HelpScreen displays Schedules tab by default and can switch to Interactions tab', (WidgetTester tester) async {
-    await tester.pumpWidget(buildTestWidget());
-    await tester.pumpAndSettle();
+  testWidgets(
+    'HelpScreen displays Schedules tab by default and can switch to Interactions tab',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
 
-    // Verify both tab headers are visible
-    expect(find.text('Schedules'), findsOneWidget);
-    expect(find.text('Interactions'), findsOneWidget);
+      // Verify both tab headers are visible
+      expect(find.text('Schedules'), findsOneWidget);
+      expect(find.text('Interactions'), findsOneWidget);
 
-    // Verify Schedules tab content is displayed by default
-    expect(find.textContaining('Recurring schedules'), findsOneWidget);
-    expect(find.textContaining('Multi-Time Daily Slots'), findsOneWidget);
+      // Verify Schedules tab content is displayed by default
+      expect(find.textContaining('Recurring schedules'), findsOneWidget);
+      expect(find.textContaining('Multi-Time Daily Slots'), findsOneWidget);
 
-    // Verify Interactions content is NOT visible yet
-    expect(find.text('Water the Houseplants'), findsNothing);
+      // Verify Interactions content is NOT visible yet
+      expect(find.text('Water the Houseplants'), findsNothing);
 
-    // Tap the Interactions tab
-    await tester.tap(find.text('Interactions'));
-    await tester.pumpAndSettle();
+      // Tap the Interactions tab
+      await tester.tap(find.text('Interactions'));
+      await tester.pumpAndSettle();
 
-    // Verify Interactions content is now visible
-    expect(find.text('Water the Houseplants'), findsOneWidget);
-    expect(find.text('Clean the Attic Chores'), findsOneWidget);
-  });
+      // Verify Interactions content is now visible
+      expect(find.text('Water the Houseplants'), findsOneWidget);
+      expect(find.text('Clean the Attic Chores'), findsOneWidget);
+    },
+  );
 
-  testWidgets('Interactions Tab check and delete buttons work', (WidgetTester tester) async {
+  testWidgets('Interactions Tab check and delete buttons work', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
@@ -75,7 +80,9 @@ void main() {
     expect(find.text('Clean the Attic Chores'), findsOneWidget);
   });
 
-  testGoldens('HelpScreen renders correctly (PR 3/5)', (WidgetTester tester) async {
+  testGoldens('HelpScreen renders correctly (PR 3/5)', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidgetBuilder(
       const HelpScreen(),
       wrapper: l10nMaterialAppWrapper(),

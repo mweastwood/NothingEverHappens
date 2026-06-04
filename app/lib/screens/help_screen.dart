@@ -11,7 +11,8 @@ class HelpScreen extends StatefulWidget {
   State<HelpScreen> createState() => _HelpScreenState();
 }
 
-class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateMixin {
+class _HelpScreenState extends State<HelpScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   // State for Interactions Tab
@@ -35,7 +36,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.helpTitle),
@@ -49,10 +50,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildSchedulesTab(theme),
-          _buildInteractionsTab(theme),
-        ],
+        children: [_buildSchedulesTab(theme), _buildInteractionsTab(theme)],
       ),
     );
   }
@@ -82,9 +80,9 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
       child: MarkdownBody(
         data: markdownContent,
         selectable: true,
-        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-          p: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
-        ),
+        styleSheet: MarkdownStyleSheet.fromTheme(
+          theme,
+        ).copyWith(p: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
       ),
     );
   }
@@ -97,15 +95,19 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
         children: [
           Text(
             'Interactive Components',
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8.0),
           Text(
             'Explore the custom interactive behaviors built into our chore card items below. These live examples run the exact widget code used in the app.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 24.0),
-          
+
           // Confetti Checkbox Section
           Card(
             clipBehavior: Clip.antiAlias,
@@ -121,7 +123,9 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                       const SizedBox(width: 8),
                       Text(
                         '1. Fun Check Completion',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -131,14 +135,20 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Live interactive widget container
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 12.0,
+                    ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8.0),
-                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -147,8 +157,8 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                           onChanged: (val) {
                             setState(() {
                               _checkButtonVal = val;
-                              _checkButtonStateText = val 
-                                  ? 'Task Status: Completed! 🎉 (Confetti Burst!)' 
+                              _checkButtonStateText = val
+                                  ? 'Task Status: Completed! 🎉 (Confetti Burst!)'
                                   : 'Task Status: Active ⭕';
                             });
                           },
@@ -161,14 +171,20 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                               Text(
                                 'Water the Houseplants',
                                 style: theme.textTheme.bodyLarge?.copyWith(
-                                  decoration: _checkButtonVal ? TextDecoration.lineThrough : null,
-                                  color: _checkButtonVal ? theme.colorScheme.onSurfaceVariant : null,
+                                  decoration: _checkButtonVal
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: _checkButtonVal
+                                      ? theme.colorScheme.onSurfaceVariant
+                                      : null,
                                 ),
                               ),
                               Text(
                                 _checkButtonStateText,
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: _checkButtonVal ? theme.colorScheme.primary : theme.colorScheme.secondary,
+                                  color: _checkButtonVal
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.secondary,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -199,7 +215,9 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                       const SizedBox(width: 8),
                       Text(
                         '2. Poof Delete Dismissal',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -209,17 +227,25 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Live interactive delete card container
                   AnimatedSize(
                     duration: const Duration(milliseconds: 300),
                     child: _deleteCardVisible
                         ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 12.0,
+                            ),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.errorContainer.withValues(alpha: 0.15),
+                              color: theme.colorScheme.errorContainer
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8.0),
-                              border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                color: theme.colorScheme.error.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
                             ),
                             child: Row(
                               children: [
@@ -227,26 +253,32 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                                   onTap: () {
                                     setState(() {
                                       _deleteCardVisible = false;
-                                      _deleteButtonStateText = 'Task card deleted! Tap "Restore Task" to try again.';
+                                      _deleteButtonStateText =
+                                          'Task card deleted! Tap "Restore Task" to try again.';
                                     });
                                   },
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Clean the Attic Chores',
-                                        style: theme.textTheme.bodyLarge?.copyWith(
-                                          color: theme.colorScheme.onErrorContainer,
-                                        ),
+                                        style: theme.textTheme.bodyLarge
+                                            ?.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onErrorContainer,
+                                            ),
                                       ),
                                       Text(
                                         _deleteButtonStateText,
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: theme.colorScheme.error,
-                                        ),
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: theme.colorScheme.error,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -274,7 +306,8 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                                   onPressed: () {
                                     setState(() {
                                       _deleteCardVisible = true;
-                                      _deleteButtonStateText = 'Tap close to delete task card';
+                                      _deleteButtonStateText =
+                                          'Tap close to delete task card';
                                     });
                                   },
                                   icon: const Icon(Icons.refresh),
