@@ -320,4 +320,41 @@ void main() {
       matchesGoldenFile('goldens/task_widget_focused.png'),
     );
   });
+
+  testGoldens('TaskWidget recurring state golden (no pencil)', (tester) async {
+    final recurringTask = Task(
+      id: '2',
+      title: 'Recurring Task',
+      description: 'This is a recurring task description',
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      schedule: DailySchedule(
+        startDate: const CivilDay(year: 2024, month: 1, day: 1),
+        interval: 1,
+      ),
+    );
+
+    await tester.pumpWidgetBuilder(
+      Provider<TaskRepository>.value(
+        value: mockTaskRepository,
+        child: Container(
+          color: Colors.white,
+          child: TaskWidget(task: recurringTask),
+        ),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 200),
+    );
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_recurring.png'),
+    );
+  });
 }
