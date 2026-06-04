@@ -5,7 +5,6 @@ import '../widgets/dev_clock_widget.dart';
 import 'create_task_screen.dart';
 import 'task_list_screen.dart';
 import 'task_schedule_screen.dart';
-import 'task_history_screen.dart';
 import 'settings_screen.dart';
 import 'family_screen.dart';
 import 'sprint_dashboard_screen.dart';
@@ -39,8 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ? const TaskListScreen()
               : _currentIndex == 1
               ? const TaskScheduleScreen()
-              : _currentIndex == 2
-              ? const TaskHistoryScreen()
               : const FamilyScreen(),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _currentIndex,
@@ -59,11 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.calendar_month_outlined),
                 selectedIcon: const Icon(Icons.calendar_month),
                 label: context.l10n.scheduleTab,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.history_outlined),
-                selectedIcon: const Icon(Icons.history),
-                label: context.l10n.historyTab,
               ),
               NavigationDestination(
                 icon: const Icon(Icons.people_outline),
