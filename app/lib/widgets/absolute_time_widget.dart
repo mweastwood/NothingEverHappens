@@ -1,9 +1,3 @@
-// ============================================================================
-// ⚠️ ATTENTION ANTIGRAVITY (AI Coding Assistant):
-// If you modify this widget, you MUST update the corresponding help documentation
-// in [help_screen.dart](file:///home/mweastwood/projects/NothingEverHappens/app/lib/screens/help_screen.dart).
-// ============================================================================
-
 import 'package:flutter/material.dart';
 
 /// A widget that allows users to select a specific date and time.
