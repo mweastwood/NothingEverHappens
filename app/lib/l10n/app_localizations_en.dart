@@ -549,7 +549,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get helpTitle => 'Help & Documentation';
+  String get helpTitle => 'Help';
 
   @override
   String get helpTabInteractions => 'Interactions';
