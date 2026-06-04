@@ -162,5 +162,6 @@
   "memberPersonalChores": "Personal: {personal} min | Tareas Familiares: {family} min",
   "helpTitle": "Ayuda y Documentación",
   "helpTabInteractions": "Interacciones",
-  "helpTabSchedules": "Horarios"
+  "helpTabSchedules": "Horarios",
+  "helpTabPolicies": "Políticas"
 }

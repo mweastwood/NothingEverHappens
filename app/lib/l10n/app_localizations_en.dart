@@ -556,4 +556,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get helpTabSchedules => 'Schedules';
+
+  @override
+  String get helpTabPolicies => 'Missed Policies';
 }
