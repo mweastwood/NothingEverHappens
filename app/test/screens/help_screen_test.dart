@@ -9,14 +9,18 @@ void main() {
     return buildTestableWidget(child: const HelpScreen());
   }
 
-  testWidgets('HelpScreen loads with correct title', (WidgetTester tester) async {
+  testWidgets('HelpScreen loads with correct title', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
     expect(find.text('Help Content coming soon...'), findsOneWidget);
   });
 
-  testGoldens('HelpScreen renders correctly (PR 1/5)', (WidgetTester tester) async {
+  testGoldens('HelpScreen renders correctly (PR 1/5)', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidgetBuilder(
       const HelpScreen(),
       wrapper: l10nMaterialAppWrapper(),
