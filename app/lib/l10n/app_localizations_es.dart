@@ -552,4 +552,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get helpTitle => 'Ayuda';
+
+  @override
+  String get helpTabInteractions => 'Interacciones';
 }

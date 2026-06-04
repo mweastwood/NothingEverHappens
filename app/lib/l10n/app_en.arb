@@ -274,5 +274,6 @@
       }
     }
   },
-  "helpTitle": "Help"
+  "helpTitle": "Help",
+  "helpTabInteractions": "Interactions"
 }

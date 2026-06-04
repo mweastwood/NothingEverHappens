@@ -160,5 +160,6 @@
   "familyCapacityPool": "Capacidad del Grupo Familiar",
   "memberRemainingTotal": "{remaining} min restantes / {total} min en total",
   "memberPersonalChores": "Personal: {personal} min | Tareas Familiares: {family} min",
-  "helpTitle": "Ayuda"
+  "helpTitle": "Ayuda",
+  "helpTabInteractions": "Interacciones"
 }
