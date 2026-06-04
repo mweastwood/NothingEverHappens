@@ -273,5 +273,7 @@
         "type": "int"
       }
     }
-  }
+  },
+  "helpTitle": "Help & Documentation",
+  "helpTabInteractions": "Interactions"
 }
