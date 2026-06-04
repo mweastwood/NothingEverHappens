@@ -18,7 +18,7 @@ void main() {
     expect(find.text('Help Content coming soon...'), findsOneWidget);
   });
 
-  testGoldens('HelpScreen renders correctly (PR 1/5)', (
+  testGoldens('HelpScreen renders correctly', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidgetBuilder(
