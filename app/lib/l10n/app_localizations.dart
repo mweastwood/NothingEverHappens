@@ -1067,7 +1067,7 @@ abstract class AppLocalizations {
   /// No description provided for @helpTitle.
   ///
   /// In en, this message translates to:
-  /// **'Help & Documentation'**
+  /// **'Help'**
   String get helpTitle;
 }
 

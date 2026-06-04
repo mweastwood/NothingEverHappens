@@ -19,7 +19,7 @@ class HelpScreen extends StatelessWidget {
         title: Text(context.l10n.helpTitle),
       ),
       body: const Center(
-        child: Text('Help & Documentation Content coming soon...'),
+        child: Text('Help Content coming soon...'),
       ),
     );
   }

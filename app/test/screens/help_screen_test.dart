@@ -12,6 +12,6 @@ void main() {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('Help & Documentation Content coming soon...'), findsOneWidget);
+    expect(find.text('Help Content coming soon...'), findsOneWidget);
   });
 }
