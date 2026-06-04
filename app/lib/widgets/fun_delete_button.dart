@@ -88,7 +88,7 @@ class _FunDeleteButtonState extends State<FunDeleteButton>
                     shape: BoxShape.circle,
                     border: Border.all(color: errorColor, width: 2),
                     color: _isHovering
-                        ? errorColor.withOpacity(0.1)
+                        ? errorColor.withValues(alpha: 0.1)
                         : Colors.transparent,
                   ),
                   child: Icon(
@@ -96,7 +96,7 @@ class _FunDeleteButtonState extends State<FunDeleteButton>
                     size: 14,
                     color: _isHovering || _poofed
                         ? errorColor
-                        : errorColor.withOpacity(0.7),
+                        : errorColor.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -125,7 +125,7 @@ class PoofPainter extends CustomPainter {
             Colors.grey[400]!,
             Colors.grey[300]!,
             Colors.grey[200]!,
-            Colors.white.withOpacity(0.8),
+            Colors.white.withValues(alpha: 0.8),
           ][random.nextInt(4)],
         ),
       );
@@ -149,7 +149,9 @@ class PoofPainter extends CustomPainter {
           );
 
       final paint = Paint()
-        ..color = particle.color.withOpacity((1 - progress).clamp(0.0, 1.0))
+        ..color = particle.color.withValues(
+          alpha: (1 - progress).clamp(0.0, 1.0),
+        )
         ..style = PaintingStyle.fill;
 
       // Draw expanding and shrinking puffy cloud circles
