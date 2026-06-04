@@ -161,20 +161,23 @@ class _TaskWidgetState extends State<TaskWidget>
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              key: const Key('edit_pencil_button'),
-              icon: const Icon(Icons.edit, size: 20),
-              tooltip: 'Edit Task',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        CreateTaskScreen(taskToEdit: widget.task),
-                  ),
-                );
-              },
-            ),
+            if (widget.task.schedule is OneOffSchedule) ...[
+              IconButton(
+                key: const Key('edit_pencil_button'),
+                icon: const Icon(Icons.edit, size: 20),
+                tooltip: 'Edit Task',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CreateTaskScreen(taskToEdit: widget.task),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
             FunDeleteButton(
               key: const Key('delete_task_button'),
               onTap: _handleDeletion,
