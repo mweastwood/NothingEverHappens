@@ -1,11 +1,9 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/task.dart';
 import '../logic/task_repository.dart';
-import '../logic/auth_repository.dart';
 import '../screens/create_task_screen.dart';
 import 'fun_check_button.dart';
 import 'fun_delete_button.dart';
@@ -259,10 +257,10 @@ class _TaskWidgetState extends State<TaskWidget>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(isDark ? 0.15 : 0.08),
+        color: color.withValues(alpha: isDark ? 0.15 : 0.08),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: color.withOpacity(isDark ? 0.4 : 0.25),
+          color: color.withValues(alpha: isDark ? 0.4 : 0.25),
           width: 1,
         ),
       ),
@@ -299,8 +297,11 @@ class _TaskWidgetState extends State<TaskWidget>
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: alignment == Alignment.centerLeft
-                ? [color.withOpacity(0.25), color.withOpacity(0.02)]
-                : [color.withOpacity(0.02), color.withOpacity(0.25)],
+                ? [color.withValues(alpha: 0.25), color.withValues(alpha: 0.02)]
+                : [
+                    color.withValues(alpha: 0.02),
+                    color.withValues(alpha: 0.25),
+                  ],
             begin: alignment == Alignment.centerLeft
                 ? Alignment.centerLeft
                 : Alignment.centerRight,
