@@ -159,5 +159,6 @@
   "starTooltip": "Alternar preferencia",
   "familyCapacityPool": "Capacidad del Grupo Familiar",
   "memberRemainingTotal": "{remaining} min restantes / {total} min en total",
-  "memberPersonalChores": "Personal: {personal} min | Tareas Familiares: {family} min"
+  "memberPersonalChores": "Personal: {personal} min | Tareas Familiares: {family} min",
+  "helpTitle": "Ayuda y Documentación"
 }

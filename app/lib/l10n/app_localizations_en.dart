@@ -547,4 +547,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String memberPersonalChores(int personal, int family) {
     return 'Personal: $personal min | Family Chores: $family min';
   }
+
+  @override
+  String get helpTitle => 'Help & Documentation';
 }
