@@ -1075,6 +1075,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Interactions'**
   String get helpTabInteractions;
+
+  /// No description provided for @helpTabSchedules.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedules'**
+  String get helpTabSchedules;
 }
 
 class _AppLocalizationsDelegate

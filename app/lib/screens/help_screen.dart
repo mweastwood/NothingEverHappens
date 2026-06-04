@@ -7,6 +7,7 @@
 // ============================================================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/l10n_extension.dart';
 import '../widgets/fun_check_button.dart';
 import '../widgets/fun_delete_button.dart';
@@ -30,7 +31,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 1, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -49,6 +50,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
         bottom: TabBar(
           controller: _tabController,
           tabs: [
+            Tab(text: context.l10n.helpTabSchedules),
             Tab(text: context.l10n.helpTabInteractions),
           ],
         ),
@@ -56,8 +58,41 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
       body: TabBarView(
         controller: _tabController,
         children: [
+          _buildSchedulesTab(theme),
           _buildInteractionsTab(theme),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSchedulesTab(ThemeData theme) {
+    const markdownContent = '''
+# 📅 Recurring schedules
+Tasks can repeat automatically on a variety of flexible schedules:
+- **Daily**: Repeats every N days (e.g., *every day*, *every 2 days*).
+- **Weekly**: Repeats every N weeks on specific days of the week (e.g., *every week on Monday and Thursday*).
+- **Monthly**: Repeats every N months:
+  - **Day of Month**: On a specific day of the month (e.g., *on day 15*, *on the last day [-1]*).
+  - **Nth Weekday**: On a specific weekday occurrence (e.g., *on the 2nd Tuesday*, *on the last Sunday*).
+- **Yearly**: Repeats every N years on a specific month and day (e.g., *every year on June 4th*).
+
+---
+
+# 🕒 Multi-Time Daily Slots
+For tasks that repeat multiple times in a single day (e.g., *Feed the dog morning & evening*):
+- You can add **multiple daily time slots** with distinct Start and Due times.
+- Completing a task advances it to the next scheduled slot of the day.
+- Once the last slot is completed, the task rolls over to the next scheduled day.
+''';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: MarkdownBody(
+        data: markdownContent,
+        selectable: true,
+        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+          p: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+        ),
       ),
     );
   }
