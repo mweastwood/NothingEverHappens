@@ -5,6 +5,7 @@ import '../logic/task.dart';
 import '../logic/task_repository.dart';
 import '../screens/create_task_screen.dart';
 import 'fun_check_button.dart';
+import 'fun_delete_button.dart';
 
 class TaskWidget extends StatefulWidget {
   final Task task;
@@ -96,39 +97,19 @@ class _TaskWidgetState extends State<TaskWidget>
     });
   }
 
-  void _confirmDelete(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Delete Task?'),
-          content: Text(
-            'Are you sure you want to delete "${widget.task.title}"? This action will permanently remove the task.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              key: const Key('confirm_delete_button'),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error,
-                foregroundColor: Theme.of(context).colorScheme.onError,
-              ),
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                setState(() {
-                  _isDeleting = true;
-                });
-                _controller.forward();
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
+  void _handleDeletion() {
+    if (_isDeleting) return;
+
+    setState(() {
+      _isDeleting = true;
+    });
+
+    // Wait for poof animation to finish (400ms) before starting collapse
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        _controller.forward();
+      }
+    });
   }
 
   @override
@@ -194,15 +175,9 @@ class _TaskWidgetState extends State<TaskWidget>
                 );
               },
             ),
-            IconButton(
+            FunDeleteButton(
               key: const Key('delete_task_button'),
-              icon: Icon(
-                Icons.delete,
-                color: Theme.of(context).colorScheme.error,
-                size: 20,
-              ),
-              tooltip: 'Delete Task',
-              onPressed: () => _confirmDelete(context),
+              onTap: _handleDeletion,
             ),
           ],
         ),

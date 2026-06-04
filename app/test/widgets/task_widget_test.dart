@@ -229,7 +229,7 @@ void main() {
     expect(find.byKey(const Key('delete_task_button')), findsOneWidget);
   });
 
-  testWidgets('TaskWidget delete action opens confirmation dialog and deletes', (
+  testWidgets('TaskWidget delete action plays poof animation and deletes', (
     tester,
   ) async {
     when(mockTaskRepository.deleteTask(any)).thenAnswer((_) async {});
@@ -245,24 +245,19 @@ void main() {
       ),
     );
 
-    // Tap Delete button
+    // Tap Delete button (our custom FunDeleteButton)
     await tester.tap(find.byKey(const Key('delete_task_button')));
-    await tester.pumpAndSettle();
+    await tester.pump(); // Register tap
 
-    // Verify dialog shows up
-    expect(find.text('Delete Task?'), findsOneWidget);
-    expect(
-      find.text(
-        'Are you sure you want to delete "Test Task"? This action will permanently remove the task.',
-      ),
-      findsOneWidget,
-    );
+    // Wait for first Future.delayed (350ms) in FunDeleteButton
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(); // Trigger _handleDeletion()
 
-    // Tap confirm delete
-    await tester.tap(find.byKey(const Key('confirm_delete_button')));
-    await tester.pump(); // Start collapse animation
+    // Wait for second Future.delayed (400ms) in _handleDeletion()
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(); // Trigger _controller.forward()
 
-    // Wait for ticker (200ms)
+    // Wait for collapse animation (200ms) to complete
     await tester.pump(const Duration(milliseconds: 210));
     await tester.pump(); // Allow completion listener to run
 

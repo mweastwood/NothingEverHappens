@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
@@ -73,5 +74,32 @@ void main() {
       wrapper: l10nMaterialAppWrapper(),
     );
     await screenMatchesGolden(tester, 'fun_check_button');
+  });
+
+  group('ConfettiPainter Unit Tests', () {
+    test(
+      'ConfettiPainter generates exactly 20 particles with random values',
+      () {
+        final controller = AnimationController(
+          vsync: const TestVSync(),
+          duration: const Duration(milliseconds: 100),
+        );
+        const colorScheme = ColorScheme.light();
+        final painter = ConfettiPainter(
+          animation: controller,
+          colorScheme: colorScheme,
+        );
+        expect(painter.particles.length, equals(20));
+        for (final particle in painter.particles) {
+          expect(particle.angle, greaterThanOrEqualTo(0.0));
+          expect(particle.angle, lessThanOrEqualTo(2 * pi));
+          expect(particle.speed, greaterThanOrEqualTo(10.0));
+          expect(particle.speed, lessThanOrEqualTo(30.0));
+          expect(particle.offset, greaterThanOrEqualTo(0.0));
+          expect(particle.offset, lessThanOrEqualTo(2 * pi));
+        }
+        controller.dispose();
+      },
+    );
   });
 }
