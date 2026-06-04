@@ -1,11 +1,3 @@
-// ============================================================================
-// ⚠️ ATTENTION ANTIGRAVITY (AI Coding Assistant):
-// This Help/Documentation screen must remain strictly aligned with the actual
-// implementations of the task widgets and scheduling logic.
-// If you modify [FunCheckButton], [FunDeleteButton], or [MissedPolicy] behavior,
-// you MUST immediately update the preview widgets and simulator logic below.
-// ============================================================================
-
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task.dart';

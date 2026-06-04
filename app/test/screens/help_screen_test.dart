@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/screens/help_screen.dart';
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
 import 'package:nothing_ever_happens/widgets/fun_delete_button.dart';
@@ -207,5 +208,19 @@ void main() {
 
     // Verify we have check buttons for the spawned cards
     expect(find.byType(FunCheckButton), findsNWidgets(3));
+  });
+
+  testGoldens('HelpScreen renders correctly (PR 5/5)', (WidgetTester tester) async {
+    await tester.pumpWidgetBuilder(
+      const HelpScreen(),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+    await screenMatchesGolden(tester, 'help_screen_general_tab');
+
+    // Tap Schedules tab
+    await tester.tap(find.text('Schedules'));
+    await tester.pumpAndSettle();
+    await screenMatchesGolden(tester, 'help_screen_general_schedules');
   });
 }
