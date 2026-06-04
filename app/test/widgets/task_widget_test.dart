@@ -357,4 +357,122 @@ void main() {
       matchesGoldenFile('goldens/task_widget_recurring.png'),
     );
   });
+
+  testGoldens('TaskWidget badges scenarios', (tester) async {
+    const defaultStartTime = RelativeTime(
+      dayOffset: 0,
+      time: TimeOfDay(hour: 9, minute: 0),
+    );
+    const defaultEndTime = RelativeTime(
+      dayOffset: 0,
+      time: TimeOfDay(hour: 17, minute: 0),
+    );
+
+    final task1 = Task(
+      id: 'b1',
+      title: 'High Priority Task with Duration',
+      description: 'Personal task with high priority and 1.5h duration.',
+      startRelativeTime: defaultStartTime,
+      dueRelativeTime: defaultEndTime,
+      priority: TaskPriority.high,
+      estimatedDuration: const Duration(hours: 1, minutes: 30),
+      schedule: OneOffSchedule(
+        date: const CivilDay(year: 2024, month: 1, day: 1),
+      ),
+    );
+
+    final task2 = Task(
+      id: 'b2',
+      title: 'Family Daily Task with Assignee',
+      description:
+          'Family task with daily schedule, medium priority, rollover policy, and assignee.',
+      startRelativeTime: defaultStartTime,
+      dueRelativeTime: defaultEndTime,
+      isFamily: true,
+      priority: TaskPriority.medium,
+      assignedUserId: 'user_1',
+      schedule: DailySchedule(
+        startDate: const CivilDay(year: 2024, month: 1, day: 1),
+        interval: 1,
+      ),
+    );
+
+    final task3 = Task(
+      id: 'b3',
+      title: 'Low Priority Weekly Task with Shift Policy',
+      description:
+          'Personal task with low priority, weekly schedule, and shift policy.',
+      startRelativeTime: defaultStartTime,
+      dueRelativeTime: defaultEndTime,
+      priority: TaskPriority.low,
+      missedPolicy: MissedPolicy.shift,
+      schedule: WeeklySchedule(
+        startDate: const CivilDay(year: 2024, month: 1, day: 1),
+        interval: 1,
+        daysOfWeek: {1},
+      ),
+    );
+
+    final task4 = Task(
+      id: 'b4',
+      title: 'Monthly Task with Stack Policy',
+      description: 'Monthly schedule with stack policy.',
+      startRelativeTime: defaultStartTime,
+      dueRelativeTime: defaultEndTime,
+      priority: TaskPriority.medium,
+      missedPolicy: MissedPolicy.stack,
+      schedule: MonthlySchedule(
+        startDate: const CivilDay(year: 2024, month: 1, day: 1),
+        interval: 1,
+        dayOfMonth: 1,
+      ),
+    );
+
+    final task5 = Task(
+      id: 'b5',
+      title: 'Yearly Task with Skip Policy',
+      description: 'Yearly schedule with skip policy.',
+      startRelativeTime: defaultStartTime,
+      dueRelativeTime: defaultEndTime,
+      priority: TaskPriority.medium,
+      missedPolicy: MissedPolicy.skip,
+      schedule: YearlySchedule(
+        startDate: const CivilDay(year: 2024, month: 1, day: 1),
+        interval: 1,
+        month: 1,
+        day: 1,
+      ),
+    );
+
+    await tester.pumpWidgetBuilder(
+      Provider<TaskRepository>.value(
+        value: mockTaskRepository,
+        child: Container(
+          color: Colors.grey[100],
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TaskWidget(task: task1),
+              const SizedBox(height: 8),
+              TaskWidget(task: task2),
+              const SizedBox(height: 8),
+              TaskWidget(task: task3),
+              const SizedBox(height: 8),
+              TaskWidget(task: task4),
+              const SizedBox(height: 8),
+              TaskWidget(task: task5),
+            ],
+          ),
+        ),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(450, 800),
+    );
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_badges_scenarios.png'),
+    );
+  });
 }

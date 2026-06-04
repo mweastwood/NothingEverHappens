@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/task.dart';
 import '../logic/task_repository.dart';
 import '../screens/create_task_screen.dart';
@@ -23,6 +24,9 @@ class _TaskWidgetState extends State<TaskWidget>
   late Animation<double> _scaleXAnimation;
   late Animation<double> _sizeFactorAnimation;
   late Animation<double> _contentOpacityAnimation;
+  static final Map<String, String> _userNameCache = {};
+  String? _assigneeName;
+  bool _isLoadingAssignee = false;
   bool _isChecking = false;
   bool _isDeleting = false;
 
@@ -73,6 +77,16 @@ class _TaskWidgetState extends State<TaskWidget>
         }
       }
     });
+
+    _loadAssigneeName();
+  }
+
+  @override
+  void didUpdateWidget(TaskWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.task.assignedUserId != oldWidget.task.assignedUserId) {
+      _loadAssigneeName();
+    }
   }
 
   @override
@@ -110,6 +124,162 @@ class _TaskWidgetState extends State<TaskWidget>
         _controller.forward();
       }
     });
+  }
+
+  Future<void> _loadAssigneeName() async {
+    final assigneeId = widget.task.assignedUserId;
+    if (assigneeId == null) {
+      setState(() {
+        _assigneeName = null;
+      });
+      return;
+    }
+
+    if (_userNameCache.containsKey(assigneeId)) {
+      setState(() {
+        _assigneeName = _userNameCache[assigneeId];
+      });
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoadingAssignee = true;
+      });
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(assigneeId)
+          .get();
+      final name =
+          doc.data()?['displayName'] as String? ??
+          doc.data()?['email'] as String? ??
+          'User';
+      _userNameCache[assigneeId] = name;
+      if (mounted) {
+        setState(() {
+          _assigneeName = name;
+          _isLoadingAssignee = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _assigneeName = 'User';
+          _isLoadingAssignee = false;
+        });
+      }
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes % 60;
+    if (hours > 0) {
+      return '${hours}h${minutes > 0 ? ' ${minutes}m' : ''}';
+    }
+    return '${minutes}m';
+  }
+
+  String _getScheduleLabel(TaskSchedule schedule) {
+    if (schedule is OneOffSchedule) return 'One-off';
+    if (schedule is DailySchedule) return 'Daily';
+    if (schedule is WeeklySchedule) return 'Weekly';
+    if (schedule is MonthlySchedule) return 'Monthly';
+    if (schedule is YearlySchedule) return 'Yearly';
+    return 'Recurring';
+  }
+
+  IconData _getScheduleIcon(TaskSchedule schedule) {
+    if (schedule is OneOffSchedule) return Icons.today;
+    if (schedule is DailySchedule) return Icons.repeat;
+    if (schedule is WeeklySchedule) return Icons.view_week;
+    if (schedule is MonthlySchedule) return Icons.calendar_month;
+    if (schedule is YearlySchedule) return Icons.event;
+    return Icons.settings_backup_restore;
+  }
+
+  String _getPriorityLabel(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.high:
+        return 'High';
+      case TaskPriority.medium:
+        return 'Medium';
+      case TaskPriority.low:
+        return 'Low';
+    }
+  }
+
+  Color _getPriorityColor(BuildContext context, TaskPriority priority) {
+    final colorScheme = Theme.of(context).colorScheme;
+    switch (priority) {
+      case TaskPriority.high:
+        return colorScheme.error;
+      case TaskPriority.medium:
+      case TaskPriority.low:
+        return colorScheme.primary;
+    }
+  }
+
+  IconData _getPriorityIcon(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.high:
+        return Icons.warning_amber_rounded;
+      case TaskPriority.medium:
+        return Icons.info_outline;
+      case TaskPriority.low:
+        return Icons.arrow_downward;
+    }
+  }
+
+  String _getMissedPolicyLabel(MissedPolicy policy) {
+    switch (policy) {
+      case MissedPolicy.rollover:
+        return 'Rollover';
+      case MissedPolicy.skip:
+        return 'Skip';
+      case MissedPolicy.shift:
+        return 'Shift';
+      case MissedPolicy.stack:
+        return 'Stack';
+    }
+  }
+
+  Widget _buildBadge(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.4 : 0.25),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -157,7 +327,72 @@ class _TaskWidgetState extends State<TaskWidget>
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
-        subtitle: MarkdownBody(data: widget.task.description, selectable: true),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.task.description.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              MarkdownBody(data: widget.task.description, selectable: true),
+            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6.0,
+              runSpacing: 6.0,
+              children: [
+                // Scope (Family vs Personal)
+                _buildBadge(
+                  context,
+                  icon: widget.task.isFamily ? Icons.people_alt : Icons.person,
+                  label: widget.task.isFamily ? 'Family' : 'Personal',
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                // Priority
+                _buildBadge(
+                  context,
+                  icon: _getPriorityIcon(widget.task.priority),
+                  label: _getPriorityLabel(widget.task.priority),
+                  color: _getPriorityColor(context, widget.task.priority),
+                ),
+                // Schedule
+                _buildBadge(
+                  context,
+                  icon: _getScheduleIcon(widget.task.schedule),
+                  label: _getScheduleLabel(widget.task.schedule),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                // Effort/Duration (if any)
+                if (widget.task.estimatedDuration != null)
+                  _buildBadge(
+                    context,
+                    icon: Icons.timer_outlined,
+                    label: _formatDuration(widget.task.estimatedDuration!),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                // Missed Policy (if recurring)
+                if (widget.task.schedule is! OneOffSchedule)
+                  _buildBadge(
+                    context,
+                    icon: Icons.refresh,
+                    label:
+                        'Policy: ${_getMissedPolicyLabel(widget.task.missedPolicy)}',
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                // Assignee (if family & assigned)
+                if (widget.task.isFamily && widget.task.assignedUserId != null)
+                  _buildBadge(
+                    context,
+                    icon: Icons.assignment_ind,
+                    label: _isLoadingAssignee
+                        ? 'Loading...'
+                        : (_assigneeName != null
+                              ? 'Assigned: $_assigneeName'
+                              : 'Assigned'),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+              ],
+            ),
+          ],
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
