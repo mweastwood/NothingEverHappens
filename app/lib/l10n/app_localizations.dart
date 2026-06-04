@@ -1087,6 +1087,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Missed Policies'**
   String get helpTabPolicies;
+
+  /// No description provided for @helpTabGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get helpTabGeneral;
 }
 
 class _AppLocalizationsDelegate

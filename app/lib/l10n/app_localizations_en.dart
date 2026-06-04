@@ -559,4 +559,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get helpTabPolicies => 'Missed Policies';
+
+  @override
+  String get helpTabGeneral => 'General';
 }

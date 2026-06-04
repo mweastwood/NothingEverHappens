@@ -277,5 +277,6 @@
   "helpTitle": "Help & Documentation",
   "helpTabInteractions": "Interactions",
   "helpTabSchedules": "Schedules",
-  "helpTabPolicies": "Missed Policies"
+  "helpTabPolicies": "Missed Policies",
+  "helpTabGeneral": "General"
 }

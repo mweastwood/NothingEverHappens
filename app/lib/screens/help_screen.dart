@@ -46,7 +46,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _resetSimulator();
   }
 
@@ -190,6 +190,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
           controller: _tabController,
           isScrollable: true,
           tabs: [
+            Tab(text: context.l10n.helpTabGeneral),
             Tab(text: context.l10n.helpTabSchedules),
             Tab(text: context.l10n.helpTabInteractions),
             Tab(text: context.l10n.helpTabPolicies),
@@ -199,10 +200,47 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
       body: TabBarView(
         controller: _tabController,
         children: [
+          _buildGeneralTab(theme),
           _buildSchedulesTab(theme),
           _buildInteractionsTab(theme),
           _buildPoliciesTab(theme),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGeneralTab(ThemeData theme) {
+    const markdownContent = '''
+# 🏠 Household Task Types
+Our application organizes household tasks into two main categories:
+1. **Personal Tasks**: 
+   - Visible and manageable only by you.
+   - Ideal for personal chores, habits, or private checklists.
+2. **Family Tasks**:
+   - Shared with the entire family unit.
+   - Visible to all family members.
+   - Can be assigned to a specific family member or left unassigned for anyone to pick up.
+   - *Note: Only parents have permissions to edit or allocate Family tasks.*
+
+---
+
+# ⏱️ Agile Scheduling & Cycle Planning
+We apply agile framework concepts to make household chore planning stress-free:
+- **Weekly Sprint Cycles**: Tasks are planned in cycles (sprints). Chores can reside in the **Backlog** until they are moved into the **Active Cycle**.
+- **Capacity Planning**: Each family member sets their daily/weekly available hours in Settings. The app translates this into a **Weekly Capacity Pool**.
+- **Auto-Allocation**: When parents trigger "Auto-Allocate Chores" from the Sprint Dashboard, the app automatically distributes unassigned backlog tasks to family members based on:
+  - Their remaining available capacity.
+  - Starring/preferred tasks (chores they prefer to do).
+''';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: MarkdownBody(
+        data: markdownContent,
+        selectable: true,
+        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+          p: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+        ),
       ),
     );
   }

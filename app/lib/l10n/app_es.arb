@@ -163,5 +163,6 @@
   "helpTitle": "Ayuda y Documentación",
   "helpTabInteractions": "Interacciones",
   "helpTabSchedules": "Horarios",
-  "helpTabPolicies": "Políticas"
+  "helpTabPolicies": "Políticas",
+  "helpTabGeneral": "General"
 }

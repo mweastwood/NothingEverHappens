@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/screens/help_screen.dart';
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
 import 'package:nothing_ever_happens/widgets/fun_delete_button.dart';
+import 'package:nothing_ever_happens/logic/task.dart';
 import '../test_helper.dart';
 
 void main() {
@@ -10,16 +11,22 @@ void main() {
     return buildTestableWidget(child: const HelpScreen());
   }
 
-  testWidgets('HelpScreen displays tabs and navigates correctly', (WidgetTester tester) async {
+  testWidgets('HelpScreen displays all tabs and navigates correctly', (WidgetTester tester) async {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
-    // Verify tab labels are visible
+    // Verify all tab labels are visible
+    expect(find.text('General'), findsOneWidget);
     expect(find.text('Schedules'), findsOneWidget);
     expect(find.text('Interactions'), findsOneWidget);
     expect(find.text('Missed Policies'), findsOneWidget);
 
-    // Initial tab is Schedules: Verify text details
+    // Initial tab is General: Verify description text
+    expect(find.textContaining('Personal Tasks'), findsOneWidget);
+
+    // Navigate to Schedules tab
+    await tester.tap(find.text('Schedules'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('Recurring schedules'), findsOneWidget);
 
     // Navigate to Interactions tab

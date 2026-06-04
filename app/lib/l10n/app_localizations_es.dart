@@ -561,4 +561,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get helpTabPolicies => 'Políticas';
+
+  @override
+  String get helpTabGeneral => 'General';
 }
