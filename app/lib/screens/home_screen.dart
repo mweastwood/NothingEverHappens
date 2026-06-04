@@ -8,6 +8,7 @@ import 'task_schedule_screen.dart';
 import 'settings_screen.dart';
 import 'family_screen.dart';
 import 'sprint_dashboard_screen.dart';
+import 'help_screen.dart';
 import '../logic/l10n_extension.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -115,6 +116,18 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+          ),
+          ListTile(
+            key: const Key('drawer_help_tile'),
+            leading: const Icon(Icons.help_outline),
+            title: Text(context.l10n.helpTitle),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HelpScreen()),
               );
             },
           ),

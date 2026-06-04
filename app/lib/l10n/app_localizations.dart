@@ -1063,6 +1063,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Personal: {personal} min | Family Chores: {family} min'**
   String memberPersonalChores(int personal, int family);
+
+  /// No description provided for @helpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help'**
+  String get helpTitle;
 }
 
 class _AppLocalizationsDelegate
