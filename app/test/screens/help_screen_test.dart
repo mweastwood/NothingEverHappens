@@ -80,9 +80,7 @@ void main() {
     expect(find.text('Clean the Attic Chores'), findsOneWidget);
   });
 
-  testGoldens('HelpScreen renders correctly (PR 3/5)', (
-    WidgetTester tester,
-  ) async {
+  testGoldens('HelpScreen renders correctly', (WidgetTester tester) async {
     await tester.pumpWidgetBuilder(
       const HelpScreen(),
       wrapper: l10nMaterialAppWrapper(),
