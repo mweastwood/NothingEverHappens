@@ -212,14 +212,14 @@ class _TaskWidgetState extends State<TaskWidget>
     }
   }
 
-  Color _getPriorityColor(TaskPriority priority) {
+  Color _getPriorityColor(BuildContext context, TaskPriority priority) {
+    final colorScheme = Theme.of(context).colorScheme;
     switch (priority) {
       case TaskPriority.high:
-        return Colors.red;
+        return colorScheme.error;
       case TaskPriority.medium:
-        return Colors.orange;
       case TaskPriority.low:
-        return Colors.blueGrey;
+        return colorScheme.primary;
     }
   }
 
@@ -344,14 +344,14 @@ class _TaskWidgetState extends State<TaskWidget>
                   context,
                   icon: widget.task.isFamily ? Icons.people_alt : Icons.person,
                   label: widget.task.isFamily ? 'Family' : 'Personal',
-                  color: widget.task.isFamily ? Colors.deepPurple : Colors.teal,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 // Priority
                 _buildBadge(
                   context,
                   icon: _getPriorityIcon(widget.task.priority),
                   label: _getPriorityLabel(widget.task.priority),
-                  color: _getPriorityColor(widget.task.priority),
+                  color: _getPriorityColor(context, widget.task.priority),
                 ),
                 // Schedule
                 _buildBadge(
@@ -366,7 +366,7 @@ class _TaskWidgetState extends State<TaskWidget>
                     context,
                     icon: Icons.timer_outlined,
                     label: _formatDuration(widget.task.estimatedDuration!),
-                    color: Colors.blue,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 // Missed Policy (if recurring)
                 if (widget.task.schedule is! OneOffSchedule)
@@ -375,7 +375,7 @@ class _TaskWidgetState extends State<TaskWidget>
                     icon: Icons.refresh,
                     label:
                         'Policy: ${_getMissedPolicyLabel(widget.task.missedPolicy)}',
-                    color: Colors.blueGrey,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 // Assignee (if family & assigned)
                 if (widget.task.isFamily && widget.task.assignedUserId != null)
@@ -385,9 +385,9 @@ class _TaskWidgetState extends State<TaskWidget>
                     label: _isLoadingAssignee
                         ? 'Loading...'
                         : (_assigneeName != null
-                            ? 'Assigned: $_assigneeName'
-                            : 'Assigned'),
-                    color: Colors.amber[800] ?? Colors.amber,
+                              ? 'Assigned: $_assigneeName'
+                              : 'Assigned'),
+                    color: Theme.of(context).colorScheme.primary,
                   ),
               ],
             ),
