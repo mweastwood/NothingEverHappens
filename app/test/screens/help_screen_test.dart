@@ -4,7 +4,6 @@ import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/screens/help_screen.dart';
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
 import 'package:nothing_ever_happens/widgets/fun_delete_button.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
 import '../test_helper.dart';
 
 void main() {
@@ -12,7 +11,9 @@ void main() {
     return buildTestableWidget(child: const HelpScreen());
   }
 
-  testWidgets('HelpScreen displays all tabs and navigates correctly', (WidgetTester tester) async {
+  testWidgets('HelpScreen displays all tabs and navigates correctly', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
@@ -36,7 +37,9 @@ void main() {
     expect(find.text('Interactive Simulator'), findsOneWidget);
   });
 
-  testWidgets('Interactions Tab check and delete buttons work', (WidgetTester tester) async {
+  testWidgets('Interactions Tab check and delete buttons work', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
@@ -76,7 +79,9 @@ void main() {
     expect(find.text('Clean the Attic Chores'), findsOneWidget);
   });
 
-  testWidgets('Missed Policy Simulator handles Rollover policy correctly', (WidgetTester tester) async {
+  testWidgets('Missed Policy Simulator handles Rollover policy correctly', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
@@ -103,11 +108,19 @@ void main() {
 
     // Verify task is rescheduled to Tuesday (next occurrence day after scheduled Monday)
     expect(find.text('Scheduled: Tuesday'), findsOneWidget);
-    expect(find.text('ACTIVE'), findsOneWidget); // Scheduled: Tuesday, Current Day: Tuesday -> Active, not Overdue
-    expect(find.textContaining('Completed task "Mow the Lawn"'), findsOneWidget);
+    expect(
+      find.text('ACTIVE'),
+      findsOneWidget,
+    ); // Scheduled: Tuesday, Current Day: Tuesday -> Active, not Overdue
+    expect(
+      find.textContaining('Completed task "Mow the Lawn"'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('Missed Policy Simulator handles Skip policy correctly', (WidgetTester tester) async {
+  testWidgets('Missed Policy Simulator handles Skip policy correctly', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
@@ -135,10 +148,15 @@ void main() {
 
     // Verify skipped in logs, rescheduled to Tuesday
     expect(find.text('Scheduled: Tuesday'), findsOneWidget);
-    expect(find.textContaining('automatically SKIPPED overdue task'), findsOneWidget);
+    expect(
+      find.textContaining('automatically SKIPPED overdue task'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('Missed Policy Simulator handles Shift policy correctly', (WidgetTester tester) async {
+  testWidgets('Missed Policy Simulator handles Shift policy correctly', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
@@ -166,10 +184,15 @@ void main() {
 
     // Task should be rescheduled to Wednesday (next occurrence after Today/Tuesday)
     expect(find.text('Scheduled: Wednesday'), findsOneWidget);
-    expect(find.textContaining('Completed task "Mow the Lawn"'), findsOneWidget);
+    expect(
+      find.textContaining('Completed task "Mow the Lawn"'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('Missed Policy Simulator handles Stack policy correctly', (WidgetTester tester) async {
+  testWidgets('Missed Policy Simulator handles Stack policy correctly', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
@@ -204,7 +227,9 @@ void main() {
     expect(find.byType(FunCheckButton), findsNWidgets(3));
   });
 
-  testGoldens('HelpScreen renders correctly (PR 4/5)', (WidgetTester tester) async {
+  testGoldens('HelpScreen renders correctly (PR 4/5)', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidgetBuilder(
       const HelpScreen(),
       wrapper: l10nMaterialAppWrapper(),

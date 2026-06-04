@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
-import '../logic/relative_time.dart';
 import '../logic/l10n_extension.dart';
 import '../widgets/fun_check_button.dart';
 import '../widgets/fun_delete_button.dart';
@@ -14,7 +13,8 @@ class HelpScreen extends StatefulWidget {
   State<HelpScreen> createState() => _HelpScreenState();
 }
 
-class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateMixin {
+class _HelpScreenState extends State<HelpScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   // State for Interactions Tab
@@ -25,11 +25,11 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
 
   // State for Missed Policies Tab / Simulator
   MissedPolicy _selectedPolicy = MissedPolicy.rollover;
-  
+
   // Simulator State: List of simulated active tasks
   late List<SimulatedTask> _simulatedTasks;
   late List<String> _simulatedHistory;
-  
+
   // Date definitions for Simulator
   final CivilDay _monday = const CivilDay(year: 2026, month: 5, day: 25);
   final CivilDay _tuesday = const CivilDay(year: 2026, month: 5, day: 26);
@@ -60,7 +60,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
             scheduledDate: _monday,
             isMaster: true,
             missedPolicy: MissedPolicy.stack,
-          )
+          ),
         ];
       } else {
         // Other policies start with a regular task scheduled for Monday, current day Tuesday
@@ -71,7 +71,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
             scheduledDate: _monday,
             isMaster: false,
             missedPolicy: _selectedPolicy,
-          )
+          ),
         ];
       }
     });
@@ -79,8 +79,10 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
 
   void _simulateComplete(SimulatedTask task) {
     setState(() {
-      _simulatedHistory.add('Completed task "${task.title}" (scheduled for ${task.scheduledDate.dayName})');
-      
+      _simulatedHistory.add(
+        'Completed task "${task.title}" (scheduled for ${task.scheduledDate.dayName})',
+      );
+
       if (task.missedPolicy == MissedPolicy.rollover) {
         // Rollover: next occurrence is strictly 1 day after scheduled date
         final nextDate = task.scheduledDate.addDays(1);
@@ -91,7 +93,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
             scheduledDate: nextDate,
             isMaster: task.isMaster,
             missedPolicy: task.missedPolicy,
-          )
+          ),
         ];
       } else if (task.missedPolicy == MissedPolicy.shift) {
         // Shift: next occurrence is strictly 1 day after Today (Tuesday)
@@ -103,7 +105,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
             scheduledDate: nextDate,
             isMaster: task.isMaster,
             missedPolicy: task.missedPolicy,
-          )
+          ),
         ];
       } else {
         // Standard completion for spawned cards in Stack, or Skip policy completed before skip occurs
@@ -114,9 +116,14 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
 
   void _simulateBackgroundSkip() {
     setState(() {
-      final task = _simulatedTasks.firstWhere((t) => t.id == 'mower-task', orElse: () => _simulatedTasks[0]);
-      _simulatedHistory.add('System automatically SKIPPED overdue task "${task.title}" scheduled for ${task.scheduledDate.dayName}');
-      
+      final task = _simulatedTasks.firstWhere(
+        (t) => t.id == 'mower-task',
+        orElse: () => _simulatedTasks[0],
+      );
+      _simulatedHistory.add(
+        'System automatically SKIPPED overdue task "${task.title}" scheduled for ${task.scheduledDate.dayName}',
+      );
+
       // Reschedule to next occurrence after scheduled date
       final nextDate = task.scheduledDate.addDays(1);
       _simulatedTasks = [
@@ -126,7 +133,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
           scheduledDate: nextDate,
           isMaster: task.isMaster,
           missedPolicy: task.missedPolicy,
-        )
+        ),
       ];
     });
   }
@@ -134,8 +141,10 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
   void _simulateBackgroundStackSpawning() {
     setState(() {
       final master = _simulatedTasks.firstWhere((t) => t.isMaster);
-      _simulatedHistory.add('System processed Master stack task. Spawning missing cards up to Wednesday.');
-      
+      _simulatedHistory.add(
+        'System processed Master stack task. Spawning missing cards up to Wednesday.',
+      );
+
       // Spawn cards for Monday, Tuesday, Wednesday
       _simulatedTasks = [
         SimulatedTask(
@@ -174,7 +183,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.helpTitle),
@@ -199,6 +208,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
     );
   }
 
+  // ignore: unused_element
   Widget _buildGeneralTab(ThemeData theme) {
     const markdownContent = '''
 # 🏠 Household Task Types
@@ -228,9 +238,9 @@ We apply agile framework concepts to make household chore planning stress-free:
       child: MarkdownBody(
         data: markdownContent,
         selectable: true,
-        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-          p: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
-        ),
+        styleSheet: MarkdownStyleSheet.fromTheme(
+          theme,
+        ).copyWith(p: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
       ),
     );
   }
@@ -260,9 +270,9 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
       child: MarkdownBody(
         data: markdownContent,
         selectable: true,
-        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-          p: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
-        ),
+        styleSheet: MarkdownStyleSheet.fromTheme(
+          theme,
+        ).copyWith(p: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
       ),
     );
   }
@@ -275,15 +285,19 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
         children: [
           Text(
             'Interactive Components',
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8.0),
           Text(
             'Explore the custom interactive behaviors built into our chore card items below. These live examples run the exact widget code used in the app.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 24.0),
-          
+
           // Confetti Checkbox Section
           Card(
             clipBehavior: Clip.antiAlias,
@@ -299,7 +313,9 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                       const SizedBox(width: 8),
                       Text(
                         '1. Fun Check Completion',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -309,14 +325,20 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Live interactive widget container
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 12.0,
+                    ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8.0),
-                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -325,8 +347,8 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                           onChanged: (val) {
                             setState(() {
                               _checkButtonVal = val;
-                              _checkButtonStateText = val 
-                                  ? 'Task Status: Completed! 🎉 (Confetti Burst!)' 
+                              _checkButtonStateText = val
+                                  ? 'Task Status: Completed! 🎉 (Confetti Burst!)'
                                   : 'Task Status: Active ⭕';
                             });
                           },
@@ -339,14 +361,20 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                               Text(
                                 'Water the Houseplants',
                                 style: theme.textTheme.bodyLarge?.copyWith(
-                                  decoration: _checkButtonVal ? TextDecoration.lineThrough : null,
-                                  color: _checkButtonVal ? theme.colorScheme.onSurfaceVariant : null,
+                                  decoration: _checkButtonVal
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: _checkButtonVal
+                                      ? theme.colorScheme.onSurfaceVariant
+                                      : null,
                                 ),
                               ),
                               Text(
                                 _checkButtonStateText,
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: _checkButtonVal ? theme.colorScheme.primary : theme.colorScheme.secondary,
+                                  color: _checkButtonVal
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.secondary,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -377,7 +405,9 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                       const SizedBox(width: 8),
                       Text(
                         '2. Poof Delete Dismissal',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -387,17 +417,25 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Live interactive delete card container
                   AnimatedSize(
                     duration: const Duration(milliseconds: 300),
                     child: _deleteCardVisible
                         ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 12.0,
+                            ),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.errorContainer.withValues(alpha: 0.15),
+                              color: theme.colorScheme.errorContainer
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8.0),
-                              border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                color: theme.colorScheme.error.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
                             ),
                             child: Row(
                               children: [
@@ -405,26 +443,32 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                                   onTap: () {
                                     setState(() {
                                       _deleteCardVisible = false;
-                                      _deleteButtonStateText = 'Task card deleted! Tap "Restore Task" to try again.';
+                                      _deleteButtonStateText =
+                                          'Task card deleted! Tap "Restore Task" to try again.';
                                     });
                                   },
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Clean the Attic Chores',
-                                        style: theme.textTheme.bodyLarge?.copyWith(
-                                          color: theme.colorScheme.onErrorContainer,
-                                        ),
+                                        style: theme.textTheme.bodyLarge
+                                            ?.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onErrorContainer,
+                                            ),
                                       ),
                                       Text(
                                         _deleteButtonStateText,
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: theme.colorScheme.error,
-                                        ),
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: theme.colorScheme.error,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -452,7 +496,8 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                                   onPressed: () {
                                     setState(() {
                                       _deleteCardVisible = true;
-                                      _deleteButtonStateText = 'Tap close to delete task card';
+                                      _deleteButtonStateText =
+                                          'Tap close to delete task card';
                                     });
                                   },
                                   icon: const Icon(Icons.refresh),
@@ -479,12 +524,16 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
         children: [
           Text(
             'Missed Task Policies',
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8.0),
           Text(
             'Select a policy type below to learn how recurring tasks behave when they become overdue, and try it yourself in our Simulator.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16.0),
 
@@ -496,10 +545,18 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
               final isSelected = _selectedPolicy == policy;
               return ChoiceChip(
                 label: Text(
-                  policy == MissedPolicy.rollover ? 'Rollover' :
-                  policy == MissedPolicy.skip ? 'Skip' :
-                  policy == MissedPolicy.shift ? 'Shift' : 'Stack',
-                  style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                  policy == MissedPolicy.rollover
+                      ? 'Rollover'
+                      : policy == MissedPolicy.skip
+                      ? 'Skip'
+                      : policy == MissedPolicy.shift
+                      ? 'Shift'
+                      : 'Stack',
+                  style: TextStyle(
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
                 ),
                 selected: isSelected,
                 onSelected: (selected) {
@@ -526,12 +583,14 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
               const SizedBox(width: 8),
               Text(
                 'Interactive Simulator',
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8.0),
-          
+
           // The Simulator Box
           Card(
             clipBehavior: Clip.antiAlias,
@@ -551,18 +610,27 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                         children: [
                           Text(
                             'SIMULATED CLOCK',
-                            style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 1.2, fontWeight: FontWeight.bold),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              letterSpacing: 1.2,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Text(
-                            _selectedPolicy == MissedPolicy.stack 
-                                ? 'Wednesday (May 27)' 
+                            _selectedPolicy == MissedPolicy.stack
+                                ? 'Wednesday (May 27)'
                                 : 'Tuesday (May 26)',
-                            style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 4.0,
+                        ),
                         decoration: BoxDecoration(
                           color: theme.colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(4.0),
@@ -586,8 +654,11 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                       if (_selectedPolicy == MissedPolicy.skip)
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _simulatedTasks.any((t) => t.scheduledDate == _monday) 
-                                ? _simulateBackgroundSkip 
+                            onPressed:
+                                _simulatedTasks.any(
+                                  (t) => t.scheduledDate == _monday,
+                                )
+                                ? _simulateBackgroundSkip
                                 : null,
                             icon: const Icon(Icons.autorenew),
                             label: const Text('Run Auto-Skip Check'),
@@ -596,7 +667,9 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                       else if (_selectedPolicy == MissedPolicy.stack)
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _simulatedTasks.length == 1 && _simulatedTasks[0].lastSpawnedDate == null
+                            onPressed:
+                                _simulatedTasks.length == 1 &&
+                                    _simulatedTasks[0].lastSpawnedDate == null
                                 ? _simulateBackgroundStackSpawning
                                 : null,
                             icon: const Icon(Icons.grid_view),
@@ -605,9 +678,12 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                         )
                       else
                         const SizedBox.shrink(),
-                      
-                      if (_selectedPolicy == MissedPolicy.rollover || _selectedPolicy == MissedPolicy.shift || _selectedPolicy == MissedPolicy.stack) ...[
-                        if (_selectedPolicy == MissedPolicy.skip) const SizedBox(width: 8.0),
+
+                      if (_selectedPolicy == MissedPolicy.rollover ||
+                          _selectedPolicy == MissedPolicy.shift ||
+                          _selectedPolicy == MissedPolicy.stack) ...[
+                        if (_selectedPolicy == MissedPolicy.skip)
+                          const SizedBox(width: 8.0),
                         Expanded(
                           child: OutlinedButton(
                             onPressed: _resetSimulator,
@@ -628,29 +704,41 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                   // Simulated Database / Task List
                   Text(
                     'SIMULATED ACTIVE TASK LIST',
-                    style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 1.2, fontWeight: FontWeight.bold),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8.0),
-                  
+
                   if (_simulatedTasks.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(16.0),
                       alignment: Alignment.center,
                       child: Text(
                         'No active tasks in database!',
-                        style: theme.textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     )
                   else
                     ..._simulatedTasks.map((simTask) {
-                      final isOverdue = simTask.isOverdueForSim(_selectedPolicy == MissedPolicy.stack ? _wednesday : _tuesday);
+                      final isOverdue = simTask.isOverdueForSim(
+                        _selectedPolicy == MissedPolicy.stack
+                            ? _wednesday
+                            : _tuesday,
+                      );
                       return Card(
                         color: theme.colorScheme.surface,
                         elevation: 1,
                         margin: const EdgeInsets.only(bottom: 8.0),
                         child: ListTile(
-                          leading: simTask.isMaster 
-                              ? Icon(Icons.star, color: theme.colorScheme.primary)
+                          leading: simTask.isMaster
+                              ? Icon(
+                                  Icons.star,
+                                  color: theme.colorScheme.primary,
+                                )
                               : FunCheckButton(
                                   value: false,
                                   onChanged: (val) {
@@ -662,41 +750,63 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                           title: Text(
                             simTask.title,
                             style: TextStyle(
-                              fontWeight: simTask.isMaster ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: simTask.isMaster
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                           subtitle: Text(
-                            simTask.isMaster 
+                            simTask.isMaster
                                 ? 'Master Task Schedule | Last Spawn: ${simTask.lastSpawnedDate?.dayName ?? "None"}'
                                 : 'Scheduled: ${simTask.scheduledDate.dayName}',
                           ),
                           trailing: simTask.isMaster
                               ? Chip(
                                   label: const Text('MASTER'),
-                                  backgroundColor: theme.colorScheme.primaryContainer,
-                                  labelStyle: TextStyle(fontSize: 10, color: theme.colorScheme.onPrimaryContainer),
+                                  backgroundColor:
+                                      theme.colorScheme.primaryContainer,
+                                  labelStyle: TextStyle(
+                                    fontSize: 10,
+                                    color: theme.colorScheme.onPrimaryContainer,
+                                  ),
                                 )
-                              : (isOverdue 
-                                  ? Chip(
-                                      label: const Text('OVERDUE'),
-                                      backgroundColor: theme.colorScheme.errorContainer,
-                                      labelStyle: TextStyle(fontSize: 10, color: theme.colorScheme.onErrorContainer),
-                                    )
-                                  : Chip(
-                                      label: const Text('ACTIVE'),
-                                      backgroundColor: theme.colorScheme.secondaryContainer,
-                                      labelStyle: TextStyle(fontSize: 10, color: theme.colorScheme.onSecondaryContainer),
-                                    )),
+                              : (isOverdue
+                                    ? Chip(
+                                        label: const Text('OVERDUE'),
+                                        backgroundColor:
+                                            theme.colorScheme.errorContainer,
+                                        labelStyle: TextStyle(
+                                          fontSize: 10,
+                                          color: theme
+                                              .colorScheme
+                                              .onErrorContainer,
+                                        ),
+                                      )
+                                    : Chip(
+                                        label: const Text('ACTIVE'),
+                                        backgroundColor: theme
+                                            .colorScheme
+                                            .secondaryContainer,
+                                        labelStyle: TextStyle(
+                                          fontSize: 10,
+                                          color: theme
+                                              .colorScheme
+                                              .onSecondaryContainer,
+                                        ),
+                                      )),
                         ),
                       );
                     }),
-                  
+
                   const SizedBox(height: 16.0),
-                  
+
                   // History Log
                   Text(
                     'SIMULATION HISTORY LOG',
-                    style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 1.2, fontWeight: FontWeight.bold),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8.0),
                   Container(
@@ -704,14 +814,19 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                     width: double.infinity,
                     padding: const EdgeInsets.all(8.0),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6.0),
-                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
                     ),
                     child: _simulatedHistory.isEmpty
                         ? Text(
                             'No actions performed yet.',
-                            style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontStyle: FontStyle.italic,
+                            ),
                           )
                         : ListView.builder(
                             itemCount: _simulatedHistory.length,
@@ -720,7 +835,9 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
                                 padding: const EdgeInsets.only(bottom: 4.0),
                                 child: Text(
                                   '• ${_simulatedHistory[idx]}',
-                                  style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontFamily: 'monospace',
+                                  ),
                                 ),
                               );
                             },
@@ -743,7 +860,7 @@ For tasks that repeat multiple times in a single day (e.g., *Feed the dog mornin
           title: 'Rollover (Push to Next Day)',
           icon: Icons.replay_outlined,
           color: theme.colorScheme.primary,
-          description: 
+          description:
               'The standard default policy. If you miss a task occurrence, it rolls forward to today and remains in an OVERDUE state.\n\n'
               '**Grounding in Implementation:**\n'
               'When you check off a Rollover task, its next occurrence is scheduled relative to its original scheduled date. '
@@ -859,14 +976,22 @@ extension on CivilDay {
   String get dayName {
     final utc = toUtcDateTime();
     switch (utc.weekday) {
-      case 1: return 'Monday';
-      case 2: return 'Tuesday';
-      case 3: return 'Wednesday';
-      case 4: return 'Thursday';
-      case 5: return 'Friday';
-      case 6: return 'Saturday';
-      case 7: return 'Sunday';
-      default: return '';
+      case 1:
+        return 'Monday';
+      case 2:
+        return 'Tuesday';
+      case 3:
+        return 'Wednesday';
+      case 4:
+        return 'Thursday';
+      case 5:
+        return 'Friday';
+      case 6:
+        return 'Saturday';
+      case 7:
+        return 'Sunday';
+      default:
+        return '';
     }
   }
 }
