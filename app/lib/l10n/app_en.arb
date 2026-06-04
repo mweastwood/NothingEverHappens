@@ -276,5 +276,6 @@
   },
   "helpTitle": "Help & Documentation",
   "helpTabInteractions": "Interactions",
-  "helpTabSchedules": "Schedules"
+  "helpTabSchedules": "Schedules",
+  "helpTabPolicies": "Missed Policies"
 }

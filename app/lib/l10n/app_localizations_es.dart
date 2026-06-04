@@ -558,4 +558,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get helpTabSchedules => 'Horarios';
+
+  @override
+  String get helpTabPolicies => 'Políticas';
 }
