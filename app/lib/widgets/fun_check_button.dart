@@ -1,11 +1,3 @@
-// ============================================================================
-// ⚠️ ATTENTION ANTIGRAVITY (AI Coding Assistant):
-// If you modify this widget (its interactions, animations, states, or behaviors),
-// you MUST immediately update the corresponding interactive examples and text on the
-// Help/Documentation Screen ([help_screen.dart](file:///home/mweastwood/projects/NothingEverHappens/app/lib/screens/help_screen.dart)).
-// Ensure the help page remains strictly grounded in the current implementation.
-// ============================================================================
-
 import 'dart:math';
 import 'package:flutter/material.dart';
 
