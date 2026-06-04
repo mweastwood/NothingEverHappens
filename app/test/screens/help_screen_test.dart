@@ -233,9 +233,7 @@ void main() {
     expect(find.byType(FunCheckButton), findsNWidgets(3));
   });
 
-  testGoldens('HelpScreen renders correctly (PR 5/5)', (
-    WidgetTester tester,
-  ) async {
+  testGoldens('HelpScreen renders correctly', (WidgetTester tester) async {
     await tester.pumpWidgetBuilder(
       const HelpScreen(),
       wrapper: l10nMaterialAppWrapper(),
