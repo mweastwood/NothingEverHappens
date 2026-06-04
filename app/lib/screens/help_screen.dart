@@ -46,7 +46,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _resetSimulator();
   }
 
@@ -190,6 +190,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
           controller: _tabController,
           isScrollable: true,
           tabs: [
+            Tab(text: context.l10n.helpTabGeneral),
             Tab(text: context.l10n.helpTabSchedules),
             Tab(text: context.l10n.helpTabInteractions),
             Tab(text: context.l10n.helpTabPolicies),
@@ -199,6 +200,7 @@ class _HelpScreenState extends State<HelpScreen> with SingleTickerProviderStateM
       body: TabBarView(
         controller: _tabController,
         children: [
+          _buildGeneralTab(theme),
           _buildSchedulesTab(theme),
           _buildInteractionsTab(theme),
           _buildPoliciesTab(theme),
