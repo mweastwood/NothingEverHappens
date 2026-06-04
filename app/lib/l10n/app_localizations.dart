@@ -1063,6 +1063,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Personal: {personal} min | Family Chores: {family} min'**
   String memberPersonalChores(int personal, int family);
+
+  /// No description provided for @helpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help & Documentation'**
+  String get helpTitle;
+
+  /// No description provided for @helpTabGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get helpTabGeneral;
+
+  /// No description provided for @helpTabSchedules.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedules'**
+  String get helpTabSchedules;
+
+  /// No description provided for @helpTabPolicies.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed Policies'**
+  String get helpTabPolicies;
+
+  /// No description provided for @helpTabInteractions.
+  ///
+  /// In en, this message translates to:
+  /// **'Interactions'**
+  String get helpTabInteractions;
 }
 
 class _AppLocalizationsDelegate

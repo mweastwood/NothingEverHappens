@@ -549,4 +549,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String memberPersonalChores(int personal, int family) {
     return 'Personal: $personal min | Tareas Familiares: $family min';
   }
+
+  @override
+  String get helpTitle => 'Ayuda y Documentación';
+
+  @override
+  String get helpTabGeneral => 'General';
+
+  @override
+  String get helpTabSchedules => 'Horarios';
+
+  @override
+  String get helpTabPolicies => 'Políticas';
+
+  @override
+  String get helpTabInteractions => 'Interacciones';
 }

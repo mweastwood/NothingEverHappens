@@ -273,5 +273,10 @@
         "type": "int"
       }
     }
-  }
+  },
+  "helpTitle": "Help & Documentation",
+  "helpTabGeneral": "General",
+  "helpTabSchedules": "Schedules",
+  "helpTabPolicies": "Missed Policies",
+  "helpTabInteractions": "Interactions"
 }
