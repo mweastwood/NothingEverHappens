@@ -5,6 +5,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import '../test_helper.dart';
 
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
@@ -15,7 +16,9 @@ import 'package:nothing_ever_happens/screens/home_screen.dart';
 import 'package:nothing_ever_happens/screens/settings_screen.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
-import 'package:nothing_ever_happens/screens/task_history_screen.dart';
+import 'package:nothing_ever_happens/screens/family_screen.dart';
+import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 
@@ -62,6 +65,14 @@ void main() {
   });
 
   Widget createScreen() {
+    final firestore = FakeFirebaseFirestore();
+    final familyRepo = FamilyRepository(
+      firestore: firestore,
+      userId: 'user-1',
+      userEmail: 'user1@example.com',
+      userDisplayName: 'Alice',
+    );
+
     return MultiProvider(
       providers: [
         Provider<AuthRepository>.value(value: mockAuthRepository),
@@ -69,6 +80,8 @@ void main() {
         Provider<UserSettingsRepository>.value(
           value: mockUserSettingsRepository,
         ),
+        Provider<FamilyRepository?>.value(value: familyRepo),
+        Provider<ErrorHandler>(create: (_) => ErrorHandler()),
       ],
       child: buildTestableWidget(child: const HomeScreen()),
     );
@@ -90,13 +103,13 @@ void main() {
     // Verify TaskListScreen is visible, others are not
     expect(find.byType(TaskListScreen), findsOneWidget);
     expect(find.byType(TaskScheduleScreen), findsNothing);
-    expect(find.byType(TaskHistoryScreen), findsNothing);
+    expect(find.byType(FamilyScreen), findsNothing);
 
     // Verify FloatingActionButton is shown on Tasks tab
     expect(find.byType(FloatingActionButton), findsOneWidget);
   });
 
-  testWidgets('HomeScreen switch tabs to Schedule, History, and back', (
+  testWidgets('HomeScreen switch tabs to Schedule, Family, and back', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(createScreen());
@@ -113,25 +126,25 @@ void main() {
     // Verify TaskScheduleScreen is visible, others are not
     expect(find.byType(TaskScheduleScreen), findsOneWidget);
     expect(find.byType(TaskListScreen), findsNothing);
-    expect(find.byType(TaskHistoryScreen), findsNothing);
+    expect(find.byType(FamilyScreen), findsNothing);
 
     // Verify FAB is still shown on Schedule tab
     expect(find.byType(FloatingActionButton), findsOneWidget);
 
-    // 2. Switch to History tab
-    await tester.tap(find.text('History'));
+    // 2. Switch to Family tab
+    await tester.tap(find.text('Family'));
     await tester.pumpAndSettle();
 
     // Verify selected tab is index 2
     final NavigationBar navBar2 = tester.widget(find.byType(NavigationBar));
     expect(navBar2.selectedIndex, 2);
 
-    // Verify TaskHistoryScreen is visible, others are not
-    expect(find.byType(TaskHistoryScreen), findsOneWidget);
+    // Verify FamilyScreen is visible, others are not
+    expect(find.byType(FamilyScreen), findsOneWidget);
     expect(find.byType(TaskListScreen), findsNothing);
     expect(find.byType(TaskScheduleScreen), findsNothing);
 
-    // Verify FAB is hidden on History tab
+    // Verify FAB is hidden on Family tab
     expect(find.byType(FloatingActionButton), findsNothing);
 
     // 3. Switch back to Tasks tab
