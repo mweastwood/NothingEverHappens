@@ -1094,6 +1094,18 @@ abstract class AppLocalizations {
   /// **'# Practice Task Scheduling\n\nUse the controls below to configure different task schedules in real-time.\n\n- The **calendar grid** highlights the days on which the task will occur over a 3-month period (Current, Next, and Month After).\n- The **occurrences list** displays the next 10 calculated dates.\n\n*Try changing the interval, selecting different days of the week, or choosing different monthly/yearly options to see how occurrences update.*'**
   String get schedulingPlaygroundHelpContent;
 
+  /// No description provided for @occurrenceAppears.
+  ///
+  /// In en, this message translates to:
+  /// **'Appears: {dateTime}'**
+  String occurrenceAppears(String dateTime);
+
+  /// No description provided for @occurrenceDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Due: {dateTime}'**
+  String occurrenceDue(String dateTime);
+
   /// No description provided for @invalidIntervalError.
   ///
   /// In en, this message translates to:

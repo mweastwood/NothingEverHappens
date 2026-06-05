@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
-import '../logic/relative_time.dart';
 import '../logic/l10n_extension.dart';
 import 'one_off_scheduling_widget.dart';
 import 'daily_scheduling_widget.dart';
@@ -38,6 +37,9 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
   late TextEditingController _yearlyDayController;
 
   List<CivilDay> _occurrences = [];
+  Set<CivilDay> _startDays = {};
+  Set<CivilDay> _dueDays = {};
+  Set<CivilDay> _rangeDays = {};
   String? _validationError;
 
   @override
@@ -219,10 +221,11 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
             final yDay = int.tryParse(yDayText);
 
             int maxDays = 31;
-            if (yMonth == 2)
+            if (yMonth == 2) {
               maxDays = 29;
-            else if ([4, 6, 9, 11].contains(yMonth))
+            } else if ([4, 6, 9, 11].contains(yMonth)) {
               maxDays = 30;
+            }
 
             if (yDay == null || yDay < 1 || yDay > maxDays) {
               _validationError = context.l10n.dayMustBeBetweenError(maxDays);
@@ -264,6 +267,45 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
         }
 
         _occurrences = occurrences;
+
+        final Set<CivilDay> startDays = {};
+        final Set<CivilDay> dueDays = {};
+        final Set<CivilDay> rangeDays = {};
+
+        for (final occurrence in occurrences) {
+          if (schedule is OneOffSchedule) {
+            final startCivil = CivilDay.fromDateTime(
+              _startDateTimeController.value,
+            );
+            final dueCivil = CivilDay.fromDateTime(
+              _dueDateTimeController.value,
+            );
+
+            startDays.add(startCivil);
+            dueDays.add(dueCivil);
+
+            if (startCivil == dueCivil) {
+              rangeDays.add(startCivil);
+            } else if (startCivil.isBefore(dueCivil)) {
+              CivilDay currentDay = startCivil;
+              while (currentDay.isBefore(dueCivil) || currentDay == dueCivil) {
+                rangeDays.add(currentDay);
+                currentDay = currentDay.addDays(1);
+              }
+            } else {
+              rangeDays.add(startCivil);
+              rangeDays.add(dueCivil);
+            }
+          } else {
+            startDays.add(occurrence);
+            dueDays.add(occurrence);
+            rangeDays.add(occurrence);
+          }
+        }
+
+        _startDays = startDays;
+        _dueDays = dueDays;
+        _rangeDays = rangeDays;
       } catch (e) {
         _validationError = context.l10n.calculationError(e.toString());
       }
@@ -306,6 +348,17 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
     final weekdayStr = _getWeekdayNames(context)[dt.weekday - 1];
     final monthStr = _getMonthNames(context)[day.month - 1];
     return '$weekdayStr, $monthStr ${day.day}, ${day.year}';
+  }
+
+  DateTime _combineDayAndTime(CivilDay day, TimeOfDay time) {
+    return DateTime(day.year, day.month, day.day, time.hour, time.minute);
+  }
+
+  String _formatDateTime(BuildContext context, DateTime dt) {
+    final weekdayStr = _getWeekdayNames(context)[dt.weekday - 1];
+    final monthStr = _getMonthNames(context)[dt.month - 1];
+    final timeStr = TimeOfDay.fromDateTime(dt).format(context);
+    return '$weekdayStr, $monthStr ${dt.day}, ${dt.year} $timeStr';
   }
 
   @override
@@ -524,6 +577,9 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                       year: month1Year,
                       month: month1Month,
                       highlightedDays: Set.from(_occurrences),
+                      startDays: _startDays,
+                      dueDays: _dueDays,
+                      rangeDays: _rangeDays,
                       startDate: startCivil,
                     ),
                     const SizedBox(width: 16),
@@ -531,6 +587,9 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                       year: month2Year,
                       month: month2Month,
                       highlightedDays: Set.from(_occurrences),
+                      startDays: _startDays,
+                      dueDays: _dueDays,
+                      rangeDays: _rangeDays,
                       startDate: startCivil,
                     ),
                     const SizedBox(width: 16),
@@ -538,6 +597,9 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                       year: month3Year,
                       month: month3Month,
                       highlightedDays: Set.from(_occurrences),
+                      startDays: _startDays,
+                      dueDays: _dueDays,
+                      rangeDays: _rangeDays,
                       startDate: startCivil,
                     ),
                   ],
@@ -569,6 +631,125 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                   itemCount: _occurrences.length,
                   itemBuilder: (context, index) {
                     final occurrence = _occurrences[index];
+
+                    Widget detailsWidget;
+                    if (_scheduleType == RecurrenceType.oneOff) {
+                      final startDt = _startDateTimeController.value;
+                      final dueDt = _dueDateTimeController.value;
+                      detailsWidget = Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.visibility,
+                                size: 14,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  context.l10n.occurrenceAppears(
+                                    _formatDateTime(context, startDt),
+                                  ),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.alarm,
+                                size: 14,
+                                color: theme.colorScheme.error,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  context.l10n.occurrenceDue(
+                                    _formatDateTime(context, dueDt),
+                                  ),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    } else {
+                      final slots = _dailyTimesController.value;
+                      if (slots.isEmpty) {
+                        detailsWidget = const SizedBox.shrink();
+                      } else {
+                        detailsWidget = Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 6),
+                            for (final slot in slots) ...[
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.visibility,
+                                    size: 14,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      context.l10n.occurrenceAppears(
+                                        _formatDateTime(
+                                          context,
+                                          _combineDayAndTime(
+                                            occurrence,
+                                            slot.startTime,
+                                          ),
+                                        ),
+                                      ),
+                                      style: theme.textTheme.bodySmall,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.alarm,
+                                    size: 14,
+                                    color: theme.colorScheme.error,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      context.l10n.occurrenceDue(
+                                        _formatDateTime(
+                                          context,
+                                          _combineDayAndTime(
+                                            occurrence,
+                                            slot.dueTime,
+                                          ),
+                                        ),
+                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (slot != slots.last) const Divider(height: 12),
+                            ],
+                          ],
+                        );
+                      }
+                    }
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8.0),
                       elevation: 1,
@@ -587,6 +768,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           _formatCivilDay(context, occurrence),
                           style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
+                        subtitle: detailsWidget,
                       ),
                     );
                   },
@@ -603,6 +785,9 @@ class MonthGrid extends StatelessWidget {
   final int year;
   final int month;
   final Set<CivilDay> highlightedDays;
+  final Set<CivilDay> startDays;
+  final Set<CivilDay> dueDays;
+  final Set<CivilDay> rangeDays;
   final CivilDay startDate;
 
   const MonthGrid({
@@ -610,6 +795,9 @@ class MonthGrid extends StatelessWidget {
     required this.year,
     required this.month,
     required this.highlightedDays,
+    required this.startDays,
+    required this.dueDays,
+    required this.rangeDays,
     required this.startDate,
   });
 
@@ -711,42 +899,141 @@ class MonthGrid extends StatelessWidget {
               }
               final day = index - (firstWeekday - 1) + 1;
               final currentDay = CivilDay(year: year, month: month, day: day);
-              final isHighlighted = highlightedDays.contains(currentDay);
-              final isStart = currentDay == startDate;
 
-              BoxDecoration? boxDecoration;
+              final isRangeDay = rangeDays.contains(currentDay);
+              final isStartDay = startDays.contains(currentDay);
+              final isDueDay = dueDays.contains(currentDay);
+              final isOccurrenceDay = highlightedDays.contains(currentDay);
+
+              Widget? rangeBackground;
               TextStyle? textStyle = theme.textTheme.bodyMedium;
 
-              if (isHighlighted) {
-                boxDecoration = BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  shape: BoxShape.circle,
-                );
-                textStyle = TextStyle(
-                  color: theme.colorScheme.onPrimary,
-                  fontWeight: FontWeight.bold,
-                );
-              } else if (isStart) {
-                boxDecoration = BoxDecoration(
-                  border: Border.all(
-                    color: theme.colorScheme.primary,
-                    width: 2,
+              if (isRangeDay) {
+                if (isStartDay && isDueDay) {
+                  // Single day range / overlap -> perfect circle
+                  rangeBackground = Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  );
+                  textStyle = TextStyle(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.bold,
+                  );
+                } else if (isStartDay) {
+                  // Left-rounded cap
+                  rangeBackground = Stack(
+                    children: [
+                      Positioned(
+                        left: 14,
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.15,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(14),
+                            bottomLeft: Radius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                  textStyle = TextStyle(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.bold,
+                  );
+                } else if (isDueDay) {
+                  // Right-rounded cap
+                  rangeBackground = Stack(
+                    children: [
+                      Positioned(
+                        left: 0,
+                        right: 14,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.15,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(14),
+                            bottomRight: Radius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                  textStyle = TextStyle(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.bold,
+                  );
+                } else {
+                  // Shaded middle day
+                  rangeBackground = Container(
+                    width: double.infinity,
+                    height: 28,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                  );
+                }
+              }
+
+              // Non-color occurrence indicator inside the day cell
+              Widget? occurrenceIndicator;
+              if (isOccurrenceDay) {
+                final indicatorColor = (isStartDay || isDueDay)
+                    ? theme.colorScheme.onPrimary
+                    : theme.colorScheme.primary;
+                occurrenceIndicator = Container(
+                  width: 4,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    border: Border.all(color: indicatorColor, width: 1),
+                    shape: BoxShape.circle,
                   ),
-                  shape: BoxShape.circle,
-                );
-                textStyle = TextStyle(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
                 );
               }
 
               return Center(
-                child: Container(
+                child: SizedBox(
                   key: Key('day_${year}_${month}_$day'),
                   width: 28,
                   height: 28,
-                  decoration: boxDecoration,
-                  child: Center(child: Text('$day', style: textStyle)),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (rangeBackground != null) rangeBackground,
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('$day', style: textStyle),
+                          if (occurrenceIndicator != null) occurrenceIndicator,
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

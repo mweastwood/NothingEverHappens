@@ -566,6 +566,16 @@ class AppLocalizationsEn extends AppLocalizations {
       '# Practice Task Scheduling\n\nUse the controls below to configure different task schedules in real-time.\n\n- The **calendar grid** highlights the days on which the task will occur over a 3-month period (Current, Next, and Month After).\n- The **occurrences list** displays the next 10 calculated dates.\n\n*Try changing the interval, selecting different days of the week, or choosing different monthly/yearly options to see how occurrences update.*';
 
   @override
+  String occurrenceAppears(String dateTime) {
+    return 'Appears: $dateTime';
+  }
+
+  @override
+  String occurrenceDue(String dateTime) {
+    return 'Due: $dateTime';
+  }
+
+  @override
   String get invalidIntervalError =>
       'Please enter a valid interval greater than 0';
 

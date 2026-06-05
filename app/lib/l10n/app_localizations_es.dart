@@ -568,6 +568,16 @@ class AppLocalizationsEs extends AppLocalizations {
       '# Práctica de Planificación de Tareas\n\nUsa los controles de abajo para configurar diferentes opciones de planificación en tiempo real.\n\n- El **calendario** resalta los días en que ocurrirá la tarea en un período de 3 meses (actual, siguiente y posterior).\n- La **lista de ocurrencias** muestra las siguientes 10 fechas calculadas.\n\n*Intenta cambiar el intervalo, seleccionar diferentes días de la semana o elegir diferentes opciones mensuales/anuales para ver cómo se actualizan las ocurrencias.*';
 
   @override
+  String occurrenceAppears(String dateTime) {
+    return 'Aparece: $dateTime';
+  }
+
+  @override
+  String occurrenceDue(String dateTime) {
+    return 'Vence: $dateTime';
+  }
+
+  @override
   String get invalidIntervalError =>
       'Por favor, introduce un intervalo válido mayor que 0';
 

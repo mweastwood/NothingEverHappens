@@ -270,6 +270,255 @@ void main() {
       ); // instructions card, editor card, occurrence cards
     });
 
+    testWidgets('shows detailed appears and due date/times for occurrences', (
+      WidgetTester tester,
+    ) async {
+      setLargeScreenSize(tester);
+      await tester.pumpWidget(buildTestWidget(const SchedulingPlaygroundTab()));
+      await tester.pumpAndSettle();
+
+      // Default is One-off. One-off card lists Appears and Due dates/times.
+      expect(find.textContaining('Appears:'), findsOneWidget);
+      // There are two "Due:" text widgets: one in the editor label ("Due: ") and one in the card ("Due: ...")
+      expect(find.textContaining('Due:'), findsNWidgets(2));
+
+      // Let's switch to Daily
+      await tester.tap(find.text('Daily'));
+      await tester.pumpAndSettle();
+
+      // Verify that the daily recurrence list cards also display "Appears:" and "Due:"
+      expect(find.textContaining('Appears:'), findsAtLeast(10));
+      expect(find.textContaining('Due:'), findsAtLeast(10));
+    });
+
+    testWidgets(
+      'renders visual range highlights on the calendar grid based on task dates',
+      (WidgetTester tester) async {
+        setLargeScreenSize(tester);
+        await tester.pumpWidget(
+          buildTestWidget(const SchedulingPlaygroundTab()),
+        );
+        await tester.pumpAndSettle();
+
+        final now = DateTime.now();
+        final todayKey = Key('day_${now.year}_${now.month}_${now.day}');
+
+        // Initially, start and due date are both today (single-day range).
+        // Verify today has a perfect circle background and an occurrence indicator.
+        final todayContainers = tester.widgetList<Container>(
+          find.descendant(
+            of: find.byKey(todayKey),
+            matching: find.byType(Container),
+          ),
+        );
+
+        bool hasPerfectCircle = false;
+        bool hasOccurrenceIndicator = false;
+        for (final container in todayContainers) {
+          final decoration = container.decoration;
+          if (decoration is BoxDecoration) {
+            if (decoration.shape == BoxShape.circle) {
+              if (decoration.color == Colors.transparent ||
+                  decoration.color == null) {
+                hasOccurrenceIndicator = true;
+              } else {
+                hasPerfectCircle = true;
+              }
+            }
+          }
+        }
+        expect(
+          hasPerfectCircle,
+          isTrue,
+          reason: 'Today should have a perfect circle for single-day range',
+        );
+        expect(
+          hasOccurrenceIndicator,
+          isTrue,
+          reason: 'Today should have an occurrence indicator',
+        );
+
+        // Now, change the due date to 3 days from now to create a 4-day range (today, today+1, today+2, today+3).
+        // We will set this directly on the dueDateTime ValueNotifier from OneOffSchedulingWidget.
+        final oneOffWidgetFinder = find.byType(OneOffSchedulingWidget);
+        expect(oneOffWidgetFinder, findsOneWidget);
+        final oneOffWidget = tester.widget<OneOffSchedulingWidget>(
+          oneOffWidgetFinder,
+        );
+
+        final threeDaysLater = now.add(const Duration(days: 3));
+        oneOffWidget.dueDateTime.value = threeDaysLater;
+        await tester.pumpAndSettle();
+
+        final day1 = now;
+        final day2 = now.add(const Duration(days: 1));
+        final day3 = now.add(const Duration(days: 2));
+        final day4 = threeDaysLater;
+
+        final key1 = Key('day_${day1.year}_${day1.month}_${day1.day}');
+        final key2 = Key('day_${day2.year}_${day2.month}_${day2.day}');
+        final key3 = Key('day_${day3.year}_${day3.month}_${day3.day}');
+        final key4 = Key('day_${day4.year}_${day4.month}_${day4.day}');
+
+        // Day 1: Start day (Left-rounded cap, no occurrence indicator)
+        final containers1 = tester.widgetList<Container>(
+          find.descendant(
+            of: find.byKey(key1),
+            matching: find.byType(Container),
+          ),
+        );
+        bool hasLeftCap = false;
+        bool hasOccurrence1 = false;
+        for (final container in containers1) {
+          final decoration = container.decoration;
+          if (decoration is BoxDecoration) {
+            final borderRadius = decoration.borderRadius;
+            if (borderRadius is BorderRadius &&
+                borderRadius.topLeft == const Radius.circular(14) &&
+                borderRadius.bottomLeft == const Radius.circular(14)) {
+              hasLeftCap = true;
+            }
+            if (decoration.shape == BoxShape.circle &&
+                (decoration.color == Colors.transparent ||
+                    decoration.color == null)) {
+              hasOccurrence1 = true;
+            }
+          }
+        }
+        expect(
+          hasLeftCap,
+          isTrue,
+          reason: 'Day 1 should have a left-rounded cap',
+        );
+        expect(
+          hasOccurrence1,
+          isFalse,
+          reason: 'Day 1 should not have an occurrence indicator',
+        );
+
+        // Day 2: Middle day (Shaded background, no cap, no occurrence indicator)
+        final containers2 = tester.widgetList<Container>(
+          find.descendant(
+            of: find.byKey(key2),
+            matching: find.byType(Container),
+          ),
+        );
+        bool hasShade2 = false;
+        bool hasLeftCap2 = false;
+        bool hasRightCap2 = false;
+        for (final container in containers2) {
+          final color = container.color;
+          final decoration = container.decoration;
+          if (color != null) {
+            if (color.a > 0.0 && color.a < 0.2) {
+              hasShade2 = true;
+            }
+          }
+          if (decoration is BoxDecoration) {
+            if (decoration.color != null &&
+                decoration.color!.a > 0.0 &&
+                decoration.color!.a < 0.2 &&
+                decoration.borderRadius == null &&
+                decoration.shape != BoxShape.circle) {
+              hasShade2 = true;
+            }
+            final borderRadius = decoration.borderRadius;
+            if (borderRadius is BorderRadius) {
+              if (borderRadius.topLeft == const Radius.circular(14)) {
+                hasLeftCap2 = true;
+              }
+              if (borderRadius.topRight == const Radius.circular(14)) {
+                hasRightCap2 = true;
+              }
+            }
+          }
+        }
+        expect(
+          hasShade2,
+          isTrue,
+          reason: 'Day 2 should have a shaded background',
+        );
+        expect(
+          hasLeftCap2,
+          isFalse,
+          reason: 'Day 2 should not have a left-rounded cap',
+        );
+        expect(
+          hasRightCap2,
+          isFalse,
+          reason: 'Day 2 should not have a right-rounded cap',
+        );
+
+        // Day 3: Middle day (Shaded background, no cap, no occurrence indicator)
+        final containers3 = tester.widgetList<Container>(
+          find.descendant(
+            of: find.byKey(key3),
+            matching: find.byType(Container),
+          ),
+        );
+        bool hasShade3 = false;
+        for (final container in containers3) {
+          final color = container.color;
+          final decoration = container.decoration;
+          if (color != null) {
+            if (color.a > 0.0 && color.a < 0.2) {
+              hasShade3 = true;
+            }
+          }
+          if (decoration is BoxDecoration) {
+            if (decoration.color != null &&
+                decoration.color!.a > 0.0 &&
+                decoration.color!.a < 0.2 &&
+                decoration.borderRadius == null &&
+                decoration.shape != BoxShape.circle) {
+              hasShade3 = true;
+            }
+          }
+        }
+        expect(
+          hasShade3,
+          isTrue,
+          reason: 'Day 3 should have a shaded background',
+        );
+
+        // Day 4: Due day (Right-rounded cap, occurrence indicator)
+        final containers4 = tester.widgetList<Container>(
+          find.descendant(
+            of: find.byKey(key4),
+            matching: find.byType(Container),
+          ),
+        );
+        bool hasRightCap = false;
+        bool hasOccurrence4 = false;
+        for (final container in containers4) {
+          final decoration = container.decoration;
+          if (decoration is BoxDecoration) {
+            final borderRadius = decoration.borderRadius;
+            if (borderRadius is BorderRadius &&
+                borderRadius.topRight == const Radius.circular(14) &&
+                borderRadius.bottomRight == const Radius.circular(14)) {
+              hasRightCap = true;
+            }
+            if (decoration.shape == BoxShape.circle &&
+                (decoration.color == Colors.transparent ||
+                    decoration.color == null)) {
+              hasOccurrence4 = true;
+            }
+          }
+        }
+        expect(
+          hasRightCap,
+          isTrue,
+          reason: 'Day 4 should have a right-rounded cap',
+        );
+        expect(
+          hasOccurrence4,
+          isTrue,
+          reason: 'Day 4 should have an occurrence indicator',
+        );
+      },
+    );
+
     testGoldens('SchedulingPlaygroundTab renders correctly', (
       WidgetTester tester,
     ) async {
