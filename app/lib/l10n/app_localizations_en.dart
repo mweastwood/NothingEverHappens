@@ -575,4 +575,98 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get noOccurrencesPlaceholder =>
       'No future occurrences scheduled. Ensure all inputs are valid.';
+
+  @override
+  String get visualCalendarGridHeader => 'Visual Calendar Grid';
+
+  @override
+  String get dayIsRequiredError => 'Day is required';
+
+  @override
+  String dayMustBeBetweenError(int max) {
+    return 'Day must be between 1 and $max';
+  }
+
+  @override
+  String calculationError(String error) {
+    return 'Calculation error: $error';
+  }
+
+  @override
+  String get weekdayMonday => 'Monday';
+
+  @override
+  String get weekdayTuesday => 'Tuesday';
+
+  @override
+  String get weekdayWednesday => 'Wednesday';
+
+  @override
+  String get weekdayThursday => 'Thursday';
+
+  @override
+  String get weekdayFriday => 'Friday';
+
+  @override
+  String get weekdaySaturday => 'Saturday';
+
+  @override
+  String get weekdaySunday => 'Sunday';
+
+  @override
+  String get weekdayHeaderMonday => 'M';
+
+  @override
+  String get weekdayHeaderTuesday => 'T';
+
+  @override
+  String get weekdayHeaderWednesday => 'W';
+
+  @override
+  String get weekdayHeaderThursday => 'T';
+
+  @override
+  String get weekdayHeaderFriday => 'F';
+
+  @override
+  String get weekdayHeaderSaturday => 'S';
+
+  @override
+  String get weekdayHeaderSunday => 'S';
+
+  @override
+  String get monthJanuary => 'January';
+
+  @override
+  String get monthFebruary => 'February';
+
+  @override
+  String get monthMarch => 'March';
+
+  @override
+  String get monthApril => 'April';
+
+  @override
+  String get monthMay => 'May';
+
+  @override
+  String get monthJune => 'June';
+
+  @override
+  String get monthJuly => 'July';
+
+  @override
+  String get monthAugust => 'August';
+
+  @override
+  String get monthSeptember => 'September';
+
+  @override
+  String get monthOctober => 'October';
+
+  @override
+  String get monthNovember => 'November';
+
+  @override
+  String get monthDecember => 'December';
 }

@@ -1111,6 +1111,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No future occurrences scheduled. Ensure all inputs are valid.'**
   String get noOccurrencesPlaceholder;
+
+  /// No description provided for @visualCalendarGridHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Visual Calendar Grid'**
+  String get visualCalendarGridHeader;
+
+  /// No description provided for @dayIsRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Day is required'**
+  String get dayIsRequiredError;
+
+  /// No description provided for @dayMustBeBetweenError.
+  ///
+  /// In en, this message translates to:
+  /// **'Day must be between 1 and {max}'**
+  String dayMustBeBetweenError(int max);
+
+  /// No description provided for @calculationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculation error: {error}'**
+  String calculationError(String error);
+
+  /// No description provided for @weekdayMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'Monday'**
+  String get weekdayMonday;
+
+  /// No description provided for @weekdayTuesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuesday'**
+  String get weekdayTuesday;
+
+  /// No description provided for @weekdayWednesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Wednesday'**
+  String get weekdayWednesday;
+
+  /// No description provided for @weekdayThursday.
+  ///
+  /// In en, this message translates to:
+  /// **'Thursday'**
+  String get weekdayThursday;
+
+  /// No description provided for @weekdayFriday.
+  ///
+  /// In en, this message translates to:
+  /// **'Friday'**
+  String get weekdayFriday;
+
+  /// No description provided for @weekdaySaturday.
+  ///
+  /// In en, this message translates to:
+  /// **'Saturday'**
+  String get weekdaySaturday;
+
+  /// No description provided for @weekdaySunday.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunday'**
+  String get weekdaySunday;
+
+  /// No description provided for @weekdayHeaderMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'M'**
+  String get weekdayHeaderMonday;
+
+  /// No description provided for @weekdayHeaderTuesday.
+  ///
+  /// In en, this message translates to:
+  /// **'T'**
+  String get weekdayHeaderTuesday;
+
+  /// No description provided for @weekdayHeaderWednesday.
+  ///
+  /// In en, this message translates to:
+  /// **'W'**
+  String get weekdayHeaderWednesday;
+
+  /// No description provided for @weekdayHeaderThursday.
+  ///
+  /// In en, this message translates to:
+  /// **'T'**
+  String get weekdayHeaderThursday;
+
+  /// No description provided for @weekdayHeaderFriday.
+  ///
+  /// In en, this message translates to:
+  /// **'F'**
+  String get weekdayHeaderFriday;
+
+  /// No description provided for @weekdayHeaderSaturday.
+  ///
+  /// In en, this message translates to:
+  /// **'S'**
+  String get weekdayHeaderSaturday;
+
+  /// No description provided for @weekdayHeaderSunday.
+  ///
+  /// In en, this message translates to:
+  /// **'S'**
+  String get weekdayHeaderSunday;
+
+  /// No description provided for @monthJanuary.
+  ///
+  /// In en, this message translates to:
+  /// **'January'**
+  String get monthJanuary;
+
+  /// No description provided for @monthFebruary.
+  ///
+  /// In en, this message translates to:
+  /// **'February'**
+  String get monthFebruary;
+
+  /// No description provided for @monthMarch.
+  ///
+  /// In en, this message translates to:
+  /// **'March'**
+  String get monthMarch;
+
+  /// No description provided for @monthApril.
+  ///
+  /// In en, this message translates to:
+  /// **'April'**
+  String get monthApril;
+
+  /// No description provided for @monthMay.
+  ///
+  /// In en, this message translates to:
+  /// **'May'**
+  String get monthMay;
+
+  /// No description provided for @monthJune.
+  ///
+  /// In en, this message translates to:
+  /// **'June'**
+  String get monthJune;
+
+  /// No description provided for @monthJuly.
+  ///
+  /// In en, this message translates to:
+  /// **'July'**
+  String get monthJuly;
+
+  /// No description provided for @monthAugust.
+  ///
+  /// In en, this message translates to:
+  /// **'August'**
+  String get monthAugust;
+
+  /// No description provided for @monthSeptember.
+  ///
+  /// In en, this message translates to:
+  /// **'September'**
+  String get monthSeptember;
+
+  /// No description provided for @monthOctober.
+  ///
+  /// In en, this message translates to:
+  /// **'October'**
+  String get monthOctober;
+
+  /// No description provided for @monthNovember.
+  ///
+  /// In en, this message translates to:
+  /// **'November'**
+  String get monthNovember;
+
+  /// No description provided for @monthDecember.
+  ///
+  /// In en, this message translates to:
+  /// **'December'**
+  String get monthDecember;
 }
 
 class _AppLocalizationsDelegate

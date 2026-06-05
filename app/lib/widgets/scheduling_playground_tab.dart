@@ -213,7 +213,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
             final yMonth = _yearlyMonthController.value;
             final yDayText = _yearlyDayController.text.trim();
             if (yDayText.isEmpty) {
-              _validationError = 'Day is required';
+              _validationError = context.l10n.dayIsRequiredError;
               return;
             }
             final yDay = int.tryParse(yDayText);
@@ -225,7 +225,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
               maxDays = 30;
 
             if (yDay == null || yDay < 1 || yDay > maxDays) {
-              _validationError = 'Day must be between 1 and $maxDays';
+              _validationError = context.l10n.dayMustBeBetweenError(maxDays);
               return;
             }
 
@@ -265,64 +265,39 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
 
         _occurrences = occurrences;
       } catch (e) {
-        _validationError = 'Calculation error: $e';
+        _validationError = context.l10n.calculationError(e.toString());
       }
     });
   }
 
   List<String> _getMonthNames(BuildContext context) {
-    if (Localizations.localeOf(context).languageCode == 'es') {
-      return [
-        'Enero',
-        'Febrero',
-        'Marzo',
-        'Abril',
-        'Mayo',
-        'Junio',
-        'Julio',
-        'Agosto',
-        'Septiembre',
-        'Octubre',
-        'Noviembre',
-        'Diciembre',
-      ];
-    }
+    final l10n = context.l10n;
     return [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
+      l10n.monthJanuary,
+      l10n.monthFebruary,
+      l10n.monthMarch,
+      l10n.monthApril,
+      l10n.monthMay,
+      l10n.monthJune,
+      l10n.monthJuly,
+      l10n.monthAugust,
+      l10n.monthSeptember,
+      l10n.monthOctober,
+      l10n.monthNovember,
+      l10n.monthDecember,
     ];
   }
 
   List<String> _getWeekdayNames(BuildContext context) {
-    if (Localizations.localeOf(context).languageCode == 'es') {
-      return [
-        'Lunes',
-        'Martes',
-        'Miércoles',
-        'Jueves',
-        'Viernes',
-        'Sábado',
-        'Domingo',
-      ];
-    }
+    final l10n = context.l10n;
     return [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
+      l10n.weekdayMonday,
+      l10n.weekdayTuesday,
+      l10n.weekdayWednesday,
+      l10n.weekdayThursday,
+      l10n.weekdayFriday,
+      l10n.weekdaySaturday,
+      l10n.weekdaySunday,
     ];
   }
 
@@ -532,7 +507,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
             else ...[
               // Calendar Title
               Text(
-                'Visual Calendar Grid',
+                context.l10n.visualCalendarGridHeader,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -639,43 +614,34 @@ class MonthGrid extends StatelessWidget {
   });
 
   List<String> _getMonthNames(BuildContext context) {
-    if (Localizations.localeOf(context).languageCode == 'es') {
-      return [
-        'Enero',
-        'Febrero',
-        'Marzo',
-        'Abril',
-        'Mayo',
-        'Junio',
-        'Julio',
-        'Agosto',
-        'Septiembre',
-        'Octubre',
-        'Noviembre',
-        'Diciembre',
-      ];
-    }
+    final l10n = context.l10n;
     return [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
+      l10n.monthJanuary,
+      l10n.monthFebruary,
+      l10n.monthMarch,
+      l10n.monthApril,
+      l10n.monthMay,
+      l10n.monthJune,
+      l10n.monthJuly,
+      l10n.monthAugust,
+      l10n.monthSeptember,
+      l10n.monthOctober,
+      l10n.monthNovember,
+      l10n.monthDecember,
     ];
   }
 
   List<String> _getWeekdayHeaders(BuildContext context) {
-    if (Localizations.localeOf(context).languageCode == 'es') {
-      return ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-    }
-    return ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final l10n = context.l10n;
+    return [
+      l10n.weekdayHeaderMonday,
+      l10n.weekdayHeaderTuesday,
+      l10n.weekdayHeaderWednesday,
+      l10n.weekdayHeaderThursday,
+      l10n.weekdayHeaderFriday,
+      l10n.weekdayHeaderSaturday,
+      l10n.weekdayHeaderSunday,
+    ];
   }
 
   @override

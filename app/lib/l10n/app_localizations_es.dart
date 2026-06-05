@@ -577,4 +577,98 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get noOccurrencesPlaceholder =>
       'No hay ocurrencias programadas. Asegúrate de que todos los datos sean válidos.';
+
+  @override
+  String get visualCalendarGridHeader => 'Cuadrícula de Calendario Visual';
+
+  @override
+  String get dayIsRequiredError => 'El día es requerido';
+
+  @override
+  String dayMustBeBetweenError(int max) {
+    return 'El día debe estar entre 1 y $max';
+  }
+
+  @override
+  String calculationError(String error) {
+    return 'Error de cálculo: $error';
+  }
+
+  @override
+  String get weekdayMonday => 'Lunes';
+
+  @override
+  String get weekdayTuesday => 'Martes';
+
+  @override
+  String get weekdayWednesday => 'Miércoles';
+
+  @override
+  String get weekdayThursday => 'Jueves';
+
+  @override
+  String get weekdayFriday => 'Viernes';
+
+  @override
+  String get weekdaySaturday => 'Sábado';
+
+  @override
+  String get weekdaySunday => 'Domingo';
+
+  @override
+  String get weekdayHeaderMonday => 'L';
+
+  @override
+  String get weekdayHeaderTuesday => 'M';
+
+  @override
+  String get weekdayHeaderWednesday => 'X';
+
+  @override
+  String get weekdayHeaderThursday => 'J';
+
+  @override
+  String get weekdayHeaderFriday => 'V';
+
+  @override
+  String get weekdayHeaderSaturday => 'S';
+
+  @override
+  String get weekdayHeaderSunday => 'D';
+
+  @override
+  String get monthJanuary => 'Enero';
+
+  @override
+  String get monthFebruary => 'Febrero';
+
+  @override
+  String get monthMarch => 'Marzo';
+
+  @override
+  String get monthApril => 'Abril';
+
+  @override
+  String get monthMay => 'Mayo';
+
+  @override
+  String get monthJune => 'Junio';
+
+  @override
+  String get monthJuly => 'Julio';
+
+  @override
+  String get monthAugust => 'Agosto';
+
+  @override
+  String get monthSeptember => 'Septiembre';
+
+  @override
+  String get monthOctober => 'Octubre';
+
+  @override
+  String get monthNovember => 'Noviembre';
+
+  @override
+  String get monthDecember => 'Diciembre';
 }
