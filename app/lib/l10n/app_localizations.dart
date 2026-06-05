@@ -1073,8 +1073,14 @@ abstract class AppLocalizations {
   /// No description provided for @helpTabInteractions.
   ///
   /// In en, this message translates to:
-  /// **'Interactions'**
+  /// **'Basic Task Completion'**
   String get helpTabInteractions;
+
+  /// No description provided for @practiceHelpContent.
+  ///
+  /// In en, this message translates to:
+  /// **'# Practice Basic Task Completion\n\nThere are two ways to complete a task:\n\n1. Tapping the checkbox on the left marks a task as complete.\n2. Tapping the x button on the right dismisses a task, indicating that you will not complete it (for any reason).\n\nUse the space below to practice marking tasks as completed or dismissed.'**
+  String get practiceHelpContent;
 }
 
 class _AppLocalizationsDelegate

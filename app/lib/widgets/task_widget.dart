@@ -10,8 +10,9 @@ import 'fun_delete_button.dart';
 
 class TaskWidget extends StatefulWidget {
   final Task task;
+  final bool showEditOption;
 
-  const TaskWidget({super.key, required this.task});
+  const TaskWidget({super.key, required this.task, this.showEditOption = true});
 
   @override
   State<TaskWidget> createState() => _TaskWidgetState();
@@ -396,7 +397,8 @@ class _TaskWidgetState extends State<TaskWidget>
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (widget.task.schedule is OneOffSchedule) ...[
+            if (widget.showEditOption &&
+                widget.task.schedule is OneOffSchedule) ...[
               IconButton(
                 key: const Key('edit_pencil_button'),
                 icon: const Icon(Icons.edit, size: 20),

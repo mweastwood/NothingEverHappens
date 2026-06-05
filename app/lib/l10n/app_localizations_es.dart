@@ -554,5 +554,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get helpTitle => 'Ayuda';
 
   @override
-  String get helpTabInteractions => 'Interacciones';
+  String get helpTabInteractions => 'Completado Básico de Tareas';
+
+  @override
+  String get practiceHelpContent =>
+      '# Práctica de Completado Básico de Tareas\n\nHay dos formas de completar una tarea:\n\n1. Tocar la casilla de verificación a la izquierda marca la tarea como completada.\n2. Tocar el botón x a la derecha descarta la tarea, indicando que no la completarás (por cualquier motivo).\n\nUsa el espacio a continuación para practicar cómo marcar tareas como completadas o descartadas.';
 }
