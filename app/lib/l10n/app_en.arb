@@ -276,5 +276,70 @@
   },
   "helpTitle": "Help",
   "helpTabInteractions": "Basic Task Completion",
-  "practiceHelpContent": "# Practice Basic Task Completion\n\nThere are two ways to complete a task:\n\n1. Tapping the checkbox on the left marks a task as complete.\n2. Tapping the x button on the right dismisses a task, indicating that you will not complete it (for any reason).\n\nUse the space below to practice marking tasks as completed or dismissed."
+  "practiceHelpContent": "# Practice Basic Task Completion\n\nThere are two ways to complete a task:\n\n1. Tapping the checkbox on the left marks a task as complete.\n2. Tapping the x button on the right dismisses a task, indicating that you will not complete it (for any reason).\n\nUse the space below to practice marking tasks as completed or dismissed.",
+  "helpTabScheduling": "Task Scheduling",
+  "schedulingPlaygroundHelpContent": "# Practice Task Scheduling\n\nUse the controls below to configure different task schedules in real-time.\n\n- The **calendar grid** highlights the days on which the task will occur over a 3-month period (Current, Next, and Month After).\n- The **occurrences list** displays the next 10 calculated dates.\n\n*Try changing the interval, selecting different days of the week, or choosing different monthly/yearly options to see how occurrences update.*",
+  "occurrenceAppears": "Appears: {dateTime}",
+  "@occurrenceAppears": {
+    "placeholders": {
+      "dateTime": {
+        "type": "String"
+      }
+    }
+  },
+  "occurrenceDue": "Due: {dateTime}",
+  "@occurrenceDue": {
+    "placeholders": {
+      "dateTime": {
+        "type": "String"
+      }
+    }
+  },
+  "invalidIntervalError": "Please enter a valid interval greater than 0",
+  "occurrencesHeader": "Next 10 Occurrences",
+  "noOccurrencesPlaceholder": "No future occurrences scheduled. Ensure all inputs are valid.",
+  "visualCalendarGridHeader": "Visual Calendar Grid",
+  "dayIsRequiredError": "Day is required",
+  "dayMustBeBetweenError": "Day must be between 1 and {max}",
+  "@dayMustBeBetweenError": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "calculationError": "Calculation error: {error}",
+  "@calculationError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "weekdayMonday": "Monday",
+  "weekdayTuesday": "Tuesday",
+  "weekdayWednesday": "Wednesday",
+  "weekdayThursday": "Thursday",
+  "weekdayFriday": "Friday",
+  "weekdaySaturday": "Saturday",
+  "weekdaySunday": "Sunday",
+  "weekdayHeaderMonday": "M",
+  "weekdayHeaderTuesday": "T",
+  "weekdayHeaderWednesday": "W",
+  "weekdayHeaderThursday": "T",
+  "weekdayHeaderFriday": "F",
+  "weekdayHeaderSaturday": "S",
+  "weekdayHeaderSunday": "S",
+  "monthJanuary": "January",
+  "monthFebruary": "February",
+  "monthMarch": "March",
+  "monthApril": "April",
+  "monthMay": "May",
+  "monthJune": "June",
+  "monthJuly": "July",
+  "monthAugust": "August",
+  "monthSeptember": "September",
+  "monthOctober": "October",
+  "monthNovember": "November",
+  "monthDecember": "December"
 }

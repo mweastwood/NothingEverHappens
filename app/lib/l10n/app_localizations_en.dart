@@ -557,4 +557,126 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get practiceHelpContent =>
       '# Practice Basic Task Completion\n\nThere are two ways to complete a task:\n\n1. Tapping the checkbox on the left marks a task as complete.\n2. Tapping the x button on the right dismisses a task, indicating that you will not complete it (for any reason).\n\nUse the space below to practice marking tasks as completed or dismissed.';
+
+  @override
+  String get helpTabScheduling => 'Task Scheduling';
+
+  @override
+  String get schedulingPlaygroundHelpContent =>
+      '# Practice Task Scheduling\n\nUse the controls below to configure different task schedules in real-time.\n\n- The **calendar grid** highlights the days on which the task will occur over a 3-month period (Current, Next, and Month After).\n- The **occurrences list** displays the next 10 calculated dates.\n\n*Try changing the interval, selecting different days of the week, or choosing different monthly/yearly options to see how occurrences update.*';
+
+  @override
+  String occurrenceAppears(String dateTime) {
+    return 'Appears: $dateTime';
+  }
+
+  @override
+  String occurrenceDue(String dateTime) {
+    return 'Due: $dateTime';
+  }
+
+  @override
+  String get invalidIntervalError =>
+      'Please enter a valid interval greater than 0';
+
+  @override
+  String get occurrencesHeader => 'Next 10 Occurrences';
+
+  @override
+  String get noOccurrencesPlaceholder =>
+      'No future occurrences scheduled. Ensure all inputs are valid.';
+
+  @override
+  String get visualCalendarGridHeader => 'Visual Calendar Grid';
+
+  @override
+  String get dayIsRequiredError => 'Day is required';
+
+  @override
+  String dayMustBeBetweenError(int max) {
+    return 'Day must be between 1 and $max';
+  }
+
+  @override
+  String calculationError(String error) {
+    return 'Calculation error: $error';
+  }
+
+  @override
+  String get weekdayMonday => 'Monday';
+
+  @override
+  String get weekdayTuesday => 'Tuesday';
+
+  @override
+  String get weekdayWednesday => 'Wednesday';
+
+  @override
+  String get weekdayThursday => 'Thursday';
+
+  @override
+  String get weekdayFriday => 'Friday';
+
+  @override
+  String get weekdaySaturday => 'Saturday';
+
+  @override
+  String get weekdaySunday => 'Sunday';
+
+  @override
+  String get weekdayHeaderMonday => 'M';
+
+  @override
+  String get weekdayHeaderTuesday => 'T';
+
+  @override
+  String get weekdayHeaderWednesday => 'W';
+
+  @override
+  String get weekdayHeaderThursday => 'T';
+
+  @override
+  String get weekdayHeaderFriday => 'F';
+
+  @override
+  String get weekdayHeaderSaturday => 'S';
+
+  @override
+  String get weekdayHeaderSunday => 'S';
+
+  @override
+  String get monthJanuary => 'January';
+
+  @override
+  String get monthFebruary => 'February';
+
+  @override
+  String get monthMarch => 'March';
+
+  @override
+  String get monthApril => 'April';
+
+  @override
+  String get monthMay => 'May';
+
+  @override
+  String get monthJune => 'June';
+
+  @override
+  String get monthJuly => 'July';
+
+  @override
+  String get monthAugust => 'August';
+
+  @override
+  String get monthSeptember => 'September';
+
+  @override
+  String get monthOctober => 'October';
+
+  @override
+  String get monthNovember => 'November';
+
+  @override
+  String get monthDecember => 'December';
 }

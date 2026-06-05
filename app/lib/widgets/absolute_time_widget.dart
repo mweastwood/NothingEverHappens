@@ -97,7 +97,9 @@ class _AbsoluteTimeWidgetState extends State<AbsoluteTimeWidget> {
     return ValueListenableBuilder<DateTime>(
       valueListenable: _dateTimeNotifier,
       builder: (context, dateTime, child) {
-        return Row(
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
             FilledButton.tonalIcon(
               onPressed: _pickTime,
@@ -114,7 +116,6 @@ class _AbsoluteTimeWidgetState extends State<AbsoluteTimeWidget> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(width: 8),
             OutlinedButton.icon(
               onPressed: _pickDate,
               style: OutlinedButton.styleFrom(
