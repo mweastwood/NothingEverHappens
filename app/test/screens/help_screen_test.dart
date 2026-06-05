@@ -3,6 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/screens/help_screen.dart';
 import 'package:nothing_ever_happens/widgets/basic_task_completion_tab.dart';
+import 'package:nothing_ever_happens/widgets/scheduling_playground_tab.dart';
+import 'package:nothing_ever_happens/widgets/one_off_scheduling_widget.dart';
+import 'package:nothing_ever_happens/widgets/daily_scheduling_widget.dart';
+import 'package:nothing_ever_happens/widgets/weekly_scheduling_widget.dart';
+import 'package:nothing_ever_happens/widgets/monthly_scheduling_widget.dart';
+import 'package:nothing_ever_happens/widgets/yearly_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import '../test_helper.dart';
@@ -10,6 +16,15 @@ import '../test_helper.dart';
 void main() {
   Widget buildTestWidget(Widget child) {
     return buildTestableWidget(child: child);
+  }
+
+  void setLargeScreenSize(WidgetTester tester) {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
   }
 
   group('BasicTaskCompletionTab Standalone Tests', () {
@@ -138,40 +153,186 @@ void main() {
     });
   });
 
+  group('SchedulingPlaygroundTab Standalone Tests', () {
+    testWidgets('renders markdown helper and segmented buttons', (
+      WidgetTester tester,
+    ) async {
+      setLargeScreenSize(tester);
+      await tester.pumpWidget(buildTestWidget(const SchedulingPlaygroundTab()));
+      await tester.pumpAndSettle();
+
+      // Explanatory markdown
+      expect(find.textContaining('Practice Task Scheduling'), findsOneWidget);
+      expect(find.textContaining('calendar grid'), findsOneWidget);
+
+      // Segmented buttons
+      expect(find.text('One-off'), findsOneWidget);
+      expect(find.text('Daily'), findsOneWidget);
+      expect(find.text('Weekly'), findsOneWidget);
+      expect(find.text('Monthly'), findsOneWidget);
+      expect(find.text('Yearly'), findsOneWidget);
+
+      // Default should show OneOffSchedulingWidget
+      expect(find.byType(OneOffSchedulingWidget), findsOneWidget);
+    });
+
+    testWidgets('switching recurrence type displays corresponding widget', (
+      WidgetTester tester,
+    ) async {
+      setLargeScreenSize(tester);
+      await tester.pumpWidget(buildTestWidget(const SchedulingPlaygroundTab()));
+      await tester.pumpAndSettle();
+
+      // Switch to Daily
+      await tester.tap(find.text('Daily'));
+      await tester.pumpAndSettle();
+      expect(find.byType(DailySchedulingWidget), findsOneWidget);
+
+      // Switch to Weekly
+      await tester.tap(find.text('Weekly'));
+      await tester.pumpAndSettle();
+      expect(find.byType(WeeklySchedulingWidget), findsOneWidget);
+
+      // Switch to Monthly
+      await tester.tap(find.text('Monthly'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MonthlySchedulingWidget), findsOneWidget);
+
+      // Switch to Yearly
+      await tester.tap(find.text('Yearly'));
+      await tester.pumpAndSettle();
+      expect(find.byType(YearlySchedulingWidget), findsOneWidget);
+    });
+
+    testWidgets('shows validation error when interval is empty or 0', (
+      WidgetTester tester,
+    ) async {
+      setLargeScreenSize(tester);
+      await tester.pumpWidget(buildTestWidget(const SchedulingPlaygroundTab()));
+      await tester.pumpAndSettle();
+
+      // Switch to Daily
+      await tester.tap(find.text('Daily'));
+      await tester.pumpAndSettle();
+
+      // Empty interval
+      final intervalField = find.widgetWithText(TextFormField, 'Days Interval');
+      expect(intervalField, findsOneWidget);
+
+      await tester.enterText(intervalField, '');
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Please enter a valid interval'),
+        findsOneWidget,
+      );
+
+      // Zero interval
+      await tester.enterText(intervalField, '0');
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Please enter a valid interval'),
+        findsOneWidget,
+      );
+
+      // Valid interval
+      await tester.enterText(intervalField, '2');
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Please enter a valid interval'),
+        findsNothing,
+      );
+    });
+
+    testWidgets('calculates and shows correct number of occurrences', (
+      WidgetTester tester,
+    ) async {
+      setLargeScreenSize(tester);
+      await tester.pumpWidget(buildTestWidget(const SchedulingPlaygroundTab()));
+      await tester.pumpAndSettle();
+
+      // Switch to Daily
+      await tester.tap(find.text('Daily'));
+      await tester.pumpAndSettle();
+
+      // Verify next 10 occurrences header
+      expect(find.text('Next 10 Occurrences'), findsOneWidget);
+
+      // There should be cards representing occurrences (the playground lists the calculated occurrences in cards)
+      expect(
+        find.byType(Card),
+        findsAtLeast(2),
+      ); // instructions card, editor card, occurrence cards
+    });
+
+    testGoldens('SchedulingPlaygroundTab renders correctly', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidgetBuilder(
+        const SchedulingPlaygroundTab(),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(500, 1000),
+      );
+      await screenMatchesGolden(tester, 'scheduling_playground_tab_golden');
+    });
+  });
+
   group('HelpScreen Integration Tests', () {
     testWidgets(
-      'renders BasicTaskCompletionTab with tab controller integration',
+      'renders BasicTaskCompletionTab and supports switching to SchedulingPlaygroundTab',
       (WidgetTester tester) async {
+        setLargeScreenSize(tester);
         await tester.pumpWidget(buildTestWidget(const HelpScreen()));
         await tester.pumpAndSettle();
 
-        // Verify the tab title is "Basic Task Completion"
+        // Verify both tabs are visible in TabBar
         expect(find.text('Basic Task Completion'), findsOneWidget);
+        expect(find.text('Task Scheduling'), findsOneWidget);
 
-        // Verify that BasicTaskCompletionTab is in the widget tree
+        // Initially renders BasicTaskCompletionTab
         expect(find.byType(BasicTaskCompletionTab), findsOneWidget);
+        expect(find.byType(SchedulingPlaygroundTab), findsNothing);
 
-        // Get HelpScreen state and verify resetCounter starts at 0
-        final helpScreenFinder = find.byType(HelpScreen);
-        final helpScreenState = tester.state(helpScreenFinder) as dynamic;
-        expect(helpScreenState.resetCounter, 0);
-
-        // Simulate a tab controller change to trigger the listener
-        (helpScreenState.tabController as dynamic).notifyListeners();
+        // Tap on "Task Scheduling" tab
+        await tester.tap(find.text('Task Scheduling'));
         await tester.pumpAndSettle();
 
-        // Verify that resetCounter is incremented
-        expect(helpScreenState.resetCounter, 1);
+        // Verify it switches to SchedulingPlaygroundTab
+        expect(find.byType(SchedulingPlaygroundTab), findsOneWidget);
+        expect(find.byType(BasicTaskCompletionTab), findsNothing);
       },
     );
 
-    testGoldens('HelpScreen renders correctly', (WidgetTester tester) async {
+    testGoldens('HelpScreen renders correctly with basic tab selected', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidgetBuilder(
         const HelpScreen(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(400, 800),
+        surfaceSize: const Size(450, 900),
       );
       await screenMatchesGolden(tester, 'help_screen_basic_task_completion');
+    });
+
+    testGoldens('HelpScreen renders correctly with scheduling tab selected', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidgetBuilder(
+        const HelpScreen(),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(450, 900),
+      );
+
+      // Tap on Task Scheduling tab to update its state before matching golden
+      await tester.tap(find.text('Task Scheduling'));
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'help_screen_task_scheduling');
     });
   });
 }

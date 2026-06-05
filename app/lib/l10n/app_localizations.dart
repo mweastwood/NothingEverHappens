@@ -1081,6 +1081,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'# Practice Basic Task Completion\n\nThere are two ways to complete a task:\n\n1. Tapping the checkbox on the left marks a task as complete.\n2. Tapping the x button on the right dismisses a task, indicating that you will not complete it (for any reason).\n\nUse the space below to practice marking tasks as completed or dismissed.'**
   String get practiceHelpContent;
+
+  /// No description provided for @helpTabScheduling.
+  ///
+  /// In en, this message translates to:
+  /// **'Task Scheduling'**
+  String get helpTabScheduling;
+
+  /// No description provided for @schedulingPlaygroundHelpContent.
+  ///
+  /// In en, this message translates to:
+  /// **'# Practice Task Scheduling\n\nUse the controls below to configure different task schedules in real-time.\n\n- The **calendar grid** highlights the days on which the task will occur over a 3-month period (Current, Next, and Month After).\n- The **occurrences list** displays the next 10 calculated dates.\n\n*Try changing the interval, selecting different days of the week, or choosing different monthly/yearly options to see how occurrences update.*'**
+  String get schedulingPlaygroundHelpContent;
+
+  /// No description provided for @invalidIntervalError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid interval greater than 0'**
+  String get invalidIntervalError;
+
+  /// No description provided for @occurrencesHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Next 10 Occurrences'**
+  String get occurrencesHeader;
+
+  /// No description provided for @noOccurrencesPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'No future occurrences scheduled. Ensure all inputs are valid.'**
+  String get noOccurrencesPlaceholder;
 }
 
 class _AppLocalizationsDelegate

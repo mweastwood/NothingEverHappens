@@ -559,4 +559,22 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get practiceHelpContent =>
       '# Práctica de Completado Básico de Tareas\n\nHay dos formas de completar una tarea:\n\n1. Tocar la casilla de verificación a la izquierda marca la tarea como completada.\n2. Tocar el botón x a la derecha descarta la tarea, indicando que no la completarás (por cualquier motivo).\n\nUsa el espacio a continuación para practicar cómo marcar tareas como completadas o descartadas.';
+
+  @override
+  String get helpTabScheduling => 'Planificación de Tareas';
+
+  @override
+  String get schedulingPlaygroundHelpContent =>
+      '# Práctica de Planificación de Tareas\n\nUsa los controles de abajo para configurar diferentes opciones de planificación en tiempo real.\n\n- El **calendario** resalta los días en que ocurrirá la tarea en un período de 3 meses (actual, siguiente y posterior).\n- La **lista de ocurrencias** muestra las siguientes 10 fechas calculadas.\n\n*Intenta cambiar el intervalo, seleccionar diferentes días de la semana o elegir diferentes opciones mensuales/anuales para ver cómo se actualizan las ocurrencias.*';
+
+  @override
+  String get invalidIntervalError =>
+      'Por favor, introduce un intervalo válido mayor que 0';
+
+  @override
+  String get occurrencesHeader => 'Próximas 10 Ocurrencias';
+
+  @override
+  String get noOccurrencesPlaceholder =>
+      'No hay ocurrencias programadas. Asegúrate de que todos los datos sean válidos.';
 }
