@@ -54,3 +54,9 @@ To run the application locally, make sure you have the Flutter SDK installed and
    ```bash
    flutter run -d chrome
    ```
+
+4. **Git Hooks Setup**:
+   To automatically format your code before committing, enable the shared git hooks:
+   ```bash
+   git config core.hooksPath .githooks
+   ```
