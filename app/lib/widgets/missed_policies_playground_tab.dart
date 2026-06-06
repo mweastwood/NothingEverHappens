@@ -1,0 +1,857 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import '../logic/task.dart';
+import '../logic/civil_day.dart';
+import '../logic/relative_time.dart';
+import '../logic/task_repository.dart';
+import '../logic/l10n_extension.dart';
+import 'task_widget.dart';
+
+class MissedPoliciesPlaygroundTab extends StatefulWidget {
+  const MissedPoliciesPlaygroundTab({super.key});
+
+  @override
+  State<MissedPoliciesPlaygroundTab> createState() =>
+      _MissedPoliciesPlaygroundTabState();
+}
+
+class _MissedPoliciesPlaygroundTabState
+    extends State<MissedPoliciesPlaygroundTab> {
+  late MissedPolicy _selectedPolicy;
+  late CivilDay _simulatedToday;
+  late List<Task> _simulatedTasks;
+  late List<String> _historyLog;
+  late Set<CivilDay> _completedDays;
+  late Set<CivilDay> _missedDays;
+  late Set<CivilDay> _skippedDays;
+  late FakeTaskRepository _fakeRepository;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedPolicy = MissedPolicy.rollover;
+    _fakeRepository = FakeTaskRepository(
+      onComplete: _handleCompleteTask,
+      onDelete: _handleDeleteTask,
+    );
+    _reset();
+  }
+
+  void _reset() {
+    setState(() {
+      _simulatedToday = const CivilDay(year: 2026, month: 6, day: 1);
+      _completedDays = {};
+      _missedDays = {};
+      _skippedDays = {};
+
+      final String policyName = _getPolicyLabel(_selectedPolicy);
+      _historyLog = ["June 1: Simulation started with $policyName policy."];
+
+      _simulatedTasks = [];
+      _initializeTasksForCurrentPolicy();
+    });
+  }
+
+  String _getPolicyLabel(MissedPolicy policy) {
+    switch (policy) {
+      case MissedPolicy.rollover:
+        return "Rollover";
+      case MissedPolicy.skip:
+        return "Skip";
+      case MissedPolicy.shift:
+        return "Shift";
+      case MissedPolicy.stack:
+        return "Stack";
+    }
+  }
+
+  void _initializeTasksForCurrentPolicy() {
+    if (_selectedPolicy == MissedPolicy.stack) {
+      _simulatedTasks.add(
+        _createSpawnedTask(const CivilDay(year: 2026, month: 6, day: 1)),
+      );
+    } else {
+      _simulatedTasks.add(
+        Task(
+          id: 'simulated-task-recurring',
+          title: 'Water the Houseplants',
+          description: 'Give them just enough water.',
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedule: DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 6, day: 1),
+            interval: 1,
+          ),
+          dailyTimes: const [],
+          activeOccurrenceIndex: 0,
+          missedPolicy: _selectedPolicy,
+          isMaster: false,
+        ),
+      );
+    }
+  }
+
+  Task _createSpawnedTask(CivilDay date) {
+    final dateStr =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    return Task(
+      id: 'simulated-task-spawned-$dateStr',
+      title: 'Water the Houseplants',
+      description: 'Give them just enough water.',
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      schedule: OneOffSchedule(date: date),
+      dailyTimes: const [],
+      activeOccurrenceIndex: 0,
+      missedPolicy: _selectedPolicy,
+      isMaster: false,
+      parentTaskId: 'simulated-task-master',
+    );
+  }
+
+  void _advanceDay() {
+    setState(() {
+      final prevDay = _simulatedToday;
+      _simulatedToday = _simulatedToday.addDays(1);
+      final prevDayStr = _formatDate(prevDay);
+      final todayStr = _formatDate(_simulatedToday);
+
+      switch (_selectedPolicy) {
+        case MissedPolicy.rollover:
+          bool hasOverdue = _simulatedTasks.any((t) {
+            final scheduledDate = t.schedule.scheduledDate;
+            return scheduledDate.isBefore(_simulatedToday) &&
+                !_completedDays.contains(scheduledDate);
+          });
+          if (hasOverdue) {
+            _missedDays.add(prevDay);
+            _historyLog.add(
+              "$todayStr: Task for $prevDayStr went overdue. Rolls forward (Rollover).",
+            );
+          }
+          break;
+
+        case MissedPolicy.skip:
+          final List<Task> toSkip = [];
+          final List<Task> remaining = [];
+          for (final t in _simulatedTasks) {
+            if (t.schedule.scheduledDate.isBefore(_simulatedToday)) {
+              toSkip.add(t);
+            } else {
+              remaining.add(t);
+            }
+          }
+
+          if (toSkip.isNotEmpty) {
+            for (final t in toSkip) {
+              final scheduledDate = t.schedule.scheduledDate;
+              _skippedDays.add(scheduledDate);
+              _historyLog.add(
+                "$todayStr: Task scheduled for ${_formatDate(scheduledDate)} auto-skipped (Skip).",
+              );
+
+              final rescheduledTask = Task(
+                id: t.id,
+                title: t.title,
+                description: t.description,
+                startRelativeTime: t.startRelativeTime,
+                dueRelativeTime: t.dueRelativeTime,
+                schedule: DailySchedule(
+                  startDate: _simulatedToday,
+                  interval: 1,
+                ),
+                dailyTimes: const [],
+                activeOccurrenceIndex: 0,
+                missedPolicy: MissedPolicy.skip,
+                isMaster: false,
+              );
+              remaining.add(rescheduledTask);
+            }
+            _simulatedTasks = remaining;
+          }
+          break;
+
+        case MissedPolicy.shift:
+          bool hasOverdue = _simulatedTasks.any((t) {
+            final scheduledDate = t.schedule.scheduledDate;
+            return scheduledDate.isBefore(_simulatedToday) &&
+                !_completedDays.contains(scheduledDate);
+          });
+          if (hasOverdue) {
+            _missedDays.add(prevDay);
+            _historyLog.add(
+              "$todayStr: Task for $prevDayStr went overdue (Shift).",
+            );
+          }
+          break;
+
+        case MissedPolicy.stack:
+          if (!_completedDays.contains(prevDay)) {
+            _missedDays.add(prevDay);
+            _historyLog.add(
+              "$todayStr: Task for $prevDayStr was missed. New instance spawned (Stack).",
+            );
+          } else {
+            _historyLog.add(
+              "$todayStr: New instance spawned for today (Stack).",
+            );
+          }
+
+          final alreadyExists = _simulatedTasks.any(
+            (t) => t.schedule.scheduledDate == _simulatedToday,
+          );
+          if (!alreadyExists) {
+            _simulatedTasks.add(_createSpawnedTask(_simulatedToday));
+          }
+          break;
+      }
+    });
+  }
+
+  Future<void> _handleCompleteTask(String id) async {
+    if (!mounted) return;
+    setState(() {
+      final taskIndex = _simulatedTasks.indexWhere((t) => t.id == id);
+      if (taskIndex == -1) return;
+
+      final task = _simulatedTasks[taskIndex];
+      final scheduledDate = task.schedule.scheduledDate;
+      final todayStr = _formatDate(_simulatedToday);
+      final scheduledStr = _formatDate(scheduledDate);
+
+      _completedDays.add(scheduledDate);
+
+      if (_selectedPolicy == MissedPolicy.stack) {
+        _simulatedTasks.removeAt(taskIndex);
+        _historyLog.add(
+          "$todayStr: Completed task instance scheduled for $scheduledStr.",
+        );
+      } else {
+        final nextDate;
+        String logMsg = "";
+
+        if (_selectedPolicy == MissedPolicy.rollover) {
+          nextDate = scheduledDate.addDays(1);
+          logMsg =
+              "$todayStr: Completed task (scheduled for $scheduledStr). Rescheduled to next sequence: ${_formatDate(nextDate)}.";
+        } else if (_selectedPolicy == MissedPolicy.shift) {
+          nextDate = _simulatedToday.addDays(1);
+          logMsg =
+              "$todayStr: Completed task (scheduled for $scheduledStr). Rescheduled relative to today -> ${_formatDate(nextDate)} (Shifted).";
+        } else {
+          nextDate = _simulatedToday.addDays(1);
+          logMsg =
+              "$todayStr: Completed task. Rescheduled to ${_formatDate(nextDate)}.";
+        }
+
+        final rescheduledTask = Task(
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          startRelativeTime: task.startRelativeTime,
+          dueRelativeTime: task.dueRelativeTime,
+          schedule: DailySchedule(startDate: nextDate, interval: 1),
+          dailyTimes: const [],
+          activeOccurrenceIndex: 0,
+          missedPolicy: _selectedPolicy,
+          isMaster: false,
+        );
+
+        _simulatedTasks[taskIndex] = rescheduledTask;
+        _historyLog.add(logMsg);
+      }
+    });
+  }
+
+  Future<void> _handleDeleteTask(String id) async {
+    if (!mounted) return;
+    setState(() {
+      final taskIndex = _simulatedTasks.indexWhere((t) => t.id == id);
+      if (taskIndex == -1) return;
+
+      final task = _simulatedTasks[taskIndex];
+      final scheduledDate = task.schedule.scheduledDate;
+      final todayStr = _formatDate(_simulatedToday);
+      final scheduledStr = _formatDate(scheduledDate);
+
+      if (_selectedPolicy == MissedPolicy.stack) {
+        _simulatedTasks.removeAt(taskIndex);
+        _historyLog.add(
+          "$todayStr: Dismissed task instance scheduled for $scheduledStr.",
+        );
+      } else {
+        final nextDate;
+        if (_selectedPolicy == MissedPolicy.rollover) {
+          nextDate = scheduledDate.addDays(1);
+        } else {
+          nextDate = _simulatedToday.addDays(1);
+        }
+
+        final rescheduledTask = Task(
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          startRelativeTime: task.startRelativeTime,
+          dueRelativeTime: task.dueRelativeTime,
+          schedule: DailySchedule(startDate: nextDate, interval: 1),
+          dailyTimes: const [],
+          activeOccurrenceIndex: 0,
+          missedPolicy: _selectedPolicy,
+          isMaster: false,
+        );
+
+        _simulatedTasks[taskIndex] = rescheduledTask;
+        _historyLog.add(
+          "$todayStr: Dismissed task (scheduled for $scheduledStr). Rescheduled to ${_formatDate(nextDate)}.",
+        );
+      }
+    });
+  }
+
+  String _formatDate(CivilDay day) {
+    final l10n = context.l10n;
+    final monthNames = [
+      l10n.monthJanuary,
+      l10n.monthFebruary,
+      l10n.monthMarch,
+      l10n.monthApril,
+      l10n.monthMay,
+      l10n.monthJune,
+      l10n.monthJuly,
+      l10n.monthAugust,
+      l10n.monthSeptember,
+      l10n.monthOctober,
+      l10n.monthNovember,
+      l10n.monthDecember,
+    ];
+    return "${monthNames[day.month - 1]} ${day.day}";
+  }
+
+  String _getTipText() {
+    final l10n = context.l10n;
+    switch (_selectedPolicy) {
+      case MissedPolicy.rollover:
+        return l10n.rolloverSimTip;
+      case MissedPolicy.skip:
+        return l10n.skipSimTip;
+      case MissedPolicy.shift:
+        return l10n.shiftSimTip;
+      case MissedPolicy.stack:
+        return l10n.stackSimTip;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+
+    // We build the scheduled days which is simply every day of the month
+    final Set<CivilDay> scheduledDays = {};
+    for (int d = 1; d <= 30; d++) {
+      scheduledDays.add(
+        CivilDay(
+          year: _simulatedToday.year,
+          month: _simulatedToday.month,
+          day: d,
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: Provider<TaskRepository>.value(
+        value: _fakeRepository,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Dynamic Explanation Card
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MarkdownBody(data: l10n.missedPoliciesIntro),
+                      const Divider(height: 24),
+                      MarkdownBody(data: _getTipText()),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Policy Selector Title
+              Text(
+                l10n.missedPolicyHeader,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // SegmentedButton for policy selection
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<MissedPolicy>(
+                  segments: [
+                    ButtonSegment(
+                      value: MissedPolicy.rollover,
+                      label: Text(l10n.rolloverLabel.split(' (').first),
+                    ),
+                    ButtonSegment(
+                      value: MissedPolicy.skip,
+                      label: Text(l10n.skipLabel.split(' (').first),
+                    ),
+                    ButtonSegment(
+                      value: MissedPolicy.shift,
+                      label: Text(l10n.shiftLabel.split(' (').first),
+                    ),
+                    ButtonSegment(
+                      value: MissedPolicy.stack,
+                      label: Text(l10n.stackLabel.split(' (').first),
+                    ),
+                  ],
+                  selected: {_selectedPolicy},
+                  onSelectionChanged: (value) {
+                    setState(() {
+                      _selectedPolicy = value.first;
+                      _reset();
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Simulator Control Panel
+              Card(
+                color: theme.colorScheme.surfaceContainerLow,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            l10n.simulatedTodayLabel(
+                              _formatDate(_simulatedToday),
+                            ),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: _reset,
+                            icon: const Icon(Icons.refresh),
+                            label: Text(l10n.resetSimButton),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _advanceDay,
+                              icon: const Icon(Icons.arrow_forward),
+                              label: Text(l10n.advanceDayButton),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    theme.colorScheme.primaryContainer,
+                                foregroundColor:
+                                    theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Layout Wrap for Calendar Grid and Simulated Tasks Side-by-side or Stacked
+              Wrap(
+                spacing: 20,
+                runSpacing: 20,
+                children: [
+                  // Calendar Grid
+                  SimulationMonthGrid(
+                    year: _simulatedToday.year,
+                    month: _simulatedToday.month,
+                    simulatedToday: _simulatedToday,
+                    completedDays: _completedDays,
+                    missedDays: _missedDays,
+                    skippedDays: _skippedDays,
+                    scheduledDays: scheduledDays,
+                  ),
+
+                  // Simulated Tasks List
+                  Container(
+                    width: 320,
+                    constraints: const BoxConstraints(minHeight: 180),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: theme.dividerColor),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.activeTasksHeader(_simulatedTasks.length),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_simulatedTasks.isEmpty)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 32.0,
+                              ),
+                              child: Text(
+                                'No active tasks.',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ..._simulatedTasks.map((task) {
+                            final scheduledDate = task.schedule.scheduledDate;
+                            final isOverdue = scheduledDate.isBefore(
+                              _simulatedToday,
+                            );
+                            final scheduledStr = _formatDate(scheduledDate);
+                            return Padding(
+                              key: ValueKey(task.id),
+                              padding: const EdgeInsets.only(bottom: 12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: 4.0,
+                                      bottom: 4.0,
+                                    ),
+                                    child: Text(
+                                      isOverdue
+                                          ? "Scheduled: $scheduledStr (Overdue)"
+                                          : "Scheduled: $scheduledStr",
+                                      style: TextStyle(
+                                        color: isOverdue
+                                            ? theme.colorScheme.error
+                                            : theme.colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  TaskWidget(task: task, showEditOption: false),
+                                ],
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Simulation Logs
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: theme.dividerColor),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.historyLogHeader,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Divider(height: 16),
+                    SizedBox(
+                      height: 180,
+                      child: ListView.builder(
+                        itemCount: _historyLog.length,
+                        itemBuilder: (context, index) {
+                          // Show logs in reverse order to see latest logs first
+                          final logIndex = _historyLog.length - 1 - index;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "• ",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    _historyLog[logIndex],
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DummyFirebaseFirestore implements FirebaseFirestore {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class FakeTaskRepository extends TaskRepository {
+  final Future<void> Function(String) onComplete;
+  final Future<void> Function(String) onDelete;
+
+  FakeTaskRepository({required this.onComplete, required this.onDelete})
+    : super(
+        firestore: DummyFirebaseFirestore(),
+        userId: 'playground_user',
+        notificationService: null,
+      );
+
+  @override
+  Future<void> completeTask(String id) async {
+    await onComplete(id);
+  }
+
+  @override
+  Future<void> deleteTask(String id) async {
+    await onDelete(id);
+  }
+}
+
+class SimulationMonthGrid extends StatelessWidget {
+  final int year;
+  final int month;
+  final CivilDay simulatedToday;
+  final Set<CivilDay> completedDays;
+  final Set<CivilDay> missedDays;
+  final Set<CivilDay> skippedDays;
+  final Set<CivilDay> scheduledDays;
+
+  const SimulationMonthGrid({
+    super.key,
+    required this.year,
+    required this.month,
+    required this.simulatedToday,
+    required this.completedDays,
+    required this.missedDays,
+    required this.skippedDays,
+    required this.scheduledDays,
+  });
+
+  List<String> _getMonthNames(BuildContext context) {
+    final l10n = context.l10n;
+    return [
+      l10n.monthJanuary,
+      l10n.monthFebruary,
+      l10n.monthMarch,
+      l10n.monthApril,
+      l10n.monthMay,
+      l10n.monthJune,
+      l10n.monthJuly,
+      l10n.monthAugust,
+      l10n.monthSeptember,
+      l10n.monthOctober,
+      l10n.monthNovember,
+      l10n.monthDecember,
+    ];
+  }
+
+  List<String> _getWeekdayHeaders(BuildContext context) {
+    final l10n = context.l10n;
+    return [
+      l10n.weekdayHeaderMonday,
+      l10n.weekdayHeaderTuesday,
+      l10n.weekdayHeaderWednesday,
+      l10n.weekdayHeaderThursday,
+      l10n.weekdayHeaderFriday,
+      l10n.weekdayHeaderSaturday,
+      l10n.weekdayHeaderSunday,
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final firstDay = DateTime.utc(year, month, 1);
+    final totalDays = DateTime.utc(year, month + 1, 0).day;
+    final firstWeekday = firstDay.weekday; // 1 = Mon, 7 = Sun
+
+    final monthName = _getMonthNames(context)[month - 1];
+    final weekdayLabels = _getWeekdayHeaders(context);
+
+    return Container(
+      width: 280,
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$monthName $year',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Weekday headers
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 4,
+              crossAxisSpacing: 4,
+            ),
+            itemCount: 7,
+            itemBuilder: (context, index) {
+              return Center(
+                child: Text(
+                  weekdayLabels[index],
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 12),
+          // Days grid
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 4,
+              crossAxisSpacing: 4,
+            ),
+            itemCount: (firstWeekday - 1) + totalDays,
+            itemBuilder: (context, index) {
+              if (index < firstWeekday - 1) {
+                return const SizedBox.shrink();
+              }
+              final day = index - (firstWeekday - 1) + 1;
+              final currentDay = CivilDay(year: year, month: month, day: day);
+
+              final isToday = currentDay == simulatedToday;
+              final isCompleted = completedDays.contains(currentDay);
+              final isMissed = missedDays.contains(currentDay);
+              final isSkipped = skippedDays.contains(currentDay);
+              final isScheduled = scheduledDays.contains(currentDay);
+
+              Color? bgColor;
+              BoxBorder? border;
+              TextStyle textStyle =
+                  theme.textTheme.bodyMedium ?? const TextStyle();
+
+              if (isToday) {
+                border = Border.all(color: theme.colorScheme.primary, width: 2);
+                textStyle = textStyle.copyWith(fontWeight: FontWeight.bold);
+              }
+
+              if (isCompleted) {
+                bgColor = Colors.green[600];
+                textStyle = textStyle.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                );
+              } else if (isMissed) {
+                bgColor = Colors.red[600];
+                textStyle = textStyle.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                );
+              } else if (isSkipped) {
+                bgColor = Colors.grey[400];
+                textStyle = textStyle.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                );
+              }
+
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      border: border,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(child: Text('$day', style: textStyle)),
+                  ),
+                  if (isScheduled && !isCompleted && !isMissed && !isSkipped)
+                    Positioned(
+                      bottom: 2,
+                      child: Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.6),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
