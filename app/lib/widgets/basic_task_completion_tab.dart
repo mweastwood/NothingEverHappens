@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
@@ -179,13 +179,18 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
   }
 }
 
+class DummyFirebaseFirestore implements FirebaseFirestore {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class FakeTaskRepository extends TaskRepository {
   final void Function(String) onComplete;
   final void Function(String) onDelete;
 
   FakeTaskRepository({required this.onComplete, required this.onDelete})
     : super(
-        firestore: FakeFirebaseFirestore(),
+        firestore: DummyFirebaseFirestore(),
         userId: 'practice_user',
         notificationService: null,
       );
