@@ -241,7 +241,7 @@ class _MissedPoliciesPlaygroundTabState
           "$todayStr: Completed task instance scheduled for $scheduledStr.",
         );
       } else {
-        final nextDate;
+        final CivilDay nextDate;
         String logMsg = "";
 
         if (_selectedPolicy == MissedPolicy.rollover) {
@@ -294,7 +294,7 @@ class _MissedPoliciesPlaygroundTabState
           "$todayStr: Dismissed task instance scheduled for $scheduledStr.",
         );
       } else {
-        final nextDate;
+        final CivilDay nextDate;
         if (_selectedPolicy == MissedPolicy.rollover) {
           nextDate = scheduledDate.addDays(1);
         } else {
@@ -730,7 +730,7 @@ class SimulationMonthGrid extends StatelessWidget {
       width: 280,
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: Border.all(color: theme.dividerColor),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -841,7 +841,9 @@ class SimulationMonthGrid extends StatelessWidget {
                         width: 4,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.6),
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.6,
+                          ),
                           shape: BoxShape.circle,
                         ),
                       ),
