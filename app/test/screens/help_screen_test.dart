@@ -11,9 +11,18 @@ import 'package:nothing_ever_happens/widgets/monthly_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/yearly_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../test_helper.dart';
 
 void main() {
+  setUp(() {
+    AppClock.setMockTime(DateTime(2026, 6, 5));
+  });
+
+  tearDown(() {
+    AppClock.reset();
+  });
+
   Widget buildTestWidget(Widget child) {
     return buildTestableWidget(child: child);
   }
@@ -300,7 +309,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final now = DateTime.now();
+        final now = AppClock.now;
         final todayKey = Key('day_${now.year}_${now.month}_${now.day}');
 
         // Initially, start and due date are both today (single-day range).

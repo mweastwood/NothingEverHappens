@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
+import '../logic/app_clock.dart';
 import '../logic/l10n_extension.dart';
 import 'one_off_scheduling_widget.dart';
 import 'daily_scheduling_widget.dart';
@@ -45,7 +46,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
+    final now = AppClock.now;
     _startDate = DateTime(now.year, now.month, now.day);
     _dueDateTimeController = ValueNotifier<DateTime>(
       _startDate.add(const Duration(hours: 17)),
