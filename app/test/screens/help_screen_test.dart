@@ -4,6 +4,7 @@ import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/screens/help_screen.dart';
 import 'package:nothing_ever_happens/widgets/basic_task_completion_tab.dart';
 import 'package:nothing_ever_happens/widgets/scheduling_playground_tab.dart';
+import 'package:nothing_ever_happens/widgets/missed_policies_playground_tab.dart';
 import 'package:nothing_ever_happens/widgets/one_off_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/daily_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/weekly_scheduling_widget.dart';
@@ -540,21 +541,178 @@ void main() {
     });
   });
 
+  group('MissedPoliciesPlaygroundTab Standalone Tests', () {
+    testWidgets('renders initial simulator state correctly', (
+      WidgetTester tester,
+    ) async {
+      setLargeScreenSize(tester);
+      await tester.pumpWidget(
+        buildTestWidget(const MissedPoliciesPlaygroundTab()),
+      );
+      await tester.pumpAndSettle();
+
+      // Check intro text
+      expect(find.textContaining('Missed Occurrence Policies'), findsOneWidget);
+
+      // Check policy options
+      expect(find.text('Rollover'), findsOneWidget);
+      expect(find.text('Skip'), findsOneWidget);
+      expect(find.text('Shift Schedule'), findsOneWidget);
+      expect(find.text('Stack/Overlap'), findsOneWidget);
+
+      // Check Simulated Today starts at June 1
+      expect(find.text('Simulated Today: June 1'), findsOneWidget);
+
+      // Verify the task card is rendered
+      expect(find.text('Water the Houseplants'), findsOneWidget);
+      expect(find.text('Scheduled: June 1'), findsOneWidget);
+    });
+
+    testWidgets('rollover policy: advance and complete shifts correctly', (
+      WidgetTester tester,
+    ) async {
+      setLargeScreenSize(tester);
+      await tester.pumpWidget(
+        buildTestWidget(const MissedPoliciesPlaygroundTab()),
+      );
+      await tester.pumpAndSettle();
+
+      // Advance 1 day (should make June 1 task overdue on June 2)
+      await tester.tap(find.text('Advance 1 Day'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Simulated Today: June 2'), findsOneWidget);
+      expect(find.text('Scheduled: June 1 (Overdue)'), findsOneWidget);
+
+      // Complete the task by tapping the check button
+      await tester.ensureVisible(find.byType(FunCheckButton).first);
+      await tester.tap(find.byType(FunCheckButton).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pumpAndSettle();
+
+      // In Rollover, it reschedules to June 2 (which is today/June 2, so it's active)
+      expect(find.text('Scheduled: June 2'), findsOneWidget);
+    });
+
+    testWidgets('skip policy: auto-skips overdue tasks', (
+      WidgetTester tester,
+    ) async {
+      setLargeScreenSize(tester);
+      await tester.pumpWidget(
+        buildTestWidget(const MissedPoliciesPlaygroundTab()),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to Skip
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Simulated Today: June 1'), findsOneWidget);
+
+      // Advance 1 Day
+      await tester.tap(find.text('Advance 1 Day'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Simulated Today: June 2'), findsOneWidget);
+      // Under Skip, the June 1 task is auto-skipped, so the only active task should be scheduled for June 2 (active)
+      expect(find.text('Scheduled: June 2'), findsOneWidget);
+      expect(find.textContaining('(Overdue)'), findsNothing);
+    });
+
+    testWidgets('shift policy: reschedules relative to completion date', (
+      WidgetTester tester,
+    ) async {
+      setLargeScreenSize(tester);
+      await tester.pumpWidget(
+        buildTestWidget(const MissedPoliciesPlaygroundTab()),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to Shift
+      await tester.tap(find.text('Shift Schedule'));
+      await tester.pumpAndSettle();
+
+      // Advance 1 day (June 2)
+      await tester.tap(find.text('Advance 1 Day'));
+      await tester.pumpAndSettle();
+
+      // Complete task
+      await tester.ensureVisible(find.byType(FunCheckButton).first);
+      await tester.tap(find.byType(FunCheckButton).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pumpAndSettle();
+
+      // In Shift, completed on June 2 -> reschedules to June 3 (active)
+      expect(find.text('Scheduled: June 3'), findsOneWidget);
+    });
+
+    testWidgets('stack policy: spawns concurrent instances', (
+      WidgetTester tester,
+    ) async {
+      setLargeScreenSize(tester);
+      await tester.pumpWidget(
+        buildTestWidget(const MissedPoliciesPlaygroundTab()),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to Stack
+      await tester.tap(find.text('Stack/Overlap'));
+      await tester.pumpAndSettle();
+
+      // Advance 1 day (June 2) -> should spawn a task for June 2, keeping June 1 overdue
+      await tester.tap(find.text('Advance 1 Day'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Simulated Today: June 2'), findsOneWidget);
+      expect(find.text('Scheduled: June 1 (Overdue)'), findsOneWidget);
+      expect(find.text('Scheduled: June 2'), findsOneWidget);
+
+      // Complete the June 1 task
+      await tester.ensureVisible(find.byType(FunCheckButton).first);
+      await tester.tap(find.byType(FunCheckButton).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pumpAndSettle();
+
+      // Verify June 1 task is removed, leaving only June 2
+      expect(find.text('Scheduled: June 1 (Overdue)'), findsNothing);
+      expect(find.text('Scheduled: June 2'), findsOneWidget);
+    });
+
+    testGoldens('MissedPoliciesPlaygroundTab renders correctly', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidgetBuilder(
+        const MissedPoliciesPlaygroundTab(),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(600, 1100),
+      );
+      await screenMatchesGolden(
+        tester,
+        'missed_policies_playground_tab_golden',
+      );
+    });
+  });
+
   group('HelpScreen Integration Tests', () {
     testWidgets(
-      'renders BasicTaskCompletionTab and supports switching to SchedulingPlaygroundTab',
+      'renders BasicTaskCompletionTab and supports switching to SchedulingPlaygroundTab and MissedPoliciesPlaygroundTab',
       (WidgetTester tester) async {
         setLargeScreenSize(tester);
         await tester.pumpWidget(buildTestWidget(const HelpScreen()));
         await tester.pumpAndSettle();
 
-        // Verify both tabs are visible in TabBar
+        // Verify tabs are visible in TabBar
         expect(find.text('Basic Task Completion'), findsOneWidget);
         expect(find.text('Task Scheduling'), findsOneWidget);
+        expect(find.text('Missed Policies'), findsOneWidget);
 
         // Initially renders BasicTaskCompletionTab
         expect(find.byType(BasicTaskCompletionTab), findsOneWidget);
         expect(find.byType(SchedulingPlaygroundTab), findsNothing);
+        expect(find.byType(MissedPoliciesPlaygroundTab), findsNothing);
 
         // Tap on "Task Scheduling" tab
         await tester.tap(find.text('Task Scheduling'));
@@ -562,6 +720,16 @@ void main() {
 
         // Verify it switches to SchedulingPlaygroundTab
         expect(find.byType(SchedulingPlaygroundTab), findsOneWidget);
+        expect(find.byType(BasicTaskCompletionTab), findsNothing);
+        expect(find.byType(MissedPoliciesPlaygroundTab), findsNothing);
+
+        // Tap on "Missed Policies" tab
+        await tester.tap(find.text('Missed Policies'));
+        await tester.pumpAndSettle();
+
+        // Verify it switches to MissedPoliciesPlaygroundTab
+        expect(find.byType(MissedPoliciesPlaygroundTab), findsOneWidget);
+        expect(find.byType(SchedulingPlaygroundTab), findsNothing);
         expect(find.byType(BasicTaskCompletionTab), findsNothing);
       },
     );
@@ -592,5 +760,22 @@ void main() {
 
       await screenMatchesGolden(tester, 'help_screen_task_scheduling');
     });
+
+    testGoldens(
+      'HelpScreen renders correctly with missed policies tab selected',
+      (WidgetTester tester) async {
+        await tester.pumpWidgetBuilder(
+          const HelpScreen(),
+          wrapper: l10nMaterialAppWrapper(),
+          surfaceSize: const Size(600, 1100),
+        );
+
+        // Tap on Missed Policies tab
+        await tester.tap(find.text('Missed Policies'));
+        await tester.pumpAndSettle();
+
+        await screenMatchesGolden(tester, 'help_screen_missed_policies');
+      },
+    );
   });
 }

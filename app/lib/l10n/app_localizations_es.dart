@@ -681,4 +681,46 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get monthDecember => 'Diciembre';
+
+  @override
+  String get helpTabMissedPolicies => 'Políticas de Omisión';
+
+  @override
+  String get missedPoliciesIntro =>
+      '### Políticas de Ocurrencias Perdidas\n\nCuando una tarea recurrente no se completa a su hora de vencimiento, la aplicación aplica una **Política de Ocurrencias Perdidas** para manejar la instancia vencida.\n\nUsa el simulador de abajo para ver cómo cada política maneja las tareas vencidas a lo largo del tiempo.';
+
+  @override
+  String get rolloverSimTip =>
+      '### Política de Rollover\n\n**Comportamiento:** La tarea permanece activa y se desplaza al día de hoy, manteniéndose vencida. Si se completa tarde, se vuelve a programar para el siguiente día de ocurrencia *basado en la fecha original de programación* (no hoy).\n\n**Prueba esto:**\n1. Toca **Avanzar 1 Día** una o dos veces para dejar que la tarea se venza.\n2. Toca la casilla para completarla.\n3. Observa que se reprograma para el siguiente día consecutivo (¡que aún puede estar vencido si tienes varios días de retraso!).';
+
+  @override
+  String get skipSimTip =>
+      '### Política de Skip (Omitir)\n\n**Comportamiento:** Las tareas vencidas se descartan/omiten automáticamente. No necesitas completarlas ni descartarlas manualmente. El sistema registra una entrada \'omitida\' en el historial y avanza al siguiente vencimiento.\n\n**Prueba esto:**\n1. Toca **Avanzar 1 Día**.\n2. Revisa los registros del historial a continuación: la tarea se omitió automáticamente y el calendario avanzó. ¡Nunca verás acumularse tareas vencidas!';
+
+  @override
+  String get shiftSimTip =>
+      '### Política de Shift (Desplazar)\n\n**Comportamiento:** La siguiente ocurrencia se calcula en relación con el momento en que *realmente completaste* la tarea tarde, desplazando las fechas futuras. A diferencia del Rollover, no te obliga a \'ponerte al día\' con los días perdidos.\n\n**Prueba esto:**\n1. Toca **Avanzar 1 Día** dos veces para que la tarea esté vencida.\n2. Toca la casilla para completar la tarea activa.\n3. Observa que la siguiente ocurrencia programada se desplaza hacia adelante en relación con hoy, en lugar de apegarse a la secuencia original.';
+
+  @override
+  String get stackSimTip =>
+      '### Política de Stack (Acumular)\n\n**Comportamiento:** Las ocurrencias perdidas permanecen activas y generan una instancia de tarea separada para cada día, dejando que se acumulen múltiples instancias. Todas aparecen en tu lista de tareas al mismo tiempo hasta que se completen o descarten.\n\n**Prueba esto:**\n1. Toca **Avanzar 1 Día** 3 veces.\n2. Observa que aparecen 3 tareas independientes en tu lista (una por cada día perdido).\n3. Complétalas o descártacas individualmente para limpiar la acumulación.';
+
+  @override
+  String get advanceDayButton => 'Avanzar 1 Día';
+
+  @override
+  String get resetSimButton => 'Reiniciar Simulación';
+
+  @override
+  String simulatedTodayLabel(String date) {
+    return 'Hoy Simulado: $date';
+  }
+
+  @override
+  String activeTasksHeader(int count) {
+    return 'Tareas Simuladas ($count)';
+  }
+
+  @override
+  String get historyLogHeader => 'Historial de Simulación';
 }

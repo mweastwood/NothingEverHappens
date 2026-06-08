@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../logic/l10n_extension.dart';
 import '../widgets/basic_task_completion_tab.dart';
 import '../widgets/scheduling_playground_tab.dart';
+import '../widgets/missed_policies_playground_tab.dart';
 
 class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});
@@ -21,7 +22,7 @@ class _HelpScreenState extends State<HelpScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_handleTabChange);
   }
 
@@ -50,6 +51,7 @@ class _HelpScreenState extends State<HelpScreen>
           tabs: [
             Tab(text: context.l10n.helpTabInteractions),
             Tab(text: context.l10n.helpTabScheduling),
+            Tab(text: context.l10n.helpTabMissedPolicies),
           ],
         ),
       ),
@@ -61,6 +63,9 @@ class _HelpScreenState extends State<HelpScreen>
           ),
           const SchedulingPlaygroundTab(
             key: ValueKey('scheduling_playground_tab'),
+          ),
+          MissedPoliciesPlaygroundTab(
+            key: ValueKey('missed_policies_tab_$_resetCounter'),
           ),
         ],
       ),

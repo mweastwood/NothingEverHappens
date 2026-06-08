@@ -1303,6 +1303,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'December'**
   String get monthDecember;
+
+  /// No description provided for @helpTabMissedPolicies.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed Policies'**
+  String get helpTabMissedPolicies;
+
+  /// No description provided for @missedPoliciesIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'### Missed Occurrence Policies\n\nWhen a recurring task is not completed by its due time, the app applies a **Missed Occurrence Policy** to handle the overdue instance.\n\nUse the simulator below to see how each policy handles overdue tasks over time.'**
+  String get missedPoliciesIntro;
+
+  /// No description provided for @rolloverSimTip.
+  ///
+  /// In en, this message translates to:
+  /// **'### Rollover Policy\n\n**Behavior:** The task remains active and rolls forward to today, staying overdue. If completed late, it reschedules to the next occurrence day *based on the original schedule date* (not today).\n\n**Try this:**\n1. Tap **Advance 1 Day** once or twice to let the task go overdue.\n2. Tap the checkbox to complete it.\n3. Notice that it reschedules to the next consecutive day (which may still be overdue if you are multiple days behind!).'**
+  String get rolloverSimTip;
+
+  /// No description provided for @skipSimTip.
+  ///
+  /// In en, this message translates to:
+  /// **'### Skip Policy\n\n**Behavior:** Overdue tasks are automatically dropped/skipped. You don\'t need to complete or dismiss them manually. The system records a \'skipped\' entry in history and moves the schedule to the next upcoming occurrence.\n\n**Try this:**\n1. Tap **Advance 1 Day**.\n2. Look at the history logs below — the task was automatically skipped, and the schedule advanced. You never see overdue tasks piling up!'**
+  String get skipSimTip;
+
+  /// No description provided for @shiftSimTip.
+  ///
+  /// In en, this message translates to:
+  /// **'### Shift Policy\n\n**Behavior:** Next occurrence is calculated relative to when you *actually completed* the task late, pushing out future dates. Unlike Rollover, it does not make you \'catch up\' on missed days.\n\n**Try this:**\n1. Tap **Advance 1 Day** twice so the task is overdue.\n2. Tap the checkbox to complete the active task.\n3. Notice the next scheduled occurrence shifts forward relative to today, rather than sticking to the original sequence.'**
+  String get shiftSimTip;
+
+  /// No description provided for @stackSimTip.
+  ///
+  /// In en, this message translates to:
+  /// **'### Stack Policy\n\n**Behavior:** Missed occurrences remain active and spawn a separate task instance for each day, letting multiple instances stack up. They all appear on your task list concurrently until completed or dismissed.\n\n**Try this:**\n1. Tap **Advance 1 Day** 3 times.\n2. Notice that 3 separate tasks appear on your list (one for each missed day).\n3. Complete or dismiss them individually to clear the backlog.'**
+  String get stackSimTip;
+
+  /// No description provided for @advanceDayButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Advance 1 Day'**
+  String get advanceDayButton;
+
+  /// No description provided for @resetSimButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Simulation'**
+  String get resetSimButton;
+
+  /// No description provided for @simulatedTodayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulated Today: {date}'**
+  String simulatedTodayLabel(String date);
+
+  /// No description provided for @activeTasksHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulated Tasks ({count})'**
+  String activeTasksHeader(int count);
+
+  /// No description provided for @historyLogHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulation History Log'**
+  String get historyLogHeader;
 }
 
 class _AppLocalizationsDelegate
