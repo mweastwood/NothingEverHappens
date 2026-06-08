@@ -381,16 +381,19 @@ class _MissedPoliciesPlaygroundTabState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Dynamic Explanation Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      MarkdownBody(data: l10n.missedPoliciesIntro),
-                      const Divider(height: 24),
-                      MarkdownBody(data: _getTipText()),
-                    ],
+              SizedBox(
+                width: double.infinity,
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        MarkdownBody(data: l10n.missedPoliciesIntro),
+                        const Divider(height: 24),
+                        MarkdownBody(data: _getTipText()),
+                      ],
+                    ),
                   ),
                 ),
               ),
