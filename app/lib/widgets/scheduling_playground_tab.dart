@@ -392,11 +392,14 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Instructions
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: MarkdownBody(
-                  data: context.l10n.schedulingPlaygroundHelpContent,
+            SizedBox(
+              width: double.infinity,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: MarkdownBody(
+                    data: context.l10n.schedulingPlaygroundHelpContent,
+                  ),
                 ),
               ),
             ),

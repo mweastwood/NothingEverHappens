@@ -108,10 +108,13 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Explanatory Card (Basic Mat Card)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: MarkdownBody(data: context.l10n.practiceHelpContent),
+              SizedBox(
+                width: double.infinity,
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: MarkdownBody(data: context.l10n.practiceHelpContent),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
