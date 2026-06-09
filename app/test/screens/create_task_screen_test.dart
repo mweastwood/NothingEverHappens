@@ -691,5 +691,60 @@ void main() {
       );
       expect(saveButton.onPressed, isNotNull);
     });
+
+    testWidgets(
+      'configures and saves One-off task with custom notification successfully',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': '',
+          'familyRole': '',
+        });
+
+        when(mockTaskRepository.addTask(any)).thenAnswer((_) => Future.value());
+
+        await tester.pumpWidget(createWidget());
+        await tester.pump();
+
+        // Enter title
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Title'),
+          'Oneoff task notification',
+        );
+
+        // Verify custom notification selector is visible and click it
+        final reminderBtnFinder = find.byKey(
+          const Key('one_off_notification_button'),
+        );
+        expect(reminderBtnFinder, findsOneWidget);
+        expect(find.text('None'), findsOneWidget);
+
+        await tester.ensureVisible(reminderBtnFinder);
+        await tester.tap(reminderBtnFinder);
+        await tester.pumpAndSettle();
+
+        // Tap OK on the time picker dialog to select the default/initial time
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        // Check if button text updated to show the time
+        expect(find.text('None'), findsNothing);
+
+        // Save the task
+        await tester.tap(find.byKey(const Key('save_task_button')));
+        await tester.pumpAndSettle();
+
+        // Verify the task added has a notification time scheduled in dailyTimes
+        final captured =
+            verify(mockTaskRepository.addTask(captureAny)).captured.single
+                as Task;
+        expect(captured.dailyTimes, isNotEmpty);
+        expect(captured.dailyTimes.first.notificationTime, isNotNull);
+      },
+    );
   });
 }

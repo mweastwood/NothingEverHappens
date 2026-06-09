@@ -29,6 +29,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
   late DateTime _startDate;
   late ValueNotifier<DateTime> _dueDateTimeController;
   late ValueNotifier<DateTime> _startDateTimeController;
+  late ValueNotifier<TimeOfDay?> _oneOffNotificationController;
   late ValueNotifier<List<DailyOccurrenceTime>> _dailyTimesController;
   late TextEditingController _intervalController;
   late Set<int> _selectedWeekdays;
@@ -56,6 +57,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
     _startDateTimeController = ValueNotifier<DateTime>(
       _startDate.add(const Duration(hours: 9)),
     );
+    _oneOffNotificationController = ValueNotifier<TimeOfDay?>(null);
     _dailyTimesController = ValueNotifier<List<DailyOccurrenceTime>>([
       DailyOccurrenceTime(
         startTime: const TimeOfDay(hour: 9, minute: 0),
@@ -75,6 +77,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
     _dueDateTimeController.addListener(_recalculate);
     _startDateTimeController.addListener(_recalculate);
     _dailyTimesController.addListener(_recalculate);
+    _oneOffNotificationController.addListener(_recalculate);
     _intervalController.addListener(_recalculate);
     _monthlyRuleTypeController.addListener(_recalculate);
     _monthlyDayOfMonthController.addListener(_recalculate);
@@ -92,6 +95,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
   void dispose() {
     _dueDateTimeController.removeListener(_recalculate);
     _startDateTimeController.removeListener(_recalculate);
+    _oneOffNotificationController.removeListener(_recalculate);
     _dailyTimesController.removeListener(_recalculate);
     _intervalController.removeListener(_recalculate);
     _monthlyRuleTypeController.removeListener(_recalculate);
@@ -103,6 +107,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
 
     _dueDateTimeController.dispose();
     _startDateTimeController.dispose();
+    _oneOffNotificationController.dispose();
     _dailyTimesController.dispose();
     _intervalController.dispose();
     _monthlyDayOfMonthController.dispose();
@@ -440,6 +445,8 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                         OneOffSchedulingWidget(
                           dueDateTime: _dueDateTimeController,
                           startDateTime: _startDateTimeController,
+                          notificationTimeController:
+                              _oneOffNotificationController,
                         )
                       else if (_scheduleType == RecurrenceType.daily)
                         DailySchedulingWidget(

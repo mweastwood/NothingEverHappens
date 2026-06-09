@@ -6,10 +6,13 @@ class OneOffSchedulingWidget extends StatefulWidget {
   final ValueNotifier<DateTime> dueDateTime;
   final ValueNotifier<DateTime> startDateTime;
 
+  final ValueNotifier<TimeOfDay?>? notificationTimeController;
+
   const OneOffSchedulingWidget({
     super.key,
     required this.dueDateTime,
     required this.startDateTime,
+    this.notificationTimeController,
   });
 
   @override
@@ -99,6 +102,79 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
             ),
           ],
         ),
+        if (widget.notificationTimeController != null) ...[
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+          Text(
+            context.l10n.notificationTimeLabel,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          ValueListenableBuilder<TimeOfDay?>(
+            valueListenable: widget.notificationTimeController!,
+            builder: (context, notificationTime, _) {
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      notificationTime != null
+                          ? 'Reminder scheduled at ${notificationTime.format(context)}'
+                          : 'No reminder scheduled',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: notificationTime != null
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (notificationTime != null) ...[
+                    OutlinedButton.icon(
+                      key: const Key('one_off_notification_button'),
+                      onPressed: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: notificationTime,
+                        );
+                        if (picked != null) {
+                          widget.notificationTimeController!.value = picked;
+                        }
+                      },
+                      icon: const Icon(Icons.notifications_active),
+                      label: Text(notificationTime.format(context)),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      key: const Key('one_off_notification_clear'),
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        widget.notificationTimeController!.value = null;
+                      },
+                      tooltip: context.l10n.clearNotificationTimeTooltip,
+                    ),
+                  ] else
+                    OutlinedButton.icon(
+                      key: const Key('one_off_notification_button'),
+                      onPressed: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.fromDateTime(
+                            widget.dueDateTime.value,
+                          ),
+                        );
+                        if (picked != null) {
+                          widget.notificationTimeController!.value = picked;
+                        }
+                      },
+                      icon: const Icon(Icons.notifications_none),
+                      label: Text(context.l10n.noneLabel),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ],
     );
   }
