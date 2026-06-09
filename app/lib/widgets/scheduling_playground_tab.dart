@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'recurrence_type_selector.dart';
-import 'month_grid.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
 import '../logic/app_clock.dart';
@@ -11,6 +9,9 @@ import 'daily_scheduling_widget.dart';
 import 'weekly_scheduling_widget.dart';
 import 'monthly_scheduling_widget.dart';
 import 'yearly_scheduling_widget.dart';
+import 'recurrence_type_selector.dart';
+import 'month_grid.dart';
+import 'upcoming_occurrences_preview.dart';
 
 class SchedulingPlaygroundTab extends StatefulWidget {
   const SchedulingPlaygroundTab({super.key});
@@ -45,6 +46,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
   Set<CivilDay> _dueDays = {};
   Set<CivilDay> _rangeDays = {};
   String? _validationError;
+  TaskSchedule? _schedule;
 
   @override
   void initState() {
@@ -314,59 +316,12 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
         _startDays = startDays;
         _dueDays = dueDays;
         _rangeDays = rangeDays;
+        _schedule = schedule;
       } catch (e) {
         _validationError = context.l10n.calculationError(e.toString());
+        _schedule = null;
       }
     });
-  }
-
-  List<String> _getMonthNames(BuildContext context) {
-    final l10n = context.l10n;
-    return [
-      l10n.monthJanuary,
-      l10n.monthFebruary,
-      l10n.monthMarch,
-      l10n.monthApril,
-      l10n.monthMay,
-      l10n.monthJune,
-      l10n.monthJuly,
-      l10n.monthAugust,
-      l10n.monthSeptember,
-      l10n.monthOctober,
-      l10n.monthNovember,
-      l10n.monthDecember,
-    ];
-  }
-
-  List<String> _getWeekdayNames(BuildContext context) {
-    final l10n = context.l10n;
-    return [
-      l10n.weekdayMonday,
-      l10n.weekdayTuesday,
-      l10n.weekdayWednesday,
-      l10n.weekdayThursday,
-      l10n.weekdayFriday,
-      l10n.weekdaySaturday,
-      l10n.weekdaySunday,
-    ];
-  }
-
-  String _formatCivilDay(BuildContext context, CivilDay day) {
-    final dt = day.toDateTime();
-    final weekdayStr = _getWeekdayNames(context)[dt.weekday - 1];
-    final monthStr = _getMonthNames(context)[day.month - 1];
-    return '$weekdayStr, $monthStr ${day.day}, ${day.year}';
-  }
-
-  DateTime _combineDayAndTime(CivilDay day, TimeOfDay time) {
-    return DateTime(day.year, day.month, day.day, time.hour, time.minute);
-  }
-
-  String _formatDateTime(BuildContext context, DateTime dt) {
-    final weekdayStr = _getWeekdayNames(context)[dt.weekday - 1];
-    final monthStr = _getMonthNames(context)[dt.month - 1];
-    final timeStr = TimeOfDay.fromDateTime(dt).format(context);
-    return '$weekdayStr, $monthStr ${dt.day}, ${dt.year} $timeStr';
   }
 
   @override
@@ -428,7 +383,6 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // Segmented Button
                       RecurrenceTypeSelector(
                         selectedValue: _scheduleType,
                         onSelected: (newType) {
@@ -595,172 +549,14 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
               ),
               const SizedBox(height: 24),
 
-              // Occurrences Title
-              Text(
-                context.l10n.occurrencesHeader,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              UpcomingOccurrencesPreview(
+                schedule: _schedule,
+                dailyTimes: _dailyTimesController.value,
+                startDateTime: _startDateTimeController.value,
+                dueDateTime: _dueDateTimeController.value,
+                scheduleType: _scheduleType,
+                maxOccurrences: 10,
               ),
-              const SizedBox(height: 8),
-
-              if (_occurrences.isEmpty)
-                Text(
-                  context.l10n.noOccurrencesPlaceholder,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontStyle: FontStyle.italic,
-                  ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _occurrences.length,
-                  itemBuilder: (context, index) {
-                    final occurrence = _occurrences[index];
-
-                    Widget detailsWidget;
-                    if (_scheduleType == RecurrenceType.oneOff) {
-                      final startDt = _startDateTimeController.value;
-                      final dueDt = _dueDateTimeController.value;
-                      detailsWidget = Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.visibility,
-                                size: 14,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  context.l10n.occurrenceAppears(
-                                    _formatDateTime(context, startDt),
-                                  ),
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.alarm,
-                                size: 14,
-                                color: theme.colorScheme.error,
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  context.l10n.occurrenceDue(
-                                    _formatDateTime(context, dueDt),
-                                  ),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      );
-                    } else {
-                      final slots = _dailyTimesController.value;
-                      if (slots.isEmpty) {
-                        detailsWidget = const SizedBox.shrink();
-                      } else {
-                        detailsWidget = Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 6),
-                            for (final slot in slots) ...[
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.visibility,
-                                    size: 14,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      context.l10n.occurrenceAppears(
-                                        _formatDateTime(
-                                          context,
-                                          _combineDayAndTime(
-                                            occurrence,
-                                            slot.startTime,
-                                          ),
-                                        ),
-                                      ),
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.alarm,
-                                    size: 14,
-                                    color: theme.colorScheme.error,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      context.l10n.occurrenceDue(
-                                        _formatDateTime(
-                                          context,
-                                          _combineDayAndTime(
-                                            occurrence,
-                                            slot.dueTime,
-                                          ),
-                                        ),
-                                      ),
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (slot != slots.last) const Divider(height: 12),
-                            ],
-                          ],
-                        );
-                      }
-                    }
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8.0),
-                      elevation: 1,
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: theme.colorScheme.primaryContainer,
-                          child: Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              color: theme.colorScheme.onPrimaryContainer,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        title: Text(
-                          _formatCivilDay(context, occurrence),
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        subtitle: detailsWidget,
-                      ),
-                    );
-                  },
-                ),
             ],
           ],
         ),
