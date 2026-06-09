@@ -71,6 +71,38 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 1
 fi
 
+# Determine the git remote (default to origin if exists, otherwise first available remote)
+REMOTE="origin"
+if ! git remote | grep -q "^$REMOTE$"; then
+  REMOTE=$(git remote | head -n 1)
+fi
+
+# Fetch the latest main branch and update local main if a remote exists
+if [ -n "$REMOTE" ]; then
+  CURRENT_BRANCH=$(git branch --show-current)
+  if [ "$CURRENT_BRANCH" = "main" ]; then
+    echo "Fetching and merging latest main from $REMOTE..."
+    git fetch "$REMOTE" main
+    if ! git merge --ff-only FETCH_HEAD; then
+      echo "Error: Local 'main' has diverged from '$REMOTE/main' and cannot be fast-forwarded." >&2
+      echo "Please resolve this manually before running the script." >&2
+      exit 1
+    fi
+  else
+    echo "Fetching latest main from $REMOTE..."
+    if git show-ref --verify --quiet refs/heads/main; then
+      if ! git fetch "$REMOTE" main:main; then
+        echo "Error: Local 'main' has diverged from '$REMOTE/main' and cannot be fast-forwarded." >&2
+        echo "Please check out 'main' and resolve the differences." >&2
+        exit 1
+      fi
+    else
+      # Local main branch doesn't exist yet, fetch it directly
+      git fetch "$REMOTE" main:main
+    fi
+  fi
+fi
+
 # Get the last version tag on main branch matching v*
 LAST_TAG=$(git describe --tags --match "v*" --abbrev=0 main 2>/dev/null || true)
 
@@ -123,14 +155,8 @@ if [ -z "$LATEST_MAIN_COMMIT" ]; then
   exit 1
 fi
 
-# Determine the git remote (default to origin if exists, otherwise first available remote)
-REMOTE="origin"
-if ! git remote | grep -q "^$REMOTE$"; then
-  REMOTE=$(git remote | head -n 1)
-fi
-
 if [ "$DRY_RUN" = true ]; then
-  echo "[DRY RUN] Would create tag $NEW_TAG on commit $LATEST_MAIN_COMMIT (tip of main)."
+  echo "[DRY RUN] Would create signed tag $NEW_TAG on commit $LATEST_MAIN_COMMIT (tip of main)."
   if [ -n "$REMOTE" ]; then
     echo "[DRY RUN] Would push tag $NEW_TAG to $REMOTE."
   else
@@ -140,8 +166,8 @@ else
   # Print the target commit info
   echo "Tagging commit $LATEST_MAIN_COMMIT on main..."
 
-  # Create the annotated tag
-  git tag -a "$NEW_TAG" -m "$NEW_TAG" "$LATEST_MAIN_COMMIT"
+  # Create the signed tag
+  git tag -s "$NEW_TAG" -m "$NEW_TAG" "$LATEST_MAIN_COMMIT"
 
   if [ -z "$REMOTE" ]; then
     echo "Warning: No git remote found. Skipping push of tag."
