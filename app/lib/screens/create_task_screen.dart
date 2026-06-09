@@ -598,41 +598,54 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                       },
                                     ),
                                     const SizedBox(height: 16),
-                                    DropdownButtonFormField<TaskPriority>(
-                                      key: const Key('task_priority_dropdown'),
-                                      initialValue: _priority,
-                                      decoration: InputDecoration(
-                                        labelText:
-                                            context.l10n.taskPriorityLabel,
-                                        border: const OutlineInputBorder(),
+                                    Text(
+                                      context.l10n.taskPriorityLabel,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
-                                      items: [
-                                        DropdownMenuItem(
-                                          value: TaskPriority.low,
-                                          child: Text(context.l10n.priorityLow),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: TaskPriority.medium,
-                                          child: Text(
-                                            context.l10n.priorityMedium,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      key: const Key('task_priority_dropdown'),
+                                      spacing: 8.0,
+                                      runSpacing: 8.0,
+                                      children: TaskPriority.values.map((
+                                        priority,
+                                      ) {
+                                        final String label;
+                                        switch (priority) {
+                                          case TaskPriority.low:
+                                            label = context.l10n.priorityLow;
+                                            break;
+                                          case TaskPriority.medium:
+                                            label = context.l10n.priorityMedium;
+                                            break;
+                                          case TaskPriority.high:
+                                            label = context.l10n.priorityHigh;
+                                            break;
+                                        }
+
+                                        return ChoiceChip(
+                                          key: Key(
+                                            'priority_chip_${priority.name}',
                                           ),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: TaskPriority.high,
-                                          child: Text(
-                                            context.l10n.priorityHigh,
-                                          ),
-                                        ),
-                                      ],
-                                      onChanged: readOnly
-                                          ? null
-                                          : (value) {
-                                              if (value != null) {
-                                                setState(
-                                                  () => _priority = value,
-                                                );
-                                              }
-                                            },
+                                          label: Text(label),
+                                          selected: _priority == priority,
+                                          onSelected: readOnly
+                                              ? null
+                                              : (selected) {
+                                                  if (selected) {
+                                                    setState(() {
+                                                      _priority = priority;
+                                                    });
+                                                  }
+                                                },
+                                        );
+                                      }).toList(),
                                     ),
                                     if (inFamily) ...[
                                       const SizedBox(height: 16),
@@ -770,54 +783,55 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                             ),
                                           ),
                                           const SizedBox(height: 8),
-                                          DropdownButtonFormField<MissedPolicy>(
+                                          Wrap(
                                             key: const Key(
                                               'missed_policy_dropdown',
                                             ),
-                                            isExpanded: true,
-                                            initialValue: _missedPolicy,
-                                            decoration: InputDecoration(
-                                              border:
-                                                  const OutlineInputBorder(),
-                                              helperText: context
-                                                  .l10n
-                                                  .missedPolicyHelper,
-                                            ),
-                                            items: [
-                                              DropdownMenuItem(
-                                                value: MissedPolicy.rollover,
-                                                child: Text(
-                                                  context.l10n.rolloverLabel,
+                                            spacing: 8.0,
+                                            runSpacing: 8.0,
+                                            children: MissedPolicy.values.map((
+                                              policy,
+                                            ) {
+                                              final String label;
+                                              switch (policy) {
+                                                case MissedPolicy.rollover:
+                                                  label = context
+                                                      .l10n
+                                                      .rolloverLabel;
+                                                  break;
+                                                case MissedPolicy.skip:
+                                                  label =
+                                                      context.l10n.skipLabel;
+                                                  break;
+                                                case MissedPolicy.shift:
+                                                  label =
+                                                      context.l10n.shiftLabel;
+                                                  break;
+                                                case MissedPolicy.stack:
+                                                  label =
+                                                      context.l10n.stackLabel;
+                                                  break;
+                                              }
+
+                                              return ChoiceChip(
+                                                key: Key(
+                                                  'missed_policy_chip_${policy.name}',
                                                 ),
-                                              ),
-                                              DropdownMenuItem(
-                                                value: MissedPolicy.skip,
-                                                child: Text(
-                                                  context.l10n.skipLabel,
-                                                ),
-                                              ),
-                                              DropdownMenuItem(
-                                                value: MissedPolicy.shift,
-                                                child: Text(
-                                                  context.l10n.shiftLabel,
-                                                ),
-                                              ),
-                                              DropdownMenuItem(
-                                                value: MissedPolicy.stack,
-                                                child: Text(
-                                                  context.l10n.stackLabel,
-                                                ),
-                                              ),
-                                            ],
-                                            onChanged: readOnly
-                                                ? null
-                                                : (value) {
-                                                    if (value != null) {
-                                                      setState(() {
-                                                        _missedPolicy = value;
-                                                      });
-                                                    }
-                                                  },
+                                                label: Text(label),
+                                                selected:
+                                                    _missedPolicy == policy,
+                                                onSelected: readOnly
+                                                    ? null
+                                                    : (selected) {
+                                                        if (selected) {
+                                                          setState(() {
+                                                            _missedPolicy =
+                                                                policy;
+                                                          });
+                                                        }
+                                                      },
+                                              );
+                                            }).toList(),
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
