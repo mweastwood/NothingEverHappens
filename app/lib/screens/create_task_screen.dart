@@ -78,6 +78,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _startDateTimeController = ValueNotifier(
     AppClock.now.copyWith(second: 0, millisecond: 0, microsecond: 0),
   );
+  final _oneOffNotificationController = ValueNotifier<TimeOfDay?>(null);
 
   // Schedule fields
   RecurrenceType _scheduleType = RecurrenceType.oneOff;
@@ -115,6 +116,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       if (task.schedule is OneOffSchedule) {
         _scheduleType = RecurrenceType.oneOff;
         final oneOff = task.schedule as OneOffSchedule;
+
+        if (task.dailyTimes.isNotEmpty) {
+          _oneOffNotificationController.value =
+              task.dailyTimes.first.notificationTime;
+        }
 
         final dueTime = task.dueRelativeTime.time;
         _dueDateTimeController.value = DateTime(
@@ -204,6 +210,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     _dailyTimesController.dispose();
     _dueDateTimeController.dispose();
     _startDateTimeController.dispose();
+    _oneOffNotificationController.dispose();
     _estimatedDurationController.dispose();
     _monthlyRuleTypeController.dispose();
     _monthlyDayOfMonthController.dispose();
@@ -352,6 +359,23 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             break;
         }
 
+        final dueDateTime = _dueDateTimeController.value;
+        final startDateTime = _startDateTimeController.value;
+        final oneOffNotification = _oneOffNotificationController.value;
+        final oneOffDailyTimes = oneOffNotification != null
+            ? [
+                DailyOccurrenceTime(
+                  startTime: TimeOfDay.fromDateTime(startDateTime),
+                  dueTime: TimeOfDay.fromDateTime(dueDateTime),
+                  notificationTime: oneOffNotification,
+                ),
+              ]
+            : const <DailyOccurrenceTime>[];
+
+        final savedDailyTimes = _scheduleType == RecurrenceType.oneOff
+            ? oneOffDailyTimes
+            : _dailyTimesController.value;
+
         final minutesText = _estimatedDurationController.text.trim();
         final minutes = minutesText.isNotEmpty
             ? int.tryParse(minutesText)
@@ -367,9 +391,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           startRelativeTime: startRelative,
           dueRelativeTime: dueRelative,
           schedule: schedule,
-          dailyTimes: _scheduleType == RecurrenceType.oneOff
-              ? const []
-              : _dailyTimesController.value,
+          dailyTimes: savedDailyTimes,
           activeOccurrenceIndex: 0,
           estimatedDuration: estimatedDuration,
           missedPolicy: _scheduleType == RecurrenceType.oneOff
@@ -399,9 +421,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               newStartRelativeTime: startRelative,
               newDueRelativeTime: dueRelative,
               newSchedule: schedule,
-              newDailyTimes: _scheduleType == RecurrenceType.oneOff
-                  ? const []
-                  : _dailyTimesController.value,
+              newDailyTimes: savedDailyTimes,
               newEstimatedDuration: estimatedDuration,
               userId: repository.userId,
               newMissedPolicy: _scheduleType == RecurrenceType.oneOff
@@ -706,6 +726,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                             dueDateTime: _dueDateTimeController,
                                             startDateTime:
                                                 _startDateTimeController,
+                                            notificationTimeController:
+                                                _oneOffNotificationController,
                                           )
                                         else if (_scheduleType ==
                                             RecurrenceType.daily)
