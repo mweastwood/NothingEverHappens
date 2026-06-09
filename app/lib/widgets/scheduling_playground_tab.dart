@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'recurrence_type_selector.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
 import '../logic/app_clock.dart';
@@ -422,39 +423,14 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                       ),
                       const SizedBox(height: 16),
                       // Segmented Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: SegmentedButton<RecurrenceType>(
-                          segments: [
-                            ButtonSegment<RecurrenceType>(
-                              value: RecurrenceType.oneOff,
-                              label: Text(context.l10n.oneOffLabel),
-                            ),
-                            ButtonSegment<RecurrenceType>(
-                              value: RecurrenceType.daily,
-                              label: Text(context.l10n.dailyLabel),
-                            ),
-                            ButtonSegment<RecurrenceType>(
-                              value: RecurrenceType.weekly,
-                              label: Text(context.l10n.weeklyLabel),
-                            ),
-                            ButtonSegment<RecurrenceType>(
-                              value: RecurrenceType.monthly,
-                              label: Text(context.l10n.monthlyLabel),
-                            ),
-                            ButtonSegment<RecurrenceType>(
-                              value: RecurrenceType.yearly,
-                              label: Text(context.l10n.yearlyLabel),
-                            ),
-                          ],
-                          selected: <RecurrenceType>{_scheduleType},
-                          onSelectionChanged: (newSelection) {
-                            setState(() {
-                              _scheduleType = newSelection.first;
-                              _recalculate();
-                            });
-                          },
-                        ),
+                      RecurrenceTypeSelector(
+                        selectedValue: _scheduleType,
+                        onSelected: (newType) {
+                          setState(() {
+                            _scheduleType = newType;
+                            _recalculate();
+                          });
+                        },
                       ),
                       const SizedBox(height: 24),
 

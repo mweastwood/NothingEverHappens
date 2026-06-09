@@ -16,6 +16,7 @@ import '../widgets/daily_scheduling_widget.dart';
 import '../widgets/weekly_scheduling_widget.dart';
 import '../widgets/monthly_scheduling_widget.dart';
 import '../widgets/yearly_scheduling_widget.dart';
+import '../widgets/recurrence_type_selector.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   static Duration saveTimeout = const Duration(seconds: 10);
@@ -677,60 +678,13 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 16),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child:
-                                              SegmentedButton<RecurrenceType>(
-                                                segments: [
-                                                  ButtonSegment<RecurrenceType>(
-                                                    value:
-                                                        RecurrenceType.oneOff,
-                                                    label: Text(
-                                                      context.l10n.oneOffLabel,
-                                                    ),
-                                                  ),
-                                                  ButtonSegment<RecurrenceType>(
-                                                    value: RecurrenceType.daily,
-                                                    label: Text(
-                                                      context.l10n.dailyLabel,
-                                                    ),
-                                                  ),
-                                                  ButtonSegment<RecurrenceType>(
-                                                    value:
-                                                        RecurrenceType.weekly,
-                                                    label: Text(
-                                                      context.l10n.weeklyLabel,
-                                                    ),
-                                                  ),
-                                                  ButtonSegment<RecurrenceType>(
-                                                    value:
-                                                        RecurrenceType.monthly,
-                                                    label: Text(
-                                                      context.l10n.monthlyLabel,
-                                                    ),
-                                                  ),
-                                                  ButtonSegment<RecurrenceType>(
-                                                    value:
-                                                        RecurrenceType.yearly,
-                                                    label: Text(
-                                                      context.l10n.yearlyLabel,
-                                                    ),
-                                                  ),
-                                                ],
-                                                selected: <RecurrenceType>{
-                                                  _scheduleType,
-                                                },
-                                                onSelectionChanged:
-                                                    (
-                                                      Set<RecurrenceType>
-                                                      newSelection,
-                                                    ) {
-                                                      setState(() {
-                                                        _scheduleType =
-                                                            newSelection.first;
-                                                      });
-                                                    },
-                                              ),
+                                        RecurrenceTypeSelector(
+                                          selectedValue: _scheduleType,
+                                          onSelected: (newType) {
+                                            setState(() {
+                                              _scheduleType = newType;
+                                            });
+                                          },
                                         ),
                                         const SizedBox(height: 24),
                                         if (_scheduleType ==
