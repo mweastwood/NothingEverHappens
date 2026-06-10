@@ -123,12 +123,9 @@ void main() {
     await tester.pumpWidgetBuilder(
       const CreateTaskScreen(),
       wrapper: (child) => l10nMaterialAppWrapper(
-        theme: ThemeData.light(useMaterial3: true).copyWith(
-          shadowColor: Colors.transparent,
-          textTheme: ThemeData.light(
-            useMaterial3: true,
-          ).textTheme.apply(fontFamily: 'Ahem'),
-        ),
+        theme: ThemeData.light(
+          useMaterial3: true,
+        ).copyWith(shadowColor: Colors.transparent),
         platform: TargetPlatform.android,
       )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
       surfaceSize: const Size(800, 800),
@@ -150,12 +147,9 @@ void main() {
         const CreateTaskScreen(),
         wrapper: (child) =>
             l10nMaterialAppWrapper(
-              theme: ThemeData.light(useMaterial3: true).copyWith(
-                shadowColor: Colors.transparent,
-                textTheme: ThemeData.light(
-                  useMaterial3: true,
-                ).textTheme.apply(fontFamily: 'Ahem'),
-              ),
+              theme: ThemeData.light(
+                useMaterial3: true,
+              ).copyWith(shadowColor: Colors.transparent),
               platform: TargetPlatform.android,
             )(
               MultiProvider(
@@ -200,12 +194,9 @@ void main() {
     await tester.pumpWidgetBuilder(
       const CreateTaskScreen(),
       wrapper: (child) => l10nMaterialAppWrapper(
-        theme: ThemeData.light(useMaterial3: true).copyWith(
-          shadowColor: Colors.transparent,
-          textTheme: ThemeData.light(
-            useMaterial3: true,
-          ).textTheme.apply(fontFamily: 'Ahem'),
-        ),
+        theme: ThemeData.light(
+          useMaterial3: true,
+        ).copyWith(shadowColor: Colors.transparent),
         platform: TargetPlatform.android,
       )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
       surfaceSize: const Size(800, 800),
@@ -226,12 +217,9 @@ void main() {
     await tester.pumpWidgetBuilder(
       const CreateTaskScreen(),
       wrapper: (child) => l10nMaterialAppWrapper(
-        theme: ThemeData.light(useMaterial3: true).copyWith(
-          shadowColor: Colors.transparent,
-          textTheme: ThemeData.light(
-            useMaterial3: true,
-          ).textTheme.apply(fontFamily: 'Ahem'),
-        ),
+        theme: ThemeData.light(
+          useMaterial3: true,
+        ).copyWith(shadowColor: Colors.transparent),
         platform: TargetPlatform.android,
       )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
       surfaceSize: const Size(800, 800),

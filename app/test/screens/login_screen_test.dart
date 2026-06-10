@@ -60,12 +60,9 @@ void main() {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(
-        theme: ThemeData.light(useMaterial3: true).copyWith(
-          shadowColor: Colors.transparent,
-          textTheme: ThemeData.light(
-            useMaterial3: true,
-          ).textTheme.apply(fontFamily: 'Ahem'),
-        ),
+        theme: ThemeData.light(
+          useMaterial3: true,
+        ).copyWith(shadowColor: Colors.transparent),
       ),
       surfaceSize: const Size(400, 800),
     );
@@ -98,12 +95,9 @@ void main() {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(
-        theme: ThemeData.light(useMaterial3: true).copyWith(
-          shadowColor: Colors.transparent,
-          textTheme: ThemeData.light(
-            useMaterial3: true,
-          ).textTheme.apply(fontFamily: 'Ahem'),
-        ),
+        theme: ThemeData.light(
+          useMaterial3: true,
+        ).copyWith(shadowColor: Colors.transparent),
       ),
       surfaceSize: const Size(800, 800),
     );

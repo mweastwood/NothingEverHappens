@@ -31,12 +31,9 @@ void main() {
           },
         ),
         wrapper: l10nMaterialAppWrapper(
-          theme: ThemeData.light(useMaterial3: true).copyWith(
-            shadowColor: Colors.transparent,
-            textTheme: ThemeData.light(
-              useMaterial3: true,
-            ).textTheme.apply(fontFamily: 'Ahem'),
-          ),
+          theme: ThemeData.light(
+            useMaterial3: true,
+          ).copyWith(shadowColor: Colors.transparent),
           platform: TargetPlatform.android,
         ),
         surfaceSize: const Size(800, 600),
