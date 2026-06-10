@@ -773,10 +773,10 @@ void main() {
       await tester.tap(dailySegment);
       await tester.pumpAndSettle();
 
-      // Should show 5 occurrences by default (maxOccurrences = 5 in CreateTaskScreen)
+      // Should show 10 occurrences by default (maxOccurrences = 10 in CreateTaskScreen)
       expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
-      expect(find.byKey(const Key('occurrence_card_4')), findsOneWidget);
-      expect(find.byKey(const Key('occurrence_card_5')), findsNothing);
+      expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
+      expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
 
       // Change interval to 3
       final intervalField = find.widgetWithText(TextFormField, 'Days Interval');
@@ -786,7 +786,8 @@ void main() {
 
       // Verify occurrences updated (dynamic preview rebuild)
       expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
-      expect(find.byKey(const Key('occurrence_card_4')), findsOneWidget);
+      expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
+      expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
     });
   });
 }

@@ -18,7 +18,7 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
     required this.startDateTime,
     required this.dueDateTime,
     required this.scheduleType,
-    this.maxOccurrences = 5,
+    this.maxOccurrences = 10,
   });
 
   List<CivilDay> _calculateOccurrences() {

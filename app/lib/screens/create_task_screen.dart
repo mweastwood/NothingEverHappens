@@ -1013,7 +1013,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                           dueDateTime:
                                               _dueDateTimeController.value,
                                           scheduleType: _scheduleType,
-                                          maxOccurrences: 5,
+                                          maxOccurrences: 10,
                                         ),
                                       ],
                                     ),

@@ -61,7 +61,7 @@ void main() {
       expect(find.byKey(const Key('occurrence_card_1')), findsNothing);
     });
 
-    testWidgets('renders 5 occurrences for Daily task', (tester) async {
+    testWidgets('renders 10 occurrences for Daily task', (tester) async {
       final schedule = DailySchedule(
         startDate: const CivilDay(year: 2026, month: 6, day: 8),
         interval: 2,
@@ -70,25 +70,27 @@ void main() {
       await tester.pumpWidget(
         buildTestableWidget(
           child: Scaffold(
-            body: UpcomingOccurrencesPreview(
-              schedule: schedule,
-              dailyTimes: const [
-                DailyOccurrenceTime(
-                  startTime: TimeOfDay(hour: 9, minute: 0),
-                  dueTime: TimeOfDay(hour: 17, minute: 0),
-                ),
-              ],
-              startDateTime: DateTime(2026, 6, 8, 9, 0),
-              dueDateTime: DateTime(2026, 6, 8, 17, 0),
-              scheduleType: RecurrenceType.daily,
+            body: SingleChildScrollView(
+              child: UpcomingOccurrencesPreview(
+                schedule: schedule,
+                dailyTimes: const [
+                  DailyOccurrenceTime(
+                    startTime: TimeOfDay(hour: 9, minute: 0),
+                    dueTime: TimeOfDay(hour: 17, minute: 0),
+                  ),
+                ],
+                startDateTime: DateTime(2026, 6, 8, 9, 0),
+                dueDateTime: DateTime(2026, 6, 8, 17, 0),
+                scheduleType: RecurrenceType.daily,
+              ),
             ),
           ),
         ),
       );
 
       expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
-      expect(find.byKey(const Key('occurrence_card_4')), findsOneWidget);
-      expect(find.byKey(const Key('occurrence_card_5')), findsNothing);
+      expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
+      expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
     });
 
     testGoldens('UpcomingOccurrencesPreview renders correctly', (tester) async {
