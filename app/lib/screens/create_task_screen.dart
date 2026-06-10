@@ -17,6 +17,7 @@ import '../widgets/weekly_scheduling_widget.dart';
 import '../widgets/monthly_scheduling_widget.dart';
 import '../widgets/yearly_scheduling_widget.dart';
 import '../widgets/recurrence_type_selector.dart';
+import '../widgets/upcoming_occurrences_preview.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   static Duration saveTimeout = const Duration(seconds: 10);
@@ -78,13 +79,13 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _startDateTimeController = ValueNotifier(
     AppClock.now.copyWith(second: 0, millisecond: 0, microsecond: 0),
   );
-  final _oneOffNotificationController = ValueNotifier<TimeOfDay?>(null);
 
   // Schedule fields
   RecurrenceType _scheduleType = RecurrenceType.oneOff;
   DateTime _startDate = AppClock.now; // For Daily/Weekly start date
   Set<int> _selectedWeekdays = {};
   MissedPolicy _missedPolicy = MissedPolicy.rollover;
+  final _oneOffNotificationController = ValueNotifier<TimeOfDay?>(null);
 
   bool _isSaving = false;
 
@@ -199,10 +200,104 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         _yearlyDayController.text = yearly.day.toString();
       }
     }
+
+    _intervalController.addListener(_updatePreview);
+    _monthlyDayOfMonthController.addListener(_updatePreview);
+    _yearlyDayController.addListener(_updatePreview);
+    _dueDateTimeController.addListener(_updatePreview);
+    _startDateTimeController.addListener(_updatePreview);
+    _dailyTimesController.addListener(_updatePreview);
+    _oneOffNotificationController.addListener(_updatePreview);
+    _monthlyRuleTypeController.addListener(_updatePreview);
+    _monthlyNthOccurrenceController.addListener(_updatePreview);
+    _monthlyDayOfWeekController.addListener(_updatePreview);
+    _yearlyMonthController.addListener(_updatePreview);
+  }
+
+  void _updatePreview() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  TaskSchedule? _buildSchedule() {
+    try {
+      final civilDate = CivilDay.fromDateTime(_startDate);
+      final interval = int.tryParse(_intervalController.text) ?? 1;
+      if (interval <= 0) return null;
+
+      switch (_scheduleType) {
+        case RecurrenceType.oneOff:
+          final dueDateTime = _dueDateTimeController.value;
+          final civilDue = CivilDay.fromDateTime(dueDateTime);
+          return OneOffSchedule(date: civilDue);
+
+        case RecurrenceType.daily:
+          return DailySchedule(startDate: civilDate, interval: interval);
+
+        case RecurrenceType.weekly:
+          if (_selectedWeekdays.isEmpty) return null;
+          return WeeklySchedule(
+            startDate: civilDate,
+            interval: interval,
+            daysOfWeek: Set.from(_selectedWeekdays),
+          );
+
+        case RecurrenceType.monthly:
+          if (_monthlyRuleTypeController.value == 'dayOfMonth') {
+            final dom = int.tryParse(_monthlyDayOfMonthController.text) ?? 1;
+            if (dom.abs() > 28 || dom == 0) return null;
+            return MonthlySchedule(
+              startDate: civilDate,
+              interval: interval,
+              dayOfMonth: dom,
+            );
+          } else {
+            return MonthlySchedule(
+              startDate: civilDate,
+              interval: interval,
+              dayOfWeek: _monthlyDayOfWeekController.value,
+              occurrence: _monthlyNthOccurrenceController.value,
+            );
+          }
+
+        case RecurrenceType.yearly:
+          final yMonth = _yearlyMonthController.value;
+          final yDay = int.tryParse(_yearlyDayController.text) ?? 1;
+          int maxDays = 31;
+          if (yMonth == 2) {
+            maxDays = 29;
+          } else if ([4, 6, 9, 11].contains(yMonth)) {
+            maxDays = 30;
+          }
+          if (yDay < 1 || yDay > maxDays) return null;
+
+          return YearlySchedule(
+            startDate: civilDate,
+            interval: interval,
+            month: yMonth,
+            day: yDay,
+          );
+      }
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
   void dispose() {
+    _intervalController.removeListener(_updatePreview);
+    _monthlyDayOfMonthController.removeListener(_updatePreview);
+    _yearlyDayController.removeListener(_updatePreview);
+    _dueDateTimeController.removeListener(_updatePreview);
+    _startDateTimeController.removeListener(_updatePreview);
+    _dailyTimesController.removeListener(_updatePreview);
+    _oneOffNotificationController.removeListener(_updatePreview);
+    _monthlyRuleTypeController.removeListener(_updatePreview);
+    _monthlyNthOccurrenceController.removeListener(_updatePreview);
+    _monthlyDayOfWeekController.removeListener(_updatePreview);
+    _yearlyMonthController.removeListener(_updatePreview);
+
     _titleController.dispose();
     _titleFocusNode.dispose();
     _descriptionController.dispose();
@@ -210,7 +305,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     _dailyTimesController.dispose();
     _dueDateTimeController.dispose();
     _startDateTimeController.dispose();
-    _oneOffNotificationController.dispose();
     _estimatedDurationController.dispose();
     _monthlyRuleTypeController.dispose();
     _monthlyDayOfMonthController.dispose();
@@ -218,6 +312,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     _monthlyDayOfWeekController.dispose();
     _yearlyMonthController.dispose();
     _yearlyDayController.dispose();
+    _oneOffNotificationController.dispose();
     super.dispose();
   }
 
@@ -857,6 +952,18 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
+                                            context.l10n.missedPolicyHelper,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.outline,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
                                             _getMissedPolicyDescription(
                                               context,
                                               _missedPolicy,
@@ -871,6 +978,43 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                                 ),
                                           ),
                                         ],
+                                        const Divider(height: 32),
+                                        UpcomingOccurrencesPreview(
+                                          schedule: _buildSchedule(),
+                                          dailyTimes:
+                                              _scheduleType ==
+                                                  RecurrenceType.oneOff
+                                              ? (_oneOffNotificationController
+                                                            .value !=
+                                                        null
+                                                    ? [
+                                                        DailyOccurrenceTime(
+                                                          startTime:
+                                                              TimeOfDay.fromDateTime(
+                                                                _startDateTimeController
+                                                                    .value,
+                                                              ),
+                                                          dueTime:
+                                                              TimeOfDay.fromDateTime(
+                                                                _dueDateTimeController
+                                                                    .value,
+                                                              ),
+                                                          notificationTime:
+                                                              _oneOffNotificationController
+                                                                  .value,
+                                                        ),
+                                                      ]
+                                                    : const <
+                                                        DailyOccurrenceTime
+                                                      >[])
+                                              : _dailyTimesController.value,
+                                          startDateTime:
+                                              _startDateTimeController.value,
+                                          dueDateTime:
+                                              _dueDateTimeController.value,
+                                          scheduleType: _scheduleType,
+                                          maxOccurrences: 10,
+                                        ),
                                       ],
                                     ),
                                   ),

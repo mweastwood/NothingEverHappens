@@ -746,5 +746,48 @@ void main() {
         expect(captured.dailyTimes.first.notificationTime, isNotNull);
       },
     );
+
+    testWidgets('calculates and shows upcoming occurrences dynamically', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1000, 2500);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await firestore.collection('users').doc('test-user-id').set({
+        'familyId': '',
+        'familyRole': '',
+      });
+
+      await tester.pumpWidget(createWidget());
+      await tester.pump();
+
+      // Initially one-off, should show 1 occurrence card
+      expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
+      expect(find.byKey(const Key('occurrence_card_1')), findsNothing);
+
+      // Switch to Daily schedule
+      final dailySegment = find.text('Daily');
+      await tester.ensureVisible(dailySegment);
+      await tester.tap(dailySegment);
+      await tester.pumpAndSettle();
+
+      // Should show 10 occurrences by default (maxOccurrences = 10 in CreateTaskScreen)
+      expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
+      expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
+      expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
+
+      // Change interval to 3
+      final intervalField = find.widgetWithText(TextFormField, 'Days Interval');
+      expect(intervalField, findsOneWidget);
+      await tester.enterText(intervalField, '3');
+      await tester.pumpAndSettle();
+
+      // Verify occurrences updated (dynamic preview rebuild)
+      expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
+      expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
+      expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
+    });
   });
 }
