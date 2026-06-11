@@ -91,43 +91,86 @@ class _AbsoluteTimeWidgetState extends State<AbsoluteTimeWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Use a fixed height to match RelativeTimeWidget
-    const double commonHeight = 40.0;
-
     return ValueListenableBuilder<DateTime>(
       valueListenable: _dateTimeNotifier,
       builder: (context, dateTime, child) {
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        return Row(
           children: [
-            FilledButton.tonalIcon(
-              onPressed: _pickTime,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 0,
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
-                fixedSize: const Size.fromHeight(commonHeight),
-              ),
-              icon: const Icon(Icons.access_time, size: 18),
-              label: Text(
-                TimeOfDay.fromDateTime(dateTime).format(context),
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                child: Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    title: Text(
+                      'Time',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    subtitle: Text(
+                      TimeOfDay.fromDateTime(dateTime).format(context),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.access_time,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                    onTap: _pickTime,
+                  ),
+                ),
               ),
             ),
-            OutlinedButton.icon(
-              onPressed: _pickDate,
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 0,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
-                fixedSize: const Size.fromHeight(commonHeight),
-              ),
-              icon: const Icon(Icons.calendar_today, size: 18),
-              label: Text(
-                '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}',
+                child: Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    title: Text(
+                      'Date',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.calendar_today,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                    onTap: _pickDate,
+                  ),
+                ),
               ),
             ),
           ],
