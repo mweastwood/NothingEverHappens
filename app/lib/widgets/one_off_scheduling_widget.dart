@@ -107,57 +107,8 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
                 ),
                 child: Material(
                   color: Colors.transparent,
-                  child: ListTile(
+                  child: InkWell(
                     key: const Key('one_off_notification_button'),
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
-                    minVerticalPadding: 0,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    title: Text(
-                      context.l10n.notificationTimeLabel,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    subtitle: Text(
-                      notificationTime != null
-                          ? notificationTime.format(context)
-                          : context.l10n.noneLabel,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: notificationTime != null
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (notificationTime != null) ...[
-                          IconButton(
-                            key: const Key('one_off_notification_clear'),
-                            icon: const Icon(Icons.clear, size: 20),
-                            onPressed: () {
-                              widget.notificationTimeController!.value = null;
-                            },
-                            tooltip: context.l10n.clearNotificationTimeTooltip,
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-                        Icon(
-                          notificationTime != null
-                              ? Icons.notifications_active
-                              : Icons.notifications_none,
-                          color: notificationTime != null
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                          size: 20,
-                        ),
-                      ],
-                    ),
                     onTap: () async {
                       final picked = await showTimePicker(
                         context: context,
@@ -169,6 +120,82 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
                         widget.notificationTimeController!.value = picked;
                       }
                     },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  context.l10n.notificationTimeLabel,
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                        height: 1.1,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  notificationTime != null
+                                      ? notificationTime.format(context)
+                                      : context.l10n.noneLabel,
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.2,
+                                        color: notificationTime != null
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.primary
+                                            : Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (notificationTime != null) ...[
+                                IconButton(
+                                  key: const Key('one_off_notification_clear'),
+                                  icon: const Icon(Icons.clear, size: 20),
+                                  onPressed: () {
+                                    widget.notificationTimeController!.value =
+                                        null;
+                                  },
+                                  tooltip:
+                                      context.l10n.clearNotificationTimeTooltip,
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              Icon(
+                                notificationTime != null
+                                    ? Icons.notifications_active
+                                    : Icons.notifications_none,
+                                color: notificationTime != null
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               );

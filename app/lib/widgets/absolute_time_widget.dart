@@ -106,32 +106,53 @@ class _AbsoluteTimeWidgetState extends State<AbsoluteTimeWidget> {
                 ),
                 child: Material(
                   color: Colors.transparent,
-                  child: ListTile(
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
-                    minVerticalPadding: 0,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    title: Text(
-                      'Time',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    subtitle: Text(
-                      TimeOfDay.fromDateTime(dateTime).format(context),
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    trailing: Icon(
-                      Icons.access_time,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 20,
-                    ),
+                  child: InkWell(
                     onTap: _pickTime,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Time',
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                        height: 1.1,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  TimeOfDay.fromDateTime(
+                                    dateTime,
+                                  ).format(context),
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.2,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.access_time,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -147,32 +168,51 @@ class _AbsoluteTimeWidgetState extends State<AbsoluteTimeWidget> {
                 ),
                 child: Material(
                   color: Colors.transparent,
-                  child: ListTile(
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
-                    minVerticalPadding: 0,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    title: Text(
-                      'Date',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    trailing: Icon(
-                      Icons.calendar_today,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 20,
-                    ),
+                  child: InkWell(
                     onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Date',
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                        height: 1.1,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}',
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.2,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.calendar_today,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
