@@ -110,6 +110,8 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
                   child: ListTile(
                     key: const Key('one_off_notification_button'),
                     dense: true,
+                    visualDensity: VisualDensity.compact,
+                    minVerticalPadding: 0,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 4,

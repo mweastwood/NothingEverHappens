@@ -108,6 +108,8 @@ class _AbsoluteTimeWidgetState extends State<AbsoluteTimeWidget> {
                   color: Colors.transparent,
                   child: ListTile(
                     dense: true,
+                    visualDensity: VisualDensity.compact,
+                    minVerticalPadding: 0,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 4,
@@ -147,6 +149,8 @@ class _AbsoluteTimeWidgetState extends State<AbsoluteTimeWidget> {
                   color: Colors.transparent,
                   child: ListTile(
                     dense: true,
+                    visualDensity: VisualDensity.compact,
+                    minVerticalPadding: 0,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 4,

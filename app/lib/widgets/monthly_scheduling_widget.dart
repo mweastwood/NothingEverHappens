@@ -62,6 +62,8 @@ class _MonthlySchedulingWidgetState extends State<MonthlySchedulingWidget> {
             color: Colors.transparent,
             child: ListTile(
               dense: true,
+              visualDensity: VisualDensity.compact,
+              minVerticalPadding: 0,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 4,
