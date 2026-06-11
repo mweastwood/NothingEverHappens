@@ -760,8 +760,8 @@ void main() {
       await tester.pumpWidget(createWidget());
       await tester.pump();
 
-      // Initially one-off, should show 1 occurrence card
-      expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
+      // Initially one-off, should NOT show occurrences preview
+      expect(find.byKey(const Key('occurrence_card_0')), findsNothing);
       expect(find.byKey(const Key('occurrence_card_1')), findsNothing);
 
       // Switch to Daily schedule
