@@ -606,11 +606,47 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     );
   }
 
-  Widget _buildDetailsCard(
+  Widget _buildTitleField(BuildContext context, bool readOnly) {
+    final theme = Theme.of(context);
+    return TextFormField(
+      controller: _titleController,
+      focusNode: _titleFocusNode,
+      autofocus: !readOnly,
+      enabled: !readOnly,
+      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+      decoration: InputDecoration(
+        labelText: context.l10n.titleFieldLabel,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.all(16),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return context.l10n.titleRequiredError;
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildDescriptionField(BuildContext context, bool readOnly) {
+    final theme = Theme.of(context);
+    return TextFormField(
+      controller: _descriptionController,
+      enabled: !readOnly,
+      decoration: InputDecoration(
+        labelText: context.l10n.descriptionFieldLabel,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.all(16),
+      ),
+      style: theme.textTheme.bodyMedium,
+      maxLines: 3,
+    );
+  }
+
+  Widget _buildEffortAndPriorityCard(
     BuildContext context,
     bool readOnly,
     bool isWide,
-    bool inFamily,
   ) {
     final theme = Theme.of(context);
 
@@ -645,7 +681,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           },
         ),
       ),
-      if (isWide) const SizedBox(width: 12) else const SizedBox(height: 12),
+      if (isWide) const SizedBox(width: 16) else const SizedBox(height: 16),
       Expanded(
         flex: isWide ? 3 : 0,
         child: Column(
@@ -695,47 +731,16 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           ],
         ),
       ),
-      if (inFamily) ...[
-        if (isWide) const SizedBox(width: 12) else const SizedBox(height: 12),
-        Expanded(
-          flex: isWide ? 2 : 0,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                context.l10n.familyTaskLabel,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 4),
-              _buildCustomChip(
-                key: const Key('is_family_toggle'),
-                label: _isFamily ? 'Family Task' : 'Personal Task',
-                isSelected: _isFamily,
-                onSelected: readOnly
-                    ? null
-                    : (selected) {
-                        setState(() {
-                          _isFamily = selected;
-                        });
-                      },
-              ),
-            ],
-          ),
-        ),
-      ],
     ];
 
-    Widget metadataContainer;
+    Widget content;
     if (isWide) {
-      metadataContainer = Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      content = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: metadataWidgets,
       );
     } else {
-      metadataContainer = Column(
+      content = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: metadataWidgets.map((w) {
           if (w is Expanded) return w.child;
@@ -756,40 +761,53 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextFormField(
-              controller: _titleController,
-              focusNode: _titleFocusNode,
-              autofocus: !readOnly,
-              enabled: !readOnly,
-              style: theme.textTheme.titleLarge?.copyWith(
+            Text(
+              "Effort and Priority",
+              style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
-              decoration: InputDecoration(
-                labelText: context.l10n.titleFieldLabel,
-                border: const OutlineInputBorder(),
-                contentPadding: const EdgeInsets.all(16),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return context.l10n.titleRequiredError;
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              enabled: !readOnly,
-              decoration: InputDecoration(
-                labelText: context.l10n.descriptionFieldLabel,
-                border: const OutlineInputBorder(),
-                contentPadding: const EdgeInsets.all(16),
+            content,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFamilyCard(BuildContext context, bool readOnly) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Family",
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
-              style: theme.textTheme.bodyMedium,
-              maxLines: 3,
             ),
-            const SizedBox(height: 20),
-            metadataContainer,
+            const SizedBox(height: 12),
+            _buildCustomChip(
+              key: const Key('is_family_toggle'),
+              label: _isFamily ? 'Family Task' : 'Personal Task',
+              isSelected: _isFamily,
+              onSelected: readOnly
+                  ? null
+                  : (selected) {
+                      setState(() {
+                        _isFamily = selected;
+                      });
+                    },
+            ),
           ],
         ),
       ),
@@ -892,121 +910,80 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 ),
               ),
             ),
+            if (_scheduleType != RecurrenceType.oneOff) ...[
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              Text(
+                context.l10n.missedPolicyHeader,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                key: const Key('missed_policy_dropdown'),
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: MissedPolicy.values.map((policy) {
+                  final String label;
+                  switch (policy) {
+                    case MissedPolicy.rollover:
+                      label = context.l10n.rolloverLabel;
+                      break;
+                    case MissedPolicy.skip:
+                      label = context.l10n.skipLabel;
+                      break;
+                    case MissedPolicy.shift:
+                      label = context.l10n.shiftLabel;
+                      break;
+                    case MissedPolicy.stack:
+                      label = context.l10n.stackLabel;
+                      break;
+                  }
+                  return _buildCustomChip(
+                    key: Key('missed_policy_chip_${policy.name}'),
+                    label: label,
+                    isSelected: _missedPolicy == policy,
+                    onSelected: readOnly
+                        ? null
+                        : (selected) {
+                            if (selected) {
+                              setState(() {
+                                _missedPolicy = policy;
+                              });
+                            }
+                          },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                context.l10n.missedPolicyHelper,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _getMissedPolicyDescription(context, _missedPolicy),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              UpcomingOccurrencesPreview(
+                schedule: _buildSchedule(),
+                dailyTimes: _dailyTimesController.value,
+                startDateTime: _startDateTimeController.value,
+                dueDateTime: _dueDateTimeController.value,
+                scheduleType: _scheduleType,
+                maxOccurrences: 10,
+              ),
+            ],
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMissedPolicyCard(BuildContext context, bool readOnly) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
-      color: theme.colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.missedPolicyHeader,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              key: const Key('missed_policy_dropdown'),
-              spacing: 8.0,
-              runSpacing: 8.0,
-              children: MissedPolicy.values.map((policy) {
-                final String label;
-                switch (policy) {
-                  case MissedPolicy.rollover:
-                    label = context.l10n.rolloverLabel;
-                    break;
-                  case MissedPolicy.skip:
-                    label = context.l10n.skipLabel;
-                    break;
-                  case MissedPolicy.shift:
-                    label = context.l10n.shiftLabel;
-                    break;
-                  case MissedPolicy.stack:
-                    label = context.l10n.stackLabel;
-                    break;
-                }
-                return _buildCustomChip(
-                  key: Key('missed_policy_chip_${policy.name}'),
-                  label: label,
-                  isSelected: _missedPolicy == policy,
-                  onSelected: readOnly
-                      ? null
-                      : (selected) {
-                          if (selected) {
-                            setState(() {
-                              _missedPolicy = policy;
-                            });
-                          }
-                        },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              context.l10n.missedPolicyHelper,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _getMissedPolicyDescription(context, _missedPolicy),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPreviewCard(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
-      color: theme.colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: UpcomingOccurrencesPreview(
-          schedule: _buildSchedule(),
-          dailyTimes: _scheduleType == RecurrenceType.oneOff
-              ? (_oneOffNotificationController.value != null
-                    ? [
-                        DailyOccurrenceTime(
-                          startTime: TimeOfDay.fromDateTime(
-                            _startDateTimeController.value,
-                          ),
-                          dueTime: TimeOfDay.fromDateTime(
-                            _dueDateTimeController.value,
-                          ),
-                          notificationTime: _oneOffNotificationController.value,
-                        ),
-                      ]
-                    : const <DailyOccurrenceTime>[])
-              : _dailyTimesController.value,
-          startDateTime: _startDateTimeController.value,
-          dueDateTime: _dueDateTimeController.value,
-          scheduleType: _scheduleType,
-          maxOccurrences: 10,
         ),
       ),
     );
@@ -1082,55 +1059,55 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                       builder: (context, constraints) {
                         final isDesktop = constraints.maxWidth >= 800;
 
-                        final detailsCard = _buildDetailsCard(
+                        final titleField = _buildTitleField(context, readOnly);
+                        final descriptionField = _buildDescriptionField(
                           context,
                           readOnly,
-                          isDesktop,
-                          inFamily,
                         );
                         final scheduleCard = _buildScheduleCard(
                           context,
                           readOnly,
                         );
-                        final missedPolicyCard = _buildMissedPolicyCard(
-                          context,
-                          readOnly,
-                        );
-                        final previewCard = _buildPreviewCard(context);
+                        final effortAndPriorityCard =
+                            _buildEffortAndPriorityCard(
+                              context,
+                              readOnly,
+                              isDesktop,
+                            );
+                        final familyCard = _buildFamilyCard(context, readOnly);
 
                         if (isDesktop) {
                           return SingleChildScrollView(
                             padding: const EdgeInsets.all(16.0),
                             child: Form(
                               key: _formKey,
-                              child: Row(
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        detailsCard,
-                                        if (_scheduleType !=
-                                            RecurrenceType.oneOff) ...[
-                                          const SizedBox(height: 16),
-                                          missedPolicyCard,
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        scheduleCard,
-                                        const SizedBox(height: 16),
-                                        previewCard,
-                                      ],
-                                    ),
+                                  titleField,
+                                  const SizedBox(height: 16),
+                                  descriptionField,
+                                  const SizedBox(height: 24),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(child: scheduleCard),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            effortAndPriorityCard,
+                                            if (inFamily) ...[
+                                              const SizedBox(height: 16),
+                                              familyCard,
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -1142,17 +1119,19 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             child: Form(
                               key: _formKey,
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  detailsCard,
+                                  titleField,
                                   const SizedBox(height: 16),
+                                  descriptionField,
+                                  const SizedBox(height: 24),
                                   scheduleCard,
-                                  if (_scheduleType !=
-                                      RecurrenceType.oneOff) ...[
-                                    const SizedBox(height: 16),
-                                    missedPolicyCard,
-                                  ],
                                   const SizedBox(height: 16),
-                                  previewCard,
+                                  effortAndPriorityCard,
+                                  if (inFamily) ...[
+                                    const SizedBox(height: 16),
+                                    familyCard,
+                                  ],
                                 ],
                               ),
                             ),
