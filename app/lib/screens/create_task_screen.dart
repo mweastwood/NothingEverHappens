@@ -577,20 +577,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     }
   }
 
-  Widget _buildCustomChip({
-    required Key key,
-    required String label,
-    required bool isSelected,
-    required ValueChanged<bool>? onSelected,
-  }) {
-    return StandardChoiceChip(
-      key: key,
-      label: label,
-      selected: isSelected,
-      onSelected: onSelected,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final familyRepo = Provider.of<FamilyRepository?>(context);
@@ -759,12 +745,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                             break;
                                         }
 
-                                        return _buildCustomChip(
+                                        return StandardChoiceChip(
                                           key: Key(
                                             'priority_chip_${priority.name}',
                                           ),
                                           label: label,
-                                          isSelected: _priority == priority,
+                                          selected: _priority == priority,
                                           onSelected: readOnly
                                               ? null
                                               : (selected) {
@@ -945,12 +931,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                                   break;
                                               }
 
-                                              return _buildCustomChip(
+                                              return StandardChoiceChip(
                                                 key: Key(
                                                   'missed_policy_chip_${policy.name}',
                                                 ),
                                                 label: label,
-                                                isSelected:
+                                                selected:
                                                     _missedPolicy == policy,
                                                 onSelected: readOnly
                                                     ? null
