@@ -60,18 +60,39 @@ class _YearlySchedulingWidgetState extends State<YearlySchedulingWidget> {
       children: [
         DailyTimeListWidget(controller: widget.dailyTimesController),
         const SizedBox(height: 24),
-        Material(
-          color: Colors.transparent,
-          child: ListTile(
-            title: Text(context.l10n.startDateLabel),
-            subtitle: Text(
-              '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
             ),
-            trailing: const Icon(Icons.calendar_today),
-            onTap: _pickDate,
-            shape: RoundedRectangleBorder(
-              side: BorderSide(color: Theme.of(context).dividerColor),
-              borderRadius: BorderRadius.circular(4),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: ListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 4,
+              ),
+              title: Text(
+                context.l10n.startDateLabel,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              subtitle: Text(
+                '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              trailing: Icon(
+                Icons.calendar_today,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+              onTap: _pickDate,
             ),
           ),
         ),
