@@ -18,6 +18,7 @@ import '../widgets/monthly_scheduling_widget.dart';
 import '../widgets/yearly_scheduling_widget.dart';
 import '../widgets/recurrence_type_selector.dart';
 import '../widgets/upcoming_occurrences_preview.dart';
+import '../widgets/standard_choice_chip.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   static Duration saveTimeout = const Duration(seconds: 10);
@@ -744,11 +745,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                             break;
                                         }
 
-                                        return ChoiceChip(
+                                        return StandardChoiceChip(
                                           key: Key(
                                             'priority_chip_${priority.name}',
                                           ),
-                                          label: Text(label),
+                                          label: label,
                                           selected: _priority == priority,
                                           onSelected: readOnly
                                               ? null
@@ -930,11 +931,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                                   break;
                                               }
 
-                                              return ChoiceChip(
+                                              return StandardChoiceChip(
                                                 key: Key(
                                                   'missed_policy_chip_${policy.name}',
                                                 ),
-                                                label: Text(label),
+                                                label: label,
                                                 selected:
                                                     _missedPolicy == policy,
                                                 onSelected: readOnly
