@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/screens/family_screen.dart';
@@ -29,10 +29,10 @@ void main() {
   });
 
   Widget buildTestWidget() {
-    return MultiProvider(
-      providers: [
-        Provider<FamilyRepository>.value(value: repository),
-        Provider<ErrorHandler>.value(value: errorHandler),
+    return ProviderScope(
+      overrides: [
+        familyRepositoryProvider.overrideWithValue(repository),
+        errorHandlerProvider.overrideWithValue(errorHandler),
       ],
       child: buildTestableWidget(child: const Scaffold(body: FamilyScreen())),
     );

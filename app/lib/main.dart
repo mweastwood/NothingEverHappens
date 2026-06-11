@@ -3,17 +3,11 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options_dev.dart' as dev;
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'logic/auth_repository.dart';
-import 'logic/task_repository.dart';
-import 'logic/user_settings_repository.dart';
-import 'logic/family_repository.dart';
-import 'logic/error_handler.dart';
-import 'logic/notification_service.dart';
 import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
@@ -35,88 +29,44 @@ Future<void> main() async {
 }
 
 void mainCommon() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        Provider<ErrorHandler>(create: (_) => ErrorHandler()),
-        Provider<NotificationService>(
-          create: (_) => PlatformNotificationService(),
-          dispose: (_, service) => service.dispose(),
-        ),
-        Provider<AuthRepository>(create: (_) => AuthRepository()),
-        StreamProvider<User?>(
-          create: (context) => context.read<AuthRepository>().authStateChanges,
-          initialData: null,
-        ),
-        ProxyProvider2<User?, NotificationService, TaskRepository?>(
-          update: (context, user, notificationService, previous) {
-            if (user == null) return null;
-            return TaskRepository(
-              userId: user.uid,
-              notificationService: notificationService,
-            );
-          },
-        ),
-        ProxyProvider<User?, UserSettingsRepository?>(
-          update: (context, user, previous) {
-            if (user == null) return null;
-            return UserSettingsRepository(userId: user.uid);
-          },
-        ),
-        ProxyProvider<User?, FamilyRepository?>(
-          update: (context, user, previous) {
-            if (user == null) return null;
-            return FamilyRepository(
-              userId: user.uid,
-              userEmail: user.email,
-              userDisplayName: user.displayName,
-            );
-          },
-        ),
-      ],
-      child: DynamicColorBuilder(
-        builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-          ColorScheme lightScheme;
-          ColorScheme darkScheme;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authStateProvider).valueOrNull;
 
-          if (lightDynamic != null && darkDynamic != null) {
-            lightScheme = lightDynamic;
-            darkScheme = darkDynamic;
-          } else {
-            lightScheme = ColorScheme.fromSeed(
-              seedColor: const Color(0xFFffd9f6),
-            );
-            darkScheme = ColorScheme.fromSeed(
-              seedColor: const Color(0xFFffd9f6),
-              brightness: Brightness.dark,
-            );
-          }
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        ColorScheme lightScheme;
+        ColorScheme darkScheme;
 
-          return Consumer<User?>(
-            builder: (context, user, _) {
-              return MaterialApp(
-                title: 'Nothing Ever Happens',
-                localizationsDelegates: AppLocalizations.localizationsDelegates,
-                supportedLocales: AppLocalizations.supportedLocales,
-                theme: ThemeData(colorScheme: lightScheme, useMaterial3: true),
-                darkTheme: ThemeData(
-                  colorScheme: darkScheme,
-                  useMaterial3: true,
-                ),
-                themeMode: ThemeMode.system,
-                home: user == null ? const LoginScreen() : const HomeScreen(),
-              );
-            },
+        if (lightDynamic != null && darkDynamic != null) {
+          lightScheme = lightDynamic;
+          darkScheme = darkDynamic;
+        } else {
+          lightScheme = ColorScheme.fromSeed(
+            seedColor: const Color(0xFFffd9f6),
           );
-        },
-      ),
+          darkScheme = ColorScheme.fromSeed(
+            seedColor: const Color(0xFFffd9f6),
+            brightness: Brightness.dark,
+          );
+        }
+
+        return MaterialApp(
+          title: 'Nothing Ever Happens',
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(colorScheme: lightScheme, useMaterial3: true),
+          darkTheme: ThemeData(colorScheme: darkScheme, useMaterial3: true),
+          themeMode: ThemeMode.system,
+          home: user == null ? const LoginScreen() : const HomeScreen(),
+        );
+      },
     );
   }
 }

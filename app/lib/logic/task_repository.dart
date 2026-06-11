@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:rxdart/rxdart.dart';
 import 'app_clock.dart';
@@ -8,6 +9,16 @@ import 'task.dart';
 import 'task_delta.dart';
 import 'task_list.dart';
 import 'notification_service.dart';
+import 'auth_repository.dart';
+
+final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return null;
+  return TaskRepository(
+    userId: user.uid,
+    notificationService: ref.watch(notificationServiceProvider),
+  );
+});
 
 class TaskRepository {
   final FirebaseFirestore _firestore;

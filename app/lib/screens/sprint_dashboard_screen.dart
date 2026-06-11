@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/app_clock.dart';
 import '../logic/task.dart';
@@ -14,19 +14,14 @@ import '../logic/auto_allocator.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
 
-class SprintDashboardScreen extends StatefulWidget {
+class SprintDashboardScreen extends ConsumerWidget {
   const SprintDashboardScreen({super.key});
 
   @override
-  State<SprintDashboardScreen> createState() => _SprintDashboardScreenState();
-}
-
-class _SprintDashboardScreenState extends State<SprintDashboardScreen> {
-  @override
-  Widget build(BuildContext context) {
-    final taskRepo = Provider.of<TaskRepository?>(context);
-    final settingsRepo = Provider.of<UserSettingsRepository?>(context);
-    final familyRepo = Provider.of<FamilyRepository?>(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final taskRepo = ref.watch(taskRepositoryProvider);
+    final settingsRepo = ref.watch(userSettingsRepositoryProvider);
+    final familyRepo = ref.watch(familyRepositoryProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.sprintDashboardTitle)),
@@ -102,7 +97,7 @@ class _SprintDashboardScreenState extends State<SprintDashboardScreen> {
   }
 }
 
-class _SprintDashboardContent extends StatefulWidget {
+class _SprintDashboardContent extends ConsumerStatefulWidget {
   final UserSettings settings;
   final String familyId;
   final String familyRole;
@@ -122,11 +117,12 @@ class _SprintDashboardContent extends StatefulWidget {
   });
 
   @override
-  State<_SprintDashboardContent> createState() =>
+  ConsumerState<_SprintDashboardContent> createState() =>
       _SprintDashboardContentState();
 }
 
-class _SprintDashboardContentState extends State<_SprintDashboardContent> {
+class _SprintDashboardContentState
+    extends ConsumerState<_SprintDashboardContent> {
   bool _isAllocating = false;
 
   final Map<String, UserSettings> _memberSettings = {};
@@ -160,7 +156,7 @@ class _SprintDashboardContentState extends State<_SprintDashboardContent> {
 
   void _updateSubscriptions() {
     final family = widget.family;
-    final settingsRepo = context.read<UserSettingsRepository>();
+    final settingsRepo = ref.read(userSettingsRepositoryProvider)!;
     final taskRepo = widget.taskRepository;
 
     final currentMembers = family?.members.keys.toSet() ?? {taskRepo.userId};
@@ -305,7 +301,7 @@ class _SprintDashboardContentState extends State<_SprintDashboardContent> {
       }
     } catch (e, stackTrace) {
       if (mounted) {
-        final errorHandler = context.read<ErrorHandler>();
+        final errorHandler = ref.read(errorHandlerProvider);
         final report = errorHandler.report(e, stackTrace: stackTrace);
         errorHandler.showErrorDialog(context, report);
       }
@@ -327,7 +323,7 @@ class _SprintDashboardContentState extends State<_SprintDashboardContent> {
       await widget.taskRepository.updateTask(modification);
     } catch (e, stackTrace) {
       if (mounted) {
-        final errorHandler = context.read<ErrorHandler>();
+        final errorHandler = ref.read(errorHandlerProvider);
         final report = errorHandler.report(e, stackTrace: stackTrace);
         errorHandler.showErrorDialog(context, report);
       }
@@ -347,7 +343,7 @@ class _SprintDashboardContentState extends State<_SprintDashboardContent> {
       await widget.taskRepository.updateTask(modification);
     } catch (e, stackTrace) {
       if (mounted) {
-        final errorHandler = context.read<ErrorHandler>();
+        final errorHandler = ref.read(errorHandlerProvider);
         final report = errorHandler.report(e, stackTrace: stackTrace);
         errorHandler.showErrorDialog(context, report);
       }

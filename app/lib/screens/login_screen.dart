@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/auth_repository.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   static bool debugDisableAnimations = false;
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
 
   @override
@@ -44,17 +44,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           _isLoading = true;
                         });
                         try {
-                          final authRepo = Provider.of<AuthRepository>(
-                            context,
-                            listen: false,
-                          );
+                          final authRepo = ref.read(authRepositoryProvider);
                           await authRepo.signInWithGoogle();
                         } catch (e, stackTrace) {
                           if (context.mounted) {
-                            final errorHandler = Provider.of<ErrorHandler>(
-                              context,
-                              listen: false,
-                            );
+                            final errorHandler = ref.read(errorHandlerProvider);
                             final report = errorHandler.report(
                               e,
                               stackTrace: stackTrace,

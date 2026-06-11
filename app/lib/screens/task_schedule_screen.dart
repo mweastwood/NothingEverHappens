@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/task.dart';
 import '../logic/task_repository.dart';
@@ -7,12 +7,12 @@ import 'create_task_screen.dart';
 import '../logic/l10n_extension.dart';
 import '../widgets/schedule_card.dart';
 
-class TaskScheduleScreen extends StatelessWidget {
+class TaskScheduleScreen extends ConsumerWidget {
   const TaskScheduleScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final taskRepository = Provider.of<TaskRepository?>(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final taskRepository = ref.watch(taskRepositoryProvider);
 
     return ValueListenableBuilder<DateTime?>(
       valueListenable: AppClock.timeNotifier,

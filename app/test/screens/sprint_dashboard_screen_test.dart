@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
@@ -45,12 +45,12 @@ void main() {
   });
 
   Widget buildTestWidget() {
-    return MultiProvider(
-      providers: [
-        Provider<TaskRepository>.value(value: taskRepo),
-        Provider<UserSettingsRepository>.value(value: settingsRepo),
-        Provider<FamilyRepository>.value(value: familyRepo),
-        Provider<ErrorHandler>.value(value: errorHandler),
+    return ProviderScope(
+      overrides: [
+        taskRepositoryProvider.overrideWithValue(taskRepo),
+        userSettingsRepositoryProvider.overrideWithValue(settingsRepo),
+        familyRepositoryProvider.overrideWithValue(familyRepo),
+        errorHandlerProvider.overrideWithValue(errorHandler),
       ],
       child: buildTestableWidget(child: const SprintDashboardScreen()),
     );

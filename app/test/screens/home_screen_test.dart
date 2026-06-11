@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import '../test_helper.dart';
@@ -17,7 +17,6 @@ import 'package:nothing_ever_happens/screens/settings_screen.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
 import 'package:nothing_ever_happens/screens/family_screen.dart';
-import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
@@ -73,15 +72,14 @@ void main() {
       userDisplayName: 'Alice',
     );
 
-    return MultiProvider(
-      providers: [
-        Provider<AuthRepository>.value(value: mockAuthRepository),
-        Provider<TaskRepository>.value(value: mockTaskRepository),
-        Provider<UserSettingsRepository>.value(
-          value: mockUserSettingsRepository,
+    return ProviderScope(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(mockAuthRepository),
+        taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        userSettingsRepositoryProvider.overrideWithValue(
+          mockUserSettingsRepository,
         ),
-        Provider<FamilyRepository?>.value(value: familyRepo),
-        Provider<ErrorHandler>(create: (_) => ErrorHandler()),
+        familyRepositoryProvider.overrideWithValue(familyRepo),
       ],
       child: buildTestableWidget(child: const HomeScreen()),
     );

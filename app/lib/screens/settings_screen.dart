@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _hoursController = TextEditingController();
   bool _isSaving = false;
@@ -53,7 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       } catch (e, stackTrace) {
         if (mounted) {
-          final errorHandler = context.read<ErrorHandler>();
+          final errorHandler = ref.read(errorHandlerProvider);
           final report = errorHandler.report(e, stackTrace: stackTrace);
           errorHandler.showErrorDialog(context, report);
         }
@@ -69,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final settingsRepository = Provider.of<UserSettingsRepository?>(context);
+    final settingsRepository = ref.watch(userSettingsRepositoryProvider);
 
     if (settingsRepository == null) {
       return Scaffold(

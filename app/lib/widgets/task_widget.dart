@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/task.dart';
 import '../logic/task_repository.dart';
@@ -8,17 +8,17 @@ import '../screens/create_task_screen.dart';
 import 'fun_check_button.dart';
 import 'fun_delete_button.dart';
 
-class TaskWidget extends StatefulWidget {
+class TaskWidget extends ConsumerStatefulWidget {
   final Task task;
   final bool showEditOption;
 
   const TaskWidget({super.key, required this.task, this.showEditOption = true});
 
   @override
-  State<TaskWidget> createState() => _TaskWidgetState();
+  ConsumerState<TaskWidget> createState() => _TaskWidgetState();
 }
 
-class _TaskWidgetState extends State<TaskWidget>
+class _TaskWidgetState extends ConsumerState<TaskWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleYAnimation;
@@ -72,9 +72,9 @@ class _TaskWidgetState extends State<TaskWidget>
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         if (_isDeleting) {
-          context.read<TaskRepository>().deleteTask(widget.task.id);
+          ref.read(taskRepositoryProvider)!.deleteTask(widget.task.id);
         } else {
-          context.read<TaskRepository>().completeTask(widget.task.id);
+          ref.read(taskRepositoryProvider)!.completeTask(widget.task.id);
         }
       }
     });

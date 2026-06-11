@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/auth_repository.dart';
 import '../widgets/dev_clock_widget.dart';
 import 'create_task_screen.dart';
@@ -11,14 +11,14 @@ import 'sprint_dashboard_screen.dart';
 import 'help_screen.dart';
 import '../logic/l10n_extension.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
 
   Future<void> _addNewTask() async {
@@ -136,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
             leading: const Icon(Icons.logout),
             title: Text(context.l10n.logout),
             onTap: () async {
-              await context.read<AuthRepository>().signOut();
+              await ref.read(authRepositoryProvider).signOut();
             },
           ),
         ],
