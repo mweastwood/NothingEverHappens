@@ -8,7 +8,7 @@ import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import '../logic/family_repository.dart';
 
 import '../widgets/one_off_scheduling_widget.dart';
