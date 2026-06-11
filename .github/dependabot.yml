@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "pub"
+    directory: "/app"
+    schedule:
+      interval: "weekly"
