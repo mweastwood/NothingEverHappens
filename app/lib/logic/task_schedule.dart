@@ -1,8 +1,29 @@
+import 'package:flutter/material.dart';
 import 'civil_day.dart';
+import 'relative_time.dart';
 
 /// Defines how often a task reoccurs.
 abstract class TaskSchedule {
-  const TaskSchedule();
+  final RelativeTime startRelativeTime;
+  final RelativeTime dueRelativeTime;
+  final RelativeTime? notificationRelativeTime;
+
+  const TaskSchedule({
+    RelativeTime? startRelativeTime,
+    RelativeTime? dueRelativeTime,
+    this.notificationRelativeTime,
+  }) : startRelativeTime =
+           startRelativeTime ??
+           const RelativeTime(
+             dayOffset: 0,
+             time: TimeOfDay(hour: 9, minute: 0),
+           ),
+       dueRelativeTime =
+           dueRelativeTime ??
+           const RelativeTime(
+             dayOffset: 0,
+             time: TimeOfDay(hour: 17, minute: 0),
+           );
 
   /// The scheduled date of this occurrence.
   CivilDay get scheduledDate;
@@ -15,6 +36,14 @@ abstract class TaskSchedule {
 
   /// Creates a copy of this schedule with a new scheduled/start date.
   TaskSchedule copyWithStartDate(CivilDay newStartDate);
+
+  /// Creates a copy of this schedule with updated timing parameters.
+  TaskSchedule copyWithTiming({
+    RelativeTime? startRelativeTime,
+    RelativeTime? dueRelativeTime,
+    RelativeTime? notificationRelativeTime,
+    bool clearNotification = false,
+  });
 
   Map<String, dynamic> toJson();
 
@@ -45,14 +74,39 @@ class OneOffSchedule extends TaskSchedule {
   /// The specific date the task occurs.
   CivilDay date;
 
-  OneOffSchedule({required this.date});
+  OneOffSchedule({
+    required this.date,
+    super.startRelativeTime,
+    super.dueRelativeTime,
+    super.notificationRelativeTime,
+  });
 
   @override
   CivilDay get scheduledDate => date;
 
   factory OneOffSchedule.fromJson(Map<String, dynamic> json) {
+    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
+    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
+    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
+
+    final start = startJson != null
+        ? RelativeTime.fromJson(startJson)
+        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
+
+    final due = dueJson != null
+        ? RelativeTime.fromJson(dueJson)
+        : const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          );
+
+    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
+
     return OneOffSchedule(
       date: CivilDay.fromJson(json['date'] as Map<String, dynamic>),
+      startRelativeTime: start,
+      dueRelativeTime: due,
+      notificationRelativeTime: notif,
     );
   }
 
@@ -68,12 +122,41 @@ class OneOffSchedule extends TaskSchedule {
 
   @override
   TaskSchedule copyWithStartDate(CivilDay newStartDate) {
-    return OneOffSchedule(date: newStartDate);
+    return OneOffSchedule(
+      date: newStartDate,
+      startRelativeTime: startRelativeTime,
+      dueRelativeTime: dueRelativeTime,
+      notificationRelativeTime: notificationRelativeTime,
+    );
+  }
+
+  @override
+  TaskSchedule copyWithTiming({
+    RelativeTime? startRelativeTime,
+    RelativeTime? dueRelativeTime,
+    RelativeTime? notificationRelativeTime,
+    bool clearNotification = false,
+  }) {
+    return OneOffSchedule(
+      date: date,
+      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
+      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
+      notificationRelativeTime: clearNotification
+          ? null
+          : (notificationRelativeTime ?? this.notificationRelativeTime),
+    );
   }
 
   @override
   Map<String, dynamic> toJson() {
-    return {'type': 'oneOff', 'date': date.toJson()};
+    return {
+      'type': 'oneOff',
+      'date': date.toJson(),
+      'startRelativeTime': startRelativeTime.toJson(),
+      'dueRelativeTime': dueRelativeTime.toJson(),
+      if (notificationRelativeTime != null)
+        'notificationRelativeTime': notificationRelativeTime!.toJson(),
+    };
   }
 }
 
@@ -85,15 +168,41 @@ class DailySchedule extends TaskSchedule {
   /// The number of days between occurrences.
   int interval;
 
-  DailySchedule({required this.startDate, required this.interval});
+  DailySchedule({
+    required this.startDate,
+    required this.interval,
+    super.startRelativeTime,
+    super.dueRelativeTime,
+    super.notificationRelativeTime,
+  });
 
   @override
   CivilDay get scheduledDate => startDate;
 
   factory DailySchedule.fromJson(Map<String, dynamic> json) {
+    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
+    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
+    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
+
+    final start = startJson != null
+        ? RelativeTime.fromJson(startJson)
+        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
+
+    final due = dueJson != null
+        ? RelativeTime.fromJson(dueJson)
+        : const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          );
+
+    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
+
     return DailySchedule(
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
       interval: json['interval'] as int,
+      startRelativeTime: start,
+      dueRelativeTime: due,
+      notificationRelativeTime: notif,
     );
   }
 
@@ -133,7 +242,31 @@ class DailySchedule extends TaskSchedule {
 
   @override
   TaskSchedule copyWithStartDate(CivilDay newStartDate) {
-    return DailySchedule(startDate: newStartDate, interval: interval);
+    return DailySchedule(
+      startDate: newStartDate,
+      interval: interval,
+      startRelativeTime: startRelativeTime,
+      dueRelativeTime: dueRelativeTime,
+      notificationRelativeTime: notificationRelativeTime,
+    );
+  }
+
+  @override
+  TaskSchedule copyWithTiming({
+    RelativeTime? startRelativeTime,
+    RelativeTime? dueRelativeTime,
+    RelativeTime? notificationRelativeTime,
+    bool clearNotification = false,
+  }) {
+    return DailySchedule(
+      startDate: startDate,
+      interval: interval,
+      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
+      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
+      notificationRelativeTime: clearNotification
+          ? null
+          : (notificationRelativeTime ?? this.notificationRelativeTime),
+    );
   }
 
   @override
@@ -142,6 +275,10 @@ class DailySchedule extends TaskSchedule {
       'type': 'daily',
       'startDate': startDate.toJson(),
       'interval': interval,
+      'startRelativeTime': startRelativeTime.toJson(),
+      'dueRelativeTime': dueRelativeTime.toJson(),
+      if (notificationRelativeTime != null)
+        'notificationRelativeTime': notificationRelativeTime!.toJson(),
     };
   }
 }
@@ -161,16 +298,39 @@ class WeeklySchedule extends TaskSchedule {
     required this.startDate,
     required this.interval,
     required this.daysOfWeek,
+    super.startRelativeTime,
+    super.dueRelativeTime,
+    super.notificationRelativeTime,
   });
 
   @override
   CivilDay get scheduledDate => startDate;
 
   factory WeeklySchedule.fromJson(Map<String, dynamic> json) {
+    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
+    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
+    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
+
+    final start = startJson != null
+        ? RelativeTime.fromJson(startJson)
+        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
+
+    final due = dueJson != null
+        ? RelativeTime.fromJson(dueJson)
+        : const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          );
+
+    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
+
     return WeeklySchedule(
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
       interval: json['interval'] as int,
       daysOfWeek: (json['daysOfWeek'] as List<dynamic>).cast<int>().toSet(),
+      startRelativeTime: start,
+      dueRelativeTime: due,
+      notificationRelativeTime: notif,
     );
   }
 
@@ -229,6 +389,28 @@ class WeeklySchedule extends TaskSchedule {
       startDate: newStartDate,
       interval: interval,
       daysOfWeek: daysOfWeek,
+      startRelativeTime: startRelativeTime,
+      dueRelativeTime: dueRelativeTime,
+      notificationRelativeTime: notificationRelativeTime,
+    );
+  }
+
+  @override
+  TaskSchedule copyWithTiming({
+    RelativeTime? startRelativeTime,
+    RelativeTime? dueRelativeTime,
+    RelativeTime? notificationRelativeTime,
+    bool clearNotification = false,
+  }) {
+    return WeeklySchedule(
+      startDate: startDate,
+      interval: interval,
+      daysOfWeek: daysOfWeek,
+      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
+      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
+      notificationRelativeTime: clearNotification
+          ? null
+          : (notificationRelativeTime ?? this.notificationRelativeTime),
     );
   }
 
@@ -239,6 +421,10 @@ class WeeklySchedule extends TaskSchedule {
       'startDate': startDate.toJson(),
       'interval': interval,
       'daysOfWeek': daysOfWeek.toList(),
+      'startRelativeTime': startRelativeTime.toJson(),
+      'dueRelativeTime': dueRelativeTime.toJson(),
+      if (notificationRelativeTime != null)
+        'notificationRelativeTime': notificationRelativeTime!.toJson(),
     };
   }
 }
@@ -268,6 +454,9 @@ class MonthlySchedule extends TaskSchedule {
     this.dayOfMonth,
     this.dayOfWeek,
     this.occurrence,
+    super.startRelativeTime,
+    super.dueRelativeTime,
+    super.notificationRelativeTime,
   }) : assert(
          (dayOfMonth != null && dayOfWeek == null && occurrence == null) ||
              (dayOfMonth == null && dayOfWeek != null && occurrence != null),
@@ -282,12 +471,32 @@ class MonthlySchedule extends TaskSchedule {
   CivilDay get scheduledDate => startDate;
 
   factory MonthlySchedule.fromJson(Map<String, dynamic> json) {
+    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
+    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
+    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
+
+    final start = startJson != null
+        ? RelativeTime.fromJson(startJson)
+        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
+
+    final due = dueJson != null
+        ? RelativeTime.fromJson(dueJson)
+        : const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          );
+
+    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
+
     return MonthlySchedule(
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
       interval: json['interval'] as int,
       dayOfMonth: json['dayOfMonth'] as int?,
       dayOfWeek: json['dayOfWeek'] as int?,
       occurrence: json['occurrence'] as int?,
+      startRelativeTime: start,
+      dueRelativeTime: due,
+      notificationRelativeTime: notif,
     );
   }
 
@@ -363,6 +572,30 @@ class MonthlySchedule extends TaskSchedule {
       dayOfMonth: dayOfMonth,
       dayOfWeek: dayOfWeek,
       occurrence: occurrence,
+      startRelativeTime: startRelativeTime,
+      dueRelativeTime: dueRelativeTime,
+      notificationRelativeTime: notificationRelativeTime,
+    );
+  }
+
+  @override
+  TaskSchedule copyWithTiming({
+    RelativeTime? startRelativeTime,
+    RelativeTime? dueRelativeTime,
+    RelativeTime? notificationRelativeTime,
+    bool clearNotification = false,
+  }) {
+    return MonthlySchedule(
+      startDate: startDate,
+      interval: interval,
+      dayOfMonth: dayOfMonth,
+      dayOfWeek: dayOfWeek,
+      occurrence: occurrence,
+      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
+      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
+      notificationRelativeTime: clearNotification
+          ? null
+          : (notificationRelativeTime ?? this.notificationRelativeTime),
     );
   }
 
@@ -375,6 +608,10 @@ class MonthlySchedule extends TaskSchedule {
       if (dayOfMonth != null) 'dayOfMonth': dayOfMonth,
       if (dayOfWeek != null) 'dayOfWeek': dayOfWeek,
       if (occurrence != null) 'occurrence': occurrence,
+      'startRelativeTime': startRelativeTime.toJson(),
+      'dueRelativeTime': dueRelativeTime.toJson(),
+      if (notificationRelativeTime != null)
+        'notificationRelativeTime': notificationRelativeTime!.toJson(),
     };
   }
 }
@@ -398,17 +635,40 @@ class YearlySchedule extends TaskSchedule {
     required this.interval,
     required this.month,
     required this.day,
+    super.startRelativeTime,
+    super.dueRelativeTime,
+    super.notificationRelativeTime,
   });
 
   @override
   CivilDay get scheduledDate => startDate;
 
   factory YearlySchedule.fromJson(Map<String, dynamic> json) {
+    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
+    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
+    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
+
+    final start = startJson != null
+        ? RelativeTime.fromJson(startJson)
+        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
+
+    final due = dueJson != null
+        ? RelativeTime.fromJson(dueJson)
+        : const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          );
+
+    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
+
     return YearlySchedule(
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
       interval: json['interval'] as int,
       month: json['month'] as int,
       day: json['day'] as int,
+      startRelativeTime: start,
+      dueRelativeTime: due,
+      notificationRelativeTime: notif,
     );
   }
 
@@ -455,6 +715,29 @@ class YearlySchedule extends TaskSchedule {
       interval: interval,
       month: month,
       day: day,
+      startRelativeTime: startRelativeTime,
+      dueRelativeTime: dueRelativeTime,
+      notificationRelativeTime: notificationRelativeTime,
+    );
+  }
+
+  @override
+  TaskSchedule copyWithTiming({
+    RelativeTime? startRelativeTime,
+    RelativeTime? dueRelativeTime,
+    RelativeTime? notificationRelativeTime,
+    bool clearNotification = false,
+  }) {
+    return YearlySchedule(
+      startDate: startDate,
+      interval: interval,
+      month: month,
+      day: day,
+      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
+      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
+      notificationRelativeTime: clearNotification
+          ? null
+          : (notificationRelativeTime ?? this.notificationRelativeTime),
     );
   }
 
@@ -466,6 +749,10 @@ class YearlySchedule extends TaskSchedule {
       'interval': interval,
       'month': month,
       'day': day,
+      'startRelativeTime': startRelativeTime.toJson(),
+      'dueRelativeTime': dueRelativeTime.toJson(),
+      if (notificationRelativeTime != null)
+        'notificationRelativeTime': notificationRelativeTime!.toJson(),
     };
   }
 }

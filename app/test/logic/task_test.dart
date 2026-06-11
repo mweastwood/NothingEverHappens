@@ -527,6 +527,70 @@ void main() {
       },
     );
 
+    test('Skip policy on mixed task drops passed one-off schedules', () async {
+      final firestore = FakeFirebaseFirestore();
+      final repository = TaskRepository(firestore: firestore, userId: 'user-1');
+
+      final monday = const CivilDay(year: 2026, month: 5, day: 25);
+
+      final mixedTask = Task(
+        id: 'mixed-skip-task',
+        title: 'Mixed skip task',
+        description: 'Testing skip policy on mixed task',
+        schedules: [
+          OneOffSchedule(
+            date: monday,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+          DailySchedule(
+            startDate: monday,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+        missedPolicy: MissedPolicy.skip,
+      );
+
+      await repository.addTask(mixedTask);
+
+      final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
+      AppClock.setMockTime(tuesdayDateTime);
+
+      await repository.getTasks().first;
+      await Future.delayed(Duration.zero);
+
+      final updatedTaskSnap = await firestore
+          .collection('users')
+          .doc('user-1')
+          .collection('tasks')
+          .doc('mixed-skip-task')
+          .get();
+      final updatedTask = Task.fromFirestore(updatedTaskSnap);
+
+      expect(updatedTask.schedules.length, 1);
+      expect(updatedTask.schedules[0], isA<DailySchedule>());
+      expect(
+        (updatedTask.schedules[0] as DailySchedule).startDate,
+        const CivilDay(year: 2026, month: 5, day: 26),
+      );
+
+      AppClock.reset();
+    });
+
     test(
       '4. Stack/Overlap (Allow Concurrency): Master task missed for Monday and Tuesday spawns separate cards on Wednesday',
       () async {

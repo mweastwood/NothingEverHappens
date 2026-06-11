@@ -6,7 +6,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
-
 import 'task.dart';
 import 'civil_day.dart';
 import 'notification_helper.dart';
@@ -17,29 +16,25 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   return service;
 });
 
-/// Abstract service to handle scheduling and cancelling of task notifications.
+/// Abstract contract for scheduling exact and zoned local push notifications.
 abstract class NotificationService {
-  /// Schedules notification reminders for the given [task] according to its occurrences.
   Future<void> scheduleNotifications(Task task);
-
-  /// Cancels all scheduled notifications for the task with [taskId].
   Future<void> cancelNotifications(String taskId);
-
-  /// Disposes of any resources held by this service.
   Future<void> dispose();
 }
 
-/// Production implementation of NotificationService for Android and Web (Chrome).
+/// Production implementation that delegates to `flutter_local_notifications` plugin
+/// to schedule exact zoned alarms on Android and local notifications on iOS.
 class PlatformNotificationService implements NotificationService {
   final FlutterLocalNotificationsPlugin _plugin;
   final Map<String, List<Timer>> _webTimers = {};
 
   PlatformNotificationService({FlutterLocalNotificationsPlugin? plugin})
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin() {
-    _init();
+    _initialize();
   }
 
-  Future<void> _init() async {
+  Future<void> _initialize() async {
     if (kIsWeb) {
       requestWebNotificationPermission();
       return;
@@ -87,12 +82,12 @@ class PlatformNotificationService implements NotificationService {
       'PlatformNotificationService: Scheduling notifications for task: ${task.title} (ID: ${task.id})',
     );
 
-    for (var i = 0; i < task.dailyTimes.length; i++) {
-      final slot = task.dailyTimes[i];
-      if (slot.notificationTime == null) continue;
+    for (var i = 0; i < task.schedules.length; i++) {
+      final s = task.schedules[i];
+      if (s.notificationRelativeTime == null) continue;
 
       if (kIsWeb) {
-        final scheduledDate = _calculateNextNotificationDateTime(task, slot);
+        final scheduledDate = _calculateNextNotificationDateTime(task, s);
         final delay = scheduledDate.difference(DateTime.now());
         if (delay.isNegative) continue;
 
@@ -112,7 +107,7 @@ class PlatformNotificationService implements NotificationService {
 
         _webTimers.putIfAbsent(task.id, () => []).add(timer);
       } else {
-        final scheduledDate = _calculateNextNotificationDateTime(task, slot);
+        final scheduledDate = _calculateNextNotificationDateTime(task, s);
         final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
         final notifId = (task.id.hashCode + i) & 0x7FFFFFFF;
 
@@ -196,10 +191,7 @@ class PlatformNotificationService implements NotificationService {
     }
   }
 
-  DateTime _calculateNextNotificationDateTime(
-    Task task,
-    DailyOccurrenceTime slot,
-  ) {
+  DateTime _calculateNextNotificationDateTime(Task task, TaskSchedule s) {
     final now = DateTime.now();
     var checkDate = DateTime(now.year, now.month, now.day);
 
@@ -210,17 +202,14 @@ class PlatformNotificationService implements NotificationService {
         day: checkDate.day,
       );
 
-      if (task.schedule.occursOn(civilDay)) {
-        final occurrenceDateTime = DateTime(
-          checkDate.year,
-          checkDate.month,
-          checkDate.day,
-          slot.notificationTime!.hour,
-          slot.notificationTime!.minute,
-        );
+      if (s.occursOn(civilDay)) {
+        final notifRel = s.notificationRelativeTime;
+        if (notifRel != null) {
+          final occurrenceDateTime = notifRel.referenceTo(civilDay);
 
-        if (occurrenceDateTime.isAfter(now)) {
-          return occurrenceDateTime;
+          if (occurrenceDateTime.isAfter(now)) {
+            return occurrenceDateTime;
+          }
         }
       }
       checkDate = checkDate.add(const Duration(days: 1));
@@ -257,11 +246,12 @@ class LoggingNotificationService implements NotificationService {
     debugPrint(
       'Scheduling notifications for task: ${task.title} (ID: ${task.id})',
     );
-    for (var i = 0; i < task.dailyTimes.length; i++) {
-      final slot = task.dailyTimes[i];
-      if (slot.notificationTime != null) {
+    for (var i = 0; i < task.schedules.length; i++) {
+      final s = task.schedules[i];
+      if (s.notificationRelativeTime != null) {
+        final notif = s.notificationRelativeTime!;
         debugPrint(
-          '  - Scheduled occurrence reminder #$i at ${slot.notificationTime!.hour.toString().padLeft(2, '0')}:${slot.notificationTime!.minute.toString().padLeft(2, '0')}',
+          '  - Scheduled occurrence reminder #$i at offset ${notif.dayOffset} time ${notif.time.hour.toString().padLeft(2, '0')}:${notif.time.minute.toString().padLeft(2, '0')}',
         );
       } else {
         debugPrint('  - Occurrence #$i: No custom notification configured');
@@ -284,4 +274,8 @@ class LoggingNotificationService implements NotificationService {
   Future<void> dispose() async {
     clear();
   }
+}
+
+void showWebNotification(String title, String body) {
+  debugPrint('[WEB NOTIFICATION] $title: $body');
 }
