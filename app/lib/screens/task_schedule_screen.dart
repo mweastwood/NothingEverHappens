@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/task.dart';
@@ -10,13 +9,6 @@ import '../widgets/schedule_card.dart';
 
 class TaskScheduleScreen extends StatelessWidget {
   const TaskScheduleScreen({super.key});
-
-  String _formatTimeOfDay(TimeOfDay time) {
-    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute $period';
-  }
 
   @override
   Widget build(BuildContext context) {
