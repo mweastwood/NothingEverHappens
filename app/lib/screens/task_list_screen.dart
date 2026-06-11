@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/civil_day.dart';
 import '../logic/task.dart';
@@ -7,19 +7,19 @@ import '../widgets/task_widget.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
 
-class TaskListScreen extends StatefulWidget {
+class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
 
   @override
-  State<TaskListScreen> createState() => _TaskListScreenState();
+  ConsumerState<TaskListScreen> createState() => _TaskListScreenState();
 }
 
-class _TaskListScreenState extends State<TaskListScreen> {
+class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   final Key _taskListKey = const ValueKey('taskList');
 
   @override
   Widget build(BuildContext context) {
-    final taskRepository = Provider.of<TaskRepository?>(context);
+    final taskRepository = ref.watch(taskRepositoryProvider);
 
     return ValueListenableBuilder<DateTime?>(
       valueListenable: AppClock.timeNotifier,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task.dart';
@@ -100,8 +100,8 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: Provider<TaskRepository>.value(
-        value: _fakeRepository,
+      body: ProviderScope(
+        overrides: [taskRepositoryProvider.overrideWithValue(_fakeRepository)],
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(

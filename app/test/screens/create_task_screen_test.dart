@@ -8,16 +8,29 @@ import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
+import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'create_task_screen_test.mocks.dart';
-import 'package:nothing_ever_happens/logic/error_handler.dart';
 import '../test_helper.dart';
+
+Widget buildTestProviderScope({
+  required Widget child,
+  List<Override> overrides = const [],
+}) {
+  return ProviderScope(
+    overrides: [
+      authStateProvider.overrideWith((ref) => Stream.value(null)),
+      ...overrides,
+    ],
+    child: child,
+  );
+}
 
 @GenerateMocks([TaskRepository])
 void main() {
@@ -39,10 +52,7 @@ void main() {
 
     await tester.pumpWidget(
       buildTestableWidget(
-        child: Provider<ErrorHandler>(
-          create: (_) => ErrorHandler(),
-          child: const CreateTaskScreen(),
-        ),
+        child: buildTestProviderScope(child: const CreateTaskScreen()),
       ),
     );
 
@@ -83,10 +93,7 @@ void main() {
 
     await tester.pumpWidget(
       buildTestableWidget(
-        child: Provider<ErrorHandler>(
-          create: (_) => ErrorHandler(),
-          child: const CreateTaskScreen(),
-        ),
+        child: buildTestProviderScope(child: const CreateTaskScreen()),
       ),
     );
 
@@ -111,10 +118,7 @@ void main() {
 
     await tester.pumpWidget(
       buildTestableWidget(
-        child: Provider<ErrorHandler>(
-          create: (_) => ErrorHandler(),
-          child: const CreateTaskScreen(),
-        ),
+        child: buildTestProviderScope(child: const CreateTaskScreen()),
       ),
     );
 
@@ -136,7 +140,7 @@ void main() {
           useMaterial3: true,
         ).copyWith(shadowColor: Colors.transparent),
         platform: TargetPlatform.android,
-      )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
+      )(buildTestProviderScope(child: child)),
       surfaceSize: const Size(800, 800),
     );
     await screenMatchesGolden(tester, 'create_task_screen');
@@ -161,10 +165,9 @@ void main() {
               ).copyWith(shadowColor: Colors.transparent),
               platform: TargetPlatform.android,
             )(
-              MultiProvider(
-                providers: [
-                  Provider<ErrorHandler>(create: (_) => ErrorHandler()),
-                  Provider<TaskRepository?>.value(value: mockRepository),
+              buildTestProviderScope(
+                overrides: [
+                  taskRepositoryProvider.overrideWithValue(mockRepository),
                 ],
                 child: child,
               ),
@@ -207,7 +210,7 @@ void main() {
           useMaterial3: true,
         ).copyWith(shadowColor: Colors.transparent),
         platform: TargetPlatform.android,
-      )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
+      )(buildTestProviderScope(child: child)),
       surfaceSize: const Size(800, 800),
     );
 
@@ -230,7 +233,7 @@ void main() {
           useMaterial3: true,
         ).copyWith(shadowColor: Colors.transparent),
         platform: TargetPlatform.android,
-      )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
+      )(buildTestProviderScope(child: child)),
       surfaceSize: const Size(800, 800),
     );
 
@@ -252,11 +255,8 @@ void main() {
 
     Widget createWidgetUnderTest() {
       return buildTestableWidget(
-        child: MultiProvider(
-          providers: [
-            Provider<ErrorHandler>(create: (_) => ErrorHandler()),
-            Provider<TaskRepository?>.value(value: mockRepository),
-          ],
+        child: buildTestProviderScope(
+          overrides: [taskRepositoryProvider.overrideWithValue(mockRepository)],
           child: const CreateTaskScreen(),
         ),
       );
@@ -560,11 +560,10 @@ void main() {
 
     Widget createWidget({Task? taskToEdit}) {
       return buildTestableWidget(
-        child: MultiProvider(
-          providers: [
-            Provider<ErrorHandler>(create: (_) => ErrorHandler()),
-            Provider<TaskRepository?>.value(value: mockTaskRepository),
-            Provider<FamilyRepository?>.value(value: familyRepository),
+        child: buildTestProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            familyRepositoryProvider.overrideWithValue(familyRepository),
           ],
           child: CreateTaskScreen(taskToEdit: taskToEdit),
         ),

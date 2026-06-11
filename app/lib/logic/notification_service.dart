@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -9,6 +10,12 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'task.dart';
 import 'civil_day.dart';
 import 'notification_helper.dart';
+
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  final service = PlatformNotificationService();
+  ref.onDispose(() => service.dispose());
+  return service;
+});
 
 /// Abstract service to handle scheduling and cancelling of task notifications.
 abstract class NotificationService {

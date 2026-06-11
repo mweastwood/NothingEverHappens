@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/mockito.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import '../test_helper.dart';
 
@@ -34,10 +34,10 @@ void main() {
   });
 
   Widget createScreen() {
-    return MultiProvider(
-      providers: [
-        Provider<AuthRepository>.value(value: mockAuthRepository),
-        Provider<TaskRepository>.value(value: mockTaskRepository),
+    return ProviderScope(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(mockAuthRepository),
+        taskRepositoryProvider.overrideWithValue(mockTaskRepository),
       ],
       child: buildTestableWidget(
         child: const Scaffold(body: TaskScheduleScreen()),
@@ -141,10 +141,10 @@ void main() {
     when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([]));
 
     await tester.pumpWidgetBuilder(
-      MultiProvider(
-        providers: [
-          Provider<AuthRepository>.value(value: mockAuthRepository),
-          Provider<TaskRepository>.value(value: mockTaskRepository),
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
         ],
         child: const Scaffold(body: TaskScheduleScreen()),
       ),
@@ -201,10 +201,10 @@ void main() {
     ).thenAnswer((_) => Stream.value([dailyTask, weeklyTask]));
 
     await tester.pumpWidgetBuilder(
-      MultiProvider(
-        providers: [
-          Provider<AuthRepository>.value(value: mockAuthRepository),
-          Provider<TaskRepository>.value(value: mockTaskRepository),
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
         ],
         child: const Scaffold(body: TaskScheduleScreen()),
       ),

@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'l10n_extension.dart';
 
 class ErrorReport {
@@ -115,3 +116,5 @@ class ErrorHandler {
     );
   }
 }
+
+final errorHandlerProvider = Provider<ErrorHandler>((ref) => ErrorHandler());

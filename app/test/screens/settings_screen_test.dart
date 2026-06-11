@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import '../test_helper.dart';
 
@@ -37,10 +37,10 @@ void main() {
   });
 
   Widget buildTestWidget() {
-    return MultiProvider(
-      providers: [
-        Provider<UserSettingsRepository>.value(value: mockRepository),
-        Provider<ErrorHandler>.value(value: errorHandler),
+    return ProviderScope(
+      overrides: [
+        userSettingsRepositoryProvider.overrideWithValue(mockRepository),
+        errorHandlerProvider.overrideWithValue(errorHandler),
       ],
       child: buildTestableWidget(child: const SettingsScreen()),
     );

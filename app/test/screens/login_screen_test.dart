@@ -7,7 +7,7 @@ import 'package:mockito/mockito.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/screens/login_screen.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../test_helper.dart';
 
 @GenerateNiceMocks([MockSpec<AuthRepository>()])
@@ -28,10 +28,10 @@ void main() {
   });
 
   Widget buildTestWidget() {
-    return MultiProvider(
-      providers: [
-        Provider<AuthRepository>.value(value: mockAuthRepository),
-        Provider<ErrorHandler>.value(value: errorHandler),
+    return ProviderScope(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(mockAuthRepository),
+        errorHandlerProvider.overrideWithValue(errorHandler),
       ],
       child: const LoginScreen(),
     );

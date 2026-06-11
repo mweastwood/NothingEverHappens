@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/task.dart';
 import '../logic/civil_day.dart';
@@ -20,7 +20,7 @@ import '../widgets/recurrence_type_selector.dart';
 import '../widgets/upcoming_occurrences_preview.dart';
 import '../widgets/standard_choice_chip.dart';
 
-class CreateTaskScreen extends StatefulWidget {
+class CreateTaskScreen extends ConsumerStatefulWidget {
   static Duration saveTimeout = const Duration(seconds: 10);
   static bool debugDisableAnimations = false;
 
@@ -29,7 +29,7 @@ class CreateTaskScreen extends StatefulWidget {
   const CreateTaskScreen({super.key, this.taskToEdit});
 
   @override
-  State<CreateTaskScreen> createState() => _CreateTaskScreenState();
+  ConsumerState<CreateTaskScreen> createState() => _CreateTaskScreenState();
 }
 
 class SaveIntent extends Intent {
@@ -40,7 +40,7 @@ class DiscardIntent extends Intent {
   const DiscardIntent();
 }
 
-class _CreateTaskScreenState extends State<CreateTaskScreen> {
+class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _titleFocusNode = FocusNode();
@@ -508,7 +508,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           assignedUserId: _assignedUserId,
         );
 
-        final repository = context.read<TaskRepository?>();
+        final repository = ref.read(taskRepositoryProvider);
         if (repository != null) {
           if (widget.taskToEdit != null) {
             final modification = widget.taskToEdit!.edit(
@@ -563,7 +563,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         }
       } catch (e, stackTrace) {
         if (mounted) {
-          final errorHandler = context.read<ErrorHandler>();
+          final errorHandler = ref.read(errorHandlerProvider);
           final report = errorHandler.report(e, stackTrace: stackTrace);
           errorHandler.showErrorDialog(context, report);
         }
@@ -985,7 +985,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final familyRepo = Provider.of<FamilyRepository?>(context);
+    final familyRepo = ref.watch(familyRepositoryProvider);
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: familyRepo?.getProfile() ?? const Stream.empty(),
       builder: (context, snapshot) {

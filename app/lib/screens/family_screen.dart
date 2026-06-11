@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/family.dart';
 import '../logic/family_repository.dart';
@@ -9,14 +9,14 @@ import '../widgets/family_invite_card.dart';
 import '../widgets/family_outstanding_invite_tile.dart';
 import '../widgets/family_member_tile.dart';
 
-class FamilyScreen extends StatefulWidget {
+class FamilyScreen extends ConsumerStatefulWidget {
   const FamilyScreen({super.key});
 
   @override
-  State<FamilyScreen> createState() => _FamilyScreenState();
+  ConsumerState<FamilyScreen> createState() => _FamilyScreenState();
 }
 
-class _FamilyScreenState extends State<FamilyScreen> {
+class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   bool _isProcessing = false;
 
   Future<void> _createFamily(FamilyRepository repository) async {
@@ -70,7 +70,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
         await repository.createFamily(name);
       } catch (e, stackTrace) {
         if (mounted) {
-          final errorHandler = context.read<ErrorHandler>();
+          final errorHandler = ref.read(errorHandlerProvider);
           final report = errorHandler.report(e, stackTrace: stackTrace);
           errorHandler.showErrorDialog(context, report);
         }
@@ -187,7 +187,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
         }
       } catch (e, stackTrace) {
         if (mounted) {
-          final errorHandler = context.read<ErrorHandler>();
+          final errorHandler = ref.read(errorHandlerProvider);
           final report = errorHandler.report(e, stackTrace: stackTrace);
           errorHandler.showErrorDialog(context, report);
         }
@@ -236,7 +236,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
         await repository.leaveFamily(familyId);
       } catch (e, stackTrace) {
         if (mounted) {
-          final errorHandler = context.read<ErrorHandler>();
+          final errorHandler = ref.read(errorHandlerProvider);
           final report = errorHandler.report(e, stackTrace: stackTrace);
           errorHandler.showErrorDialog(context, report);
         }
@@ -266,7 +266,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
       }
     } catch (e, stackTrace) {
       if (mounted) {
-        final errorHandler = context.read<ErrorHandler>();
+        final errorHandler = ref.read(errorHandlerProvider);
         final report = errorHandler.report(e, stackTrace: stackTrace);
         errorHandler.showErrorDialog(context, report);
       }
@@ -319,7 +319,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
         }
       } catch (e, stackTrace) {
         if (mounted) {
-          final errorHandler = context.read<ErrorHandler>();
+          final errorHandler = ref.read(errorHandlerProvider);
           final report = errorHandler.report(e, stackTrace: stackTrace);
           errorHandler.showErrorDialog(context, report);
         }
@@ -335,7 +335,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final familyRepo = Provider.of<FamilyRepository?>(context);
+    final familyRepo = ref.watch(familyRepositoryProvider);
 
     if (familyRepo == null) {
       return const Center(child: CircularProgressIndicator());

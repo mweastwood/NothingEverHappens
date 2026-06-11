@@ -7,7 +7,7 @@ import 'package:nothing_ever_happens/logic/task.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import '../test_helper.dart';
@@ -46,8 +46,10 @@ void main() {
   Widget createWidget(Task task) {
     return buildTestableWidget(
       child: Scaffold(
-        body: Provider<TaskRepository>.value(
-          value: mockTaskRepository,
+        body: ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+          ],
           child: TaskWidget(task: task),
         ),
       ),
@@ -122,8 +124,10 @@ void main() {
     );
 
     await tester.pumpWidgetBuilder(
-      Provider<TaskRepository>.value(
-        value: mockTaskRepository,
+      ProviderScope(
+        overrides: [
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
         child: Container(
           color: Colors.white, // White background for clarity
           child: Column(
@@ -216,8 +220,10 @@ void main() {
     await tester.pumpWidget(
       buildTestableWidget(
         child: Scaffold(
-          body: Provider<TaskRepository>.value(
-            value: mockTaskRepository,
+          body: ProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            ],
             child: TaskWidget(task: testTask),
           ),
         ),
@@ -253,8 +259,10 @@ void main() {
     await tester.pumpWidget(
       buildTestableWidget(
         child: Scaffold(
-          body: Provider<TaskRepository>.value(
-            value: mockTaskRepository,
+          body: ProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            ],
             child: TaskWidget(task: recurringTask),
           ),
         ),
@@ -274,8 +282,10 @@ void main() {
     await tester.pumpWidget(
       buildTestableWidget(
         child: Scaffold(
-          body: Provider<TaskRepository>.value(
-            value: mockTaskRepository,
+          body: ProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            ],
             child: TaskWidget(task: testTask),
           ),
         ),
@@ -304,8 +314,10 @@ void main() {
 
   testGoldens('TaskWidget focused state golden', (tester) async {
     await tester.pumpWidgetBuilder(
-      Provider<TaskRepository>.value(
-        value: mockTaskRepository,
+      ProviderScope(
+        overrides: [
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
         child: Container(
           color: Colors.white,
           child: TaskWidget(task: testTask),
@@ -341,8 +353,10 @@ void main() {
     );
 
     await tester.pumpWidgetBuilder(
-      Provider<TaskRepository>.value(
-        value: mockTaskRepository,
+      ProviderScope(
+        overrides: [
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
         child: Container(
           color: Colors.white,
           child: TaskWidget(task: recurringTask),
@@ -445,8 +459,10 @@ void main() {
     );
 
     await tester.pumpWidgetBuilder(
-      Provider<TaskRepository>.value(
-        value: mockTaskRepository,
+      ProviderScope(
+        overrides: [
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
         child: Container(
           color: Colors.grey[100],
           padding: const EdgeInsets.all(8.0),
