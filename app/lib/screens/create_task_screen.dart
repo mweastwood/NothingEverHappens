@@ -576,6 +576,36 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     }
   }
 
+  Widget _buildCustomChip({
+    required Key key,
+    required String label,
+    required bool isSelected,
+    required ValueChanged<bool>? onSelected,
+  }) {
+    final theme = Theme.of(context);
+    return ChoiceChip(
+      key: key,
+      label: Text(label),
+      selected: isSelected,
+      onSelected: onSelected,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      selectedColor: theme.colorScheme.primaryContainer,
+      backgroundColor: theme.colorScheme.surfaceContainerLow,
+      labelStyle: TextStyle(
+        fontSize: 13,
+        color: isSelected
+            ? theme.colorScheme.onPrimaryContainer
+            : theme.colorScheme.onSurface,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      side: BorderSide(
+        color: isSelected
+            ? theme.colorScheme.primary
+            : theme.colorScheme.outlineVariant,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final familyRepo = Provider.of<FamilyRepository?>(context);
@@ -744,12 +774,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                             break;
                                         }
 
-                                        return ChoiceChip(
+                                        return _buildCustomChip(
                                           key: Key(
                                             'priority_chip_${priority.name}',
                                           ),
-                                          label: Text(label),
-                                          selected: _priority == priority,
+                                          label: label,
+                                          isSelected: _priority == priority,
                                           onSelected: readOnly
                                               ? null
                                               : (selected) {
@@ -930,12 +960,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                                   break;
                                               }
 
-                                              return ChoiceChip(
+                                              return _buildCustomChip(
                                                 key: Key(
                                                   'missed_policy_chip_${policy.name}',
                                                 ),
-                                                label: Text(label),
-                                                selected:
+                                                label: label,
+                                                isSelected:
                                                     _missedPolicy == policy,
                                                 onSelected: readOnly
                                                     ? null
