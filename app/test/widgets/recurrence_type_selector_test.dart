@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/widgets/standard_choice_chip.dart';
 import 'package:nothing_ever_happens/widgets/recurrence_type_selector.dart';
 import '../test_helper.dart';
 
@@ -33,7 +34,7 @@ void main() {
       // Verify One-off chip is selected
       final oneOffChipFinder = find.byKey(const Key('recurrence_chip_oneOff'));
       expect(oneOffChipFinder, findsOneWidget);
-      final ChoiceChip oneOffChip = tester.widget(oneOffChipFinder);
+      final StandardChoiceChip oneOffChip = tester.widget(oneOffChipFinder);
       expect(oneOffChip.selected, isTrue);
 
       // Tap the Daily chip and verify callback

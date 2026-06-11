@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../logic/task.dart';
 import '../logic/l10n_extension.dart';
+import 'standard_choice_chip.dart';
 
 class RecurrenceTypeSelector extends StatelessWidget {
   final RecurrenceType selectedValue;
@@ -15,7 +16,6 @@ class RecurrenceTypeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     return Wrap(
       spacing: 8.0,
       runSpacing: 8.0,
@@ -41,24 +41,10 @@ class RecurrenceTypeSelector extends StatelessWidget {
 
         final isSelected = selectedValue == type;
 
-        return ChoiceChip(
+        return StandardChoiceChip(
           key: Key('recurrence_chip_${type.name}'),
-          label: Text(label),
+          label: label,
           selected: isSelected,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          selectedColor: theme.colorScheme.primaryContainer,
-          backgroundColor: theme.colorScheme.surfaceContainerLow,
-          labelStyle: TextStyle(
-            color: isSelected
-                ? theme.colorScheme.onPrimaryContainer
-                : theme.colorScheme.onSurface,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-          side: BorderSide(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.outlineVariant,
-          ),
           onSelected: (selected) {
             if (selected) {
               onSelected(type);

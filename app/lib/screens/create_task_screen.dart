@@ -18,6 +18,7 @@ import '../widgets/monthly_scheduling_widget.dart';
 import '../widgets/yearly_scheduling_widget.dart';
 import '../widgets/recurrence_type_selector.dart';
 import '../widgets/upcoming_occurrences_preview.dart';
+import '../widgets/standard_choice_chip.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   static Duration saveTimeout = const Duration(seconds: 10);
@@ -582,27 +583,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     required bool isSelected,
     required ValueChanged<bool>? onSelected,
   }) {
-    final theme = Theme.of(context);
-    return ChoiceChip(
+    return StandardChoiceChip(
       key: key,
-      label: Text(label),
+      label: label,
       selected: isSelected,
       onSelected: onSelected,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      selectedColor: theme.colorScheme.primaryContainer,
-      backgroundColor: theme.colorScheme.surfaceContainerLow,
-      labelStyle: TextStyle(
-        fontSize: 13,
-        color: isSelected
-            ? theme.colorScheme.onPrimaryContainer
-            : theme.colorScheme.onSurface,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
-      side: BorderSide(
-        color: isSelected
-            ? theme.colorScheme.primary
-            : theme.colorScheme.outlineVariant,
-      ),
     );
   }
 
