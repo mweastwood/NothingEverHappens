@@ -576,6 +576,442 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     }
   }
 
+  Widget _buildCustomChip({
+    required Key key,
+    required String label,
+    required bool isSelected,
+    required ValueChanged<bool>? onSelected,
+  }) {
+    final theme = Theme.of(context);
+    return ChoiceChip(
+      key: key,
+      label: Text(label),
+      selected: isSelected,
+      onSelected: onSelected,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      selectedColor: theme.colorScheme.primaryContainer,
+      backgroundColor: theme.colorScheme.surfaceContainerLow,
+      labelStyle: TextStyle(
+        fontSize: 13,
+        color: isSelected
+            ? theme.colorScheme.onPrimaryContainer
+            : theme.colorScheme.onSurface,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      side: BorderSide(
+        color: isSelected
+            ? theme.colorScheme.primary
+            : theme.colorScheme.outlineVariant,
+      ),
+    );
+  }
+
+  Widget _buildDetailsCard(
+    BuildContext context,
+    bool readOnly,
+    bool isWide,
+    bool inFamily,
+  ) {
+    final theme = Theme.of(context);
+
+    final metadataWidgets = [
+      Expanded(
+        flex: isWide ? 2 : 0,
+        child: TextFormField(
+          key: const Key('estimated_effort_field'),
+          controller: _estimatedDurationController,
+          enabled: !readOnly,
+          decoration: InputDecoration(
+            labelText: context.l10n.estimatedEffortFieldLabel,
+            helperText: isWide ? null : context.l10n.estimatedEffortHelper,
+            border: const OutlineInputBorder(),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
+          ),
+          style: theme.textTheme.bodyMedium,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          validator: (value) {
+            if (value != null && value.isNotEmpty) {
+              final val = int.tryParse(value);
+              if (val == null || val <= 0) {
+                return context.l10n.estimatedEffortValidationError;
+              }
+            }
+            return null;
+          },
+        ),
+      ),
+      if (isWide) const SizedBox(width: 12) else const SizedBox(height: 12),
+      Expanded(
+        flex: isWide ? 3 : 0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.taskPriorityLabel,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              key: const Key('task_priority_dropdown'),
+              spacing: 6.0,
+              runSpacing: 6.0,
+              children: TaskPriority.values.map((priority) {
+                final String label;
+                switch (priority) {
+                  case TaskPriority.low:
+                    label = context.l10n.priorityLow;
+                    break;
+                  case TaskPriority.medium:
+                    label = context.l10n.priorityMedium;
+                    break;
+                  case TaskPriority.high:
+                    label = context.l10n.priorityHigh;
+                    break;
+                }
+                return _buildCustomChip(
+                  key: Key('priority_chip_${priority.name}'),
+                  label: label,
+                  isSelected: _priority == priority,
+                  onSelected: readOnly
+                      ? null
+                      : (selected) {
+                          if (selected) {
+                            setState(() {
+                              _priority = priority;
+                            });
+                          }
+                        },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+      if (inFamily) ...[
+        if (isWide) const SizedBox(width: 12) else const SizedBox(height: 12),
+        Expanded(
+          flex: isWide ? 2 : 0,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                context.l10n.familyTaskLabel,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _buildCustomChip(
+                key: const Key('is_family_toggle'),
+                label: _isFamily ? 'Family Task' : 'Personal Task',
+                isSelected: _isFamily,
+                onSelected: readOnly
+                    ? null
+                    : (selected) {
+                        setState(() {
+                          _isFamily = selected;
+                        });
+                      },
+              ),
+            ],
+          ),
+        ),
+      ],
+    ];
+
+    Widget metadataContainer;
+    if (isWide) {
+      metadataContainer = Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: metadataWidgets,
+      );
+    } else {
+      metadataContainer = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: metadataWidgets.map((w) {
+          if (w is Expanded) return w.child;
+          return w;
+        }).toList(),
+      );
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormField(
+              controller: _titleController,
+              focusNode: _titleFocusNode,
+              autofocus: !readOnly,
+              enabled: !readOnly,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+              decoration: InputDecoration(
+                labelText: context.l10n.titleFieldLabel,
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.all(16),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return context.l10n.titleRequiredError;
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descriptionController,
+              enabled: !readOnly,
+              decoration: InputDecoration(
+                labelText: context.l10n.descriptionFieldLabel,
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.all(16),
+              ),
+              style: theme.textTheme.bodyMedium,
+              maxLines: 3,
+            ),
+            const SizedBox(height: 20),
+            metadataContainer,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleCard(BuildContext context, bool readOnly) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.l10n.scheduleHeader,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            RecurrenceTypeSelector(
+              selectedValue: _scheduleType,
+              onSelected: (newType) {
+                setState(() {
+                  _scheduleType = newType;
+                });
+              },
+            ),
+            const SizedBox(height: 24),
+            AbsorbPointer(
+              absorbing: readOnly,
+              child: Opacity(
+                opacity: readOnly ? 0.6 : 1.0,
+                child: Builder(
+                  builder: (context) {
+                    if (_scheduleType == RecurrenceType.oneOff) {
+                      return OneOffSchedulingWidget(
+                        dueDateTime: _dueDateTimeController,
+                        startDateTime: _startDateTimeController,
+                        notificationTimeController:
+                            _oneOffNotificationController,
+                      );
+                    } else if (_scheduleType == RecurrenceType.daily) {
+                      return DailySchedulingWidget(
+                        startDate: _startDate,
+                        onStartDateChanged: (date) {
+                          setState(() => _startDate = date);
+                        },
+                        dailyTimesController: _dailyTimesController,
+                        intervalController: _intervalController,
+                      );
+                    } else if (_scheduleType == RecurrenceType.weekly) {
+                      return WeeklySchedulingWidget(
+                        startDate: _startDate,
+                        onStartDateChanged: (date) {
+                          setState(() => _startDate = date);
+                        },
+                        dailyTimesController: _dailyTimesController,
+                        intervalController: _intervalController,
+                        selectedWeekdays: _selectedWeekdays,
+                        onWeekdaysChanged: (days) {
+                          setState(() => _selectedWeekdays = days);
+                        },
+                      );
+                    } else if (_scheduleType == RecurrenceType.monthly) {
+                      return MonthlySchedulingWidget(
+                        startDate: _startDate,
+                        onStartDateChanged: (date) {
+                          setState(() => _startDate = date);
+                        },
+                        dailyTimesController: _dailyTimesController,
+                        intervalController: _intervalController,
+                        ruleTypeController: _monthlyRuleTypeController,
+                        dayOfMonthController: _monthlyDayOfMonthController,
+                        nthOccurrenceController:
+                            _monthlyNthOccurrenceController,
+                        dayOfWeekController: _monthlyDayOfWeekController,
+                      );
+                    } else if (_scheduleType == RecurrenceType.yearly) {
+                      return YearlySchedulingWidget(
+                        startDate: _startDate,
+                        onStartDateChanged: (date) {
+                          setState(() => _startDate = date);
+                        },
+                        dailyTimesController: _dailyTimesController,
+                        intervalController: _intervalController,
+                        monthController: _yearlyMonthController,
+                        dayController: _yearlyDayController,
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMissedPolicyCard(BuildContext context, bool readOnly) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.l10n.missedPolicyHeader,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              key: const Key('missed_policy_dropdown'),
+              spacing: 8.0,
+              runSpacing: 8.0,
+              children: MissedPolicy.values.map((policy) {
+                final String label;
+                switch (policy) {
+                  case MissedPolicy.rollover:
+                    label = context.l10n.rolloverLabel;
+                    break;
+                  case MissedPolicy.skip:
+                    label = context.l10n.skipLabel;
+                    break;
+                  case MissedPolicy.shift:
+                    label = context.l10n.shiftLabel;
+                    break;
+                  case MissedPolicy.stack:
+                    label = context.l10n.stackLabel;
+                    break;
+                }
+                return _buildCustomChip(
+                  key: Key('missed_policy_chip_${policy.name}'),
+                  label: label,
+                  isSelected: _missedPolicy == policy,
+                  onSelected: readOnly
+                      ? null
+                      : (selected) {
+                          if (selected) {
+                            setState(() {
+                              _missedPolicy = policy;
+                            });
+                          }
+                        },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              context.l10n.missedPolicyHelper,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _getMissedPolicyDescription(context, _missedPolicy),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewCard(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: UpcomingOccurrencesPreview(
+          schedule: _buildSchedule(),
+          dailyTimes: _scheduleType == RecurrenceType.oneOff
+              ? (_oneOffNotificationController.value != null
+                    ? [
+                        DailyOccurrenceTime(
+                          startTime: TimeOfDay.fromDateTime(
+                            _startDateTimeController.value,
+                          ),
+                          dueTime: TimeOfDay.fromDateTime(
+                            _dueDateTimeController.value,
+                          ),
+                          notificationTime: _oneOffNotificationController.value,
+                        ),
+                      ]
+                    : const <DailyOccurrenceTime>[])
+              : _dailyTimesController.value,
+          startDateTime: _startDateTimeController.value,
+          dueDateTime: _dueDateTimeController.value,
+          scheduleType: _scheduleType,
+          maxOccurrences: 10,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final familyRepo = Provider.of<FamilyRepository?>(context);
@@ -642,388 +1078,87 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                       ),
                     ),
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          children: [
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    TextFormField(
-                                      controller: _titleController,
-                                      focusNode: _titleFocusNode,
-                                      autofocus: !readOnly,
-                                      enabled: !readOnly,
-                                      decoration: InputDecoration(
-                                        labelText: context.l10n.titleFieldLabel,
-                                        border: const OutlineInputBorder(),
-                                      ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return context
-                                              .l10n
-                                              .titleRequiredError;
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 16),
-                                    TextFormField(
-                                      controller: _descriptionController,
-                                      enabled: !readOnly,
-                                      decoration: InputDecoration(
-                                        labelText:
-                                            context.l10n.descriptionFieldLabel,
-                                        border: const OutlineInputBorder(),
-                                      ),
-                                      maxLines: 3,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    TextFormField(
-                                      key: const Key('estimated_effort_field'),
-                                      controller: _estimatedDurationController,
-                                      enabled: !readOnly,
-                                      decoration: InputDecoration(
-                                        labelText: context
-                                            .l10n
-                                            .estimatedEffortFieldLabel,
-                                        border: const OutlineInputBorder(),
-                                        helperText:
-                                            context.l10n.estimatedEffortHelper,
-                                      ),
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                      ],
-                                      validator: (value) {
-                                        if (value != null && value.isNotEmpty) {
-                                          final val = int.tryParse(value);
-                                          if (val == null || val <= 0) {
-                                            return context
-                                                .l10n
-                                                .estimatedEffortValidationError;
-                                          }
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      context.l10n.taskPriorityLabel,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      key: const Key('task_priority_dropdown'),
-                                      spacing: 8.0,
-                                      runSpacing: 8.0,
-                                      children: TaskPriority.values.map((
-                                        priority,
-                                      ) {
-                                        final String label;
-                                        switch (priority) {
-                                          case TaskPriority.low:
-                                            label = context.l10n.priorityLow;
-                                            break;
-                                          case TaskPriority.medium:
-                                            label = context.l10n.priorityMedium;
-                                            break;
-                                          case TaskPriority.high:
-                                            label = context.l10n.priorityHigh;
-                                            break;
-                                        }
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isDesktop = constraints.maxWidth >= 800;
 
-                                        return ChoiceChip(
-                                          key: Key(
-                                            'priority_chip_${priority.name}',
-                                          ),
-                                          label: Text(label),
-                                          selected: _priority == priority,
-                                          onSelected: readOnly
-                                              ? null
-                                              : (selected) {
-                                                  if (selected) {
-                                                    setState(() {
-                                                      _priority = priority;
-                                                    });
-                                                  }
-                                                },
-                                        );
-                                      }).toList(),
-                                    ),
-                                    if (inFamily) ...[
-                                      const SizedBox(height: 16),
-                                      SwitchListTile(
-                                        key: const Key('is_family_toggle'),
-                                        title: Text(
-                                          context.l10n.familyTaskLabel,
-                                        ),
-                                        subtitle: Text(
-                                          context.l10n.familyTaskHelper,
-                                        ),
-                                        value: _isFamily,
-                                        onChanged: readOnly
-                                            ? null
-                                            : (value) {
-                                                setState(
-                                                  () => _isFamily = value,
-                                                );
-                                              },
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            AbsorbPointer(
-                              absorbing: readOnly,
-                              child: Opacity(
-                                opacity: readOnly ? 0.6 : 1.0,
-                                child: Card(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
+                        final detailsCard = _buildDetailsCard(
+                          context,
+                          readOnly,
+                          isDesktop,
+                          inFamily,
+                        );
+                        final scheduleCard = _buildScheduleCard(
+                          context,
+                          readOnly,
+                        );
+                        final missedPolicyCard = _buildMissedPolicyCard(
+                          context,
+                          readOnly,
+                        );
+                        final previewCard = _buildPreviewCard(context);
+
+                        if (isDesktop) {
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Form(
+                              key: _formKey,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          context.l10n.scheduleHeader,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        RecurrenceTypeSelector(
-                                          selectedValue: _scheduleType,
-                                          onSelected: (newType) {
-                                            setState(() {
-                                              _scheduleType = newType;
-                                            });
-                                          },
-                                        ),
-                                        const SizedBox(height: 24),
-                                        if (_scheduleType ==
-                                            RecurrenceType.oneOff)
-                                          OneOffSchedulingWidget(
-                                            dueDateTime: _dueDateTimeController,
-                                            startDateTime:
-                                                _startDateTimeController,
-                                            notificationTimeController:
-                                                _oneOffNotificationController,
-                                          )
-                                        else if (_scheduleType ==
-                                            RecurrenceType.daily)
-                                          DailySchedulingWidget(
-                                            startDate: _startDate,
-                                            onStartDateChanged: (date) {
-                                              setState(() => _startDate = date);
-                                            },
-                                            dailyTimesController:
-                                                _dailyTimesController,
-                                            intervalController:
-                                                _intervalController,
-                                          )
-                                        else if (_scheduleType ==
-                                            RecurrenceType.weekly)
-                                          WeeklySchedulingWidget(
-                                            startDate: _startDate,
-                                            onStartDateChanged: (date) {
-                                              setState(() => _startDate = date);
-                                            },
-                                            dailyTimesController:
-                                                _dailyTimesController,
-                                            intervalController:
-                                                _intervalController,
-                                            selectedWeekdays: _selectedWeekdays,
-                                            onWeekdaysChanged: (days) {
-                                              setState(
-                                                () => _selectedWeekdays = days,
-                                              );
-                                            },
-                                          )
-                                        else if (_scheduleType ==
-                                            RecurrenceType.monthly)
-                                          MonthlySchedulingWidget(
-                                            startDate: _startDate,
-                                            onStartDateChanged: (date) {
-                                              setState(() => _startDate = date);
-                                            },
-                                            dailyTimesController:
-                                                _dailyTimesController,
-                                            intervalController:
-                                                _intervalController,
-                                            ruleTypeController:
-                                                _monthlyRuleTypeController,
-                                            dayOfMonthController:
-                                                _monthlyDayOfMonthController,
-                                            nthOccurrenceController:
-                                                _monthlyNthOccurrenceController,
-                                            dayOfWeekController:
-                                                _monthlyDayOfWeekController,
-                                          )
-                                        else if (_scheduleType ==
-                                            RecurrenceType.yearly)
-                                          YearlySchedulingWidget(
-                                            startDate: _startDate,
-                                            onStartDateChanged: (date) {
-                                              setState(() => _startDate = date);
-                                            },
-                                            dailyTimesController:
-                                                _dailyTimesController,
-                                            intervalController:
-                                                _intervalController,
-                                            monthController:
-                                                _yearlyMonthController,
-                                            dayController: _yearlyDayController,
-                                          ),
+                                        detailsCard,
                                         if (_scheduleType !=
                                             RecurrenceType.oneOff) ...[
-                                          const Divider(height: 32),
-                                          Text(
-                                            context.l10n.missedPolicyHeader,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Wrap(
-                                            key: const Key(
-                                              'missed_policy_dropdown',
-                                            ),
-                                            spacing: 8.0,
-                                            runSpacing: 8.0,
-                                            children: MissedPolicy.values.map((
-                                              policy,
-                                            ) {
-                                              final String label;
-                                              switch (policy) {
-                                                case MissedPolicy.rollover:
-                                                  label = context
-                                                      .l10n
-                                                      .rolloverLabel;
-                                                  break;
-                                                case MissedPolicy.skip:
-                                                  label =
-                                                      context.l10n.skipLabel;
-                                                  break;
-                                                case MissedPolicy.shift:
-                                                  label =
-                                                      context.l10n.shiftLabel;
-                                                  break;
-                                                case MissedPolicy.stack:
-                                                  label =
-                                                      context.l10n.stackLabel;
-                                                  break;
-                                              }
-
-                                              return ChoiceChip(
-                                                key: Key(
-                                                  'missed_policy_chip_${policy.name}',
-                                                ),
-                                                label: Text(label),
-                                                selected:
-                                                    _missedPolicy == policy,
-                                                onSelected: readOnly
-                                                    ? null
-                                                    : (selected) {
-                                                        if (selected) {
-                                                          setState(() {
-                                                            _missedPolicy =
-                                                                policy;
-                                                          });
-                                                        }
-                                                      },
-                                              );
-                                            }).toList(),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            context.l10n.missedPolicyHelper,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall
-                                                ?.copyWith(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.outline,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            _getMissedPolicyDescription(
-                                              context,
-                                              _missedPolicy,
-                                            ),
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall
-                                                ?.copyWith(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.outline,
-                                                ),
-                                          ),
+                                          const SizedBox(height: 16),
+                                          missedPolicyCard,
                                         ],
-                                        const Divider(height: 32),
-                                        UpcomingOccurrencesPreview(
-                                          schedule: _buildSchedule(),
-                                          dailyTimes:
-                                              _scheduleType ==
-                                                  RecurrenceType.oneOff
-                                              ? (_oneOffNotificationController
-                                                            .value !=
-                                                        null
-                                                    ? [
-                                                        DailyOccurrenceTime(
-                                                          startTime:
-                                                              TimeOfDay.fromDateTime(
-                                                                _startDateTimeController
-                                                                    .value,
-                                                              ),
-                                                          dueTime:
-                                                              TimeOfDay.fromDateTime(
-                                                                _dueDateTimeController
-                                                                    .value,
-                                                              ),
-                                                          notificationTime:
-                                                              _oneOffNotificationController
-                                                                  .value,
-                                                        ),
-                                                      ]
-                                                    : const <
-                                                        DailyOccurrenceTime
-                                                      >[])
-                                              : _dailyTimesController.value,
-                                          startDateTime:
-                                              _startDateTimeController.value,
-                                          dueDateTime:
-                                              _dueDateTimeController.value,
-                                          scheduleType: _scheduleType,
-                                          maxOccurrences: 10,
-                                        ),
                                       ],
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        scheduleCard,
+                                        const SizedBox(height: 16),
+                                        previewCard,
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
+                          );
+                        } else {
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                children: [
+                                  detailsCard,
+                                  const SizedBox(height: 16),
+                                  scheduleCard,
+                                  if (_scheduleType !=
+                                      RecurrenceType.oneOff) ...[
+                                    const SizedBox(height: 16),
+                                    missedPolicyCard,
+                                  ],
+                                  const SizedBox(height: 16),
+                                  previewCard,
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                      },
                     ),
                   ),
                   Padding(
