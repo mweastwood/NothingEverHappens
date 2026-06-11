@@ -7,7 +7,7 @@ describe('Firestore Security Rules', () => {
 
   before(async () => {
     testEnv = await initializeTestEnvironment({
-      projectId: 'nothing-ever-happens-test',
+      projectId: 'demo-nothing-ever-happens-test',
       firestore: {
         rules: fs.readFileSync(path.resolve(__dirname, '../db/firestore.rules'), 'utf8'),
         host: '127.0.0.1',
