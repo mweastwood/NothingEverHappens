@@ -14,12 +14,21 @@ import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'create_task_screen_test.mocks.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import '../test_helper.dart';
 
 @GenerateMocks([TaskRepository])
 void main() {
+  setUp(() {
+    AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+  });
+
+  tearDown(() {
+    AppClock.reset();
+  });
+
   testWidgets('CreateTaskScreen renders form and saves task', (
     WidgetTester tester,
   ) async {
@@ -123,12 +132,9 @@ void main() {
     await tester.pumpWidgetBuilder(
       const CreateTaskScreen(),
       wrapper: (child) => l10nMaterialAppWrapper(
-        theme: ThemeData.light(useMaterial3: true).copyWith(
-          shadowColor: Colors.transparent,
-          textTheme: ThemeData.light(
-            useMaterial3: true,
-          ).textTheme.apply(fontFamily: 'Ahem'),
-        ),
+        theme: ThemeData.light(
+          useMaterial3: true,
+        ).copyWith(shadowColor: Colors.transparent),
         platform: TargetPlatform.android,
       )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
       surfaceSize: const Size(800, 800),
@@ -150,12 +156,9 @@ void main() {
         const CreateTaskScreen(),
         wrapper: (child) =>
             l10nMaterialAppWrapper(
-              theme: ThemeData.light(useMaterial3: true).copyWith(
-                shadowColor: Colors.transparent,
-                textTheme: ThemeData.light(
-                  useMaterial3: true,
-                ).textTheme.apply(fontFamily: 'Ahem'),
-              ),
+              theme: ThemeData.light(
+                useMaterial3: true,
+              ).copyWith(shadowColor: Colors.transparent),
               platform: TargetPlatform.android,
             )(
               MultiProvider(
@@ -200,12 +203,9 @@ void main() {
     await tester.pumpWidgetBuilder(
       const CreateTaskScreen(),
       wrapper: (child) => l10nMaterialAppWrapper(
-        theme: ThemeData.light(useMaterial3: true).copyWith(
-          shadowColor: Colors.transparent,
-          textTheme: ThemeData.light(
-            useMaterial3: true,
-          ).textTheme.apply(fontFamily: 'Ahem'),
-        ),
+        theme: ThemeData.light(
+          useMaterial3: true,
+        ).copyWith(shadowColor: Colors.transparent),
         platform: TargetPlatform.android,
       )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
       surfaceSize: const Size(800, 800),
@@ -226,12 +226,9 @@ void main() {
     await tester.pumpWidgetBuilder(
       const CreateTaskScreen(),
       wrapper: (child) => l10nMaterialAppWrapper(
-        theme: ThemeData.light(useMaterial3: true).copyWith(
-          shadowColor: Colors.transparent,
-          textTheme: ThemeData.light(
-            useMaterial3: true,
-          ).textTheme.apply(fontFamily: 'Ahem'),
-        ),
+        theme: ThemeData.light(
+          useMaterial3: true,
+        ).copyWith(shadowColor: Colors.transparent),
         platform: TargetPlatform.android,
       )(Provider<ErrorHandler>(create: (_) => ErrorHandler(), child: child)),
       surfaceSize: const Size(800, 800),
