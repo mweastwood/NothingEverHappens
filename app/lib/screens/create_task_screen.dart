@@ -643,6 +643,29 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     );
   }
 
+  Widget _buildDetailsCard(BuildContext context, bool readOnly) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTitleField(context, readOnly),
+            const SizedBox(height: 16),
+            _buildDescriptionField(context, readOnly),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEffortAndPriorityCard(
     BuildContext context,
     bool readOnly,
@@ -1059,8 +1082,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                       builder: (context, constraints) {
                         final isDesktop = constraints.maxWidth >= 800;
 
-                        final titleField = _buildTitleField(context, readOnly);
-                        final descriptionField = _buildDescriptionField(
+                        final detailsCard = _buildDetailsCard(
                           context,
                           readOnly,
                         );
@@ -1084,10 +1106,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  titleField,
+                                  detailsCard,
                                   const SizedBox(height: 16),
-                                  descriptionField,
-                                  const SizedBox(height: 24),
                                   Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -1121,10 +1141,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  titleField,
+                                  detailsCard,
                                   const SizedBox(height: 16),
-                                  descriptionField,
-                                  const SizedBox(height: 24),
                                   scheduleCard,
                                   const SizedBox(height: 16),
                                   effortAndPriorityCard,
