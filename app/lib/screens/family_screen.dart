@@ -5,6 +5,9 @@ import '../logic/family.dart';
 import '../logic/family_repository.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
+import '../widgets/family_invite_card.dart';
+import '../widgets/family_outstanding_invite_tile.dart';
+import '../widgets/family_member_tile.dart';
 
 class FamilyScreen extends StatefulWidget {
   const FamilyScreen({super.key});
@@ -476,84 +479,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
               itemCount: invites.length,
               itemBuilder: (context, index) {
                 final invite = invites[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.mail_outline),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                invite.familyName,
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                invite.role == 'parent'
-                                    ? context.l10n.parentRole
-                                    : context.l10n.nonParentRole,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onPrimaryContainer,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          context.l10n.invitedBy(
-                            invite.fromName,
-                            invite.fromEmail,
-                          ),
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              key: Key('decline_invite_${invite.id}'),
-                              onPressed: () =>
-                                  _handleInvite(repository, invite, false),
-                              child: Text(
-                                context.l10n.declineInviteButton,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              key: Key('accept_invite_${invite.id}'),
-                              onPressed: () =>
-                                  _handleInvite(repository, invite, true),
-                              child: Text(context.l10n.acceptInviteButton),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                return FamilyInviteCard(
+                  invite: invite,
+                  onAccept: () => _handleInvite(repository, invite, true),
+                  onDecline: () => _handleInvite(repository, invite, false),
                 );
               },
             );
@@ -655,54 +584,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
             ),
             const SizedBox(height: 8),
             ...family.members.values.map((member) {
-              final memberIsParent = member.role == 'parent';
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: memberIsParent
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.secondaryContainer,
-                    child: Icon(
-                      memberIsParent ? Icons.supervisor_account : Icons.person,
-                      color: memberIsParent
-                          ? Theme.of(context).colorScheme.onPrimaryContainer
-                          : Theme.of(context).colorScheme.onSecondaryContainer,
-                    ),
-                  ),
-                  title: Text(
-                    member.displayName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(member.email),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: memberIsParent
-                          ? Theme.of(context).colorScheme.primaryContainer
-                          : Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      memberIsParent
-                          ? context.l10n.parentRole
-                          : context.l10n.nonParentRole,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: memberIsParent
-                            ? Theme.of(context).colorScheme.onPrimaryContainer
-                            : Theme.of(
-                                context,
-                              ).colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                  ),
-                ),
-              );
+              return FamilyMemberTile(member: member);
             }),
             if (isParent) ...[
               const SizedBox(height: 24),
@@ -745,42 +627,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
                     itemCount: invites.length,
                     itemBuilder: (context, index) {
                       final invite = invites[index];
-                      final inviteIsParent = invite.role == 'parent';
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.secondaryContainer,
-                            child: Icon(
-                              Icons.mail_outline,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSecondaryContainer,
-                            ),
-                          ),
-                          title: Text(
-                            invite.toEmail,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            inviteIsParent
-                                ? context.l10n.parentRole
-                                : context.l10n.nonParentRole,
-                          ),
-                          trailing: TextButton(
-                            key: Key('revoke_invite_${invite.id}'),
-                            onPressed: () => _revokeInvite(repository, invite),
-                            child: Text(
-                              context.l10n.revokeInviteButton,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
+                      return FamilyOutstandingInviteTile(
+                        invite: invite,
+                        onRevoke: () => _revokeInvite(repository, invite),
                       );
                     },
                   );
