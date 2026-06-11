@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Helper function to check if user is signed in and matches the userId
     function isUser(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return debug(request.auth) != null && debug(request.auth.uid) == debug(userId);
     }
 
     // Helper to check if two users share the same familyId
