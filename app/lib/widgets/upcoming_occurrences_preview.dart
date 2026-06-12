@@ -77,29 +77,34 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
       if (sched is OneOffSchedule) {
         allOccurrences.add(OccurrenceInfo(sched.scheduledDate, sched));
       } else {
-        final CivilDay startDay = startDateTime != null
-            ? CivilDay.fromDateTime(startDateTime!)
-            : (sched.scheduledDate.isBefore(today)
-                  ? today
-                  : sched.scheduledDate);
+        try {
+          final CivilDay startDay = startDateTime != null
+              ? CivilDay.fromDateTime(startDateTime!)
+              : (sched.scheduledDate.isBefore(today)
+                    ? today
+                    : sched.scheduledDate);
 
-        CivilDay current = startDay;
-        if (sched.occursOn(current)) {
-          allOccurrences.add(OccurrenceInfo(current, sched));
-        }
-
-        int count = sched.occursOn(current) ? 1 : 0;
-        int iterations = 0;
-        while (count < maxOccurrences && iterations < 1000) {
-          iterations++;
-          current = sched.nextOccurrenceAfter(current);
-          if (allOccurrences.any(
-            (o) => o.schedule == sched && o.date == current,
-          )) {
-            break;
+          CivilDay current = startDay;
+          if (sched.occursOn(current)) {
+            allOccurrences.add(OccurrenceInfo(current, sched));
           }
-          allOccurrences.add(OccurrenceInfo(current, sched));
-          count++;
+
+          int count = sched.occursOn(current) ? 1 : 0;
+          int iterations = 0;
+          while (count < maxOccurrences && iterations < 1000) {
+            iterations++;
+            current = sched.nextOccurrenceAfter(current);
+            if (allOccurrences.any(
+              (o) => o.schedule == sched && o.date == current,
+            )) {
+              break;
+            }
+            allOccurrences.add(OccurrenceInfo(current, sched));
+            count++;
+          }
+        } catch (e) {
+          // Gracefully ignore calculation errors for transient/invalid configurations
+          debugPrint('Error calculating occurrences: $e');
         }
       }
     }
