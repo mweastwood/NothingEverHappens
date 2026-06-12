@@ -34,19 +34,33 @@ class Task {
   List<TaskSchedule> schedules;
 
   /// Backwards compatibility getters for start/due relative times
-  RelativeTime get startRelativeTime => schedules.isNotEmpty
-      ? schedules[activeOccurrenceIndex < schedules.length
-                ? activeOccurrenceIndex
-                : 0]
-            .startRelativeTime
-      : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
+  RelativeTime get startRelativeTime {
+    if (schedules.isEmpty) {
+      return const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      );
+    }
+    final index =
+        activeOccurrenceIndex >= 0 && activeOccurrenceIndex < schedules.length
+        ? activeOccurrenceIndex
+        : 0;
+    return schedules[index].startRelativeTime;
+  }
 
-  RelativeTime get dueRelativeTime => schedules.isNotEmpty
-      ? schedules[activeOccurrenceIndex < schedules.length
-                ? activeOccurrenceIndex
-                : 0]
-            .dueRelativeTime
-      : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0));
+  RelativeTime get dueRelativeTime {
+    if (schedules.isEmpty) {
+      return const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      );
+    }
+    final index =
+        activeOccurrenceIndex >= 0 && activeOccurrenceIndex < schedules.length
+        ? activeOccurrenceIndex
+        : 0;
+    return schedules[index].dueRelativeTime;
+  }
 
   /// Backwards compatibility getter for schedule
   TaskSchedule get schedule => schedules.isNotEmpty
@@ -66,7 +80,15 @@ class Task {
         );
 
   /// The list of daily occurrence times for tasks scheduled multiple times per day.
-  List<DailyOccurrenceTime> dailyTimes;
+  List<DailyOccurrenceTime> get dailyTimes {
+    return schedules.map((s) {
+      return DailyOccurrenceTime(
+        startTime: s.startRelativeTime.time,
+        dueTime: s.dueRelativeTime.time,
+        notificationTime: s.notificationRelativeTime?.time,
+      );
+    }).toList();
+  }
 
   /// The index of the currently active occurrence time in [dailyTimes].
   int activeOccurrenceIndex;
@@ -110,7 +132,7 @@ class Task {
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
     TaskSchedule? schedule,
-    this.dailyTimes = const [],
+    List<DailyOccurrenceTime> dailyTimes = const [],
     this.activeOccurrenceIndex = 0,
     this.estimatedDuration,
     this.missedPolicy = MissedPolicy.rollover,
