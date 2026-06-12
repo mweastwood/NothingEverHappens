@@ -3,7 +3,6 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
 import 'task.dart';
 import 'task_delta.dart';
-import 'relative_time.dart';
 
 class TaskList {
   final List<Task> activeTasks;
@@ -49,100 +48,135 @@ class TaskList {
     }
 
     final task = activeTasks[taskIndex];
-    if (task.schedule is OneOffSchedule) {
+    final today = CivilDay.fromDateTime(now);
+
+    List<TaskSchedule> newSchedules = task.schedules;
+    int newActiveOccurrenceIndex = task.activeOccurrenceIndex;
+
+    // Check if all schedules represent the same recurrence rule scheduled for the same date.
+    // If so, we treat them as slot-based (like legacy dailyTimes).
+    bool isSlotBased = false;
+    if (task.schedules.isNotEmpty) {
+      final first = task.schedules.first;
+      bool sameRecurrence = true;
+      for (final s in task.schedules) {
+        if (s.runtimeType != first.runtimeType ||
+            s.scheduledDate != first.scheduledDate) {
+          sameRecurrence = false;
+          break;
+        }
+        if (s is DailySchedule && first is DailySchedule) {
+          if (s.interval != first.interval) {
+            sameRecurrence = false;
+          }
+        } else if (s is WeeklySchedule && first is WeeklySchedule) {
+          if (s.interval != first.interval ||
+              s.daysOfWeek.length != first.daysOfWeek.length ||
+              !s.daysOfWeek.every(first.daysOfWeek.contains)) {
+            sameRecurrence = false;
+          }
+        } else if (s is MonthlySchedule && first is MonthlySchedule) {
+          if (s.interval != first.interval ||
+              s.dayOfMonth != first.dayOfMonth) {
+            sameRecurrence = false;
+          }
+        } else if (s is YearlySchedule && first is YearlySchedule) {
+          if (s.interval != first.interval ||
+              s.month != first.month ||
+              s.day != first.day) {
+            sameRecurrence = false;
+          }
+        }
+      }
+      isSlotBased = sameRecurrence && task.schedules.length > 1;
+    }
+
+    bool shouldRemoveTask = false;
+
+    if (isSlotBased) {
+      if (newActiveOccurrenceIndex + 1 < task.schedules.length) {
+        newActiveOccurrenceIndex++;
+      } else {
+        newActiveOccurrenceIndex = 0;
+        if (task.schedules.first is OneOffSchedule) {
+          shouldRemoveTask = true;
+        } else {
+          newSchedules = task.schedules.map((s) {
+            final CivilDay nextOccur;
+            if (task.missedPolicy == MissedPolicy.rollover) {
+              nextOccur = s.nextOccurrenceAfter(s.scheduledDate);
+            } else {
+              nextOccur = s.nextOccurrenceAfter(today);
+            }
+            return s.copyWithStartDate(nextOccur);
+          }).toList();
+        }
+      }
+    } else {
+      // Non-slot-based:
+      // - Advance repeating schedules that occurred on or before today.
+      // - Remove one-off schedules that occurred on or before today.
+      final List<TaskSchedule> list = [];
+      for (final s in task.schedules) {
+        if (s is OneOffSchedule) {
+          if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
+            // Completed! Drop it.
+            continue;
+          }
+          list.add(s);
+        } else {
+          if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
+            final CivilDay nextOccur;
+            if (task.missedPolicy == MissedPolicy.rollover) {
+              nextOccur = s.nextOccurrenceAfter(s.scheduledDate);
+            } else {
+              nextOccur = s.nextOccurrenceAfter(today);
+            }
+            list.add(s.copyWithStartDate(nextOccur));
+          } else {
+            list.add(s);
+          }
+        }
+      }
+      newSchedules = list;
+      if (newSchedules.isEmpty) {
+        shouldRemoveTask = true;
+      }
+      if (newActiveOccurrenceIndex >= newSchedules.length) {
+        newActiveOccurrenceIndex = 0;
+      }
+    }
+
+    if (shouldRemoveTask) {
       return TaskList(
         activeTasks.where((t) => t.id != taskId).toList(),
         history: [...history, delta],
       );
-    } else {
-      // Check if there are multiple occurrence times per day
-      if (task.dailyTimes.isNotEmpty &&
-          task.activeOccurrenceIndex < task.dailyTimes.length - 1) {
-        // Advance to the next occurrence on the SAME day
-        final nextIndex = task.activeOccurrenceIndex + 1;
-        final nextOccurrence = task.dailyTimes[nextIndex];
-        final updatedTask = Task(
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          startRelativeTime: RelativeTime(
-            dayOffset: 0,
-            time: nextOccurrence.startTime,
-          ),
-          dueRelativeTime: RelativeTime(
-            dayOffset: 0,
-            time: nextOccurrence.dueTime,
-          ),
-          schedule: task.schedule, // same schedule (same startDate!)
-          dailyTimes: task.dailyTimes,
-          activeOccurrenceIndex: nextIndex,
-          estimatedDuration: task.estimatedDuration,
-          missedPolicy: task.missedPolicy,
-          isMaster: task.isMaster,
-          lastSpawnedDate: task.lastSpawnedDate,
-          parentTaskId: task.parentTaskId,
-          isFamily: task.isFamily,
-          priority: task.priority,
-          cycleId: task.cycleId,
-          preferredBy: task.preferredBy,
-          assignedUserId: task.assignedUserId,
-        );
-
-        final updatedTasks = List<Task>.from(activeTasks);
-        updatedTasks[taskIndex] = updatedTask;
-
-        return TaskList(updatedTasks, history: [...history, delta]);
-      } else {
-        // We either have no dailyTimes (fallback/compatibility), or we have completed the last daily occurrence.
-        // Reschedule the recurring task to the next occurrence day.
-        final today = CivilDay.fromDateTime(now);
-
-        final CivilDay nextOccur;
-        if (task.missedPolicy == MissedPolicy.rollover) {
-          nextOccur = task.schedule.nextOccurrenceAfter(
-            task.schedule.scheduledDate,
-          );
-        } else {
-          nextOccur = task.schedule.nextOccurrenceAfter(today);
-        }
-
-        final newSchedule = task.schedule.copyWithStartDate(nextOccur);
-
-        // Reset to the first occurrence time (or keep existing startRelativeTime / dueRelativeTime if dailyTimes is empty)
-        final firstOccurStart = task.dailyTimes.isNotEmpty
-            ? RelativeTime(dayOffset: 0, time: task.dailyTimes[0].startTime)
-            : task.startRelativeTime;
-        final firstOccurDue = task.dailyTimes.isNotEmpty
-            ? RelativeTime(dayOffset: 0, time: task.dailyTimes[0].dueTime)
-            : task.dueRelativeTime;
-
-        final updatedTask = Task(
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          startRelativeTime: firstOccurStart,
-          dueRelativeTime: firstOccurDue,
-          schedule: newSchedule,
-          dailyTimes: task.dailyTimes,
-          activeOccurrenceIndex: 0, // reset
-          estimatedDuration: task.estimatedDuration,
-          missedPolicy: task.missedPolicy,
-          isMaster: task.isMaster,
-          lastSpawnedDate: task.lastSpawnedDate,
-          parentTaskId: task.parentTaskId,
-          isFamily: task.isFamily,
-          priority: task.priority,
-          cycleId: task.cycleId,
-          preferredBy: task.preferredBy,
-          assignedUserId: task.assignedUserId,
-        );
-
-        final updatedTasks = List<Task>.from(activeTasks);
-        updatedTasks[taskIndex] = updatedTask;
-
-        return TaskList(updatedTasks, history: [...history, delta]);
-      }
     }
+
+    final updatedTask = Task(
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      schedules: newSchedules,
+      dailyTimes: task.dailyTimes,
+      activeOccurrenceIndex: newActiveOccurrenceIndex,
+      estimatedDuration: task.estimatedDuration,
+      missedPolicy: task.missedPolicy,
+      isMaster: task.isMaster,
+      lastSpawnedDate: task.lastSpawnedDate,
+      parentTaskId: task.parentTaskId,
+      isFamily: task.isFamily,
+      priority: task.priority,
+      cycleId: task.cycleId,
+      preferredBy: task.preferredBy,
+      assignedUserId: task.assignedUserId,
+    );
+
+    final updatedTasks = List<Task>.from(activeTasks);
+    updatedTasks[taskIndex] = updatedTask;
+
+    return TaskList(updatedTasks, history: [...history, delta]);
   }
 
   TaskList delete(String taskId, String userId) {

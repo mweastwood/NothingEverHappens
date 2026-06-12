@@ -1,12 +1,27 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
 
 void main() {
+  const testStart = RelativeTime(
+    dayOffset: 0,
+    time: TimeOfDay(hour: 9, minute: 0),
+  );
+  const testDue = RelativeTime(
+    dayOffset: 0,
+    time: TimeOfDay(hour: 17, minute: 0),
+  );
+
   group('Recurrence Logic with CivilDay', () {
     test('OneOffSchedule occurs only on the specific date', () {
       const date = CivilDay(year: 2024, month: 1, day: 1);
-      final schedule = OneOffSchedule(date: date);
+      final schedule = OneOffSchedule(
+        date: date,
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
+      );
 
       expect(schedule.occursOn(date), isTrue);
       expect(
@@ -17,7 +32,12 @@ void main() {
 
     test('DailySchedule checks intervals correctly', () {
       const start = CivilDay(year: 2024, month: 1, day: 1);
-      final schedule = DailySchedule(startDate: start, interval: 2);
+      final schedule = DailySchedule(
+        startDate: start,
+        interval: 2,
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
+      );
 
       expect(schedule.occursOn(start), isTrue);
       expect(
@@ -37,6 +57,8 @@ void main() {
         startDate: start,
         interval: 1,
         daysOfWeek: const {1, 3}, // Mon, Wed
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
       );
 
       expect(schedule.occursOn(start), isTrue); // Mon
@@ -55,7 +77,12 @@ void main() {
       () {
         // US Spring forward transition is March 8, 2026.
         const start = CivilDay(year: 2026, month: 3, day: 8);
-        final schedule = DailySchedule(startDate: start, interval: 2);
+        final schedule = DailySchedule(
+          startDate: start,
+          interval: 2,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
 
         // On March 8: difference in days = 0. Modulo 2 = 0 -> true
         expect(schedule.occursOn(start), isTrue);
@@ -84,6 +111,8 @@ void main() {
           startDate: start,
           interval: 2, // Repeats every 2 weeks
           daysOfWeek: const {1}, // Mondays
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
         );
 
         expect(schedule.occursOn(start), isTrue); // Mon March 2
@@ -106,7 +135,12 @@ void main() {
       'DailySchedule nextOccurrenceAfter calculates next occurrence correctly',
       () {
         const start = CivilDay(year: 2026, month: 3, day: 8);
-        final schedule = DailySchedule(startDate: start, interval: 2);
+        final schedule = DailySchedule(
+          startDate: start,
+          interval: 2,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
 
         expect(
           schedule.nextOccurrenceAfter(
@@ -139,6 +173,8 @@ void main() {
           startDate: start,
           interval: 1,
           daysOfWeek: const {1, 3}, // Mon, Wed
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
         );
 
         // March 2 is Monday. Next is March 4 Wednesday
@@ -175,6 +211,8 @@ void main() {
           startDate: start,
           interval: 2,
           dayOfMonth: 15,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
         );
 
         expect(
@@ -204,6 +242,8 @@ void main() {
           startDate: start,
           interval: 1,
           dayOfMonth: -1,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
         );
 
         expect(
@@ -228,6 +268,8 @@ void main() {
         interval: 1,
         dayOfWeek: 2,
         occurrence: 2,
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
       );
 
       expect(
@@ -250,6 +292,8 @@ void main() {
         startDate: start,
         interval: 1,
         dayOfMonth: 15,
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
       );
 
       expect(
@@ -270,32 +314,74 @@ void main() {
       const start = CivilDay(year: 2024, month: 1, day: 1);
 
       expect(
-        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 1),
+        () => MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: 1,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        ),
         returnsNormally,
       );
       expect(
-        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 28),
+        () => MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: 28,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        ),
         returnsNormally,
       );
       expect(
-        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: -1),
+        () => MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: -1,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        ),
         returnsNormally,
       );
       expect(
-        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: -28),
+        () => MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: -28,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        ),
         returnsNormally,
       );
 
       expect(
-        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 0),
+        () => MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: 0,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        ),
         throwsAssertionError,
       );
       expect(
-        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 29),
+        () => MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: 29,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        ),
         throwsAssertionError,
       );
       expect(
-        () => MonthlySchedule(startDate: start, interval: 1, dayOfMonth: -29),
+        () => MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: -29,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        ),
         throwsAssertionError,
       );
     });
@@ -307,6 +393,8 @@ void main() {
         interval: 2,
         month: 10,
         day: 24,
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
       );
 
       expect(
@@ -334,6 +422,8 @@ void main() {
         interval: 1,
         month: 10,
         day: 24,
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
       );
 
       expect(
@@ -357,6 +447,8 @@ void main() {
         interval: 1,
         dayOfWeek: 5, // Friday
         occurrence: -1, // Last
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
       );
 
       // January 26, 2024 is the last Friday of January
@@ -383,6 +475,8 @@ void main() {
         interval: 1,
         month: 2,
         day: 29,
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
       );
 
       // The next leap year after 2024 is 2028

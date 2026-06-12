@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 import 'package:rxdart/rxdart.dart';
 import 'app_clock.dart';
 import 'civil_day.dart';
-import 'relative_time.dart';
 import 'task.dart';
 import 'task_delta.dart';
 import 'task_list.dart';
@@ -185,7 +184,8 @@ class TaskRepository {
 
       for (final task in tasks) {
         // 1. Skip policy
-        if (task.schedule is! OneOffSchedule &&
+        final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+        if (isRecurring &&
             task.missedPolicy == MissedPolicy.skip &&
             task.isOverdue(now)) {
           final deltaId = const Uuid().v4();
@@ -200,25 +200,30 @@ class TaskRepository {
           );
           batch.set(_historyRefFor(task, familyId, deltaId), delta);
 
-          final nextOccur = task.schedule.nextOccurrenceAfter(
-            task.schedule.scheduledDate,
-          );
-          final newSchedule = task.schedule.copyWithStartDate(nextOccur);
-
-          final firstOccurStart = task.dailyTimes.isNotEmpty
-              ? RelativeTime(dayOffset: 0, time: task.dailyTimes[0].startTime)
-              : task.startRelativeTime;
-          final firstOccurDue = task.dailyTimes.isNotEmpty
-              ? RelativeTime(dayOffset: 0, time: task.dailyTimes[0].dueTime)
-              : task.dueRelativeTime;
+          final today = CivilDay.fromDateTime(now);
+          final List<TaskSchedule> list = [];
+          for (final s in task.schedules) {
+            if (s is OneOffSchedule) {
+              if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
+                continue;
+              }
+              list.add(s);
+            } else {
+              if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
+                final nextOccur = s.nextOccurrenceAfter(s.scheduledDate);
+                list.add(s.copyWithStartDate(nextOccur));
+              } else {
+                list.add(s);
+              }
+            }
+          }
+          final newSchedules = list;
 
           final updatedTask = Task(
             id: task.id,
             title: task.title,
             description: task.description,
-            startRelativeTime: firstOccurStart,
-            dueRelativeTime: firstOccurDue,
-            schedule: newSchedule,
+            schedules: newSchedules,
             dailyTimes: task.dailyTimes,
             activeOccurrenceIndex: 0,
             missedPolicy: task.missedPolicy,
@@ -239,92 +244,78 @@ class TaskRepository {
 
         // 2. Stack policy
         if (task.isMaster && task.missedPolicy == MissedPolicy.stack) {
-          final startDate = task.schedule.scheduledDate;
           final lastSpawned = task.lastSpawnedDate;
+          final minStartDate = task.schedules
+              .map((s) => s.scheduledDate)
+              .reduce((a, b) => a.isBefore(b) ? a : b);
 
           CivilDay checkDate = lastSpawned != null
               ? lastSpawned.addDays(1)
-              : startDate;
+              : minStartDate;
 
-          List<CivilDay> datesToSpawn = [];
-          while (checkDate.isBefore(today) || checkDate == today) {
-            if (task.schedule.occursOn(checkDate)) {
-              datesToSpawn.add(checkDate);
-              if (datesToSpawn.length >= 30) {
-                break;
+          List<(CivilDay, TaskSchedule, int)> occurrencesToSpawn = [];
+          int daysChecked = 0;
+          while ((checkDate.isBefore(today) || checkDate == today) &&
+              daysChecked < 30) {
+            for (int i = 0; i < task.schedules.length; i++) {
+              final s = task.schedules[i];
+              if (s.occursOn(checkDate)) {
+                occurrencesToSpawn.add((checkDate, s, i));
               }
             }
+            if (occurrencesToSpawn.length >= 30) {
+              break;
+            }
             checkDate = checkDate.addDays(1);
+            daysChecked++;
           }
 
-          if (datesToSpawn.isNotEmpty) {
-            for (final date in datesToSpawn) {
+          if (occurrencesToSpawn.isNotEmpty) {
+            for (final occurrence in occurrencesToSpawn) {
+              final date = occurrence.$1;
+              final s = occurrence.$2;
+              final idx = occurrence.$3;
+
               final dateStr =
                   '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-              final spawnedId = '${task.id}_$dateStr';
+              final spawnedId = task.schedules.length == 1
+                  ? '${task.id}_$dateStr'
+                  : '${task.id}_${dateStr}_$idx';
 
-              if (task.dailyTimes.isNotEmpty) {
-                for (int i = 0; i < task.dailyTimes.length; i++) {
-                  final timeSlot = task.dailyTimes[i];
-                  final slotId = '${spawnedId}_$i';
-
-                  final spawnedTask = Task(
-                    id: slotId,
-                    title: task.title,
-                    description: task.description,
-                    startRelativeTime: RelativeTime(
-                      dayOffset: 0,
-                      time: timeSlot.startTime,
-                    ),
-                    dueRelativeTime: RelativeTime(
-                      dayOffset: 0,
-                      time: timeSlot.dueTime,
-                    ),
-                    schedule: OneOffSchedule(date: date),
-                    parentTaskId: task.id,
-                    missedPolicy: task.missedPolicy,
-                    estimatedDuration: task.estimatedDuration,
-                    isFamily: task.isFamily,
-                    priority: task.priority,
-                    cycleId: task.cycleId,
-                    preferredBy: task.preferredBy,
-                    assignedUserId: task.assignedUserId,
-                  );
-                  batch.set(_taskRefFor(spawnedTask, familyId), spawnedTask);
-                }
-              } else {
-                final spawnedTask = Task(
-                  id: spawnedId,
-                  title: task.title,
-                  description: task.description,
-                  startRelativeTime: task.startRelativeTime,
-                  dueRelativeTime: task.dueRelativeTime,
-                  schedule: OneOffSchedule(date: date),
-                  parentTaskId: task.id,
-                  missedPolicy: task.missedPolicy,
-                  estimatedDuration: task.estimatedDuration,
-                  isFamily: task.isFamily,
-                  priority: task.priority,
-                  cycleId: task.cycleId,
-                  preferredBy: task.preferredBy,
-                  assignedUserId: task.assignedUserId,
-                );
-                batch.set(_taskRefFor(spawnedTask, familyId), spawnedTask);
-              }
+              final spawnedTask = Task(
+                id: spawnedId,
+                title: task.title,
+                description: task.description,
+                schedules: [
+                  OneOffSchedule(
+                    date: date,
+                    startRelativeTime: s.startRelativeTime,
+                    dueRelativeTime: s.dueRelativeTime,
+                    notificationRelativeTime: s.notificationRelativeTime,
+                  ),
+                ],
+                parentTaskId: task.id,
+                missedPolicy: task.missedPolicy,
+                estimatedDuration: task.estimatedDuration,
+                isFamily: task.isFamily,
+                priority: task.priority,
+                cycleId: task.cycleId,
+                preferredBy: task.preferredBy,
+                assignedUserId: task.assignedUserId,
+              );
+              batch.set(_taskRefFor(spawnedTask, familyId), spawnedTask);
             }
 
             final updatedMaster = Task(
               id: task.id,
               title: task.title,
               description: task.description,
-              startRelativeTime: task.startRelativeTime,
-              dueRelativeTime: task.dueRelativeTime,
-              schedule: task.schedule,
+              schedules: task.schedules,
               dailyTimes: task.dailyTimes,
               activeOccurrenceIndex: task.activeOccurrenceIndex,
               missedPolicy: task.missedPolicy,
               isMaster: true,
-              lastSpawnedDate: datesToSpawn.last,
+              lastSpawnedDate: occurrencesToSpawn.last.$1,
               estimatedDuration: task.estimatedDuration,
               isFamily: task.isFamily,
               priority: task.priority,
@@ -499,14 +490,14 @@ class TaskRepository {
     if (task == null) return;
 
     final familyId = await _getFamilyId();
-    final isRecurring = task.schedule is! OneOffSchedule;
     final newState = TaskList([task]).complete(id, _userId);
     final delta = newState.history.last;
+    final taskStillExists = newState.activeTasks.any((t) => t.id == id);
 
     final batch = _firestore.batch();
 
     Task? updatedTask;
-    if (isRecurring) {
+    if (taskStillExists) {
       updatedTask = newState.activeTasks.firstWhere((t) => t.id == id);
       batch.set(_taskRefFor(task, familyId), updatedTask);
     } else {
@@ -517,7 +508,7 @@ class TaskRepository {
 
     await batch.commit();
 
-    if (isRecurring && updatedTask != null) {
+    if (taskStillExists && updatedTask != null) {
       await _notificationService?.scheduleNotifications(updatedTask);
     } else {
       await _notificationService?.cancelNotifications(id);
