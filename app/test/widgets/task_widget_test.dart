@@ -24,17 +24,19 @@ void main() {
     id: '1',
     title: 'Test Task',
     description: 'This is a test description',
-    startRelativeTime: const RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 9, minute: 0),
-    ),
-    dueRelativeTime: const RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 17, minute: 0),
-    ),
-    schedule: OneOffSchedule(
-      date: const CivilDay(year: 2024, month: 1, day: 1),
-    ),
+    schedules: [
+      OneOffSchedule(
+        date: const CivilDay(year: 2024, month: 1, day: 1),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+      ),
+    ],
   );
 
   setUp(() {
@@ -68,17 +70,19 @@ void main() {
       id: '2',
       title: 'Markdown Task',
       description: 'This is **bold** text',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: OneOffSchedule(
-        date: const CivilDay(year: 2024, month: 1, day: 1),
-      ),
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
     );
 
     await tester.pumpWidget(createWidget(markdownTask));
@@ -110,17 +114,19 @@ void main() {
       id: '2',
       title: 'Markdown Task',
       description: 'Check me off!',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: OneOffSchedule(
-        date: const CivilDay(year: 2024, month: 1, day: 1),
-      ),
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
     );
 
     await tester.pumpWidgetBuilder(
@@ -242,18 +248,20 @@ void main() {
       id: '2',
       title: 'Recurring Task',
       description: 'This is a recurring task description',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: DailySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-      ),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
     );
 
     await tester.pumpWidget(
@@ -338,18 +346,20 @@ void main() {
       id: '2',
       title: 'Recurring Task',
       description: 'This is a recurring task description',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: DailySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-      ),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
     );
 
     await tester.pumpWidgetBuilder(
@@ -386,13 +396,15 @@ void main() {
       id: 'b1',
       title: 'High Priority Task with Duration',
       description: 'Personal task with high priority and 1.5h duration.',
-      startRelativeTime: defaultStartTime,
-      dueRelativeTime: defaultEndTime,
       priority: TaskPriority.high,
       estimatedDuration: const Duration(hours: 1, minutes: 30),
-      schedule: OneOffSchedule(
-        date: const CivilDay(year: 2024, month: 1, day: 1),
-      ),
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: defaultStartTime,
+          dueRelativeTime: defaultEndTime,
+        ),
+      ],
     );
 
     final task2 = Task(
@@ -400,15 +412,17 @@ void main() {
       title: 'Family Daily Task with Assignee',
       description:
           'Family task with daily schedule, medium priority, rollover policy, and assignee.',
-      startRelativeTime: defaultStartTime,
-      dueRelativeTime: defaultEndTime,
       isFamily: true,
       priority: TaskPriority.medium,
       assignedUserId: 'user_1',
-      schedule: DailySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-      ),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          startRelativeTime: defaultStartTime,
+          dueRelativeTime: defaultEndTime,
+        ),
+      ],
     );
 
     final task3 = Task(
@@ -416,46 +430,52 @@ void main() {
       title: 'Low Priority Weekly Task with Shift Policy',
       description:
           'Personal task with low priority, weekly schedule, and shift policy.',
-      startRelativeTime: defaultStartTime,
-      dueRelativeTime: defaultEndTime,
       priority: TaskPriority.low,
       missedPolicy: MissedPolicy.shift,
-      schedule: WeeklySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-        daysOfWeek: {1},
-      ),
+      schedules: [
+        WeeklySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          daysOfWeek: {1},
+          startRelativeTime: defaultStartTime,
+          dueRelativeTime: defaultEndTime,
+        ),
+      ],
     );
 
     final task4 = Task(
       id: 'b4',
       title: 'Monthly Task with Stack Policy',
       description: 'Monthly schedule with stack policy.',
-      startRelativeTime: defaultStartTime,
-      dueRelativeTime: defaultEndTime,
       priority: TaskPriority.medium,
       missedPolicy: MissedPolicy.stack,
-      schedule: MonthlySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-        dayOfMonth: 1,
-      ),
+      schedules: [
+        MonthlySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          dayOfMonth: 1,
+          startRelativeTime: defaultStartTime,
+          dueRelativeTime: defaultEndTime,
+        ),
+      ],
     );
 
     final task5 = Task(
       id: 'b5',
       title: 'Yearly Task with Skip Policy',
       description: 'Yearly schedule with skip policy.',
-      startRelativeTime: defaultStartTime,
-      dueRelativeTime: defaultEndTime,
       priority: TaskPriority.medium,
       missedPolicy: MissedPolicy.skip,
-      schedule: YearlySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-        month: 1,
-        day: 1,
-      ),
+      schedules: [
+        YearlySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          month: 1,
+          day: 1,
+          startRelativeTime: defaultStartTime,
+          dueRelativeTime: defaultEndTime,
+        ),
+      ],
     );
 
     await tester.pumpWidgetBuilder(

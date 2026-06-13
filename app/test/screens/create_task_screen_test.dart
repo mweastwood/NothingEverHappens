@@ -462,8 +462,8 @@ void main() {
       final captured =
           verify(mockRepository.addTask(captureAny)).captured.single as Task;
       expect(captured.title, 'Monthly Task');
-      expect(captured.schedule, isA<MonthlySchedule>());
-      final schedule = captured.schedule as MonthlySchedule;
+      expect(captured.schedules.first, isA<MonthlySchedule>());
+      final schedule = captured.schedules.first as MonthlySchedule;
       expect(schedule.interval, 3);
       expect(schedule.dayOfMonth, 15);
     });
@@ -540,8 +540,8 @@ void main() {
       final captured =
           verify(mockRepository.addTask(captureAny)).captured.single as Task;
       expect(captured.title, 'Yearly Task');
-      expect(captured.schedule, isA<YearlySchedule>());
-      final schedule = captured.schedule as YearlySchedule;
+      expect(captured.schedules.first, isA<YearlySchedule>());
+      final schedule = captured.schedules.first as YearlySchedule;
       expect(schedule.interval, 2);
       expect(
         schedule.month,
@@ -622,17 +622,19 @@ void main() {
           id: 'family-task-1',
           title: 'Family Chore',
           description: 'Clean the kitchen',
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-          schedule: OneOffSchedule(
-            date: const CivilDay(year: 2026, month: 6, day: 2),
-          ),
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2026, month: 6, day: 2),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
           isFamily: true,
         );
 
@@ -666,17 +668,19 @@ void main() {
         id: 'family-task-1',
         title: 'Family Chore',
         description: 'Clean the kitchen',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 2),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 2),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         isFamily: true,
       );
 
@@ -740,8 +744,8 @@ void main() {
         final captured =
             verify(mockTaskRepository.addTask(captureAny)).captured.single
                 as Task;
-        expect(captured.dailyTimes, isNotEmpty);
-        expect(captured.dailyTimes.first.notificationTime, isNotNull);
+        expect(captured.schedules, isNotEmpty);
+        expect(captured.schedules.first.notificationRelativeTime, isNotNull);
       },
     );
 

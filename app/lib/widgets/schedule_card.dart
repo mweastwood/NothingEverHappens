@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/civil_day.dart';
+import '../logic/relative_time.dart';
 
 class ScheduleCard extends StatelessWidget {
   final Task task;
@@ -24,20 +26,36 @@ class ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final schedule = task.schedules.isNotEmpty
+        ? task.schedules[task.activeOccurrenceIndex < task.schedules.length
+              ? task.activeOccurrenceIndex
+              : 0]
+        : OneOffSchedule(
+            date: CivilDay.fromDateTime(DateTime.now()),
+            startRelativeTime: RelativeTime(
+              dayOffset: 0,
+              time: const TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: RelativeTime(
+              dayOffset: 0,
+              time: const TimeOfDay(hour: 17, minute: 0),
+            ),
+          );
+
     String intervalStr = '';
     String startStr = '';
     String daysStr = '';
 
-    if (task.schedule is DailySchedule) {
-      final ds = task.schedule as DailySchedule;
+    if (schedule is DailySchedule) {
+      final ds = schedule;
       intervalStr = ds.interval == 1
           ? context.l10n.everyDay
           : context.l10n.everyNDays(ds.interval);
       final dateStr =
           '${ds.startDate.year}-${ds.startDate.month.toString().padLeft(2, '0')}-${ds.startDate.day.toString().padLeft(2, '0')}';
       startStr = context.l10n.startingDate(dateStr);
-    } else if (task.schedule is WeeklySchedule) {
-      final ws = task.schedule as WeeklySchedule;
+    } else if (schedule is WeeklySchedule) {
+      final ws = schedule;
       intervalStr = ws.interval == 1
           ? context.l10n.everyWeek
           : context.l10n.everyNWeeks(ws.interval);
@@ -57,8 +75,8 @@ class ScheduleCard extends StatelessWidget {
       final selectedDays = ws.daysOfWeek.toList()..sort();
       final joinedDays = selectedDays.map((d) => dayNames[d]).join(', ');
       daysStr = context.l10n.onDaysOfWeek(joinedDays);
-    } else if (task.schedule is MonthlySchedule) {
-      final ms = task.schedule as MonthlySchedule;
+    } else if (schedule is MonthlySchedule) {
+      final ms = schedule;
       intervalStr = ms.interval == 1
           ? context.l10n.everyMonth
           : context.l10n.everyNMonths(ms.interval);
@@ -93,8 +111,8 @@ class ScheduleCard extends StatelessWidget {
         final dowStr = dayOfWeekNames[ms.dayOfWeek] ?? '';
         daysStr = context.l10n.nthDayOfWeekOccurrence(occStr, dowStr);
       }
-    } else if (task.schedule is YearlySchedule) {
-      final ys = task.schedule as YearlySchedule;
+    } else if (schedule is YearlySchedule) {
+      final ys = schedule;
       intervalStr = ys.interval == 1
           ? context.l10n.everyYear
           : context.l10n.everyNYears(ys.interval);
@@ -167,11 +185,11 @@ class ScheduleCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        task.schedule is DailySchedule
+                        schedule is DailySchedule
                             ? context.l10n.dailyRecurrence
-                            : task.schedule is WeeklySchedule
+                            : schedule is WeeklySchedule
                             ? context.l10n.weeklyRecurrence
-                            : task.schedule is MonthlySchedule
+                            : schedule is MonthlySchedule
                             ? context.l10n.monthlyLabel
                             : context.l10n.yearlyLabel,
                         style: TextStyle(
@@ -206,16 +224,16 @@ class ScheduleCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (task.schedule is WeeklySchedule ||
-                task.schedule is MonthlySchedule ||
-                task.schedule is YearlySchedule) ...[
+            if (schedule is WeeklySchedule ||
+                schedule is MonthlySchedule ||
+                schedule is YearlySchedule) ...[
               const SizedBox(height: 4),
               Row(
                 children: [
                   Icon(
-                    task.schedule is WeeklySchedule
+                    schedule is WeeklySchedule
                         ? Icons.calendar_view_week
-                        : task.schedule is MonthlySchedule
+                        : schedule is MonthlySchedule
                         ? Icons.calendar_view_month
                         : Icons.calendar_today,
                     size: 16,
@@ -257,9 +275,9 @@ class ScheduleCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            if (task.dailyTimes.isNotEmpty)
-              ...task.dailyTimes.map(
-                (time) => Padding(
+            if (task.schedules.isNotEmpty)
+              ...task.schedules.map(
+                (s) => Padding(
                   padding: const EdgeInsets.only(left: 8.0, top: 4.0),
                   child: Row(
                     children: [
@@ -270,7 +288,7 @@ class ScheduleCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${_formatTimeOfDay(time.startTime)} - ${_formatTimeOfDay(time.dueTime)}',
+                        '${_formatTimeOfDay(s.startRelativeTime.time)} - ${_formatTimeOfDay(s.dueRelativeTime.time)}',
                         style: const TextStyle(fontSize: 13),
                       ),
                     ],
@@ -285,7 +303,7 @@ class ScheduleCard extends StatelessWidget {
                     const Icon(Icons.access_time, size: 14, color: Colors.grey),
                     const SizedBox(width: 8),
                     Text(
-                      '${_formatTimeOfDay(task.startRelativeTime.time)} - ${_formatTimeOfDay(task.dueRelativeTime.time)}',
+                      '${_formatTimeOfDay(schedule.startRelativeTime.time)} - ${_formatTimeOfDay(schedule.dueRelativeTime.time)}',
                       style: const TextStyle(fontSize: 13),
                     ),
                   ],

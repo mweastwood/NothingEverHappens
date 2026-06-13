@@ -78,19 +78,20 @@ class _MissedPoliciesPlaygroundTabState
           id: 'simulated-task-recurring',
           title: 'Water the Houseplants',
           description: 'Give them just enough water.',
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-          schedule: DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 6, day: 1),
-            interval: 1,
-          ),
-          dailyTimes: const [],
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
           activeOccurrenceIndex: 0,
           missedPolicy: _selectedPolicy,
           isMaster: false,
@@ -106,16 +107,19 @@ class _MissedPoliciesPlaygroundTabState
       id: 'simulated-task-spawned-$dateStr',
       title: 'Water the Houseplants',
       description: 'Give them just enough water.',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: OneOffSchedule(date: date),
-      dailyTimes: const [],
+      schedules: [
+        OneOffSchedule(
+          date: date,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
       activeOccurrenceIndex: 0,
       missedPolicy: _selectedPolicy,
       isMaster: false,
@@ -133,7 +137,7 @@ class _MissedPoliciesPlaygroundTabState
       switch (_selectedPolicy) {
         case MissedPolicy.rollover:
           bool hasOverdue = _simulatedTasks.any((t) {
-            final scheduledDate = t.schedule.scheduledDate;
+            final scheduledDate = t.schedules.first.scheduledDate;
             return scheduledDate.isBefore(_simulatedToday) &&
                 !_completedDays.contains(scheduledDate);
           });
@@ -149,7 +153,7 @@ class _MissedPoliciesPlaygroundTabState
           final List<Task> toSkip = [];
           final List<Task> remaining = [];
           for (final t in _simulatedTasks) {
-            if (t.schedule.scheduledDate.isBefore(_simulatedToday)) {
+            if (t.schedules.first.scheduledDate.isBefore(_simulatedToday)) {
               toSkip.add(t);
             } else {
               remaining.add(t);
@@ -158,7 +162,7 @@ class _MissedPoliciesPlaygroundTabState
 
           if (toSkip.isNotEmpty) {
             for (final t in toSkip) {
-              final scheduledDate = t.schedule.scheduledDate;
+              final scheduledDate = t.schedules.first.scheduledDate;
               _skippedDays.add(scheduledDate);
               _historyLog.add(
                 "$todayStr: Task scheduled for ${_formatDate(scheduledDate)} auto-skipped (Skip).",
@@ -168,13 +172,14 @@ class _MissedPoliciesPlaygroundTabState
                 id: t.id,
                 title: t.title,
                 description: t.description,
-                startRelativeTime: t.startRelativeTime,
-                dueRelativeTime: t.dueRelativeTime,
-                schedule: DailySchedule(
-                  startDate: _simulatedToday,
-                  interval: 1,
-                ),
-                dailyTimes: const [],
+                schedules: [
+                  DailySchedule(
+                    startDate: _simulatedToday,
+                    interval: 1,
+                    startRelativeTime: t.schedules.first.startRelativeTime,
+                    dueRelativeTime: t.schedules.first.dueRelativeTime,
+                  ),
+                ],
                 activeOccurrenceIndex: 0,
                 missedPolicy: MissedPolicy.skip,
                 isMaster: false,
@@ -187,7 +192,7 @@ class _MissedPoliciesPlaygroundTabState
 
         case MissedPolicy.shift:
           bool hasOverdue = _simulatedTasks.any((t) {
-            final scheduledDate = t.schedule.scheduledDate;
+            final scheduledDate = t.schedules.first.scheduledDate;
             return scheduledDate.isBefore(_simulatedToday) &&
                 !_completedDays.contains(scheduledDate);
           });
@@ -212,7 +217,7 @@ class _MissedPoliciesPlaygroundTabState
           }
 
           final alreadyExists = _simulatedTasks.any(
-            (t) => t.schedule.scheduledDate == _simulatedToday,
+            (t) => t.schedules.first.scheduledDate == _simulatedToday,
           );
           if (!alreadyExists) {
             _simulatedTasks.add(_createSpawnedTask(_simulatedToday));
@@ -229,7 +234,7 @@ class _MissedPoliciesPlaygroundTabState
       if (taskIndex == -1) return;
 
       final task = _simulatedTasks[taskIndex];
-      final scheduledDate = task.schedule.scheduledDate;
+      final scheduledDate = task.schedules.first.scheduledDate;
       final todayStr = _formatDate(_simulatedToday);
       final scheduledStr = _formatDate(scheduledDate);
 
@@ -262,10 +267,14 @@ class _MissedPoliciesPlaygroundTabState
           id: task.id,
           title: task.title,
           description: task.description,
-          startRelativeTime: task.startRelativeTime,
-          dueRelativeTime: task.dueRelativeTime,
-          schedule: DailySchedule(startDate: nextDate, interval: 1),
-          dailyTimes: const [],
+          schedules: [
+            DailySchedule(
+              startDate: nextDate,
+              interval: 1,
+              startRelativeTime: task.schedules.first.startRelativeTime,
+              dueRelativeTime: task.schedules.first.dueRelativeTime,
+            ),
+          ],
           activeOccurrenceIndex: 0,
           missedPolicy: _selectedPolicy,
           isMaster: false,
@@ -284,7 +293,7 @@ class _MissedPoliciesPlaygroundTabState
       if (taskIndex == -1) return;
 
       final task = _simulatedTasks[taskIndex];
-      final scheduledDate = task.schedule.scheduledDate;
+      final scheduledDate = task.schedules.first.scheduledDate;
       final todayStr = _formatDate(_simulatedToday);
       final scheduledStr = _formatDate(scheduledDate);
 
@@ -301,14 +310,19 @@ class _MissedPoliciesPlaygroundTabState
           nextDate = _simulatedToday.addDays(1);
         }
 
+        final oldSchedule = task.schedules.first;
         final rescheduledTask = Task(
           id: task.id,
           title: task.title,
           description: task.description,
-          startRelativeTime: task.startRelativeTime,
-          dueRelativeTime: task.dueRelativeTime,
-          schedule: DailySchedule(startDate: nextDate, interval: 1),
-          dailyTimes: const [],
+          schedules: [
+            DailySchedule(
+              startDate: nextDate,
+              interval: 1,
+              startRelativeTime: oldSchedule.startRelativeTime,
+              dueRelativeTime: oldSchedule.dueRelativeTime,
+            ),
+          ],
           activeOccurrenceIndex: 0,
           missedPolicy: _selectedPolicy,
           isMaster: false,
@@ -543,7 +557,8 @@ class _MissedPoliciesPlaygroundTabState
                           )
                         else
                           ..._simulatedTasks.map((task) {
-                            final scheduledDate = task.schedule.scheduledDate;
+                            final scheduledDate =
+                                task.schedules.first.scheduledDate;
                             final isOverdue = scheduledDate.isBefore(
                               _simulatedToday,
                             );

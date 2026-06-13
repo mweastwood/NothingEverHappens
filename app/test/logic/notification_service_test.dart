@@ -104,31 +104,22 @@ void main() {
       id: 'task-notif-test',
       title: 'Zoned Test Task',
       description: 'Running unit tests',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: DailySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-      ),
-      dailyTimes: const [
-        DailyOccurrenceTime(
-          startTime: TimeOfDay(hour: 9, minute: 0),
-          dueTime: TimeOfDay(hour: 17, minute: 0),
-          notificationTime: TimeOfDay(hour: 8, minute: 30),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          notificationRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 8, minute: 30),
+          ),
         ),
       ],
     );

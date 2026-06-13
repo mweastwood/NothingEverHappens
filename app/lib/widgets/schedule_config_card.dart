@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
-import '../logic/task_schedule.dart';
+import '../logic/task.dart';
 import 'relative_timing_widget.dart';
 
 class ScheduleConfigCard extends StatefulWidget {

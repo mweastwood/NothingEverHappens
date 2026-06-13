@@ -40,6 +40,15 @@ class MockUserSettingsRepository extends _i1.Mock
           as _i3.Stream<_i4.UserSettings>);
 
   @override
+  _i3.Stream<_i4.UserSettings> getSettingsForUser(String? userId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getSettingsForUser, [userId]),
+            returnValue: _i3.Stream<_i4.UserSettings>.empty(),
+            returnValueForMissingStub: _i3.Stream<_i4.UserSettings>.empty(),
+          )
+          as _i3.Stream<_i4.UserSettings>);
+
+  @override
   _i3.Future<void> updateSettings(_i4.UserSettings? settings) =>
       (super.noSuchMethod(
             Invocation.method(#updateSettings, [settings]),

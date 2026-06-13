@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/task.dart';
 import '../logic/task_repository.dart';
+import '../logic/civil_day.dart';
+import '../logic/relative_time.dart';
 import '../screens/create_task_screen.dart';
 import 'fun_check_button.dart';
 import 'fun_delete_button.dart';
@@ -285,6 +287,23 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
 
   @override
   Widget build(BuildContext context) {
+    final schedule = widget.task.schedules.isNotEmpty
+        ? widget.task.schedules[widget.task.activeOccurrenceIndex <
+                  widget.task.schedules.length
+              ? widget.task.activeOccurrenceIndex
+              : 0]
+        : OneOffSchedule(
+            date: CivilDay.fromDateTime(DateTime.now()),
+            startRelativeTime: RelativeTime(
+              dayOffset: 0,
+              time: const TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: RelativeTime(
+              dayOffset: 0,
+              time: const TimeOfDay(hour: 17, minute: 0),
+            ),
+          );
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -357,8 +376,8 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                 // Schedule
                 _buildBadge(
                   context,
-                  icon: _getScheduleIcon(widget.task.schedule),
-                  label: _getScheduleLabel(widget.task.schedule),
+                  icon: _getScheduleIcon(schedule),
+                  label: _getScheduleLabel(schedule),
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 // Effort/Duration (if any)
@@ -370,7 +389,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 // Missed Policy (if recurring)
-                if (widget.task.schedule is! OneOffSchedule)
+                if (schedule is! OneOffSchedule)
                   _buildBadge(
                     context,
                     icon: Icons.refresh,
@@ -397,8 +416,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (widget.showEditOption &&
-                widget.task.schedule is OneOffSchedule) ...[
+            if (widget.showEditOption && schedule is OneOffSchedule) ...[
               IconButton(
                 key: const Key('edit_pencil_button'),
                 icon: const Icon(Icons.edit, size: 20),

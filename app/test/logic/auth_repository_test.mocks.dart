@@ -620,6 +620,15 @@ class MockFirebaseAuth extends _i1.Mock implements _i4.FirebaseAuth {
           as _i7.Future<void>);
 
   @override
+  _i7.Future<void> revokeAccessToken(String? accessToken) =>
+      (super.noSuchMethod(
+            Invocation.method(#revokeAccessToken, [accessToken]),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
+          )
+          as _i7.Future<void>);
+
+  @override
   _i7.Future<void> signOut() =>
       (super.noSuchMethod(
             Invocation.method(#signOut, []),

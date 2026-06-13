@@ -65,17 +65,19 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
           id: 'practice-task-$index',
           title: title,
           description: desc,
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-          schedule: OneOffSchedule(
-            date: const CivilDay(year: 2026, month: 6, day: 4),
-          ),
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2026, month: 6, day: 4),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
         );
       });
     });

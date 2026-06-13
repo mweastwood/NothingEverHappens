@@ -46,6 +46,14 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
           as String);
 
   @override
+  _i4.Stream<List<_i5.Task>> getPersonalTasksForUser(String? userId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getPersonalTasksForUser, [userId]),
+            returnValue: _i4.Stream<List<_i5.Task>>.empty(),
+          )
+          as _i4.Stream<List<_i5.Task>>);
+
+  @override
   _i4.Stream<List<_i5.Task>> getTasks() =>
       (super.noSuchMethod(
             Invocation.method(#getTasks, []),
