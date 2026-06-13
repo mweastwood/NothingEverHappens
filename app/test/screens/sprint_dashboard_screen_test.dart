@@ -113,17 +113,19 @@ void main() {
         id: 't-personal',
         title: 'Personal Chore',
         description: 'Clean room',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 30),
         isFamily: false,
         cycleId: '2026-W23',
@@ -135,17 +137,19 @@ void main() {
         id: 't-family-active',
         title: 'Family Dishwashing',
         description: 'Wash plates',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 45),
         isFamily: true,
         cycleId: '2026-W23',
@@ -158,17 +162,19 @@ void main() {
         id: 't-backlog',
         title: 'Backlog Chore',
         description: 'Clean attic',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 60),
         isFamily: true,
         cycleId: null,
@@ -200,17 +206,19 @@ void main() {
         id: 't-personal',
         title: 'Personal Chore',
         description: 'Clean room',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 30),
         isFamily: false,
         cycleId: '2026-W23',
@@ -256,17 +264,19 @@ void main() {
         id: 't-family',
         title: 'Family Chore',
         description: 'Mow lawn',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         isFamily: true,
         cycleId: null,
       );
@@ -331,17 +341,19 @@ void main() {
         id: 't1',
         title: 'Task 1',
         description: '',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 60),
         isFamily: true,
         priority: TaskPriority.high,
@@ -421,17 +433,19 @@ void main() {
         id: 't-bob-personal',
         title: 'Bob Personal Task',
         description: '',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 120),
         isFamily: false,
         cycleId: '2026-W23',
@@ -448,17 +462,19 @@ void main() {
         id: 't-fam-assigned',
         title: 'Shared Task',
         description: '',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 180),
         isFamily: true,
         cycleId: '2026-W23',
@@ -518,17 +534,19 @@ void main() {
         id: 't-personal',
         title: 'Personal Chore',
         description: 'Clean room',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 30),
         isFamily: false,
         cycleId: '2026-W23',
@@ -539,17 +557,19 @@ void main() {
         id: 't-family',
         title: 'Family Dishwashing',
         description: 'Wash plates',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 45),
         isFamily: true,
         cycleId: '2026-W23',
@@ -618,17 +638,19 @@ void main() {
         id: 't-bob-personal',
         title: 'Bob Personal Task',
         description: '',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 120),
         isFamily: false,
         cycleId: '2026-W23',
@@ -645,17 +667,19 @@ void main() {
         id: 't-fam-assigned',
         title: 'Shared Task',
         description: '',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         estimatedDuration: const Duration(minutes: 180),
         isFamily: true,
         cycleId: '2026-W23',

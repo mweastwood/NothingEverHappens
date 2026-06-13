@@ -13,37 +13,41 @@ void main() {
       id: '1',
       title: 'Daily Task Title',
       description: 'Daily Task Desc',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: DailySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 2,
-      ),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 2,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
     );
 
     final weeklyTask = Task(
       id: '2',
       title: 'Weekly Task Title',
       description: 'Weekly Task Desc',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 10, minute: 30),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 12, minute: 0),
-      ),
-      schedule: WeeklySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-        daysOfWeek: {1, 3},
-      ),
+      schedules: [
+        WeeklySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          daysOfWeek: {1, 3},
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 30),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 12, minute: 0),
+          ),
+        ),
+      ],
     );
 
     testWidgets('renders daily task details and triggers actions', (
