@@ -11,14 +11,9 @@ import '../logic/l10n_extension.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import '../logic/family_repository.dart';
 
-import '../widgets/one_off_scheduling_widget.dart';
-import '../widgets/daily_scheduling_widget.dart';
-import '../widgets/weekly_scheduling_widget.dart';
-import '../widgets/monthly_scheduling_widget.dart';
-import '../widgets/yearly_scheduling_widget.dart';
-import '../widgets/recurrence_type_selector.dart';
 import '../widgets/upcoming_occurrences_preview.dart';
 import '../widgets/standard_choice_chip.dart';
+import '../widgets/schedule_config_card.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
   static Duration saveTimeout = const Duration(seconds: 10);
@@ -45,48 +40,11 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   final _titleController = TextEditingController();
   final _titleFocusNode = FocusNode();
   final _descriptionController = TextEditingController();
-  final _intervalController = TextEditingController(text: '1');
   final _estimatedDurationController = TextEditingController();
 
-  // Monthly / Yearly controllers
-  final _monthlyRuleTypeController = ValueNotifier<String>('dayOfMonth');
-  final _monthlyDayOfMonthController = TextEditingController();
-  final _monthlyNthOccurrenceController = ValueNotifier<int>(1);
-  final _monthlyDayOfWeekController = ValueNotifier<int>(1);
-  final _yearlyMonthController = ValueNotifier<int>(1);
-  final _yearlyDayController = TextEditingController();
-
-  // Daily/Weekly multiple times
-  final _dailyTimesController = ValueNotifier<List<DailyOccurrenceTime>>([
-    const DailyOccurrenceTime(
-      startTime: TimeOfDay(hour: 9, minute: 0),
-      dueTime: TimeOfDay(hour: 17, minute: 0),
-    ),
-  ]);
-
-  // Absolute Time fields (for One-off)
-  // Default to tomorrow 5pm for due, today (now) for start (no snooze)
-  final _dueDateTimeController = ValueNotifier(
-    AppClock.now
-        .add(const Duration(days: 1))
-        .copyWith(
-          hour: 17,
-          minute: 0,
-          second: 0,
-          millisecond: 0,
-          microsecond: 0,
-        ),
-  );
-  final _startDateTimeController = ValueNotifier(
-    AppClock.now.copyWith(second: 0, millisecond: 0, microsecond: 0),
-  );
-
-  // Schedule fields
-  RecurrenceType _scheduleType = RecurrenceType.oneOff;
-  DateTime _startDate = AppClock.now; // For Daily/Weekly start date
-  Set<int> _selectedWeekdays = {};
+  List<TaskSchedule> _schedules = [];
+  int? _expandedScheduleIndex;
   MissedPolicy _missedPolicy = MissedPolicy.rollover;
-  final _oneOffNotificationController = ValueNotifier<TimeOfDay?>(null);
 
   bool _isSaving = false;
 
@@ -114,364 +72,63 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         _estimatedDurationController.text = task.estimatedDuration!.inMinutes
             .toString();
       }
-
-      if (task.schedule is OneOffSchedule) {
-        _scheduleType = RecurrenceType.oneOff;
-        final oneOff = task.schedule as OneOffSchedule;
-
-        if (task.dailyTimes.isNotEmpty) {
-          _oneOffNotificationController.value =
-              task.dailyTimes.first.notificationTime;
-        }
-
-        final dueTime = task.dueRelativeTime.time;
-        _dueDateTimeController.value = DateTime(
-          oneOff.date.year,
-          oneOff.date.month,
-          oneOff.date.day,
-          dueTime.hour,
-          dueTime.minute,
-        );
-
-        final dueDateTime = _dueDateTimeController.value;
-        final startMidnight = DateTime(
-          dueDateTime.year,
-          dueDateTime.month,
-          dueDateTime.day,
-        ).add(Duration(days: task.startRelativeTime.dayOffset));
-
-        final startTime = task.startRelativeTime.time;
-        _startDateTimeController.value = DateTime(
-          startMidnight.year,
-          startMidnight.month,
-          startMidnight.day,
-          startTime.hour,
-          startTime.minute,
-        );
-      } else if (task.schedule is DailySchedule) {
-        _scheduleType = RecurrenceType.daily;
-        final daily = task.schedule as DailySchedule;
-        _startDate = DateTime(
-          daily.startDate.year,
-          daily.startDate.month,
-          daily.startDate.day,
-        );
-        _intervalController.text = daily.interval.toString();
-        _dailyTimesController.value = List.from(task.dailyTimes);
-      } else if (task.schedule is WeeklySchedule) {
-        _scheduleType = RecurrenceType.weekly;
-        final weekly = task.schedule as WeeklySchedule;
-        _startDate = DateTime(
-          weekly.startDate.year,
-          weekly.startDate.month,
-          weekly.startDate.day,
-        );
-        _intervalController.text = weekly.interval.toString();
-        _selectedWeekdays = Set.from(weekly.daysOfWeek);
-        _dailyTimesController.value = List.from(task.dailyTimes);
-      } else if (task.schedule is MonthlySchedule) {
-        _scheduleType = RecurrenceType.monthly;
-        final monthly = task.schedule as MonthlySchedule;
-        _startDate = DateTime(
-          monthly.startDate.year,
-          monthly.startDate.month,
-          monthly.startDate.day,
-        );
-        _intervalController.text = monthly.interval.toString();
-        _dailyTimesController.value = List.from(task.dailyTimes);
-        if (monthly.dayOfMonth != null) {
-          _monthlyRuleTypeController.value = 'dayOfMonth';
-          _monthlyDayOfMonthController.text = monthly.dayOfMonth.toString();
-        } else {
-          _monthlyRuleTypeController.value = 'nthDayOfWeek';
-          _monthlyNthOccurrenceController.value = monthly.occurrence!;
-          _monthlyDayOfWeekController.value = monthly.dayOfWeek!;
-        }
-      } else if (task.schedule is YearlySchedule) {
-        _scheduleType = RecurrenceType.yearly;
-        final yearly = task.schedule as YearlySchedule;
-        _startDate = DateTime(
-          yearly.startDate.year,
-          yearly.startDate.month,
-          yearly.startDate.day,
-        );
-        _intervalController.text = yearly.interval.toString();
-        _dailyTimesController.value = List.from(task.dailyTimes);
-        _yearlyMonthController.value = yearly.month;
-        _yearlyDayController.text = yearly.day.toString();
+      _schedules = List.from(task.schedules);
+      if (_schedules.isNotEmpty) {
+        _expandedScheduleIndex = 0;
       }
-    }
+    } else {
+      final now = AppClock.now;
+      final tomorrow = now.add(const Duration(days: 1));
+      final civilTomorrow = CivilDay.fromDateTime(tomorrow);
 
-    _intervalController.addListener(_updatePreview);
-    _monthlyDayOfMonthController.addListener(_updatePreview);
-    _yearlyDayController.addListener(_updatePreview);
-    _dueDateTimeController.addListener(_updatePreview);
-    _startDateTimeController.addListener(_updatePreview);
-    _dailyTimesController.addListener(_updatePreview);
-    _oneOffNotificationController.addListener(_updatePreview);
-    _monthlyRuleTypeController.addListener(_updatePreview);
-    _monthlyNthOccurrenceController.addListener(_updatePreview);
-    _monthlyDayOfWeekController.addListener(_updatePreview);
-    _yearlyMonthController.addListener(_updatePreview);
-  }
+      final startMidnight = DateTime.utc(now.year, now.month, now.day);
+      final dueMidnight = DateTime.utc(
+        tomorrow.year,
+        tomorrow.month,
+        tomorrow.day,
+      );
+      final diff = startMidnight.difference(dueMidnight).inDays;
 
-  void _updatePreview() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  TaskSchedule? _buildSchedule() {
-    try {
-      final civilDate = CivilDay.fromDateTime(_startDate);
-      final interval = int.tryParse(_intervalController.text) ?? 1;
-      if (interval <= 0) return null;
-
-      switch (_scheduleType) {
-        case RecurrenceType.oneOff:
-          final dueDateTime = _dueDateTimeController.value;
-          final civilDue = CivilDay.fromDateTime(dueDateTime);
-          return OneOffSchedule(date: civilDue);
-
-        case RecurrenceType.daily:
-          return DailySchedule(startDate: civilDate, interval: interval);
-
-        case RecurrenceType.weekly:
-          if (_selectedWeekdays.isEmpty) return null;
-          return WeeklySchedule(
-            startDate: civilDate,
-            interval: interval,
-            daysOfWeek: Set.from(_selectedWeekdays),
-          );
-
-        case RecurrenceType.monthly:
-          if (_monthlyRuleTypeController.value == 'dayOfMonth') {
-            final dom = int.tryParse(_monthlyDayOfMonthController.text) ?? 1;
-            if (dom.abs() > 28 || dom == 0) return null;
-            return MonthlySchedule(
-              startDate: civilDate,
-              interval: interval,
-              dayOfMonth: dom,
-            );
-          } else {
-            return MonthlySchedule(
-              startDate: civilDate,
-              interval: interval,
-              dayOfWeek: _monthlyDayOfWeekController.value,
-              occurrence: _monthlyNthOccurrenceController.value,
-            );
-          }
-
-        case RecurrenceType.yearly:
-          final yMonth = _yearlyMonthController.value;
-          final yDay = int.tryParse(_yearlyDayController.text) ?? 1;
-          int maxDays = 31;
-          if (yMonth == 2) {
-            maxDays = 29;
-          } else if ([4, 6, 9, 11].contains(yMonth)) {
-            maxDays = 30;
-          }
-          if (yDay < 1 || yDay > maxDays) return null;
-
-          return YearlySchedule(
-            startDate: civilDate,
-            interval: interval,
-            month: yMonth,
-            day: yDay,
-          );
-      }
-    } catch (_) {
-      return null;
+      _schedules = [
+        OneOffSchedule(
+          date: civilTomorrow,
+          startRelativeTime: RelativeTime(
+            dayOffset: diff,
+            time: TimeOfDay.fromDateTime(now),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ];
+      _expandedScheduleIndex = 0;
     }
   }
 
   @override
   void dispose() {
-    _intervalController.removeListener(_updatePreview);
-    _monthlyDayOfMonthController.removeListener(_updatePreview);
-    _yearlyDayController.removeListener(_updatePreview);
-    _dueDateTimeController.removeListener(_updatePreview);
-    _startDateTimeController.removeListener(_updatePreview);
-    _dailyTimesController.removeListener(_updatePreview);
-    _oneOffNotificationController.removeListener(_updatePreview);
-    _monthlyRuleTypeController.removeListener(_updatePreview);
-    _monthlyNthOccurrenceController.removeListener(_updatePreview);
-    _monthlyDayOfWeekController.removeListener(_updatePreview);
-    _yearlyMonthController.removeListener(_updatePreview);
-
     _titleController.dispose();
     _titleFocusNode.dispose();
     _descriptionController.dispose();
-    _intervalController.dispose();
-    _dailyTimesController.dispose();
-    _dueDateTimeController.dispose();
-    _startDateTimeController.dispose();
     _estimatedDurationController.dispose();
-    _monthlyRuleTypeController.dispose();
-    _monthlyDayOfMonthController.dispose();
-    _monthlyNthOccurrenceController.dispose();
-    _monthlyDayOfWeekController.dispose();
-    _yearlyMonthController.dispose();
-    _yearlyDayController.dispose();
-    _oneOffNotificationController.dispose();
     super.dispose();
   }
 
   Future<void> _saveTask() async {
     if (_formKey.currentState!.validate()) {
+      if (_schedules.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('At least one schedule is required.')),
+        );
+        return;
+      }
+
       setState(() {
         _isSaving = true;
       });
 
       try {
-        TaskSchedule schedule;
-        RelativeTime startRelative;
-        RelativeTime dueRelative;
-
-        switch (_scheduleType) {
-          case RecurrenceType.oneOff:
-            final dueDateTime = _dueDateTimeController.value;
-            final startDateTime = _startDateTimeController.value;
-
-            // CivilDay for the schedule is the Due Date's day.
-            final civilDate = CivilDay.fromDateTime(dueDateTime);
-            schedule = OneOffSchedule(date: civilDate);
-
-            // Due time is simply the time component of dueDateTime, offset 0?
-            // If dueDateTime is on civilDate, then offset is 0.
-            dueRelative = RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay.fromDateTime(dueDateTime),
-            );
-
-            // Start time (Snooze):
-            // Might be on a different day.
-            // Calculate difference in days between startDateTime and dueDateTime(civilDate).
-            // But strict CivilDay difference.
-
-            // dayOffset = start - due.
-            // e.g. Snooze until tomorrow, Due today? Unlikely.
-            // Usually Snooze until tomorrow, Due tomorrow (or next week).
-
-            // Wait, user provided absolute Snooze.
-            // If Snooze is BEFORE Due, then Offset <= 0.
-
-            // Calculate offset in days using UTC midnights for DST safety.
-            final startMidnightUtc = DateTime.utc(
-              startDateTime.year,
-              startDateTime.month,
-              startDateTime.day,
-            );
-            final dueMidnightUtc = DateTime.utc(
-              dueDateTime.year,
-              dueDateTime.month,
-              dueDateTime.day,
-            );
-            final diff = startMidnightUtc.difference(dueMidnightUtc).inDays;
-
-            startRelative = RelativeTime(
-              dayOffset: diff,
-              time: TimeOfDay.fromDateTime(startDateTime),
-            );
-            break;
-
-          case RecurrenceType.daily:
-            final civilDate = CivilDay.fromDateTime(_startDate);
-            final interval = int.tryParse(_intervalController.text) ?? 1;
-            schedule = DailySchedule(startDate: civilDate, interval: interval);
-            final firstSlot = _dailyTimesController.value.first;
-            startRelative = RelativeTime(
-              dayOffset: 0,
-              time: firstSlot.startTime,
-            );
-            dueRelative = RelativeTime(dayOffset: 0, time: firstSlot.dueTime);
-            break;
-
-          case RecurrenceType.weekly:
-            if (_selectedWeekdays.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(context.l10n.selectAtLeastOneDayError)),
-              );
-              return;
-            }
-            final civilDate = CivilDay.fromDateTime(_startDate);
-            final interval = int.tryParse(_intervalController.text) ?? 1;
-            schedule = WeeklySchedule(
-              startDate: civilDate,
-              interval: interval,
-              daysOfWeek: Set.from(_selectedWeekdays),
-            );
-            final firstSlot = _dailyTimesController.value.first;
-            startRelative = RelativeTime(
-              dayOffset: 0,
-              time: firstSlot.startTime,
-            );
-            dueRelative = RelativeTime(dayOffset: 0, time: firstSlot.dueTime);
-            break;
-
-          case RecurrenceType.monthly:
-            final civilDate = CivilDay.fromDateTime(_startDate);
-            final interval = int.tryParse(_intervalController.text) ?? 1;
-            if (_monthlyRuleTypeController.value == 'dayOfMonth') {
-              final dom = int.tryParse(_monthlyDayOfMonthController.text) ?? 1;
-              schedule = MonthlySchedule(
-                startDate: civilDate,
-                interval: interval,
-                dayOfMonth: dom,
-              );
-            } else {
-              schedule = MonthlySchedule(
-                startDate: civilDate,
-                interval: interval,
-                dayOfWeek: _monthlyDayOfWeekController.value,
-                occurrence: _monthlyNthOccurrenceController.value,
-              );
-            }
-            final firstSlot = _dailyTimesController.value.first;
-            startRelative = RelativeTime(
-              dayOffset: 0,
-              time: firstSlot.startTime,
-            );
-            dueRelative = RelativeTime(dayOffset: 0, time: firstSlot.dueTime);
-            break;
-
-          case RecurrenceType.yearly:
-            final civilDate = CivilDay.fromDateTime(_startDate);
-            final interval = int.tryParse(_intervalController.text) ?? 1;
-            final yMonth = _yearlyMonthController.value;
-            final yDay = int.tryParse(_yearlyDayController.text) ?? 1;
-            schedule = YearlySchedule(
-              startDate: civilDate,
-              interval: interval,
-              month: yMonth,
-              day: yDay,
-            );
-            final firstSlot = _dailyTimesController.value.first;
-            startRelative = RelativeTime(
-              dayOffset: 0,
-              time: firstSlot.startTime,
-            );
-            dueRelative = RelativeTime(dayOffset: 0, time: firstSlot.dueTime);
-            break;
-        }
-
-        final dueDateTime = _dueDateTimeController.value;
-        final startDateTime = _startDateTimeController.value;
-        final oneOffNotification = _oneOffNotificationController.value;
-        final oneOffDailyTimes = oneOffNotification != null
-            ? [
-                DailyOccurrenceTime(
-                  startTime: TimeOfDay.fromDateTime(startDateTime),
-                  dueTime: TimeOfDay.fromDateTime(dueDateTime),
-                  notificationTime: oneOffNotification,
-                ),
-              ]
-            : const <DailyOccurrenceTime>[];
-
-        final savedDailyTimes = _scheduleType == RecurrenceType.oneOff
-            ? oneOffDailyTimes
-            : _dailyTimesController.value;
-
         final minutesText = _estimatedDurationController.text.trim();
         final minutes = minutesText.isNotEmpty
             ? int.tryParse(minutesText)
@@ -480,25 +137,17 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             ? Duration(minutes: minutes)
             : null;
 
+        final hasRepeating = _schedules.any((s) => s is! OneOffSchedule);
+
         final newTask = Task(
           id: AppClock.now.millisecondsSinceEpoch.toString(),
           title: _titleController.text,
           description: _descriptionController.text,
-          startRelativeTime: startRelative,
-          dueRelativeTime: dueRelative,
-          schedule: schedule,
-          dailyTimes: savedDailyTimes,
-          activeOccurrenceIndex: 0,
+          schedules: _schedules,
           estimatedDuration: estimatedDuration,
-          missedPolicy: _scheduleType == RecurrenceType.oneOff
-              ? MissedPolicy.rollover
-              : _missedPolicy,
-          isMaster:
-              _scheduleType != RecurrenceType.oneOff &&
-              _missedPolicy == MissedPolicy.stack,
-          lastSpawnedDate:
-              _scheduleType != RecurrenceType.oneOff &&
-                  _missedPolicy == MissedPolicy.stack
+          missedPolicy: hasRepeating ? _missedPolicy : MissedPolicy.rollover,
+          isMaster: hasRepeating && _missedPolicy == MissedPolicy.stack,
+          lastSpawnedDate: hasRepeating && _missedPolicy == MissedPolicy.stack
               ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
               : null,
           isFamily: _isFamily,
@@ -514,22 +163,16 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             final modification = widget.taskToEdit!.edit(
               newTitle: _titleController.text,
               newDescription: _descriptionController.text,
-              newStartRelativeTime: startRelative,
-              newDueRelativeTime: dueRelative,
-              newSchedule: schedule,
-              newDailyTimes: savedDailyTimes,
+              newSchedules: _schedules,
               newEstimatedDuration: estimatedDuration,
               userId: repository.userId,
-              newMissedPolicy: _scheduleType == RecurrenceType.oneOff
-                  ? MissedPolicy.rollover
-                  : _missedPolicy,
-              newIsMaster:
-                  _scheduleType != RecurrenceType.oneOff &&
-                  _missedPolicy == MissedPolicy.stack,
+              newMissedPolicy: hasRepeating
+                  ? _missedPolicy
+                  : MissedPolicy.rollover,
+              newIsMaster: hasRepeating && _missedPolicy == MissedPolicy.stack,
               newLastSpawnedDate:
                   widget.taskToEdit!.lastSpawnedDate ??
-                  (_scheduleType != RecurrenceType.oneOff &&
-                          _missedPolicy == MissedPolicy.stack
+                  (hasRepeating && _missedPolicy == MissedPolicy.stack
                       ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
                       : null),
               newIsFamily: _isFamily,
@@ -559,7 +202,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         }
 
         if (mounted) {
-          Navigator.pop(context); // Don't return the task
+          Navigator.pop(context);
         }
       } catch (e, stackTrace) {
         if (mounted) {
@@ -810,6 +453,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   Widget _buildScheduleCard(BuildContext context, bool readOnly) {
     final theme = Theme.of(context);
+    final hasRepeating = _schedules.any((s) => s is! OneOffSchedule);
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -829,82 +474,93 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            RecurrenceTypeSelector(
-              selectedValue: _scheduleType,
-              onSelected: (newType) {
-                setState(() {
-                  _scheduleType = newType;
-                });
-              },
-            ),
-            const SizedBox(height: 24),
             AbsorbPointer(
               absorbing: readOnly,
               child: Opacity(
                 opacity: readOnly ? 0.6 : 1.0,
-                child: Builder(
-                  builder: (context) {
-                    if (_scheduleType == RecurrenceType.oneOff) {
-                      return OneOffSchedulingWidget(
-                        dueDateTime: _dueDateTimeController,
-                        startDateTime: _startDateTimeController,
-                        notificationTimeController:
-                            _oneOffNotificationController,
-                      );
-                    } else if (_scheduleType == RecurrenceType.daily) {
-                      return DailySchedulingWidget(
-                        startDate: _startDate,
-                        onStartDateChanged: (date) {
-                          setState(() => _startDate = date);
+                child: Column(
+                  children: [
+                    for (int i = 0; i < _schedules.length; i++)
+                      ScheduleConfigCard(
+                        key: ValueKey('schedule_card_$i'),
+                        schedule: _schedules[i],
+                        onChanged: (newSchedule) {
+                          setState(() {
+                            _schedules[i] = newSchedule;
+                          });
                         },
-                        dailyTimesController: _dailyTimesController,
-                        intervalController: _intervalController,
-                      );
-                    } else if (_scheduleType == RecurrenceType.weekly) {
-                      return WeeklySchedulingWidget(
-                        startDate: _startDate,
-                        onStartDateChanged: (date) {
-                          setState(() => _startDate = date);
+                        onDelete: _schedules.length > 1
+                            ? () {
+                                setState(() {
+                                  _schedules.removeAt(i);
+                                  if (_expandedScheduleIndex == i) {
+                                    _expandedScheduleIndex = null;
+                                  } else if (_expandedScheduleIndex != null &&
+                                      _expandedScheduleIndex! > i) {
+                                    _expandedScheduleIndex =
+                                        _expandedScheduleIndex! - 1;
+                                  }
+                                });
+                              }
+                            : null,
+                        isExpanded: _expandedScheduleIndex == i,
+                        onExpansionChanged: (expanded) {
+                          setState(() {
+                            _expandedScheduleIndex = expanded ? i : null;
+                          });
                         },
-                        dailyTimesController: _dailyTimesController,
-                        intervalController: _intervalController,
-                        selectedWeekdays: _selectedWeekdays,
-                        onWeekdaysChanged: (days) {
-                          setState(() => _selectedWeekdays = days);
+                      ),
+                    if (!readOnly) ...[
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        key: const Key('add_schedule_button'),
+                        onPressed: () {
+                          setState(() {
+                            final now = AppClock.now;
+                            final tomorrow = now.add(const Duration(days: 1));
+                            final civilTomorrow = CivilDay.fromDateTime(
+                              tomorrow,
+                            );
+
+                            final startMidnight = DateTime.utc(
+                              now.year,
+                              now.month,
+                              now.day,
+                            );
+                            final dueMidnight = DateTime.utc(
+                              tomorrow.year,
+                              tomorrow.month,
+                              tomorrow.day,
+                            );
+                            final diff = startMidnight
+                                .difference(dueMidnight)
+                                .inDays;
+
+                            _schedules.add(
+                              OneOffSchedule(
+                                date: civilTomorrow,
+                                startRelativeTime: RelativeTime(
+                                  dayOffset: diff,
+                                  time: TimeOfDay.fromDateTime(now),
+                                ),
+                                dueRelativeTime: const RelativeTime(
+                                  dayOffset: 0,
+                                  time: TimeOfDay(hour: 17, minute: 0),
+                                ),
+                              ),
+                            );
+                            _expandedScheduleIndex = _schedules.length - 1;
+                          });
                         },
-                      );
-                    } else if (_scheduleType == RecurrenceType.monthly) {
-                      return MonthlySchedulingWidget(
-                        startDate: _startDate,
-                        onStartDateChanged: (date) {
-                          setState(() => _startDate = date);
-                        },
-                        dailyTimesController: _dailyTimesController,
-                        intervalController: _intervalController,
-                        ruleTypeController: _monthlyRuleTypeController,
-                        dayOfMonthController: _monthlyDayOfMonthController,
-                        nthOccurrenceController:
-                            _monthlyNthOccurrenceController,
-                        dayOfWeekController: _monthlyDayOfWeekController,
-                      );
-                    } else if (_scheduleType == RecurrenceType.yearly) {
-                      return YearlySchedulingWidget(
-                        startDate: _startDate,
-                        onStartDateChanged: (date) {
-                          setState(() => _startDate = date);
-                        },
-                        dailyTimesController: _dailyTimesController,
-                        intervalController: _intervalController,
-                        monthController: _yearlyMonthController,
-                        dayController: _yearlyDayController,
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Schedule'),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
-            if (_scheduleType != RecurrenceType.oneOff) ...[
+            if (hasRepeating) ...[
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 16),
@@ -965,15 +621,13 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                   color: theme.colorScheme.outline,
                 ),
               ),
+            ],
+            if (_schedules.any((s) => s is! OneOffSchedule)) ...[
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 16),
               UpcomingOccurrencesPreview(
-                schedule: _buildSchedule(),
-                dailyTimes: _dailyTimesController.value,
-                startDateTime: _startDateTimeController.value,
-                dueDateTime: _dueDateTimeController.value,
-                scheduleType: _scheduleType,
+                schedules: _schedules,
                 maxOccurrences: 10,
               ),
             ],

@@ -123,9 +123,9 @@ void main() {
     );
 
     // Change to Daily
-    final dailySegment = find.text('Daily');
-    await tester.ensureVisible(dailySegment);
-    await tester.tap(dailySegment);
+    await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Daily').last);
     await tester.pumpAndSettle();
 
     // Check for interval field
@@ -215,9 +215,9 @@ void main() {
     );
 
     // Switch to Monthly
-    final monthlySegment = find.text('Monthly');
-    await tester.ensureVisible(monthlySegment);
-    await tester.tap(monthlySegment);
+    await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Monthly').last);
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'create_task_screen_monthly');
@@ -238,9 +238,9 @@ void main() {
     );
 
     // Switch to Yearly
-    final yearlySegment = find.text('Yearly');
-    await tester.ensureVisible(yearlySegment);
-    await tester.tap(yearlySegment);
+    await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Yearly').last);
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'create_task_screen_yearly');
@@ -435,9 +435,9 @@ void main() {
       );
 
       // Select Monthly recurrence
-      final monthlySegment = find.text('Monthly');
-      await tester.ensureVisible(monthlySegment);
-      await tester.tap(monthlySegment);
+      await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Monthly').last);
       await tester.pumpAndSettle();
 
       // Enter Months Interval
@@ -448,7 +448,10 @@ void main() {
 
       // Enter Day of Month (e.g. 15)
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Day of Month (1-28, or -1 to -28)'),
+        find.widgetWithText(
+          TextFormField,
+          'Day of Month (1-28, or negative -1 to -28 from end)',
+        ),
         '15',
       );
       await tester.pump();
@@ -476,16 +479,16 @@ void main() {
         );
 
         // Select Monthly recurrence
-        final monthlySegment = find.text('Monthly');
-        await tester.ensureVisible(monthlySegment);
-        await tester.tap(monthlySegment);
+        await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Monthly').last);
         await tester.pumpAndSettle();
 
         // Enter invalid day of month (e.g. 29)
         await tester.enterText(
           find.widgetWithText(
             TextFormField,
-            'Day of Month (1-28, or -1 to -28)',
+            'Day of Month (1-28, or negative -1 to -28 from end)',
           ),
           '29',
         );
@@ -513,9 +516,9 @@ void main() {
       );
 
       // Select Yearly recurrence
-      final yearlySegment = find.text('Yearly');
-      await tester.ensureVisible(yearlySegment);
-      await tester.tap(yearlySegment);
+      await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Yearly').last);
       await tester.pumpAndSettle();
 
       // Enter Years Interval
@@ -525,7 +528,10 @@ void main() {
       );
 
       // Day of month
-      await tester.enterText(find.widgetWithText(TextFormField, 'Day'), '24');
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Day of Month'),
+        '24',
+      );
       await tester.pump();
 
       await tester.tap(find.text('Save'));
@@ -537,7 +543,10 @@ void main() {
       expect(captured.schedule, isA<YearlySchedule>());
       final schedule = captured.schedule as YearlySchedule;
       expect(schedule.interval, 2);
-      expect(schedule.month, 1); // Default is January (1)
+      expect(
+        schedule.month,
+        3,
+      ); // Initialized from current schedule's month (March)
       expect(schedule.day, 24);
     });
   });
@@ -712,23 +721,16 @@ void main() {
           'Oneoff task notification',
         );
 
-        // Verify custom notification selector is visible and click it
-        final reminderBtnFinder = find.byKey(
-          const Key('one_off_notification_button'),
+        // Verify custom notification selector checkbox is visible and click it
+        final reminderCheckbox = find.widgetWithText(
+          CheckboxListTile,
+          'Enable notification reminder',
         );
-        expect(reminderBtnFinder, findsOneWidget);
-        expect(find.text('None'), findsOneWidget);
+        expect(reminderCheckbox, findsOneWidget);
 
-        await tester.ensureVisible(reminderBtnFinder);
-        await tester.tap(reminderBtnFinder);
+        await tester.ensureVisible(reminderCheckbox);
+        await tester.tap(reminderCheckbox);
         await tester.pumpAndSettle();
-
-        // Tap OK on the time picker dialog to select the default/initial time
-        await tester.tap(find.text('OK'));
-        await tester.pumpAndSettle();
-
-        // Check if button text updated to show the time
-        expect(find.text('None'), findsNothing);
 
         // Save the task
         await tester.tap(find.byKey(const Key('save_task_button')));
@@ -764,9 +766,9 @@ void main() {
       expect(find.byKey(const Key('occurrence_card_1')), findsNothing);
 
       // Switch to Daily schedule
-      final dailySegment = find.text('Daily');
-      await tester.ensureVisible(dailySegment);
-      await tester.tap(dailySegment);
+      await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Daily').last);
       await tester.pumpAndSettle();
 
       // Should show 10 occurrences by default (maxOccurrences = 10 in CreateTaskScreen)

@@ -1,53 +1,127 @@
 import 'package:flutter/material.dart';
 import '../logic/civil_day.dart';
+import '../logic/relative_time.dart';
 import '../logic/task.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/app_clock.dart';
+
+class OccurrenceInfo {
+  final CivilDay date;
+  final TaskSchedule schedule;
+
+  OccurrenceInfo(this.date, this.schedule);
+}
 
 class UpcomingOccurrencesPreview extends StatelessWidget {
+  final List<TaskSchedule>? schedules;
   final TaskSchedule? schedule;
   final List<DailyOccurrenceTime> dailyTimes;
-  final DateTime startDateTime;
-  final DateTime dueDateTime;
-  final RecurrenceType scheduleType;
+  final DateTime? startDateTime;
+  final DateTime? dueDateTime;
+  final RecurrenceType? scheduleType;
   final int maxOccurrences;
 
   const UpcomingOccurrencesPreview({
     super.key,
-    required this.schedule,
-    required this.dailyTimes,
-    required this.startDateTime,
-    required this.dueDateTime,
-    required this.scheduleType,
+    this.schedules,
+    this.schedule,
+    this.dailyTimes = const [],
+    this.startDateTime,
+    this.dueDateTime,
+    this.scheduleType,
     this.maxOccurrences = 10,
   });
 
-  List<CivilDay> _calculateOccurrences() {
-    final sched = schedule;
-    if (sched == null) return const [];
+  List<TaskSchedule> get effectiveSchedules {
+    if (schedules != null) {
+      return schedules!;
+    }
+    final s = schedule;
+    if (s == null) return const [];
 
-    List<CivilDay> occurrences = [];
-    CivilDay current = CivilDay.fromDateTime(startDateTime);
+    final start = startDateTime != null
+        ? RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay.fromDateTime(startDateTime!),
+          )
+        : s.startRelativeTime;
 
-    if (sched is OneOffSchedule) {
-      occurrences.add(sched.scheduledDate);
+    final due = dueDateTime != null
+        ? RelativeTime(dayOffset: 0, time: TimeOfDay.fromDateTime(dueDateTime!))
+        : s.dueRelativeTime;
+
+    if (dailyTimes.isNotEmpty) {
+      return dailyTimes.map((dt) {
+        return s.copyWithTiming(
+          startRelativeTime: RelativeTime(dayOffset: 0, time: dt.startTime),
+          dueRelativeTime: RelativeTime(dayOffset: 0, time: dt.dueTime),
+          notificationRelativeTime: dt.notificationTime != null
+              ? RelativeTime(dayOffset: 0, time: dt.notificationTime!)
+              : null,
+        );
+      }).toList();
     } else {
-      if (sched.occursOn(current)) {
-        occurrences.add(current);
-      }
+      return [s.copyWithTiming(startRelativeTime: start, dueRelativeTime: due)];
+    }
+  }
 
-      int count = occurrences.length;
-      int iterations = 0;
-      while (count < maxOccurrences && iterations < 5000) {
-        iterations++;
-        current = sched.nextOccurrenceAfter(current);
-        if (occurrences.isNotEmpty && occurrences.last == current) {
-          break;
+  List<OccurrenceInfo> _calculateOccurrences() {
+    final list = effectiveSchedules;
+    if (list.isEmpty) return const [];
+
+    final List<OccurrenceInfo> allOccurrences = [];
+    final now = AppClock.now;
+    final today = CivilDay.fromDateTime(now);
+
+    for (final sched in list) {
+      if (sched is OneOffSchedule) {
+        allOccurrences.add(OccurrenceInfo(sched.scheduledDate, sched));
+      } else {
+        try {
+          final CivilDay startDay = startDateTime != null
+              ? CivilDay.fromDateTime(startDateTime!)
+              : (sched.scheduledDate.isBefore(today)
+                    ? today
+                    : sched.scheduledDate);
+
+          CivilDay current = startDay;
+          if (sched.occursOn(current)) {
+            allOccurrences.add(OccurrenceInfo(current, sched));
+          }
+
+          int count = sched.occursOn(current) ? 1 : 0;
+          int iterations = 0;
+          while (count < maxOccurrences && iterations < 1000) {
+            iterations++;
+            current = sched.nextOccurrenceAfter(current);
+            if (allOccurrences.any(
+              (o) => o.schedule == sched && o.date == current,
+            )) {
+              break;
+            }
+            allOccurrences.add(OccurrenceInfo(current, sched));
+            count++;
+          }
+        } catch (e) {
+          // Gracefully ignore calculation errors for transient/invalid configurations
+          debugPrint('Error calculating occurrences: $e');
         }
-        occurrences.add(current);
-        count++;
       }
     }
-    return occurrences;
+
+    allOccurrences.sort((a, b) {
+      if (a.date.isBefore(b.date)) return -1;
+      if (b.date.isBefore(a.date)) return 1;
+      final timeA = a.schedule.startRelativeTime.time;
+      final timeB = b.schedule.startRelativeTime.time;
+      if (timeA.hour != timeB.hour) return timeA.hour.compareTo(timeB.hour);
+      return timeA.minute.compareTo(timeB.minute);
+    });
+
+    if (allOccurrences.length > maxOccurrences) {
+      return allOccurrences.sublist(0, maxOccurrences);
+    }
+    return allOccurrences;
   }
 
   List<String> _getMonthNames(BuildContext context) {
@@ -88,10 +162,6 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
     return '$weekdayStr, $monthStr ${day.day}, ${day.year}';
   }
 
-  DateTime _combineDayAndTime(CivilDay day, TimeOfDay time) {
-    return DateTime(day.year, day.month, day.day, time.hour, time.minute);
-  }
-
   String _formatDateTime(BuildContext context, DateTime dt) {
     final weekdayStr = _getWeekdayNames(context)[dt.weekday - 1];
     final monthStr = _getMonthNames(context)[dt.month - 1];
@@ -128,121 +198,57 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: occurrences.length,
             itemBuilder: (context, index) {
-              final occurrence = occurrences[index];
+              final occurrenceInfo = occurrences[index];
+              final occurrence = occurrenceInfo.date;
+              final sched = occurrenceInfo.schedule;
+              final startAbs = sched.startRelativeTime.referenceTo(occurrence);
+              final dueAbs = sched.dueRelativeTime.referenceTo(occurrence);
 
-              Widget detailsWidget;
-              if (scheduleType == RecurrenceType.oneOff) {
-                detailsWidget = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.visibility,
-                          size: 14,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            context.l10n.occurrenceAppears(
-                              _formatDateTime(context, startDateTime),
-                            ),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.alarm,
-                          size: 14,
-                          color: theme.colorScheme.error,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            context.l10n.occurrenceDue(
-                              _formatDateTime(context, dueDateTime),
-                            ),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              } else {
-                if (dailyTimes.isEmpty) {
-                  detailsWidget = const SizedBox.shrink();
-                } else {
-                  detailsWidget = Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              final detailsWidget = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 6),
+                  Row(
                     children: [
-                      const SizedBox(height: 6),
-                      for (final slot in dailyTimes) ...[
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.visibility,
-                              size: 14,
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                context.l10n.occurrenceAppears(
-                                  _formatDateTime(
-                                    context,
-                                    _combineDayAndTime(
-                                      occurrence,
-                                      slot.startTime,
-                                    ),
-                                  ),
-                                ),
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ),
-                          ],
+                      Icon(
+                        Icons.visibility,
+                        size: 14,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          context.l10n.occurrenceAppears(
+                            _formatDateTime(context, startAbs),
+                          ),
+                          style: theme.textTheme.bodySmall,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.alarm,
-                              size: 14,
-                              color: theme.colorScheme.error,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                context.l10n.occurrenceDue(
-                                  _formatDateTime(
-                                    context,
-                                    _combineDayAndTime(
-                                      occurrence,
-                                      slot.dueTime,
-                                    ),
-                                  ),
-                                ),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (slot != dailyTimes.last) const Divider(height: 12),
-                      ],
+                      ),
                     ],
-                  );
-                }
-              }
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.alarm,
+                        size: 14,
+                        color: theme.colorScheme.error,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          context.l10n.occurrenceDue(
+                            _formatDateTime(context, dueAbs),
+                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
 
               return Card(
                 key: Key('occurrence_card_$index'),

@@ -93,6 +93,34 @@ void main() {
       expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
     });
 
+    testWidgets(
+      'gracefully handles invalid/non-existent dates for Yearly tasks',
+      (tester) async {
+        final schedule = YearlySchedule(
+          startDate: const CivilDay(year: 2026, month: 6, day: 30),
+          interval: 1,
+          month: 6,
+          day: 31,
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: UpcomingOccurrencesPreview(
+                schedule: schedule,
+                startDateTime: DateTime(2026, 6, 8, 9, 0),
+                dueDateTime: DateTime(2026, 6, 8, 17, 0),
+                scheduleType: RecurrenceType.yearly,
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('Next 10 Occurrences'), findsOneWidget);
+        expect(find.byKey(const Key('occurrence_card_0')), findsNothing);
+      },
+    );
+
     testGoldens('UpcomingOccurrencesPreview renders correctly', (tester) async {
       final oneOffSchedule = OneOffSchedule(
         date: const CivilDay(year: 2026, month: 6, day: 8),
