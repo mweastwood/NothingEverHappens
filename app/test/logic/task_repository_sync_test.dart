@@ -108,6 +108,7 @@ void main() {
       isFamily: false,
     );
     await repository.addTask(task);
+    await Future.delayed(Duration.zero);
 
     // Verify it exists in personal tasks collection
     final personalDoc = await firestore
@@ -117,6 +118,15 @@ void main() {
         .doc('t-migrate')
         .get();
     expect(personalDoc.exists, isTrue);
+
+    // Verify it exists in personal instances
+    final personalInstDoc = await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('instances')
+        .doc('t-migrate_2026-06-01')
+        .get();
+    expect(personalInstDoc.exists, isTrue);
 
     // 2. Toggle to Family and save
     final familyTask = TaskSchedule(
@@ -146,6 +156,15 @@ void main() {
         .get();
     expect(personalDocPost.exists, isFalse);
 
+    // Verify it was DELETED from personal instances
+    final personalInstDocPost = await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('instances')
+        .doc('t-migrate_2026-06-01')
+        .get();
+    expect(personalInstDocPost.exists, isFalse);
+
     // Verify it was CREATED in family tasks
     final familyDocPost = await firestore
         .collection('families')
@@ -154,6 +173,15 @@ void main() {
         .doc('t-migrate')
         .get();
     expect(familyDocPost.exists, isTrue);
+
+    // Verify it was CREATED in family instances
+    final familyInstDocPost = await firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('instances')
+        .doc('t-migrate_2026-06-01')
+        .get();
+    expect(familyInstDocPost.exists, isTrue);
   });
 
   test('atomic scope migration: Family -> Personal', () async {
@@ -180,6 +208,7 @@ void main() {
       isFamily: true,
     );
     await repository.addTask(task);
+    await Future.delayed(Duration.zero);
 
     // Verify it exists in family tasks
     final familyDoc = await firestore
@@ -189,6 +218,15 @@ void main() {
         .doc('t-migrate')
         .get();
     expect(familyDoc.exists, isTrue);
+
+    // Verify it exists in family instances
+    final familyInstDoc = await firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('instances')
+        .doc('t-migrate_2026-06-01')
+        .get();
+    expect(familyInstDoc.exists, isTrue);
 
     // 2. Toggle to Personal and save
     final personalTask = TaskSchedule(
@@ -218,6 +256,15 @@ void main() {
         .get();
     expect(familyDocPost.exists, isFalse);
 
+    // Verify it was DELETED from family instances
+    final familyInstDocPost = await firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('instances')
+        .doc('t-migrate_2026-06-01')
+        .get();
+    expect(familyInstDocPost.exists, isFalse);
+
     // Verify it was CREATED in personal tasks
     final personalDocPost = await firestore
         .collection('users')
@@ -226,6 +273,15 @@ void main() {
         .doc('t-migrate')
         .get();
     expect(personalDocPost.exists, isTrue);
+
+    // Verify it was CREATED in personal instances
+    final personalInstDocPost = await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('instances')
+        .doc('t-migrate_2026-06-01')
+        .get();
+    expect(personalInstDocPost.exists, isTrue);
   });
 
   test('getHistory merges personal and family delta history streams', () async {

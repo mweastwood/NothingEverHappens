@@ -415,6 +415,48 @@ class TaskSchedule {
     return (newTask: newTask, delta: delta);
   }
 
+  TaskSchedule copyWith({
+    String? title,
+    String? description,
+    List<TaskScheduleRule>? schedules,
+    int? activeOccurrenceIndex,
+    Duration? estimatedDuration,
+    bool clearEstimatedDuration = false,
+    MissedPolicy? missedPolicy,
+    bool? isMaster,
+    CivilDay? lastSpawnedDate,
+    bool clearLastSpawnedDate = false,
+    String? parentTaskId,
+    bool? isFamily,
+    TaskPriority? priority,
+    String? cycleId,
+    bool clearCycleId = false,
+    Map<String, bool>? preferredBy,
+    String? assignedUserId,
+    bool clearAssignedUserId = false,
+  }) {
+    return _copyWith(
+      title: title,
+      description: description,
+      schedules: schedules,
+      activeOccurrenceIndex: activeOccurrenceIndex,
+      estimatedDuration: estimatedDuration,
+      clearEstimatedDuration: clearEstimatedDuration,
+      missedPolicy: missedPolicy,
+      isMaster: isMaster,
+      lastSpawnedDate: lastSpawnedDate,
+      clearLastSpawnedDate: clearLastSpawnedDate,
+      parentTaskId: parentTaskId,
+      isFamily: isFamily,
+      priority: priority,
+      cycleId: cycleId,
+      clearCycleId: clearCycleId,
+      preferredBy: preferredBy,
+      assignedUserId: assignedUserId,
+      clearAssignedUserId: clearAssignedUserId,
+    );
+  }
+
   TaskSchedule _copyWith({
     String? title,
     String? description,

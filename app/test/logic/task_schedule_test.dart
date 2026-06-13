@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_list.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
@@ -513,8 +514,13 @@ void main() {
           missedPolicy: MissedPolicy.skip,
         );
 
+        // Set mock clock to Monday
+        final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
+        AppClock.setMockTime(mondayDateTime);
+
         // Save to database
         await repository.addTask(task);
+        await Future.delayed(Duration.zero);
 
         // Set AppClock to Tuesday 10:00 AM - past due time of Monday (17:00), but before Tuesday (17:00)
         final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
@@ -526,20 +532,25 @@ void main() {
         // Let's yield to background tasks so Firestore batch completes
         await Future.delayed(Duration.zero);
 
-        // Fetch the updated task from database
-        final updatedTaskSnap = await firestore
+        // Fetch the Monday instance
+        final mondayInstSnap = await firestore
             .collection('users')
             .doc('user-1')
-            .collection('tasks')
-            .doc('skip-task')
+            .collection('instances')
+            .doc('skip-task_2026-05-25')
             .get();
-        final updatedTask = TaskSchedule.fromFirestore(updatedTaskSnap);
+        expect(mondayInstSnap.exists, isTrue);
+        expect(mondayInstSnap.data()!['status'], 'skipped');
 
-        // It should be rescheduled to Tuesday (today + 1 -> Tuesday nextOccurrenceAfter since today is Tuesday)
-        expect(
-          updatedTask.schedules.first.scheduledDate,
-          const CivilDay(year: 2026, month: 5, day: 26),
-        );
+        // Fetch the Tuesday instance
+        final tuesdayInstSnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('skip-task_2026-05-26')
+            .get();
+        expect(tuesdayInstSnap.exists, isTrue);
+        expect(tuesdayInstSnap.data()!['status'], 'pending');
 
         // Verify that skipped was logged in history
         final historySnap = await firestore
@@ -595,7 +606,12 @@ void main() {
         missedPolicy: MissedPolicy.skip,
       );
 
+      // Set mock clock to Monday
+      final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
+      AppClock.setMockTime(mondayDateTime);
+
       await repository.addTask(mixedTask);
+      await Future.delayed(Duration.zero);
 
       final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
       AppClock.setMockTime(tuesdayDateTime);
@@ -603,20 +619,32 @@ void main() {
       await repository.getTasks().first;
       await Future.delayed(Duration.zero);
 
-      final updatedTaskSnap = await firestore
+      final mondayOneOffSnap = await firestore
           .collection('users')
           .doc('user-1')
-          .collection('tasks')
-          .doc('mixed-skip-task')
+          .collection('instances')
+          .doc('mixed-skip-task_2026-05-25_0')
           .get();
-      final updatedTask = TaskSchedule.fromFirestore(updatedTaskSnap);
+      expect(mondayOneOffSnap.exists, isTrue);
+      expect(mondayOneOffSnap.data()!['status'], 'skipped');
 
-      expect(updatedTask.schedules.length, 1);
-      expect(updatedTask.schedules[0], isA<DailySchedule>());
-      expect(
-        (updatedTask.schedules[0] as DailySchedule).startDate,
-        const CivilDay(year: 2026, month: 5, day: 26),
-      );
+      final mondayDailySnap = await firestore
+          .collection('users')
+          .doc('user-1')
+          .collection('instances')
+          .doc('mixed-skip-task_2026-05-25_1')
+          .get();
+      expect(mondayDailySnap.exists, isTrue);
+      expect(mondayDailySnap.data()!['status'], 'skipped');
+
+      final tuesdayDailySnap = await firestore
+          .collection('users')
+          .doc('user-1')
+          .collection('instances')
+          .doc('mixed-skip-task_2026-05-26_1')
+          .get();
+      expect(tuesdayDailySnap.exists, isTrue);
+      expect(tuesdayDailySnap.data()!['status'], 'pending');
 
       AppClock.reset();
     });
@@ -654,8 +682,13 @@ void main() {
           isMaster: true,
         );
 
+        // Set mock clock to Monday
+        final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
+        AppClock.setMockTime(mondayDateTime);
+
         // Save master task to database
         await repository.addTask(task);
+        await Future.delayed(Duration.zero);
 
         // Set AppClock to Wednesday (May 27)
         final wednesdayDateTime = DateTime(2026, 5, 27, 10, 0);
@@ -665,33 +698,29 @@ void main() {
         await repository.getTasks().first;
         await Future.delayed(Duration.zero);
 
-        // Query active tasks in Firestore
-        final tasksSnap = await firestore
+        // Query active instances in Firestore
+        final instancesSnap = await firestore
             .collection('users')
             .doc('user-1')
-            .collection('tasks')
+            .collection('instances')
             .get();
-        final allTasks = tasksSnap.docs
-            .map((doc) => TaskSchedule.fromFirestore(doc))
+        final allInstances = instancesSnap.docs
+            .map((doc) => TaskInstance.fromFirestore(doc))
             .toList();
 
-        // We should have 1 master task + 3 spawned active cards (Monday, Tuesday, Wednesday)
-        expect(allTasks.length, 4);
+        // We should have 3 spawned active instances (Monday, Tuesday, Wednesday)
+        expect(allInstances.length, 3);
 
-        final spawnedCards = allTasks.where((t) => !t.isMaster).toList();
-        expect(spawnedCards.length, 3);
-
-        // Assert that spawned cards have deterministic IDs and correct occurrence dates
         expect(
-          spawnedCards.any((t) => t.id == 'stack-task_2026-05-25'),
+          allInstances.any((t) => t.id == 'stack-task_2026-05-25'),
           isTrue,
         );
         expect(
-          spawnedCards.any((t) => t.id == 'stack-task_2026-05-26'),
+          allInstances.any((t) => t.id == 'stack-task_2026-05-26'),
           isTrue,
         );
         expect(
-          spawnedCards.any((t) => t.id == 'stack-task_2026-05-27'),
+          allInstances.any((t) => t.id == 'stack-task_2026-05-27'),
           isTrue,
         );
 
