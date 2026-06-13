@@ -13,7 +13,7 @@ class TaskDeltaWidget extends StatelessWidget {
 
     // Formatting the description
     final buffer = StringBuffer();
-    buffer.writeln('**Task ID:** ${delta.taskId}');
+    buffer.writeln('**TaskSchedule ID:** ${delta.taskId}');
     buffer.writeln();
     buffer.writeln('**Timestamp:** ${delta.timestamp.toIso8601String()}');
     buffer.writeln();

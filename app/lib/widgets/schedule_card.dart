@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 
 class ScheduleCard extends StatelessWidget {
-  final Task task;
+  final TaskSchedule task;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 

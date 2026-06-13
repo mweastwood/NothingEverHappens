@@ -4,7 +4,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
@@ -109,7 +109,7 @@ void main() {
       });
 
       // Add 1 personal active task (30m)
-      final personalTask = Task(
+      final personalTask = TaskSchedule(
         id: 't-personal',
         title: 'Personal Chore',
         description: 'Clean room',
@@ -133,7 +133,7 @@ void main() {
       await taskRepo.addTask(personalTask);
 
       // Add 1 family active task (45m) assigned to user-1
-      final familyTaskActive = Task(
+      final familyTaskActive = TaskSchedule(
         id: 't-family-active',
         title: 'Family Dishwashing',
         description: 'Wash plates',
@@ -158,7 +158,7 @@ void main() {
       await taskRepo.addTask(familyTaskActive);
 
       // Add 1 backlog task (60m)
-      final backlogTask = Task(
+      final backlogTask = TaskSchedule(
         id: 't-backlog',
         title: 'Backlog Chore',
         description: 'Clean attic',
@@ -202,7 +202,7 @@ void main() {
       });
 
       // Add 1 personal active task (30m)
-      final personalTask = Task(
+      final personalTask = TaskSchedule(
         id: 't-personal',
         title: 'Personal Chore',
         description: 'Clean room',
@@ -260,7 +260,7 @@ void main() {
         'familyRole': 'parent',
       });
 
-      final familyTask = Task(
+      final familyTask = TaskSchedule(
         id: 't-family',
         title: 'Family Chore',
         description: 'Mow lawn',
@@ -304,7 +304,7 @@ void main() {
           .collection('tasks')
           .doc('t-family')
           .get();
-      final updated = Task.fromFirestore(doc);
+      final updated = TaskSchedule.fromFirestore(doc);
       expect(updated.preferredBy[userId], isTrue);
     });
 
@@ -337,9 +337,9 @@ void main() {
       });
 
       // 3. Add family tasks in active cycle
-      final task1 = Task(
+      final task1 = TaskSchedule(
         id: 't1',
-        title: 'Task 1',
+        title: 'TaskSchedule 1',
         description: '',
         schedules: [
           OneOffSchedule(
@@ -377,7 +377,7 @@ void main() {
           .collection('tasks')
           .doc('t1')
           .get();
-      final allocatedTask = Task.fromFirestore(doc);
+      final allocatedTask = TaskSchedule.fromFirestore(doc);
       expect(allocatedTask.assignedUserId, isNotNull);
       expect(allocatedTask.assignedUserId!.isNotEmpty, isTrue);
     });
@@ -429,9 +429,9 @@ void main() {
       });
 
       // 4. Setup some personal tasks for Bob
-      final bobTask = Task(
+      final bobTask = TaskSchedule(
         id: 't-bob-personal',
-        title: 'Bob Personal Task',
+        title: 'Bob Personal TaskSchedule',
         description: '',
         schedules: [
           OneOffSchedule(
@@ -458,9 +458,9 @@ void main() {
           .set(bobTask.toFirestore());
 
       // 5. Setup family task assigned to Bob
-      final familyTask = Task(
+      final familyTask = TaskSchedule(
         id: 't-fam-assigned',
-        title: 'Shared Task',
+        title: 'Shared TaskSchedule',
         description: '',
         schedules: [
           OneOffSchedule(
@@ -530,7 +530,7 @@ void main() {
         'familyRole': 'parent',
       });
 
-      final personalTask = Task(
+      final personalTask = TaskSchedule(
         id: 't-personal',
         title: 'Personal Chore',
         description: 'Clean room',
@@ -553,7 +553,7 @@ void main() {
       );
       await taskRepo.addTask(personalTask);
 
-      final familyTask = Task(
+      final familyTask = TaskSchedule(
         id: 't-family',
         title: 'Family Dishwashing',
         description: 'Wash plates',
@@ -634,9 +634,9 @@ void main() {
       });
 
       // 4. Setup some personal tasks for Bob
-      final bobTask = Task(
+      final bobTask = TaskSchedule(
         id: 't-bob-personal',
-        title: 'Bob Personal Task',
+        title: 'Bob Personal TaskSchedule',
         description: '',
         schedules: [
           OneOffSchedule(
@@ -663,9 +663,9 @@ void main() {
           .set(bobTask.toFirestore());
 
       // 5. Setup family task assigned to Bob
-      final familyTask = Task(
+      final familyTask = TaskSchedule(
         id: 't-fam-assigned',
-        title: 'Shared Task',
+        title: 'Shared TaskSchedule',
         description: '',
         schedules: [
           OneOffSchedule(

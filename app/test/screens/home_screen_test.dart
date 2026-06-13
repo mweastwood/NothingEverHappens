@@ -18,7 +18,7 @@ import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
 import 'package:nothing_ever_happens/screens/family_screen.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 
 @GenerateNiceMocks([
@@ -32,7 +32,7 @@ void main() {
   late MockAuthRepository mockAuthRepository;
   late MockTaskRepository mockTaskRepository;
   late MockUserSettingsRepository mockUserSettingsRepository;
-  late BehaviorSubject<List<Task>> tasksSubject;
+  late BehaviorSubject<List<TaskSchedule>> tasksSubject;
   late BehaviorSubject<List<TaskDelta>> historySubject;
   late BehaviorSubject<UserSettings> settingsSubject;
 
@@ -41,7 +41,7 @@ void main() {
     mockTaskRepository = MockTaskRepository();
     mockUserSettingsRepository = MockUserSettingsRepository();
 
-    tasksSubject = BehaviorSubject<List<Task>>.seeded([]);
+    tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([]);
     historySubject = BehaviorSubject<List<TaskDelta>>.seeded([]);
     settingsSubject = BehaviorSubject<UserSettings>.seeded(
       const UserSettings(hoursAvailable: 8.0),

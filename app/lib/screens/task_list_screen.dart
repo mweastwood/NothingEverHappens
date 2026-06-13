@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/civil_day.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../widgets/task_widget.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
@@ -43,7 +43,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   }
 
   Widget _buildTaskListSliver(TaskRepository taskRepository) {
-    return StreamBuilder<List<Task>>(
+    return StreamBuilder<List<TaskSchedule>>(
       key: _taskListKey,
       stream: taskRepository.getTasks(),
       builder: (context, snapshot) {
@@ -95,7 +95,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     );
   }
 
-  Widget _buildTaskItem(Task task) {
+  Widget _buildTaskItem(TaskSchedule task) {
     return TaskWidget(key: ValueKey(task.id), task: task);
   }
 }

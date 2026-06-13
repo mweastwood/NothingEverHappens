@@ -4,7 +4,7 @@ import 'package:uuid/uuid.dart';
 import 'package:rxdart/rxdart.dart';
 import 'app_clock.dart';
 import 'civil_day.dart';
-import 'task.dart';
+import 'task_schedule.dart';
 import 'task_delta.dart';
 import 'task_list.dart';
 import 'notification_service.dart';
@@ -35,20 +35,20 @@ class TaskRepository {
        _userId = userId,
        _notificationService = notificationService;
 
-  CollectionReference<Task> _tasksRefForUser(String userId) {
+  CollectionReference<TaskSchedule> _tasksRefForUser(String userId) {
     return _firestore
         .collection('users')
         .doc(userId)
         .collection('tasks')
-        .withConverter<Task>(
-          fromFirestore: (snapshot, _) => Task.fromFirestore(snapshot),
+        .withConverter<TaskSchedule>(
+          fromFirestore: (snapshot, _) => TaskSchedule.fromFirestore(snapshot),
           toFirestore: (task, _) => task.toFirestore(),
         );
   }
 
-  CollectionReference<Task> get _tasksRef => _tasksRefForUser(_userId);
+  CollectionReference<TaskSchedule> get _tasksRef => _tasksRefForUser(_userId);
 
-  Stream<List<Task>> getPersonalTasksForUser(String userId) {
+  Stream<List<TaskSchedule>> getPersonalTasksForUser(String userId) {
     return _tasksRefForUser(userId).snapshots().map((snapshot) {
       return snapshot.docs.map((doc) => doc.data()).toList();
     });
@@ -70,15 +70,19 @@ class TaskRepository {
     return userDoc.data()?['familyId'] as String?;
   }
 
-  DocumentReference<Task> _taskRefFor(Task task, String? familyId) {
+  DocumentReference<TaskSchedule> _taskRefFor(
+    TaskSchedule task,
+    String? familyId,
+  ) {
     if (task.isFamily && familyId != null && familyId.isNotEmpty) {
       return _firestore
           .collection('families')
           .doc(familyId)
           .collection('tasks')
           .doc(task.id)
-          .withConverter<Task>(
-            fromFirestore: (snapshot, _) => Task.fromFirestore(snapshot),
+          .withConverter<TaskSchedule>(
+            fromFirestore: (snapshot, _) =>
+                TaskSchedule.fromFirestore(snapshot),
             toFirestore: (task, _) => task.toFirestore(),
           );
     }
@@ -86,7 +90,7 @@ class TaskRepository {
   }
 
   DocumentReference<TaskDelta> _historyRefFor(
-    Task task,
+    TaskSchedule task,
     String? familyId,
     String deltaId,
   ) {
@@ -105,7 +109,7 @@ class TaskRepository {
     return _historyRef.doc(deltaId);
   }
 
-  Future<Task?> _fetchTask(String id) async {
+  Future<TaskSchedule?> _fetchTask(String id) async {
     // Try personal first
     final personalDoc = await _tasksRef.doc(id).get();
     if (personalDoc.exists) return personalDoc.data();
@@ -118,8 +122,9 @@ class TaskRepository {
           .doc(familyId)
           .collection('tasks')
           .doc(id)
-          .withConverter<Task>(
-            fromFirestore: (snapshot, _) => Task.fromFirestore(snapshot),
+          .withConverter<TaskSchedule>(
+            fromFirestore: (snapshot, _) =>
+                TaskSchedule.fromFirestore(snapshot),
             toFirestore: (task, _) => task.toFirestore(),
           )
           .get();
@@ -128,7 +133,7 @@ class TaskRepository {
     return null;
   }
 
-  Stream<List<Task>> getTasks() {
+  Stream<List<TaskSchedule>> getTasks() {
     return _firestore.collection('users').doc(_userId).snapshots().switchMap((
       userDoc,
     ) {
@@ -148,8 +153,9 @@ class TaskRepository {
             .collection('families')
             .doc(familyId)
             .collection('tasks')
-            .withConverter<Task>(
-              fromFirestore: (snapshot, _) => Task.fromFirestore(snapshot),
+            .withConverter<TaskSchedule>(
+              fromFirestore: (snapshot, _) =>
+                  TaskSchedule.fromFirestore(snapshot),
               toFirestore: (task, _) => task.toFirestore(),
             );
 
@@ -157,20 +163,20 @@ class TaskRepository {
           return snapshot.docs.map((doc) => doc.data()).toList();
         });
 
-        return Rx.combineLatest2<List<Task>, List<Task>, List<Task>>(
-          personalStream,
-          familyStream,
-          (personal, family) {
-            final allTasks = [...personal, ...family];
-            _checkAndProcessMissedPolicies(allTasks);
-            return allTasks;
-          },
-        );
+        return Rx.combineLatest2<
+          List<TaskSchedule>,
+          List<TaskSchedule>,
+          List<TaskSchedule>
+        >(personalStream, familyStream, (personal, family) {
+          final allTasks = [...personal, ...family];
+          _checkAndProcessMissedPolicies(allTasks);
+          return allTasks;
+        });
       }
     });
   }
 
-  void _checkAndProcessMissedPolicies(List<Task> tasks) async {
+  void _checkAndProcessMissedPolicies(List<TaskSchedule> tasks) async {
     if (_isProcessingMissedPolicies) return;
     _isProcessingMissedPolicies = true;
 
@@ -201,7 +207,7 @@ class TaskRepository {
           batch.set(_historyRefFor(task, familyId, deltaId), delta);
 
           final today = CivilDay.fromDateTime(now);
-          final List<TaskSchedule> list = [];
+          final List<TaskScheduleRule> list = [];
           for (final s in task.schedules) {
             if (s is OneOffSchedule) {
               if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
@@ -219,7 +225,7 @@ class TaskRepository {
           }
           final newSchedules = list;
 
-          final updatedTask = Task(
+          final updatedTask = TaskSchedule(
             id: task.id,
             title: task.title,
             description: task.description,
@@ -252,7 +258,7 @@ class TaskRepository {
               ? lastSpawned.addDays(1)
               : minStartDate;
 
-          List<(CivilDay, TaskSchedule, int)> occurrencesToSpawn = [];
+          List<(CivilDay, TaskScheduleRule, int)> occurrencesToSpawn = [];
           int daysChecked = 0;
           while ((checkDate.isBefore(today) || checkDate == today) &&
               daysChecked < 30) {
@@ -281,7 +287,7 @@ class TaskRepository {
                   ? '${task.id}_$dateStr'
                   : '${task.id}_${dateStr}_$idx';
 
-              final spawnedTask = Task(
+              final spawnedTask = TaskSchedule(
                 id: spawnedId,
                 title: task.title,
                 description: task.description,
@@ -305,7 +311,7 @@ class TaskRepository {
               batch.set(_taskRefFor(spawnedTask, familyId), spawnedTask);
             }
 
-            final updatedMaster = Task(
+            final updatedMaster = TaskSchedule(
               id: task.id,
               title: task.title,
               description: task.description,
@@ -386,7 +392,7 @@ class TaskRepository {
     });
   }
 
-  Future<void> addTask(Task task) async {
+  Future<void> addTask(TaskSchedule task) async {
     final familyId = await _getFamilyId();
     final newState = const TaskList([]).add(task, _userId);
     final delta = newState.history.last;
@@ -494,7 +500,7 @@ class TaskRepository {
 
     final batch = _firestore.batch();
 
-    Task? updatedTask;
+    TaskSchedule? updatedTask;
     if (taskStillExists) {
       updatedTask = newState.activeTasks.firstWhere((t) => t.id == id);
       batch.set(_taskRefFor(task, familyId), updatedTask);

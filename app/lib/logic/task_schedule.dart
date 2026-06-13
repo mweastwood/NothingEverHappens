@@ -1,758 +1,494 @@
-import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
+import 'task_delta.dart';
+import 'missed_policy.dart';
+import 'task_priority.dart';
+import 'task_schedule_rule.dart';
 
-/// Defines how often a task reoccurs.
-abstract class TaskSchedule {
-  final RelativeTime startRelativeTime;
-  final RelativeTime dueRelativeTime;
-  final RelativeTime? notificationRelativeTime;
+export 'missed_policy.dart';
+export 'task_priority.dart';
+export 'daily_occurrence_time.dart';
+export 'task_schedule_rule.dart';
 
-  const TaskSchedule({
-    RelativeTime? startRelativeTime,
-    RelativeTime? dueRelativeTime,
-    this.notificationRelativeTime,
-  }) : startRelativeTime =
-           startRelativeTime ??
-           const RelativeTime(
-             dayOffset: 0,
-             time: TimeOfDay(hour: 9, minute: 0),
-           ),
-       dueRelativeTime =
-           dueRelativeTime ??
-           const RelativeTime(
-             dayOffset: 0,
-             time: TimeOfDay(hour: 17, minute: 0),
-           );
+/// Result of a task update operation.
+typedef TaskModification = ({TaskSchedule newTask, TaskDelta delta});
 
-  /// The scheduled date of this occurrence.
-  CivilDay get scheduledDate;
+/// Represents a single task in the todo list.
+class TaskSchedule {
+  /// Unique identifier for the task.
+  String id;
 
-  /// Checks if the task occurs on the given [date].
-  bool occursOn(CivilDay date);
+  /// The title of the task.
+  String title;
 
-  /// Calculates the next occurrence of the task strictly after [date].
-  CivilDay nextOccurrenceAfter(CivilDay date);
+  /// Detailed description of the task.
+  String description;
 
-  /// Creates a copy of this schedule with a new scheduled/start date.
-  TaskSchedule copyWithStartDate(CivilDay newStartDate);
+  /// The list of recurrence schedules for the task.
+  List<TaskScheduleRule> schedules;
 
-  /// Creates a copy of this schedule with updated timing parameters.
-  TaskSchedule copyWithTiming({
-    RelativeTime? startRelativeTime,
-    RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
+  /// The index of the currently active occurrence time in [dailyTimes].
+  int activeOccurrenceIndex;
+
+  /// The estimated effort for the task (optional).
+  Duration? estimatedDuration;
+
+  /// The policy to apply when a task occurrence is missed.
+  MissedPolicy missedPolicy;
+
+  /// Whether this task represents a master/template recurring schedule.
+  bool isMaster;
+
+  /// The date up to which stack occurrences have been spawned.
+  CivilDay? lastSpawnedDate;
+
+  /// If this task is a spawned occurrence of a master task, this is the parent task's ID.
+  String? parentTaskId;
+
+  /// Whether this task is shared with the family.
+  bool isFamily;
+
+  /// The priority of the task.
+  TaskPriority priority;
+
+  /// The cycle this task is scheduled for (null if in backlog).
+  String? cycleId;
+
+  /// Map of user IDs to starring preference (true if starred).
+  Map<String, bool> preferredBy;
+
+  /// The ID of the user assigned to this task (null if unassigned).
+  String? assignedUserId;
+
+  TaskSchedule({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.schedules,
+    this.activeOccurrenceIndex = 0,
+    this.estimatedDuration,
+    this.missedPolicy = MissedPolicy.rollover,
+    this.isMaster = false,
+    this.lastSpawnedDate,
+    this.parentTaskId,
+    this.isFamily = false,
+    this.priority = TaskPriority.medium,
+    this.cycleId,
+    this.preferredBy = const {},
+    this.assignedUserId,
   });
 
-  Map<String, dynamic> toJson();
-
-  factory TaskSchedule.fromJson(Map<String, dynamic> json) {
-    final type = json['type'] as String;
-    switch (type) {
-      case 'oneOff':
-        return OneOffSchedule.fromJson(json);
-      case 'daily':
-        return DailySchedule.fromJson(json);
-      case 'weekly':
-        return WeeklySchedule.fromJson(json);
-      case 'monthly':
-        return MonthlySchedule.fromJson(json);
-      case 'yearly':
-        return YearlySchedule.fromJson(json);
-      default:
-        throw Exception('Unknown schedule type: $type');
+  /// The starting day of this occurrence.
+  CivilDay get startDate {
+    if (schedules.isEmpty) {
+      return CivilDay.fromDateTime(AppClock.now);
     }
+    final index =
+        activeOccurrenceIndex >= 0 && activeOccurrenceIndex < schedules.length
+        ? activeOccurrenceIndex
+        : 0;
+    final currentSchedule = schedules[index];
+    final startDateTime = currentSchedule.startRelativeTime.referenceTo(
+      currentSchedule.scheduledDate,
+    );
+    return CivilDay.fromDateTime(startDateTime);
   }
-}
 
-/// Enum representing the type of recurrence for UI selection.
-enum RecurrenceType { oneOff, daily, weekly, monthly, yearly }
+  factory TaskSchedule.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> snapshot, [
+    SnapshotOptions? options,
+  ]) {
+    final data = snapshot.data();
+    if (data == null) {
+      throw Exception('Data is null for document ${snapshot.id}');
+    }
 
-/// A schedule for a task that happens exactly once.
-class OneOffSchedule extends TaskSchedule {
-  /// The specific date the task occurs.
-  CivilDay date;
+    final missedPolicyStr = data['missedPolicy'] as String? ?? 'rollover';
+    final missedPolicy = MissedPolicy.values.firstWhere(
+      (e) => e.name == missedPolicyStr,
+      orElse: () => MissedPolicy.rollover,
+    );
 
-  OneOffSchedule({
-    required this.date,
-    super.startRelativeTime,
-    super.dueRelativeTime,
-    super.notificationRelativeTime,
-  });
+    final isMaster = data['isMaster'] as bool? ?? false;
+    final lastSpawnedDateRaw = data['lastSpawnedDate'] as Map<String, dynamic>?;
+    final lastSpawnedDate = lastSpawnedDateRaw != null
+        ? CivilDay.fromJson(lastSpawnedDateRaw)
+        : null;
+    final parentTaskId = data['parentTaskId'] as String?;
+    final isFamily = data['isFamily'] as bool? ?? false;
+    final priorityStr = data['priority'] as String? ?? 'medium';
+    final priority = TaskPriority.values.firstWhere(
+      (e) => e.name == priorityStr,
+      orElse: () => TaskPriority.medium,
+    );
+    final cycleId = data['cycleId'] as String?;
+    final preferredByRaw = data['preferredBy'] as Map<String, dynamic>? ?? {};
+    final preferredBy = preferredByRaw.map((k, v) => MapEntry(k, v as bool));
+    final assignedUserId = data['assignedUserId'] as String?;
 
-  @override
-  CivilDay get scheduledDate => date;
+    final schedulesRaw = data['schedules'] as List<dynamic>?;
+    final schedules = schedulesRaw != null
+        ? schedulesRaw
+              .map(
+                (item) =>
+                    TaskScheduleRule.fromJson(item as Map<String, dynamic>),
+              )
+              .toList()
+        : <TaskScheduleRule>[];
 
-  factory OneOffSchedule.fromJson(Map<String, dynamic> json) {
-    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
-    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
-
-    final start = startJson != null
-        ? RelativeTime.fromJson(startJson)
-        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
-
-    final due = dueJson != null
-        ? RelativeTime.fromJson(dueJson)
-        : const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          );
-
-    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
-
-    return OneOffSchedule(
-      date: CivilDay.fromJson(json['date'] as Map<String, dynamic>),
-      startRelativeTime: start,
-      dueRelativeTime: due,
-      notificationRelativeTime: notif,
+    return TaskSchedule(
+      id: snapshot.id,
+      title: data['title'] as String? ?? 'Untitled',
+      description: data['description'] as String? ?? '',
+      schedules: schedules,
+      activeOccurrenceIndex: data['activeOccurrenceIndex'] as int? ?? 0,
+      estimatedDuration: data['estimatedDuration'] != null
+          ? Duration(minutes: data['estimatedDuration'] as int)
+          : null,
+      missedPolicy: missedPolicy,
+      isMaster: isMaster,
+      lastSpawnedDate: lastSpawnedDate,
+      parentTaskId: parentTaskId,
+      isFamily: isFamily,
+      priority: priority,
+      cycleId: cycleId,
+      preferredBy: preferredBy,
+      assignedUserId: assignedUserId,
     );
   }
 
-  @override
-  bool occursOn(CivilDay date) {
-    return this.date == date;
-  }
-
-  @override
-  CivilDay nextOccurrenceAfter(CivilDay date) {
-    return this.date;
-  }
-
-  @override
-  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
-    return OneOffSchedule(
-      date: newStartDate,
-      startRelativeTime: startRelativeTime,
-      dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
-    );
-  }
-
-  @override
-  TaskSchedule copyWithTiming({
-    RelativeTime? startRelativeTime,
-    RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
-  }) {
-    return OneOffSchedule(
-      date: date,
-      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
-      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotification
-          ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
-    );
-  }
-
-  @override
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toFirestore() {
     return {
-      'type': 'oneOff',
-      'date': date.toJson(),
-      'startRelativeTime': startRelativeTime.toJson(),
-      'dueRelativeTime': dueRelativeTime.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
+      'title': title,
+      'description': description,
+      'schedules': schedules.map((s) => s.toJson()).toList(),
+      'activeOccurrenceIndex': activeOccurrenceIndex,
+      'estimatedDuration': estimatedDuration?.inMinutes,
+      'missedPolicy': missedPolicy.name,
+      'isMaster': isMaster,
+      if (lastSpawnedDate != null) 'lastSpawnedDate': lastSpawnedDate!.toJson(),
+      if (parentTaskId != null) 'parentTaskId': parentTaskId,
+      'isFamily': isFamily,
+      'priority': priority.name,
+      if (cycleId != null) 'cycleId': cycleId,
+      'preferredBy': preferredBy,
+      if (assignedUserId != null) 'assignedUserId': assignedUserId,
     };
   }
-}
 
-/// A schedule for a task that repeats every N days.
-class DailySchedule extends TaskSchedule {
-  /// The date from which the repetition interval starts.
-  CivilDay startDate;
+  static final _uuid = Uuid();
 
-  /// The number of days between occurrences.
-  int interval;
-
-  DailySchedule({
-    required this.startDate,
-    required this.interval,
-    super.startRelativeTime,
-    super.dueRelativeTime,
-    super.notificationRelativeTime,
-  });
-
-  @override
-  CivilDay get scheduledDate => startDate;
-
-  factory DailySchedule.fromJson(Map<String, dynamic> json) {
-    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
-    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
-
-    final start = startJson != null
-        ? RelativeTime.fromJson(startJson)
-        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
-
-    final due = dueJson != null
-        ? RelativeTime.fromJson(dueJson)
-        : const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          );
-
-    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
-
-    return DailySchedule(
-      startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
-      interval: json['interval'] as int,
-      startRelativeTime: start,
-      dueRelativeTime: due,
-      notificationRelativeTime: notif,
-    );
-  }
-
-  @override
-  bool occursOn(CivilDay date) {
-    final startUtc = startDate.toUtcDateTime();
-    final targetUtc = date.toUtcDateTime();
-
-    // Before start date?
-    if (targetUtc.isBefore(startUtc)) {
-      return false;
-    }
-
-    final difference = targetUtc.difference(startUtc).inDays;
-    return difference % interval == 0;
-  }
-
-  @override
-  CivilDay nextOccurrenceAfter(CivilDay date) {
-    final startUtc = startDate.toUtcDateTime();
-    final currentUtc = date.toUtcDateTime();
-
-    if (currentUtc.isBefore(startUtc)) {
-      return startDate;
-    }
-
-    final daysDiff = currentUtc.difference(startUtc).inDays;
-    final intervals = daysDiff ~/ interval;
-    final occurrenceUtc = startUtc.add(Duration(days: intervals * interval));
-
-    final nextUtc = currentUtc.isBefore(occurrenceUtc)
-        ? occurrenceUtc
-        : startUtc.add(Duration(days: (intervals + 1) * interval));
-
-    return CivilDay(year: nextUtc.year, month: nextUtc.month, day: nextUtc.day);
-  }
-
-  @override
-  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
-    return DailySchedule(
-      startDate: newStartDate,
-      interval: interval,
-      startRelativeTime: startRelativeTime,
-      dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
-    );
-  }
-
-  @override
-  TaskSchedule copyWithTiming({
-    RelativeTime? startRelativeTime,
-    RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
+  /// Updates multiple fields of the task and returns the modified task and delta.
+  TaskModification edit({
+    required String newTitle,
+    required String newDescription,
+    required List<TaskScheduleRule> newSchedules,
+    required Duration? newEstimatedDuration,
+    required String userId,
+    required MissedPolicy newMissedPolicy,
+    required bool newIsMaster,
+    required CivilDay? newLastSpawnedDate,
+    required bool newIsFamily,
+    required TaskPriority newPriority,
+    String? newCycleId,
+    Map<String, bool>? newPreferredBy,
+    String? newAssignedUserId,
   }) {
-    return DailySchedule(
-      startDate: startDate,
-      interval: interval,
-      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
-      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotification
-          ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
+    final newTask = _copyWith(
+      title: newTitle,
+      description: newDescription,
+      schedules: newSchedules,
+      estimatedDuration: newEstimatedDuration,
+      clearEstimatedDuration: newEstimatedDuration == null,
+      missedPolicy: newMissedPolicy,
+      isMaster: newIsMaster,
+      lastSpawnedDate: newLastSpawnedDate,
+      clearLastSpawnedDate: newLastSpawnedDate == null,
+      isFamily: newIsFamily,
+      priority: newPriority,
+      cycleId: newCycleId,
+      clearCycleId: newCycleId == null,
+      preferredBy: newPreferredBy,
+      assignedUserId: newAssignedUserId,
+      clearAssignedUserId: newAssignedUserId == null,
     );
-  }
 
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'type': 'daily',
-      'startDate': startDate.toJson(),
-      'interval': interval,
-      'startRelativeTime': startRelativeTime.toJson(),
-      'dueRelativeTime': dueRelativeTime.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
-    };
-  }
-}
+    final changes = <String, dynamic>{};
+    if (newTitle != title) changes['title'] = newTitle;
+    if (newDescription != description) changes['description'] = newDescription;
 
-/// A schedule for a task that repeats every N weeks on specific days.
-class WeeklySchedule extends TaskSchedule {
-  /// The date from which the repetition interval starts.
-  CivilDay startDate;
-
-  /// The number of weeks between occurrences.
-  int interval;
-
-  /// The specific days of the week (1=Monday, 7=Sunday) the task occurs on.
-  Set<int> daysOfWeek;
-
-  WeeklySchedule({
-    required this.startDate,
-    required this.interval,
-    required this.daysOfWeek,
-    super.startRelativeTime,
-    super.dueRelativeTime,
-    super.notificationRelativeTime,
-  });
-
-  @override
-  CivilDay get scheduledDate => startDate;
-
-  factory WeeklySchedule.fromJson(Map<String, dynamic> json) {
-    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
-    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
-
-    final start = startJson != null
-        ? RelativeTime.fromJson(startJson)
-        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
-
-    final due = dueJson != null
-        ? RelativeTime.fromJson(dueJson)
-        : const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          );
-
-    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
-
-    return WeeklySchedule(
-      startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
-      interval: json['interval'] as int,
-      daysOfWeek: (json['daysOfWeek'] as List<dynamic>).cast<int>().toSet(),
-      startRelativeTime: start,
-      dueRelativeTime: due,
-      notificationRelativeTime: notif,
-    );
-  }
-
-  @override
-  bool occursOn(CivilDay date) {
-    final startUtc = startDate.toUtcDateTime();
-    final targetUtc = date.toUtcDateTime();
-
-    // Before start date?
-    if (targetUtc.isBefore(startUtc)) {
-      return false;
+    final oldSchedulesJson = schedules
+        .map((s) => s.toJson())
+        .toList()
+        .toString();
+    final newSchedulesJson = newSchedules
+        .map((s) => s.toJson())
+        .toList()
+        .toString();
+    if (oldSchedulesJson != newSchedulesJson) {
+      changes['schedules'] = newSchedules.map((s) => s.toJson()).toList();
     }
 
-    // Check if the specific day of week is allowed
-    // weekday 1 = Monday, 7 = Sunday
-    if (!daysOfWeek.contains(targetUtc.weekday)) {
-      return false;
+    if (estimatedDuration != newEstimatedDuration) {
+      changes['estimatedDuration'] = newEstimatedDuration?.inMinutes;
     }
 
-    // Calculate week difference
-    final startOfWeekForStart = startUtc.subtract(
-      Duration(days: startUtc.weekday - 1),
-    );
-    final startOfWeekForTarget = targetUtc.subtract(
-      Duration(days: targetUtc.weekday - 1),
+    if (missedPolicy != newMissedPolicy) {
+      changes['missedPolicy'] = newMissedPolicy.name;
+    }
+
+    if (isMaster != newIsMaster) {
+      changes['isMaster'] = newIsMaster;
+    }
+
+    if (lastSpawnedDate != newLastSpawnedDate) {
+      changes['lastSpawnedDate'] = newLastSpawnedDate?.toJson();
+    }
+
+    if (isFamily != newIsFamily) {
+      changes['isFamily'] = newIsFamily;
+    }
+
+    if (priority != newPriority) {
+      changes['priority'] = newPriority.name;
+    }
+
+    if (cycleId != newCycleId) {
+      changes['cycleId'] = newCycleId;
+    }
+
+    final oldPrefStr = preferredBy.toString();
+    final newPrefStr = (newPreferredBy ?? preferredBy).toString();
+    if (oldPrefStr != newPrefStr) {
+      changes['preferredBy'] = newPreferredBy ?? preferredBy;
+    }
+
+    if (assignedUserId != newAssignedUserId) {
+      changes['assignedUserId'] = newAssignedUserId;
+    }
+
+    final now = AppClock.now;
+    final delta = TaskDelta(
+      id: _uuid.v4(),
+      taskId: id,
+      timestamp: now,
+      expiresAt: now.add(const Duration(days: 90)),
+      operation: 'update',
+      changedFields: changes,
+      userId: userId,
     );
 
-    final daysDiff = startOfWeekForTarget
-        .difference(startOfWeekForStart)
-        .inDays;
-    final weeksDiff = daysDiff ~/ 7;
-
-    return weeksDiff % interval == 0;
+    return (newTask: newTask, delta: delta);
   }
 
-  @override
-  CivilDay nextOccurrenceAfter(CivilDay date) {
-    var current = date;
-    while (true) {
-      final currentUtc = DateTime.utc(current.year, current.month, current.day);
-      final nextUtc = currentUtc.add(const Duration(days: 1));
-      current = CivilDay(
-        year: nextUtc.year,
-        month: nextUtc.month,
-        day: nextUtc.day,
+  /// Updates the title and returns the modified task and delta.
+  TaskModification updateTitle(String newTitle, String userId) {
+    final newTask = _copyWith(title: newTitle);
+    final delta = _createUpdateDelta(
+      field: 'title',
+      newValue: newTitle,
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the description and returns the modified task and delta.
+  TaskModification updateDescription(String newDescription, String userId) {
+    final newTask = _copyWith(description: newDescription);
+    final delta = _createUpdateDelta(
+      field: 'description',
+      newValue: newDescription,
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the schedule and returns the modified task and delta.
+  TaskModification reschedule(
+    List<TaskScheduleRule> newSchedules,
+    String userId,
+  ) {
+    final newTask = _copyWith(schedules: newSchedules);
+    final delta = _createUpdateDelta(
+      field: 'schedules',
+      newValue: newSchedules.map((s) => s.toJson()).toList(),
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the start relative time and returns the modified task and delta.
+  TaskModification updateStart(RelativeTime newStart, String userId) {
+    if (schedules.isEmpty) {
+      return (
+        newTask: this,
+        delta: _createUpdateDelta(
+          field: 'schedules',
+          newValue: [],
+          userId: userId,
+        ),
       );
-      if (occursOn(current)) {
-        return current;
-      }
     }
-  }
-
-  @override
-  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
-    return WeeklySchedule(
-      startDate: newStartDate,
-      interval: interval,
-      daysOfWeek: daysOfWeek,
-      startRelativeTime: startRelativeTime,
-      dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
+    final updatedFirst = schedules.first.copyWithTiming(
+      startRelativeTime: newStart,
     );
-  }
-
-  @override
-  TaskSchedule copyWithTiming({
-    RelativeTime? startRelativeTime,
-    RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
-  }) {
-    return WeeklySchedule(
-      startDate: startDate,
-      interval: interval,
-      daysOfWeek: daysOfWeek,
-      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
-      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotification
-          ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
+    final newSchedules = [updatedFirst, ...schedules.skip(1)];
+    final newTask = _copyWith(schedules: newSchedules);
+    final delta = _createUpdateDelta(
+      field: 'schedules',
+      newValue: newSchedules.map((s) => s.toJson()).toList(),
+      userId: userId,
     );
+    return (newTask: newTask, delta: delta);
   }
 
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'type': 'weekly',
-      'startDate': startDate.toJson(),
-      'interval': interval,
-      'daysOfWeek': daysOfWeek.toList(),
-      'startRelativeTime': startRelativeTime.toJson(),
-      'dueRelativeTime': dueRelativeTime.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
-    };
-  }
-}
-
-/// A schedule for a task that repeats every N months.
-class MonthlySchedule extends TaskSchedule {
-  /// The date from which the recurrence starts.
-  final CivilDay startDate;
-
-  /// The number of months between occurrences.
-  final int interval;
-
-  /// Option 1: The specific day of the month.
-  /// Positive [1, 28] (day from start) or Negative [-28, -1] (day from end).
-  final int? dayOfMonth;
-
-  /// Option 2: Nth day of the week.
-  /// 1 (Mon) to 7 (Sun)
-  final int? dayOfWeek;
-
-  /// Occurrence index: 1, 2, 3, 4, or -1 (last).
-  final int? occurrence;
-
-  MonthlySchedule({
-    required this.startDate,
-    required this.interval,
-    this.dayOfMonth,
-    this.dayOfWeek,
-    this.occurrence,
-    super.startRelativeTime,
-    super.dueRelativeTime,
-    super.notificationRelativeTime,
-  }) : assert(
-         (dayOfMonth != null && dayOfWeek == null && occurrence == null) ||
-             (dayOfMonth == null && dayOfWeek != null && occurrence != null),
-       ),
-       assert(
-         dayOfMonth == null ||
-             (dayOfMonth >= 1 && dayOfMonth <= 28) ||
-             (dayOfMonth >= -28 && dayOfMonth <= -1),
-       );
-
-  @override
-  CivilDay get scheduledDate => startDate;
-
-  factory MonthlySchedule.fromJson(Map<String, dynamic> json) {
-    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
-    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
-
-    final start = startJson != null
-        ? RelativeTime.fromJson(startJson)
-        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
-
-    final due = dueJson != null
-        ? RelativeTime.fromJson(dueJson)
-        : const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          );
-
-    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
-
-    return MonthlySchedule(
-      startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
-      interval: json['interval'] as int,
-      dayOfMonth: json['dayOfMonth'] as int?,
-      dayOfWeek: json['dayOfWeek'] as int?,
-      occurrence: json['occurrence'] as int?,
-      startRelativeTime: start,
-      dueRelativeTime: due,
-      notificationRelativeTime: notif,
-    );
-  }
-
-  @override
-  bool occursOn(CivilDay date) {
-    final startUtc = startDate.toUtcDateTime();
-    final targetUtc = date.toUtcDateTime();
-
-    if (targetUtc.isBefore(startUtc)) {
-      return false;
-    }
-
-    final monthsDiff =
-        (date.year - startDate.year) * 12 + (date.month - startDate.month);
-    if (monthsDiff < 0 || monthsDiff % interval != 0) {
-      return false;
-    }
-
-    if (dayOfMonth != null) {
-      if (dayOfMonth! > 0) {
-        return date.day == dayOfMonth!;
-      } else {
-        // Counting from the end of the month
-        final nextMonthUtc = DateTime.utc(date.year, date.month + 1, 1);
-        final lastDayOfMonth = nextMonthUtc
-            .subtract(const Duration(days: 1))
-            .day;
-        final targetDay = lastDayOfMonth + dayOfMonth! + 1;
-        return date.day == targetDay;
-      }
-    } else if (dayOfWeek != null && occurrence != null) {
-      if (targetUtc.weekday != dayOfWeek!) {
-        return false;
-      }
-
-      if (occurrence! > 0) {
-        final currentOccurrence = (date.day - 1) ~/ 7 + 1;
-        return currentOccurrence == occurrence!;
-      } else if (occurrence == -1) {
-        // Last occurrence of that weekday in the month
-        final nextWeekUtc = DateTime.utc(date.year, date.month, date.day + 7);
-        return nextWeekUtc.month != date.month;
-      }
-    }
-
-    return false;
-  }
-
-  @override
-  CivilDay nextOccurrenceAfter(CivilDay date) {
-    var current = date;
-    // Iterate day-by-day up to 10 years to find the next occurrence
-    for (int i = 0; i < 365 * 10; i++) {
-      final currentUtc = DateTime.utc(current.year, current.month, current.day);
-      final nextUtc = currentUtc.add(const Duration(days: 1));
-      current = CivilDay(
-        year: nextUtc.year,
-        month: nextUtc.month,
-        day: nextUtc.day,
+  /// Updates the due relative time and returns the modified task and delta.
+  TaskModification updateDue(RelativeTime newDue, String userId) {
+    if (schedules.isEmpty) {
+      return (
+        newTask: this,
+        delta: _createUpdateDelta(
+          field: 'schedules',
+          newValue: [],
+          userId: userId,
+        ),
       );
-      if (occursOn(current)) {
-        return current;
-      }
     }
-    throw Exception('No occurrence found within 10 years');
-  }
-
-  @override
-  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
-    return MonthlySchedule(
-      startDate: newStartDate,
-      interval: interval,
-      dayOfMonth: dayOfMonth,
-      dayOfWeek: dayOfWeek,
-      occurrence: occurrence,
-      startRelativeTime: startRelativeTime,
-      dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
+    final updatedFirst = schedules.first.copyWithTiming(
+      dueRelativeTime: newDue,
     );
+    final newSchedules = [updatedFirst, ...schedules.skip(1)];
+    final newTask = _copyWith(schedules: newSchedules);
+    final delta = _createUpdateDelta(
+      field: 'schedules',
+      newValue: newSchedules.map((s) => s.toJson()).toList(),
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
   }
 
-  @override
-  TaskSchedule copyWithTiming({
-    RelativeTime? startRelativeTime,
-    RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
+  /// Updates the cycle ID and returns the modified task and delta.
+  TaskModification updateCycleId(String? newCycleId, String userId) {
+    final newTask = _copyWith(
+      cycleId: newCycleId,
+      clearCycleId: newCycleId == null,
+    );
+    final delta = _createUpdateDelta(
+      field: 'cycleId',
+      newValue: newCycleId,
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the assigned user ID and returns the modified task and delta.
+  TaskModification updateAssignedUserId(
+    String? newAssignedUserId,
+    String userId,
+  ) {
+    final newTask = _copyWith(
+      assignedUserId: newAssignedUserId,
+      clearAssignedUserId: newAssignedUserId == null,
+    );
+    final delta = _createUpdateDelta(
+      field: 'assignedUserId',
+      newValue: newAssignedUserId,
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  /// Updates the preferredBy map and returns the modified task and delta.
+  TaskModification updatePreferredBy(
+    Map<String, bool> newPreferredBy,
+    String userId,
+  ) {
+    final newTask = _copyWith(preferredBy: newPreferredBy);
+    final delta = _createUpdateDelta(
+      field: 'preferredBy',
+      newValue: newPreferredBy,
+      userId: userId,
+    );
+    return (newTask: newTask, delta: delta);
+  }
+
+  TaskSchedule _copyWith({
+    String? title,
+    String? description,
+    List<TaskScheduleRule>? schedules,
+    int? activeOccurrenceIndex,
+    Duration? estimatedDuration,
+    bool clearEstimatedDuration = false,
+    MissedPolicy? missedPolicy,
+    bool? isMaster,
+    CivilDay? lastSpawnedDate,
+    bool clearLastSpawnedDate = false,
+    String? parentTaskId,
+    bool? isFamily,
+    TaskPriority? priority,
+    String? cycleId,
+    bool clearCycleId = false,
+    Map<String, bool>? preferredBy,
+    String? assignedUserId,
+    bool clearAssignedUserId = false,
   }) {
-    return MonthlySchedule(
-      startDate: startDate,
-      interval: interval,
-      dayOfMonth: dayOfMonth,
-      dayOfWeek: dayOfWeek,
-      occurrence: occurrence,
-      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
-      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotification
+    return TaskSchedule(
+      id: id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      schedules: schedules ?? this.schedules,
+      activeOccurrenceIndex:
+          activeOccurrenceIndex ?? this.activeOccurrenceIndex,
+      estimatedDuration: clearEstimatedDuration
           ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
+          : (estimatedDuration ?? this.estimatedDuration),
+      missedPolicy: missedPolicy ?? this.missedPolicy,
+      isMaster: isMaster ?? this.isMaster,
+      lastSpawnedDate: clearLastSpawnedDate
+          ? null
+          : (lastSpawnedDate ?? this.lastSpawnedDate),
+      parentTaskId: parentTaskId ?? this.parentTaskId,
+      isFamily: isFamily ?? this.isFamily,
+      priority: priority ?? this.priority,
+      cycleId: clearCycleId ? null : (cycleId ?? this.cycleId),
+      preferredBy: preferredBy ?? this.preferredBy,
+      assignedUserId: clearAssignedUserId
+          ? null
+          : (assignedUserId ?? this.assignedUserId),
     );
   }
 
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'type': 'monthly',
-      'startDate': startDate.toJson(),
-      'interval': interval,
-      if (dayOfMonth != null) 'dayOfMonth': dayOfMonth,
-      if (dayOfWeek != null) 'dayOfWeek': dayOfWeek,
-      if (occurrence != null) 'occurrence': occurrence,
-      'startRelativeTime': startRelativeTime.toJson(),
-      'dueRelativeTime': dueRelativeTime.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
-    };
-  }
-}
-
-/// A schedule for a task that repeats every N years.
-class YearlySchedule extends TaskSchedule {
-  /// The date from which the recurrence starts.
-  final CivilDay startDate;
-
-  /// The number of years between occurrences.
-  final int interval;
-
-  /// Month of the year (1 = Jan, 12 = Dec).
-  final int month;
-
-  /// Day of the month (1 = first day, 31 = last day).
-  final int day;
-
-  YearlySchedule({
-    required this.startDate,
-    required this.interval,
-    required this.month,
-    required this.day,
-    super.startRelativeTime,
-    super.dueRelativeTime,
-    super.notificationRelativeTime,
-  });
-
-  @override
-  CivilDay get scheduledDate => startDate;
-
-  factory YearlySchedule.fromJson(Map<String, dynamic> json) {
-    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
-    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
-
-    final start = startJson != null
-        ? RelativeTime.fromJson(startJson)
-        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
-
-    final due = dueJson != null
-        ? RelativeTime.fromJson(dueJson)
-        : const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          );
-
-    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
-
-    return YearlySchedule(
-      startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
-      interval: json['interval'] as int,
-      month: json['month'] as int,
-      day: json['day'] as int,
-      startRelativeTime: start,
-      dueRelativeTime: due,
-      notificationRelativeTime: notif,
-    );
-  }
-
-  @override
-  bool occursOn(CivilDay date) {
-    final startUtc = startDate.toUtcDateTime();
-    final targetUtc = date.toUtcDateTime();
-
-    if (targetUtc.isBefore(startUtc)) {
-      return false;
-    }
-
-    if (date.month != month || date.day != day) {
-      return false;
-    }
-
-    final yearsDiff = date.year - startDate.year;
-    return yearsDiff >= 0 && yearsDiff % interval == 0;
-  }
-
-  @override
-  CivilDay nextOccurrenceAfter(CivilDay date) {
-    var current = date;
-    // Iterate day-by-day up to 20 years to find the next occurrence
-    for (int i = 0; i < 365 * 20; i++) {
-      final currentUtc = DateTime.utc(current.year, current.month, current.day);
-      final nextUtc = currentUtc.add(const Duration(days: 1));
-      current = CivilDay(
-        year: nextUtc.year,
-        month: nextUtc.month,
-        day: nextUtc.day,
-      );
-      if (occursOn(current)) {
-        return current;
-      }
-    }
-    throw Exception('No occurrence found within 20 years');
-  }
-
-  @override
-  TaskSchedule copyWithStartDate(CivilDay newStartDate) {
-    return YearlySchedule(
-      startDate: newStartDate,
-      interval: interval,
-      month: month,
-      day: day,
-      startRelativeTime: startRelativeTime,
-      dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
-    );
-  }
-
-  @override
-  TaskSchedule copyWithTiming({
-    RelativeTime? startRelativeTime,
-    RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
+  TaskDelta _createUpdateDelta({
+    required String field,
+    required dynamic newValue,
+    required String userId,
   }) {
-    return YearlySchedule(
-      startDate: startDate,
-      interval: interval,
-      month: month,
-      day: day,
-      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
-      dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotification
-          ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
+    final now = AppClock.now;
+    return TaskDelta(
+      id: _uuid.v4(),
+      taskId: id,
+      timestamp: now,
+      expiresAt: now.add(const Duration(days: 90)),
+      operation: 'update',
+      changedFields: {field: newValue},
+      userId: userId,
     );
   }
 
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'type': 'yearly',
-      'startDate': startDate.toJson(),
-      'interval': interval,
-      'month': month,
-      'day': day,
-      'startRelativeTime': startRelativeTime.toJson(),
-      'dueRelativeTime': dueRelativeTime.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
-    };
+  /// Checks if the task is overdue at [current] time.
+  bool isOverdue(DateTime current) {
+    if (schedules.isEmpty) return false;
+    final index =
+        activeOccurrenceIndex >= 0 && activeOccurrenceIndex < schedules.length
+        ? activeOccurrenceIndex
+        : 0;
+    final currentSchedule = schedules[index];
+    final dueDateTime = currentSchedule.dueRelativeTime.referenceTo(
+      currentSchedule.scheduledDate,
+    );
+    return current.isAfter(dueDateTime);
   }
 }

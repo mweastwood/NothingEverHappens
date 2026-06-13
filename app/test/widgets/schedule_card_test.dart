@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/widgets/schedule_card.dart';
@@ -9,10 +9,10 @@ import '../test_helper.dart';
 
 void main() {
   group('ScheduleCard', () {
-    final dailyTask = Task(
+    final dailyTask = TaskSchedule(
       id: '1',
-      title: 'Daily Task Title',
-      description: 'Daily Task Desc',
+      title: 'Daily TaskSchedule Title',
+      description: 'Daily TaskSchedule Desc',
       schedules: [
         DailySchedule(
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
@@ -29,10 +29,10 @@ void main() {
       ],
     );
 
-    final weeklyTask = Task(
+    final weeklyTask = TaskSchedule(
       id: '2',
-      title: 'Weekly Task Title',
-      description: 'Weekly Task Desc',
+      title: 'Weekly TaskSchedule Title',
+      description: 'Weekly TaskSchedule Desc',
       schedules: [
         WeeklySchedule(
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
@@ -71,8 +71,8 @@ void main() {
       );
 
       // Verify basic text details
-      expect(find.text('Daily Task Title'), findsOneWidget);
-      expect(find.text('Daily Task Desc'), findsOneWidget);
+      expect(find.text('Daily TaskSchedule Title'), findsOneWidget);
+      expect(find.text('Daily TaskSchedule Desc'), findsOneWidget);
       expect(find.text('Every 2 days'), findsOneWidget);
       expect(find.text('Starting: 2024-01-01'), findsOneWidget);
       expect(find.text('9:00 AM - 5:00 PM'), findsOneWidget);
@@ -101,7 +101,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Weekly Task Title'), findsOneWidget);
+      expect(find.text('Weekly TaskSchedule Title'), findsOneWidget);
       expect(find.text('Every week'), findsOneWidget);
       expect(find.text('On: Mon, Wed'), findsOneWidget);
       expect(find.text('10:30 AM - 12:00 PM'), findsOneWidget);

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../logic/civil_day.dart';
 import '../logic/app_clock.dart';
 import '../logic/l10n_extension.dart';
@@ -46,7 +46,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
   Set<CivilDay> _dueDays = {};
   Set<CivilDay> _rangeDays = {};
   String? _validationError;
-  TaskSchedule? _schedule;
+  TaskScheduleRule? _schedule;
 
   @override
   void initState() {
@@ -128,7 +128,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
 
       try {
         final startCivil = CivilDay.fromDateTime(_startDate);
-        TaskSchedule schedule;
+        TaskScheduleRule schedule;
 
         switch (_scheduleType) {
           case RecurrenceType.oneOff:

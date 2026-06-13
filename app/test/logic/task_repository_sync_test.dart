@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -33,7 +33,7 @@ void main() {
       });
 
       // 2. Add personal task
-      final personalTask = Task(
+      final personalTask = TaskSchedule(
         id: 't-personal',
         title: 'Personal task',
         description: '',
@@ -55,7 +55,7 @@ void main() {
       await repository.addTask(personalTask);
 
       // 3. Add family task
-      final familyTask = Task(
+      final familyTask = TaskSchedule(
         id: 't-family',
         title: 'Family task',
         description: '',
@@ -88,7 +88,7 @@ void main() {
     await firestore.collection('users').doc(userId).set({'familyId': familyId});
 
     // 1. Add personal task
-    final task = Task(
+    final task = TaskSchedule(
       id: 't-migrate',
       title: 'Migrating task',
       description: '',
@@ -119,7 +119,7 @@ void main() {
     expect(personalDoc.exists, isTrue);
 
     // 2. Toggle to Family and save
-    final familyTask = Task(
+    final familyTask = TaskSchedule(
       id: task.id,
       title: task.title,
       description: task.description,
@@ -160,7 +160,7 @@ void main() {
     await firestore.collection('users').doc(userId).set({'familyId': familyId});
 
     // 1. Add family task
-    final task = Task(
+    final task = TaskSchedule(
       id: 't-migrate',
       title: 'Migrating task',
       description: '',
@@ -191,7 +191,7 @@ void main() {
     expect(familyDoc.exists, isTrue);
 
     // 2. Toggle to Personal and save
-    final personalTask = Task(
+    final personalTask = TaskSchedule(
       id: task.id,
       title: task.title,
       description: task.description,

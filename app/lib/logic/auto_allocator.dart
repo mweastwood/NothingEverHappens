@@ -1,4 +1,4 @@
-import 'task.dart';
+import 'task_schedule.dart';
 
 class AutoAllocator {
   /// Allocates [familyTasks] to [userIds] based on user weekly capacities,
@@ -9,7 +9,7 @@ class AutoAllocator {
     required List<String> userIds,
     required Map<String, double> userWeeklyCapacities, // in minutes
     required Map<String, double> userPersonalEfforts, // in minutes
-    required List<Task> familyTasks,
+    required List<TaskSchedule> familyTasks,
   }) {
     // Initialize remaining capacities in minutes
     final remainingCapacities = <String, double>{};
@@ -25,7 +25,7 @@ class AutoAllocator {
     final assignments = <String, String>{}; // taskId -> userId
 
     // Sort family tasks by priority: High -> Medium -> Low
-    final sortedTasks = List<Task>.from(familyTasks)
+    final sortedTasks = List<TaskSchedule>.from(familyTasks)
       ..sort((a, b) => b.priority.index.compareTo(a.priority.index));
 
     for (final task in sortedTasks) {

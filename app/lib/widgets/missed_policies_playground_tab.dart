@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
@@ -21,7 +21,7 @@ class _MissedPoliciesPlaygroundTabState
     extends State<MissedPoliciesPlaygroundTab> {
   late MissedPolicy _selectedPolicy;
   late CivilDay _simulatedToday;
-  late List<Task> _simulatedTasks;
+  late List<TaskSchedule> _simulatedTasks;
   late List<String> _historyLog;
   late Set<CivilDay> _completedDays;
   late Set<CivilDay> _missedDays;
@@ -74,7 +74,7 @@ class _MissedPoliciesPlaygroundTabState
       );
     } else {
       _simulatedTasks.add(
-        Task(
+        TaskSchedule(
           id: 'simulated-task-recurring',
           title: 'Water the Houseplants',
           description: 'Give them just enough water.',
@@ -100,10 +100,10 @@ class _MissedPoliciesPlaygroundTabState
     }
   }
 
-  Task _createSpawnedTask(CivilDay date) {
+  TaskSchedule _createSpawnedTask(CivilDay date) {
     final dateStr =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    return Task(
+    return TaskSchedule(
       id: 'simulated-task-spawned-$dateStr',
       title: 'Water the Houseplants',
       description: 'Give them just enough water.',
@@ -144,14 +144,14 @@ class _MissedPoliciesPlaygroundTabState
           if (hasOverdue) {
             _missedDays.add(prevDay);
             _historyLog.add(
-              "$todayStr: Task for $prevDayStr went overdue. Rolls forward (Rollover).",
+              "$todayStr: TaskSchedule for $prevDayStr went overdue. Rolls forward (Rollover).",
             );
           }
           break;
 
         case MissedPolicy.skip:
-          final List<Task> toSkip = [];
-          final List<Task> remaining = [];
+          final List<TaskSchedule> toSkip = [];
+          final List<TaskSchedule> remaining = [];
           for (final t in _simulatedTasks) {
             if (t.schedules.first.scheduledDate.isBefore(_simulatedToday)) {
               toSkip.add(t);
@@ -165,10 +165,10 @@ class _MissedPoliciesPlaygroundTabState
               final scheduledDate = t.schedules.first.scheduledDate;
               _skippedDays.add(scheduledDate);
               _historyLog.add(
-                "$todayStr: Task scheduled for ${_formatDate(scheduledDate)} auto-skipped (Skip).",
+                "$todayStr: TaskSchedule scheduled for ${_formatDate(scheduledDate)} auto-skipped (Skip).",
               );
 
-              final rescheduledTask = Task(
+              final rescheduledTask = TaskSchedule(
                 id: t.id,
                 title: t.title,
                 description: t.description,
@@ -199,7 +199,7 @@ class _MissedPoliciesPlaygroundTabState
           if (hasOverdue) {
             _missedDays.add(prevDay);
             _historyLog.add(
-              "$todayStr: Task for $prevDayStr went overdue (Shift).",
+              "$todayStr: TaskSchedule for $prevDayStr went overdue (Shift).",
             );
           }
           break;
@@ -208,7 +208,7 @@ class _MissedPoliciesPlaygroundTabState
           if (!_completedDays.contains(prevDay)) {
             _missedDays.add(prevDay);
             _historyLog.add(
-              "$todayStr: Task for $prevDayStr was missed. New instance spawned (Stack).",
+              "$todayStr: TaskSchedule for $prevDayStr was missed. New instance spawned (Stack).",
             );
           } else {
             _historyLog.add(
@@ -263,7 +263,7 @@ class _MissedPoliciesPlaygroundTabState
               "$todayStr: Completed task. Rescheduled to ${_formatDate(nextDate)}.";
         }
 
-        final rescheduledTask = Task(
+        final rescheduledTask = TaskSchedule(
           id: task.id,
           title: task.title,
           description: task.description,
@@ -311,7 +311,7 @@ class _MissedPoliciesPlaygroundTabState
         }
 
         final oldSchedule = task.schedules.first;
-        final rescheduledTask = Task(
+        final rescheduledTask = TaskSchedule(
           id: task.id,
           title: task.title,
           description: task.description,

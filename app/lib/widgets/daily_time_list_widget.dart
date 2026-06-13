@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../logic/l10n_extension.dart';
 
 /// A widget that allows users to manage a list of daily occurrence time windows.

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/auto_allocator.dart';
@@ -10,9 +10,9 @@ void main() {
     test(
       'allocates tasks respecting capacity limits and prioritizing high priority',
       () {
-        final task1 = Task(
+        final task1 = TaskSchedule(
           id: 't1',
-          title: 'Task 1',
+          title: 'TaskSchedule 1',
           description: '',
           schedules: [
             OneOffSchedule(
@@ -31,9 +31,9 @@ void main() {
           priority: TaskPriority.high,
         );
 
-        final task2 = Task(
+        final task2 = TaskSchedule(
           id: 't2',
-          title: 'Task 2',
+          title: 'TaskSchedule 2',
           description: '',
           schedules: [
             OneOffSchedule(
@@ -72,7 +72,7 @@ void main() {
     );
 
     test('prefers users who starred the task', () {
-      final task = Task(
+      final task = TaskSchedule(
         id: 't1',
         title: 'Clean living room',
         description: '',
@@ -106,7 +106,7 @@ void main() {
     });
 
     test('subtracts personal task efforts from user capacities', () {
-      final task = Task(
+      final task = TaskSchedule(
         id: 't1',
         title: 'Chore',
         description: '',
@@ -144,7 +144,7 @@ void main() {
     });
 
     test('balances workload by capacity when no one starred', () {
-      final task = Task(
+      final task = TaskSchedule(
         id: 't1',
         title: 'Chore',
         description: '',

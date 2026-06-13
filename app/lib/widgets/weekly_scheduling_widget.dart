@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import 'daily_time_list_widget.dart';
 import '../logic/l10n_extension.dart';
 

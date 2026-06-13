@@ -6,7 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'task.dart';
+import 'task_schedule.dart';
 import 'civil_day.dart';
 import 'notification_helper.dart';
 
@@ -18,7 +18,7 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 
 /// Abstract contract for scheduling exact and zoned local push notifications.
 abstract class NotificationService {
-  Future<void> scheduleNotifications(Task task);
+  Future<void> scheduleNotifications(TaskSchedule task);
   Future<void> cancelNotifications(String taskId);
   Future<void> dispose();
 }
@@ -74,7 +74,7 @@ class PlatformNotificationService implements NotificationService {
   }
 
   @override
-  Future<void> scheduleNotifications(Task task) async {
+  Future<void> scheduleNotifications(TaskSchedule task) async {
     // First, cancel any existing notifications for this task to avoid duplicates
     await cancelNotifications(task.id);
 
@@ -125,7 +125,7 @@ class PlatformNotificationService implements NotificationService {
             notificationDetails: const NotificationDetails(
               android: AndroidNotificationDetails(
                 'task_reminders_channel',
-                'Task Reminders',
+                'TaskSchedule Reminders',
                 channelDescription:
                     'Notifications for task occurrences and schedules',
                 importance: Importance.max,
@@ -146,7 +146,7 @@ class PlatformNotificationService implements NotificationService {
               notificationDetails: const NotificationDetails(
                 android: AndroidNotificationDetails(
                   'task_reminders_channel',
-                  'Task Reminders',
+                  'TaskSchedule Reminders',
                   channelDescription:
                       'Notifications for task occurrences and schedules',
                   importance: Importance.max,
@@ -191,7 +191,10 @@ class PlatformNotificationService implements NotificationService {
     }
   }
 
-  DateTime _calculateNextNotificationDateTime(Task task, TaskSchedule s) {
+  DateTime _calculateNextNotificationDateTime(
+    TaskSchedule task,
+    TaskScheduleRule s,
+  ) {
     final now = DateTime.now();
     var checkDate = DateTime(now.year, now.month, now.day);
 
@@ -235,13 +238,14 @@ class PlatformNotificationService implements NotificationService {
 /// Simulated Notification Service that prints log statements to debug console
 /// and tracks all scheduled tasks in-memory for testing and local verification.
 class LoggingNotificationService implements NotificationService {
-  final Map<String, Task> _scheduledTasks = {};
+  final Map<String, TaskSchedule> _scheduledTasks = {};
 
   /// Exposes a read-only view of currently scheduled tasks.
-  Map<String, Task> get scheduledTasks => Map.unmodifiable(_scheduledTasks);
+  Map<String, TaskSchedule> get scheduledTasks =>
+      Map.unmodifiable(_scheduledTasks);
 
   @override
-  Future<void> scheduleNotifications(Task task) async {
+  Future<void> scheduleNotifications(TaskSchedule task) async {
     _scheduledTasks[task.id] = task;
     debugPrint(
       'Scheduling notifications for task: ${task.title} (ID: ${task.id})',

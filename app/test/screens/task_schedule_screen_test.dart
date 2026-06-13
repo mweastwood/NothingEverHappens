@@ -9,7 +9,7 @@ import '../test_helper.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 
@@ -18,13 +18,13 @@ import 'task_list_screen_test.mocks.dart';
 void main() {
   late MockAuthRepository mockAuthRepository;
   late MockTaskRepository mockTaskRepository;
-  late BehaviorSubject<List<Task>> tasksSubject;
+  late BehaviorSubject<List<TaskSchedule>> tasksSubject;
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
     mockTaskRepository = MockTaskRepository();
 
-    tasksSubject = BehaviorSubject<List<Task>>.seeded([]);
+    tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([]);
 
     when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubject.stream);
   });
@@ -57,10 +57,10 @@ void main() {
   testWidgets('TaskScheduleScreen renders list of recurring tasks', (
     WidgetTester tester,
   ) async {
-    final dailyTask = Task(
+    final dailyTask = TaskSchedule(
       id: '1',
-      title: 'Daily Task Title',
-      description: 'Daily Task Desc',
+      title: 'Daily TaskSchedule Title',
+      description: 'Daily TaskSchedule Desc',
       schedules: [
         DailySchedule(
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
@@ -77,10 +77,10 @@ void main() {
       ],
     );
 
-    final weeklyTask = Task(
+    final weeklyTask = TaskSchedule(
       id: '2',
-      title: 'Weekly Task Title',
-      description: 'Weekly Task Desc',
+      title: 'Weekly TaskSchedule Title',
+      description: 'Weekly TaskSchedule Desc',
       schedules: [
         WeeklySchedule(
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
@@ -98,9 +98,9 @@ void main() {
       ],
     );
 
-    final oneOffTask = Task(
+    final oneOffTask = TaskSchedule(
       id: '3',
-      title: 'One-off Task',
+      title: 'One-off TaskSchedule',
       description: 'Should not appear',
       schedules: [
         OneOffSchedule(
@@ -123,11 +123,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify recurring tasks are rendered
-    expect(find.text('Daily Task Title'), findsOneWidget);
-    expect(find.text('Weekly Task Title'), findsOneWidget);
+    expect(find.text('Daily TaskSchedule Title'), findsOneWidget);
+    expect(find.text('Weekly TaskSchedule Title'), findsOneWidget);
 
     // Verify one-off task is NOT rendered
-    expect(find.text('One-off Task'), findsNothing);
+    expect(find.text('One-off TaskSchedule'), findsNothing);
 
     // Verify schedule formatting details
     expect(find.text('Every 2 days'), findsOneWidget);
@@ -165,7 +165,7 @@ void main() {
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
 
-    final dailyTask = Task(
+    final dailyTask = TaskSchedule(
       id: '1',
       title: 'Daily Exercises',
       description: 'Run 5km and do pushups',
@@ -185,7 +185,7 @@ void main() {
       ],
     );
 
-    final weeklyTask = Task(
+    final weeklyTask = TaskSchedule(
       id: '2',
       title: 'Weekly Cleaning',
       description: 'Vacuum the house and dust the shelves',
@@ -228,7 +228,7 @@ void main() {
   testWidgets(
     'TaskScheduleScreen delete button opens confirmation dialog and deletes task',
     (WidgetTester tester) async {
-      final dailyTask = Task(
+      final dailyTask = TaskSchedule(
         id: 'delete-recurring-task-1',
         title: 'Daily Exercises',
         description: 'Run 5km and do pushups',

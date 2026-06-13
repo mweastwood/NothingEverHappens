@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
@@ -19,7 +19,7 @@ class CreateTaskScreen extends ConsumerStatefulWidget {
   static Duration saveTimeout = const Duration(seconds: 10);
   static bool debugDisableAnimations = false;
 
-  final Task? taskToEdit;
+  final TaskSchedule? taskToEdit;
 
   const CreateTaskScreen({super.key, this.taskToEdit});
 
@@ -42,7 +42,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   final _descriptionController = TextEditingController();
   final _estimatedDurationController = TextEditingController();
 
-  List<TaskSchedule> _schedules = [];
+  List<TaskScheduleRule> _schedules = [];
   int? _expandedScheduleIndex;
   MissedPolicy _missedPolicy = MissedPolicy.rollover;
 
@@ -139,7 +139,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
         final hasRepeating = _schedules.any((s) => s is! OneOffSchedule);
 
-        final newTask = Task(
+        final newTask = TaskSchedule(
           id: AppClock.now.millisecondsSinceEpoch.toString(),
           title: _titleController.text,
           description: _descriptionController.text,
@@ -435,7 +435,9 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             const SizedBox(height: 12),
             StandardChoiceChip(
               key: const Key('is_family_toggle'),
-              label: _isFamily ? 'Family Task' : 'Personal Task',
+              label: _isFamily
+                  ? 'Family TaskSchedule'
+                  : 'Personal TaskSchedule',
               selected: _isFamily,
               onSelected: readOnly
                   ? null

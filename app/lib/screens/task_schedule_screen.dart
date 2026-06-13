@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../logic/task_repository.dart';
 import 'create_task_screen.dart';
 import '../logic/l10n_extension.dart';
@@ -25,7 +25,7 @@ class TaskScheduleScreen extends ConsumerWidget {
           ), // Avoid overlap with dev clock banner
           child: taskRepository == null
               ? const Center(child: CircularProgressIndicator())
-              : StreamBuilder<List<Task>>(
+              : StreamBuilder<List<TaskSchedule>>(
                   stream: taskRepository.getTasks(),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
@@ -117,7 +117,7 @@ class TaskScheduleScreen extends ConsumerWidget {
   void _confirmDelete(
     BuildContext context,
     TaskRepository repository,
-    Task task,
+    TaskSchedule task,
   ) {
     showDialog(
       context: context,

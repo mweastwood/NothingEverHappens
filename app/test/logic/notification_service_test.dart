@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -100,9 +100,9 @@ void main() {
       notificationService = PlatformNotificationService(plugin: mockPlugin);
     });
 
-    final testTask = Task(
+    final testTask = TaskSchedule(
       id: 'task-notif-test',
-      title: 'Zoned Test Task',
+      title: 'Zoned Test TaskSchedule',
       description: 'Running unit tests',
       schedules: [
         DailySchedule(
@@ -131,7 +131,7 @@ void main() {
 
         expect(mockPlugin.scheduled.length, 1);
         final notif = mockPlugin.scheduled.first;
-        expect(notif['title'], 'Zoned Test Task');
+        expect(notif['title'], 'Zoned Test TaskSchedule');
         expect(notif['body'], 'Running unit tests');
         expect(
           notif['androidScheduleMode'],

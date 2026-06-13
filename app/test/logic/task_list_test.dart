@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task_list.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 
 void main() {
   group('TaskList', () {
     const userId = 'test-user-id';
-    final testTask = Task(
+    final testTask = TaskSchedule(
       id: 'task-1',
       title: 'Original Title',
       description: 'Original Description',
@@ -69,9 +69,9 @@ void main() {
       'complete of recurring task advances its schedule rather than removing it',
       () {
         AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
-        final recurringTask = Task(
+        final recurringTask = TaskSchedule(
           id: 'task-recur',
-          title: 'Daily Task',
+          title: 'Daily TaskSchedule',
           description: 'Test description',
           schedules: [
             DailySchedule(
