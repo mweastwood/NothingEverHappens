@@ -47,7 +47,7 @@ class ScheduleCard extends StatelessWidget {
     String daysStr = '';
 
     if (schedule is DailySchedule) {
-      final ds = schedule as DailySchedule;
+      final ds = schedule;
       intervalStr = ds.interval == 1
           ? context.l10n.everyDay
           : context.l10n.everyNDays(ds.interval);
@@ -55,7 +55,7 @@ class ScheduleCard extends StatelessWidget {
           '${ds.startDate.year}-${ds.startDate.month.toString().padLeft(2, '0')}-${ds.startDate.day.toString().padLeft(2, '0')}';
       startStr = context.l10n.startingDate(dateStr);
     } else if (schedule is WeeklySchedule) {
-      final ws = schedule as WeeklySchedule;
+      final ws = schedule;
       intervalStr = ws.interval == 1
           ? context.l10n.everyWeek
           : context.l10n.everyNWeeks(ws.interval);
@@ -76,7 +76,7 @@ class ScheduleCard extends StatelessWidget {
       final joinedDays = selectedDays.map((d) => dayNames[d]).join(', ');
       daysStr = context.l10n.onDaysOfWeek(joinedDays);
     } else if (schedule is MonthlySchedule) {
-      final ms = schedule as MonthlySchedule;
+      final ms = schedule;
       intervalStr = ms.interval == 1
           ? context.l10n.everyMonth
           : context.l10n.everyNMonths(ms.interval);
@@ -112,7 +112,7 @@ class ScheduleCard extends StatelessWidget {
         daysStr = context.l10n.nthDayOfWeekOccurrence(occStr, dowStr);
       }
     } else if (schedule is YearlySchedule) {
-      final ys = schedule as YearlySchedule;
+      final ys = schedule;
       intervalStr = ys.interval == 1
           ? context.l10n.everyYear
           : context.l10n.everyNYears(ys.interval);
