@@ -7,9 +7,9 @@ import 'dart:async' as _i4;
 
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i3;
-import 'package:nothing_ever_happens/logic/task.dart' as _i5;
 import 'package:nothing_ever_happens/logic/task_delta.dart' as _i6;
 import 'package:nothing_ever_happens/logic/task_repository.dart' as _i2;
+import 'package:nothing_ever_happens/logic/task_schedule.dart' as _i5;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -46,22 +46,24 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
           as String);
 
   @override
-  _i4.Stream<List<_i5.Task>> getPersonalTasksForUser(String? userId) =>
+  _i4.Stream<List<_i5.TaskSchedule>> getPersonalTasksForUser(String? userId) =>
       (super.noSuchMethod(
             Invocation.method(#getPersonalTasksForUser, [userId]),
-            returnValue: _i4.Stream<List<_i5.Task>>.empty(),
-            returnValueForMissingStub: _i4.Stream<List<_i5.Task>>.empty(),
+            returnValue: _i4.Stream<List<_i5.TaskSchedule>>.empty(),
+            returnValueForMissingStub:
+                _i4.Stream<List<_i5.TaskSchedule>>.empty(),
           )
-          as _i4.Stream<List<_i5.Task>>);
+          as _i4.Stream<List<_i5.TaskSchedule>>);
 
   @override
-  _i4.Stream<List<_i5.Task>> getTasks() =>
+  _i4.Stream<List<_i5.TaskSchedule>> getTasks() =>
       (super.noSuchMethod(
             Invocation.method(#getTasks, []),
-            returnValue: _i4.Stream<List<_i5.Task>>.empty(),
-            returnValueForMissingStub: _i4.Stream<List<_i5.Task>>.empty(),
+            returnValue: _i4.Stream<List<_i5.TaskSchedule>>.empty(),
+            returnValueForMissingStub:
+                _i4.Stream<List<_i5.TaskSchedule>>.empty(),
           )
-          as _i4.Stream<List<_i5.Task>>);
+          as _i4.Stream<List<_i5.TaskSchedule>>);
 
   @override
   _i4.Stream<List<_i6.TaskDelta>> getHistory() =>
@@ -73,7 +75,7 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
           as _i4.Stream<List<_i6.TaskDelta>>);
 
   @override
-  _i4.Future<void> addTask(_i5.Task? task) =>
+  _i4.Future<void> addTask(_i5.TaskSchedule? task) =>
       (super.noSuchMethod(
             Invocation.method(#addTask, [task]),
             returnValue: _i4.Future<void>.value(),
@@ -83,7 +85,7 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
 
   @override
   _i4.Future<void> updateTask(
-    ({_i6.TaskDelta delta, _i5.Task newTask})? modification,
+    ({_i6.TaskDelta delta, _i5.TaskSchedule newTask})? modification,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateTask, [modification]),

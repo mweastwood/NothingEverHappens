@@ -27,7 +27,7 @@ void main() {
                     key: const Key('error_occurred_text'),
                   ),
                   Text(
-                    context.l10n.deleteTaskConfirmBody('Task Alpha'),
+                    context.l10n.deleteTaskConfirmBody('TaskSchedule Alpha'),
                     key: const Key('delete_body_text'),
                   ),
                   Text(
@@ -72,7 +72,7 @@ void main() {
         );
         expect(
           tester.widget<Text>(find.byKey(const Key('delete_body_text'))).data,
-          'Are you sure you want to delete "Task Alpha"? This action will permanently remove the task.',
+          'Are you sure you want to delete "TaskSchedule Alpha"? This action will permanently remove the task.',
         );
         expect(
           tester.widget<Text>(find.byKey(const Key('every_n_days_text'))).data,
@@ -111,7 +111,7 @@ void main() {
         );
         expect(
           tester.widget<Text>(find.byKey(const Key('delete_body_text'))).data,
-          '¿Estás seguro de que quieres eliminar "Task Alpha"? Esta acción eliminará permanentemente la tarea.',
+          '¿Estás seguro de que quieres eliminar "TaskSchedule Alpha"? Esta acción eliminará permanentemente la tarea.',
         );
         expect(
           tester.widget<Text>(find.byKey(const Key('every_n_days_text'))).data,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
@@ -19,9 +19,9 @@ void main() {
       repository = TaskRepository(firestore: firestore, userId: userId);
     });
 
-    final testTask = Task(
+    final testTask = TaskSchedule(
       id: 'task-1',
-      title: 'Test Task',
+      title: 'Test TaskSchedule',
       description: 'Test Description',
       schedules: [
         OneOffSchedule(
@@ -70,7 +70,7 @@ void main() {
       expect(
         stream,
         emits(
-          isA<List<Task>>().having(
+          isA<List<TaskSchedule>>().having(
             (list) => list.first.title,
             'title',
             testTask.title,
@@ -193,7 +193,7 @@ void main() {
       );
     });
 
-    final notifTask = Task(
+    final notifTask = TaskSchedule(
       id: 'notif-task-1',
       title: 'Notify Me',
       description: 'Check notifications',
@@ -237,7 +237,7 @@ void main() {
     test('updateTask updates scheduled notifications', () async {
       await repository.addTask(notifTask);
 
-      final updatedTask = Task(
+      final updatedTask = TaskSchedule(
         id: notifTask.id,
         title: 'Notify Me (Updated)',
         description: notifTask.description,

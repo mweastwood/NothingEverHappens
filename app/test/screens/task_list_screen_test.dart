@@ -10,7 +10,7 @@ import 'package:mockito/annotations.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/screens/home_screen.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -25,7 +25,7 @@ import 'task_list_screen_test.mocks.dart';
 void main() {
   late MockAuthRepository mockAuthRepository;
   late MockTaskRepository mockTaskRepository;
-  late BehaviorSubject<List<Task>> tasksSubject;
+  late BehaviorSubject<List<TaskSchedule>> tasksSubject;
   late BehaviorSubject<List<TaskDelta>> historySubject;
 
   setUp(() {
@@ -34,9 +34,9 @@ void main() {
 
     // Initial task list
     final initialTasks = [
-      Task(
+      TaskSchedule(
         id: '1',
-        title: 'Mock Task',
+        title: 'Mock TaskSchedule',
         description: 'Mock Description',
         schedules: [
           OneOffSchedule(
@@ -53,7 +53,7 @@ void main() {
         ],
       ),
     ];
-    tasksSubject = BehaviorSubject<List<Task>>.seeded(initialTasks);
+    tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded(initialTasks);
     historySubject = BehaviorSubject<List<TaskDelta>>.seeded([]);
 
     // Default stubbing
@@ -64,7 +64,7 @@ void main() {
     ).thenAnswer((_) => historySubject.stream);
 
     when(mockTaskRepository.addTask(any)).thenAnswer((invocation) async {
-      final task = invocation.positionalArguments.first as Task;
+      final task = invocation.positionalArguments.first as TaskSchedule;
       final currentTasks = tasksSubject.value;
       tasksSubject.add([...currentTasks, task]);
     });
@@ -85,17 +85,17 @@ void main() {
     );
   }
 
-  testWidgets('Task list renders with CustomScrollView', (
+  testWidgets('TaskSchedule list renders with CustomScrollView', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(createScreen());
     await tester.pumpAndSettle();
 
     expect(find.byType(CustomScrollView), findsOneWidget);
-    expect(find.text('Mock Task'), findsOneWidget);
+    expect(find.text('Mock TaskSchedule'), findsOneWidget);
   });
 
-  testWidgets('Task list shows FAB and navigates to CreateTaskScreen', (
+  testWidgets('TaskSchedule list shows FAB and navigates to CreateTaskScreen', (
     WidgetTester tester,
   ) async {
     AppConfig.environment = AppEnvironment
@@ -116,24 +116,24 @@ void main() {
     // Simulate creating a task
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Title'),
-      'New Task Title',
+      'New TaskSchedule Title',
     );
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Description'),
-      'New Task Description',
+      'New TaskSchedule Description',
     );
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     // The newly created task defaults to starting today (no snooze).
     // Verify it appears immediately in the task list on March 8!
-    expect(find.text('New Task Title'), findsOneWidget);
+    expect(find.text('New TaskSchedule Title'), findsOneWidget);
 
     AppClock.reset();
     AppConfig.environment = AppEnvironment.dev; // Restore dev env
   });
 
-  testWidgets('Task list mobile layout (ListView)', (
+  testWidgets('TaskSchedule list mobile layout (ListView)', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(400, 800);
@@ -145,10 +145,10 @@ void main() {
     await tester.pumpAndSettle(); // Wait for stream
 
     expect(find.byType(CustomScrollView), findsOneWidget);
-    expect(find.text('Mock Task'), findsOneWidget);
+    expect(find.text('Mock TaskSchedule'), findsOneWidget);
   });
 
-  testWidgets('Task list desktop layout', (WidgetTester tester) async {
+  testWidgets('TaskSchedule list desktop layout', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -158,10 +158,10 @@ void main() {
     await tester.pumpAndSettle(); // Wait for stream
 
     expect(find.byType(CustomScrollView), findsOneWidget);
-    expect(find.text('Mock Task'), findsOneWidget);
+    expect(find.text('Mock TaskSchedule'), findsOneWidget);
   });
 
-  testWidgets('Task list has drawer with logout button', (
+  testWidgets('TaskSchedule list has drawer with logout button', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(createScreen());
@@ -196,7 +196,7 @@ void main() {
     final robot = TaskWidgetRobot(tester);
 
     // Verify task is present
-    await robot.expectTitle('Mock Task');
+    await robot.expectTitle('Mock TaskSchedule');
 
     // Tap the checkbox
     await robot.tapCheckbox();
@@ -215,9 +215,9 @@ void main() {
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
 
-      final recurringTask = Task(
+      final recurringTask = TaskSchedule(
         id: 'recur-1',
-        title: 'Daily Repeating Task',
+        title: 'Daily Repeating TaskSchedule',
         description: 'Do daily',
         schedules: [
           DailySchedule(
@@ -238,9 +238,9 @@ void main() {
       tasksSubject.add([recurringTask]);
 
       when(mockTaskRepository.completeTask('recur-1')).thenAnswer((_) async {
-        final advancedTask = Task(
+        final advancedTask = TaskSchedule(
           id: 'recur-1',
-          title: 'Daily Repeating Task',
+          title: 'Daily Repeating TaskSchedule',
           description: 'Do daily',
           schedules: [
             DailySchedule(
@@ -263,7 +263,10 @@ void main() {
       await tester.pumpWidget(createScreen());
       await tester.pumpAndSettle();
 
-      final robot = TaskWidgetRobot.fromTitle(tester, 'Daily Repeating Task');
+      final robot = TaskWidgetRobot.fromTitle(
+        tester,
+        'Daily Repeating TaskSchedule',
+      );
       robot.expectVisible();
 
       await robot.tapCheckbox();
@@ -281,69 +284,70 @@ void main() {
     },
   );
 
-  testWidgets('Task list screen filters out tasks scheduled in the future', (
-    WidgetTester tester,
-  ) async {
-    AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
-
-    final todayTask = Task(
-      id: 'today-task',
-      title: 'Today Task',
-      description: 'Due today',
-      schedules: [
-        OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 3, day: 8),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-        ),
-      ],
-    );
-
-    final tomorrowTask = Task(
-      id: 'tomorrow-task',
-      title: 'Tomorrow Task',
-      description: 'Due tomorrow',
-      schedules: [
-        OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 3, day: 9),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-        ),
-      ],
-    );
-
-    tasksSubject.add([todayTask, tomorrowTask]);
-
-    await tester.pumpWidget(createScreen());
-    await tester.pumpAndSettle();
-
-    // Today's task should be shown
-    expect(find.text('Today Task'), findsOneWidget);
-
-    // Tomorrow's task should be filtered out
-    expect(find.text('Tomorrow Task'), findsNothing);
-
-    AppClock.reset();
-  });
-
   testWidgets(
-    'Task list screen shows one-off tasks starting today but due in the future',
+    'TaskSchedule list screen filters out tasks scheduled in the future',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
 
-      final activeOneOffTask = Task(
+      final todayTask = TaskSchedule(
+        id: 'today-task',
+        title: 'Today TaskSchedule',
+        description: 'Due today',
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 3, day: 8),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final tomorrowTask = TaskSchedule(
+        id: 'tomorrow-task',
+        title: 'Tomorrow TaskSchedule',
+        description: 'Due tomorrow',
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 3, day: 9),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([todayTask, tomorrowTask]);
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      // Today's task should be shown
+      expect(find.text('Today TaskSchedule'), findsOneWidget);
+
+      // Tomorrow's task should be filtered out
+      expect(find.text('Tomorrow TaskSchedule'), findsNothing);
+
+      AppClock.reset();
+    },
+  );
+
+  testWidgets(
+    'TaskSchedule list screen shows one-off tasks starting today but due in the future',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+
+      final activeOneOffTask = TaskSchedule(
         id: 'active-one-off',
         title: 'Active One-Off',
         description: 'Starts today, due tomorrow',
@@ -375,11 +379,11 @@ void main() {
   );
 
   testWidgets(
-    'Task list screen hides one-off tasks due today but snoozed/starting in the future',
+    'TaskSchedule list screen hides one-off tasks due today but snoozed/starting in the future',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
 
-      final snoozedOneOffTask = Task(
+      final snoozedOneOffTask = TaskSchedule(
         id: 'snoozed-one-off',
         title: 'Snoozed One-Off',
         description: 'Due today, starts tomorrow (snoozed)',
@@ -414,9 +418,9 @@ void main() {
     'Completing a task does not affect the next task state (bug repro)',
     (WidgetTester tester) async {
       // Setup 2 tasks
-      final task1 = Task(
+      final task1 = TaskSchedule(
         id: '1',
-        title: 'Task 1',
+        title: 'TaskSchedule 1',
         description: 'Desc 1',
         schedules: [
           OneOffSchedule(
@@ -432,9 +436,9 @@ void main() {
           ),
         ],
       );
-      final task2 = Task(
+      final task2 = TaskSchedule(
         id: '2',
-        title: 'Task 2',
+        title: 'TaskSchedule 2',
         description: 'Desc 2',
         schedules: [
           OneOffSchedule(
@@ -461,13 +465,13 @@ void main() {
       await tester.pumpWidget(createScreen());
       await tester.pumpAndSettle();
 
-      final robot1 = TaskWidgetRobot.fromTitle(tester, 'Task 1');
-      final robot2 = TaskWidgetRobot.fromTitle(tester, 'Task 2');
+      final robot1 = TaskWidgetRobot.fromTitle(tester, 'TaskSchedule 1');
+      final robot2 = TaskWidgetRobot.fromTitle(tester, 'TaskSchedule 2');
 
       robot1.expectVisible();
       robot2.expectVisible();
 
-      // Tap Task 1
+      // Tap TaskSchedule 1
       await robot1.tapCheckbox();
 
       await robot1.waitForCompletion();
@@ -477,13 +481,13 @@ void main() {
       // Verify completeTask was called
       verify(mockTaskRepository.completeTask('1')).called(1);
 
-      // Verify Task 1 is gone (due to stream update)
+      // Verify TaskSchedule 1 is gone (due to stream update)
       robot1.expectGone();
 
-      // Verify Task 2 is visible
+      // Verify TaskSchedule 2 is visible
       robot2.expectVisible();
 
-      // Check if Task 2 is inadvertently checked (state reuse bug)
+      // Check if TaskSchedule 2 is inadvertently checked (state reuse bug)
       await robot2.expectChecked(false);
     },
   );

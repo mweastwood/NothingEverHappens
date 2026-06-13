@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 
 void main() {
   group('TaskPriority enum', () {

@@ -54,7 +54,7 @@ void main() {
     final markdownWidget = tester.widget<MarkdownBody>(
       find.byType(MarkdownBody),
     );
-    expect(markdownWidget.data, contains('**Task ID:** task-123'));
+    expect(markdownWidget.data, contains('**TaskSchedule ID:** task-123'));
     expect(markdownWidget.data, contains('**User ID:** user-abc'));
     expect(markdownWidget.data, contains('status: done'));
   });

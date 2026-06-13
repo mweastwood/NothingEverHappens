@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
@@ -43,7 +43,7 @@ class BasicTaskCompletionTab extends StatefulWidget {
 }
 
 class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
-  late List<Task> _tasks;
+  late List<TaskSchedule> _tasks;
   late FakeTaskRepository _fakeRepository;
 
   @override
@@ -61,7 +61,7 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
       _tasks = List.generate(10, (index) {
         final title = _taskTitles[index];
         final desc = _taskDescriptions[index];
-        return Task(
+        return TaskSchedule(
           id: 'practice-task-$index',
           title: title,
           description: desc,

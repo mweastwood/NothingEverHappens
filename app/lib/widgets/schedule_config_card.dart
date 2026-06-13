@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule_rule.dart';
 import 'relative_timing_widget.dart';
 
 class ScheduleConfigCard extends StatefulWidget {
-  final TaskSchedule schedule;
-  final ValueChanged<TaskSchedule> onChanged;
+  final TaskScheduleRule schedule;
+  final ValueChanged<TaskScheduleRule> onChanged;
   final VoidCallback? onDelete;
   final bool isExpanded;
   final ValueChanged<bool> onExpansionChanged;
@@ -103,7 +103,7 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
     return '1';
   }
 
-  String _getSummaryText(TaskSchedule schedule) {
+  String _getSummaryText(TaskScheduleRule schedule) {
     if (schedule is OneOffSchedule) {
       return 'One-off on ${schedule.date.year}-${schedule.date.month.toString().padLeft(2, '0')}-${schedule.date.day.toString().padLeft(2, '0')}';
     } else if (schedule is DailySchedule) {
@@ -147,7 +147,7 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
     return 'Custom schedule';
   }
 
-  IconData _getIcon(TaskSchedule schedule) {
+  IconData _getIcon(TaskScheduleRule schedule) {
     if (schedule is OneOffSchedule) return Icons.event;
     if (schedule is DailySchedule) return Icons.today;
     if (schedule is WeeklySchedule) return Icons.calendar_view_week;
@@ -177,7 +177,7 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
   void _changeRecurrenceType(RecurrenceType type) {
     final current = widget.schedule;
 
-    TaskSchedule next;
+    TaskScheduleRule next;
     switch (type) {
       case RecurrenceType.oneOff:
         next = OneOffSchedule(
@@ -372,7 +372,7 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
     );
   }
 
-  Widget _buildRecurrenceConfigForm(TaskSchedule s) {
+  Widget _buildRecurrenceConfigForm(TaskScheduleRule s) {
     if (s is OneOffSchedule) {
       return _buildStartDateTile(
         label: 'Occurrence Date',

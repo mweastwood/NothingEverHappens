@@ -1,17 +1,17 @@
 import 'package:uuid/uuid.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
-import 'task.dart';
+import 'task_schedule.dart';
 import 'task_delta.dart';
 
 class TaskList {
-  final List<Task> activeTasks;
+  final List<TaskSchedule> activeTasks;
   final List<TaskDelta> history;
   static final _uuid = Uuid();
 
   const TaskList(this.activeTasks, {this.history = const []});
 
-  TaskList add(Task task, String userId) {
+  TaskList add(TaskSchedule task, String userId) {
     final now = AppClock.now;
     final delta = TaskDelta(
       id: _uuid.v4(),
@@ -44,7 +44,7 @@ class TaskList {
     final task = activeTasks[taskIndex];
     final today = CivilDay.fromDateTime(now);
 
-    List<TaskSchedule> newSchedules = task.schedules;
+    List<TaskScheduleRule> newSchedules = task.schedules;
     int newActiveOccurrenceIndex = task.activeOccurrenceIndex;
 
     bool shouldRemoveTask = false;
@@ -109,7 +109,7 @@ class TaskList {
     } else {
       // Advance repeating schedules that occurred on or before today.
       // Remove one-off schedules that occurred on or before today.
-      final List<TaskSchedule> list = [];
+      final List<TaskScheduleRule> list = [];
       for (final s in task.schedules) {
         if (s is OneOffSchedule) {
           if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
@@ -147,7 +147,7 @@ class TaskList {
       );
     }
 
-    final updatedTask = Task(
+    final updatedTask = TaskSchedule(
       id: task.id,
       title: task.title,
       description: task.description,
@@ -165,7 +165,7 @@ class TaskList {
       assignedUserId: task.assignedUserId,
     );
 
-    final updatedTasks = List<Task>.from(activeTasks);
+    final updatedTasks = List<TaskSchedule>.from(activeTasks);
     updatedTasks[taskIndex] = updatedTask;
 
     return TaskList(updatedTasks, history: [...history, delta]);

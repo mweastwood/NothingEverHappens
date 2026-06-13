@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../logic/task_repository.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
@@ -11,7 +11,7 @@ import 'fun_check_button.dart';
 import 'fun_delete_button.dart';
 
 class TaskWidget extends ConsumerStatefulWidget {
-  final Task task;
+  final TaskSchedule task;
   final bool showEditOption;
 
   const TaskWidget({super.key, required this.task, this.showEditOption = true});
@@ -186,7 +186,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     return '${minutes}m';
   }
 
-  String _getScheduleLabel(TaskSchedule schedule) {
+  String _getScheduleLabel(TaskScheduleRule schedule) {
     if (schedule is OneOffSchedule) return 'One-off';
     if (schedule is DailySchedule) return 'Daily';
     if (schedule is WeeklySchedule) return 'Weekly';
@@ -195,7 +195,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     return 'Recurring';
   }
 
-  IconData _getScheduleIcon(TaskSchedule schedule) {
+  IconData _getScheduleIcon(TaskScheduleRule schedule) {
     if (schedule is OneOffSchedule) return Icons.today;
     if (schedule is DailySchedule) return Icons.repeat;
     if (schedule is WeeklySchedule) return Icons.view_week;
@@ -420,7 +420,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               IconButton(
                 key: const Key('edit_pencil_button'),
                 icon: const Icon(Icons.edit, size: 20),
-                tooltip: 'Edit Task',
+                tooltip: 'Edit TaskSchedule',
                 onPressed: () {
                   Navigator.push(
                     context,

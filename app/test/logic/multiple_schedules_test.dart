@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_list.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 
 void main() {
   group('Multiple Schedules & Standardized Timing Unit Tests', () {
-    test('Task can be constructed with multiple mixed schedules', () {
+    test('TaskSchedule can be constructed with multiple mixed schedules', () {
       final startCivil = const CivilDay(year: 2026, month: 6, day: 1);
       final schedules = [
         DailySchedule(
@@ -42,9 +42,9 @@ void main() {
         ),
       ];
 
-      final task = Task(
+      final task = TaskSchedule(
         id: 'mixed-task',
-        title: 'Mixed Scheduling Task',
+        title: 'Mixed Scheduling TaskSchedule',
         description: 'Testing mixed scheduling',
         schedules: schedules,
       );
@@ -95,7 +95,7 @@ void main() {
         ),
       ];
 
-      final task = Task(
+      final task = TaskSchedule(
         id: 'complete-task',
         title: 'Mixed schedule complete',
         description: 'Complete test',
@@ -171,7 +171,7 @@ void main() {
           ),
         ];
 
-        final task = Task(
+        final task = TaskSchedule(
           id: 'mixed-oneoff-task',
           title: 'Mixed one-off complete',
           description: 'Complete test',
@@ -237,7 +237,7 @@ void main() {
           ),
         ];
 
-        final task = Task(
+        final task = TaskSchedule(
           id: 'multi-oneoff-slots',
           title: 'Multi one-off slots complete',
           description: 'Complete test',
@@ -297,7 +297,7 @@ void main() {
           ),
         ];
 
-        final task = Task(
+        final task = TaskSchedule(
           id: 'multi-oneoff-dates',
           title: 'Multi one-off dates complete',
           description: 'Complete test',

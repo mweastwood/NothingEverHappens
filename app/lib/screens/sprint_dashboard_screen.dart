@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/app_clock.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../logic/task_repository.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
@@ -65,7 +65,7 @@ class SprintDashboardScreen extends ConsumerWidget {
                         }
                         final family = familySnapshot.data;
 
-                        return StreamBuilder<List<Task>>(
+                        return StreamBuilder<List<TaskSchedule>>(
                           stream: taskRepo.getTasks(),
                           builder: (context, tasksSnapshot) {
                             if (tasksSnapshot.connectionState ==
@@ -103,7 +103,7 @@ class _SprintDashboardContent extends ConsumerStatefulWidget {
   final String familyRole;
   final bool isParent;
   final Family? family;
-  final List<Task> tasks;
+  final List<TaskSchedule> tasks;
   final TaskRepository taskRepository;
 
   const _SprintDashboardContent({
@@ -126,10 +126,11 @@ class _SprintDashboardContentState
   bool _isAllocating = false;
 
   final Map<String, UserSettings> _memberSettings = {};
-  final Map<String, List<Task>> _memberPersonalTasks = {};
+  final Map<String, List<TaskSchedule>> _memberPersonalTasks = {};
   final Map<String, StreamSubscription<UserSettings>> _settingsSubscriptions =
       {};
-  final Map<String, StreamSubscription<List<Task>>> _tasksSubscriptions = {};
+  final Map<String, StreamSubscription<List<TaskSchedule>>>
+  _tasksSubscriptions = {};
 
   @override
   void initState() {
@@ -314,7 +315,7 @@ class _SprintDashboardContentState
     }
   }
 
-  Future<void> _toggleCycle(Task task, String? cycleId) async {
+  Future<void> _toggleCycle(TaskSchedule task, String? cycleId) async {
     try {
       final modification = task.updateCycleId(
         cycleId,
@@ -330,7 +331,7 @@ class _SprintDashboardContentState
     }
   }
 
-  Future<void> _togglePreference(Task task) async {
+  Future<void> _togglePreference(TaskSchedule task) async {
     try {
       final currentUserId = widget.taskRepository.userId;
       final newPreferredBy = Map<String, bool>.from(task.preferredBy);
@@ -459,7 +460,11 @@ class _SprintDashboardContentState
     );
   }
 
-  Widget _buildTaskCard(Task task, bool isActive, String currentCycleId) {
+  Widget _buildTaskCard(
+    TaskSchedule task,
+    bool isActive,
+    String currentCycleId,
+  ) {
     final hasFamily = widget.familyId.isNotEmpty;
     final canModify = !task.isFamily || (hasFamily && widget.isParent);
     final currentUserId = widget.taskRepository.userId;
@@ -693,8 +698,8 @@ class _SprintDashboardContentState
     double personalActiveEffort = 0;
     double familyActiveEffort = 0;
 
-    final activeTasks = <Task>[];
-    final backlogTasks = <Task>[];
+    final activeTasks = <TaskSchedule>[];
+    final backlogTasks = <TaskSchedule>[];
 
     for (final task in widget.tasks) {
       if (task.isMaster) continue; // Skip master templates

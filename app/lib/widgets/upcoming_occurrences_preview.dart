@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
-import '../logic/task.dart';
+import '../logic/task_schedule.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/app_clock.dart';
 
 class OccurrenceInfo {
   final CivilDay date;
-  final TaskSchedule schedule;
+  final TaskScheduleRule schedule;
 
   OccurrenceInfo(this.date, this.schedule);
 }
 
 class UpcomingOccurrencesPreview extends StatelessWidget {
-  final List<TaskSchedule>? schedules;
-  final TaskSchedule? schedule;
+  final List<TaskScheduleRule>? schedules;
+  final TaskScheduleRule? schedule;
   final List<DailyOccurrenceTime> dailyTimes;
   final DateTime? startDateTime;
   final DateTime? dueDateTime;
@@ -32,7 +32,7 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
     this.maxOccurrences = 10,
   });
 
-  List<TaskSchedule> get effectiveSchedules {
+  List<TaskScheduleRule> get effectiveSchedules {
     if (schedules != null) {
       return schedules!;
     }

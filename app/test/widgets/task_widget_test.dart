@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
@@ -20,9 +20,9 @@ import 'task_widget_test.mocks.dart';
 void main() {
   late MockTaskRepository mockTaskRepository;
 
-  final testTask = Task(
+  final testTask = TaskSchedule(
     id: '1',
-    title: 'Test Task',
+    title: 'Test TaskSchedule',
     description: 'This is a test description',
     schedules: [
       OneOffSchedule(
@@ -45,7 +45,7 @@ void main() {
     when(mockTaskRepository.completeTask(any)).thenAnswer((_) async {});
   });
 
-  Widget createWidget(Task task) {
+  Widget createWidget(TaskSchedule task) {
     return buildTestableWidget(
       child: Scaffold(
         body: ProviderScope(
@@ -66,9 +66,9 @@ void main() {
   });
 
   testWidgets('TaskWidget renders markdown in description', (tester) async {
-    final markdownTask = Task(
+    final markdownTask = TaskSchedule(
       id: '2',
-      title: 'Markdown Task',
+      title: 'Markdown TaskSchedule',
       description: 'This is **bold** text',
       schedules: [
         OneOffSchedule(
@@ -110,9 +110,9 @@ void main() {
   });
 
   testGoldens('TaskWidget animation frames', (tester) async {
-    final markdownTask = Task(
+    final markdownTask = TaskSchedule(
       id: '2',
-      title: 'Markdown Task',
+      title: 'Markdown TaskSchedule',
       description: 'Check me off!',
       schedules: [
         OneOffSchedule(
@@ -244,9 +244,9 @@ void main() {
   testWidgets('TaskWidget does not expose edit button for recurring tasks', (
     tester,
   ) async {
-    final recurringTask = Task(
+    final recurringTask = TaskSchedule(
       id: '2',
-      title: 'Recurring Task',
+      title: 'Recurring TaskSchedule',
       description: 'This is a recurring task description',
       schedules: [
         DailySchedule(
@@ -342,9 +342,9 @@ void main() {
   });
 
   testGoldens('TaskWidget recurring state golden (no pencil)', (tester) async {
-    final recurringTask = Task(
+    final recurringTask = TaskSchedule(
       id: '2',
-      title: 'Recurring Task',
+      title: 'Recurring TaskSchedule',
       description: 'This is a recurring task description',
       schedules: [
         DailySchedule(
@@ -392,9 +392,9 @@ void main() {
       time: TimeOfDay(hour: 17, minute: 0),
     );
 
-    final task1 = Task(
+    final task1 = TaskSchedule(
       id: 'b1',
-      title: 'High Priority Task with Duration',
+      title: 'High Priority TaskSchedule with Duration',
       description: 'Personal task with high priority and 1.5h duration.',
       priority: TaskPriority.high,
       estimatedDuration: const Duration(hours: 1, minutes: 30),
@@ -407,9 +407,9 @@ void main() {
       ],
     );
 
-    final task2 = Task(
+    final task2 = TaskSchedule(
       id: 'b2',
-      title: 'Family Daily Task with Assignee',
+      title: 'Family Daily TaskSchedule with Assignee',
       description:
           'Family task with daily schedule, medium priority, rollover policy, and assignee.',
       isFamily: true,
@@ -425,9 +425,9 @@ void main() {
       ],
     );
 
-    final task3 = Task(
+    final task3 = TaskSchedule(
       id: 'b3',
-      title: 'Low Priority Weekly Task with Shift Policy',
+      title: 'Low Priority Weekly TaskSchedule with Shift Policy',
       description:
           'Personal task with low priority, weekly schedule, and shift policy.',
       priority: TaskPriority.low,
@@ -443,9 +443,9 @@ void main() {
       ],
     );
 
-    final task4 = Task(
+    final task4 = TaskSchedule(
       id: 'b4',
-      title: 'Monthly Task with Stack Policy',
+      title: 'Monthly TaskSchedule with Stack Policy',
       description: 'Monthly schedule with stack policy.',
       priority: TaskPriority.medium,
       missedPolicy: MissedPolicy.stack,
@@ -460,9 +460,9 @@ void main() {
       ],
     );
 
-    final task5 = Task(
+    final task5 = TaskSchedule(
       id: 'b5',
-      title: 'Yearly Task with Skip Policy',
+      title: 'Yearly TaskSchedule with Skip Policy',
       description: 'Yearly schedule with skip policy.',
       priority: TaskPriority.medium,
       missedPolicy: MissedPolicy.skip,

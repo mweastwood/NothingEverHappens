@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/civil_day.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule_rule.dart';
 import 'package:nothing_ever_happens/widgets/schedule_config_card.dart';
 import '../test_helper.dart';
 
 class _ScheduleConfigTestWrapper extends StatefulWidget {
-  final TaskSchedule initialSchedule;
-  final ValueChanged<TaskSchedule> onChanged;
+  final TaskScheduleRule initialSchedule;
+  final ValueChanged<TaskScheduleRule> onChanged;
   final VoidCallback? onDelete;
 
   const _ScheduleConfigTestWrapper({
@@ -24,7 +24,7 @@ class _ScheduleConfigTestWrapper extends StatefulWidget {
 
 class _ScheduleConfigTestWrapperState
     extends State<_ScheduleConfigTestWrapper> {
-  late TaskSchedule schedule;
+  late TaskScheduleRule schedule;
   final formKey = GlobalKey<FormState>();
 
   @override
@@ -69,7 +69,7 @@ void main() {
       tester,
     ) async {
       bool deleteCalled = false;
-      TaskSchedule? updatedSchedule;
+      TaskScheduleRule? updatedSchedule;
 
       final schedule = OneOffSchedule(
         date: const CivilDay(year: 2026, month: 6, day: 15),
@@ -110,7 +110,7 @@ void main() {
     });
 
     testWidgets('validates DailySchedule interval input', (tester) async {
-      TaskSchedule? updatedSchedule;
+      TaskScheduleRule? updatedSchedule;
       final schedule = DailySchedule(
         startDate: const CivilDay(year: 2026, month: 6, day: 15),
         interval: 2,
@@ -159,7 +159,7 @@ void main() {
     testWidgets('WeeklySchedule weekday selection triggers onChanged', (
       tester,
     ) async {
-      TaskSchedule? updatedSchedule;
+      TaskScheduleRule? updatedSchedule;
       final schedule = WeeklySchedule(
         startDate: const CivilDay(year: 2026, month: 6, day: 15),
         interval: 1,
@@ -190,7 +190,7 @@ void main() {
     });
 
     testWidgets('MonthlySchedule validates day of month', (tester) async {
-      TaskSchedule? updatedSchedule;
+      TaskScheduleRule? updatedSchedule;
       final schedule = MonthlySchedule(
         startDate: const CivilDay(year: 2026, month: 6, day: 15),
         interval: 1,
@@ -237,7 +237,7 @@ void main() {
     testWidgets('YearlySchedule validates day according to month', (
       tester,
     ) async {
-      TaskSchedule? updatedSchedule;
+      TaskScheduleRule? updatedSchedule;
       final schedule = YearlySchedule(
         startDate: const CivilDay(year: 2026, month: 6, day: 15),
         interval: 1,

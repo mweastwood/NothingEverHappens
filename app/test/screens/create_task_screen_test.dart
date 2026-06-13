@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/screens/create_task_screen.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
-import 'package:nothing_ever_happens/logic/task.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -286,7 +286,7 @@ void main() {
 
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Title'),
-        'Test Task',
+        'Test TaskSchedule',
       );
       await tester.pump();
 
@@ -308,7 +308,7 @@ void main() {
 
         await tester.enterText(
           find.widgetWithText(TextFormField, 'Title'),
-          'Test Task',
+          'Test TaskSchedule',
         );
         // Focus description
         await tester.tap(find.widgetWithText(TextFormField, 'Description'));
@@ -353,7 +353,7 @@ void main() {
 
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Title'),
-        'Test Task',
+        'Test TaskSchedule',
       );
       await tester.tap(find.text('Save'));
       await tester.pump(); // Start the save operation
@@ -389,7 +389,7 @@ void main() {
 
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Title'),
-        'Test Task',
+        'Test TaskSchedule',
       );
       await tester.tap(find.text('Save'));
       await tester.pump(); // Start the save operation
@@ -407,7 +407,7 @@ void main() {
 
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Title'),
-        'Test Task',
+        'Test TaskSchedule',
       );
       await tester.enterText(
         find.byKey(const Key('estimated_effort_field')),
@@ -419,8 +419,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final captured =
-          verify(mockRepository.addTask(captureAny)).captured.single as Task;
-      expect(captured.title, 'Test Task');
+          verify(mockRepository.addTask(captureAny)).captured.single
+              as TaskSchedule;
+      expect(captured.title, 'Test TaskSchedule');
       expect(captured.estimatedDuration, const Duration(minutes: 45));
     });
 
@@ -431,7 +432,7 @@ void main() {
 
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Title'),
-        'Monthly Task',
+        'Monthly TaskSchedule',
       );
 
       // Select Monthly recurrence
@@ -460,8 +461,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final captured =
-          verify(mockRepository.addTask(captureAny)).captured.single as Task;
-      expect(captured.title, 'Monthly Task');
+          verify(mockRepository.addTask(captureAny)).captured.single
+              as TaskSchedule;
+      expect(captured.title, 'Monthly TaskSchedule');
       expect(captured.schedules.first, isA<MonthlySchedule>());
       final schedule = captured.schedules.first as MonthlySchedule;
       expect(schedule.interval, 3);
@@ -475,7 +477,7 @@ void main() {
 
         await tester.enterText(
           find.widgetWithText(TextFormField, 'Title'),
-          'Invalid Monthly Task',
+          'Invalid Monthly TaskSchedule',
         );
 
         // Select Monthly recurrence
@@ -512,7 +514,7 @@ void main() {
 
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Title'),
-        'Yearly Task',
+        'Yearly TaskSchedule',
       );
 
       // Select Yearly recurrence
@@ -538,8 +540,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final captured =
-          verify(mockRepository.addTask(captureAny)).captured.single as Task;
-      expect(captured.title, 'Yearly Task');
+          verify(mockRepository.addTask(captureAny)).captured.single
+              as TaskSchedule;
+      expect(captured.title, 'Yearly TaskSchedule');
       expect(captured.schedules.first, isA<YearlySchedule>());
       final schedule = captured.schedules.first as YearlySchedule;
       expect(schedule.interval, 2);
@@ -567,7 +570,7 @@ void main() {
       );
     });
 
-    Widget createWidget({Task? taskToEdit}) {
+    Widget createWidget({TaskSchedule? taskToEdit}) {
       return buildTestableWidget(
         child: buildTestProviderScope(
           overrides: [
@@ -618,7 +621,7 @@ void main() {
           'familyRole': 'non-parent',
         });
 
-        final familyTask = Task(
+        final familyTask = TaskSchedule(
           id: 'family-task-1',
           title: 'Family Chore',
           description: 'Clean the kitchen',
@@ -664,7 +667,7 @@ void main() {
         'familyRole': 'parent',
       });
 
-      final familyTask = Task(
+      final familyTask = TaskSchedule(
         id: 'family-task-1',
         title: 'Family Chore',
         description: 'Clean the kitchen',
@@ -743,7 +746,7 @@ void main() {
         // Verify the task added has a notification time scheduled in dailyTimes
         final captured =
             verify(mockTaskRepository.addTask(captureAny)).captured.single
-                as Task;
+                as TaskSchedule;
         expect(captured.schedules, isNotEmpty);
         expect(captured.schedules.first.notificationRelativeTime, isNotNull);
       },

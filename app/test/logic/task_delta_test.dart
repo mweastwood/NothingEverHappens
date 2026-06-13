@@ -13,7 +13,10 @@ void main() {
         timestamp: timestamp,
         expiresAt: expiresAt,
         operation: 'create',
-        changedFields: {'title': 'New Task', 'description': 'Some description'},
+        changedFields: {
+          'title': 'New TaskSchedule',
+          'description': 'Some description',
+        },
         userId: 'user-1',
       );
 
@@ -23,7 +26,7 @@ void main() {
       expect(delta.expiresAt, expiresAt);
       expect(delta.operation, 'create');
       expect(delta.changedFields, {
-        'title': 'New Task',
+        'title': 'New TaskSchedule',
         'description': 'Some description',
       });
       expect(delta.userId, 'user-1');
@@ -36,7 +39,7 @@ void main() {
         timestamp: timestamp,
         expiresAt: expiresAt,
         operation: 'create',
-        changedFields: {'title': 'New Task'},
+        changedFields: {'title': 'New TaskSchedule'},
         userId: 'user-1',
       );
 
@@ -47,7 +50,7 @@ void main() {
       expect(json['timestamp'], timestamp.toIso8601String());
       expect(json['expiresAt'], expiresAt.toIso8601String());
       expect(json['operation'], 'create');
-      expect(json['changedFields'], {'title': 'New Task'});
+      expect(json['changedFields'], {'title': 'New TaskSchedule'});
       expect(json['userId'], 'user-1');
     });
 
@@ -58,7 +61,7 @@ void main() {
         'timestamp': timestamp.toIso8601String(),
         'expiresAt': expiresAt.toIso8601String(),
         'operation': 'create',
-        'changedFields': {'title': 'New Task'},
+        'changedFields': {'title': 'New TaskSchedule'},
         'userId': 'user-1',
       };
 
@@ -69,7 +72,7 @@ void main() {
       expect(delta.timestamp, timestamp);
       expect(delta.expiresAt, expiresAt);
       expect(delta.operation, 'create');
-      expect(delta.changedFields, {'title': 'New Task'});
+      expect(delta.changedFields, {'title': 'New TaskSchedule'});
       expect(delta.userId, 'user-1');
     });
 
