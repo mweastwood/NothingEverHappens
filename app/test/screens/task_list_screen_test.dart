@@ -58,6 +58,8 @@ void main() {
                 dueRelativeTime: s.dueRelativeTime,
                 isFamily: task.isFamily,
                 priority: task.priority,
+                cycleId: task.cycleId,
+                assignedUserId: task.assignedUserId,
                 status: 'pending',
               ),
             );
@@ -77,6 +79,8 @@ void main() {
                 dueRelativeTime: s.dueRelativeTime,
                 isFamily: task.isFamily,
                 priority: task.priority,
+                cycleId: task.cycleId,
+                assignedUserId: task.assignedUserId,
                 status: 'pending',
               ),
             );
