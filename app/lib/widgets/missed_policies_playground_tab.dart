@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task_schedule.dart';
+import '../logic/task_instance.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
@@ -587,7 +588,27 @@ class _MissedPoliciesPlaygroundTabState
                                       ),
                                     ),
                                   ),
-                                  TaskWidget(task: task, showEditOption: false),
+                                  TaskWidget(
+                                    instance: TaskInstance(
+                                      id: task.id,
+                                      scheduleId: task.id,
+                                      title: task.title,
+                                      description: task.description,
+                                      scheduledDate:
+                                          task.schedules.first.scheduledDate,
+                                      startRelativeTime: task
+                                          .schedules
+                                          .first
+                                          .startRelativeTime,
+                                      dueRelativeTime:
+                                          task.schedules.first.dueRelativeTime,
+                                      isFamily: task.isFamily,
+                                      priority: task.priority,
+                                      status: 'pending',
+                                    ),
+                                    schedule: task,
+                                    showEditOption: false,
+                                  ),
                                 ],
                               ),
                             );

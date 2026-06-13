@@ -232,9 +232,7 @@ class _SprintDashboardContentState
       final currentCycleId = CycleHelper.getCycleId(currentNow);
 
       final activeFamilyTasks = widget.tasks
-          .where(
-            (t) => t.isFamily && t.cycleId == currentCycleId && !t.isMaster,
-          )
+          .where((t) => t.isFamily && t.cycleId == currentCycleId)
           .toList();
 
       if (activeFamilyTasks.isEmpty) {
@@ -262,7 +260,7 @@ class _SprintDashboardContentState
         final personalTasks = _memberPersonalTasks[uid] ?? [];
         double effort = 0;
         for (final t in personalTasks) {
-          if (!t.isFamily && t.cycleId == currentCycleId && !t.isMaster) {
+          if (!t.isFamily && t.cycleId == currentCycleId) {
             effort += t.estimatedDuration?.inMinutes.toDouble() ?? 0.0;
           }
         }
@@ -702,8 +700,6 @@ class _SprintDashboardContentState
     final backlogTasks = <TaskSchedule>[];
 
     for (final task in widget.tasks) {
-      if (task.isMaster) continue; // Skip master templates
-
       if (task.cycleId == currentCycleId) {
         activeTasks.add(task);
         final effort = task.estimatedDuration?.inMinutes.toDouble() ?? 0.0;
@@ -834,8 +830,7 @@ class _SprintDashboardContentState
                                         _memberPersonalTasks[memberUid] ?? [];
                                     for (final t in memberTasks) {
                                       if (!t.isFamily &&
-                                          t.cycleId == currentCycleId &&
-                                          !t.isMaster) {
+                                          t.cycleId == currentCycleId) {
                                         memberPersonalEffort +=
                                             t.estimatedDuration?.inMinutes
                                                 .toDouble() ??
@@ -847,7 +842,6 @@ class _SprintDashboardContentState
                                     for (final t in widget.tasks) {
                                       if (t.isFamily &&
                                           t.cycleId == currentCycleId &&
-                                          !t.isMaster &&
                                           t.assignedUserId == memberUid) {
                                         memberFamilyEffort +=
                                             t.estimatedDuration?.inMinutes

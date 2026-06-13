@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task_schedule.dart';
+import '../logic/task_instance.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
@@ -44,6 +45,7 @@ class BasicTaskCompletionTab extends StatefulWidget {
 
 class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
   late List<TaskSchedule> _tasks;
+  late List<TaskInstance> _instances;
   late FakeTaskRepository _fakeRepository;
 
   @override
@@ -80,20 +82,37 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
           ],
         );
       });
+
+      _instances = List.generate(10, (index) {
+        final task = _tasks[index];
+        final s = task.schedules.first;
+        return TaskInstance(
+          id: 'practice-instance-$index',
+          scheduleId: task.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: s.scheduledDate,
+          startRelativeTime: s.startRelativeTime,
+          dueRelativeTime: s.dueRelativeTime,
+          isFamily: task.isFamily,
+          priority: task.priority,
+          status: 'pending',
+        );
+      });
     });
   }
 
   void _handleComplete(String id) {
     if (!mounted) return;
     setState(() {
-      _tasks.removeWhere((t) => t.id == id);
+      _instances.removeWhere((inst) => inst.id == id);
     });
   }
 
-  void _handleDelete(String id) {
+  void _handleDelete(String scheduleId) {
     if (!mounted) return;
     setState(() {
-      _tasks.removeWhere((t) => t.id == id);
+      _instances.removeWhere((inst) => inst.scheduleId == scheduleId);
     });
   }
 
@@ -125,7 +144,7 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Practice Tasks (${_tasks.length} remaining)',
+                    'Practice Tasks (${_instances.length} remaining)',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -139,7 +158,7 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
               ),
               const SizedBox(height: 8),
 
-              if (_tasks.isEmpty)
+              if (_instances.isEmpty)
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32.0),
@@ -166,12 +185,16 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
                   ),
                 )
               else
-                ..._tasks.map((task) {
+                ..._instances.map((instance) {
+                  final task = _tasks.firstWhere(
+                    (t) => t.id == instance.scheduleId,
+                  );
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
                     child: TaskWidget(
-                      key: ValueKey(task.id),
-                      task: task,
+                      key: ValueKey(instance.id),
+                      instance: instance,
+                      schedule: task,
                       showEditOption: false,
                     ),
                   );
