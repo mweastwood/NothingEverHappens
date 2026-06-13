@@ -9,7 +9,9 @@ import 'package:firebase_auth/firebase_auth.dart' as _i4;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i6;
 import 'package:nothing_ever_happens/logic/auth_repository.dart' as _i2;
-import 'package:nothing_ever_happens/logic/task_delta.dart' as _i8;
+import 'package:nothing_ever_happens/logic/civil_day.dart' as _i9;
+import 'package:nothing_ever_happens/logic/task_delta.dart' as _i10;
+import 'package:nothing_ever_happens/logic/task_instance.dart' as _i8;
 import 'package:nothing_ever_happens/logic/task_repository.dart' as _i5;
 import 'package:nothing_ever_happens/logic/task_schedule.dart' as _i7;
 
@@ -90,6 +92,52 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
           as _i3.Stream<List<_i7.TaskSchedule>>);
 
   @override
+  _i3.Stream<List<_i8.TaskInstance>> getPersonalInstancesForUser(
+    String? userId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#getPersonalInstancesForUser, [userId]),
+            returnValue: _i3.Stream<List<_i8.TaskInstance>>.empty(),
+            returnValueForMissingStub:
+                _i3.Stream<List<_i8.TaskInstance>>.empty(),
+          )
+          as _i3.Stream<List<_i8.TaskInstance>>);
+
+  @override
+  String instanceIdFor(
+    _i7.TaskSchedule? task,
+    _i9.CivilDay? date,
+    int? ruleIndex,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#instanceIdFor, [task, date, ruleIndex]),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.method(#instanceIdFor, [task, date, ruleIndex]),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.method(#instanceIdFor, [task, date, ruleIndex]),
+            ),
+          )
+          as String);
+
+  @override
+  (_i9.CivilDay, _i7.TaskScheduleRule, int)?
+  nextOccurrenceRuleOfScheduleOnOrAfter(
+    _i7.TaskSchedule? task,
+    _i9.CivilDay? ref,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#nextOccurrenceRuleOfScheduleOnOrAfter, [
+              task,
+              ref,
+            ]),
+            returnValueForMissingStub: null,
+          )
+          as (_i9.CivilDay, _i7.TaskScheduleRule, int)?);
+
+  @override
   _i3.Stream<List<_i7.TaskSchedule>> getTasks() =>
       (super.noSuchMethod(
             Invocation.method(#getTasks, []),
@@ -100,13 +148,23 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
           as _i3.Stream<List<_i7.TaskSchedule>>);
 
   @override
-  _i3.Stream<List<_i8.TaskDelta>> getHistory() =>
+  _i3.Stream<List<_i8.TaskInstance>> getInstances() =>
+      (super.noSuchMethod(
+            Invocation.method(#getInstances, []),
+            returnValue: _i3.Stream<List<_i8.TaskInstance>>.empty(),
+            returnValueForMissingStub:
+                _i3.Stream<List<_i8.TaskInstance>>.empty(),
+          )
+          as _i3.Stream<List<_i8.TaskInstance>>);
+
+  @override
+  _i3.Stream<List<_i10.TaskDelta>> getHistory() =>
       (super.noSuchMethod(
             Invocation.method(#getHistory, []),
-            returnValue: _i3.Stream<List<_i8.TaskDelta>>.empty(),
-            returnValueForMissingStub: _i3.Stream<List<_i8.TaskDelta>>.empty(),
+            returnValue: _i3.Stream<List<_i10.TaskDelta>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i10.TaskDelta>>.empty(),
           )
-          as _i3.Stream<List<_i8.TaskDelta>>);
+          as _i3.Stream<List<_i10.TaskDelta>>);
 
   @override
   _i3.Future<void> addTask(_i7.TaskSchedule? task) =>
@@ -119,7 +177,7 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
 
   @override
   _i3.Future<void> updateTask(
-    ({_i8.TaskDelta delta, _i7.TaskSchedule newTask})? modification,
+    ({_i10.TaskDelta delta, _i7.TaskSchedule newTask})? modification,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateTask, [modification]),

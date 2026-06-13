@@ -20,6 +20,18 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
   );
 });
 
+final taskSchedulesProvider = StreamProvider<List<TaskSchedule>>((ref) {
+  final repo = ref.watch(taskRepositoryProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.getTasks();
+});
+
+final taskInstancesProvider = StreamProvider<List<TaskInstance>>((ref) {
+  final repo = ref.watch(taskRepositoryProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.getInstances();
+});
+
 class TaskRepository {
   final FirebaseFirestore _firestore;
   final String _userId;

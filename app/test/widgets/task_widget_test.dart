@@ -4,6 +4,7 @@ import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
@@ -39,6 +40,25 @@ void main() {
     ],
   );
 
+  TaskInstance createInstanceFor(TaskSchedule task) {
+    final s = task.schedules.first;
+    final date = s.scheduledDate;
+    return TaskInstance(
+      id: task.schedules.length <= 1
+          ? '${task.id}_$date'
+          : '${task.id}_${date}_0',
+      scheduleId: task.id,
+      title: task.title,
+      description: task.description,
+      scheduledDate: date,
+      startRelativeTime: s.startRelativeTime,
+      dueRelativeTime: s.dueRelativeTime,
+      isFamily: task.isFamily,
+      priority: task.priority,
+      status: 'pending',
+    );
+  }
+
   setUp(() {
     mockTaskRepository = MockTaskRepository();
     // Default completeTask to do nothing
@@ -46,13 +66,14 @@ void main() {
   });
 
   Widget createWidget(TaskSchedule task) {
+    final instance = createInstanceFor(task);
     return buildTestableWidget(
       child: Scaffold(
         body: ProviderScope(
           overrides: [
             taskRepositoryProvider.overrideWithValue(mockTaskRepository),
           ],
-          child: TaskWidget(task: task),
+          child: TaskWidget(instance: instance, schedule: task),
         ),
       ),
     );
@@ -106,7 +127,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 210));
     await tester.pump(); // Ensure listener executes
 
-    verify(mockTaskRepository.completeTask(testTask.id)).called(1);
+    verify(
+      mockTaskRepository.completeTask('${testTask.id}_2024-01-01'),
+    ).called(1);
   });
 
   testGoldens('TaskWidget animation frames', (tester) async {
@@ -138,7 +161,10 @@ void main() {
           color: Colors.white, // White background for clarity
           child: Column(
             children: [
-              TaskWidget(task: markdownTask),
+              TaskWidget(
+                instance: createInstanceFor(markdownTask),
+                schedule: markdownTask,
+              ),
               // Use a very high contrast container below
               Container(
                 key: const Key('second_item'),
@@ -230,7 +256,10 @@ void main() {
             overrides: [
               taskRepositoryProvider.overrideWithValue(mockTaskRepository),
             ],
-            child: TaskWidget(task: testTask),
+            child: TaskWidget(
+              instance: createInstanceFor(testTask),
+              schedule: testTask,
+            ),
           ),
         ),
       ),
@@ -271,7 +300,10 @@ void main() {
             overrides: [
               taskRepositoryProvider.overrideWithValue(mockTaskRepository),
             ],
-            child: TaskWidget(task: recurringTask),
+            child: TaskWidget(
+              instance: createInstanceFor(recurringTask),
+              schedule: recurringTask,
+            ),
           ),
         ),
       ),
@@ -294,7 +326,10 @@ void main() {
             overrides: [
               taskRepositoryProvider.overrideWithValue(mockTaskRepository),
             ],
-            child: TaskWidget(task: testTask),
+            child: TaskWidget(
+              instance: createInstanceFor(testTask),
+              schedule: testTask,
+            ),
           ),
         ),
       ),
@@ -328,7 +363,10 @@ void main() {
         ],
         child: Container(
           color: Colors.white,
-          child: TaskWidget(task: testTask),
+          child: TaskWidget(
+            instance: createInstanceFor(testTask),
+            schedule: testTask,
+          ),
         ),
       ),
       wrapper: l10nMaterialAppWrapper(),
@@ -369,7 +407,10 @@ void main() {
         ],
         child: Container(
           color: Colors.white,
-          child: TaskWidget(task: recurringTask),
+          child: TaskWidget(
+            instance: createInstanceFor(recurringTask),
+            schedule: recurringTask,
+          ),
         ),
       ),
       wrapper: l10nMaterialAppWrapper(),
@@ -489,15 +530,15 @@ void main() {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TaskWidget(task: task1),
+              TaskWidget(instance: createInstanceFor(task1), schedule: task1),
               const SizedBox(height: 8),
-              TaskWidget(task: task2),
+              TaskWidget(instance: createInstanceFor(task2), schedule: task2),
               const SizedBox(height: 8),
-              TaskWidget(task: task3),
+              TaskWidget(instance: createInstanceFor(task3), schedule: task3),
               const SizedBox(height: 8),
-              TaskWidget(task: task4),
+              TaskWidget(instance: createInstanceFor(task4), schedule: task4),
               const SizedBox(height: 8),
-              TaskWidget(task: task5),
+              TaskWidget(instance: createInstanceFor(task5), schedule: task5),
             ],
           ),
         ),

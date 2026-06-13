@@ -4,17 +4,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/task_schedule.dart';
 import '../logic/task_repository.dart';
-import '../logic/civil_day.dart';
-import '../logic/relative_time.dart';
 import '../screens/create_task_screen.dart';
 import 'fun_check_button.dart';
 import 'fun_delete_button.dart';
 
+import '../logic/task_instance.dart';
+
 class TaskWidget extends ConsumerStatefulWidget {
-  final TaskSchedule task;
+  final TaskInstance instance;
+  final TaskSchedule? schedule;
   final bool showEditOption;
 
-  const TaskWidget({super.key, required this.task, this.showEditOption = true});
+  const TaskWidget({
+    super.key,
+    required this.instance,
+    this.schedule,
+    this.showEditOption = true,
+  });
 
   @override
   ConsumerState<TaskWidget> createState() => _TaskWidgetState();
@@ -74,9 +80,11 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         if (_isDeleting) {
-          ref.read(taskRepositoryProvider)!.deleteTask(widget.task.id);
+          ref
+              .read(taskRepositoryProvider)!
+              .deleteTask(widget.instance.scheduleId);
         } else {
-          ref.read(taskRepositoryProvider)!.completeTask(widget.task.id);
+          ref.read(taskRepositoryProvider)!.completeTask(widget.instance.id);
         }
       }
     });
@@ -87,7 +95,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
   @override
   void didUpdateWidget(TaskWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.task.assignedUserId != oldWidget.task.assignedUserId) {
+    if (widget.instance.assignedUserId != oldWidget.instance.assignedUserId) {
       _loadAssigneeName();
     }
   }
@@ -130,7 +138,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
   }
 
   Future<void> _loadAssigneeName() async {
-    final assigneeId = widget.task.assignedUserId;
+    final assigneeId = widget.instance.assignedUserId;
     if (assigneeId == null) {
       setState(() {
         _assigneeName = null;
@@ -285,23 +293,32 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     );
   }
 
+  int _getRuleIndex(TaskInstance instance, TaskSchedule schedule) {
+    if (schedule.schedules.length <= 1) return 0;
+    final parts = instance.id.split('_');
+    if (parts.length >= 3) {
+      final idxPart = parts.last;
+      final idx = int.tryParse(idxPart);
+      if (idx != null && idx >= 0 && idx < schedule.schedules.length) {
+        return idx;
+      }
+    }
+    return 0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final schedule = widget.task.schedules.isNotEmpty
-        ? widget.task.schedules[widget.task.activeOccurrenceIndex <
-                  widget.task.schedules.length
-              ? widget.task.activeOccurrenceIndex
-              : 0]
+    final ruleIdx = widget.schedule != null
+        ? _getRuleIndex(widget.instance, widget.schedule!)
+        : 0;
+    final schedule =
+        widget.schedule != null && ruleIdx < widget.schedule!.schedules.length
+        ? widget.schedule!.schedules[ruleIdx]
         : OneOffSchedule(
-            date: CivilDay.fromDateTime(DateTime.now()),
-            startRelativeTime: RelativeTime(
-              dayOffset: 0,
-              time: const TimeOfDay(hour: 9, minute: 0),
-            ),
-            dueRelativeTime: RelativeTime(
-              dayOffset: 0,
-              time: const TimeOfDay(hour: 17, minute: 0),
-            ),
+            date: widget.instance.scheduledDate,
+            startRelativeTime: widget.instance.startRelativeTime,
+            dueRelativeTime: widget.instance.dueRelativeTime,
+            notificationRelativeTime: widget.instance.notificationRelativeTime,
           );
 
     return AnimatedBuilder(
@@ -343,16 +360,16 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         title: Padding(
           padding: const EdgeInsets.only(bottom: 4.0),
           child: SelectableText(
-            widget.task.title,
+            widget.instance.title,
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (widget.task.description.isNotEmpty) ...[
+            if (widget.instance.description.isNotEmpty) ...[
               const SizedBox(height: 4),
-              MarkdownBody(data: widget.task.description, selectable: true),
+              MarkdownBody(data: widget.instance.description, selectable: true),
             ],
             const SizedBox(height: 8),
             Wrap(
@@ -362,16 +379,18 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                 // Scope (Family vs Personal)
                 _buildBadge(
                   context,
-                  icon: widget.task.isFamily ? Icons.people_alt : Icons.person,
-                  label: widget.task.isFamily ? 'Family' : 'Personal',
+                  icon: widget.instance.isFamily
+                      ? Icons.people_alt
+                      : Icons.person,
+                  label: widget.instance.isFamily ? 'Family' : 'Personal',
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 // Priority
                 _buildBadge(
                   context,
-                  icon: _getPriorityIcon(widget.task.priority),
-                  label: _getPriorityLabel(widget.task.priority),
-                  color: _getPriorityColor(context, widget.task.priority),
+                  icon: _getPriorityIcon(widget.instance.priority),
+                  label: _getPriorityLabel(widget.instance.priority),
+                  color: _getPriorityColor(context, widget.instance.priority),
                 ),
                 // Schedule
                 _buildBadge(
@@ -381,24 +400,25 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 // Effort/Duration (if any)
-                if (widget.task.estimatedDuration != null)
+                if (widget.schedule?.estimatedDuration != null)
                   _buildBadge(
                     context,
                     icon: Icons.timer_outlined,
-                    label: _formatDuration(widget.task.estimatedDuration!),
+                    label: _formatDuration(widget.schedule!.estimatedDuration!),
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 // Missed Policy (if recurring)
-                if (schedule is! OneOffSchedule)
+                if (schedule is! OneOffSchedule && widget.schedule != null)
                   _buildBadge(
                     context,
                     icon: Icons.refresh,
                     label:
-                        'Policy: ${_getMissedPolicyLabel(widget.task.missedPolicy)}',
+                        'Policy: ${_getMissedPolicyLabel(widget.schedule!.missedPolicy)}',
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 // Assignee (if family & assigned)
-                if (widget.task.isFamily && widget.task.assignedUserId != null)
+                if (widget.instance.isFamily &&
+                    widget.instance.assignedUserId != null)
                   _buildBadge(
                     context,
                     icon: Icons.assignment_ind,
@@ -416,7 +436,9 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (widget.showEditOption && schedule is OneOffSchedule) ...[
+            if (widget.showEditOption &&
+                widget.schedule != null &&
+                schedule is OneOffSchedule) ...[
               IconButton(
                 key: const Key('edit_pencil_button'),
                 icon: const Icon(Icons.edit, size: 20),
@@ -426,7 +448,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          CreateTaskScreen(taskToEdit: widget.task),
+                          CreateTaskScreen(taskToEdit: widget.schedule!),
                     ),
                   );
                 },

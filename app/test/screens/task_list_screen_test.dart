@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
@@ -11,6 +12,7 @@ import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/screens/home_screen.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -26,7 +28,69 @@ void main() {
   late MockAuthRepository mockAuthRepository;
   late MockTaskRepository mockTaskRepository;
   late BehaviorSubject<List<TaskSchedule>> tasksSubject;
+  late BehaviorSubject<List<TaskInstance>> instancesSubject;
   late BehaviorSubject<List<TaskDelta>> historySubject;
+  StreamSubscription? tasksSub;
+  VoidCallback? clockListener;
+
+  List<TaskInstance> mockInstancesFromSchedules(
+    List<TaskSchedule> schedules,
+    DateTime todayDate,
+  ) {
+    final today = CivilDay.fromDateTime(todayDate);
+    final List<TaskInstance> list = [];
+    for (final task in schedules) {
+      for (int i = 0; i < task.schedules.length; i++) {
+        final s = task.schedules[i];
+        if (s is OneOffSchedule) {
+          final startsDate = s.date.addDays(s.startRelativeTime.dayOffset);
+          if (!today.isBefore(startsDate)) {
+            list.add(
+              TaskInstance(
+                id: task.schedules.length <= 1
+                    ? '${task.id}_${s.date}'
+                    : '${task.id}_${s.date}_$i',
+                scheduleId: task.id,
+                title: task.title,
+                description: task.description,
+                scheduledDate: s.date,
+                startRelativeTime: s.startRelativeTime,
+                dueRelativeTime: s.dueRelativeTime,
+                isFamily: task.isFamily,
+                priority: task.priority,
+                status: 'pending',
+              ),
+            );
+          }
+        } else if (s is DailySchedule) {
+          if (!today.isBefore(s.startDate)) {
+            list.add(
+              TaskInstance(
+                id: task.schedules.length <= 1
+                    ? '${task.id}_$today'
+                    : '${task.id}_${today}_$i',
+                scheduleId: task.id,
+                title: task.title,
+                description: task.description,
+                scheduledDate: today,
+                startRelativeTime: s.startRelativeTime,
+                dueRelativeTime: s.dueRelativeTime,
+                isFamily: task.isFamily,
+                priority: task.priority,
+                status: 'pending',
+              ),
+            );
+          }
+        }
+      }
+    }
+    return list;
+  }
+
+  void updateInstances() {
+    final list = mockInstancesFromSchedules(tasksSubject.value, AppClock.now);
+    instancesSubject.add(list);
+  }
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
@@ -53,12 +117,23 @@ void main() {
         ],
       ),
     ];
-    tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded(initialTasks);
-    historySubject = BehaviorSubject<List<TaskDelta>>.seeded([]);
+    tasksSubject = BehaviorSubject<List<TaskSchedule>>(sync: true)
+      ..add(initialTasks);
+    instancesSubject = BehaviorSubject<List<TaskInstance>>(sync: true)
+      ..add(mockInstancesFromSchedules(initialTasks, AppClock.now));
+    historySubject = BehaviorSubject<List<TaskDelta>>(sync: true)..add([]);
+
+    // Listen to changes to auto-update instances
+    tasksSub = tasksSubject.listen((_) => updateInstances());
+    clockListener = () => updateInstances();
+    AppClock.timeNotifier.addListener(clockListener!);
 
     // Default stubbing
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
     when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubject.stream);
+    when(
+      mockTaskRepository.getInstances(),
+    ).thenAnswer((_) => instancesSubject.stream);
     when(
       mockTaskRepository.getHistory(),
     ).thenAnswer((_) => historySubject.stream);
@@ -71,7 +146,12 @@ void main() {
   });
 
   tearDown(() {
+    tasksSub?.cancel();
+    if (clockListener != null) {
+      AppClock.timeNotifier.removeListener(clockListener!);
+    }
     tasksSubject.close();
+    instancesSubject.close();
     historySubject.close();
   });
 
@@ -123,6 +203,8 @@ void main() {
       'New TaskSchedule Description',
     );
     await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
     await tester.pumpAndSettle();
 
     // The newly created task defaults to starting today (no snooze).
@@ -202,12 +284,12 @@ void main() {
     await robot.tapCheckbox();
 
     // Verify completeTask was NOT called immediately
-    verifyNever(mockTaskRepository.completeTask('1'));
+    verifyNever(mockTaskRepository.completeTask('1_2024-01-01'));
 
     await robot.waitForCompletion();
 
     // Verify completeTask was called
-    verify(mockTaskRepository.completeTask('1')).called(1);
+    verify(mockTaskRepository.completeTask('1_2024-01-01')).called(1);
   });
 
   testWidgets(
@@ -237,7 +319,9 @@ void main() {
 
       tasksSubject.add([recurringTask]);
 
-      when(mockTaskRepository.completeTask('recur-1')).thenAnswer((_) async {
+      when(mockTaskRepository.completeTask('recur-1_2026-03-08')).thenAnswer((
+        _,
+      ) async {
         final advancedTask = TaskSchedule(
           id: 'recur-1',
           title: 'Daily Repeating TaskSchedule',
@@ -271,7 +355,8 @@ void main() {
 
       await robot.tapCheckbox();
       await robot.waitForCompletion();
-
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
       await tester.pumpAndSettle();
 
       robot.expectGone();
@@ -458,7 +543,9 @@ void main() {
       tasksSubject.add([task1, task2]);
 
       // Simulate deletion when completeTask is called
-      when(mockTaskRepository.completeTask('1')).thenAnswer((_) async {
+      when(mockTaskRepository.completeTask('1_2024-01-01')).thenAnswer((
+        _,
+      ) async {
         tasksSubject.add([task2]); // Remove task 1
       });
 
@@ -476,10 +563,12 @@ void main() {
 
       await robot1.waitForCompletion();
       // Pump again to process the stream update and rebuild UI
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       // Verify completeTask was called
-      verify(mockTaskRepository.completeTask('1')).called(1);
+      verify(mockTaskRepository.completeTask('1_2024-01-01')).called(1);
 
       // Verify TaskSchedule 1 is gone (due to stream update)
       robot1.expectGone();
@@ -503,6 +592,7 @@ void main() {
 
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
     when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([]));
+    when(mockTaskRepository.getInstances()).thenAnswer((_) => Stream.value([]));
     when(mockTaskRepository.getHistory()).thenAnswer((_) => Stream.value([]));
 
     await tester.pumpWidgetBuilder(
