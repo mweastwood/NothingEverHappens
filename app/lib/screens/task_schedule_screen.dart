@@ -42,7 +42,10 @@ class TaskScheduleScreen extends ConsumerWidget {
 
                     final allTasks = snapshot.data ?? [];
                     final recurringTasks = allTasks
-                        .where((task) => task.schedule is! OneOffSchedule)
+                        .where(
+                          (task) =>
+                              task.schedules.any((s) => s is! OneOffSchedule),
+                        )
                         .toList();
 
                     if (recurringTasks.isEmpty) {

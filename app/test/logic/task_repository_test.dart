@@ -23,17 +23,19 @@ void main() {
       id: 'task-1',
       title: 'Test Task',
       description: 'Test Description',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: OneOffSchedule(
-        date: const CivilDay(year: 2024, month: 1, day: 1),
-      ),
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
     );
 
     test('addTask adds a task and history to Firestore', () async {
@@ -195,23 +197,22 @@ void main() {
       id: 'notif-task-1',
       title: 'Notify Me',
       description: 'Check notifications',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: DailySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-      ),
-      dailyTimes: const [
-        DailyOccurrenceTime(
-          startTime: TimeOfDay(hour: 9, minute: 0),
-          dueTime: TimeOfDay(hour: 17, minute: 0),
-          notificationTime: TimeOfDay(hour: 8, minute: 45),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          notificationRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 8, minute: 45),
+          ),
         ),
       ],
     );
@@ -225,9 +226,10 @@ void main() {
       expect(
         notificationService
             .scheduledTasks[notifTask.id]!
-            .dailyTimes
+            .schedules
             .first
-            .notificationTime,
+            .notificationRelativeTime
+            ?.time,
         equals(const TimeOfDay(hour: 8, minute: 45)),
       );
     });
@@ -239,14 +241,22 @@ void main() {
         id: notifTask.id,
         title: 'Notify Me (Updated)',
         description: notifTask.description,
-        startRelativeTime: notifTask.startRelativeTime,
-        dueRelativeTime: notifTask.dueRelativeTime,
-        schedule: notifTask.schedule,
-        dailyTimes: const [
-          DailyOccurrenceTime(
-            startTime: TimeOfDay(hour: 9, minute: 0),
-            dueTime: TimeOfDay(hour: 17, minute: 0),
-            notificationTime: TimeOfDay(hour: 8, minute: 30), // updated
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            notificationRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 30),
+            ),
           ),
         ],
       );
@@ -260,9 +270,7 @@ void main() {
           expiresAt: DateTime.now().add(const Duration(days: 90)),
           operation: 'update',
           changedFields: {
-            'dailyTimes': updatedTask.dailyTimes
-                .map((t) => t.toJson())
-                .toList(),
+            'schedules': updatedTask.schedules.map((s) => s.toJson()).toList(),
           },
           userId: userId,
         ),
@@ -276,9 +284,10 @@ void main() {
       expect(
         notificationService
             .scheduledTasks[notifTask.id]!
-            .dailyTimes
+            .schedules
             .first
-            .notificationTime,
+            .notificationRelativeTime
+            ?.time,
         equals(const TimeOfDay(hour: 8, minute: 30)),
       );
     });

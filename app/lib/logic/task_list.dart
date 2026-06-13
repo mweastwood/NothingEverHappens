@@ -39,19 +39,15 @@ class TaskList {
     );
 
     final taskIndex = activeTasks.indexWhere((t) => t.id == taskId);
-    if (taskIndex == -1) {
-      // Fallback for backward compatibility (e.g. empty activeTasks context)
-      return TaskList(
-        activeTasks.where((t) => t.id != taskId).toList(),
-        history: [...history, delta],
-      );
-    }
+    if (taskIndex == -1) return this;
 
     final task = activeTasks[taskIndex];
     final today = CivilDay.fromDateTime(now);
 
     List<TaskSchedule> newSchedules = task.schedules;
     int newActiveOccurrenceIndex = task.activeOccurrenceIndex;
+
+    bool shouldRemoveTask = false;
 
     // Check if all schedules represent the same recurrence rule scheduled for the same date.
     // If so, we treat them as slot-based (like legacy dailyTimes).
@@ -91,8 +87,6 @@ class TaskList {
       isSlotBased = sameRecurrence && task.schedules.length > 1;
     }
 
-    bool shouldRemoveTask = false;
-
     if (isSlotBased) {
       if (newActiveOccurrenceIndex + 1 < task.schedules.length) {
         newActiveOccurrenceIndex++;
@@ -113,9 +107,8 @@ class TaskList {
         }
       }
     } else {
-      // Non-slot-based:
-      // - Advance repeating schedules that occurred on or before today.
-      // - Remove one-off schedules that occurred on or before today.
+      // Advance repeating schedules that occurred on or before today.
+      // Remove one-off schedules that occurred on or before today.
       final List<TaskSchedule> list = [];
       for (final s in task.schedules) {
         if (s is OneOffSchedule) {
@@ -159,7 +152,6 @@ class TaskList {
       title: task.title,
       description: task.description,
       schedules: newSchedules,
-      dailyTimes: task.dailyTimes,
       activeOccurrenceIndex: newActiveOccurrenceIndex,
       estimatedDuration: task.estimatedDuration,
       missedPolicy: task.missedPolicy,

@@ -61,54 +61,60 @@ void main() {
       id: '1',
       title: 'Daily Task Title',
       description: 'Daily Task Desc',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: DailySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 2,
-      ),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 2,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
     );
 
     final weeklyTask = Task(
       id: '2',
       title: 'Weekly Task Title',
       description: 'Weekly Task Desc',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 10, minute: 30),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 12, minute: 0),
-      ),
-      schedule: WeeklySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-        daysOfWeek: {1, 3},
-      ),
+      schedules: [
+        WeeklySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          daysOfWeek: const {1, 3},
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 30),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 12, minute: 0),
+          ),
+        ),
+      ],
     );
 
     final oneOffTask = Task(
       id: '3',
       title: 'One-off Task',
       description: 'Should not appear',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: OneOffSchedule(
-        date: const CivilDay(year: 2024, month: 1, day: 1),
-      ),
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
     );
 
     tasksSubject.add([dailyTask, weeklyTask, oneOffTask]);
@@ -163,37 +169,41 @@ void main() {
       id: '1',
       title: 'Daily Exercises',
       description: 'Run 5km and do pushups',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 7, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 8, minute: 30),
-      ),
-      schedule: DailySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-      ),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 7, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 8, minute: 30),
+          ),
+        ),
+      ],
     );
 
     final weeklyTask = Task(
       id: '2',
       title: 'Weekly Cleaning',
       description: 'Vacuum the house and dust the shelves',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 10, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 12, minute: 0),
-      ),
-      schedule: WeeklySchedule(
-        startDate: const CivilDay(year: 2024, month: 1, day: 1),
-        interval: 1,
-        daysOfWeek: {6, 7}, // Sat, Sun
-      ),
+      schedules: [
+        WeeklySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          daysOfWeek: const {6, 7},
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 12, minute: 0),
+          ),
+        ),
+      ],
     );
 
     when(
@@ -222,18 +232,20 @@ void main() {
         id: 'delete-recurring-task-1',
         title: 'Daily Exercises',
         description: 'Run 5km and do pushups',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 7, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 8, minute: 30),
-        ),
-        schedule: DailySchedule(
-          startDate: const CivilDay(year: 2024, month: 1, day: 1),
-          interval: 1,
-        ),
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 7, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 30),
+            ),
+          ),
+        ],
       );
 
       tasksSubject.add([dailyTask]);

@@ -38,17 +38,19 @@ void main() {
         id: '1',
         title: 'Mock Task',
         description: 'Mock Description',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2024, month: 1, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
       ),
     ];
     tasksSubject = BehaviorSubject<List<Task>>.seeded(initialTasks);
@@ -217,18 +219,20 @@ void main() {
         id: 'recur-1',
         title: 'Daily Repeating Task',
         description: 'Do daily',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: DailySchedule(
-          startDate: const CivilDay(year: 2026, month: 3, day: 8),
-          interval: 1,
-        ),
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 3, day: 8),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
       );
 
       tasksSubject.add([recurringTask]);
@@ -238,18 +242,20 @@ void main() {
           id: 'recur-1',
           title: 'Daily Repeating Task',
           description: 'Do daily',
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-          schedule: DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 3, day: 9),
-            interval: 1,
-          ),
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 3, day: 9),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
         );
         tasksSubject.add([advancedTask]);
       });
@@ -284,34 +290,38 @@ void main() {
       id: 'today-task',
       title: 'Today Task',
       description: 'Due today',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: OneOffSchedule(
-        date: const CivilDay(year: 2026, month: 3, day: 8),
-      ),
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
     );
 
     final tomorrowTask = Task(
       id: 'tomorrow-task',
       title: 'Tomorrow Task',
       description: 'Due tomorrow',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: OneOffSchedule(
-        date: const CivilDay(year: 2026, month: 3, day: 9),
-      ),
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 3, day: 9),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
     );
 
     tasksSubject.add([todayTask, tomorrowTask]);
@@ -337,17 +347,19 @@ void main() {
         id: 'active-one-off',
         title: 'Active One-Off',
         description: 'Starts today, due tomorrow',
-        startRelativeTime: const RelativeTime(
-          dayOffset: -1, // starts 1 day before due date
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 3, day: 9), // due tomorrow
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 3, day: 9),
+            startRelativeTime: const RelativeTime(
+              dayOffset: -1,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
       );
 
       tasksSubject.add([activeOneOffTask]);
@@ -371,17 +383,19 @@ void main() {
         id: 'snoozed-one-off',
         title: 'Snoozed One-Off',
         description: 'Due today, starts tomorrow (snoozed)',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 1, // starts 1 day after due date (snoozed)
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 3, day: 8), // due today
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 3, day: 8),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 1,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
       );
 
       tasksSubject.add([snoozedOneOffTask]);
@@ -404,33 +418,37 @@ void main() {
         id: '1',
         title: 'Task 1',
         description: 'Desc 1',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2024, month: 1, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
       );
       final task2 = Task(
         id: '2',
         title: 'Task 2',
         description: 'Desc 2',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2024, month: 1, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
       );
 
       tasksSubject.add([task1, task2]);

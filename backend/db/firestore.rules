@@ -76,11 +76,11 @@ service cloud.firestore {
       match /tasks/{taskId} {
         allow read: if isFamilyMember();
         allow create: if isFamilyParent();
-        allow delete: if isFamilyParent() || (isFamilyMember() && resource.data.schedule.type == 'oneOff');
+        allow delete: if isFamilyParent() || (isFamilyMember() && resource.data.schedules[0].type == 'oneOff');
         allow update: if isFamilyParent() || (
           isFamilyMember() &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-            'title', 'description', 'estimatedDuration', 'priority', 'isFamily', 'missedPolicy', 'isMaster', 'dailyTimes', 'cycleId'
+            'title', 'description', 'estimatedDuration', 'priority', 'isFamily', 'missedPolicy', 'isMaster', 'cycleId'
           ])
         );
       }

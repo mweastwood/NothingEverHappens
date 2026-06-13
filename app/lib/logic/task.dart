@@ -33,63 +33,6 @@ class Task {
   /// The list of recurrence schedules for the task.
   List<TaskSchedule> schedules;
 
-  /// Backwards compatibility getters for start/due relative times
-  RelativeTime get startRelativeTime {
-    if (schedules.isEmpty) {
-      return const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      );
-    }
-    final index =
-        activeOccurrenceIndex >= 0 && activeOccurrenceIndex < schedules.length
-        ? activeOccurrenceIndex
-        : 0;
-    return schedules[index].startRelativeTime;
-  }
-
-  RelativeTime get dueRelativeTime {
-    if (schedules.isEmpty) {
-      return const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      );
-    }
-    final index =
-        activeOccurrenceIndex >= 0 && activeOccurrenceIndex < schedules.length
-        ? activeOccurrenceIndex
-        : 0;
-    return schedules[index].dueRelativeTime;
-  }
-
-  /// Backwards compatibility getter for schedule
-  TaskSchedule get schedule => schedules.isNotEmpty
-      ? schedules[activeOccurrenceIndex < schedules.length
-            ? activeOccurrenceIndex
-            : 0]
-      : OneOffSchedule(
-          date: CivilDay.fromDateTime(DateTime.now()),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-        );
-
-  /// The list of daily occurrence times for tasks scheduled multiple times per day.
-  List<DailyOccurrenceTime> get dailyTimes {
-    return schedules.map((s) {
-      return DailyOccurrenceTime(
-        startTime: s.startRelativeTime.time,
-        dueTime: s.dueRelativeTime.time,
-        notificationTime: s.notificationRelativeTime?.time,
-      );
-    }).toList();
-  }
-
   /// The index of the currently active occurrence time in [dailyTimes].
   int activeOccurrenceIndex;
 
@@ -127,12 +70,7 @@ class Task {
     required this.id,
     required this.title,
     required this.description,
-    List<TaskSchedule>? schedules,
-    // Deprecated compatibility arguments
-    RelativeTime? startRelativeTime,
-    RelativeTime? dueRelativeTime,
-    TaskSchedule? schedule,
-    List<DailyOccurrenceTime> dailyTimes = const [],
+    required this.schedules,
     this.activeOccurrenceIndex = 0,
     this.estimatedDuration,
     this.missedPolicy = MissedPolicy.rollover,
@@ -144,65 +82,21 @@ class Task {
     this.cycleId,
     this.preferredBy = const {},
     this.assignedUserId,
-  }) : schedules =
-           schedules ??
-           _migrateSchedules(
-             schedule: schedule,
-             dailyTimes: dailyTimes,
-             startRelativeTime: startRelativeTime,
-             dueRelativeTime: dueRelativeTime,
-           );
-
-  static List<TaskSchedule> _migrateSchedules({
-    TaskSchedule? schedule,
-    List<DailyOccurrenceTime> dailyTimes = const [],
-    RelativeTime? startRelativeTime,
-    RelativeTime? dueRelativeTime,
-  }) {
-    if (schedule != null) {
-      final start = startRelativeTime ?? schedule.startRelativeTime;
-      final due = dueRelativeTime ?? schedule.dueRelativeTime;
-      if (dailyTimes.isNotEmpty) {
-        return dailyTimes.map((dt) {
-          return schedule.copyWithTiming(
-            startRelativeTime: RelativeTime(dayOffset: 0, time: dt.startTime),
-            dueRelativeTime: RelativeTime(dayOffset: 0, time: dt.dueTime),
-            notificationRelativeTime: dt.notificationTime != null
-                ? RelativeTime(dayOffset: 0, time: dt.notificationTime!)
-                : null,
-          );
-        }).toList();
-      } else {
-        return [
-          schedule.copyWithTiming(
-            startRelativeTime: start,
-            dueRelativeTime: due,
-          ),
-        ];
-      }
-    }
-    return [
-      OneOffSchedule(
-        date: CivilDay.fromDateTime(DateTime.now()),
-        startRelativeTime:
-            startRelativeTime ??
-            const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
-            ),
-        dueRelativeTime:
-            dueRelativeTime ??
-            const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
-            ),
-      ),
-    ];
-  }
+  });
 
   /// The starting day of this occurrence.
   CivilDay get startDate {
-    final startDateTime = startRelativeTime.referenceTo(schedule.scheduledDate);
+    if (schedules.isEmpty) {
+      return CivilDay.fromDateTime(AppClock.now);
+    }
+    final index =
+        activeOccurrenceIndex >= 0 && activeOccurrenceIndex < schedules.length
+        ? activeOccurrenceIndex
+        : 0;
+    final currentSchedule = schedules[index];
+    final startDateTime = currentSchedule.startRelativeTime.referenceTo(
+      currentSchedule.scheduledDate,
+    );
     return CivilDay.fromDateTime(startDateTime);
   }
 
@@ -214,15 +108,6 @@ class Task {
     if (data == null) {
       throw Exception('Data is null for document ${snapshot.id}');
     }
-    final dailyTimesRaw = data['dailyTimes'] as List<dynamic>?;
-    final dailyTimes = dailyTimesRaw != null
-        ? dailyTimesRaw
-              .map(
-                (item) =>
-                    DailyOccurrenceTime.fromJson(item as Map<String, dynamic>),
-              )
-              .toList()
-        : <DailyOccurrenceTime>[];
 
     final missedPolicyStr = data['missedPolicy'] as String? ?? 'rollover';
     final missedPolicy = MissedPolicy.values.firstWhere(
@@ -247,83 +132,20 @@ class Task {
     final preferredBy = preferredByRaw.map((k, v) => MapEntry(k, v as bool));
     final assignedUserId = data['assignedUserId'] as String?;
 
-    // Load schedules or migrate
-    final List<TaskSchedule> schedules;
     final schedulesRaw = data['schedules'] as List<dynamic>?;
-    if (schedulesRaw != null) {
-      schedules = schedulesRaw
-          .map((item) => TaskSchedule.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } else {
-      // Migrate from single schedule
-      final singleScheduleJson = data['schedule'] as Map<String, dynamic>?;
-      if (singleScheduleJson != null) {
-        final startRel = data['startRelativeTime'] != null
-            ? RelativeTime.fromJson(
-                data['startRelativeTime'] as Map<String, dynamic>,
+    final schedules = schedulesRaw != null
+        ? schedulesRaw
+              .map(
+                (item) => TaskSchedule.fromJson(item as Map<String, dynamic>),
               )
-            : const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              );
-        final dueRel = data['dueRelativeTime'] != null
-            ? RelativeTime.fromJson(
-                data['dueRelativeTime'] as Map<String, dynamic>,
-              )
-            : const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              );
-
-        if (dailyTimes.isNotEmpty) {
-          schedules = [];
-          for (final dailyTime in dailyTimes) {
-            final scheduleJson = Map<String, dynamic>.from(singleScheduleJson);
-            scheduleJson['startRelativeTime'] = RelativeTime(
-              dayOffset: 0,
-              time: dailyTime.startTime,
-            ).toJson();
-            scheduleJson['dueRelativeTime'] = RelativeTime(
-              dayOffset: 0,
-              time: dailyTime.dueTime,
-            ).toJson();
-            if (dailyTime.notificationTime != null) {
-              scheduleJson['notificationRelativeTime'] = RelativeTime(
-                dayOffset: 0,
-                time: dailyTime.notificationTime!,
-              ).toJson();
-            }
-            schedules.add(TaskSchedule.fromJson(scheduleJson));
-          }
-        } else {
-          final scheduleJson = Map<String, dynamic>.from(singleScheduleJson);
-          scheduleJson['startRelativeTime'] = startRel.toJson();
-          scheduleJson['dueRelativeTime'] = dueRel.toJson();
-          schedules = [TaskSchedule.fromJson(scheduleJson)];
-        }
-      } else {
-        schedules = [
-          OneOffSchedule(
-            date: CivilDay.fromDateTime(DateTime.now()),
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
-            ),
-          ),
-        ];
-      }
-    }
+              .toList()
+        : <TaskSchedule>[];
 
     return Task(
       id: snapshot.id,
       title: data['title'] as String? ?? 'Untitled',
       description: data['description'] as String? ?? '',
       schedules: schedules,
-      dailyTimes: dailyTimes,
       activeOccurrenceIndex: data['activeOccurrenceIndex'] as int? ?? 0,
       estimatedDuration: data['estimatedDuration'] != null
           ? Duration(minutes: data['estimatedDuration'] as int)
@@ -345,11 +167,6 @@ class Task {
       'title': title,
       'description': description,
       'schedules': schedules.map((s) => s.toJson()).toList(),
-      // Backwards compatibility fields
-      'schedule': schedule.toJson(),
-      'startRelativeTime': startRelativeTime.toJson(),
-      'dueRelativeTime': dueRelativeTime.toJson(),
-      'dailyTimes': dailyTimes.map((t) => t.toJson()).toList(),
       'activeOccurrenceIndex': activeOccurrenceIndex,
       'estimatedDuration': estimatedDuration?.inMinutes,
       'missedPolicy': missedPolicy.name,
@@ -370,12 +187,7 @@ class Task {
   TaskModification edit({
     required String newTitle,
     required String newDescription,
-    List<TaskSchedule>? newSchedules,
-    // Deprecated params for compatibility
-    TaskSchedule? newSchedule,
-    List<DailyOccurrenceTime>? newDailyTimes,
-    RelativeTime? newStartRelativeTime,
-    RelativeTime? newDueRelativeTime,
+    required List<TaskSchedule> newSchedules,
     required Duration? newEstimatedDuration,
     required String userId,
     required MissedPolicy newMissedPolicy,
@@ -387,24 +199,10 @@ class Task {
     Map<String, bool>? newPreferredBy,
     String? newAssignedUserId,
   }) {
-    final finalSchedules =
-        newSchedules ??
-        (newSchedule != null
-            ? [
-                newSchedule.copyWithTiming(
-                  startRelativeTime:
-                      newStartRelativeTime ?? newSchedule.startRelativeTime,
-                  dueRelativeTime:
-                      newDueRelativeTime ?? newSchedule.dueRelativeTime,
-                ),
-              ]
-            : schedules);
-
     final newTask = _copyWith(
       title: newTitle,
       description: newDescription,
-      schedules: finalSchedules,
-      dailyTimes: newDailyTimes ?? dailyTimes,
+      schedules: newSchedules,
       estimatedDuration: newEstimatedDuration,
       clearEstimatedDuration: newEstimatedDuration == null,
       missedPolicy: newMissedPolicy,
@@ -428,40 +226,12 @@ class Task {
         .map((s) => s.toJson())
         .toList()
         .toString();
-    final newSchedulesJson = finalSchedules
+    final newSchedulesJson = newSchedules
         .map((s) => s.toJson())
         .toList()
         .toString();
     if (oldSchedulesJson != newSchedulesJson) {
-      changes['schedules'] = finalSchedules.map((s) => s.toJson()).toList();
-    }
-
-    if (newStartRelativeTime != null &&
-        newStartRelativeTime != startRelativeTime) {
-      changes['startRelativeTime'] = newStartRelativeTime.toJson();
-    }
-    if (newDueRelativeTime != null && newDueRelativeTime != dueRelativeTime) {
-      changes['dueRelativeTime'] = newDueRelativeTime.toJson();
-    }
-    if (newSchedule != null) {
-      final oldScheduleJson = schedule.toJson();
-      final newScheduleJson = newSchedule.toJson();
-      if (oldScheduleJson.toString() != newScheduleJson.toString()) {
-        changes['schedule'] = newScheduleJson;
-      }
-    }
-    if (newDailyTimes != null) {
-      final oldDailyTimesJson = dailyTimes
-          .map((t) => t.toJson())
-          .toList()
-          .toString();
-      final newDailyTimesJson = newDailyTimes
-          .map((t) => t.toJson())
-          .toList()
-          .toString();
-      if (oldDailyTimesJson != newDailyTimesJson) {
-        changes['dailyTimes'] = newDailyTimes.map((t) => t.toJson()).toList();
-      }
+      changes['schedules'] = newSchedules.map((s) => s.toJson()).toList();
     }
 
     if (estimatedDuration != newEstimatedDuration) {
@@ -648,7 +418,6 @@ class Task {
     String? title,
     String? description,
     List<TaskSchedule>? schedules,
-    List<DailyOccurrenceTime>? dailyTimes,
     int? activeOccurrenceIndex,
     Duration? estimatedDuration,
     bool clearEstimatedDuration = false,
@@ -670,7 +439,6 @@ class Task {
       title: title ?? this.title,
       description: description ?? this.description,
       schedules: schedules ?? this.schedules,
-      dailyTimes: dailyTimes ?? this.dailyTimes,
       activeOccurrenceIndex:
           activeOccurrenceIndex ?? this.activeOccurrenceIndex,
       estimatedDuration: clearEstimatedDuration
@@ -711,7 +479,15 @@ class Task {
 
   /// Checks if the task is overdue at [current] time.
   bool isOverdue(DateTime current) {
-    final dueDateTime = dueRelativeTime.referenceTo(schedule.scheduledDate);
+    if (schedules.isEmpty) return false;
+    final index =
+        activeOccurrenceIndex >= 0 && activeOccurrenceIndex < schedules.length
+        ? activeOccurrenceIndex
+        : 0;
+    final currentSchedule = schedules[index];
+    final dueDateTime = currentSchedule.dueRelativeTime.referenceTo(
+      currentSchedule.scheduledDate,
+    );
     return current.isAfter(dueDateTime);
   }
 }

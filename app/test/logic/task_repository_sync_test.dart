@@ -37,17 +37,19 @@ void main() {
         id: 't-personal',
         title: 'Personal task',
         description: '',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         isFamily: false,
       );
       await repository.addTask(personalTask);
@@ -57,17 +59,19 @@ void main() {
         id: 't-family',
         title: 'Family task',
         description: '',
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
-        schedule: OneOffSchedule(
-          date: const CivilDay(year: 2026, month: 6, day: 1),
-        ),
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
         isFamily: true,
       );
       await repository.addTask(familyTask);
@@ -88,17 +92,19 @@ void main() {
       id: 't-migrate',
       title: 'Migrating task',
       description: '',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: OneOffSchedule(
-        date: const CivilDay(year: 2026, month: 6, day: 1),
-      ),
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
       isFamily: false,
     );
     await repository.addTask(task);
@@ -117,9 +123,7 @@ void main() {
       id: task.id,
       title: task.title,
       description: task.description,
-      startRelativeTime: task.startRelativeTime,
-      dueRelativeTime: task.dueRelativeTime,
-      schedule: task.schedule,
+      schedules: task.schedules,
       isFamily: true,
     );
     final delta = TaskDelta(
@@ -160,17 +164,19 @@ void main() {
       id: 't-migrate',
       title: 'Migrating task',
       description: '',
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
-      schedule: OneOffSchedule(
-        date: const CivilDay(year: 2026, month: 6, day: 1),
-      ),
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
       isFamily: true,
     );
     await repository.addTask(task);
@@ -189,9 +195,7 @@ void main() {
       id: task.id,
       title: task.title,
       description: task.description,
-      startRelativeTime: task.startRelativeTime,
-      dueRelativeTime: task.dueRelativeTime,
-      schedule: task.schedule,
+      schedules: task.schedules,
       isFamily: false,
     );
     final delta = TaskDelta(
