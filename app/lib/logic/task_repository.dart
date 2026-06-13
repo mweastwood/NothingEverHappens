@@ -66,7 +66,8 @@ class TaskRepository {
         );
   }
 
-  // CollectionReference<TaskInstance> get _instancesRef => _instancesRefForUser(_userId);
+  CollectionReference<TaskInstance> get _instancesRef =>
+      _instancesRefForUser(_userId);
 
   Stream<List<TaskInstance>> getPersonalInstancesForUser(String userId) {
     return _instancesRefForUser(userId).snapshots().map((snapshot) {
@@ -109,24 +110,24 @@ class TaskRepository {
     return _tasksRef.doc(task.id);
   }
 
-  // DocumentReference<TaskInstance> _instanceRefFor(
-  //   TaskInstance instance,
-  //   String? familyId,
-  // ) {
-  //   if (instance.isFamily && familyId != null && familyId.isNotEmpty) {
-  //     return _firestore
-  //         .collection('families')
-  //         .doc(familyId)
-  //         .collection('instances')
-  //         .doc(instance.id)
-  //         .withConverter<TaskInstance>(
-  //           fromFirestore: (snapshot, _) =>
-  //               TaskInstance.fromFirestore(snapshot),
-  //           toFirestore: (instance, _) => instance.toFirestore(),
-  //         );
-  //   }
-  //   return _instancesRef.doc(instance.id);
-  // }
+  DocumentReference<TaskInstance> _instanceRefFor(
+    TaskInstance instance,
+    String? familyId,
+  ) {
+    if (instance.isFamily && familyId != null && familyId.isNotEmpty) {
+      return _firestore
+          .collection('families')
+          .doc(familyId)
+          .collection('instances')
+          .doc(instance.id)
+          .withConverter<TaskInstance>(
+            fromFirestore: (snapshot, _) =>
+                TaskInstance.fromFirestore(snapshot),
+            toFirestore: (instance, _) => instance.toFirestore(),
+          );
+    }
+    return _instancesRef.doc(instance.id);
+  }
 
   DocumentReference<TaskDelta> _historyRefFor(
     TaskSchedule task,
@@ -168,6 +169,69 @@ class TaskRepository {
           )
           .get();
       if (familyDoc.exists) return familyDoc.data();
+    }
+    return null;
+  }
+
+  Future<TaskInstance?> _fetchInstance(String id) async {
+    final personalDoc = await _instancesRef.doc(id).get();
+    if (personalDoc.exists) return personalDoc.data();
+
+    final familyId = await _getFamilyId();
+    if (familyId != null && familyId.isNotEmpty) {
+      final familyDoc = await _firestore
+          .collection('families')
+          .doc(familyId)
+          .collection('instances')
+          .doc(id)
+          .withConverter<TaskInstance>(
+            fromFirestore: (snapshot, _) =>
+                TaskInstance.fromFirestore(snapshot),
+            toFirestore: (instance, _) => instance.toFirestore(),
+          )
+          .get();
+      if (familyDoc.exists) return familyDoc.data();
+    }
+    return null;
+  }
+
+  String instanceIdFor(TaskSchedule task, CivilDay date, int ruleIndex) {
+    final dateStr = date.toString();
+    return task.schedules.length == 1
+        ? '${task.id}_$dateStr'
+        : '${task.id}_${dateStr}_$ruleIndex';
+  }
+
+  (CivilDay, TaskScheduleRule, int)? nextOccurrenceRuleOfScheduleOnOrAfter(
+    TaskSchedule task,
+    CivilDay ref,
+  ) {
+    CivilDay? earliestDate;
+    TaskScheduleRule? earliestRule;
+    int earliestIndex = -1;
+
+    for (int i = 0; i < task.schedules.length; i++) {
+      final s = task.schedules[i];
+      CivilDay? next;
+      if (s.occursOn(ref)) {
+        next = ref;
+      } else {
+        final candidate = s.nextOccurrenceAfter(ref);
+        if (!candidate.isBefore(ref)) {
+          next = candidate;
+        }
+      }
+      if (next != null) {
+        if (earliestDate == null || next.isBefore(earliestDate)) {
+          earliestDate = next;
+          earliestRule = s;
+          earliestIndex = i;
+        }
+      }
+    }
+
+    if (earliestDate != null && earliestRule != null) {
+      return (earliestDate, earliestRule, earliestIndex);
     }
     return null;
   }
@@ -215,6 +279,53 @@ class TaskRepository {
     });
   }
 
+  Stream<List<TaskInstance>> getInstances() {
+    return _firestore.collection('users').doc(_userId).snapshots().switchMap((
+      userDoc,
+    ) {
+      final familyId = userDoc.data()?['familyId'] as String? ?? '';
+
+      final personalStream = _instancesRef.snapshots().map((snapshot) {
+        return snapshot.docs.map((doc) => doc.data()).toList();
+      });
+
+      if (familyId.isEmpty) {
+        return personalStream.map((personalInstances) {
+          getTasks().first.then(
+            (tasks) => _checkAndProcessMissedPolicies(tasks),
+          );
+          return personalInstances;
+        });
+      } else {
+        final familyInstancesRef = _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances')
+            .withConverter<TaskInstance>(
+              fromFirestore: (snapshot, _) =>
+                  TaskInstance.fromFirestore(snapshot),
+              toFirestore: (instance, _) => instance.toFirestore(),
+            );
+
+        final familyStream = familyInstancesRef.snapshots().map((snapshot) {
+          return snapshot.docs.map((doc) => doc.data()).toList();
+        });
+
+        return Rx.combineLatest2<
+          List<TaskInstance>,
+          List<TaskInstance>,
+          List<TaskInstance>
+        >(personalStream, familyStream, (personal, family) {
+          final allInstances = [...personal, ...family];
+          getTasks().first.then(
+            (tasks) => _checkAndProcessMissedPolicies(tasks),
+          );
+          return allInstances;
+        });
+      }
+    });
+  }
+
   void _checkAndProcessMissedPolicies(List<TaskSchedule> tasks) async {
     if (_isProcessingMissedPolicies) return;
     _isProcessingMissedPolicies = true;
@@ -224,162 +335,249 @@ class TaskRepository {
       final today = CivilDay.fromDateTime(now);
       final familyId = await _getFamilyId();
 
+      // Fetch all instances
+      final personalInstances = await _instancesRef.get();
+      final List<TaskInstance> allInstances = personalInstances.docs
+          .map((d) => d.data())
+          .toList();
+      if (familyId != null && familyId.isNotEmpty) {
+        final familyInstancesRef = _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances')
+            .withConverter<TaskInstance>(
+              fromFirestore: (snapshot, _) =>
+                  TaskInstance.fromFirestore(snapshot),
+              toFirestore: (instance, _) => instance.toFirestore(),
+            );
+        final familyInstances = await familyInstancesRef.get();
+        allInstances.addAll(familyInstances.docs.map((d) => d.data()));
+      }
+
       final batch = _firestore.batch();
       bool hasChanges = false;
 
       for (final task in tasks) {
-        // 1. Skip policy
+        final taskInstances = allInstances
+            .where((inst) => inst.scheduleId == task.id)
+            .toList();
+        final pendingInstances = taskInstances
+            .where((inst) => inst.status == 'pending')
+            .toList();
         final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-        if (isRecurring &&
-            task.missedPolicy == MissedPolicy.skip &&
-            task.isOverdue(now)) {
-          final deltaId = const Uuid().v4();
-          final delta = TaskDelta(
-            id: deltaId,
-            taskId: task.id,
-            timestamp: now,
-            expiresAt: now.add(const Duration(days: 90)),
-            operation: 'skipped',
-            changedFields: {},
-            userId: _userId,
-          );
-          batch.set(_historyRefFor(task, familyId, deltaId), delta);
 
-          final today = CivilDay.fromDateTime(now);
-          final List<TaskScheduleRule> list = [];
-          for (final s in task.schedules) {
+        if (!isRecurring) {
+          // One-Off Schedule: Ensure an instance exists for each OneOffSchedule in the task.
+          for (int i = 0; i < task.schedules.length; i++) {
+            final s = task.schedules[i];
             if (s is OneOffSchedule) {
-              if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
-                continue;
-              }
-              list.add(s);
-            } else {
-              if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
-                final nextOccur = s.nextOccurrenceAfter(s.scheduledDate);
-                list.add(s.copyWithStartDate(nextOccur));
-              } else {
-                list.add(s);
+              final instId = instanceIdFor(task, s.scheduledDate, i);
+              final exists = taskInstances.any((inst) => inst.id == instId);
+              if (!exists) {
+                final newInst = TaskInstance(
+                  id: instId,
+                  scheduleId: task.id,
+                  title: task.title,
+                  description: task.description,
+                  scheduledDate: s.scheduledDate,
+                  startRelativeTime: s.startRelativeTime,
+                  dueRelativeTime: s.dueRelativeTime,
+                  notificationRelativeTime: s.notificationRelativeTime,
+                  isFamily: task.isFamily,
+                  priority: task.priority,
+                  cycleId: task.cycleId,
+                  assignedUserId: task.assignedUserId,
+                  status: 'pending',
+                );
+                batch.set(_instanceRefFor(newInst, familyId), newInst);
+                hasChanges = true;
               }
             }
           }
-          final newSchedules = list;
+        } else {
+          // Recurring Schedule
+          if (task.missedPolicy == MissedPolicy.stack) {
+            final lastSpawned = task.lastSpawnedDate;
+            final minStartDate = task.schedules
+                .map((s) => s.scheduledDate)
+                .reduce((a, b) => a.isBefore(b) ? a : b);
 
-          final updatedTask = TaskSchedule(
-            id: task.id,
-            title: task.title,
-            description: task.description,
-            schedules: newSchedules,
-            activeOccurrenceIndex: 0,
-            missedPolicy: task.missedPolicy,
-            isMaster: task.isMaster,
-            lastSpawnedDate: task.lastSpawnedDate,
-            parentTaskId: task.parentTaskId,
-            estimatedDuration: task.estimatedDuration,
-            isFamily: task.isFamily,
-            priority: task.priority,
-            cycleId: task.cycleId,
-            preferredBy: task.preferredBy,
-            assignedUserId: task.assignedUserId,
-          );
+            CivilDay checkDate = lastSpawned != null
+                ? lastSpawned.addDays(1)
+                : minStartDate;
 
-          batch.set(_taskRefFor(updatedTask, familyId), updatedTask);
-          hasChanges = true;
-        }
-
-        // 2. Stack policy
-        if (task.isMaster && task.missedPolicy == MissedPolicy.stack) {
-          final lastSpawned = task.lastSpawnedDate;
-          final minStartDate = task.schedules
-              .map((s) => s.scheduledDate)
-              .reduce((a, b) => a.isBefore(b) ? a : b);
-
-          CivilDay checkDate = lastSpawned != null
-              ? lastSpawned.addDays(1)
-              : minStartDate;
-
-          List<(CivilDay, TaskScheduleRule, int)> occurrencesToSpawn = [];
-          int daysChecked = 0;
-          while ((checkDate.isBefore(today) || checkDate == today) &&
-              daysChecked < 30) {
-            for (int i = 0; i < task.schedules.length; i++) {
-              final s = task.schedules[i];
-              if (s.occursOn(checkDate)) {
-                occurrencesToSpawn.add((checkDate, s, i));
+            List<(CivilDay, TaskScheduleRule, int)> occurrencesToSpawn = [];
+            int daysChecked = 0;
+            while ((checkDate.isBefore(today) || checkDate == today) &&
+                daysChecked < 30) {
+              for (int i = 0; i < task.schedules.length; i++) {
+                final s = task.schedules[i];
+                if (s.occursOn(checkDate)) {
+                  occurrencesToSpawn.add((checkDate, s, i));
+                }
               }
+              if (occurrencesToSpawn.length >= 30) {
+                break;
+              }
+              checkDate = checkDate.addDays(1);
+              daysChecked++;
             }
-            if (occurrencesToSpawn.length >= 30) {
-              break;
-            }
-            checkDate = checkDate.addDays(1);
-            daysChecked++;
-          }
 
-          if (occurrencesToSpawn.isNotEmpty) {
-            for (final occurrence in occurrencesToSpawn) {
-              final date = occurrence.$1;
-              final s = occurrence.$2;
-              final idx = occurrence.$3;
+            if (occurrencesToSpawn.isNotEmpty) {
+              for (final occ in occurrencesToSpawn) {
+                final date = occ.$1;
+                final s = occ.$2;
+                final idx = occ.$3;
 
-              final dateStr =
-                  '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-              final spawnedId = task.schedules.length == 1
-                  ? '${task.id}_$dateStr'
-                  : '${task.id}_${dateStr}_$idx';
-
-              final spawnedTask = TaskSchedule(
-                id: spawnedId,
-                title: task.title,
-                description: task.description,
-                schedules: [
-                  OneOffSchedule(
-                    date: date,
+                final instId = instanceIdFor(task, date, idx);
+                if (!taskInstances.any((inst) => inst.id == instId)) {
+                  final newInst = TaskInstance(
+                    id: instId,
+                    scheduleId: task.id,
+                    title: task.title,
+                    description: task.description,
+                    scheduledDate: date,
                     startRelativeTime: s.startRelativeTime,
                     dueRelativeTime: s.dueRelativeTime,
                     notificationRelativeTime: s.notificationRelativeTime,
-                  ),
-                ],
-                parentTaskId: task.id,
-                missedPolicy: task.missedPolicy,
-                estimatedDuration: task.estimatedDuration,
-                isFamily: task.isFamily,
-                priority: task.priority,
-                cycleId: task.cycleId,
-                preferredBy: task.preferredBy,
-                assignedUserId: task.assignedUserId,
-              );
-              batch.set(_taskRefFor(spawnedTask, familyId), spawnedTask);
-            }
+                    isFamily: task.isFamily,
+                    priority: task.priority,
+                    cycleId: task.cycleId,
+                    assignedUserId: task.assignedUserId,
+                    status: 'pending',
+                  );
+                  batch.set(_instanceRefFor(newInst, familyId), newInst);
+                }
+              }
 
-            final updatedMaster = TaskSchedule(
-              id: task.id,
-              title: task.title,
-              description: task.description,
-              schedules: task.schedules,
-              activeOccurrenceIndex: task.activeOccurrenceIndex,
-              missedPolicy: task.missedPolicy,
-              isMaster: true,
-              lastSpawnedDate: occurrencesToSpawn.last.$1,
-              estimatedDuration: task.estimatedDuration,
-              isFamily: task.isFamily,
-              priority: task.priority,
-              cycleId: task.cycleId,
-              preferredBy: task.preferredBy,
-              assignedUserId: task.assignedUserId,
-            );
-            batch.set(_taskRefFor(updatedMaster, familyId), updatedMaster);
-            hasChanges = true;
+              final updatedMaster = task.copyWith(
+                lastSpawnedDate: occurrencesToSpawn.last.$1,
+              );
+              batch.set(_taskRefFor(updatedMaster, familyId), updatedMaster);
+              hasChanges = true;
+            }
+          } else if (task.missedPolicy == MissedPolicy.rollover) {
+            for (int i = 0; i < task.schedules.length; i++) {
+              final s = task.schedules[i];
+              final hasPendingForSchedule = pendingInstances.any((inst) {
+                if (task.schedules.length <= 1) return true;
+                return inst.id.endsWith('_$i');
+              });
+
+              if (!hasPendingForSchedule) {
+                CivilDay? date;
+                if (s.occursOn(today)) {
+                  date = today;
+                } else {
+                  final candidate = s.nextOccurrenceAfter(today);
+                  if (!candidate.isBefore(today)) {
+                    date = candidate;
+                  }
+                }
+
+                if (date != null) {
+                  final instId = instanceIdFor(task, date, i);
+                  if (!taskInstances.any((inst) => inst.id == instId)) {
+                    final newInst = TaskInstance(
+                      id: instId,
+                      scheduleId: task.id,
+                      title: task.title,
+                      description: task.description,
+                      scheduledDate: date,
+                      startRelativeTime: s.startRelativeTime,
+                      dueRelativeTime: s.dueRelativeTime,
+                      notificationRelativeTime: s.notificationRelativeTime,
+                      isFamily: task.isFamily,
+                      priority: task.priority,
+                      cycleId: task.cycleId,
+                      assignedUserId: task.assignedUserId,
+                      status: 'pending',
+                    );
+                    batch.set(_instanceRefFor(newInst, familyId), newInst);
+                    hasChanges = true;
+                  }
+                }
+              }
+            }
+          } else if (task.missedPolicy == MissedPolicy.skip) {
+            for (int i = 0; i < task.schedules.length; i++) {
+              final s = task.schedules[i];
+              final pendingForSchedule = pendingInstances.where((inst) {
+                if (task.schedules.length <= 1) return true;
+                return inst.id.endsWith('_$i');
+              }).toList();
+
+              bool spawnedNext = false;
+              for (final pending in pendingForSchedule) {
+                if (pending.scheduledDate.isBefore(today)) {
+                  final updatedInst = pending.copyWith(status: 'skipped');
+                  batch.set(
+                    _instanceRefFor(updatedInst, familyId),
+                    updatedInst,
+                  );
+                  hasChanges = true;
+
+                  final deltaId = const Uuid().v4();
+                  final delta = TaskDelta(
+                    id: deltaId,
+                    taskId: task.id,
+                    timestamp: now,
+                    expiresAt: now.add(const Duration(days: 90)),
+                    operation: 'skipped',
+                    changedFields: {'instanceId': pending.id},
+                    userId: _userId,
+                  );
+                  batch.set(_historyRefFor(task, familyId, deltaId), delta);
+                  spawnedNext = true;
+                }
+              }
+
+              if (spawnedNext || pendingForSchedule.isEmpty) {
+                CivilDay? date;
+                if (s.occursOn(today)) {
+                  date = today;
+                } else {
+                  final candidate = s.nextOccurrenceAfter(today);
+                  if (!candidate.isBefore(today)) {
+                    date = candidate;
+                  }
+                }
+
+                if (date != null) {
+                  final instId = instanceIdFor(task, date, i);
+                  final exists = taskInstances.any((inst) => inst.id == instId);
+                  if (!exists) {
+                    final newInst = TaskInstance(
+                      id: instId,
+                      scheduleId: task.id,
+                      title: task.title,
+                      description: task.description,
+                      scheduledDate: date,
+                      startRelativeTime: s.startRelativeTime,
+                      dueRelativeTime: s.dueRelativeTime,
+                      notificationRelativeTime: s.notificationRelativeTime,
+                      isFamily: task.isFamily,
+                      priority: task.priority,
+                      cycleId: task.cycleId,
+                      assignedUserId: task.assignedUserId,
+                      status: 'pending',
+                    );
+                    batch.set(_instanceRefFor(newInst, familyId), newInst);
+                    hasChanges = true;
+                  }
+                }
+              }
+            }
           }
         }
       }
 
       if (hasChanges) {
-        try {
-          await batch.commit();
-        } catch (e) {
-          // ignore: avoid_print
-          print('Error in auto-processing missed policies: $e');
-        }
+        await batch.commit();
       }
+    } catch (e) {
+      // ignore: avoid_print
+      print('Error in auto-processing missed policies: $e');
     } finally {
       _isProcessingMissedPolicies = false;
     }
@@ -443,6 +641,8 @@ class TaskRepository {
 
     await batch.commit();
     await _notificationService?.scheduleNotifications(task);
+
+    _checkAndProcessMissedPolicies([task]);
   }
 
   Future<void> updateTask(TaskModification modification) async {
@@ -452,7 +652,6 @@ class TaskRepository {
     final newTask = modification.newTask;
     final delta = modification.delta;
 
-    // Detect if task scope was migrated Personal <-> Family
     final personalDoc = await _tasksRef.doc(newTask.id).get();
     final currentlyPersonal = personalDoc.exists;
 
@@ -471,25 +670,90 @@ class TaskRepository {
     }
 
     if (newTask.isFamily && currentlyPersonal) {
-      // Migrate: Delete from personal, write to family
       batch.delete(_tasksRef.doc(newTask.id));
       batch.set(_taskRefFor(newTask, familyId), newTask);
       batch.set(_historyRefFor(newTask, familyId, delta.id), delta);
     } else if (!newTask.isFamily && currentlyFamily) {
-      // Migrate: Delete from family, write to personal
       if (familyDocRef != null) {
         batch.delete(familyDocRef);
       }
       batch.set(_tasksRef.doc(newTask.id), newTask);
       batch.set(_historyRef.doc(delta.id), delta);
     } else {
-      // Standard update: update in respective active collection
       batch.set(_taskRefFor(newTask, familyId), newTask);
       batch.set(_historyRefFor(newTask, familyId, delta.id), delta);
     }
 
+    final schedulesChanged = delta.changedFields.containsKey('schedules');
+
+    final List<DocumentSnapshot<TaskInstance>> personalPending = [];
+    final personalSnap = await _instancesRef
+        .where('scheduleId', isEqualTo: newTask.id)
+        .get();
+    for (final doc in personalSnap.docs) {
+      if (doc.data().status == 'pending') {
+        personalPending.add(doc);
+      }
+    }
+
+    final List<DocumentSnapshot<TaskInstance>> familyPending = [];
+    if (familyId != null && familyId.isNotEmpty) {
+      final familyInstancesRef = _firestore
+          .collection('families')
+          .doc(familyId)
+          .collection('instances')
+          .withConverter<TaskInstance>(
+            fromFirestore: (snapshot, _) =>
+                TaskInstance.fromFirestore(snapshot),
+            toFirestore: (instance, _) => instance.toFirestore(),
+          );
+      final familySnap = await familyInstancesRef
+          .where('scheduleId', isEqualTo: newTask.id)
+          .get();
+      for (final doc in familySnap.docs) {
+        if (doc.data().status == 'pending') {
+          familyPending.add(doc);
+        }
+      }
+    }
+
+    final allPending = [...personalPending, ...familyPending];
+
+    if (schedulesChanged) {
+      for (final doc in allPending) {
+        batch.delete(doc.reference);
+      }
+    } else {
+      for (final doc in allPending) {
+        final updatedInst = doc.data()!.copyWith(
+          title: newTask.title,
+          description: newTask.description,
+          priority: newTask.priority,
+          isFamily: newTask.isFamily,
+          cycleId: newTask.cycleId,
+          clearCycleId: newTask.cycleId == null,
+          assignedUserId: newTask.assignedUserId,
+          clearAssignedUserId: newTask.assignedUserId == null,
+        );
+
+        if (newTask.isFamily && currentlyPersonal) {
+          batch.delete(doc.reference);
+          batch.set(_instanceRefFor(updatedInst, familyId), updatedInst);
+        } else if (!newTask.isFamily && currentlyFamily) {
+          batch.delete(doc.reference);
+          batch.set(_instancesRef.doc(updatedInst.id), updatedInst);
+        } else {
+          batch.set(doc.reference, updatedInst);
+        }
+      }
+    }
+
     await batch.commit();
     await _notificationService?.scheduleNotifications(newTask);
+
+    if (schedulesChanged) {
+      _checkAndProcessMissedPolicies([newTask]);
+    }
   }
 
   Future<void> deleteTask(String id) async {
@@ -505,22 +769,31 @@ class TaskRepository {
     batch.delete(_taskRefFor(task, familyId));
     batch.set(_historyRefFor(task, familyId, delta.id), delta);
 
-    if (task.isFamily && familyId != null && familyId.isNotEmpty) {
-      final spawnedDocs = await _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('tasks')
-          .where('parentTaskId', isEqualTo: id)
-          .get();
-      for (final doc in spawnedDocs.docs) {
+    final personalInstances = await _instancesRef
+        .where('scheduleId', isEqualTo: id)
+        .get();
+    for (final doc in personalInstances.docs) {
+      if (doc.data().status == 'pending') {
         batch.delete(doc.reference);
       }
-    } else {
-      final spawnedDocs = await _tasksRef
-          .where('parentTaskId', isEqualTo: id)
+    }
+
+    if (familyId != null && familyId.isNotEmpty) {
+      final familyInstances = await _firestore
+          .collection('families')
+          .doc(familyId)
+          .collection('instances')
+          .where('scheduleId', isEqualTo: id)
+          .withConverter<TaskInstance>(
+            fromFirestore: (snapshot, _) =>
+                TaskInstance.fromFirestore(snapshot),
+            toFirestore: (instance, _) => instance.toFirestore(),
+          )
           .get();
-      for (final doc in spawnedDocs.docs) {
-        batch.delete(doc.reference);
+      for (final doc in familyInstances.docs) {
+        if (doc.data().status == 'pending') {
+          batch.delete(doc.reference);
+        }
       }
     }
 
@@ -529,32 +802,69 @@ class TaskRepository {
   }
 
   Future<void> completeTask(String id) async {
-    final task = await _fetchTask(id);
+    final instance = await _fetchInstance(id);
+    if (instance == null) return;
+
+    final task = await _fetchTask(instance.scheduleId);
     if (task == null) return;
 
     final familyId = await _getFamilyId();
-    final newState = TaskList([task]).complete(id, _userId);
-    final delta = newState.history.last;
-    final taskStillExists = newState.activeTasks.any((t) => t.id == id);
+    final now = AppClock.now;
 
     final batch = _firestore.batch();
 
-    TaskSchedule? updatedTask;
-    if (taskStillExists) {
-      updatedTask = newState.activeTasks.firstWhere((t) => t.id == id);
-      batch.set(_taskRefFor(task, familyId), updatedTask);
-    } else {
-      batch.delete(_taskRefFor(task, familyId));
-    }
+    final completedInstance = instance.copyWith(
+      status: 'completed',
+      completedByUserId: _userId,
+      completedAt: now,
+    );
+    batch.set(_instanceRefFor(completedInstance, familyId), completedInstance);
 
-    batch.set(_historyRefFor(task, familyId, delta.id), delta);
+    final deltaId = const Uuid().v4();
+    final delta = TaskDelta(
+      id: deltaId,
+      taskId: task.id,
+      timestamp: now,
+      expiresAt: now.add(const Duration(days: 90)),
+      operation: 'completed',
+      changedFields: {'instanceId': instance.id},
+      userId: _userId,
+    );
+    batch.set(_historyRefFor(task, familyId, deltaId), delta);
+
+    final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+    if (isRecurring &&
+        (task.missedPolicy == MissedPolicy.rollover ||
+            task.missedPolicy == MissedPolicy.skip)) {
+      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(
+        task,
+        instance.scheduledDate.addDays(1),
+      );
+      if (nextOcc != null) {
+        final date = nextOcc.$1;
+        final s = nextOcc.$2;
+        final idx = nextOcc.$3;
+        final nextInstId = instanceIdFor(task, date, idx);
+
+        final newInst = TaskInstance(
+          id: nextInstId,
+          scheduleId: task.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: date,
+          startRelativeTime: s.startRelativeTime,
+          dueRelativeTime: s.dueRelativeTime,
+          notificationRelativeTime: s.notificationRelativeTime,
+          isFamily: task.isFamily,
+          priority: task.priority,
+          cycleId: task.cycleId,
+          assignedUserId: task.assignedUserId,
+          status: 'pending',
+        );
+        batch.set(_instanceRefFor(newInst, familyId), newInst);
+      }
+    }
 
     await batch.commit();
-
-    if (taskStillExists && updatedTask != null) {
-      await _notificationService?.scheduleNotifications(updatedTask);
-    } else {
-      await _notificationService?.cancelNotifications(id);
-    }
   }
 }

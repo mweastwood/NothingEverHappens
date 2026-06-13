@@ -151,19 +151,22 @@ void main() {
       expect(historySnapshot.docs.last.data()['operation'], 'delete');
     });
 
-    test('completeTask removes a task and adds history', () async {
+    test('completeTask completes the instance and adds history', () async {
       await repository.addTask(testTask);
+      await Future.delayed(Duration.zero);
 
-      await repository.completeTask(testTask.id);
+      final instanceId = '${testTask.id}_2024-01-01';
+      await repository.completeTask(instanceId);
 
-      final taskSnapshot = await firestore
+      final instanceSnapshot = await firestore
           .collection('users')
           .doc(userId)
-          .collection('tasks')
-          .doc(testTask.id)
+          .collection('instances')
+          .doc(instanceId)
           .get();
 
-      expect(taskSnapshot.exists, isFalse);
+      expect(instanceSnapshot.exists, isTrue);
+      expect(instanceSnapshot.data()!['status'], 'completed');
 
       final historySnapshot = await firestore
           .collection('users')
@@ -173,7 +176,7 @@ void main() {
 
       // 1 from add, 1 from complete
       expect(historySnapshot.docs.length, 2);
-      expect(historySnapshot.docs.last.data()['operation'], 'complete');
+      expect(historySnapshot.docs.last.data()['operation'], 'completed');
     });
   });
 
