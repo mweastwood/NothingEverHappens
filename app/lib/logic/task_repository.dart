@@ -5,6 +5,7 @@ import 'package:rxdart/rxdart.dart';
 import 'app_clock.dart';
 import 'civil_day.dart';
 import 'task_schedule.dart';
+import 'task_instance.dart';
 import 'task_delta.dart';
 import 'task_list.dart';
 import 'notification_service.dart';
@@ -54,6 +55,25 @@ class TaskRepository {
     });
   }
 
+  CollectionReference<TaskInstance> _instancesRefForUser(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('instances')
+        .withConverter<TaskInstance>(
+          fromFirestore: (snapshot, _) => TaskInstance.fromFirestore(snapshot),
+          toFirestore: (instance, _) => instance.toFirestore(),
+        );
+  }
+
+  // CollectionReference<TaskInstance> get _instancesRef => _instancesRefForUser(_userId);
+
+  Stream<List<TaskInstance>> getPersonalInstancesForUser(String userId) {
+    return _instancesRefForUser(userId).snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    });
+  }
+
   CollectionReference<TaskDelta> get _historyRef {
     return _firestore
         .collection('users')
@@ -88,6 +108,25 @@ class TaskRepository {
     }
     return _tasksRef.doc(task.id);
   }
+
+  // DocumentReference<TaskInstance> _instanceRefFor(
+  //   TaskInstance instance,
+  //   String? familyId,
+  // ) {
+  //   if (instance.isFamily && familyId != null && familyId.isNotEmpty) {
+  //     return _firestore
+  //         .collection('families')
+  //         .doc(familyId)
+  //         .collection('instances')
+  //         .doc(instance.id)
+  //         .withConverter<TaskInstance>(
+  //           fromFirestore: (snapshot, _) =>
+  //               TaskInstance.fromFirestore(snapshot),
+  //           toFirestore: (instance, _) => instance.toFirestore(),
+  //         );
+  //   }
+  //   return _instancesRef.doc(instance.id);
+  // }
 
   DocumentReference<TaskDelta> _historyRefFor(
     TaskSchedule task,

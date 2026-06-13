@@ -180,4 +180,67 @@ describe('Firestore Security Rules', () => {
       );
     });
   });
+
+  describe('Instances collection', () => {
+    it('allows a user to read and write their own private instances', async () => {
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const db = aliceContext.firestore();
+
+      await assertSucceeds(db.collection('users').doc('alice').collection('instances').doc('inst-1').set({
+        title: 'Alice Task'
+      }));
+
+      await assertSucceeds(db.collection('users').doc('alice').collection('instances').doc('inst-1').get());
+    });
+
+    it('denies a user from writing to another user\'s private instances', async () => {
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const db = aliceContext.firestore();
+
+      await assertFails(db.collection('users').doc('bob').collection('instances').doc('inst-1').set({
+        title: 'Bob Clone Task'
+      }));
+    });
+
+    it('allows family members to read, create and update family instances, but only parents to delete', async () => {
+      // Seed family
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' },
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+      });
+
+      // Alice (parent)
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const aliceDb = aliceContext.firestore();
+
+      // Bob (non-parent)
+      const bobContext = testEnv.authenticatedContext('bob');
+      const bobDb = bobContext.firestore();
+
+      // Create instance (Bob can create)
+      await assertSucceeds(bobDb.collection('families').doc('fam-1').collection('instances').doc('inst-1').set({
+        title: 'Clean room'
+      }));
+
+      // Read instance (Alice can read)
+      await assertSucceeds(aliceDb.collection('families').doc('fam-1').collection('instances').doc('inst-1').get());
+
+      // Update instance (Bob can update)
+      await assertSucceeds(bobDb.collection('families').doc('fam-1').collection('instances').doc('inst-1').update({
+        status: 'completed'
+      }));
+
+      // Delete instance: Bob (non-parent) fails
+      await assertFails(bobDb.collection('families').doc('fam-1').collection('instances').doc('inst-1').delete());
+
+      // Delete instance: Alice (parent) succeeds
+      await assertSucceeds(aliceDb.collection('families').doc('fam-1').collection('instances').doc('inst-1').delete());
+    });
+  });
 });
