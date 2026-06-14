@@ -138,7 +138,7 @@ class TaskList {
                 (task.missedPolicy == MissedPolicy.stack ||
                     task.missedPolicy == MissedPolicy.rollover ||
                     today.isBefore(s.scheduledDate))
-                ? (firstOccur ?? s.scheduledDate)
+                ? firstOccur
                 : today;
             final nextOccur = s.nextOccurrenceAfter(refDate);
             if (nextOccur != null) {
