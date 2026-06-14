@@ -95,10 +95,17 @@ class TaskList {
         if (task.schedules.first is OneOffSchedule) {
           shouldRemoveTask = true;
         } else {
-          newSchedules = task.schedules.map((s) {
-            final CivilDay nextOccur = s.nextOccurrenceAfter(today)!;
-            return s.copyWithStartDate(nextOccur);
-          }).toList();
+          final List<TaskScheduleRule> list = [];
+          for (final s in task.schedules) {
+            final nextOccur = s.nextOccurrenceAfter(today);
+            if (nextOccur != null) {
+              list.add(s.copyWithStartDate(nextOccur));
+            }
+          }
+          newSchedules = list;
+          if (newSchedules.isEmpty) {
+            shouldRemoveTask = true;
+          }
         }
       }
     } else {
@@ -114,8 +121,10 @@ class TaskList {
           list.add(s);
         } else {
           if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
-            final CivilDay nextOccur = s.nextOccurrenceAfter(today)!;
-            list.add(s.copyWithStartDate(nextOccur));
+            final nextOccur = s.nextOccurrenceAfter(today);
+            if (nextOccur != null) {
+              list.add(s.copyWithStartDate(nextOccur));
+            }
           } else {
             list.add(s);
           }
