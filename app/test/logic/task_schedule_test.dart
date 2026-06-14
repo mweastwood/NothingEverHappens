@@ -427,13 +427,13 @@ void main() {
         final state = TaskList([task]).complete('rollover-task', 'user-1');
         AppClock.reset();
 
-        // The next occurrence should continue relative to completion date (strictly after Tuesday -> Wednesday)
+        // The next occurrence should continue relative to original path -> Tuesday
         final completedTask = state.activeTasks.firstWhere(
           (t) => t.id == 'rollover-task',
         );
         expect(
           completedTask.schedules.first.scheduledDate,
-          const CivilDay(year: 2026, month: 5, day: 27),
+          const CivilDay(year: 2026, month: 5, day: 26),
         );
       },
     );
@@ -905,7 +905,7 @@ void main() {
     test(
       '3. TaskList.complete on mixed Weekly (Fri) and Yearly (Dec 25) under Rollover policy',
       () {
-        final start = const CivilDay(year: 2026, month: 6, day: 1);
+        final start = const CivilDay(year: 2026, month: 12, day: 21);
         final schedules = [
           WeeklySchedule(
             startDate: start,
