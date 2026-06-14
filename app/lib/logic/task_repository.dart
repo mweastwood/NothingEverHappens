@@ -917,6 +917,7 @@ class TaskRepository {
       final today = CivilDay.fromDateTime(now);
       final CivilDay refDate;
       if (task.missedPolicy == MissedPolicy.stack ||
+          task.missedPolicy == MissedPolicy.rollover ||
           today.isBefore(instance.scheduledDate)) {
         refDate = instance.scheduledDate.addDays(1);
       } else {

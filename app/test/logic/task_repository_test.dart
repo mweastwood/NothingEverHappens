@@ -536,6 +536,69 @@ void main() {
     );
 
     test(
+      'completeTask rollover policy: reschedules relative to scheduledDate',
+      () async {
+        // Set mock time to June 1, 2026
+        AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+
+        final rolloverTask = TaskSchedule(
+          id: 'task-rollover-id',
+          title: 'Rollover Task',
+          description: 'Test description',
+          missedPolicy: MissedPolicy.rollover,
+          isMaster: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 1),
+              interval: 1,
+            ),
+          ],
+        );
+
+        await repository.addTask(rolloverTask);
+        await Future.delayed(Duration.zero);
+
+        // Spawns instance for June 1 (startDate)
+        final instanceId = '${rolloverTask.id}_2026-06-01';
+        final initialSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(initialSnapshot.exists, isTrue);
+
+        // Fast-forward to June 9
+        AppClock.setMockTime(DateTime(2026, 6, 9, 12, 0));
+
+        // Complete June 1 instance on June 9
+        await repository.completeTask(instanceId);
+
+        // Verify June 1 instance is completed
+        final completedSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(completedSnapshot.data()!['status'], 'completed');
+
+        // Rollover policy reschedules relative to scheduledDate (June 1) -> June 2 (even if June 2 is in the past)
+        final nextInstanceId = '${rolloverTask.id}_2026-06-02';
+        final nextSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(nextInstanceId)
+            .get();
+        expect(nextSnapshot.exists, isTrue);
+        expect(nextSnapshot.data()!['status'], 'pending');
+
+        AppClock.reset();
+      },
+    );
+
+    test(
       'completeTask early completion: reschedules relative to scheduledDate to prevent duplicate/overwriting instances',
       () async {
         // Set mock time to June 1, 2026
