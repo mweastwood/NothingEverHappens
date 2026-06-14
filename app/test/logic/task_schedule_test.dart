@@ -741,4 +741,687 @@ void main() {
       },
     );
   });
+
+  group('Exhaustive Task Scheduling Combinations & Missed Policies Thorough Tests', () {
+    const userId = 'user-1';
+
+    test(
+      '1. TaskList.complete on mixed Daily (interval 2) and Weekly (Mon, Wed) schedules',
+      () {
+        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
+        final schedules = [
+          DailySchedule(
+            startDate: start,
+            interval: 2,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+          WeeklySchedule(
+            startDate: start,
+            interval: 1,
+            daysOfWeek: const {1, 3}, // Mon, Wed
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 18, minute: 0),
+            ),
+          ),
+        ];
+
+        final task = TaskSchedule(
+          id: 'mixed-daily-weekly',
+          title: 'Daily + Weekly Task',
+          description: 'Test',
+          schedules: schedules,
+          missedPolicy: MissedPolicy.rollover,
+        );
+
+        final taskList = TaskList([task]);
+
+        // Complete on Monday, June 1 (Both Daily and Weekly occur)
+        AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        var state = taskList.complete('mixed-daily-weekly', userId);
+        var updated = state.activeTasks.first;
+
+        // Daily advances to Wednesday, June 3
+        expect(
+          (updated.schedules[0] as DailySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 3),
+        );
+        // Weekly advances to Wednesday, June 3
+        expect(
+          (updated.schedules[1] as WeeklySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 3),
+        );
+
+        // Complete on Tuesday, June 2 (Neither occurs)
+        AppClock.setMockTime(DateTime(2026, 6, 2, 12, 0));
+        state = state.complete('mixed-daily-weekly', userId);
+        updated = state.activeTasks.first;
+
+        // No changes since neither was scheduled for June 2 (or before)
+        expect(
+          (updated.schedules[0] as DailySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 3),
+        );
+        expect(
+          (updated.schedules[1] as WeeklySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 3),
+        );
+
+        // Complete on Wednesday, June 3 (Both occur)
+        AppClock.setMockTime(DateTime(2026, 6, 3, 12, 0));
+        state = state.complete('mixed-daily-weekly', userId);
+        updated = state.activeTasks.first;
+
+        // Daily advances to Friday, June 5
+        expect(
+          (updated.schedules[0] as DailySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 5),
+        );
+        // Weekly advances to Monday, June 8 (since weekdays = {1, 3}, Wed -> Mon)
+        expect(
+          (updated.schedules[1] as WeeklySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 8),
+        );
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '2. TaskList.complete on mixed Daily (interval 3) and Monthly (dayOfMonth 15) under Shift policy',
+      () {
+        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
+        final schedules = [
+          DailySchedule(
+            startDate: start,
+            interval: 3,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+          MonthlySchedule(
+            startDate: start,
+            interval: 1,
+            dayOfMonth: 15,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 18, minute: 0),
+            ),
+          ),
+        ];
+
+        final task = TaskSchedule(
+          id: 'mixed-daily-monthly-shift',
+          title: 'Daily + Monthly Shift',
+          description: 'Test',
+          schedules: schedules,
+          missedPolicy: MissedPolicy.shift,
+        );
+
+        final taskList = TaskList([task]);
+
+        // Overdue complete on Tuesday, June 9 (Daily was due June 1, 4, 7. Monthly is due June 15)
+        AppClock.setMockTime(DateTime(2026, 6, 9, 12, 0));
+        final state = taskList.complete('mixed-daily-monthly-shift', userId);
+        final updated = state.activeTasks.first;
+
+        // Daily should shift to next occurrence after June 9: June 10 (since 1 + 3*3 = 10)
+        expect(
+          (updated.schedules[0] as DailySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 10),
+        );
+        // Monthly should remain on June 15 (future)
+        expect(
+          (updated.schedules[1] as MonthlySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 15),
+        );
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '3. TaskList.complete on mixed Weekly (Fri) and Yearly (Dec 25) under Rollover policy',
+      () {
+        final start = const CivilDay(year: 2026, month: 6, day: 1);
+        final schedules = [
+          WeeklySchedule(
+            startDate: start,
+            interval: 1,
+            daysOfWeek: const {5}, // Friday
+          ),
+          YearlySchedule(startDate: start, interval: 1, month: 12, day: 25),
+        ];
+
+        final task = TaskSchedule(
+          id: 'mixed-weekly-yearly-rollover',
+          title: 'Weekly + Yearly Rollover',
+          description: 'Test',
+          schedules: schedules,
+          missedPolicy: MissedPolicy.rollover,
+        );
+
+        final taskList = TaskList([task]);
+
+        // Complete on Friday, Dec 25, 2026 (Both Weekly and Yearly occur!)
+        // Dec 25, 2026 is indeed a Friday.
+        AppClock.setMockTime(DateTime(2026, 12, 25, 12, 0));
+        final state = taskList.complete('mixed-weekly-yearly-rollover', userId);
+        final updated = state.activeTasks.first;
+
+        // Weekly advances to June 5, 2026 (first Friday after June 1)
+        expect(
+          (updated.schedules[0] as WeeklySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 5),
+        );
+        // Yearly advances to Dec 25, 2026 (first Dec 25 after June 1)
+        expect(
+          (updated.schedules[1] as YearlySchedule).startDate,
+          const CivilDay(year: 2026, month: 12, day: 25),
+        );
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '4. TaskList.complete on all 5 schedule types mixed under Rollover policy',
+      () {
+        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
+        final schedules = [
+          OneOffSchedule(date: start),
+          DailySchedule(startDate: start, interval: 1),
+          WeeklySchedule(
+            startDate: start,
+            interval: 1,
+            daysOfWeek: const {3},
+          ), // Wed
+          MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 15),
+          YearlySchedule(startDate: start, interval: 1, month: 12, day: 25),
+        ];
+
+        final task = TaskSchedule(
+          id: 'mixed-five-rules',
+          title: 'Five Rules mixed',
+          description: 'Test',
+          schedules: schedules,
+          missedPolicy: MissedPolicy.rollover,
+        );
+
+        final taskList = TaskList([task]);
+
+        // Complete on June 1, 2026
+        AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        final state = taskList.complete('mixed-five-rules', userId);
+        final updated = state.activeTasks.first;
+
+        // OneOff should be removed, leaving 4 schedules
+        expect(updated.schedules.length, 4);
+        expect(updated.schedules[0], isA<DailySchedule>());
+        expect(
+          (updated.schedules[0] as DailySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 2),
+        ); // Daily advanced
+        expect(updated.schedules[1], isA<WeeklySchedule>());
+        expect(
+          (updated.schedules[1] as WeeklySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 3),
+        ); // Weekly advanced (Mon -> Wed June 3)
+        expect(updated.schedules[2], isA<MonthlySchedule>());
+        expect(
+          (updated.schedules[2] as MonthlySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 15),
+        ); // Monthly advanced (Mon -> June 15)
+        expect(updated.schedules[3], isA<YearlySchedule>());
+        expect(
+          (updated.schedules[3] as YearlySchedule).startDate,
+          const CivilDay(year: 2026, month: 12, day: 25),
+        ); // Yearly advanced (Mon -> Dec 25)
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '5. TaskList.complete on slot-based identical Weekly schedules (2 slots on Mon, Wed)',
+      () {
+        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
+        final schedules = [
+          WeeklySchedule(
+            startDate: start,
+            interval: 1,
+            daysOfWeek: const {1, 3},
+          ),
+          WeeklySchedule(
+            startDate: start,
+            interval: 1,
+            daysOfWeek: const {1, 3},
+          ),
+        ];
+
+        final task = TaskSchedule(
+          id: 'slot-weekly',
+          title: 'Slot Weekly',
+          description: 'Test',
+          schedules: schedules,
+          activeOccurrenceIndex: 0,
+        );
+
+        final taskList = TaskList([task]);
+
+        // Complete first slot on Monday, June 1
+        AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        var state = taskList.complete('slot-weekly', userId);
+        var updated = state.activeTasks.first;
+
+        // Active index should advance to 1, scheduled dates unchanged
+        expect(updated.activeOccurrenceIndex, 1);
+        expect(
+          (updated.schedules[0] as WeeklySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 1),
+        );
+        expect(
+          (updated.schedules[1] as WeeklySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 1),
+        );
+
+        // Complete second slot on Monday, June 1
+        state = state.complete('slot-weekly', userId);
+        updated = state.activeTasks.first;
+
+        // Active index resets to 0, scheduled dates advance to next occurrence (Wed June 3)
+        expect(updated.activeOccurrenceIndex, 0);
+        expect(
+          (updated.schedules[0] as WeeklySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 3),
+        );
+        expect(
+          (updated.schedules[1] as WeeklySchedule).startDate,
+          const CivilDay(year: 2026, month: 6, day: 3),
+        );
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '6. TaskRepository missed policies: Rollover policy on mixed Daily (interval 2) and Weekly (Wed, Fri) schedules',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(firestore: firestore, userId: userId);
+
+        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
+        final task = TaskSchedule(
+          id: 'repo-rollover-mixed',
+          title: 'Mixed Rollover Repo',
+          description: 'Test',
+          schedules: [
+            DailySchedule(startDate: start, interval: 2),
+            WeeklySchedule(
+              startDate: start,
+              interval: 1,
+              daysOfWeek: const {3, 5},
+            ),
+          ],
+          missedPolicy: MissedPolicy.rollover,
+        );
+
+        // Add task on Mon June 1
+        AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        await repository.addTask(task);
+        await Future.delayed(Duration.zero);
+
+        // Verify Monday instances spawned
+        final instsBefore = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+        // Daily schedule should have instance for June 1 (since it starts June 1).
+        // Weekly schedule should have instance for June 3 (its next occurrence after June 1).
+        expect(instsBefore.docs.length, 2);
+        expect(
+          instsBefore.docs.any(
+            (d) => d.id == 'repo-rollover-mixed_2026-06-01_0',
+          ),
+          isTrue,
+        );
+        expect(
+          instsBefore.docs.any(
+            (d) => d.id == 'repo-rollover-mixed_2026-06-03_1',
+          ),
+          isTrue,
+        );
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '7. TaskRepository missed policies: Skip policy on mixed Weekly (Mon) and Monthly (dayOfMonth 1) schedules',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(firestore: firestore, userId: userId);
+
+        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
+        final task = TaskSchedule(
+          id: 'repo-skip-mixed',
+          title: 'Mixed Skip Repo',
+          description: 'Test',
+          schedules: [
+            WeeklySchedule(
+              startDate: start,
+              interval: 1,
+              daysOfWeek: const {1},
+            ),
+            MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 1),
+          ],
+          missedPolicy: MissedPolicy.skip,
+        );
+
+        // Add task on Mon June 1
+        AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        await repository.addTask(task);
+        await Future.delayed(Duration.zero);
+
+        // Mock time to Tue June 9. Mon June 8 Weekly is missed, and June 1 Weekly & Monthly are missed.
+        AppClock.setMockTime(DateTime(2026, 6, 9, 10, 0));
+        await repository.getTasks().first;
+        await Future.delayed(Duration.zero);
+
+        // Verify missed instances are marked skipped
+        final weeklyJune1 = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc('repo-skip-mixed_2026-06-01_0')
+            .get();
+        final monthlyJune1 = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc('repo-skip-mixed_2026-06-01_1')
+            .get();
+
+        expect(weeklyJune1.data()?['status'], 'skipped');
+        expect(monthlyJune1.data()?['status'], 'skipped');
+
+        // Weekly June 8 is skipped and is not spawned because skip policy jumps to the next occurrence after today.
+        final weeklyJune8 = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc('repo-skip-mixed_2026-06-08_0')
+            .get();
+        expect(weeklyJune8.exists, isFalse);
+
+        // Next instances should be spawned:
+        // Weekly next after June 9: Mon June 15
+        // Monthly next after June 9: July 1
+        final weeklyJune15 = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc('repo-skip-mixed_2026-06-15_0')
+            .get();
+        final monthlyJuly1 = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc('repo-skip-mixed_2026-07-01_1')
+            .get();
+
+        expect(weeklyJune15.exists, isTrue);
+        expect(weeklyJune15.data()?['status'], 'pending');
+        expect(monthlyJuly1.exists, isTrue);
+        expect(monthlyJuly1.data()?['status'], 'pending');
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '8. TaskRepository missed policies: Stack policy on mixed Daily (interval 1) and Weekly (Wed) schedules',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(firestore: firestore, userId: userId);
+
+        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
+        final task = TaskSchedule(
+          id: 'repo-stack-mixed',
+          title: 'Mixed Stack Repo',
+          description: 'Test',
+          schedules: [
+            DailySchedule(startDate: start, interval: 1),
+            WeeklySchedule(
+              startDate: start,
+              interval: 1,
+              daysOfWeek: const {3},
+            ), // Wednesday
+          ],
+          missedPolicy: MissedPolicy.stack,
+        );
+
+        // Add task on Mon June 1
+        AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        await repository.addTask(task);
+        await Future.delayed(Duration.zero);
+
+        // Mock time to Wed June 3. Daily should have instances for June 1, 2, 3. Weekly should have instance for June 3.
+        AppClock.setMockTime(DateTime(2026, 6, 3, 10, 0));
+        await repository.getTasks().first;
+        await Future.delayed(Duration.zero);
+
+        final insts = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+        // Expect 4 instances: Daily (June 1, 2, 3) + Weekly (June 3)
+        expect(insts.docs.length, 4);
+        expect(
+          insts.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-01_0'),
+          isTrue,
+        );
+        expect(
+          insts.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-02_0'),
+          isTrue,
+        );
+        expect(
+          insts.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-03_0'),
+          isTrue,
+        );
+        expect(
+          insts.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-03_1'),
+          isTrue,
+        );
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '9. TaskRepository missed policies: Shift policy behavior on Daily (interval 2) and Weekly (Mon) schedules',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(firestore: firestore, userId: userId);
+
+        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
+        final task = TaskSchedule(
+          id: 'repo-shift-mixed',
+          title: 'Mixed Shift Repo',
+          description: 'Test',
+          schedules: [
+            DailySchedule(startDate: start, interval: 2),
+            WeeklySchedule(
+              startDate: start,
+              interval: 1,
+              daysOfWeek: const {1},
+            ),
+          ],
+          missedPolicy: MissedPolicy.shift,
+        );
+
+        // Add task on Mon June 1.
+        AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        await repository.addTask(task);
+        await Future.delayed(Duration.zero);
+
+        // Verify that under shift policy, _checkAndProcessMissedPolicies does NOT spawn instances
+        final insts = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+        expect(insts.docs.isEmpty, isTrue);
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '10. TaskRepository missed policies: OneOff + Daily + Weekly + Monthly + Yearly under Stack policy',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(firestore: firestore, userId: userId);
+
+        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
+        final task = TaskSchedule(
+          id: 'repo-five-stack',
+          title: 'Five Stack',
+          description: 'Test',
+          schedules: [
+            OneOffSchedule(date: start),
+            DailySchedule(startDate: start, interval: 1),
+            WeeklySchedule(
+              startDate: start,
+              interval: 1,
+              daysOfWeek: const {3},
+            ), // Wed
+            MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 15),
+            YearlySchedule(startDate: start, interval: 1, month: 12, day: 25),
+          ],
+          missedPolicy: MissedPolicy.stack,
+        );
+
+        // Add task on Mon June 1
+        AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        await repository.addTask(task);
+        await Future.delayed(Duration.zero);
+
+        // Mock time to Wed June 3.
+        // OneOff occurrences: June 1.
+        // Daily occurrences: June 1, 2, 3.
+        // Weekly occurrences: June 3.
+        AppClock.setMockTime(DateTime(2026, 6, 3, 10, 0));
+        await repository.getTasks().first;
+        await Future.delayed(Duration.zero);
+
+        final insts = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+        // Total: 1 (OneOff) + 3 (Daily) + 1 (Weekly) = 5 instances.
+        expect(insts.docs.length, 5);
+
+        expect(
+          insts.docs.any((d) => d.id == 'repo-five-stack_2026-06-01_0'),
+          isTrue,
+        ); // OneOff
+        expect(
+          insts.docs.any((d) => d.id == 'repo-five-stack_2026-06-01_1'),
+          isTrue,
+        ); // Daily June 1
+        expect(
+          insts.docs.any((d) => d.id == 'repo-five-stack_2026-06-02_1'),
+          isTrue,
+        ); // Daily June 2
+        expect(
+          insts.docs.any((d) => d.id == 'repo-five-stack_2026-06-03_1'),
+          isTrue,
+        ); // Daily June 3
+        expect(
+          insts.docs.any((d) => d.id == 'repo-five-stack_2026-06-03_2'),
+          isTrue,
+        ); // Weekly June 3
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '11. TaskRepository completion: Rollover policy completion spawns correct next occurrences in mixed schedules',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(firestore: firestore, userId: userId);
+
+        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
+        final task = TaskSchedule(
+          id: 'repo-rollover-complete',
+          title: 'Mixed Rollover Complete',
+          description: 'Test',
+          schedules: [
+            DailySchedule(startDate: start, interval: 2),
+            WeeklySchedule(
+              startDate: start,
+              interval: 1,
+              daysOfWeek: const {1, 3},
+            ),
+          ],
+          missedPolicy: MissedPolicy.rollover,
+        );
+
+        // Add task on Mon June 1
+        AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        await repository.addTask(task);
+        await Future.delayed(Duration.zero);
+
+        // Complete Daily instance on June 1
+        await repository.completeTask('repo-rollover-complete_2026-06-01_0');
+        await Future.delayed(Duration.zero);
+
+        final insts = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+
+        // Completing the Daily instance (June 1) should spawn the next occurrence after June 1.
+        // Daily next after June 1 is June 3.
+        // Weekly next after June 1 is June 3.
+        // Let's verify that a new pending Daily instance for June 3 is created (ends in _0).
+        expect(
+          insts.docs.any(
+            (d) =>
+                d.id == 'repo-rollover-complete_2026-06-03_0' &&
+                d.data()['status'] == 'pending',
+          ),
+          isTrue,
+        );
+
+        AppClock.reset();
+      },
+    );
+  });
 }
