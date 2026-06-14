@@ -229,7 +229,7 @@ class TaskRepository {
         next = ref;
       } else {
         final candidate = s.nextOccurrenceAfter(ref);
-        if (!candidate.isBefore(ref)) {
+        if (candidate != null && !candidate.isBefore(ref)) {
           next = candidate;
         }
       }
@@ -474,7 +474,7 @@ class TaskRepository {
                   date = today;
                 } else {
                   final candidate = s.nextOccurrenceAfter(today);
-                  if (!candidate.isBefore(today)) {
+                  if (candidate != null && !candidate.isBefore(today)) {
                     date = candidate;
                   }
                 }
@@ -506,10 +506,14 @@ class TaskRepository {
           } else if (task.missedPolicy == MissedPolicy.skip) {
             for (int i = 0; i < task.schedules.length; i++) {
               final s = task.schedules[i];
-              final pendingForSchedule = pendingInstances.where((inst) {
+              final schedInstances = taskInstances.where((inst) {
                 if (task.schedules.length <= 1) return true;
                 return inst.id.endsWith('_$i');
               }).toList();
+
+              final pendingForSchedule = schedInstances
+                  .where((inst) => inst.status == 'pending')
+                  .toList();
 
               bool spawnedNext = false;
               for (final pending in pendingForSchedule) {
@@ -536,13 +540,76 @@ class TaskRepository {
                 }
               }
 
-              if (spawnedNext || pendingForSchedule.isEmpty) {
+              // Backfill missed occurrences in the gap
+              CivilDay? maxExistingDate;
+              if (schedInstances.isNotEmpty) {
+                maxExistingDate = schedInstances
+                    .map((inst) => inst.scheduledDate)
+                    .reduce((a, b) => a.isBefore(b) ? b : a);
+              }
+
+              CivilDay checkDate = maxExistingDate != null
+                  ? maxExistingDate.addDays(1)
+                  : s.scheduledDate;
+
+              int daysChecked = 0;
+              while (checkDate.isBefore(today) && daysChecked < 30) {
+                if (s.occursOn(checkDate)) {
+                  final instId = instanceIdFor(task, checkDate, i);
+                  if (!taskInstances.any((inst) => inst.id == instId)) {
+                    final skippedInst = TaskInstance(
+                      id: instId,
+                      scheduleId: task.id,
+                      title: task.title,
+                      description: task.description,
+                      scheduledDate: checkDate,
+                      startRelativeTime: s.startRelativeTime,
+                      dueRelativeTime: s.dueRelativeTime,
+                      notificationRelativeTime: s.notificationRelativeTime,
+                      isFamily: task.isFamily,
+                      priority: task.priority,
+                      cycleId: task.cycleId,
+                      assignedUserId: task.assignedUserId,
+                      status: 'skipped',
+                    );
+                    batch.set(
+                      _instanceRefFor(skippedInst, familyId),
+                      skippedInst,
+                    );
+                    hasChanges = true;
+
+                    final deltaId = const Uuid().v4();
+                    final delta = TaskDelta(
+                      id: deltaId,
+                      taskId: task.id,
+                      timestamp: now,
+                      expiresAt: now.add(const Duration(days: 90)),
+                      operation: 'skipped',
+                      changedFields: {'instanceId': instId},
+                      userId: _userId,
+                    );
+                    batch.set(_historyRefFor(task, familyId, deltaId), delta);
+                    spawnedNext = true;
+                  }
+                }
+                checkDate = checkDate.addDays(1);
+                daysChecked++;
+              }
+
+              final hasFuturePending = schedInstances.any(
+                (inst) =>
+                    inst.status == 'pending' &&
+                    (today.isBefore(inst.scheduledDate) ||
+                        inst.scheduledDate == today),
+              );
+
+              if (spawnedNext || !hasFuturePending) {
                 CivilDay? date;
                 if (s.occursOn(today)) {
                   date = today;
                 } else {
                   final candidate = s.nextOccurrenceAfter(today);
-                  if (!candidate.isBefore(today)) {
+                  if (candidate != null && !candidate.isBefore(today)) {
                     date = candidate;
                   }
                 }
@@ -847,11 +914,12 @@ class TaskRepository {
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
+      final today = CivilDay.fromDateTime(now);
       final CivilDay refDate;
-      if (task.missedPolicy == MissedPolicy.shift) {
-        refDate = CivilDay.fromDateTime(now).addDays(1);
-      } else {
+      if (task.missedPolicy == MissedPolicy.stack) {
         refDate = instance.scheduledDate.addDays(1);
+      } else {
+        refDate = today.addDays(1);
       }
 
       final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(task, refDate);

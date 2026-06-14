@@ -95,15 +95,17 @@ class TaskList {
         if (task.schedules.first is OneOffSchedule) {
           shouldRemoveTask = true;
         } else {
-          newSchedules = task.schedules.map((s) {
-            final CivilDay nextOccur;
-            if (task.missedPolicy == MissedPolicy.rollover) {
-              nextOccur = s.nextOccurrenceAfter(s.scheduledDate);
-            } else {
-              nextOccur = s.nextOccurrenceAfter(today);
+          final List<TaskScheduleRule> list = [];
+          for (final s in task.schedules) {
+            final nextOccur = s.nextOccurrenceAfter(today);
+            if (nextOccur != null) {
+              list.add(s.copyWithStartDate(nextOccur));
             }
-            return s.copyWithStartDate(nextOccur);
-          }).toList();
+          }
+          newSchedules = list;
+          if (newSchedules.isEmpty) {
+            shouldRemoveTask = true;
+          }
         }
       }
     } else {
@@ -118,14 +120,15 @@ class TaskList {
           }
           list.add(s);
         } else {
-          if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
-            final CivilDay nextOccur;
-            if (task.missedPolicy == MissedPolicy.rollover) {
-              nextOccur = s.nextOccurrenceAfter(s.scheduledDate);
-            } else {
-              nextOccur = s.nextOccurrenceAfter(today);
+          final firstOccur = s.occursOn(s.scheduledDate)
+              ? s.scheduledDate
+              : s.nextOccurrenceAfter(s.scheduledDate);
+          if (firstOccur != null &&
+              (firstOccur.isBefore(today) || firstOccur == today)) {
+            final nextOccur = s.nextOccurrenceAfter(today);
+            if (nextOccur != null) {
+              list.add(s.copyWithStartDate(nextOccur));
             }
-            list.add(s.copyWithStartDate(nextOccur));
           } else {
             list.add(s);
           }

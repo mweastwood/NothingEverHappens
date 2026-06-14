@@ -496,24 +496,26 @@ void main() {
         dueRelativeTime: testDue,
       );
 
-      // nextOccurrenceAfter always returns the scheduled date regardless of input
+      // returns null on or after the scheduled date
       expect(
         schedule.nextOccurrenceAfter(
           const CivilDay(year: 2026, month: 6, day: 1),
         ),
-        const CivilDay(year: 2026, month: 6, day: 1),
+        isNull,
       );
+      // returns scheduled date if reference is before it
       expect(
         schedule.nextOccurrenceAfter(
           const CivilDay(year: 2026, month: 5, day: 31),
         ),
         const CivilDay(year: 2026, month: 6, day: 1),
       );
+      // returns null after the scheduled date
       expect(
         schedule.nextOccurrenceAfter(
           const CivilDay(year: 2026, month: 6, day: 2),
         ),
-        const CivilDay(year: 2026, month: 6, day: 1),
+        isNull,
       );
     });
 
