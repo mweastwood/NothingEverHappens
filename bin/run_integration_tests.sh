@@ -1,0 +1,42 @@
+#!/bin/bash
+set -e
+
+# Get the directory of this script (repository root/bin)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="$( dirname "$SCRIPT_DIR" )"
+
+echo "=== Starting Chromedriver ==="
+chromedriver --port=4444 &
+CHROMEDRIVER_PID=$!
+
+# Wait for chromedriver to initialize
+echo "Waiting for Chromedriver to be ready..."
+for i in {1..50}; do
+    if curl -s http://localhost:4444/status | grep -q '"ready": true'; then
+        echo "Chromedriver is ready!"
+        break
+    fi
+    sleep 0.1
+done
+
+# Ensure chromedriver is killed when the script exits
+cleanup() {
+    echo "=== Shutting down Chromedriver ==="
+    kill $CHROMEDRIVER_PID 2>/dev/null || true
+}
+trap cleanup EXIT
+
+echo "=== Running Flutter Integration Tests against Local Emulator Suite (Chrome Headless Release) ==="
+
+# Navigate to backend directory to run the emulator exec command
+cd "$REPO_ROOT/backend"
+
+# Execute the flutter test inside the emulator environment using flutter drive on chrome
+RUN_CMD="cd \"$REPO_ROOT/app\" && flutter drive --release --driver=test_driver/integration_test.dart --target=integration_test/security_rules_test.dart -d chrome --web-browser-flag=\"--headless=new\" --web-browser-flag=\"--disable-gpu\" --web-browser-flag=\"--no-sandbox\""
+
+if [ -z "$DISPLAY" ] && command -v xvfb-run >/dev/null 2>&1; then
+    echo "No DISPLAY detected and xvfb-run is available. Wrapping command with xvfb-run bash -c..."
+    RUN_CMD="xvfb-run bash -c \"$RUN_CMD\""
+fi
+
+npx firebase emulators:exec --only firestore,auth "$RUN_CMD"
