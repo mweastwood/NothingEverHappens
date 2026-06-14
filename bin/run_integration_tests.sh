@@ -10,7 +10,14 @@ chromedriver --port=4444 &
 CHROMEDRIVER_PID=$!
 
 # Wait for chromedriver to initialize
-sleep 2
+echo "Waiting for Chromedriver to be ready..."
+for i in {1..50}; do
+    if curl -s http://localhost:4444/status | grep -q '"ready": true'; then
+        echo "Chromedriver is ready!"
+        break
+    fi
+    sleep 0.1
+done
 
 # Ensure chromedriver is killed when the script exits
 cleanup() {
