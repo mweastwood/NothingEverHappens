@@ -26,6 +26,10 @@ abstract class NotificationService {
 /// Production implementation that delegates to `flutter_local_notifications` plugin
 /// to schedule exact zoned alarms on Android and local notifications on iOS.
 class PlatformNotificationService implements NotificationService {
+  static final int _currentRunId = DateTime.now().millisecondsSinceEpoch;
+  final int _runId = _currentRunId;
+  bool _isDisposed = false;
+
   final FlutterLocalNotificationsPlugin _plugin;
   final Map<String, List<Timer>> _webTimers = {};
 
@@ -36,6 +40,7 @@ class PlatformNotificationService implements NotificationService {
 
   Future<void> _initialize() async {
     if (kIsWeb) {
+      if (_isDisposed || _runId != _currentRunId) return;
       requestWebNotificationPermission();
       return;
     }
@@ -75,8 +80,12 @@ class PlatformNotificationService implements NotificationService {
 
   @override
   Future<void> scheduleNotifications(TaskSchedule task) async {
+    if (_isDisposed || _runId != _currentRunId) return;
+
     // First, cancel any existing notifications for this task to avoid duplicates
     await cancelNotifications(task.id);
+
+    if (_isDisposed || _runId != _currentRunId) return;
 
     debugPrint(
       'PlatformNotificationService: Scheduling notifications for task: ${task.title} (ID: ${task.id})',
@@ -95,6 +104,7 @@ class PlatformNotificationService implements NotificationService {
           '  - [Web] Scheduling timer in ${delay.inMinutes} minutes at $scheduledDate',
         );
         final timer = Timer(delay, () {
+          if (_isDisposed || _runId != _currentRunId) return;
           showWebNotification(
             task.title,
             task.description.isNotEmpty
@@ -102,6 +112,7 @@ class PlatformNotificationService implements NotificationService {
                 : 'Reminder for your task',
           );
           // Reschedule for the next occurrence once it fires
+          if (_isDisposed || _runId != _currentRunId) return;
           scheduleNotifications(task);
         });
 
@@ -165,6 +176,8 @@ class PlatformNotificationService implements NotificationService {
 
   @override
   Future<void> cancelNotifications(String taskId) async {
+    if (_isDisposed || _runId != _currentRunId) return;
+
     debugPrint(
       'PlatformNotificationService: Cancelling notifications for task ID: $taskId',
     );
@@ -223,6 +236,7 @@ class PlatformNotificationService implements NotificationService {
 
   @override
   Future<void> dispose() async {
+    _isDisposed = true;
     debugPrint(
       'PlatformNotificationService: Disposing and cancelling active web timers',
     );
