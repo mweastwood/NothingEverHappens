@@ -1166,14 +1166,15 @@ void main() {
         expect(weeklyJune1.data()?['status'], 'skipped');
         expect(monthlyJune1.data()?['status'], 'skipped');
 
-        // Weekly June 8 is skipped and is not spawned because skip policy jumps to the next occurrence after today.
+        // Weekly June 8 is backfilled and marked skipped
         final weeklyJune8 = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
             .doc('repo-skip-mixed_2026-06-08_0')
             .get();
-        expect(weeklyJune8.exists, isFalse);
+        expect(weeklyJune8.exists, isTrue);
+        expect(weeklyJune8.data()?['status'], 'skipped');
 
         // Next instances should be spawned:
         // Weekly next after June 9: Mon June 15
