@@ -22,6 +22,21 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install backend dependencies (for firebase-tools)
+        run: npm ci
+        working-directory: ./backend
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -33,6 +48,9 @@ jobs:
 
       - name: Run tests
         run: flutter test
+
+      - name: Run integration tests
+        run: ../bin/run_integration_tests.sh
 
   test-backend:
     name: Backend Tests (Node)
