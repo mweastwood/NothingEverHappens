@@ -267,7 +267,11 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
           int iterations = 0;
           while (count < 10 && iterations < 5000) {
             iterations++;
-            current = schedule.nextOccurrenceAfter(current);
+            final next = schedule.nextOccurrenceAfter(current);
+            if (next == null) {
+              break;
+            }
+            current = next;
             if (occurrences.isNotEmpty && occurrences.last == current) {
               break;
             }
