@@ -50,6 +50,7 @@
   "noTasksYet": "No tasks yet. Add one!",
   "noHistoryYet": "No history yet",
   "noRecurringTasksScheduled": "No recurring tasks scheduled",
+  "copiedToClipboard": "Copied task to clipboard",
   "deleteTaskConfirmTitle": "Delete Task?",
   "deleteTaskConfirmBody": "Are you sure you want to delete \"{title}\"? This action will permanently remove the task.",
   "@deleteTaskConfirmBody": {

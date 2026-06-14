@@ -169,6 +169,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'No hay tareas recurrentes programadas';
 
   @override
+  String get copiedToClipboard => 'Tarea copiada al portapapeles';
+
+  @override
   String get deleteTaskConfirmTitle => '¿Eliminar Tarea?';
 
   @override

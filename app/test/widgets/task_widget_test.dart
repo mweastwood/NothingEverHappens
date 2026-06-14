@@ -623,4 +623,72 @@ void main() {
       verifyNever(mockTaskRepository.deleteTask(any));
     },
   );
+
+  testGoldens('TaskWidget swipe LTR golden', (tester) async {
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: Container(
+          color: Colors.white,
+          child: TaskWidget(
+            instance: createInstanceFor(testTask),
+            schedule: testTask,
+          ),
+        ),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 200),
+    );
+
+    // Start drag LTR to reveal green background
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text(testTask.title)),
+    );
+    await gesture.moveBy(const Offset(150.0, 0.0));
+    await tester.pump(); // Pump frame with swiped state
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_swipe_ltr.png'),
+    );
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testGoldens('TaskWidget swipe RTL golden', (tester) async {
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: Container(
+          color: Colors.white,
+          child: TaskWidget(
+            instance: createInstanceFor(testTask),
+            schedule: testTask,
+          ),
+        ),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 200),
+    );
+
+    // Start drag RTL to reveal red background
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text(testTask.title)),
+    );
+    await gesture.moveBy(const Offset(-150.0, 0.0));
+    await tester.pump(); // Pump frame with swiped state
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_swipe_rtl.png'),
+    );
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
 }

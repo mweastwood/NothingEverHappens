@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -406,6 +407,20 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
           );
         },
         child: ListTile(
+          onLongPress: () async {
+            final textToCopy = widget.instance.description.isNotEmpty
+                ? '${widget.instance.title}\n\n${widget.instance.description}'
+                : widget.instance.title;
+            await Clipboard.setData(ClipboardData(text: textToCopy));
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(context.l10n.copiedToClipboard),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          },
           leading: FunCheckButton(
             value: _isChecking,
             onChanged: (value) {
