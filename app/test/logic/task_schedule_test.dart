@@ -890,10 +890,10 @@ void main() {
           (updated.schedules[0] as DailySchedule).startDate,
           const CivilDay(year: 2026, month: 6, day: 10),
         );
-        // Monthly should remain on June 15 (future)
+        // Monthly should remain on June 1 (since it hasn't occurred yet, first occurrence is June 15)
         expect(
           (updated.schedules[1] as MonthlySchedule).startDate,
-          const CivilDay(year: 2026, month: 6, day: 15),
+          const CivilDay(year: 2026, month: 6, day: 1),
         );
 
         AppClock.reset();
@@ -985,18 +985,18 @@ void main() {
         expect(updated.schedules[1], isA<WeeklySchedule>());
         expect(
           (updated.schedules[1] as WeeklySchedule).startDate,
-          const CivilDay(year: 2026, month: 6, day: 3),
-        ); // Weekly advanced (Mon -> Wed June 3)
+          const CivilDay(year: 2026, month: 6, day: 1),
+        ); // Weekly NOT advanced (first occurrence June 3 is in future)
         expect(updated.schedules[2], isA<MonthlySchedule>());
         expect(
           (updated.schedules[2] as MonthlySchedule).startDate,
-          const CivilDay(year: 2026, month: 6, day: 15),
-        ); // Monthly advanced (Mon -> June 15)
+          const CivilDay(year: 2026, month: 6, day: 1),
+        ); // Monthly NOT advanced (first occurrence June 15 is in future)
         expect(updated.schedules[3], isA<YearlySchedule>());
         expect(
           (updated.schedules[3] as YearlySchedule).startDate,
-          const CivilDay(year: 2026, month: 12, day: 25),
-        ); // Yearly advanced (Mon -> Dec 25)
+          const CivilDay(year: 2026, month: 6, day: 1),
+        ); // Yearly NOT advanced (first occurrence Dec 25 is in future)
 
         AppClock.reset();
       },

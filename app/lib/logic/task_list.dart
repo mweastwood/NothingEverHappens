@@ -118,7 +118,11 @@ class TaskList {
           }
           list.add(s);
         } else {
-          if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
+          final firstOccur = s.occursOn(s.scheduledDate)
+              ? s.scheduledDate
+              : s.nextOccurrenceAfter(s.scheduledDate);
+          if (firstOccur != null &&
+              (firstOccur.isBefore(today) || firstOccur == today)) {
             final CivilDay nextOccur;
             if (task.missedPolicy == MissedPolicy.rollover) {
               nextOccur = s.nextOccurrenceAfter(s.scheduledDate);
