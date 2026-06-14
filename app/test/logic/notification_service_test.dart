@@ -100,6 +100,10 @@ void main() {
       notificationService = PlatformNotificationService(plugin: mockPlugin);
     });
 
+    tearDown(() async {
+      await notificationService.dispose();
+    });
+
     final testTask = TaskSchedule(
       id: 'task-notif-test',
       title: 'Zoned Test TaskSchedule',

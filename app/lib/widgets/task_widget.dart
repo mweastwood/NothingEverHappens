@@ -79,6 +79,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
 
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
+        if (!mounted) return;
         if (_isDeleting) {
           ref
               .read(taskRepositoryProvider)!
