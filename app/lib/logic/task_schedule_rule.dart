@@ -32,7 +32,7 @@ abstract class TaskScheduleRule {
   bool occursOn(CivilDay date);
 
   /// Calculates the next occurrence of the task strictly after [date].
-  CivilDay nextOccurrenceAfter(CivilDay date);
+  CivilDay? nextOccurrenceAfter(CivilDay date);
 
   /// Creates a copy of this schedule with a new scheduled/start date.
   TaskScheduleRule copyWithStartDate(CivilDay newStartDate);
@@ -116,8 +116,11 @@ class OneOffSchedule extends TaskScheduleRule {
   }
 
   @override
-  CivilDay nextOccurrenceAfter(CivilDay date) {
-    return this.date;
+  CivilDay? nextOccurrenceAfter(CivilDay date) {
+    if (date.isBefore(this.date)) {
+      return this.date;
+    }
+    return null;
   }
 
   @override
@@ -221,7 +224,7 @@ class DailySchedule extends TaskScheduleRule {
   }
 
   @override
-  CivilDay nextOccurrenceAfter(CivilDay date) {
+  CivilDay? nextOccurrenceAfter(CivilDay date) {
     final startUtc = startDate.toUtcDateTime();
     final currentUtc = date.toUtcDateTime();
 
@@ -367,7 +370,7 @@ class WeeklySchedule extends TaskScheduleRule {
   }
 
   @override
-  CivilDay nextOccurrenceAfter(CivilDay date) {
+  CivilDay? nextOccurrenceAfter(CivilDay date) {
     var current = date;
     for (int i = 0; i < 365 * 10; i++) {
       final currentUtc = DateTime.utc(current.year, current.month, current.day);
@@ -547,7 +550,7 @@ class MonthlySchedule extends TaskScheduleRule {
   }
 
   @override
-  CivilDay nextOccurrenceAfter(CivilDay date) {
+  CivilDay? nextOccurrenceAfter(CivilDay date) {
     var current = date;
     // Iterate day-by-day up to 10 years to find the next occurrence
     for (int i = 0; i < 365 * 10; i++) {
@@ -691,7 +694,7 @@ class YearlySchedule extends TaskScheduleRule {
   }
 
   @override
-  CivilDay nextOccurrenceAfter(CivilDay date) {
+  CivilDay? nextOccurrenceAfter(CivilDay date) {
     var current = date;
     // Iterate day-by-day up to 20 years to find the next occurrence
     for (int i = 0; i < 365 * 20; i++) {

@@ -229,7 +229,7 @@ class TaskRepository {
         next = ref;
       } else {
         final candidate = s.nextOccurrenceAfter(ref);
-        if (!candidate.isBefore(ref)) {
+        if (candidate != null && !candidate.isBefore(ref)) {
           next = candidate;
         }
       }
@@ -473,7 +473,7 @@ class TaskRepository {
                   date = today;
                 } else {
                   final candidate = s.nextOccurrenceAfter(today);
-                  if (!candidate.isBefore(today)) {
+                  if (candidate != null && !candidate.isBefore(today)) {
                     date = candidate;
                   }
                 }
@@ -608,7 +608,7 @@ class TaskRepository {
                   date = today;
                 } else {
                   final candidate = s.nextOccurrenceAfter(today);
-                  if (!candidate.isBefore(today)) {
+                  if (candidate != null && !candidate.isBefore(today)) {
                     date = candidate;
                   }
                 }
@@ -915,9 +915,10 @@ class TaskRepository {
     if (isRecurring &&
         (task.missedPolicy == MissedPolicy.rollover ||
             task.missedPolicy == MissedPolicy.skip)) {
+      final today = CivilDay.fromDateTime(now);
       final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(
         task,
-        instance.scheduledDate.addDays(1),
+        today.addDays(1),
       );
       if (nextOcc != null) {
         final date = nextOcc.$1;

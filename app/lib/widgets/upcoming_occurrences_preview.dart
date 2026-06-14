@@ -93,7 +93,11 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
           int iterations = 0;
           while (count < maxOccurrences && iterations < 1000) {
             iterations++;
-            current = sched.nextOccurrenceAfter(current);
+            final next = sched.nextOccurrenceAfter(current);
+            if (next == null) {
+              break;
+            }
+            current = next;
             if (allOccurrences.any(
               (o) => o.schedule == sched && o.date == current,
             )) {

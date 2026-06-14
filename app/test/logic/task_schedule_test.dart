@@ -423,15 +423,17 @@ void main() {
         expect(task.isOverdue(tuesdayDateTime), isTrue);
 
         // Simulate completion on Tuesday
+        AppClock.setMockTime(tuesdayDateTime);
         final state = TaskList([task]).complete('rollover-task', 'user-1');
+        AppClock.reset();
 
-        // The next occurrence should continue from its original path (strictly after Monday -> Tuesday)
+        // The next occurrence should continue relative to completion date (strictly after Tuesday -> Wednesday)
         final completedTask = state.activeTasks.firstWhere(
           (t) => t.id == 'rollover-task',
         );
         expect(
           completedTask.schedules.first.scheduledDate,
-          const CivilDay(year: 2026, month: 5, day: 26),
+          const CivilDay(year: 2026, month: 5, day: 27),
         );
       },
     );
@@ -929,15 +931,15 @@ void main() {
         final state = taskList.complete('mixed-weekly-yearly-rollover', userId);
         final updated = state.activeTasks.first;
 
-        // Weekly advances to June 5, 2026 (first Friday after June 1)
+        // Weekly advances to Jan 1, 2027 (Next Friday after completion date Dec 25)
         expect(
           (updated.schedules[0] as WeeklySchedule).startDate,
-          const CivilDay(year: 2026, month: 6, day: 5),
+          const CivilDay(year: 2027, month: 1, day: 1),
         );
-        // Yearly advances to Dec 25, 2026 (first Dec 25 after June 1)
+        // Yearly advances to Dec 25, 2027 (Next Dec 25 after completion date Dec 25)
         expect(
           (updated.schedules[1] as YearlySchedule).startDate,
-          const CivilDay(year: 2026, month: 12, day: 25),
+          const CivilDay(year: 2027, month: 12, day: 25),
         );
 
         AppClock.reset();
