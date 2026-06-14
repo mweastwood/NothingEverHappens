@@ -120,7 +120,11 @@ class TaskList {
           }
           list.add(s);
         } else {
-          if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
+          final firstOccur = s.occursOn(s.scheduledDate)
+              ? s.scheduledDate
+              : s.nextOccurrenceAfter(s.scheduledDate);
+          if (firstOccur != null &&
+              (firstOccur.isBefore(today) || firstOccur == today)) {
             final nextOccur = s.nextOccurrenceAfter(today);
             if (nextOccur != null) {
               list.add(s.copyWithStartDate(nextOccur));
