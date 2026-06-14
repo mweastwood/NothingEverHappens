@@ -229,7 +229,7 @@ class TaskRepository {
         next = ref;
       } else {
         final candidate = s.nextOccurrenceAfter(ref);
-        if (!candidate.isBefore(ref)) {
+        if (candidate != null && !candidate.isBefore(ref)) {
           next = candidate;
         }
       }
@@ -473,7 +473,7 @@ class TaskRepository {
                   date = today;
                 } else {
                   final candidate = s.nextOccurrenceAfter(today);
-                  if (!candidate.isBefore(today)) {
+                  if (candidate != null && !candidate.isBefore(today)) {
                     date = candidate;
                   }
                 }
@@ -541,7 +541,7 @@ class TaskRepository {
                   date = today;
                 } else {
                   final candidate = s.nextOccurrenceAfter(today);
-                  if (!candidate.isBefore(today)) {
+                  if (candidate != null && !candidate.isBefore(today)) {
                     date = candidate;
                   }
                 }
