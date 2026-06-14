@@ -98,9 +98,9 @@ class TaskList {
           newSchedules = task.schedules.map((s) {
             final CivilDay nextOccur;
             if (task.missedPolicy == MissedPolicy.rollover) {
-              nextOccur = s.nextOccurrenceAfter(s.scheduledDate);
+              nextOccur = s.nextOccurrenceAfter(s.scheduledDate)!;
             } else {
-              nextOccur = s.nextOccurrenceAfter(today);
+              nextOccur = s.nextOccurrenceAfter(today)!;
             }
             return s.copyWithStartDate(nextOccur);
           }).toList();
@@ -121,9 +121,9 @@ class TaskList {
           if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
             final CivilDay nextOccur;
             if (task.missedPolicy == MissedPolicy.rollover) {
-              nextOccur = s.nextOccurrenceAfter(s.scheduledDate);
+              nextOccur = s.nextOccurrenceAfter(s.scheduledDate)!;
             } else {
-              nextOccur = s.nextOccurrenceAfter(today);
+              nextOccur = s.nextOccurrenceAfter(today)!;
             }
             list.add(s.copyWithStartDate(nextOccur));
           } else {
