@@ -1168,14 +1168,15 @@ void main() {
         expect(weeklyJune1.data()?['status'], 'skipped');
         expect(monthlyJune1.data()?['status'], 'skipped');
 
-        // Weekly June 8 is skipped and is not spawned because skip policy jumps to the next occurrence after today.
+        // Weekly June 8 is backfilled and marked skipped
         final weeklyJune8 = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
             .doc('repo-skip-mixed_2026-06-08_0')
             .get();
-        expect(weeklyJune8.exists, isFalse);
+        expect(weeklyJune8.exists, isTrue);
+        expect(weeklyJune8.data()?['status'], 'skipped');
 
         // Next instances should be spawned:
         // Weekly next after June 9: Mon June 15
@@ -1197,6 +1198,56 @@ void main() {
         expect(weeklyJune15.data()?['status'], 'pending');
         expect(monthlyJuly1.exists, isTrue);
         expect(monthlyJuly1.data()?['status'], 'pending');
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      '7b. TaskRepository missed policies: Skip policy backfill cap at 30 days',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(firestore: firestore, userId: userId);
+
+        final start = const CivilDay(year: 2026, month: 6, day: 1);
+        final task = TaskSchedule(
+          id: 'repo-skip-cap',
+          title: 'Skip Cap Repo',
+          description: 'Test',
+          schedules: [DailySchedule(startDate: start, interval: 1)],
+          missedPolicy: MissedPolicy.skip,
+        );
+
+        // Add task on June 1
+        AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        await repository.addTask(task);
+        await Future.delayed(Duration.zero);
+
+        // Mock time to July 16 (45 days later)
+        AppClock.setMockTime(DateTime(2026, 7, 16, 10, 0));
+        await repository.getTasks().first;
+        await Future.delayed(Duration.zero);
+
+        // Get all instances
+        final insts = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+
+        // 1 instance existed for June 1 (transitioned to skipped)
+        // 30 additional instances backfilled (June 2 through July 1)
+        // 1 new pending instance spawned (for July 16)
+        // Total instances should be 32 (1 + 30 + 1)
+        final skippedCount = insts.docs
+            .where((d) => d.data()['status'] == 'skipped')
+            .length;
+        final pendingCount = insts.docs
+            .where((d) => d.data()['status'] == 'pending')
+            .length;
+
+        expect(skippedCount, 31); // June 1 + 30 backfilled (June 2 to July 1)
+        expect(pendingCount, 1); // July 16
 
         AppClock.reset();
       },
