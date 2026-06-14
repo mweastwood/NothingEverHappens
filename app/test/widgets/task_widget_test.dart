@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/gestures.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -691,4 +692,52 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    'TaskWidget mouse interaction enables text selection and disables swipe',
+    (tester) async {
+      await tester.pumpWidget(createWidget(testTask));
+
+      // Initially, it should be in touch mode (_isMouse is false)
+      final titleFinder = find.text(testTask.title);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is SelectableText && w.data == testTask.title,
+        ),
+        findsNothing,
+      );
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.data == testTask.title),
+        findsOneWidget,
+      );
+
+      // Click mouse on the task widget to simulate mouse interaction
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: tester.getCenter(titleFinder));
+      await gesture.down(tester.getCenter(titleFinder));
+      await tester.pumpAndSettle();
+
+      // Now, it should switch to mouse mode (_isMouse is true)
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is SelectableText && w.data == testTask.title,
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.data == testTask.title),
+        findsNothing,
+      );
+
+      // Try to fling to complete (LTR) - should do nothing because direction is none
+      await tester.fling(titleFinder, const Offset(500.0, 0.0), 1000.0);
+      await tester.pumpAndSettle();
+
+      verifyNever(mockTaskRepository.completeTask(any));
+
+      // Clean up
+      await gesture.up();
+      await gesture.removePointer();
+    },
+  );
 }

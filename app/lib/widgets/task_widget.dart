@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -40,6 +41,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
   bool _isLoadingAssignee = false;
   bool _isChecking = false;
   bool _isDeleting = false;
+  bool _isMouse = false;
 
   @override
   void initState() {
@@ -326,6 +328,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
 
     return Dismissible(
       key: ValueKey(widget.instance.id),
+      direction: _isMouse ? DismissDirection.none : DismissDirection.horizontal,
       background: Container(
         color: Colors.green,
         alignment: Alignment.centerLeft,
@@ -379,161 +382,189 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               .deleteTask(widget.instance.scheduleId);
         }
       },
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          // Visual Transformation (Squish/Shrink) affects the whole Card
-          final transformedChild = Transform(
-            alignment: Alignment.topCenter,
-            transform: Matrix4.diagonal3Values(
-              _scaleXAnimation.value,
-              _scaleYAnimation.value,
-              1.0,
-            ),
-            child: Card(
-              child: Opacity(
-                opacity: _contentOpacityAnimation.value,
-                child: child,
-              ),
-            ),
-          );
-
-          // Layout Transformation (Slide-up)
-          return SizeTransition(
-            sizeFactor: _sizeFactorAnimation,
-            axis: Axis.vertical,
-            alignment: Alignment.topCenter,
-            child: transformedChild,
-          );
+      child: Listener(
+        onPointerHover: (event) {
+          if (event.kind == PointerDeviceKind.mouse && !_isMouse) {
+            setState(() {
+              _isMouse = true;
+            });
+          }
         },
-        child: ListTile(
-          onLongPress: () async {
-            final textToCopy = widget.instance.description.isNotEmpty
-                ? '${widget.instance.title}\n\n${widget.instance.description}'
-                : widget.instance.title;
-            await Clipboard.setData(ClipboardData(text: textToCopy));
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(context.l10n.copiedToClipboard),
-                  duration: const Duration(seconds: 2),
+        onPointerDown: (event) {
+          final isMouse = event.kind == PointerDeviceKind.mouse;
+          if (isMouse != _isMouse) {
+            setState(() {
+              _isMouse = isMouse;
+            });
+          }
+        },
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            // Visual Transformation (Squish/Shrink) affects the whole Card
+            final transformedChild = Transform(
+              alignment: Alignment.topCenter,
+              transform: Matrix4.diagonal3Values(
+                _scaleXAnimation.value,
+                _scaleYAnimation.value,
+                1.0,
+              ),
+              child: Card(
+                child: Opacity(
+                  opacity: _contentOpacityAnimation.value,
+                  child: child,
                 ),
-              );
-            }
+              ),
+            );
+
+            // Layout Transformation (Slide-up)
+            return SizeTransition(
+              sizeFactor: _sizeFactorAnimation,
+              axis: Axis.vertical,
+              alignment: Alignment.topCenter,
+              child: transformedChild,
+            );
           },
-          leading: FunCheckButton(
-            value: _isChecking,
-            onChanged: (value) {
-              if (value && !_isChecking) {
-                _handleCompletion();
+          child: ListTile(
+            onLongPress: () async {
+              final textToCopy = widget.instance.description.isNotEmpty
+                  ? '${widget.instance.title}\n\n${widget.instance.description}'
+                  : widget.instance.title;
+              await Clipboard.setData(ClipboardData(text: textToCopy));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(context.l10n.copiedToClipboard),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
               }
             },
-          ),
-          title: Padding(
-            padding: const EdgeInsets.only(bottom: 4.0),
-            child: Text(
-              widget.instance.title,
-              style: Theme.of(context).textTheme.titleMedium,
+            leading: FunCheckButton(
+              value: _isChecking,
+              onChanged: (value) {
+                if (value && !_isChecking) {
+                  _handleCompletion();
+                }
+              },
             ),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.instance.description.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                MarkdownBody(data: widget.instance.description),
-              ],
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6.0,
-                runSpacing: 6.0,
-                children: [
-                  // Scope (Family vs Personal)
-                  _buildBadge(
-                    context,
-                    icon: widget.instance.isFamily
-                        ? Icons.people_alt
-                        : Icons.person,
-                    label: widget.instance.isFamily ? 'Family' : 'Personal',
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  // Priority
-                  _buildBadge(
-                    context,
-                    icon: _getPriorityIcon(widget.instance.priority),
-                    label: _getPriorityLabel(widget.instance.priority),
-                    color: _getPriorityColor(context, widget.instance.priority),
-                  ),
-                  // Schedule
-                  _buildBadge(
-                    context,
-                    icon: _getScheduleIcon(schedule),
-                    label: _getScheduleLabel(schedule),
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  // Effort/Duration (if any)
-                  if (widget.schedule?.estimatedDuration != null)
-                    _buildBadge(
-                      context,
-                      icon: Icons.timer_outlined,
-                      label: _formatDuration(
-                        widget.schedule!.estimatedDuration!,
-                      ),
-                      color: Theme.of(context).colorScheme.primary,
+            title: Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: _isMouse
+                  ? SelectableText(
+                      widget.instance.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    )
+                  : Text(
+                      widget.instance.title,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                  // Missed Policy (if recurring)
-                  if (schedule is! OneOffSchedule && widget.schedule != null)
-                    _buildBadge(
-                      context,
-                      icon: Icons.refresh,
-                      label:
-                          'Policy: ${_getMissedPolicyLabel(widget.schedule!.missedPolicy)}',
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  // Assignee (if family & assigned)
-                  if (widget.instance.isFamily &&
-                      widget.instance.assignedUserId != null)
-                    _buildBadge(
-                      context,
-                      icon: Icons.assignment_ind,
-                      label: _isLoadingAssignee
-                          ? 'Loading...'
-                          : (_assigneeName != null
-                                ? 'Assigned: $_assigneeName'
-                                : 'Assigned'),
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.instance.description.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  MarkdownBody(
+                    data: widget.instance.description,
+                    selectable: _isMouse,
+                  ),
                 ],
-              ),
-            ],
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.showEditOption &&
-                  widget.schedule != null &&
-                  schedule is OneOffSchedule) ...[
-                IconButton(
-                  key: const Key('edit_pencil_button'),
-                  icon: const Icon(Icons.edit, size: 20),
-                  tooltip: 'Edit TaskSchedule',
-                  onPressed: () {
-                    Navigator.push(
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6.0,
+                  runSpacing: 6.0,
+                  children: [
+                    // Scope (Family vs Personal)
+                    _buildBadge(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            CreateTaskScreen(taskToEdit: widget.schedule!),
+                      icon: widget.instance.isFamily
+                          ? Icons.people_alt
+                          : Icons.person,
+                      label: widget.instance.isFamily ? 'Family' : 'Personal',
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    // Priority
+                    _buildBadge(
+                      context,
+                      icon: _getPriorityIcon(widget.instance.priority),
+                      label: _getPriorityLabel(widget.instance.priority),
+                      color: _getPriorityColor(
+                        context,
+                        widget.instance.priority,
                       ),
-                    );
-                  },
+                    ),
+                    // Schedule
+                    _buildBadge(
+                      context,
+                      icon: _getScheduleIcon(schedule),
+                      label: _getScheduleLabel(schedule),
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    // Effort/Duration (if any)
+                    if (widget.schedule?.estimatedDuration != null)
+                      _buildBadge(
+                        context,
+                        icon: Icons.timer_outlined,
+                        label: _formatDuration(
+                          widget.schedule!.estimatedDuration!,
+                        ),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    // Missed Policy (if recurring)
+                    if (schedule is! OneOffSchedule && widget.schedule != null)
+                      _buildBadge(
+                        context,
+                        icon: Icons.refresh,
+                        label:
+                            'Policy: ${_getMissedPolicyLabel(widget.schedule!.missedPolicy)}',
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    // Assignee (if family & assigned)
+                    if (widget.instance.isFamily &&
+                        widget.instance.assignedUserId != null)
+                      _buildBadge(
+                        context,
+                        icon: Icons.assignment_ind,
+                        label: _isLoadingAssignee
+                            ? 'Loading...'
+                            : (_assigneeName != null
+                                  ? 'Assigned: $_assigneeName'
+                                  : 'Assigned'),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 8),
               ],
-              FunDeleteButton(
-                key: const Key('delete_task_button'),
-                onTap: _handleDeletion,
-              ),
-            ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.showEditOption &&
+                    widget.schedule != null &&
+                    schedule is OneOffSchedule) ...[
+                  IconButton(
+                    key: const Key('edit_pencil_button'),
+                    icon: const Icon(Icons.edit, size: 20),
+                    tooltip: 'Edit TaskSchedule',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              CreateTaskScreen(taskToEdit: widget.schedule!),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                FunDeleteButton(
+                  key: const Key('delete_task_button'),
+                  onTap: _handleDeletion,
+                ),
+              ],
+            ),
           ),
         ),
       ),
