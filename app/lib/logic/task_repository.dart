@@ -848,9 +848,10 @@ class TaskRepository {
     if (isRecurring &&
         (task.missedPolicy == MissedPolicy.rollover ||
             task.missedPolicy == MissedPolicy.skip)) {
+      final today = CivilDay.fromDateTime(now);
       final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(
         task,
-        instance.scheduledDate.addDays(1),
+        today.addDays(1),
       );
       if (nextOcc != null) {
         final date = nextOcc.$1;
