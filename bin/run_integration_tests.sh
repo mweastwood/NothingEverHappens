@@ -35,8 +35,8 @@ cd "$REPO_ROOT/backend"
 RUN_CMD="cd \"$REPO_ROOT/app\" && flutter drive --release --driver=test_driver/integration_test.dart --target=integration_test/security_rules_test.dart -d chrome --web-browser-flag=\"--headless=new\" --web-browser-flag=\"--disable-gpu\" --web-browser-flag=\"--no-sandbox\""
 
 if [ -z "$DISPLAY" ] && command -v xvfb-run >/dev/null 2>&1; then
-    echo "No DISPLAY detected and xvfb-run is available. Wrapping command with xvfb-run..."
-    RUN_CMD="xvfb-run $RUN_CMD"
+    echo "No DISPLAY detected and xvfb-run is available. Wrapping command with xvfb-run bash -c..."
+    RUN_CMD="xvfb-run bash -c \"$RUN_CMD\""
 fi
 
 npx firebase emulators:exec --only firestore,auth "$RUN_CMD"
