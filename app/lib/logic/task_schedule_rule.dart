@@ -369,7 +369,7 @@ class WeeklySchedule extends TaskScheduleRule {
   @override
   CivilDay nextOccurrenceAfter(CivilDay date) {
     var current = date;
-    while (true) {
+    for (int i = 0; i < 365 * 10; i++) {
       final currentUtc = DateTime.utc(current.year, current.month, current.day);
       final nextUtc = currentUtc.add(const Duration(days: 1));
       current = CivilDay(
@@ -381,6 +381,7 @@ class WeeklySchedule extends TaskScheduleRule {
         return current;
       }
     }
+    throw Exception('No occurrence found within 10 years');
   }
 
   @override

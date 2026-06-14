@@ -178,6 +178,84 @@ void main() {
       expect(historySnapshot.docs.length, 2);
       expect(historySnapshot.docs.last.data()['operation'], 'completed');
     });
+
+    test(
+      'editing weekly schedule to add monthly schedule does not duplicate or timeout',
+      () async {
+        final weeklyTask = TaskSchedule(
+          id: 'task-weekly',
+          title: 'Weekly Task',
+          description: 'Weekly Description',
+          missedPolicy: MissedPolicy.rollover,
+          schedules: [
+            WeeklySchedule(
+              startDate: const CivilDay(
+                year: 2026,
+                month: 6,
+                day: 15,
+              ), // a Monday
+              interval: 1,
+              daysOfWeek: {1}, // Monday
+            ),
+          ],
+        );
+
+        await repository.addTask(weeklyTask);
+        await Future.delayed(Duration.zero);
+
+        // Now edit it to add a monthly schedule
+        final updatedTaskSchedules = [
+          WeeklySchedule(
+            startDate: const CivilDay(year: 2026, month: 6, day: 15),
+            interval: 1,
+            daysOfWeek: {1},
+          ),
+          MonthlySchedule(
+            startDate: const CivilDay(year: 2026, month: 6, day: 15),
+            interval: 1,
+            dayOfMonth: 15,
+          ),
+        ];
+
+        final modification = weeklyTask.edit(
+          newTitle: 'Weekly Task',
+          newDescription: 'Weekly Description',
+          newSchedules: updatedTaskSchedules,
+          newEstimatedDuration: null,
+          userId: userId,
+          newMissedPolicy: MissedPolicy.rollover,
+          newIsMaster: false,
+          newLastSpawnedDate: null,
+          newIsFamily: false,
+          newPriority: TaskPriority.medium,
+        );
+
+        await repository.updateTask(modification);
+        await Future.delayed(Duration.zero);
+
+        // Check tasks
+        final tasksSnap = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .get();
+
+        // Expect exactly 1 task
+        expect(tasksSnap.docs.length, 1);
+        expect(tasksSnap.docs.first.id, 'task-weekly');
+
+        final instancesSnap = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+
+        expect(instancesSnap.docs.length, 2);
+        final instanceIds = instancesSnap.docs.map((doc) => doc.id).toList();
+        expect(instanceIds, contains('task-weekly_2026-06-15_0'));
+        expect(instanceIds, contains('task-weekly_2026-06-15_1'));
+      },
+    );
   });
 
   group('TaskRepository with NotificationService', () {
