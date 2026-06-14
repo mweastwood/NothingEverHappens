@@ -1204,6 +1204,56 @@ void main() {
     );
 
     test(
+      '7b. TaskRepository missed policies: Skip policy backfill cap at 30 days',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(firestore: firestore, userId: userId);
+
+        final start = const CivilDay(year: 2026, month: 6, day: 1);
+        final task = TaskSchedule(
+          id: 'repo-skip-cap',
+          title: 'Skip Cap Repo',
+          description: 'Test',
+          schedules: [DailySchedule(startDate: start, interval: 1)],
+          missedPolicy: MissedPolicy.skip,
+        );
+
+        // Add task on June 1
+        AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        await repository.addTask(task);
+        await Future.delayed(Duration.zero);
+
+        // Mock time to July 16 (45 days later)
+        AppClock.setMockTime(DateTime(2026, 7, 16, 10, 0));
+        await repository.getTasks().first;
+        await Future.delayed(Duration.zero);
+
+        // Get all instances
+        final insts = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+
+        // 1 instance existed for June 1 (transitioned to skipped)
+        // 30 additional instances backfilled (June 2 through July 1)
+        // 1 new pending instance spawned (for July 16)
+        // Total instances should be 32 (1 + 30 + 1)
+        final skippedCount = insts.docs
+            .where((d) => d.data()['status'] == 'skipped')
+            .length;
+        final pendingCount = insts.docs
+            .where((d) => d.data()['status'] == 'pending')
+            .length;
+
+        expect(skippedCount, 31); // June 1 + 30 backfilled (June 2 to July 1)
+        expect(pendingCount, 1); // July 16
+
+        AppClock.reset();
+      },
+    );
+
+    test(
       '8. TaskRepository missed policies: Stack policy on mixed Daily (interval 1) and Weekly (Wed) schedules',
       () async {
         final firestore = FakeFirebaseFirestore();
