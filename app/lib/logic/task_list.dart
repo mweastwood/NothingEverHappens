@@ -97,7 +97,12 @@ class TaskList {
         } else {
           final List<TaskScheduleRule> list = [];
           for (final s in task.schedules) {
-            final nextOccur = s.nextOccurrenceAfter(today);
+            final refDate =
+                (task.missedPolicy == MissedPolicy.stack ||
+                    today.isBefore(s.scheduledDate))
+                ? s.scheduledDate
+                : today;
+            final nextOccur = s.nextOccurrenceAfter(refDate);
             if (nextOccur != null) {
               list.add(s.copyWithStartDate(nextOccur));
             }
@@ -125,7 +130,12 @@ class TaskList {
               : s.nextOccurrenceAfter(s.scheduledDate);
           if (firstOccur != null &&
               (firstOccur.isBefore(today) || firstOccur == today)) {
-            final nextOccur = s.nextOccurrenceAfter(today);
+            final refDate =
+                (task.missedPolicy == MissedPolicy.stack ||
+                    today.isBefore(s.scheduledDate))
+                ? s.scheduledDate
+                : today;
+            final nextOccur = s.nextOccurrenceAfter(refDate);
             if (nextOccur != null) {
               list.add(s.copyWithStartDate(nextOccur));
             }

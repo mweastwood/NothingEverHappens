@@ -534,5 +534,70 @@ void main() {
         AppClock.reset();
       },
     );
+
+    test(
+      'completeTask early completion: reschedules relative to scheduledDate to prevent duplicate/overwriting instances',
+      () async {
+        // Set mock time to June 1, 2026
+        AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+
+        final task = TaskSchedule(
+          id: 'early-comp-task',
+          title: 'Early Completion Task',
+          description: 'Test description',
+          missedPolicy: MissedPolicy.rollover,
+          schedules: [
+            WeeklySchedule(
+              startDate: const CivilDay(
+                year: 2026,
+                month: 6,
+                day: 3,
+              ), // Wednesday June 3
+              interval: 1,
+              daysOfWeek: const {3},
+            ),
+          ],
+        );
+
+        await repository.addTask(task);
+        await Future.delayed(Duration.zero);
+
+        // Verify June 3 instance exists and is pending
+        final instanceId = '${task.id}_2026-06-03';
+        final initialSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(initialSnapshot.exists, isTrue);
+        expect(initialSnapshot.data()!['status'], 'pending');
+
+        // Complete the June 3 instance early on June 1
+        await repository.completeTask(instanceId);
+
+        // Verify June 3 instance is completed, NOT pending
+        final completedSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(completedSnapshot.data()!['status'], 'completed');
+
+        // Verify the next occurrence (June 10) is spawned as pending
+        final nextInstanceId = '${task.id}_2026-06-10';
+        final nextSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(nextInstanceId)
+            .get();
+        expect(nextSnapshot.exists, isTrue);
+        expect(nextSnapshot.data()!['status'], 'pending');
+
+        AppClock.reset();
+      },
+    );
   });
 }
