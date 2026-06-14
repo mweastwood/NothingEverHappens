@@ -916,7 +916,8 @@ class TaskRepository {
     if (isRecurring) {
       final today = CivilDay.fromDateTime(now);
       final CivilDay refDate;
-      if (task.missedPolicy == MissedPolicy.stack) {
+      if (task.missedPolicy == MissedPolicy.stack ||
+          today.isBefore(instance.scheduledDate)) {
         refDate = instance.scheduledDate.addDays(1);
       } else {
         refDate = today.addDays(1);
