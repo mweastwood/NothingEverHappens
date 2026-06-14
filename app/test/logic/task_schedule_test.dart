@@ -1340,13 +1340,17 @@ void main() {
         await repository.addTask(task);
         await Future.delayed(Duration.zero);
 
-        // Verify that under shift policy, _checkAndProcessMissedPolicies does NOT spawn instances
+        // Verify that under shift policy, _checkAndProcessMissedPolicies spawns the initial instances
         final insts = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
             .get();
-        expect(insts.docs.isEmpty, isTrue);
+        expect(insts.docs.length, 2);
+        expect(
+          insts.docs.any((d) => d.id.startsWith('repo-shift-mixed_2026-06-01')),
+          isTrue,
+        );
 
         AppClock.reset();
       },

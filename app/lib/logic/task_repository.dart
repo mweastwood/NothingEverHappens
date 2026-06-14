@@ -459,7 +459,8 @@ class TaskRepository {
               batch.set(_taskRefFor(updatedMaster, familyId), updatedMaster);
               hasChanges = true;
             }
-          } else if (task.missedPolicy == MissedPolicy.rollover) {
+          } else if (task.missedPolicy == MissedPolicy.rollover ||
+              task.missedPolicy == MissedPolicy.shift) {
             for (int i = 0; i < task.schedules.length; i++) {
               final s = task.schedules[i];
               final hasPendingForSchedule = pendingInstances.any((inst) {
@@ -912,14 +913,16 @@ class TaskRepository {
     batch.set(_historyRefFor(task, familyId, deltaId), delta);
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-    if (isRecurring &&
-        (task.missedPolicy == MissedPolicy.rollover ||
-            task.missedPolicy == MissedPolicy.skip)) {
+    if (isRecurring) {
       final today = CivilDay.fromDateTime(now);
-      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(
-        task,
-        today.addDays(1),
-      );
+      final CivilDay refDate;
+      if (task.missedPolicy == MissedPolicy.stack) {
+        refDate = instance.scheduledDate.addDays(1);
+      } else {
+        refDate = today.addDays(1);
+      }
+
+      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(task, refDate);
       if (nextOcc != null) {
         final date = nextOcc.$1;
         final s = nextOcc.$2;

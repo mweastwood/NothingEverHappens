@@ -6,6 +6,7 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 
 void main() {
@@ -394,12 +395,144 @@ void main() {
         isTrue,
       );
 
-      await repository.completeTask(notifTask.id);
+      final instanceId = '${notifTask.id}_2024-01-01';
+      await repository.completeTask(instanceId);
       // Still scheduled because it's recurring and advances to the next occurrence
       expect(
         notificationService.scheduledTasks.containsKey(notifTask.id),
         isTrue,
       );
     });
+
+    test(
+      'completeTask shift policy: reschedules relative to completion date',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+
+        final shiftTask = TaskSchedule(
+          id: 'task-shift-id',
+          title: 'Shift Task',
+          description: 'Test description',
+          missedPolicy: MissedPolicy.shift,
+          isMaster: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 1),
+              interval: 1,
+            ),
+          ],
+        );
+
+        await repository.addTask(shiftTask);
+        await Future.delayed(Duration.zero);
+
+        // Spawns instance for June 1 (startDate)
+        final instanceId = '${shiftTask.id}_2026-06-01';
+        final initialSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(initialSnapshot.exists, isTrue);
+
+        // Fast-forward to June 9
+        AppClock.setMockTime(DateTime(2026, 6, 9, 12, 0));
+
+        // Complete June 1 instance on June 9
+        await repository.completeTask(instanceId);
+
+        // Verify June 1 instance is completed
+        final completedSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(completedSnapshot.data()!['status'], 'completed');
+
+        // Shift policy reschedules relative to completion date (June 9) -> June 10
+        final nextInstanceId = '${shiftTask.id}_2026-06-10';
+        final nextSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(nextInstanceId)
+            .get();
+        expect(nextSnapshot.exists, isTrue);
+        expect(nextSnapshot.data()!['status'], 'pending');
+
+        // Verify June 2 instance does NOT exist
+        final skippedSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc('${shiftTask.id}_2026-06-02')
+            .get();
+        expect(skippedSnapshot.exists, isFalse);
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      'completeTask stack policy: reschedules relative to scheduledDate',
+      () async {
+        // Set mock time to June 1, 2026
+        AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+
+        final stackTask = TaskSchedule(
+          id: 'task-stack-id',
+          title: 'Stack Task',
+          description: 'Test description',
+          missedPolicy: MissedPolicy.stack,
+          isMaster: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 1),
+              interval: 1,
+            ),
+          ],
+        );
+
+        await repository.addTask(stackTask);
+        await Future.delayed(Duration.zero);
+
+        // Spawns instance for June 1
+        final instanceId = '${stackTask.id}_2026-06-01';
+        final initialSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(initialSnapshot.exists, isTrue);
+
+        // Complete June 1 instance on June 1
+        await repository.completeTask(instanceId);
+
+        // Verify June 1 instance is completed
+        final completedSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(completedSnapshot.data()!['status'], 'completed');
+
+        // Stack policy reschedules relative to scheduledDate (June 1) -> June 2
+        final nextInstanceId = '${stackTask.id}_2026-06-02';
+        final nextSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(nextInstanceId)
+            .get();
+        expect(nextSnapshot.exists, isTrue);
+        expect(nextSnapshot.data()!['status'], 'pending');
+
+        AppClock.reset();
+      },
+    );
   });
 }
