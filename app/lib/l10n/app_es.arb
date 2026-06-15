@@ -50,6 +50,7 @@
   "noTasksYet": "No hay tareas aún. ¡Agrega una!",
   "noHistoryYet": "No hay historial aún",
   "noRecurringTasksScheduled": "No hay tareas recurrentes programadas",
+  "copiedToClipboard": "Tarea copiada al portapapeles",
   "deleteTaskConfirmTitle": "¿Eliminar Tarea?",
   "deleteTaskConfirmBody": "¿Estás seguro de que quieres eliminar \"{title}\"? Esta acción eliminará permanentemente la tarea.",
   "cancelButton": "Cancelar",

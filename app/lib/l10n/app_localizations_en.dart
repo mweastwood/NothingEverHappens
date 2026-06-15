@@ -169,6 +169,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noRecurringTasksScheduled => 'No recurring tasks scheduled';
 
   @override
+  String get copiedToClipboard => 'Copied task to clipboard';
+
+  @override
   String get deleteTaskConfirmTitle => 'Delete Task?';
 
   @override

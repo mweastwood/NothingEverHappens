@@ -404,6 +404,12 @@ abstract class AppLocalizations {
   /// **'No recurring tasks scheduled'**
   String get noRecurringTasksScheduled;
 
+  /// No description provided for @copiedToClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied task to clipboard'**
+  String get copiedToClipboard;
+
   /// No description provided for @deleteTaskConfirmTitle.
   ///
   /// In en, this message translates to:

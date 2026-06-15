@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +11,7 @@ import 'fun_check_button.dart';
 import 'fun_delete_button.dart';
 
 import '../logic/task_instance.dart';
+import '../logic/l10n_extension.dart';
 
 class TaskWidget extends ConsumerStatefulWidget {
   final TaskInstance instance;
@@ -38,6 +41,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
   bool _isLoadingAssignee = false;
   bool _isChecking = false;
   bool _isDeleting = false;
+  bool _isMouse = false;
 
   @override
   void initState() {
@@ -322,145 +326,248 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
             notificationRelativeTime: widget.instance.notificationRelativeTime,
           );
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        // Visual Transformation (Squish/Shrink) affects the whole Card
-        final transformedChild = Transform(
-          alignment: Alignment.topCenter,
-          transform: Matrix4.diagonal3Values(
-            _scaleXAnimation.value,
-            _scaleYAnimation.value,
-            1.0,
-          ),
-          child: Card(
-            child: Opacity(
-              opacity: _contentOpacityAnimation.value,
-              child: child,
-            ),
-          ),
-        );
-
-        // Layout Transformation (Slide-up)
-        return SizeTransition(
-          sizeFactor: _sizeFactorAnimation,
-          axis: Axis.vertical,
-          alignment: Alignment.topCenter,
-          child: transformedChild,
-        );
+    return Dismissible(
+      key: ValueKey(widget.instance.id),
+      direction: _isMouse ? DismissDirection.none : DismissDirection.horizontal,
+      background: Container(
+        color: Colors.green,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+        child: const Icon(Icons.check, color: Colors.white),
+      ),
+      secondaryBackground: Container(
+        color: Theme.of(context).colorScheme.error,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.endToStart) {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: Text(context.l10n.deleteTaskConfirmTitle),
+                content: Text(
+                  context.l10n.deleteTaskConfirmBody(widget.instance.title),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text(context.l10n.cancelButton),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: Text(
+                      context.l10n.deleteButton,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+          return confirmed ?? false;
+        }
+        return true;
       },
-      child: ListTile(
-        leading: FunCheckButton(
-          value: _isChecking,
-          onChanged: (value) {
-            if (value && !_isChecking) {
-              _handleCompletion();
-            }
+      onDismissed: (direction) {
+        if (direction == DismissDirection.startToEnd) {
+          ref.read(taskRepositoryProvider)!.completeTask(widget.instance.id);
+        } else if (direction == DismissDirection.endToStart) {
+          ref
+              .read(taskRepositoryProvider)!
+              .deleteTask(widget.instance.scheduleId);
+        }
+      },
+      child: Listener(
+        onPointerHover: (event) {
+          if (event.kind == PointerDeviceKind.mouse && !_isMouse) {
+            setState(() {
+              _isMouse = true;
+            });
+          }
+        },
+        onPointerDown: (event) {
+          final isMouse = event.kind == PointerDeviceKind.mouse;
+          if (isMouse != _isMouse) {
+            setState(() {
+              _isMouse = isMouse;
+            });
+          }
+        },
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            // Visual Transformation (Squish/Shrink) affects the whole Card
+            final transformedChild = Transform(
+              alignment: Alignment.topCenter,
+              transform: Matrix4.diagonal3Values(
+                _scaleXAnimation.value,
+                _scaleYAnimation.value,
+                1.0,
+              ),
+              child: Card(
+                child: Opacity(
+                  opacity: _contentOpacityAnimation.value,
+                  child: child,
+                ),
+              ),
+            );
+
+            // Layout Transformation (Slide-up)
+            return SizeTransition(
+              sizeFactor: _sizeFactorAnimation,
+              axis: Axis.vertical,
+              alignment: Alignment.topCenter,
+              child: transformedChild,
+            );
           },
-        ),
-        title: Padding(
-          padding: const EdgeInsets.only(bottom: 4.0),
-          child: SelectableText(
-            widget.instance.title,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (widget.instance.description.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              MarkdownBody(data: widget.instance.description, selectable: true),
-            ],
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6.0,
-              runSpacing: 6.0,
+          child: ListTile(
+            onLongPress: _isMouse
+                ? null
+                : () async {
+                    final textToCopy = widget.instance.description.isNotEmpty
+                        ? '${widget.instance.title}\n\n${widget.instance.description}'
+                        : widget.instance.title;
+                    await Clipboard.setData(ClipboardData(text: textToCopy));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(context.l10n.copiedToClipboard),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+            leading: FunCheckButton(
+              value: _isChecking,
+              onChanged: (value) {
+                if (value && !_isChecking) {
+                  _handleCompletion();
+                }
+              },
+            ),
+            title: Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: _isMouse
+                  ? SelectableText(
+                      widget.instance.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    )
+                  : Text(
+                      widget.instance.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Scope (Family vs Personal)
-                _buildBadge(
-                  context,
-                  icon: widget.instance.isFamily
-                      ? Icons.people_alt
-                      : Icons.person,
-                  label: widget.instance.isFamily ? 'Family' : 'Personal',
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                // Priority
-                _buildBadge(
-                  context,
-                  icon: _getPriorityIcon(widget.instance.priority),
-                  label: _getPriorityLabel(widget.instance.priority),
-                  color: _getPriorityColor(context, widget.instance.priority),
-                ),
-                // Schedule
-                _buildBadge(
-                  context,
-                  icon: _getScheduleIcon(schedule),
-                  label: _getScheduleLabel(schedule),
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                // Effort/Duration (if any)
-                if (widget.schedule?.estimatedDuration != null)
-                  _buildBadge(
-                    context,
-                    icon: Icons.timer_outlined,
-                    label: _formatDuration(widget.schedule!.estimatedDuration!),
-                    color: Theme.of(context).colorScheme.primary,
+                if (widget.instance.description.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  MarkdownBody(
+                    data: widget.instance.description,
+                    selectable: _isMouse,
                   ),
-                // Missed Policy (if recurring)
-                if (schedule is! OneOffSchedule && widget.schedule != null)
-                  _buildBadge(
-                    context,
-                    icon: Icons.refresh,
-                    label:
-                        'Policy: ${_getMissedPolicyLabel(widget.schedule!.missedPolicy)}',
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                // Assignee (if family & assigned)
-                if (widget.instance.isFamily &&
-                    widget.instance.assignedUserId != null)
-                  _buildBadge(
-                    context,
-                    icon: Icons.assignment_ind,
-                    label: _isLoadingAssignee
-                        ? 'Loading...'
-                        : (_assigneeName != null
-                              ? 'Assigned: $_assigneeName'
-                              : 'Assigned'),
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                ],
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6.0,
+                  runSpacing: 6.0,
+                  children: [
+                    // Scope (Family vs Personal)
+                    _buildBadge(
+                      context,
+                      icon: widget.instance.isFamily
+                          ? Icons.people_alt
+                          : Icons.person,
+                      label: widget.instance.isFamily ? 'Family' : 'Personal',
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    // Priority
+                    _buildBadge(
+                      context,
+                      icon: _getPriorityIcon(widget.instance.priority),
+                      label: _getPriorityLabel(widget.instance.priority),
+                      color: _getPriorityColor(
+                        context,
+                        widget.instance.priority,
+                      ),
+                    ),
+                    // Schedule
+                    _buildBadge(
+                      context,
+                      icon: _getScheduleIcon(schedule),
+                      label: _getScheduleLabel(schedule),
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    // Effort/Duration (if any)
+                    if (widget.schedule?.estimatedDuration != null)
+                      _buildBadge(
+                        context,
+                        icon: Icons.timer_outlined,
+                        label: _formatDuration(
+                          widget.schedule!.estimatedDuration!,
+                        ),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    // Missed Policy (if recurring)
+                    if (schedule is! OneOffSchedule && widget.schedule != null)
+                      _buildBadge(
+                        context,
+                        icon: Icons.refresh,
+                        label:
+                            'Policy: ${_getMissedPolicyLabel(widget.schedule!.missedPolicy)}',
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    // Assignee (if family & assigned)
+                    if (widget.instance.isFamily &&
+                        widget.instance.assignedUserId != null)
+                      _buildBadge(
+                        context,
+                        icon: Icons.assignment_ind,
+                        label: _isLoadingAssignee
+                            ? 'Loading...'
+                            : (_assigneeName != null
+                                  ? 'Assigned: $_assigneeName'
+                                  : 'Assigned'),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (widget.showEditOption &&
-                widget.schedule != null &&
-                schedule is OneOffSchedule) ...[
-              IconButton(
-                key: const Key('edit_pencil_button'),
-                icon: const Icon(Icons.edit, size: 20),
-                tooltip: 'Edit TaskSchedule',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          CreateTaskScreen(taskToEdit: widget.schedule!),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(width: 8),
-            ],
-            FunDeleteButton(
-              key: const Key('delete_task_button'),
-              onTap: _handleDeletion,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.showEditOption &&
+                    widget.schedule != null &&
+                    schedule is OneOffSchedule) ...[
+                  IconButton(
+                    key: const Key('edit_pencil_button'),
+                    icon: const Icon(Icons.edit, size: 20),
+                    tooltip: 'Edit TaskSchedule',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              CreateTaskScreen(taskToEdit: widget.schedule!),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                FunDeleteButton(
+                  key: const Key('delete_task_button'),
+                  onTap: _handleDeletion,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
