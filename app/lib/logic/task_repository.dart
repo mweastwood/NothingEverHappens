@@ -108,23 +108,31 @@ class TaskRepository {
     return _tasksRef.doc(task.id);
   }
 
-  DocumentReference<TaskInstance> _instanceRefFor(
-    TaskInstance instance,
+  DocumentReference<TaskInstance> _instanceRefForId(
+    String id,
+    bool isFamily,
     String? familyId,
   ) {
-    if (instance.isFamily && familyId != null && familyId.isNotEmpty) {
+    if (isFamily && familyId != null && familyId.isNotEmpty) {
       return _firestore
           .collection('families')
           .doc(familyId)
           .collection('instances')
-          .doc(instance.id)
+          .doc(id)
           .withConverter<TaskInstance>(
             fromFirestore: (snapshot, _) =>
                 TaskInstance.fromFirestore(snapshot),
             toFirestore: (instance, _) => instance.toFirestore(),
           );
     }
-    return _instancesRef.doc(instance.id);
+    return _instancesRef.doc(id);
+  }
+
+  DocumentReference<TaskInstance> _instanceRefFor(
+    TaskInstance instance,
+    String? familyId,
+  ) {
+    return _instanceRefForId(instance.id, instance.isFamily, familyId);
   }
 
   Future<TaskSchedule?> _fetchTask(String id) async {
@@ -822,6 +830,108 @@ class TaskRepository {
           status: 'pending',
         );
         batch.set(_instanceRefFor(newInst, familyId), newInst);
+      }
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> dismissTaskInstance(String id) async {
+    final instance = await _fetchInstance(id);
+    if (instance == null) return;
+
+    final task = await _fetchTask(instance.scheduleId);
+    if (task == null) return;
+
+    final familyId = await _getFamilyId();
+    final now = AppClock.now;
+
+    final batch = _firestore.batch();
+
+    final dismissedInstance = instance.copyWith(
+      status: 'dismissed',
+      completedByUserId: _userId,
+      completedAt: now,
+    );
+    batch.set(_instanceRefFor(dismissedInstance, familyId), dismissedInstance);
+
+    final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+    if (isRecurring) {
+      final today = CivilDay.fromDateTime(now);
+      final CivilDay refDate;
+      if (task.missedPolicy == MissedPolicy.stack ||
+          task.missedPolicy == MissedPolicy.rollover ||
+          today.isBefore(instance.scheduledDate)) {
+        refDate = instance.scheduledDate.addDays(1);
+      } else {
+        refDate = today.addDays(1);
+      }
+
+      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(task, refDate);
+      if (nextOcc != null) {
+        final date = nextOcc.$1;
+        final s = nextOcc.$2;
+        final idx = nextOcc.$3;
+        final nextInstId = instanceIdFor(task, date, idx);
+
+        final newInst = TaskInstance(
+          id: nextInstId,
+          scheduleId: task.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: date,
+          startRelativeTime: s.startRelativeTime,
+          dueRelativeTime: s.dueRelativeTime,
+          notificationRelativeTime: s.notificationRelativeTime,
+          isFamily: task.isFamily,
+          priority: task.priority,
+          cycleId: task.cycleId,
+          assignedUserId: task.assignedUserId,
+          status: 'pending',
+        );
+        batch.set(_instanceRefFor(newInst, familyId), newInst);
+      }
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
+    final task = await _fetchTask(resolvedInstance.scheduleId);
+    if (task == null) return;
+
+    final familyId = await _getFamilyId();
+    final batch = _firestore.batch();
+
+    final pendingInstance = resolvedInstance.copyWith(
+      status: 'pending',
+      clearCompletedByUserId: true,
+      clearCompletedAt: true,
+    );
+    batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
+
+    final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+    if (isRecurring) {
+      final now = resolvedInstance.completedAt ?? AppClock.now;
+      final today = CivilDay.fromDateTime(now);
+      final CivilDay refDate;
+      if (task.missedPolicy == MissedPolicy.stack ||
+          task.missedPolicy == MissedPolicy.rollover ||
+          today.isBefore(resolvedInstance.scheduledDate)) {
+        refDate = resolvedInstance.scheduledDate.addDays(1);
+      } else {
+        refDate = today.addDays(1);
+      }
+
+      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(task, refDate);
+      if (nextOcc != null) {
+        final date = nextOcc.$1;
+        final idx = nextOcc.$3;
+        final nextInstId = instanceIdFor(task, date, idx);
+
+        batch.delete(
+          _instanceRefForId(nextInstId, resolvedInstance.isFamily, familyId),
+        );
       }
     }
 
