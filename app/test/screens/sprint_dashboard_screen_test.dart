@@ -130,7 +130,7 @@ void main() {
         isFamily: false,
         cycleId: '2026-W23',
       );
-      await taskRepo.addTask(personalTask);
+      await taskRepo.addTaskSchedule(personalTask);
 
       // Add 1 family active task (45m) assigned to user-1
       final familyTaskActive = TaskSchedule(
@@ -155,7 +155,7 @@ void main() {
         cycleId: '2026-W23',
         assignedUserId: userId,
       );
-      await taskRepo.addTask(familyTaskActive);
+      await taskRepo.addTaskSchedule(familyTaskActive);
 
       // Add 1 backlog task (60m)
       final backlogTask = TaskSchedule(
@@ -179,7 +179,7 @@ void main() {
         isFamily: true,
         cycleId: null,
       );
-      await taskRepo.addTask(backlogTask);
+      await taskRepo.addTaskSchedule(backlogTask);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -223,7 +223,7 @@ void main() {
         isFamily: false,
         cycleId: '2026-W23',
       );
-      await taskRepo.addTask(personalTask);
+      await taskRepo.addTaskSchedule(personalTask);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -280,7 +280,7 @@ void main() {
         isFamily: true,
         cycleId: null,
       );
-      await taskRepo.addTask(familyTask);
+      await taskRepo.addTaskSchedule(familyTask);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -359,7 +359,7 @@ void main() {
         priority: TaskPriority.high,
         cycleId: '2026-W23',
       );
-      await taskRepo.addTask(task1);
+      await taskRepo.addTaskSchedule(task1);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -480,7 +480,7 @@ void main() {
         cycleId: '2026-W23',
         assignedUserId: 'user-2',
       );
-      await taskRepo.addTask(familyTask);
+      await taskRepo.addTaskSchedule(familyTask);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -551,7 +551,7 @@ void main() {
         isFamily: false,
         cycleId: '2026-W23',
       );
-      await taskRepo.addTask(personalTask);
+      await taskRepo.addTaskSchedule(personalTask);
 
       final familyTask = TaskSchedule(
         id: 't-family',
@@ -575,7 +575,7 @@ void main() {
         cycleId: '2026-W23',
         assignedUserId: userId,
       );
-      await taskRepo.addTask(familyTask);
+      await taskRepo.addTaskSchedule(familyTask);
 
       await tester.pumpWidgetBuilder(
         buildTestWidget(),
@@ -685,7 +685,7 @@ void main() {
         cycleId: '2026-W23',
         assignedUserId: 'user-2',
       );
-      await taskRepo.addTask(familyTask);
+      await taskRepo.addTaskSchedule(familyTask);
 
       await tester.pumpWidgetBuilder(
         buildTestWidget(),

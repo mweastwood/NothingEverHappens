@@ -700,7 +700,7 @@ class TaskRepository {
     });
   }
 
-  Future<void> addTask(TaskSchedule task) async {
+  Future<void> addTaskSchedule(TaskSchedule task) async {
     final familyId = await _getFamilyId();
     final newState = const TaskList([]).add(task, _userId);
     final delta = newState.history.last;
@@ -716,7 +716,7 @@ class TaskRepository {
     _checkAndProcessMissedPolicies([task]);
   }
 
-  Future<void> updateTask(TaskModification modification) async {
+  Future<void> updateTaskSchedule(TaskModification modification) async {
     final familyId = await _getFamilyId();
     final batch = _firestore.batch();
 
@@ -836,7 +836,7 @@ class TaskRepository {
     }
   }
 
-  Future<void> deleteTask(String id) async {
+  Future<void> deleteTaskSchedule(String id) async {
     final task = await _fetchTask(id);
     if (task == null) return;
 
@@ -881,7 +881,7 @@ class TaskRepository {
     await _notificationService?.cancelNotifications(id);
   }
 
-  Future<void> completeTask(String id) async {
+  Future<void> completeTaskInstance(String id) async {
     final instance = await _fetchInstance(id);
     if (instance == null) return;
 

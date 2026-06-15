@@ -694,12 +694,12 @@ class FakeTaskRepository extends TaskRepository {
       );
 
   @override
-  Future<void> completeTask(String id) async {
+  Future<void> completeTaskInstance(String id) async {
     await onComplete(id);
   }
 
   @override
-  Future<void> deleteTask(String id) async {
+  Future<void> deleteTaskSchedule(String id) async {
     await onDelete(id);
   }
 }

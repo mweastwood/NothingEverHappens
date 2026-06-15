@@ -521,7 +521,7 @@ void main() {
         AppClock.setMockTime(mondayDateTime);
 
         // Save to database
-        await repository.addTask(task);
+        await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Set AppClock to Tuesday 10:00 AM - past due time of Monday (17:00), but before Tuesday (17:00)
@@ -612,7 +612,7 @@ void main() {
       final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
       AppClock.setMockTime(mondayDateTime);
 
-      await repository.addTask(mixedTask);
+      await repository.addTaskSchedule(mixedTask);
       await Future.delayed(Duration.zero);
 
       final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
@@ -689,7 +689,7 @@ void main() {
         AppClock.setMockTime(mondayDateTime);
 
         // Save master task to database
-        await repository.addTask(task);
+        await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Set AppClock to Wednesday (May 27)
@@ -1090,7 +1090,7 @@ void main() {
 
         // Add task on Mon June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
-        await repository.addTask(task);
+        await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Verify Monday instances spawned
@@ -1143,7 +1143,7 @@ void main() {
 
         // Add task on Mon June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
-        await repository.addTask(task);
+        await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Mock time to Tue June 9. Mon June 8 Weekly is missed, and June 1 Weekly & Monthly are missed.
@@ -1220,7 +1220,7 @@ void main() {
 
         // Add task on June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
-        await repository.addTask(task);
+        await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Mock time to July 16 (45 days later)
@@ -1277,7 +1277,7 @@ void main() {
 
         // Add task on Mon June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
-        await repository.addTask(task);
+        await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Mock time to Wed June 3. Daily should have instances for June 1, 2, 3. Weekly should have instance for June 3.
@@ -1337,7 +1337,7 @@ void main() {
 
         // Add task on Mon June 1.
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
-        await repository.addTask(task);
+        await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Verify that under shift policy, _checkAndProcessMissedPolicies spawns the initial instances
@@ -1383,7 +1383,7 @@ void main() {
 
         // Add task on Mon June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
-        await repository.addTask(task);
+        await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Mock time to Wed June 3.
@@ -1451,11 +1451,13 @@ void main() {
 
         // Add task on Mon June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
-        await repository.addTask(task);
+        await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Complete Daily instance on June 1
-        await repository.completeTask('repo-rollover-complete_2026-06-01_0');
+        await repository.completeTaskInstance(
+          'repo-rollover-complete_2026-06-01_0',
+        );
         await Future.delayed(Duration.zero);
 
         final insts = await firestore

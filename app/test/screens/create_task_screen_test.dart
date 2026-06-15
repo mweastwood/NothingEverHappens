@@ -154,7 +154,9 @@ void main() {
     try {
       final mockRepository = MockTaskRepository();
       final completer = Completer<void>();
-      when(mockRepository.addTask(any)).thenAnswer((_) => completer.future);
+      when(
+        mockRepository.addTaskSchedule(any),
+      ).thenAnswer((_) => completer.future);
 
       await tester.pumpWidgetBuilder(
         const CreateTaskScreen(),
@@ -294,7 +296,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
 
-      verify(mockRepository.addTask(any)).called(1);
+      verify(mockRepository.addTaskSchedule(any)).called(1);
       expect(
         find.byType(CreateTaskScreen),
         findsNothing,
@@ -318,7 +320,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         await tester.pump();
 
-        verifyNever(mockRepository.addTask(any));
+        verifyNever(mockRepository.addTaskSchedule(any));
         expect(
           find.byType(CreateTaskScreen),
           findsOneWidget,
@@ -335,7 +337,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
 
-      verifyNever(mockRepository.addTask(any));
+      verifyNever(mockRepository.addTaskSchedule(any));
       expect(
         find.byType(CreateTaskScreen),
         findsNothing,
@@ -347,7 +349,9 @@ void main() {
     ) async {
       // Use a completer to control when addTask finishes
       final completer = Completer<void>();
-      when(mockRepository.addTask(any)).thenAnswer((_) => completer.future);
+      when(
+        mockRepository.addTaskSchedule(any),
+      ).thenAnswer((_) => completer.future);
 
       await tester.pumpWidget(createWidgetUnderTest());
 
@@ -383,7 +387,9 @@ void main() {
     testWidgets('Shows error dialog when saving fails', (
       WidgetTester tester,
     ) async {
-      when(mockRepository.addTask(any)).thenThrow(Exception('Firestore Error'));
+      when(
+        mockRepository.addTaskSchedule(any),
+      ).thenThrow(Exception('Firestore Error'));
 
       await tester.pumpWidget(createWidgetUnderTest());
 
@@ -419,7 +425,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final captured =
-          verify(mockRepository.addTask(captureAny)).captured.single
+          verify(mockRepository.addTaskSchedule(captureAny)).captured.single
               as TaskSchedule;
       expect(captured.title, 'Test TaskSchedule');
       expect(captured.estimatedDuration, const Duration(minutes: 45));
@@ -461,7 +467,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final captured =
-          verify(mockRepository.addTask(captureAny)).captured.single
+          verify(mockRepository.addTaskSchedule(captureAny)).captured.single
               as TaskSchedule;
       expect(captured.title, 'Monthly TaskSchedule');
       expect(captured.schedules.first, isA<MonthlySchedule>());
@@ -503,7 +509,7 @@ void main() {
           find.text('Please enter a valid day number: 1 to 28, or -1 to -28'),
           findsOneWidget,
         );
-        verifyNever(mockRepository.addTask(any));
+        verifyNever(mockRepository.addTaskSchedule(any));
       },
     );
 
@@ -540,7 +546,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final captured =
-          verify(mockRepository.addTask(captureAny)).captured.single
+          verify(mockRepository.addTaskSchedule(captureAny)).captured.single
               as TaskSchedule;
       expect(captured.title, 'Yearly TaskSchedule');
       expect(captured.schedules.first, isA<YearlySchedule>());
@@ -717,7 +723,9 @@ void main() {
           'familyRole': '',
         });
 
-        when(mockTaskRepository.addTask(any)).thenAnswer((_) => Future.value());
+        when(
+          mockTaskRepository.addTaskSchedule(any),
+        ).thenAnswer((_) => Future.value());
 
         await tester.pumpWidget(createWidget());
         await tester.pump();
@@ -745,7 +753,9 @@ void main() {
 
         // Verify the task added has a notification time scheduled in dailyTimes
         final captured =
-            verify(mockTaskRepository.addTask(captureAny)).captured.single
+            verify(
+                  mockTaskRepository.addTaskSchedule(captureAny),
+                ).captured.single
                 as TaskSchedule;
         expect(captured.schedules, isNotEmpty);
         expect(captured.schedules.first.notificationRelativeTime, isNotNull);

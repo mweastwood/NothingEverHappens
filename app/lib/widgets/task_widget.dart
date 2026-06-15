@@ -89,9 +89,11 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         if (_isDeleting) {
           ref
               .read(taskRepositoryProvider)!
-              .deleteTask(widget.instance.scheduleId);
+              .deleteTaskSchedule(widget.instance.scheduleId);
         } else {
-          ref.read(taskRepositoryProvider)!.completeTask(widget.instance.id);
+          ref
+              .read(taskRepositoryProvider)!
+              .completeTaskInstance(widget.instance.id);
         }
       }
     });
@@ -403,11 +405,11 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
             if (direction == DismissDirection.startToEnd) {
               ref
                   .read(taskRepositoryProvider)!
-                  .completeTask(widget.instance.id);
+                  .completeTaskInstance(widget.instance.id);
             } else if (direction == DismissDirection.endToStart) {
               ref
                   .read(taskRepositoryProvider)!
-                  .deleteTask(widget.instance.scheduleId);
+                  .deleteTaskSchedule(widget.instance.scheduleId);
             }
           },
           child: Listener(

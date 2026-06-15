@@ -138,7 +138,7 @@ class TaskScheduleScreen extends ConsumerWidget {
               ),
               onPressed: () {
                 Navigator.pop(dialogContext);
-                repository.deleteTask(task.id);
+                repository.deleteTaskSchedule(task.id);
               },
               child: Text(context.l10n.deleteButton),
             ),

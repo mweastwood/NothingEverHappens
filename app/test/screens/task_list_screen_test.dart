@@ -142,7 +142,9 @@ void main() {
       mockTaskRepository.getHistory(),
     ).thenAnswer((_) => historySubject.stream);
 
-    when(mockTaskRepository.addTask(any)).thenAnswer((invocation) async {
+    when(mockTaskRepository.addTaskSchedule(any)).thenAnswer((
+      invocation,
+    ) async {
       final task = invocation.positionalArguments.first as TaskSchedule;
       final currentTasks = tasksSubject.value;
       tasksSubject.add([...currentTasks, task]);
@@ -288,12 +290,12 @@ void main() {
     await robot.tapCheckbox();
 
     // Verify completeTask was NOT called immediately
-    verifyNever(mockTaskRepository.completeTask('1_2024-01-01'));
+    verifyNever(mockTaskRepository.completeTaskInstance('1_2024-01-01'));
 
     await robot.waitForCompletion();
 
     // Verify completeTask was called
-    verify(mockTaskRepository.completeTask('1_2024-01-01')).called(1);
+    verify(mockTaskRepository.completeTaskInstance('1_2024-01-01')).called(1);
   });
 
   testWidgets(
@@ -323,9 +325,9 @@ void main() {
 
       tasksSubject.add([recurringTask]);
 
-      when(mockTaskRepository.completeTask('recur-1_2026-03-08')).thenAnswer((
-        _,
-      ) async {
+      when(
+        mockTaskRepository.completeTaskInstance('recur-1_2026-03-08'),
+      ).thenAnswer((_) async {
         final advancedTask = TaskSchedule(
           id: 'recur-1',
           title: 'Daily Repeating TaskSchedule',
@@ -547,7 +549,7 @@ void main() {
       tasksSubject.add([task1, task2]);
 
       // Simulate deletion when completeTask is called
-      when(mockTaskRepository.completeTask('1_2024-01-01')).thenAnswer((
+      when(mockTaskRepository.completeTaskInstance('1_2024-01-01')).thenAnswer((
         _,
       ) async {
         tasksSubject.add([task2]); // Remove task 1
@@ -572,7 +574,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify completeTask was called
-      verify(mockTaskRepository.completeTask('1_2024-01-01')).called(1);
+      verify(mockTaskRepository.completeTaskInstance('1_2024-01-01')).called(1);
 
       // Verify TaskSchedule 1 is gone (due to stream update)
       robot1.expectGone();

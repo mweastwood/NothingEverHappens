@@ -182,7 +182,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               newAssignedUserId: _assignedUserId,
             );
             await repository
-                .updateTask(modification)
+                .updateTaskSchedule(modification)
                 .timeout(
                   CreateTaskScreen.saveTimeout,
                   onTimeout: () => throw Exception(
@@ -191,7 +191,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                 );
           } else {
             await repository
-                .addTask(newTask)
+                .addTaskSchedule(newTask)
                 .timeout(
                   CreateTaskScreen.saveTimeout,
                   onTimeout: () => throw Exception(
