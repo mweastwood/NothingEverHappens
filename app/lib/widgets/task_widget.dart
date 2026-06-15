@@ -333,6 +333,10 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         if (_swipeProgress > 0.0 && _swipeDirection != null)
           Positioned.fill(
             child: Card(
+              margin: const EdgeInsets.symmetric(
+                horizontal: 4.0,
+                vertical: 5.0,
+              ),
               color: _swipeDirection == DismissDirection.startToEnd
                   ? Colors.green
                   : Theme.of(context).colorScheme.error,
