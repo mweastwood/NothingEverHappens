@@ -367,5 +367,23 @@
       }
     }
   },
-  "historyLogHeader": "Simulation History Log"
+  "historyLogHeader": "Simulation History Log",
+  "undoButton": "Undo",
+  "actionUndone": "Action undone",
+  "taskCompleted": "Completed \"{title}\"",
+  "@taskCompleted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "taskDismissed": "Dismissed \"{title}\"",
+  "@taskDismissed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  }
 }

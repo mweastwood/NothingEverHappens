@@ -211,5 +211,23 @@
   "resetSimButton": "Reiniciar Simulación",
   "simulatedTodayLabel": "Hoy Simulado: {date}",
   "activeTasksHeader": "Tareas Simuladas ({count})",
-  "historyLogHeader": "Historial de Simulación"
+  "historyLogHeader": "Historial de Simulación",
+  "undoButton": "Deshacer",
+  "actionUndone": "Acción deshecha",
+  "taskCompleted": "\"{title}\" completada",
+  "@taskCompleted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "taskDismissed": "\"{title}\" descartada",
+  "@taskDismissed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  }
 }

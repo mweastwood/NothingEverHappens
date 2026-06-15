@@ -724,4 +724,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get historyLogHeader => 'Simulation History Log';
+
+  @override
+  String get undoButton => 'Undo';
+
+  @override
+  String get actionUndone => 'Action undone';
+
+  @override
+  String taskCompleted(String title) {
+    return 'Completed \"$title\"';
+  }
+
+  @override
+  String taskDismissed(String title) {
+    return 'Dismissed \"$title\"';
+  }
 }
