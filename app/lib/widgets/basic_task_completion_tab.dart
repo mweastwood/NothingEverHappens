@@ -245,7 +245,7 @@ class FakeTaskRepository extends TaskRepository {
 
   @override
   Future<void> dismissTaskInstance(String id) async {
-    // No-op for practice
+    onComplete(id);
   }
 
   @override

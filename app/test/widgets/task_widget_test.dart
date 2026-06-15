@@ -67,8 +67,12 @@ void main() {
 
   setUp(() {
     mockTaskRepository = MockTaskRepository();
-    // Default completeTask to do nothing
+    // Default completeTask/dismissTask/undoResolve to do nothing
     when(mockTaskRepository.completeTaskInstance(any)).thenAnswer((_) async {});
+    when(mockTaskRepository.dismissTaskInstance(any)).thenAnswer((_) async {});
+    when(
+      mockTaskRepository.undoResolveTaskInstance(any),
+    ).thenAnswer((_) async {});
 
     clipboardStore.clear();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -379,8 +383,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 210));
     await tester.pump(); // Allow completion listener to run
 
-    // Verify repository deleteTask is called
-    verify(mockTaskRepository.deleteTaskSchedule(testTask.id)).called(1);
+    // Verify repository dismissTaskInstance is called
+    verify(mockTaskRepository.dismissTaskInstance('1_2024-01-01')).called(1);
   });
 
   testGoldens('TaskWidget focused state golden', (tester) async {
@@ -599,58 +603,56 @@ void main() {
     ).called(1);
   });
 
+  testWidgets('TaskWidget swipe RTL dismisses task instance immediately', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createWidget(testTask));
+
+    // Fling from right to left (RTL) to dismiss
+    await tester.fling(
+      find.text(testTask.title),
+      const Offset(-500.0, 0.0),
+      1000.0,
+    );
+    await tester.pumpAndSettle();
+
+    // No confirmation dialog should exist
+    expect(find.byType(AlertDialog), findsNothing);
+
+    // Verify dismissTaskInstance is called immediately
+    verify(mockTaskRepository.dismissTaskInstance('1_2024-01-01')).called(1);
+
+    // Verify SnackBar with undo option is shown
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.text('Undo'), findsOneWidget);
+  });
+
   testWidgets(
-    'TaskWidget swipe RTL shows confirmation dialog and deletes on confirm',
+    'TaskWidget swipe RTL dismisses task instance and undo resolves it',
     (tester) async {
-      when(
-        mockTaskRepository.deleteTaskSchedule(any),
-      ).thenAnswer((_) async => null);
       await tester.pumpWidget(createWidget(testTask));
 
-      // Fling from right to left (RTL) to delete
+      // Fling from right to left (RTL) to dismiss
       await tester.fling(
         find.text(testTask.title),
         const Offset(-500.0, 0.0),
         1000.0,
       );
-      await tester.pumpAndSettle(); // Dialog should pop up
-
-      // Check dialog exists
-      expect(find.byType(AlertDialog), findsOneWidget);
-      expect(find.text('Delete Task?'), findsOneWidget);
-
-      // Tap Delete button in the dialog
-      await tester.tap(find.text('Delete'));
       await tester.pumpAndSettle();
 
-      verify(mockTaskRepository.deleteTaskSchedule(testTask.id)).called(1);
-    },
-  );
+      // Verify dismissTaskInstance called
+      verify(mockTaskRepository.dismissTaskInstance('1_2024-01-01')).called(1);
 
-  testWidgets(
-    'TaskWidget swipe RTL shows confirmation dialog and does not delete on cancel',
-    (tester) async {
-      when(
-        mockTaskRepository.deleteTaskSchedule(any),
-      ).thenAnswer((_) async => null);
-      await tester.pumpWidget(createWidget(testTask));
-
-      // Fling from right to left (RTL) to delete
-      await tester.fling(
-        find.text(testTask.title),
-        const Offset(-500.0, 0.0),
-        1000.0,
-      );
-      await tester.pumpAndSettle(); // Dialog should pop up
-
-      // Check dialog exists
-      expect(find.byType(AlertDialog), findsOneWidget);
-
-      // Tap Cancel button in the dialog
-      await tester.tap(find.text('Cancel'));
+      // Tap Undo button on SnackBar
+      await tester.tap(find.text('Undo'));
+      await tester.pump();
       await tester.pumpAndSettle();
 
-      verifyNever(mockTaskRepository.deleteTaskSchedule(any));
+      // Verify undoResolveTaskInstance called
+      verify(mockTaskRepository.undoResolveTaskInstance(any)).called(1);
+
+      // Verify action undone confirmation SnackBar is shown
+      expect(find.text('Action undone'), findsOneWidget);
     },
   );
 
