@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
@@ -118,6 +119,133 @@ void main() {
       expect(instanceSnapshot.exists, isTrue);
       expect(instanceSnapshot.data()!['status'], 'completed');
     });
+
+    test('dismissTaskInstance dismisses the instance', () async {
+      await repository.addTaskSchedule(testTask);
+      await Future.delayed(Duration.zero);
+
+      final instanceId = '${testTask.id}_2024-01-01';
+      await repository.dismissTaskInstance(instanceId);
+
+      final instanceSnapshot = await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('instances')
+          .doc(instanceId)
+          .get();
+
+      expect(instanceSnapshot.exists, isTrue);
+      expect(instanceSnapshot.data()!['status'], 'dismissed');
+      expect(instanceSnapshot.data()!['completedByUserId'], userId);
+      expect(instanceSnapshot.data()!['completedAt'], isNotNull);
+    });
+
+    test(
+      'undoResolveTaskInstance reverts completed instance to pending and deletes next spawned',
+      () async {
+        final recurringTask = TaskSchedule(
+          id: 'task-recur',
+          title: 'Daily Task',
+          description: 'Test description',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 1),
+              interval: 1,
+            ),
+          ],
+        );
+
+        AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        await repository.addTaskSchedule(recurringTask);
+        await Future.delayed(Duration.zero);
+
+        final instanceId = '${recurringTask.id}_2026-06-01';
+        final nextInstanceId = '${recurringTask.id}_2026-06-02';
+
+        // 1. Complete it
+        await repository.completeTaskInstance(instanceId);
+
+        // Verify next spawned exists
+        final nextSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(nextInstanceId)
+            .get();
+        expect(nextSnapshot.exists, isTrue);
+        expect(nextSnapshot.data()!['status'], 'pending');
+
+        // Fetch the completed instance
+        final completedSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        final completedInstance = TaskInstance.fromFirestore(completedSnapshot);
+
+        // 2. Undo completion
+        await repository.undoResolveTaskInstance(completedInstance);
+
+        // Verify instance is back to pending and completed fields are cleared
+        final undoneSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(undoneSnapshot.data()!['status'], 'pending');
+        expect(undoneSnapshot.data()!['completedByUserId'], isNull);
+        expect(undoneSnapshot.data()!['completedAt'], isNull);
+
+        // Verify next spawned is deleted
+        final nextSnapshotPost = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(nextInstanceId)
+            .get();
+        expect(nextSnapshotPost.exists, isFalse);
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      'undoResolveTaskInstance reverts dismissed instance to pending',
+      () async {
+        await repository.addTaskSchedule(testTask);
+        await Future.delayed(Duration.zero);
+
+        final instanceId = '${testTask.id}_2024-01-01';
+
+        // 1. Dismiss it
+        await repository.dismissTaskInstance(instanceId);
+
+        // Fetch the dismissed instance
+        final dismissedSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        final dismissedInstance = TaskInstance.fromFirestore(dismissedSnapshot);
+
+        // 2. Undo dismissal
+        await repository.undoResolveTaskInstance(dismissedInstance);
+
+        // Verify instance is back to pending
+        final undoneSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(undoneSnapshot.data()!['status'], 'pending');
+        expect(undoneSnapshot.data()!['completedByUserId'], isNull);
+        expect(undoneSnapshot.data()!['completedAt'], isNull);
+      },
+    );
 
     test(
       'editing weekly schedule to add monthly schedule does not duplicate or timeout',

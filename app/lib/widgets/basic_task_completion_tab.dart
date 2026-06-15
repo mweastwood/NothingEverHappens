@@ -232,4 +232,14 @@ class FakeTaskRepository extends TaskRepository {
   Future<void> deleteTaskSchedule(String id) async {
     onDelete(id);
   }
+
+  @override
+  Future<void> dismissTaskInstance(String id) async {
+    // No-op for practice
+  }
+
+  @override
+  Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
+    // No-op for practice
+  }
 }
