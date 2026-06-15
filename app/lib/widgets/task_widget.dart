@@ -332,6 +332,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
       background: Card(
         color: Colors.green,
         elevation: 0,
+        clipBehavior: Clip.antiAlias,
         child: Container(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -341,6 +342,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
       secondaryBackground: Card(
         color: Theme.of(context).colorScheme.error,
         elevation: 0,
+        clipBehavior: Clip.antiAlias,
         child: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -416,6 +418,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                 1.0,
               ),
               child: Card(
+                clipBehavior: Clip.antiAlias,
                 child: Opacity(
                   opacity: _contentOpacityAnimation.value,
                   child: child,
