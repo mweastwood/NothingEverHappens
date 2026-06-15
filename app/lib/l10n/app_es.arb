@@ -211,5 +211,7 @@
   "resetSimButton": "Reiniciar Simulación",
   "simulatedTodayLabel": "Hoy Simulado: {date}",
   "activeTasksHeader": "Tareas Simuladas ({count})",
-  "historyLogHeader": "Historial de Simulación"
+  "historyLogHeader": "Historial de Simulación",
+  "undoButton": "Deshacer",
+  "actionUndone": "Acción deshecha"
 }

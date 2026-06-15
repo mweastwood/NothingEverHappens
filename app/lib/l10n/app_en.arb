@@ -367,5 +367,7 @@
       }
     }
   },
-  "historyLogHeader": "Simulation History Log"
+  "historyLogHeader": "Simulation History Log",
+  "undoButton": "Undo",
+  "actionUndone": "Action undone"
 }

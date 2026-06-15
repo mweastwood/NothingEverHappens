@@ -726,4 +726,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get historyLogHeader => 'Historial de Simulación';
+
+  @override
+  String get undoButton => 'Deshacer';
+
+  @override
+  String get actionUndone => 'Acción deshecha';
 }
