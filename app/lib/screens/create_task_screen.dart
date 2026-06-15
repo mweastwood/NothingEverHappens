@@ -165,7 +165,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               newDescription: _descriptionController.text,
               newSchedules: _schedules,
               newEstimatedDuration: estimatedDuration,
-              userId: repository.userId,
               newMissedPolicy: hasRepeating
                   ? _missedPolicy
                   : MissedPolicy.rollover,

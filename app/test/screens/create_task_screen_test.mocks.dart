@@ -8,7 +8,6 @@ import 'dart:async' as _i4;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i3;
 import 'package:nothing_ever_happens/logic/civil_day.dart' as _i7;
-import 'package:nothing_ever_happens/logic/task_delta.dart' as _i8;
 import 'package:nothing_ever_happens/logic/task_instance.dart' as _i6;
 import 'package:nothing_ever_happens/logic/task_repository.dart' as _i2;
 import 'package:nothing_ever_happens/logic/task_schedule.dart' as _i5;
@@ -111,14 +110,6 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
           as _i4.Stream<List<_i6.TaskInstance>>);
 
   @override
-  _i4.Stream<List<_i8.TaskDelta>> getHistory() =>
-      (super.noSuchMethod(
-            Invocation.method(#getHistory, []),
-            returnValue: _i4.Stream<List<_i8.TaskDelta>>.empty(),
-          )
-          as _i4.Stream<List<_i8.TaskDelta>>);
-
-  @override
   _i4.Future<void> addTaskSchedule(_i5.TaskSchedule? task) =>
       (super.noSuchMethod(
             Invocation.method(#addTaskSchedule, [task]),
@@ -129,7 +120,7 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
 
   @override
   _i4.Future<void> updateTaskSchedule(
-    ({_i8.TaskDelta delta, _i5.TaskSchedule newTask})? modification,
+    ({Map<String, dynamic> changes, _i5.TaskSchedule newTask})? modification,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateTaskSchedule, [modification]),

@@ -10,7 +10,6 @@ import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i6;
 import 'package:nothing_ever_happens/logic/auth_repository.dart' as _i2;
 import 'package:nothing_ever_happens/logic/civil_day.dart' as _i9;
-import 'package:nothing_ever_happens/logic/task_delta.dart' as _i10;
 import 'package:nothing_ever_happens/logic/task_instance.dart' as _i8;
 import 'package:nothing_ever_happens/logic/task_repository.dart' as _i5;
 import 'package:nothing_ever_happens/logic/task_schedule.dart' as _i7;
@@ -158,15 +157,6 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
           as _i3.Stream<List<_i8.TaskInstance>>);
 
   @override
-  _i3.Stream<List<_i10.TaskDelta>> getHistory() =>
-      (super.noSuchMethod(
-            Invocation.method(#getHistory, []),
-            returnValue: _i3.Stream<List<_i10.TaskDelta>>.empty(),
-            returnValueForMissingStub: _i3.Stream<List<_i10.TaskDelta>>.empty(),
-          )
-          as _i3.Stream<List<_i10.TaskDelta>>);
-
-  @override
   _i3.Future<void> addTaskSchedule(_i7.TaskSchedule? task) =>
       (super.noSuchMethod(
             Invocation.method(#addTaskSchedule, [task]),
@@ -177,7 +167,7 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
 
   @override
   _i3.Future<void> updateTaskSchedule(
-    ({_i10.TaskDelta delta, _i7.TaskSchedule newTask})? modification,
+    ({Map<String, dynamic> changes, _i7.TaskSchedule newTask})? modification,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateTaskSchedule, [modification]),

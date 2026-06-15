@@ -8,7 +8,6 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 
 void main() {
   group('TaskList', () {
-    const userId = 'test-user-id';
     final testTask = TaskSchedule(
       id: 'task-1',
       title: 'Original Title',
@@ -28,41 +27,22 @@ void main() {
       ],
     );
 
-    test('add generates a "create" delta and updates list', () {
-      final nextState = const TaskList([]).add(testTask, userId);
+    test('add updates list', () {
+      final nextState = const TaskList([]).add(testTask);
 
       expect(nextState.activeTasks, [testTask]);
-
-      final delta = nextState.history.last;
-      expect(delta.operation, 'create');
-      expect(delta.taskId, testTask.id);
-      expect(delta.userId, userId);
-      expect(delta.changedFields['title'], testTask.title);
-      expect(delta.expiresAt.difference(delta.timestamp).inDays, 90);
     });
 
-    test('delete generates a "delete" delta and removes task', () {
-      final nextState = TaskList([testTask]).delete('task-1', userId);
+    test('delete removes task', () {
+      final nextState = TaskList([testTask]).delete('task-1');
 
       expect(nextState.activeTasks, isEmpty);
-
-      final delta = nextState.history.last;
-      expect(delta.operation, 'delete');
-      expect(delta.taskId, 'task-1');
-      expect(delta.userId, userId);
-      expect(delta.changedFields, isEmpty);
     });
 
-    test('complete generates a "complete" delta and removes task', () {
-      final nextState = TaskList([testTask]).complete('task-1', userId);
+    test('complete removes task', () {
+      final nextState = TaskList([testTask]).complete('task-1');
 
       expect(nextState.activeTasks, isEmpty);
-
-      final delta = nextState.history.last;
-      expect(delta.operation, 'complete');
-      expect(delta.taskId, 'task-1');
-      expect(delta.userId, userId);
-      expect(delta.changedFields, isEmpty);
     });
 
     test(
@@ -89,9 +69,7 @@ void main() {
           ],
         );
 
-        final nextState = TaskList([
-          recurringTask,
-        ]).complete('task-recur', userId);
+        final nextState = TaskList([recurringTask]).complete('task-recur');
 
         // It should NOT be removed!
         expect(nextState.activeTasks.length, 1);
@@ -104,11 +82,6 @@ void main() {
           newSchedule.startDate,
           const CivilDay(year: 2026, month: 3, day: 10),
         );
-
-        final delta = nextState.history.last;
-        expect(delta.operation, 'complete');
-        expect(delta.taskId, 'task-recur');
-        expect(delta.userId, userId);
 
         AppClock.reset();
       },
@@ -141,9 +114,7 @@ void main() {
           ],
         );
 
-        final nextState = TaskList([
-          weeklyTask,
-        ]).complete('task-weekly', userId);
+        final nextState = TaskList([weeklyTask]).complete('task-weekly');
 
         // It should NOT be advanced because Wednesday (March 4) has not occurred yet.
         expect(nextState.activeTasks.length, 1);
@@ -181,7 +152,7 @@ void main() {
           ],
         );
 
-        final nextState = TaskList([stackTask]).complete('task-stack', userId);
+        final nextState = TaskList([stackTask]).complete('task-stack');
 
         expect(nextState.activeTasks.length, 1);
         final updatedTask = nextState.activeTasks.first;
@@ -196,9 +167,5 @@ void main() {
         AppClock.reset();
       },
     );
-  });
-
-  group('TaskDelta', () {
-    // Implicitly tested via TaskList.
   });
 }

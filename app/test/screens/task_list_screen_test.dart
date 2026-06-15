@@ -13,7 +13,6 @@ import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/screens/home_screen.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
-import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
@@ -29,8 +28,7 @@ void main() {
   late MockTaskRepository mockTaskRepository;
   late BehaviorSubject<List<TaskSchedule>> tasksSubject;
   late BehaviorSubject<List<TaskInstance>> instancesSubject;
-  late BehaviorSubject<List<TaskDelta>> historySubject;
-  StreamSubscription? tasksSub;
+  StreamSubscription<List<TaskSchedule>>? tasksSub;
   VoidCallback? clockListener;
 
   List<TaskInstance> mockInstancesFromSchedules(
@@ -125,7 +123,6 @@ void main() {
       ..add(initialTasks);
     instancesSubject = BehaviorSubject<List<TaskInstance>>(sync: true)
       ..add(mockInstancesFromSchedules(initialTasks, AppClock.now));
-    historySubject = BehaviorSubject<List<TaskDelta>>(sync: true)..add([]);
 
     // Listen to changes to auto-update instances
     tasksSub = tasksSubject.listen((_) => updateInstances());
@@ -138,9 +135,6 @@ void main() {
     when(
       mockTaskRepository.getInstances(),
     ).thenAnswer((_) => instancesSubject.stream);
-    when(
-      mockTaskRepository.getHistory(),
-    ).thenAnswer((_) => historySubject.stream);
 
     when(mockTaskRepository.addTaskSchedule(any)).thenAnswer((
       invocation,
@@ -156,9 +150,8 @@ void main() {
     if (clockListener != null) {
       AppClock.timeNotifier.removeListener(clockListener!);
     }
-    tasksSubject.close();
+    tasksSub?.cancel();
     instancesSubject.close();
-    historySubject.close();
   });
 
   Widget createScreen() {
@@ -599,7 +592,6 @@ void main() {
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
     when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([]));
     when(mockTaskRepository.getInstances()).thenAnswer((_) => Stream.value([]));
-    when(mockTaskRepository.getHistory()).thenAnswer((_) => Stream.value([]));
 
     await tester.pumpWidgetBuilder(
       ProviderScope(

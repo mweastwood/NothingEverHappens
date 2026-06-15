@@ -20,7 +20,6 @@ import 'package:nothing_ever_happens/screens/family_screen.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
-import 'package:nothing_ever_happens/logic/task_delta.dart';
 
 @GenerateNiceMocks([
   MockSpec<AuthRepository>(),
@@ -35,7 +34,6 @@ void main() {
   late MockUserSettingsRepository mockUserSettingsRepository;
   late BehaviorSubject<List<TaskSchedule>> tasksSubject;
   late BehaviorSubject<List<TaskInstance>> instancesSubject;
-  late BehaviorSubject<List<TaskDelta>> historySubject;
   late BehaviorSubject<UserSettings> settingsSubject;
 
   setUp(() {
@@ -45,7 +43,6 @@ void main() {
 
     tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([]);
     instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([]);
-    historySubject = BehaviorSubject<List<TaskDelta>>.seeded([]);
     settingsSubject = BehaviorSubject<UserSettings>.seeded(
       const UserSettings(hoursAvailable: 8.0),
     );
@@ -56,9 +53,6 @@ void main() {
       mockTaskRepository.getInstances(),
     ).thenAnswer((_) => instancesSubject.stream);
     when(
-      mockTaskRepository.getHistory(),
-    ).thenAnswer((_) => historySubject.stream);
-    when(
       mockUserSettingsRepository.getSettings(),
     ).thenAnswer((_) => settingsSubject.stream);
   });
@@ -66,7 +60,6 @@ void main() {
   tearDown(() {
     tasksSubject.close();
     instancesSubject.close();
-    historySubject.close();
     settingsSubject.close();
   });
 

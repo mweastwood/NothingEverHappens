@@ -281,10 +281,7 @@ class _SprintDashboardContentState
 
         final task = activeFamilyTasks.firstWhere((t) => t.id == taskId);
         if (task.assignedUserId != assignedUserId) {
-          final modification = task.updateAssignedUserId(
-            assignedUserId,
-            widget.taskRepository.userId,
-          );
+          final modification = task.updateAssignedUserId(assignedUserId);
           futures.add(widget.taskRepository.updateTaskSchedule(modification));
         }
       }
@@ -315,10 +312,7 @@ class _SprintDashboardContentState
 
   Future<void> _toggleCycle(TaskSchedule task, String? cycleId) async {
     try {
-      final modification = task.updateCycleId(
-        cycleId,
-        widget.taskRepository.userId,
-      );
+      final modification = task.updateCycleId(cycleId);
       await widget.taskRepository.updateTaskSchedule(modification);
     } catch (e, stackTrace) {
       if (mounted) {
@@ -335,10 +329,7 @@ class _SprintDashboardContentState
       final newPreferredBy = Map<String, bool>.from(task.preferredBy);
       newPreferredBy[currentUserId] = !(newPreferredBy[currentUserId] ?? false);
 
-      final modification = task.updatePreferredBy(
-        newPreferredBy,
-        currentUserId,
-      );
+      final modification = task.updatePreferredBy(newPreferredBy);
       await widget.taskRepository.updateTaskSchedule(modification);
     } catch (e, stackTrace) {
       if (mounted) {
