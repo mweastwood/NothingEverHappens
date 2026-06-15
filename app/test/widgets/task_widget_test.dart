@@ -343,7 +343,9 @@ void main() {
   testWidgets('TaskWidget delete action plays poof animation and deletes', (
     tester,
   ) async {
-    when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((_) async {});
+    when(
+      mockTaskRepository.deleteTaskSchedule(any),
+    ).thenAnswer((_) async => null);
 
     await tester.pumpWidget(
       buildTestableWidget(
@@ -600,7 +602,9 @@ void main() {
   testWidgets(
     'TaskWidget swipe RTL shows confirmation dialog and deletes on confirm',
     (tester) async {
-      when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((_) async {});
+      when(
+        mockTaskRepository.deleteTaskSchedule(any),
+      ).thenAnswer((_) async => null);
       await tester.pumpWidget(createWidget(testTask));
 
       // Fling from right to left (RTL) to delete
@@ -626,7 +630,9 @@ void main() {
   testWidgets(
     'TaskWidget swipe RTL shows confirmation dialog and does not delete on cancel',
     (tester) async {
-      when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((_) async {});
+      when(
+        mockTaskRepository.deleteTaskSchedule(any),
+      ).thenAnswer((_) async => null);
       await tester.pumpWidget(createWidget(testTask));
 
       // Fling from right to left (RTL) to delete
@@ -907,7 +913,9 @@ void main() {
   testWidgets(
     'TaskWidget mouse swipe RTL does not trigger deletion or show confirmation dialog',
     (tester) async {
-      when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((_) async {});
+      when(
+        mockTaskRepository.deleteTaskSchedule(any),
+      ).thenAnswer((_) async => null);
       await tester.pumpWidget(createWidget(testTask));
 
       final titleFinder = find.text(testTask.title);

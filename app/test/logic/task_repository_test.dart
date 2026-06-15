@@ -87,20 +87,80 @@ void main() {
       expect(taskSnapshot.data()!['title'], 'Updated Title');
     });
 
-    test('deleteTask removes a task', () async {
-      await repository.addTaskSchedule(testTask);
+    test(
+      'deleteTask removes a task, returns deleted data, and restore restores it',
+      () async {
+        await repository.addTaskSchedule(testTask);
+        await Future.delayed(Duration.zero);
 
-      await repository.deleteTaskSchedule(testTask.id);
+        final instanceId = '${testTask.id}_2024-01-01';
 
-      final taskSnapshot = await firestore
-          .collection('users')
-          .doc(userId)
-          .collection('tasks')
-          .doc(testTask.id)
-          .get();
+        // Verify task and instance exist
+        final initialTask = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .doc(testTask.id)
+            .get();
+        expect(initialTask.exists, isTrue);
 
-      expect(taskSnapshot.exists, isFalse);
-    });
+        final initialInstance = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(initialInstance.exists, isTrue);
+
+        // 1. Delete Task
+        final deletedData = await repository.deleteTaskSchedule(testTask.id);
+        expect(deletedData, isNotNull);
+        expect(deletedData!.task.id, testTask.id);
+        expect(deletedData.pendingInstances.length, 1);
+        expect(deletedData.pendingInstances.first.id, instanceId);
+
+        // Verify they are deleted in Firestore
+        final taskSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .doc(testTask.id)
+            .get();
+        expect(taskSnapshot.exists, isFalse);
+
+        final instanceSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(instanceSnapshot.exists, isFalse);
+
+        // 2. Restore Task
+        await repository.restoreTaskSchedule(
+          deletedData.task,
+          deletedData.pendingInstances,
+        );
+
+        // Verify they are restored in Firestore
+        final restoredTask = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .doc(testTask.id)
+            .get();
+        expect(restoredTask.exists, isTrue);
+
+        final restoredInstance = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .get();
+        expect(restoredInstance.exists, isTrue);
+        expect(restoredInstance.data()!['status'], 'pending');
+      },
+    );
 
     test('completeTask completes the instance', () async {
       await repository.addTaskSchedule(testTask);

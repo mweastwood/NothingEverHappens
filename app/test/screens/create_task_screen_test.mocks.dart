@@ -130,9 +130,31 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<void> deleteTaskSchedule(String? id) =>
+  _i4.Future<
+    ({List<_i6.TaskInstance> pendingInstances, _i5.TaskSchedule task})?
+  >
+  deleteTaskSchedule(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#deleteTaskSchedule, [id]),
+            returnValue:
+                _i4.Future<
+                  ({
+                    List<_i6.TaskInstance> pendingInstances,
+                    _i5.TaskSchedule task,
+                  })?
+                >.value(),
+          )
+          as _i4.Future<
+            ({List<_i6.TaskInstance> pendingInstances, _i5.TaskSchedule task})?
+          >);
+
+  @override
+  _i4.Future<void> restoreTaskSchedule(
+    _i5.TaskSchedule? task,
+    List<_i6.TaskInstance>? pendingInstances,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#restoreTaskSchedule, [task, pendingInstances]),
             returnValue: _i4.Future<void>.value(),
             returnValueForMissingStub: _i4.Future<void>.value(),
           )
@@ -142,6 +164,26 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
   _i4.Future<void> completeTaskInstance(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#completeTaskInstance, [id]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> dismissTaskInstance(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#dismissTaskInstance, [id]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> undoResolveTaskInstance(
+    _i6.TaskInstance? resolvedInstance,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#undoResolveTaskInstance, [resolvedInstance]),
             returnValue: _i4.Future<void>.value(),
             returnValueForMissingStub: _i4.Future<void>.value(),
           )
