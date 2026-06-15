@@ -52,7 +52,7 @@ void main() {
         ],
         isFamily: false,
       );
-      await repository.addTask(personalTask);
+      await repository.addTaskSchedule(personalTask);
 
       // 3. Add family task
       final familyTask = TaskSchedule(
@@ -74,7 +74,7 @@ void main() {
         ],
         isFamily: true,
       );
-      await repository.addTask(familyTask);
+      await repository.addTaskSchedule(familyTask);
 
       // 4. Verify streams contain both tasks
       final tasksList = await repository.getTasks().first;
@@ -107,7 +107,7 @@ void main() {
       ],
       isFamily: false,
     );
-    await repository.addTask(task);
+    await repository.addTaskSchedule(task);
     await Future.delayed(Duration.zero);
 
     // Verify it exists in personal tasks collection
@@ -145,7 +145,7 @@ void main() {
       changedFields: const {'isFamily': true},
       userId: userId,
     );
-    await repository.updateTask((newTask: familyTask, delta: delta));
+    await repository.updateTaskSchedule((newTask: familyTask, delta: delta));
 
     // Verify it was DELETED from personal tasks
     final personalDocPost = await firestore
@@ -207,7 +207,7 @@ void main() {
       ],
       isFamily: true,
     );
-    await repository.addTask(task);
+    await repository.addTaskSchedule(task);
     await Future.delayed(Duration.zero);
 
     // Verify it exists in family tasks
@@ -245,7 +245,7 @@ void main() {
       changedFields: const {'isFamily': false},
       userId: userId,
     );
-    await repository.updateTask((newTask: personalTask, delta: delta));
+    await repository.updateTaskSchedule((newTask: personalTask, delta: delta));
 
     // Verify it was DELETED from family tasks
     final familyDocPost = await firestore

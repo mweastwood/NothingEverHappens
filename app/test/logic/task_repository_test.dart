@@ -40,7 +40,7 @@ void main() {
     );
 
     test('addTask adds a task and history to Firestore', () async {
-      await repository.addTask(testTask);
+      await repository.addTaskSchedule(testTask);
 
       final taskSnapshot = await firestore
           .collection('users')
@@ -64,7 +64,7 @@ void main() {
     });
 
     test('getTasks returns a stream of tasks', () async {
-      await repository.addTask(testTask);
+      await repository.addTaskSchedule(testTask);
 
       final stream = repository.getTasks();
 
@@ -81,7 +81,7 @@ void main() {
     });
 
     test('getHistory returns a stream of history', () async {
-      await repository.addTask(testTask);
+      await repository.addTaskSchedule(testTask);
 
       final stream = repository.getHistory();
 
@@ -98,10 +98,10 @@ void main() {
     });
 
     test('updateTask updates an existing task and adds history', () async {
-      await repository.addTask(testTask);
+      await repository.addTaskSchedule(testTask);
 
       final modification = testTask.updateTitle('Updated Title', userId);
-      await repository.updateTask(modification);
+      await repository.updateTaskSchedule(modification);
 
       final taskSnapshot = await firestore
           .collection('users')
@@ -128,9 +128,9 @@ void main() {
     });
 
     test('deleteTask removes a task and adds history', () async {
-      await repository.addTask(testTask);
+      await repository.addTaskSchedule(testTask);
 
-      await repository.deleteTask(testTask.id);
+      await repository.deleteTaskSchedule(testTask.id);
 
       final taskSnapshot = await firestore
           .collection('users')
@@ -153,11 +153,11 @@ void main() {
     });
 
     test('completeTask completes the instance and adds history', () async {
-      await repository.addTask(testTask);
+      await repository.addTaskSchedule(testTask);
       await Future.delayed(Duration.zero);
 
       final instanceId = '${testTask.id}_2024-01-01';
-      await repository.completeTask(instanceId);
+      await repository.completeTaskInstance(instanceId);
 
       final instanceSnapshot = await firestore
           .collection('users')
@@ -201,7 +201,7 @@ void main() {
           ],
         );
 
-        await repository.addTask(weeklyTask);
+        await repository.addTaskSchedule(weeklyTask);
         await Future.delayed(Duration.zero);
 
         // Now edit it to add a monthly schedule
@@ -231,7 +231,7 @@ void main() {
           newPriority: TaskPriority.medium,
         );
 
-        await repository.updateTask(modification);
+        await repository.updateTaskSchedule(modification);
         await Future.delayed(Duration.zero);
 
         // Check tasks
@@ -300,7 +300,7 @@ void main() {
     );
 
     test('addTask schedules notifications', () async {
-      await repository.addTask(notifTask);
+      await repository.addTaskSchedule(notifTask);
       expect(
         notificationService.scheduledTasks.containsKey(notifTask.id),
         isTrue,
@@ -317,7 +317,7 @@ void main() {
     });
 
     test('updateTask updates scheduled notifications', () async {
-      await repository.addTask(notifTask);
+      await repository.addTaskSchedule(notifTask);
 
       final updatedTask = TaskSchedule(
         id: notifTask.id,
@@ -358,7 +358,7 @@ void main() {
         ),
       );
 
-      await repository.updateTask(modification);
+      await repository.updateTaskSchedule(modification);
       expect(
         notificationService.scheduledTasks.containsKey(notifTask.id),
         isTrue,
@@ -375,13 +375,13 @@ void main() {
     });
 
     test('deleteTask cancels scheduled notifications', () async {
-      await repository.addTask(notifTask);
+      await repository.addTaskSchedule(notifTask);
       expect(
         notificationService.scheduledTasks.containsKey(notifTask.id),
         isTrue,
       );
 
-      await repository.deleteTask(notifTask.id);
+      await repository.deleteTaskSchedule(notifTask.id);
       expect(
         notificationService.scheduledTasks.containsKey(notifTask.id),
         isFalse,
@@ -389,14 +389,14 @@ void main() {
     });
 
     test('completeTask schedules next occurrence if recurring', () async {
-      await repository.addTask(notifTask);
+      await repository.addTaskSchedule(notifTask);
       expect(
         notificationService.scheduledTasks.containsKey(notifTask.id),
         isTrue,
       );
 
       final instanceId = '${notifTask.id}_2024-01-01';
-      await repository.completeTask(instanceId);
+      await repository.completeTaskInstance(instanceId);
       // Still scheduled because it's recurring and advances to the next occurrence
       expect(
         notificationService.scheduledTasks.containsKey(notifTask.id),
@@ -423,7 +423,7 @@ void main() {
           ],
         );
 
-        await repository.addTask(shiftTask);
+        await repository.addTaskSchedule(shiftTask);
         await Future.delayed(Duration.zero);
 
         // Spawns instance for June 1 (startDate)
@@ -440,7 +440,7 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 9, 12, 0));
 
         // Complete June 1 instance on June 9
-        await repository.completeTask(instanceId);
+        await repository.completeTaskInstance(instanceId);
 
         // Verify June 1 instance is completed
         final completedSnapshot = await firestore
@@ -495,7 +495,7 @@ void main() {
           ],
         );
 
-        await repository.addTask(stackTask);
+        await repository.addTaskSchedule(stackTask);
         await Future.delayed(Duration.zero);
 
         // Spawns instance for June 1
@@ -509,7 +509,7 @@ void main() {
         expect(initialSnapshot.exists, isTrue);
 
         // Complete June 1 instance on June 1
-        await repository.completeTask(instanceId);
+        await repository.completeTaskInstance(instanceId);
 
         // Verify June 1 instance is completed
         final completedSnapshot = await firestore
@@ -555,7 +555,7 @@ void main() {
           ],
         );
 
-        await repository.addTask(rolloverTask);
+        await repository.addTaskSchedule(rolloverTask);
         await Future.delayed(Duration.zero);
 
         // Spawns instance for June 1 (startDate)
@@ -572,7 +572,7 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 9, 12, 0));
 
         // Complete June 1 instance on June 9
-        await repository.completeTask(instanceId);
+        await repository.completeTaskInstance(instanceId);
 
         // Verify June 1 instance is completed
         final completedSnapshot = await firestore
@@ -622,7 +622,7 @@ void main() {
           ],
         );
 
-        await repository.addTask(task);
+        await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Verify June 3 instance exists and is pending
@@ -637,7 +637,7 @@ void main() {
         expect(initialSnapshot.data()!['status'], 'pending');
 
         // Complete the June 3 instance early on June 1
-        await repository.completeTask(instanceId);
+        await repository.completeTaskInstance(instanceId);
 
         // Verify June 3 instance is completed, NOT pending
         final completedSnapshot = await firestore

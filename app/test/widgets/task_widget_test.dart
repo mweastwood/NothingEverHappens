@@ -68,7 +68,7 @@ void main() {
   setUp(() {
     mockTaskRepository = MockTaskRepository();
     // Default completeTask to do nothing
-    when(mockTaskRepository.completeTask(any)).thenAnswer((_) async {});
+    when(mockTaskRepository.completeTaskInstance(any)).thenAnswer((_) async {});
 
     clipboardStore.clear();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -154,7 +154,7 @@ void main() {
     await tester.pump(); // Ensure listener executes
 
     verify(
-      mockTaskRepository.completeTask('${testTask.id}_2024-01-01'),
+      mockTaskRepository.completeTaskInstance('${testTask.id}_2024-01-01'),
     ).called(1);
   });
 
@@ -343,7 +343,7 @@ void main() {
   testWidgets('TaskWidget delete action plays poof animation and deletes', (
     tester,
   ) async {
-    when(mockTaskRepository.deleteTask(any)).thenAnswer((_) async {});
+    when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((_) async {});
 
     await tester.pumpWidget(
       buildTestableWidget(
@@ -378,7 +378,7 @@ void main() {
     await tester.pump(); // Allow completion listener to run
 
     // Verify repository deleteTask is called
-    verify(mockTaskRepository.deleteTask(testTask.id)).called(1);
+    verify(mockTaskRepository.deleteTaskSchedule(testTask.id)).called(1);
   });
 
   testGoldens('TaskWidget focused state golden', (tester) async {
@@ -593,14 +593,14 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      mockTaskRepository.completeTask('${testTask.id}_2024-01-01'),
+      mockTaskRepository.completeTaskInstance('${testTask.id}_2024-01-01'),
     ).called(1);
   });
 
   testWidgets(
     'TaskWidget swipe RTL shows confirmation dialog and deletes on confirm',
     (tester) async {
-      when(mockTaskRepository.deleteTask(any)).thenAnswer((_) async {});
+      when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((_) async {});
       await tester.pumpWidget(createWidget(testTask));
 
       // Fling from right to left (RTL) to delete
@@ -619,14 +619,14 @@ void main() {
       await tester.tap(find.text('Delete'));
       await tester.pumpAndSettle();
 
-      verify(mockTaskRepository.deleteTask(testTask.id)).called(1);
+      verify(mockTaskRepository.deleteTaskSchedule(testTask.id)).called(1);
     },
   );
 
   testWidgets(
     'TaskWidget swipe RTL shows confirmation dialog and does not delete on cancel',
     (tester) async {
-      when(mockTaskRepository.deleteTask(any)).thenAnswer((_) async {});
+      when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((_) async {});
       await tester.pumpWidget(createWidget(testTask));
 
       // Fling from right to left (RTL) to delete
@@ -644,7 +644,7 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
-      verifyNever(mockTaskRepository.deleteTask(any));
+      verifyNever(mockTaskRepository.deleteTaskSchedule(any));
     },
   );
 
@@ -772,7 +772,7 @@ void main() {
       await tester.fling(titleFinder, const Offset(500.0, 0.0), 1000.0);
       await tester.pumpAndSettle();
 
-      verifyNever(mockTaskRepository.completeTask(any));
+      verifyNever(mockTaskRepository.completeTaskInstance(any));
 
       // Clean up
       await gesture.up();
@@ -825,7 +825,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verify(
-        mockTaskRepository.completeTask('${testTask.id}_2024-01-01'),
+        mockTaskRepository.completeTaskInstance('${testTask.id}_2024-01-01'),
       ).called(1);
     },
   );
@@ -907,7 +907,7 @@ void main() {
   testWidgets(
     'TaskWidget mouse swipe RTL does not trigger deletion or show confirmation dialog',
     (tester) async {
-      when(mockTaskRepository.deleteTask(any)).thenAnswer((_) async {});
+      when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((_) async {});
       await tester.pumpWidget(createWidget(testTask));
 
       final titleFinder = find.text(testTask.title);
@@ -933,7 +933,7 @@ void main() {
 
       // Verify no dialog is shown and deleteTask was never called
       expect(find.byType(AlertDialog), findsNothing);
-      verifyNever(mockTaskRepository.deleteTask(any));
+      verifyNever(mockTaskRepository.deleteTaskSchedule(any));
 
       await mouseGesture.removePointer();
     },

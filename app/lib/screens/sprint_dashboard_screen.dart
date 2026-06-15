@@ -285,7 +285,7 @@ class _SprintDashboardContentState
             assignedUserId,
             widget.taskRepository.userId,
           );
-          futures.add(widget.taskRepository.updateTask(modification));
+          futures.add(widget.taskRepository.updateTaskSchedule(modification));
         }
       }
 
@@ -319,7 +319,7 @@ class _SprintDashboardContentState
         cycleId,
         widget.taskRepository.userId,
       );
-      await widget.taskRepository.updateTask(modification);
+      await widget.taskRepository.updateTaskSchedule(modification);
     } catch (e, stackTrace) {
       if (mounted) {
         final errorHandler = ref.read(errorHandlerProvider);
@@ -339,7 +339,7 @@ class _SprintDashboardContentState
         newPreferredBy,
         currentUserId,
       );
-      await widget.taskRepository.updateTask(modification);
+      await widget.taskRepository.updateTaskSchedule(modification);
     } catch (e, stackTrace) {
       if (mounted) {
         final errorHandler = ref.read(errorHandlerProvider);

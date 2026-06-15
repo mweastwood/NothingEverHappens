@@ -281,7 +281,7 @@ void main() {
 
       // Verify repository delete method was called with correct ID
       verify(
-        mockTaskRepository.deleteTask('delete-recurring-task-1'),
+        mockTaskRepository.deleteTaskSchedule('delete-recurring-task-1'),
       ).called(1);
     },
   );

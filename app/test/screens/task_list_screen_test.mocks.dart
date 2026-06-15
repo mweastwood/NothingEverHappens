@@ -167,38 +167,38 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
           as _i3.Stream<List<_i10.TaskDelta>>);
 
   @override
-  _i3.Future<void> addTask(_i7.TaskSchedule? task) =>
+  _i3.Future<void> addTaskSchedule(_i7.TaskSchedule? task) =>
       (super.noSuchMethod(
-            Invocation.method(#addTask, [task]),
+            Invocation.method(#addTaskSchedule, [task]),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
           as _i3.Future<void>);
 
   @override
-  _i3.Future<void> updateTask(
+  _i3.Future<void> updateTaskSchedule(
     ({_i10.TaskDelta delta, _i7.TaskSchedule newTask})? modification,
   ) =>
       (super.noSuchMethod(
-            Invocation.method(#updateTask, [modification]),
+            Invocation.method(#updateTaskSchedule, [modification]),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
           as _i3.Future<void>);
 
   @override
-  _i3.Future<void> deleteTask(String? id) =>
+  _i3.Future<void> deleteTaskSchedule(String? id) =>
       (super.noSuchMethod(
-            Invocation.method(#deleteTask, [id]),
+            Invocation.method(#deleteTaskSchedule, [id]),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
           as _i3.Future<void>);
 
   @override
-  _i3.Future<void> completeTask(String? id) =>
+  _i3.Future<void> completeTaskInstance(String? id) =>
       (super.noSuchMethod(
-            Invocation.method(#completeTask, [id]),
+            Invocation.method(#completeTaskInstance, [id]),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
