@@ -5,7 +5,9 @@ import '../logic/task_schedule.dart';
 import '../logic/task_repository.dart';
 import 'create_task_screen.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/undo_notifier.dart';
 import '../widgets/schedule_card.dart';
+import '../widgets/undo_snackbar.dart';
 
 class TaskScheduleScreen extends ConsumerWidget {
   const TaskScheduleScreen({super.key});
@@ -100,8 +102,12 @@ class TaskScheduleScreen extends ConsumerWidget {
                                   ),
                                 );
                               },
-                              onDelete: () =>
-                                  _confirmDelete(context, taskRepository, task),
+                              onDelete: () => _confirmDelete(
+                                context,
+                                ref,
+                                taskRepository,
+                                task,
+                              ),
                             );
                           }, childCount: recurringTasks.length),
                         ),
@@ -116,6 +122,7 @@ class TaskScheduleScreen extends ConsumerWidget {
 
   void _confirmDelete(
     BuildContext context,
+    WidgetRef ref,
     TaskRepository repository,
     TaskSchedule task,
   ) {
@@ -136,9 +143,23 @@ class TaskScheduleScreen extends ConsumerWidget {
                 backgroundColor: Theme.of(context).colorScheme.error,
                 foregroundColor: Theme.of(context).colorScheme.onError,
               ),
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(dialogContext);
-                repository.deleteTaskSchedule(task.id);
+                final deletedData = await repository.deleteTaskSchedule(
+                  task.id,
+                );
+                if (deletedData != null && context.mounted) {
+                  UndoSnackBar.show(
+                    context: context,
+                    ref: ref,
+                    action: UndoDeleteTaskScheduleAction(
+                      message: context.l10n.scheduleDeleted(task.title),
+                      schedule: deletedData.task,
+                      pendingInstances: deletedData.pendingInstances,
+                    ),
+                    repository: repository,
+                  );
+                }
               },
               child: Text(context.l10n.deleteButton),
             ),

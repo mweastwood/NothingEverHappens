@@ -10,6 +10,7 @@ import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 
@@ -250,6 +251,12 @@ void main() {
 
       tasksSubject.add([dailyTask]);
 
+      when(
+        mockTaskRepository.deleteTaskSchedule('delete-recurring-task-1'),
+      ).thenAnswer(
+        (_) async => (task: dailyTask, pendingInstances: <TaskInstance>[]),
+      );
+
       await tester.pumpWidget(createScreen());
       await tester.pumpAndSettle();
 
@@ -283,6 +290,73 @@ void main() {
       verify(
         mockTaskRepository.deleteTaskSchedule('delete-recurring-task-1'),
       ).called(1);
+    },
+  );
+
+  testWidgets(
+    'TaskScheduleScreen delete button opens confirmation dialog, deletes task, and undo restores it',
+    (WidgetTester tester) async {
+      final dailyTask = TaskSchedule(
+        id: 'delete-recurring-task-1',
+        title: 'Daily Exercises',
+        description: 'Run 5km and do pushups',
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 7, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 30),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([dailyTask]);
+
+      when(
+        mockTaskRepository.deleteTaskSchedule('delete-recurring-task-1'),
+      ).thenAnswer(
+        (_) async => (task: dailyTask, pendingInstances: <TaskInstance>[]),
+      );
+      when(
+        mockTaskRepository.restoreTaskSchedule(any, any),
+      ).thenAnswer((_) async {});
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      final deleteButtonKey = const Key(
+        'delete_schedule_button_delete-recurring-task-1',
+      );
+      await tester.tap(find.byKey(deleteButtonKey));
+      await tester.pumpAndSettle();
+
+      final confirmDeleteKey = const Key(
+        'confirm_delete_schedule_button_delete-recurring-task-1',
+      );
+      await tester.tap(find.byKey(confirmDeleteKey));
+      await tester.pumpAndSettle();
+
+      verify(
+        mockTaskRepository.deleteTaskSchedule('delete-recurring-task-1'),
+      ).called(1);
+
+      // Verify SnackBar is shown
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.text('Undo'), findsOneWidget);
+
+      // Tap Undo
+      await tester.tap(find.text('Undo'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // Verify restoreTaskSchedule is called
+      verify(mockTaskRepository.restoreTaskSchedule(dailyTask, any)).called(1);
     },
   );
 }

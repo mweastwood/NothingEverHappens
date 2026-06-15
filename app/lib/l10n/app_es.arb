@@ -229,5 +229,13 @@
         "type": "String"
       }
     }
+  },
+  "scheduleDeleted": "Se eliminó \"{title}\"",
+  "@scheduleDeleted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   }
 }
