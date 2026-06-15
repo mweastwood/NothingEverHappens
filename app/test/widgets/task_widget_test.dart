@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -62,10 +63,32 @@ void main() {
     );
   }
 
+  final List<Map<String, dynamic>> clipboardStore = [];
+
   setUp(() {
     mockTaskRepository = MockTaskRepository();
     // Default completeTask to do nothing
     when(mockTaskRepository.completeTask(any)).thenAnswer((_) async {});
+
+    clipboardStore.clear();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (
+          MethodCall methodCall,
+        ) async {
+          if (methodCall.method == 'Clipboard.setData') {
+            clipboardStore.add(methodCall.arguments as Map<String, dynamic>);
+            return null;
+          } else if (methodCall.method == 'Clipboard.getData') {
+            if (clipboardStore.isEmpty) return null;
+            return <String, dynamic>{'text': clipboardStore.last['text']};
+          }
+          return null;
+        });
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null);
   });
 
   Widget createWidget(TaskSchedule task) {
@@ -647,8 +670,12 @@ void main() {
     final gesture = await tester.startGesture(
       tester.getCenter(find.text(testTask.title)),
     );
-    await gesture.moveBy(const Offset(150.0, 0.0));
-    await tester.pump(); // Pump frame with swiped state
+    // Drag past the kTouchSlop threshold to resolve the gesture as a drag
+    await gesture.moveBy(const Offset(30.0, 0.0));
+    await tester.pump();
+    // Move further to slide the card and reveal the background color
+    await gesture.moveBy(const Offset(120.0, 0.0));
+    await tester.pump();
 
     await expectLater(
       find.byType(MaterialApp),
@@ -681,8 +708,12 @@ void main() {
     final gesture = await tester.startGesture(
       tester.getCenter(find.text(testTask.title)),
     );
-    await gesture.moveBy(const Offset(-150.0, 0.0));
-    await tester.pump(); // Pump frame with swiped state
+    // Drag past the kTouchSlop threshold to resolve the gesture as a drag
+    await gesture.moveBy(const Offset(-30.0, 0.0));
+    await tester.pump();
+    // Move further to slide the card and reveal the background color
+    await gesture.moveBy(const Offset(-120.0, 0.0));
+    await tester.pump();
 
     await expectLater(
       find.byType(MaterialApp),
@@ -710,6 +741,10 @@ void main() {
         find.byWidgetPredicate((w) => w is Text && w.data == testTask.title),
         findsOneWidget,
       );
+      expect(
+        tester.widget<MarkdownBody>(find.byType(MarkdownBody)).selectable,
+        isFalse,
+      );
 
       // Click mouse on the task widget to simulate mouse interaction
       final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -728,6 +763,10 @@ void main() {
         find.byWidgetPredicate((w) => w is Text && w.data == testTask.title),
         findsNothing,
       );
+      expect(
+        tester.widget<MarkdownBody>(find.byType(MarkdownBody)).selectable,
+        isTrue,
+      );
 
       // Try to fling to complete (LTR) - should do nothing because direction is none
       await tester.fling(titleFinder, const Offset(500.0, 0.0), 1000.0);
@@ -738,6 +777,165 @@ void main() {
       // Clean up
       await gesture.up();
       await gesture.removePointer();
+    },
+  );
+
+  testWidgets(
+    'TaskWidget touch interaction enables swipe and long-press copy',
+    (tester) async {
+      await tester.pumpWidget(createWidget(testTask));
+
+      // 1. Verify title is Text (not SelectableText)
+      final titleFinder = find.text(testTask.title);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is SelectableText && w.data == testTask.title,
+        ),
+        findsNothing,
+      );
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.data == testTask.title),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<MarkdownBody>(find.byType(MarkdownBody)).selectable,
+        isFalse,
+      );
+
+      // 2. Verify ListTile onLongPress is NOT null
+      final listTileBefore = tester.widget<ListTile>(find.byType(ListTile));
+      expect(listTileBefore.onLongPress, isNotNull);
+
+      // 3. Trigger long press on the ListTile to copy to clipboard
+      await tester.longPress(find.byType(ListTile));
+      await tester.pumpAndSettle();
+
+      // Verify SnackBar is shown
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.text('Copied task to clipboard'), findsOneWidget);
+
+      // Verify Clipboard has the copied text
+      final ClipboardData? clipboardData = await Clipboard.getData(
+        Clipboard.kTextPlain,
+      );
+      expect(clipboardData?.text, contains(testTask.title));
+
+      // 4. Verify swipe completes task
+      await tester.fling(titleFinder, const Offset(500.0, 0.0), 1000.0);
+      await tester.pumpAndSettle();
+
+      verify(
+        mockTaskRepository.completeTask('${testTask.id}_2024-01-01'),
+      ).called(1);
+    },
+  );
+
+  testWidgets(
+    'TaskWidget hybrid device transitions between mouse and touch dynamically',
+    (tester) async {
+      await tester.pumpWidget(createWidget(testTask));
+
+      final titleFinder = find.text(testTask.title);
+
+      // Starts in touch mode (Text)
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.data == testTask.title),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<ListTile>(find.byType(ListTile)).onLongPress,
+        isNotNull,
+      );
+      expect(
+        tester.widget<MarkdownBody>(find.byType(MarkdownBody)).selectable,
+        isFalse,
+      );
+
+      // 1. Hover mouse -> Switches to mouse mode
+      final mouseGesture = await tester.createGesture(
+        kind: PointerDeviceKind.mouse,
+      );
+      await mouseGesture.addPointer(
+        location: tester.getCenter(titleFinder) - const Offset(10, 10),
+      );
+      await mouseGesture.moveTo(tester.getCenter(titleFinder));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is SelectableText && w.data == testTask.title,
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<ListTile>(find.byType(ListTile)).onLongPress,
+        isNull,
+      );
+      expect(
+        tester.widget<MarkdownBody>(find.byType(MarkdownBody)).selectable,
+        isTrue,
+      );
+
+      // 2. Tap screen (touch down) -> Switches back to touch mode
+      final touchGesture = await tester.createGesture(
+        kind: PointerDeviceKind.touch,
+      );
+      await touchGesture.addPointer(location: tester.getCenter(titleFinder));
+      await touchGesture.down(tester.getCenter(titleFinder));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byWidgetPredicate((w) => w is Text && w.data == testTask.title),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<ListTile>(find.byType(ListTile)).onLongPress,
+        isNotNull,
+      );
+      expect(
+        tester.widget<MarkdownBody>(find.byType(MarkdownBody)).selectable,
+        isFalse,
+      );
+
+      // Clean up gestures
+      await mouseGesture.removePointer();
+      await touchGesture.up();
+      await touchGesture.removePointer();
+    },
+  );
+
+  testWidgets(
+    'TaskWidget mouse swipe RTL does not trigger deletion or show confirmation dialog',
+    (tester) async {
+      when(mockTaskRepository.deleteTask(any)).thenAnswer((_) async {});
+      await tester.pumpWidget(createWidget(testTask));
+
+      final titleFinder = find.text(testTask.title);
+
+      // Hover mouse -> Switches to mouse mode
+      final mouseGesture = await tester.createGesture(
+        kind: PointerDeviceKind.mouse,
+      );
+      await mouseGesture.addPointer(
+        location: tester.getCenter(titleFinder) - const Offset(10, 10),
+      );
+      await mouseGesture.moveTo(tester.getCenter(titleFinder));
+      await tester.pumpAndSettle();
+
+      // Try to swipe RTL using the mouse pointer
+      await mouseGesture.down(tester.getCenter(titleFinder));
+      await mouseGesture.moveBy(const Offset(-30.0, 0.0));
+      await tester.pump();
+      await mouseGesture.moveBy(const Offset(-120.0, 0.0));
+      await tester.pump();
+      await mouseGesture.up();
+      await tester.pumpAndSettle();
+
+      // Verify no dialog is shown and deleteTask was never called
+      expect(find.byType(AlertDialog), findsNothing);
+      verifyNever(mockTaskRepository.deleteTask(any));
+
+      await mouseGesture.removePointer();
     },
   );
 }
