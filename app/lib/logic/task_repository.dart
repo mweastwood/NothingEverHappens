@@ -1,13 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import 'package:rxdart/rxdart.dart';
 import 'app_clock.dart';
 import 'civil_day.dart';
 import 'task_schedule.dart';
 import 'task_instance.dart';
-import 'task_delta.dart';
-import 'task_list.dart';
 import 'notification_service.dart';
 import 'auth_repository.dart';
 
@@ -87,17 +84,6 @@ class TaskRepository {
     });
   }
 
-  CollectionReference<TaskDelta> get _historyRef {
-    return _firestore
-        .collection('users')
-        .doc(_userId)
-        .collection('history')
-        .withConverter<TaskDelta>(
-          fromFirestore: (snapshot, _) => TaskDelta.fromJson(snapshot.data()!),
-          toFirestore: (delta, _) => delta.toJson(),
-        );
-  }
-
   Future<String?> _getFamilyId() async {
     final userDoc = await _firestore.collection('users').doc(_userId).get();
     return userDoc.data()?['familyId'] as String?;
@@ -139,26 +125,6 @@ class TaskRepository {
           );
     }
     return _instancesRef.doc(instance.id);
-  }
-
-  DocumentReference<TaskDelta> _historyRefFor(
-    TaskSchedule task,
-    String? familyId,
-    String deltaId,
-  ) {
-    if (task.isFamily && familyId != null && familyId.isNotEmpty) {
-      return _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('history')
-          .doc(deltaId)
-          .withConverter<TaskDelta>(
-            fromFirestore: (snapshot, _) =>
-                TaskDelta.fromJson(snapshot.data()!),
-            toFirestore: (delta, _) => delta.toJson(),
-          );
-    }
-    return _historyRef.doc(deltaId);
   }
 
   Future<TaskSchedule?> _fetchTask(String id) async {
@@ -525,17 +491,6 @@ class TaskRepository {
                   );
                   hasChanges = true;
 
-                  final deltaId = const Uuid().v4();
-                  final delta = TaskDelta(
-                    id: deltaId,
-                    taskId: task.id,
-                    timestamp: now,
-                    expiresAt: now.add(const Duration(days: 90)),
-                    operation: 'skipped',
-                    changedFields: {'instanceId': pending.id},
-                    userId: _userId,
-                  );
-                  batch.set(_historyRefFor(task, familyId, deltaId), delta);
                   spawnedNext = true;
                 }
               }
@@ -578,17 +533,6 @@ class TaskRepository {
                     );
                     hasChanges = true;
 
-                    final deltaId = const Uuid().v4();
-                    final delta = TaskDelta(
-                      id: deltaId,
-                      taskId: task.id,
-                      timestamp: now,
-                      expiresAt: now.add(const Duration(days: 90)),
-                      operation: 'skipped',
-                      changedFields: {'instanceId': instId},
-                      userId: _userId,
-                    );
-                    batch.set(_historyRefFor(task, familyId, deltaId), delta);
                     spawnedNext = true;
                   }
                 }
@@ -654,61 +598,11 @@ class TaskRepository {
     }
   }
 
-  Stream<List<TaskDelta>> getHistory() {
-    return _firestore.collection('users').doc(_userId).snapshots().switchMap((
-      userDoc,
-    ) {
-      final familyId = userDoc.data()?['familyId'] as String? ?? '';
-
-      final personalStream = _historyRef
-          .orderBy('timestamp', descending: true)
-          .snapshots()
-          .map((snapshot) {
-            return snapshot.docs.map((doc) => doc.data()).toList();
-          });
-
-      if (familyId.isEmpty) {
-        return personalStream;
-      } else {
-        final familyHistoryRef = _firestore
-            .collection('families')
-            .doc(familyId)
-            .collection('history')
-            .withConverter<TaskDelta>(
-              fromFirestore: (snapshot, _) =>
-                  TaskDelta.fromJson(snapshot.data()!),
-              toFirestore: (delta, _) => delta.toJson(),
-            );
-
-        final familyStream = familyHistoryRef
-            .orderBy('timestamp', descending: true)
-            .snapshots()
-            .map((snapshot) {
-              return snapshot.docs.map((doc) => doc.data()).toList();
-            });
-
-        return Rx.combineLatest2<
-          List<TaskDelta>,
-          List<TaskDelta>,
-          List<TaskDelta>
-        >(personalStream, familyStream, (personal, family) {
-          final all = [...personal, ...family]
-            ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-          return all;
-        });
-      }
-    });
-  }
-
   Future<void> addTaskSchedule(TaskSchedule task) async {
     final familyId = await _getFamilyId();
-    final newState = const TaskList([]).add(task, _userId);
-    final delta = newState.history.last;
-
     final batch = _firestore.batch();
 
     batch.set(_taskRefFor(task, familyId), task);
-    batch.set(_historyRefFor(task, familyId, delta.id), delta);
 
     await batch.commit();
     await _notificationService?.scheduleNotifications(task);
@@ -721,16 +615,15 @@ class TaskRepository {
     final batch = _firestore.batch();
 
     final newTask = modification.newTask;
-    final delta = modification.delta;
+    final changes = modification.changes;
 
-    final isFamilyChanged = delta.changedFields.containsKey('isFamily');
+    final isFamilyChanged = changes.containsKey('isFamily');
 
     if (isFamilyChanged) {
       if (newTask.isFamily) {
         // Personal -> Family
         batch.delete(_tasksRef.doc(newTask.id));
         batch.set(_taskRefFor(newTask, familyId), newTask);
-        batch.set(_historyRefFor(newTask, familyId, delta.id), delta);
       } else {
         // Family -> Personal
         final familyDocRef = (familyId != null && familyId.isNotEmpty)
@@ -744,14 +637,12 @@ class TaskRepository {
           batch.delete(familyDocRef);
         }
         batch.set(_tasksRef.doc(newTask.id), newTask);
-        batch.set(_historyRef.doc(delta.id), delta);
       }
     } else {
       batch.set(_taskRefFor(newTask, familyId), newTask);
-      batch.set(_historyRefFor(newTask, familyId, delta.id), delta);
     }
 
-    final schedulesChanged = delta.changedFields.containsKey('schedules');
+    final schedulesChanged = changes.containsKey('schedules');
 
     final List<DocumentSnapshot<TaskInstance>> personalPending = [];
     final List<DocumentSnapshot<TaskInstance>> familyPending = [];
@@ -841,13 +732,9 @@ class TaskRepository {
     if (task == null) return;
 
     final familyId = await _getFamilyId();
-    final newState = const TaskList([]).delete(id, _userId);
-    final delta = newState.history.last;
-
     final batch = _firestore.batch();
 
     batch.delete(_taskRefFor(task, familyId));
-    batch.set(_historyRefFor(task, familyId, delta.id), delta);
 
     final personalInstances = await _instancesRef
         .where('scheduleId', isEqualTo: id)
@@ -899,18 +786,6 @@ class TaskRepository {
       completedAt: now,
     );
     batch.set(_instanceRefFor(completedInstance, familyId), completedInstance);
-
-    final deltaId = const Uuid().v4();
-    final delta = TaskDelta(
-      id: deltaId,
-      taskId: task.id,
-      timestamp: now,
-      expiresAt: now.add(const Duration(days: 90)),
-      operation: 'completed',
-      changedFields: {'instanceId': instance.id},
-      userId: _userId,
-    );
-    batch.set(_historyRefFor(task, familyId, deltaId), delta);
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {

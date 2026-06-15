@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
-import 'package:nothing_ever_happens/logic/task_delta.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
@@ -39,7 +38,7 @@ void main() {
       ],
     );
 
-    test('addTask adds a task and history to Firestore', () async {
+    test('addTask adds a task to Firestore', () async {
       await repository.addTaskSchedule(testTask);
 
       final taskSnapshot = await firestore
@@ -52,15 +51,6 @@ void main() {
       expect(taskSnapshot.exists, isTrue);
       final data = taskSnapshot.data()!;
       expect(data['title'], testTask.title);
-
-      final historySnapshot = await firestore
-          .collection('users')
-          .doc(userId)
-          .collection('history')
-          .get();
-
-      expect(historySnapshot.docs.length, 1);
-      expect(historySnapshot.docs.first.data()['operation'], 'create');
     });
 
     test('getTasks returns a stream of tasks', () async {
@@ -80,27 +70,10 @@ void main() {
       );
     });
 
-    test('getHistory returns a stream of history', () async {
+    test('updateTask updates an existing task', () async {
       await repository.addTaskSchedule(testTask);
 
-      final stream = repository.getHistory();
-
-      expect(
-        stream,
-        emits(
-          isA<List<TaskDelta>>().having(
-            (list) => list.first.operation,
-            'operation',
-            'create',
-          ),
-        ),
-      );
-    });
-
-    test('updateTask updates an existing task and adds history', () async {
-      await repository.addTaskSchedule(testTask);
-
-      final modification = testTask.updateTitle('Updated Title', userId);
+      final modification = testTask.updateTitle('Updated Title');
       await repository.updateTaskSchedule(modification);
 
       final taskSnapshot = await firestore
@@ -111,23 +84,9 @@ void main() {
           .get();
 
       expect(taskSnapshot.data()!['title'], 'Updated Title');
-
-      final historySnapshot = await firestore
-          .collection('users')
-          .doc(userId)
-          .collection('history')
-          .get();
-
-      // 1 from add, 1 from update
-      expect(historySnapshot.docs.length, 2);
-      expect(historySnapshot.docs.last.data()['operation'], 'update');
-      expect(
-        historySnapshot.docs.last.data()['changedFields']['title'],
-        'Updated Title',
-      );
     });
 
-    test('deleteTask removes a task and adds history', () async {
+    test('deleteTask removes a task', () async {
       await repository.addTaskSchedule(testTask);
 
       await repository.deleteTaskSchedule(testTask.id);
@@ -140,19 +99,9 @@ void main() {
           .get();
 
       expect(taskSnapshot.exists, isFalse);
-
-      final historySnapshot = await firestore
-          .collection('users')
-          .doc(userId)
-          .collection('history')
-          .get();
-
-      // 1 from add, 1 from delete
-      expect(historySnapshot.docs.length, 2);
-      expect(historySnapshot.docs.last.data()['operation'], 'delete');
     });
 
-    test('completeTask completes the instance and adds history', () async {
+    test('completeTask completes the instance', () async {
       await repository.addTaskSchedule(testTask);
       await Future.delayed(Duration.zero);
 
@@ -168,16 +117,6 @@ void main() {
 
       expect(instanceSnapshot.exists, isTrue);
       expect(instanceSnapshot.data()!['status'], 'completed');
-
-      final historySnapshot = await firestore
-          .collection('users')
-          .doc(userId)
-          .collection('history')
-          .get();
-
-      // 1 from add, 1 from complete
-      expect(historySnapshot.docs.length, 2);
-      expect(historySnapshot.docs.last.data()['operation'], 'completed');
     });
 
     test(
@@ -223,7 +162,6 @@ void main() {
           newDescription: 'Weekly Description',
           newSchedules: updatedTaskSchedules,
           newEstimatedDuration: null,
-          userId: userId,
           newMissedPolicy: MissedPolicy.rollover,
           newIsMaster: false,
           newLastSpawnedDate: null,
@@ -345,17 +283,9 @@ void main() {
 
       final modification = (
         newTask: updatedTask,
-        delta: TaskDelta(
-          id: 'delta-1',
-          taskId: notifTask.id,
-          timestamp: DateTime.now(),
-          expiresAt: DateTime.now().add(const Duration(days: 90)),
-          operation: 'update',
-          changedFields: {
-            'schedules': updatedTask.schedules.map((s) => s.toJson()).toList(),
-          },
-          userId: userId,
-        ),
+        changes: {
+          'schedules': updatedTask.schedules.map((s) => s.toJson()).toList(),
+        },
       );
 
       await repository.updateTaskSchedule(modification);

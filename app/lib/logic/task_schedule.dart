@@ -1,9 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:uuid/uuid.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
-import 'task_delta.dart';
 import 'missed_policy.dart';
 import 'task_priority.dart';
 import 'task_schedule_rule.dart';
@@ -14,7 +12,10 @@ export 'daily_occurrence_time.dart';
 export 'task_schedule_rule.dart';
 
 /// Result of a task update operation.
-typedef TaskModification = ({TaskSchedule newTask, TaskDelta delta});
+typedef TaskModification = ({
+  TaskSchedule newTask,
+  Map<String, dynamic> changes,
+});
 
 /// Represents a single task in the todo list.
 class TaskSchedule {
@@ -179,15 +180,12 @@ class TaskSchedule {
     };
   }
 
-  static final _uuid = Uuid();
-
-  /// Updates multiple fields of the task and returns the modified task and delta.
+  /// Updates multiple fields of the task and returns the modified task and changes.
   TaskModification edit({
     required String newTitle,
     required String newDescription,
     required List<TaskScheduleRule> newSchedules,
     required Duration? newEstimatedDuration,
-    required String userId,
     required MissedPolicy newMissedPolicy,
     required bool newIsMaster,
     required CivilDay? newLastSpawnedDate,
@@ -270,149 +268,84 @@ class TaskSchedule {
       changes['assignedUserId'] = newAssignedUserId;
     }
 
-    final now = AppClock.now;
-    final delta = TaskDelta(
-      id: _uuid.v4(),
-      taskId: id,
-      timestamp: now,
-      expiresAt: now.add(const Duration(days: 90)),
-      operation: 'update',
-      changedFields: changes,
-      userId: userId,
-    );
-
-    return (newTask: newTask, delta: delta);
+    return (newTask: newTask, changes: changes);
   }
 
-  /// Updates the title and returns the modified task and delta.
-  TaskModification updateTitle(String newTitle, String userId) {
+  /// Updates the title and returns the modified task and changes.
+  TaskModification updateTitle(String newTitle) {
     final newTask = _copyWith(title: newTitle);
-    final delta = _createUpdateDelta(
-      field: 'title',
-      newValue: newTitle,
-      userId: userId,
-    );
-    return (newTask: newTask, delta: delta);
+    return (newTask: newTask, changes: {'title': newTitle});
   }
 
-  /// Updates the description and returns the modified task and delta.
-  TaskModification updateDescription(String newDescription, String userId) {
+  /// Updates the description and returns the modified task and changes.
+  TaskModification updateDescription(String newDescription) {
     final newTask = _copyWith(description: newDescription);
-    final delta = _createUpdateDelta(
-      field: 'description',
-      newValue: newDescription,
-      userId: userId,
-    );
-    return (newTask: newTask, delta: delta);
+    return (newTask: newTask, changes: {'description': newDescription});
   }
 
-  /// Updates the schedule and returns the modified task and delta.
-  TaskModification reschedule(
-    List<TaskScheduleRule> newSchedules,
-    String userId,
-  ) {
+  /// Updates the schedule and returns the modified task and changes.
+  TaskModification reschedule(List<TaskScheduleRule> newSchedules) {
     final newTask = _copyWith(schedules: newSchedules);
-    final delta = _createUpdateDelta(
-      field: 'schedules',
-      newValue: newSchedules.map((s) => s.toJson()).toList(),
-      userId: userId,
+    return (
+      newTask: newTask,
+      changes: {'schedules': newSchedules.map((s) => s.toJson()).toList()},
     );
-    return (newTask: newTask, delta: delta);
   }
 
-  /// Updates the start relative time and returns the modified task and delta.
-  TaskModification updateStart(RelativeTime newStart, String userId) {
+  /// Updates the start relative time and returns the modified task and changes.
+  TaskModification updateStart(RelativeTime newStart) {
     if (schedules.isEmpty) {
-      return (
-        newTask: this,
-        delta: _createUpdateDelta(
-          field: 'schedules',
-          newValue: [],
-          userId: userId,
-        ),
-      );
+      return (newTask: this, changes: {'schedules': []});
     }
     final updatedFirst = schedules.first.copyWithTiming(
       startRelativeTime: newStart,
     );
     final newSchedules = [updatedFirst, ...schedules.skip(1)];
     final newTask = _copyWith(schedules: newSchedules);
-    final delta = _createUpdateDelta(
-      field: 'schedules',
-      newValue: newSchedules.map((s) => s.toJson()).toList(),
-      userId: userId,
+    return (
+      newTask: newTask,
+      changes: {'schedules': newSchedules.map((s) => s.toJson()).toList()},
     );
-    return (newTask: newTask, delta: delta);
   }
 
-  /// Updates the due relative time and returns the modified task and delta.
-  TaskModification updateDue(RelativeTime newDue, String userId) {
+  /// Updates the due relative time and returns the modified task and changes.
+  TaskModification updateDue(RelativeTime newDue) {
     if (schedules.isEmpty) {
-      return (
-        newTask: this,
-        delta: _createUpdateDelta(
-          field: 'schedules',
-          newValue: [],
-          userId: userId,
-        ),
-      );
+      return (newTask: this, changes: {'schedules': []});
     }
     final updatedFirst = schedules.first.copyWithTiming(
       dueRelativeTime: newDue,
     );
     final newSchedules = [updatedFirst, ...schedules.skip(1)];
     final newTask = _copyWith(schedules: newSchedules);
-    final delta = _createUpdateDelta(
-      field: 'schedules',
-      newValue: newSchedules.map((s) => s.toJson()).toList(),
-      userId: userId,
+    return (
+      newTask: newTask,
+      changes: {'schedules': newSchedules.map((s) => s.toJson()).toList()},
     );
-    return (newTask: newTask, delta: delta);
   }
 
-  /// Updates the cycle ID and returns the modified task and delta.
-  TaskModification updateCycleId(String? newCycleId, String userId) {
+  /// Updates the cycle ID and returns the modified task and changes.
+  TaskModification updateCycleId(String? newCycleId) {
     final newTask = _copyWith(
       cycleId: newCycleId,
       clearCycleId: newCycleId == null,
     );
-    final delta = _createUpdateDelta(
-      field: 'cycleId',
-      newValue: newCycleId,
-      userId: userId,
-    );
-    return (newTask: newTask, delta: delta);
+    return (newTask: newTask, changes: {'cycleId': newCycleId});
   }
 
-  /// Updates the assigned user ID and returns the modified task and delta.
-  TaskModification updateAssignedUserId(
-    String? newAssignedUserId,
-    String userId,
-  ) {
+  /// Updates the assigned user ID and returns the modified task and changes.
+  TaskModification updateAssignedUserId(String? newAssignedUserId) {
     final newTask = _copyWith(
       assignedUserId: newAssignedUserId,
       clearAssignedUserId: newAssignedUserId == null,
     );
-    final delta = _createUpdateDelta(
-      field: 'assignedUserId',
-      newValue: newAssignedUserId,
-      userId: userId,
-    );
-    return (newTask: newTask, delta: delta);
+    return (newTask: newTask, changes: {'assignedUserId': newAssignedUserId});
   }
 
-  /// Updates the preferredBy map and returns the modified task and delta.
-  TaskModification updatePreferredBy(
-    Map<String, bool> newPreferredBy,
-    String userId,
-  ) {
+  /// Updates the preferredBy map and returns the modified task and changes.
+  TaskModification updatePreferredBy(Map<String, bool> newPreferredBy) {
     final newTask = _copyWith(preferredBy: newPreferredBy);
-    final delta = _createUpdateDelta(
-      field: 'preferredBy',
-      newValue: newPreferredBy,
-      userId: userId,
-    );
-    return (newTask: newTask, delta: delta);
+    return (newTask: newTask, changes: {'preferredBy': newPreferredBy});
   }
 
   TaskSchedule copyWith({
@@ -500,23 +433,6 @@ class TaskSchedule {
       assignedUserId: clearAssignedUserId
           ? null
           : (assignedUserId ?? this.assignedUserId),
-    );
-  }
-
-  TaskDelta _createUpdateDelta({
-    required String field,
-    required dynamic newValue,
-    required String userId,
-  }) {
-    final now = AppClock.now;
-    return TaskDelta(
-      id: _uuid.v4(),
-      taskId: id,
-      timestamp: now,
-      expiresAt: now.add(const Duration(days: 90)),
-      operation: 'update',
-      changedFields: {field: newValue},
-      userId: userId,
     );
   }
 

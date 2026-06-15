@@ -10,13 +10,12 @@ import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i6;
 import 'package:nothing_ever_happens/logic/auth_repository.dart' as _i2;
 import 'package:nothing_ever_happens/logic/civil_day.dart' as _i9;
-import 'package:nothing_ever_happens/logic/task_delta.dart' as _i10;
 import 'package:nothing_ever_happens/logic/task_instance.dart' as _i8;
 import 'package:nothing_ever_happens/logic/task_repository.dart' as _i5;
 import 'package:nothing_ever_happens/logic/task_schedule.dart' as _i7;
-import 'package:nothing_ever_happens/logic/user_settings.dart' as _i12;
+import 'package:nothing_ever_happens/logic/user_settings.dart' as _i11;
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart'
-    as _i11;
+    as _i10;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -161,15 +160,6 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
           as _i3.Stream<List<_i8.TaskInstance>>);
 
   @override
-  _i3.Stream<List<_i10.TaskDelta>> getHistory() =>
-      (super.noSuchMethod(
-            Invocation.method(#getHistory, []),
-            returnValue: _i3.Stream<List<_i10.TaskDelta>>.empty(),
-            returnValueForMissingStub: _i3.Stream<List<_i10.TaskDelta>>.empty(),
-          )
-          as _i3.Stream<List<_i10.TaskDelta>>);
-
-  @override
   _i3.Future<void> addTaskSchedule(_i7.TaskSchedule? task) =>
       (super.noSuchMethod(
             Invocation.method(#addTaskSchedule, [task]),
@@ -180,7 +170,7 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
 
   @override
   _i3.Future<void> updateTaskSchedule(
-    ({_i10.TaskDelta delta, _i7.TaskSchedule newTask})? modification,
+    ({Map<String, dynamic> changes, _i7.TaskSchedule newTask})? modification,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateTaskSchedule, [modification]),
@@ -212,27 +202,27 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockUserSettingsRepository extends _i1.Mock
-    implements _i11.UserSettingsRepository {
+    implements _i10.UserSettingsRepository {
   @override
-  _i3.Stream<_i12.UserSettings> getSettings() =>
+  _i3.Stream<_i11.UserSettings> getSettings() =>
       (super.noSuchMethod(
             Invocation.method(#getSettings, []),
-            returnValue: _i3.Stream<_i12.UserSettings>.empty(),
-            returnValueForMissingStub: _i3.Stream<_i12.UserSettings>.empty(),
+            returnValue: _i3.Stream<_i11.UserSettings>.empty(),
+            returnValueForMissingStub: _i3.Stream<_i11.UserSettings>.empty(),
           )
-          as _i3.Stream<_i12.UserSettings>);
+          as _i3.Stream<_i11.UserSettings>);
 
   @override
-  _i3.Stream<_i12.UserSettings> getSettingsForUser(String? userId) =>
+  _i3.Stream<_i11.UserSettings> getSettingsForUser(String? userId) =>
       (super.noSuchMethod(
             Invocation.method(#getSettingsForUser, [userId]),
-            returnValue: _i3.Stream<_i12.UserSettings>.empty(),
-            returnValueForMissingStub: _i3.Stream<_i12.UserSettings>.empty(),
+            returnValue: _i3.Stream<_i11.UserSettings>.empty(),
+            returnValueForMissingStub: _i3.Stream<_i11.UserSettings>.empty(),
           )
-          as _i3.Stream<_i12.UserSettings>);
+          as _i3.Stream<_i11.UserSettings>);
 
   @override
-  _i3.Future<void> updateSettings(_i12.UserSettings? settings) =>
+  _i3.Future<void> updateSettings(_i11.UserSettings? settings) =>
       (super.noSuchMethod(
             Invocation.method(#updateSettings, [settings]),
             returnValue: _i3.Future<void>.value(),

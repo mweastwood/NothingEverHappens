@@ -204,9 +204,9 @@ void main() {
     });
   });
 
-  group('TaskSchedule Editing and Delta Aggregation', () {
+  group('TaskSchedule Editing and Changes Aggregation', () {
     test(
-      'TaskSchedule.edit() returns correctly updated task and delta with only changes',
+      'TaskSchedule.edit() returns correctly updated task and changes map',
       () {
         final task = TaskSchedule(
           id: 'edit-test-task',
@@ -245,7 +245,6 @@ void main() {
             ),
           ],
           newEstimatedDuration: null, // cleared
-          userId: 'test-user-id',
           newMissedPolicy: MissedPolicy.rollover,
           newIsMaster: false,
           newLastSpawnedDate: null,
@@ -254,7 +253,7 @@ void main() {
         );
 
         final newTask = result.newTask;
-        final delta = result.delta;
+        final changes = result.changes;
 
         // 1. Verify updated TaskSchedule properties
         expect(newTask.id, 'edit-test-task');
@@ -269,12 +268,7 @@ void main() {
         expect(newTask.isFamily, isTrue);
         expect(newTask.priority, TaskPriority.high);
 
-        // 2. Verify Delta properties and changedFields
-        expect(delta.taskId, 'edit-test-task');
-        expect(delta.operation, 'update');
-        expect(delta.userId, 'test-user-id');
-
-        final changes = delta.changedFields;
+        // 2. Verify changes map
         expect(changes['title'], 'Updated Title');
         expect(
           changes.containsKey('description'),
@@ -291,7 +285,7 @@ void main() {
     );
 
     test(
-      'updateCycleId modifies cycleId and generates correct update delta',
+      'updateCycleId modifies cycleId and generates correct changes map',
       () {
         final task = TaskSchedule(
           id: 't1',
@@ -312,21 +306,19 @@ void main() {
           ],
         );
 
-        final result = task.updateCycleId('2026-W23', 'user1');
+        final result = task.updateCycleId('2026-W23');
         expect(result.newTask.cycleId, '2026-W23');
-        expect(result.delta.taskId, 't1');
-        expect(result.delta.operation, 'update');
-        expect(result.delta.changedFields['cycleId'], '2026-W23');
+        expect(result.changes['cycleId'], '2026-W23');
 
         // Test clearing cycleId
-        final resultClear = result.newTask.updateCycleId(null, 'user1');
+        final resultClear = result.newTask.updateCycleId(null);
         expect(resultClear.newTask.cycleId, isNull);
-        expect(resultClear.delta.changedFields['cycleId'], isNull);
+        expect(resultClear.changes['cycleId'], isNull);
       },
     );
 
     test(
-      'updateAssignedUserId modifies assignedUserId and generates correct update delta',
+      'updateAssignedUserId modifies assignedUserId and generates correct changes map',
       () {
         final task = TaskSchedule(
           id: 't1',
@@ -347,16 +339,14 @@ void main() {
           ],
         );
 
-        final result = task.updateAssignedUserId('user2', 'user1');
+        final result = task.updateAssignedUserId('user2');
         expect(result.newTask.assignedUserId, 'user2');
-        expect(result.delta.taskId, 't1');
-        expect(result.delta.operation, 'update');
-        expect(result.delta.changedFields['assignedUserId'], 'user2');
+        expect(result.changes['assignedUserId'], 'user2');
 
         // Test clearing assignedUserId
-        final resultClear = result.newTask.updateAssignedUserId(null, 'user1');
+        final resultClear = result.newTask.updateAssignedUserId(null);
         expect(resultClear.newTask.assignedUserId, isNull);
-        expect(resultClear.delta.changedFields['assignedUserId'], isNull);
+        expect(resultClear.changes['assignedUserId'], isNull);
       },
     );
 
@@ -382,11 +372,9 @@ void main() {
           ],
         );
 
-        final result = task.updatePreferredBy(const {'user2': true}, 'user1');
+        final result = task.updatePreferredBy(const {'user2': true});
         expect(result.newTask.preferredBy['user2'], isTrue);
-        expect(result.delta.taskId, 't1');
-        expect(result.delta.operation, 'update');
-        expect(result.delta.changedFields['preferredBy']['user2'], isTrue);
+        expect(result.changes['preferredBy']['user2'], isTrue);
       },
     );
   });
@@ -424,7 +412,7 @@ void main() {
 
         // Simulate completion on Tuesday
         AppClock.setMockTime(tuesdayDateTime);
-        final state = TaskList([task]).complete('rollover-task', 'user-1');
+        final state = TaskList([task]).complete('rollover-task');
         AppClock.reset();
 
         // The next occurrence should continue relative to original path -> Tuesday
@@ -470,7 +458,7 @@ void main() {
 
         // Simulate completion on Wednesday
         AppClock.setMockTime(wednesdayDateTime);
-        final state = TaskList([task]).complete('shift-task', 'user-1');
+        final state = TaskList([task]).complete('shift-task');
         AppClock.reset();
 
         // The next occurrence should shift relative to completion date (strictly after Wednesday -> Friday)
@@ -553,18 +541,6 @@ void main() {
             .get();
         expect(tuesdayInstSnap.exists, isTrue);
         expect(tuesdayInstSnap.data()!['status'], 'pending');
-
-        // Verify that skipped was logged in history
-        final historySnap = await firestore
-            .collection('users')
-            .doc('user-1')
-            .collection('history')
-            .get();
-        expect(historySnap.docs.length, 2); // 1 create + 1 skipped
-        expect(
-          historySnap.docs.any((doc) => doc.data()['operation'] == 'skipped'),
-          isTrue,
-        );
 
         AppClock.reset();
       },
@@ -791,7 +767,7 @@ void main() {
 
         // Complete on Monday, June 1 (Both Daily and Weekly occur)
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
-        var state = taskList.complete('mixed-daily-weekly', userId);
+        var state = taskList.complete('mixed-daily-weekly');
         var updated = state.activeTasks.first;
 
         // Daily advances to Wednesday, June 3
@@ -807,7 +783,7 @@ void main() {
 
         // Complete on Tuesday, June 2 (Neither occurs)
         AppClock.setMockTime(DateTime(2026, 6, 2, 12, 0));
-        state = state.complete('mixed-daily-weekly', userId);
+        state = state.complete('mixed-daily-weekly');
         updated = state.activeTasks.first;
 
         // No changes since neither was scheduled for June 2 (or before)
@@ -822,7 +798,7 @@ void main() {
 
         // Complete on Wednesday, June 3 (Both occur)
         AppClock.setMockTime(DateTime(2026, 6, 3, 12, 0));
-        state = state.complete('mixed-daily-weekly', userId);
+        state = state.complete('mixed-daily-weekly');
         updated = state.activeTasks.first;
 
         // Daily advances to Friday, June 5
@@ -884,7 +860,7 @@ void main() {
 
         // Overdue complete on Tuesday, June 9 (Daily was due June 1, 4, 7. Monthly is due June 15)
         AppClock.setMockTime(DateTime(2026, 6, 9, 12, 0));
-        final state = taskList.complete('mixed-daily-monthly-shift', userId);
+        final state = taskList.complete('mixed-daily-monthly-shift');
         final updated = state.activeTasks.first;
 
         // Daily should shift to next occurrence after June 9: June 10 (since 1 + 3*3 = 10)
@@ -928,7 +904,7 @@ void main() {
         // Complete on Friday, Dec 25, 2026 (Both Weekly and Yearly occur!)
         // Dec 25, 2026 is indeed a Friday.
         AppClock.setMockTime(DateTime(2026, 12, 25, 12, 0));
-        final state = taskList.complete('mixed-weekly-yearly-rollover', userId);
+        final state = taskList.complete('mixed-weekly-yearly-rollover');
         final updated = state.activeTasks.first;
 
         // Weekly advances to Jan 1, 2027 (Next Friday after completion date Dec 25)
@@ -974,7 +950,7 @@ void main() {
 
         // Complete on June 1, 2026
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
-        final state = taskList.complete('mixed-five-rules', userId);
+        final state = taskList.complete('mixed-five-rules');
         final updated = state.activeTasks.first;
 
         // OneOff should be removed, leaving 4 schedules
@@ -1033,7 +1009,7 @@ void main() {
 
         // Complete first slot on Monday, June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
-        var state = taskList.complete('slot-weekly', userId);
+        var state = taskList.complete('slot-weekly');
         var updated = state.activeTasks.first;
 
         // Active index should advance to 1, scheduled dates unchanged
@@ -1048,7 +1024,7 @@ void main() {
         );
 
         // Complete second slot on Monday, June 1
-        state = state.complete('slot-weekly', userId);
+        state = state.complete('slot-weekly');
         updated = state.activeTasks.first;
 
         // Active index resets to 0, scheduled dates advance to next occurrence (Wed June 3)

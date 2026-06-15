@@ -1,42 +1,18 @@
-import 'package:uuid/uuid.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
 import 'task_schedule.dart';
-import 'task_delta.dart';
 
 class TaskList {
   final List<TaskSchedule> activeTasks;
-  final List<TaskDelta> history;
-  static final _uuid = Uuid();
 
-  const TaskList(this.activeTasks, {this.history = const []});
+  const TaskList(this.activeTasks);
 
-  TaskList add(TaskSchedule task, String userId) {
-    final now = AppClock.now;
-    final delta = TaskDelta(
-      id: _uuid.v4(),
-      taskId: task.id,
-      timestamp: now,
-      expiresAt: now.add(const Duration(days: 90)),
-      operation: 'create',
-      changedFields: task.toFirestore(),
-      userId: userId,
-    );
-
-    return TaskList([...activeTasks, task], history: [...history, delta]);
+  TaskList add(TaskSchedule task) {
+    return TaskList([...activeTasks, task]);
   }
 
-  TaskList complete(String taskId, String userId) {
+  TaskList complete(String taskId) {
     final now = AppClock.now;
-    final delta = TaskDelta(
-      id: _uuid.v4(),
-      taskId: taskId,
-      timestamp: now,
-      expiresAt: now.add(const Duration(days: 90)),
-      operation: 'complete',
-      changedFields: {},
-      userId: userId,
-    );
 
     final taskIndex = activeTasks.indexWhere((t) => t.id == taskId);
     if (taskIndex == -1) return this;
@@ -159,10 +135,7 @@ class TaskList {
     }
 
     if (shouldRemoveTask) {
-      return TaskList(
-        activeTasks.where((t) => t.id != taskId).toList(),
-        history: [...history, delta],
-      );
+      return TaskList(activeTasks.where((t) => t.id != taskId).toList());
     }
 
     final updatedTask = TaskSchedule(
@@ -186,25 +159,11 @@ class TaskList {
     final updatedTasks = List<TaskSchedule>.from(activeTasks);
     updatedTasks[taskIndex] = updatedTask;
 
-    return TaskList(updatedTasks, history: [...history, delta]);
+    return TaskList(updatedTasks);
   }
 
-  TaskList delete(String taskId, String userId) {
-    final now = AppClock.now;
-    final delta = TaskDelta(
-      id: _uuid.v4(),
-      taskId: taskId,
-      timestamp: now,
-      expiresAt: now.add(const Duration(days: 90)),
-      operation: 'delete',
-      changedFields: {},
-      userId: userId,
-    );
-
-    return TaskList(
-      activeTasks.where((t) => t.id != taskId).toList(),
-      history: [...history, delta],
-    );
+  TaskList delete(String taskId) {
+    return TaskList(activeTasks.where((t) => t.id != taskId).toList());
   }
 
   TaskList update(TaskModification modification) {
@@ -212,6 +171,6 @@ class TaskList {
       return t.id == modification.newTask.id ? modification.newTask : t;
     }).toList();
 
-    return TaskList(updatedTasks, history: [...history, modification.delta]);
+    return TaskList(updatedTasks);
   }
 }
