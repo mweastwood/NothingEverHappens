@@ -213,5 +213,21 @@
   "activeTasksHeader": "Tareas Simuladas ({count})",
   "historyLogHeader": "Historial de Simulación",
   "undoButton": "Deshacer",
-  "actionUndone": "Acción deshecha"
+  "actionUndone": "Acción deshecha",
+  "taskCompleted": "\"{title}\" completada",
+  "@taskCompleted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "taskDismissed": "\"{title}\" descartada",
+  "@taskDismissed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  }
 }

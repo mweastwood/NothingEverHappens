@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/undo_notifier.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -117,5 +118,48 @@ void main() {
         expect(find.text('Action undone'), findsOneWidget);
       },
     );
+
+    testGoldens('UndoSnackBar renders correctly', (tester) async {
+      final instance = TaskInstance(
+        id: 'inst-1',
+        scheduleId: 'task-1',
+        title: 'Test Instance',
+        description: 'Desc',
+        scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: 'completed',
+      );
+
+      final action = UndoResolveTaskInstanceAction(
+        message: 'Completed "Test Instance"',
+        instance: instance,
+      );
+
+      await tester.pumpWidgetBuilder(
+        ProviderScope(
+          child: Scaffold(
+            body: Consumer(
+              builder: (context, ref, _) {
+                return buildTestWidget(ref: ref, action: action);
+              },
+            ),
+          ),
+        ),
+        wrapper: l10nMaterialAppWrapper(),
+      );
+
+      // Tap to trigger SnackBar
+      await tester.tap(find.text('Show SnackBar'));
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'undo_snackbar');
+    });
   });
 }

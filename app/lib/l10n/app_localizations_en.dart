@@ -730,4 +730,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get actionUndone => 'Action undone';
+
+  @override
+  String taskCompleted(String title) {
+    return 'Completed \"$title\"';
+  }
+
+  @override
+  String taskDismissed(String title) {
+    return 'Dismissed \"$title\"';
+  }
 }

@@ -1387,6 +1387,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Action undone'**
   String get actionUndone;
+
+  /// No description provided for @taskCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed \"{title}\"'**
+  String taskCompleted(String title);
+
+  /// No description provided for @taskDismissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismissed \"{title}\"'**
+  String taskDismissed(String title);
 }
 
 class _AppLocalizationsDelegate
