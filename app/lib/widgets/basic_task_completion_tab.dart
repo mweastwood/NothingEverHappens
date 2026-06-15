@@ -229,8 +229,18 @@ class FakeTaskRepository extends TaskRepository {
   }
 
   @override
-  Future<void> deleteTaskSchedule(String id) async {
+  Future<({TaskSchedule task, List<TaskInstance> pendingInstances})?>
+  deleteTaskSchedule(String id) async {
     onDelete(id);
+    return null;
+  }
+
+  @override
+  Future<void> restoreTaskSchedule(
+    TaskSchedule task,
+    List<TaskInstance> pendingInstances,
+  ) async {
+    // No-op for practice
   }
 
   @override

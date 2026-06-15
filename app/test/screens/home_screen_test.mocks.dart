@@ -180,9 +180,38 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
           as _i3.Future<void>);
 
   @override
-  _i3.Future<void> deleteTaskSchedule(String? id) =>
+  _i3.Future<
+    ({List<_i8.TaskInstance> pendingInstances, _i7.TaskSchedule task})?
+  >
+  deleteTaskSchedule(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#deleteTaskSchedule, [id]),
+            returnValue:
+                _i3.Future<
+                  ({
+                    List<_i8.TaskInstance> pendingInstances,
+                    _i7.TaskSchedule task,
+                  })?
+                >.value(),
+            returnValueForMissingStub:
+                _i3.Future<
+                  ({
+                    List<_i8.TaskInstance> pendingInstances,
+                    _i7.TaskSchedule task,
+                  })?
+                >.value(),
+          )
+          as _i3.Future<
+            ({List<_i8.TaskInstance> pendingInstances, _i7.TaskSchedule task})?
+          >);
+
+  @override
+  _i3.Future<void> restoreTaskSchedule(
+    _i7.TaskSchedule? task,
+    List<_i8.TaskInstance>? pendingInstances,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#restoreTaskSchedule, [task, pendingInstances]),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
@@ -192,6 +221,26 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
   _i3.Future<void> completeTaskInstance(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#completeTaskInstance, [id]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> dismissTaskInstance(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#dismissTaskInstance, [id]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> undoResolveTaskInstance(
+    _i8.TaskInstance? resolvedInstance,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#undoResolveTaskInstance, [resolvedInstance]),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )

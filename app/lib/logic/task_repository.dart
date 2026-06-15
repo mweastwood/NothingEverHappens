@@ -735,20 +735,24 @@ class TaskRepository {
     }
   }
 
-  Future<void> deleteTaskSchedule(String id) async {
+  Future<({TaskSchedule task, List<TaskInstance> pendingInstances})?>
+  deleteTaskSchedule(String id) async {
     final task = await _fetchTask(id);
-    if (task == null) return;
+    if (task == null) return null;
 
     final familyId = await _getFamilyId();
     final batch = _firestore.batch();
 
     batch.delete(_taskRefFor(task, familyId));
 
+    final List<TaskInstance> pendingInstances = [];
+
     final personalInstances = await _instancesRef
         .where('scheduleId', isEqualTo: id)
         .get();
     for (final doc in personalInstances.docs) {
       if (doc.data().status == 'pending') {
+        pendingInstances.add(doc.data());
         batch.delete(doc.reference);
       }
     }
@@ -767,6 +771,7 @@ class TaskRepository {
           .get();
       for (final doc in familyInstances.docs) {
         if (doc.data().status == 'pending') {
+          pendingInstances.add(doc.data());
           batch.delete(doc.reference);
         }
       }
@@ -774,6 +779,25 @@ class TaskRepository {
 
     await batch.commit();
     await _notificationService?.cancelNotifications(id);
+
+    return (task: task, pendingInstances: pendingInstances);
+  }
+
+  Future<void> restoreTaskSchedule(
+    TaskSchedule task,
+    List<TaskInstance> pendingInstances,
+  ) async {
+    final familyId = await _getFamilyId();
+    final batch = _firestore.batch();
+
+    batch.set(_taskRefFor(task, familyId), task);
+
+    for (final inst in pendingInstances) {
+      batch.set(_instanceRefFor(inst, familyId), inst);
+    }
+
+    await batch.commit();
+    await _notificationService?.scheduleNotifications(task);
   }
 
   Future<void> completeTaskInstance(String id) async {
