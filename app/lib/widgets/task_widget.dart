@@ -329,17 +329,23 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     return Dismissible(
       key: ValueKey(widget.instance.id),
       direction: _isMouse ? DismissDirection.none : DismissDirection.horizontal,
-      background: Container(
+      background: Card(
         color: Colors.green,
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-        child: const Icon(Icons.check, color: Colors.white),
+        elevation: 0,
+        child: Container(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: const Icon(Icons.check, color: Colors.white),
+        ),
       ),
-      secondaryBackground: Container(
+      secondaryBackground: Card(
         color: Theme.of(context).colorScheme.error,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-        child: const Icon(Icons.delete, color: Colors.white),
+        elevation: 0,
+        child: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: const Icon(Icons.delete, color: Colors.white),
+        ),
       ),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.endToStart) {
