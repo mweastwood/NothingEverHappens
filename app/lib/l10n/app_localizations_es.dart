@@ -747,4 +747,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String scheduleDeleted(String title) {
     return 'Se eliminó \"$title\"';
   }
+
+  @override
+  String taskEditsSaved(String title) {
+    return 'Se guardó \"$title\"';
+  }
 }
