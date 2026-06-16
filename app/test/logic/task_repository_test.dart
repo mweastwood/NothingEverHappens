@@ -310,6 +310,11 @@ void main() {
     test(
       'editing weekly schedule to add monthly schedule does not duplicate or timeout',
       () async {
+        // Fix the clock to June 15 2026 (the task startDate) so this test is
+        // not flaky after that date passes.
+        AppClock.setMockTime(DateTime(2026, 6, 15, 9, 0));
+        addTearDown(AppClock.reset);
+
         final weeklyTask = TaskSchedule(
           id: 'task-weekly',
           title: 'Weekly Task',
