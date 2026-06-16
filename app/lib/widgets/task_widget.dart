@@ -12,6 +12,8 @@ import 'fun_delete_button.dart';
 
 import '../logic/task_instance.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/undo_notifier.dart';
+import 'undo_snackbar.dart';
 
 class TaskWidget extends ConsumerStatefulWidget {
   final TaskInstance instance;
@@ -86,14 +88,30 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         if (!mounted) return;
+        final repo = ref.read(taskRepositoryProvider)!;
+        final instance = widget.instance;
         if (_isDeleting) {
-          ref
-              .read(taskRepositoryProvider)!
-              .deleteTaskSchedule(widget.instance.scheduleId);
+          repo.dismissTaskInstance(instance.id);
+          UndoSnackBar.show(
+            context: context,
+            ref: ref,
+            action: UndoResolveTaskInstanceAction(
+              message: context.l10n.taskDismissed(instance.title),
+              instance: instance,
+            ),
+            repository: repo,
+          );
         } else {
-          ref
-              .read(taskRepositoryProvider)!
-              .completeTaskInstance(widget.instance.id);
+          repo.completeTaskInstance(instance.id);
+          UndoSnackBar.show(
+            context: context,
+            ref: ref,
+            action: UndoResolveTaskInstanceAction(
+              message: context.l10n.taskCompleted(instance.title),
+              instance: instance,
+            ),
+            repository: repo,
+          );
         }
       }
     });
@@ -369,47 +387,31 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               _swipeProgress = details.progress;
             });
           },
-          confirmDismiss: (direction) async {
-            if (direction == DismissDirection.endToStart) {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: Text(context.l10n.deleteTaskConfirmTitle),
-                    content: Text(
-                      context.l10n.deleteTaskConfirmBody(widget.instance.title),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: Text(context.l10n.cancelButton),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: Text(
-                          context.l10n.deleteButton,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              );
-              return confirmed ?? false;
-            }
-            return true;
-          },
           onDismissed: (direction) {
+            final repo = ref.read(taskRepositoryProvider)!;
+            final instance = widget.instance;
             if (direction == DismissDirection.startToEnd) {
-              ref
-                  .read(taskRepositoryProvider)!
-                  .completeTaskInstance(widget.instance.id);
+              repo.completeTaskInstance(instance.id);
+              UndoSnackBar.show(
+                context: context,
+                ref: ref,
+                action: UndoResolveTaskInstanceAction(
+                  message: context.l10n.taskCompleted(instance.title),
+                  instance: instance,
+                ),
+                repository: repo,
+              );
             } else if (direction == DismissDirection.endToStart) {
-              ref
-                  .read(taskRepositoryProvider)!
-                  .deleteTaskSchedule(widget.instance.scheduleId);
+              repo.dismissTaskInstance(instance.id);
+              UndoSnackBar.show(
+                context: context,
+                ref: ref,
+                action: UndoResolveTaskInstanceAction(
+                  message: context.l10n.taskDismissed(instance.title),
+                  instance: instance,
+                ),
+                repository: repo,
+              );
             }
           },
           child: Listener(
