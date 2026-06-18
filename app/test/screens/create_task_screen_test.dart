@@ -9,6 +9,7 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nothing_ever_happens/l10n/app_localizations.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
@@ -804,5 +805,114 @@ void main() {
       expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
       expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
     });
+  });
+
+  group('Undo edit integration', () {
+    late MockTaskRepository mockRepository;
+
+    setUp(() {
+      mockRepository = MockTaskRepository();
+    });
+
+    testWidgets(
+      'editing a task shows undo snackbar and tapping undo reverts changes',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final existingTask = TaskSchedule(
+          id: 'edit-task-1',
+          title: 'Original Title',
+          description: 'Original Description',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2026, month: 3, day: 9),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        when(
+          mockRepository.updateTaskSchedule(any),
+        ).thenAnswer((_) => Future.value());
+
+        // Use a MaterialApp with a home that navigates to CreateTaskScreen
+        // so the SnackBar persists after the screen pops.
+        await tester.pumpWidget(
+          buildTestProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockRepository),
+            ],
+            child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: Center(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                CreateTaskScreen(taskToEdit: existingTask),
+                          ),
+                        );
+                      },
+                      child: const Text('Open Edit'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // Navigate to the CreateTaskScreen
+        await tester.tap(find.text('Open Edit'));
+        await tester.pumpAndSettle();
+
+        // Edit the title
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Title'),
+          'Updated Title',
+        );
+        await tester.pump();
+
+        // Tap Save
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        // Verify updateTaskSchedule was called (not addTaskSchedule)
+        verify(mockRepository.updateTaskSchedule(any)).called(1);
+        verifyNever(mockRepository.addTaskSchedule(any));
+
+        // The screen should have popped back to the home screen
+        expect(find.text('Open Edit'), findsOneWidget);
+
+        // The SnackBar should still be visible on the parent scaffold
+        expect(find.byType(SnackBar), findsOneWidget);
+        expect(find.text('Undo'), findsOneWidget);
+
+        // Tap Undo
+        await tester.tap(find.text('Undo'));
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        // Verify updateTaskSchedule was called again to revert
+        verify(mockRepository.updateTaskSchedule(any)).called(1);
+      },
+    );
   });
 }

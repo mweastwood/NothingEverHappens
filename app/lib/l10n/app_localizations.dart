@@ -1405,6 +1405,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Deleted \"{title}\"'**
   String scheduleDeleted(String title);
+
+  /// No description provided for @taskEditsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved \"{title}\"'**
+  String taskEditsSaved(String title);
 }
 
 class _AppLocalizationsDelegate

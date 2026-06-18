@@ -393,5 +393,13 @@
         "type": "String"
       }
     }
+  },
+  "taskEditsSaved": "Saved \"{title}\"",
+  "@taskEditsSaved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   }
 }

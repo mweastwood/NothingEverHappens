@@ -237,5 +237,13 @@
         "type": "String"
       }
     }
+  },
+  "taskEditsSaved": "Se guardó \"{title}\"",
+  "@taskEditsSaved": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   }
 }

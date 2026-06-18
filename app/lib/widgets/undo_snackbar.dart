@@ -11,12 +11,15 @@ class UndoSnackBar {
     required UndoableAction action,
     required TaskRepository repository,
   }) {
-    ref.read(undoNotifierProvider.notifier).register(action);
+    final notifier = ref.read(undoNotifierProvider.notifier);
+    notifier.register(action);
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
 
     final theme = Theme.of(context);
+    final undoLabel = context.l10n.undoButton;
+    final undoneLabel = context.l10n.actionUndone;
     messenger.showSnackBar(
       SnackBar(
         content: Text(
@@ -29,18 +32,16 @@ class UndoSnackBar {
         backgroundColor: theme.colorScheme.inverseSurface,
         elevation: 6,
         action: SnackBarAction(
-          label: context.l10n.undoButton,
+          label: undoLabel,
           textColor: theme.colorScheme.inversePrimary,
           onPressed: () async {
-            final success = await ref
-                .read(undoNotifierProvider.notifier)
-                .undo(repository);
+            final success = await notifier.undo(repository);
 
             if (success && context.mounted) {
               ScaffoldMessenger.of(context).clearSnackBars();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(context.l10n.actionUndone),
+                  content: Text(undoneLabel),
                   duration: const Duration(seconds: 2),
                 ),
               );

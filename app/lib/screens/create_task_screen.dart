@@ -10,6 +10,8 @@ import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import '../logic/family_repository.dart';
+import '../logic/undo_notifier.dart';
+import '../widgets/undo_snackbar.dart';
 
 import '../widgets/upcoming_occurrences_preview.dart';
 import '../widgets/standard_choice_chip.dart';
@@ -160,6 +162,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         final repository = ref.read(taskRepositoryProvider);
         if (repository != null) {
           if (widget.taskToEdit != null) {
+            final previousSchedule = widget.taskToEdit!;
             final modification = widget.taskToEdit!.edit(
               newTitle: _titleController.text,
               newDescription: _descriptionController.text,
@@ -188,6 +191,19 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     'Save operation timed out. This may be due to a connectivity issue or a failure to sync with the database.',
                   ),
                 );
+            if (mounted) {
+              UndoSnackBar.show(
+                context: context,
+                ref: ref,
+                action: UndoEditTaskScheduleAction(
+                  message: context.l10n.taskEditsSaved(previousSchedule.title),
+                  previousSchedule: previousSchedule,
+                  currentSchedule: modification.newTask,
+                ),
+                repository: repository,
+              );
+              Navigator.pop(context);
+            }
           } else {
             await repository
                 .addTaskSchedule(newTask)
@@ -197,11 +213,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     'Save operation timed out. This may be due to a connectivity issue or a failure to sync with the database.',
                   ),
                 );
+            if (mounted) {
+              Navigator.pop(context);
+            }
           }
-        }
-
-        if (mounted) {
-          Navigator.pop(context);
         }
       } catch (e, stackTrace) {
         if (mounted) {
