@@ -1399,6 +1399,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dismissed \"{title}\"'**
   String taskDismissed(String title);
+
+  /// No description provided for @scheduleDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted \"{title}\"'**
+  String scheduleDeleted(String title);
 }
 
 class _AppLocalizationsDelegate

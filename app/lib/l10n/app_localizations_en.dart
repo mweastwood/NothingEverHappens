@@ -740,4 +740,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String taskDismissed(String title) {
     return 'Dismissed \"$title\"';
   }
+
+  @override
+  String scheduleDeleted(String title) {
+    return 'Deleted \"$title\"';
+  }
 }
