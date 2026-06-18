@@ -5,6 +5,8 @@ import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
 
 class UndoSnackBar {
+  /// Show an undo snackbar from a synchronous context where [BuildContext] is
+  /// still valid (e.g. button tap handlers, animation completion callbacks).
   static void show({
     required BuildContext context,
     required WidgetRef ref,
@@ -15,11 +17,58 @@ class UndoSnackBar {
     notifier.register(action);
 
     final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-
     final theme = Theme.of(context);
     final undoLabel = context.l10n.undoButton;
     final undoneLabel = context.l10n.actionUndone;
+
+    _showSnackBar(
+      notifier: notifier,
+      messenger: messenger,
+      theme: theme,
+      action: action,
+      repository: repository,
+      undoLabel: undoLabel,
+      undoneLabel: undoneLabel,
+    );
+  }
+
+  /// Show an undo snackbar using a pre-captured [ScaffoldMessengerState].
+  /// Use this variant inside async callbacks where [BuildContext] may no longer
+  /// be valid after an await gap. Capture the messenger and any localized
+  /// strings from [context] *before* the first await, then call this method.
+  static void showWithMessenger({
+    required ScaffoldMessengerState messenger,
+    required WidgetRef ref,
+    required UndoableAction action,
+    required TaskRepository repository,
+    String undoLabel = 'Undo',
+    String undoneLabel = 'Undone',
+  }) {
+    final notifier = ref.read(undoNotifierProvider.notifier);
+    notifier.register(action);
+
+    _showSnackBar(
+      notifier: notifier,
+      messenger: messenger,
+      theme: Theme.of(messenger.context),
+      action: action,
+      repository: repository,
+      undoLabel: undoLabel,
+      undoneLabel: undoneLabel,
+    );
+  }
+
+  static void _showSnackBar({
+    required UndoNotifier notifier,
+    required ScaffoldMessengerState messenger,
+    required ThemeData theme,
+    required UndoableAction action,
+    required TaskRepository repository,
+    required String undoLabel,
+    required String undoneLabel,
+  }) {
+    messenger.clearSnackBars();
+
     messenger.showSnackBar(
       SnackBar(
         content: Text(
@@ -37,9 +86,9 @@ class UndoSnackBar {
           onPressed: () async {
             final success = await notifier.undo(repository);
 
-            if (success && context.mounted) {
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
+            if (success) {
+              messenger.clearSnackBars();
+              messenger.showSnackBar(
                 SnackBar(
                   content: Text(undoneLabel),
                   duration: const Duration(seconds: 2),

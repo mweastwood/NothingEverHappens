@@ -800,12 +800,12 @@ class TaskRepository {
     await _notificationService?.scheduleNotifications(task);
   }
 
-  Future<void> completeTaskInstance(String id) async {
+  Future<TaskInstance?> completeTaskInstance(String id) async {
     final instance = await _fetchInstance(id);
-    if (instance == null) return;
+    if (instance == null) return null;
 
     final task = await _fetchTask(instance.scheduleId);
-    if (task == null) return;
+    if (task == null) return null;
 
     final familyId = await _getFamilyId();
     final now = AppClock.now;
@@ -858,14 +858,15 @@ class TaskRepository {
     }
 
     await batch.commit();
+    return completedInstance;
   }
 
-  Future<void> dismissTaskInstance(String id) async {
+  Future<TaskInstance?> dismissTaskInstance(String id) async {
     final instance = await _fetchInstance(id);
-    if (instance == null) return;
+    if (instance == null) return null;
 
     final task = await _fetchTask(instance.scheduleId);
-    if (task == null) return;
+    if (task == null) return null;
 
     final familyId = await _getFamilyId();
     final now = AppClock.now;
@@ -918,6 +919,7 @@ class TaskRepository {
     }
 
     await batch.commit();
+    return dismissedInstance;
   }
 
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {

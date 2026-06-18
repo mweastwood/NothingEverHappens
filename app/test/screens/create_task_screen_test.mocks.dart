@@ -161,22 +161,20 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<void> completeTaskInstance(String? id) =>
+  _i4.Future<_i6.TaskInstance?> completeTaskInstance(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#completeTaskInstance, [id]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i4.Future<_i6.TaskInstance?>.value(),
           )
-          as _i4.Future<void>);
+          as _i4.Future<_i6.TaskInstance?>);
 
   @override
-  _i4.Future<void> dismissTaskInstance(String? id) =>
+  _i4.Future<_i6.TaskInstance?> dismissTaskInstance(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#dismissTaskInstance, [id]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i4.Future<_i6.TaskInstance?>.value(),
           )
-          as _i4.Future<void>);
+          as _i4.Future<_i6.TaskInstance?>);
 
   @override
   _i4.Future<void> undoResolveTaskInstance(

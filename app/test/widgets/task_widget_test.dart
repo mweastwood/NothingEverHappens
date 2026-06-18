@@ -68,8 +68,12 @@ void main() {
   setUp(() {
     mockTaskRepository = MockTaskRepository();
     // Default completeTask/dismissTask/undoResolve to do nothing
-    when(mockTaskRepository.completeTaskInstance(any)).thenAnswer((_) async {});
-    when(mockTaskRepository.dismissTaskInstance(any)).thenAnswer((_) async {});
+    when(
+      mockTaskRepository.completeTaskInstance(any),
+    ).thenAnswer((_) async => null);
+    when(
+      mockTaskRepository.dismissTaskInstance(any),
+    ).thenAnswer((_) async => null);
     when(
       mockTaskRepository.undoResolveTaskInstance(any),
     ).thenAnswer((_) async {});
@@ -946,6 +950,97 @@ void main() {
       verifyNever(mockTaskRepository.deleteTaskSchedule(any));
 
       await mouseGesture.removePointer();
+    },
+  );
+
+  testWidgets(
+    'TaskWidget swipe RTL undo passes resolved (completedAt set) instance to action',
+    (tester) async {
+      // Regression: previously the pending (pre-resolution) instance was
+      // captured, causing undoResolveTaskInstance to compute the wrong
+      // refDate and fail to delete the next spawned occurrence.
+      final resolvedInstance = createInstanceFor(testTask).copyWith(
+        status: 'dismissed',
+        completedByUserId: 'user-1',
+        completedAt: DateTime(2026, 6, 18, 9, 0),
+      );
+      when(
+        mockTaskRepository.dismissTaskInstance(any),
+      ).thenAnswer((_) async => resolvedInstance);
+
+      TaskInstance? capturedInstance;
+      when(mockTaskRepository.undoResolveTaskInstance(any)).thenAnswer((
+        invocation,
+      ) async {
+        capturedInstance = invocation.positionalArguments[0] as TaskInstance;
+      });
+
+      await tester.pumpWidget(createWidget(testTask));
+
+      // Fling RTL to dismiss
+      await tester.fling(
+        find.text(testTask.title),
+        const Offset(-500.0, 0.0),
+        1000.0,
+      );
+      await tester.pumpAndSettle();
+
+      // Tap Undo
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+
+      // The resolved instance (with completedAt set) should be passed to undo,
+      // not the original pending instance.
+      expect(capturedInstance, isNotNull);
+      expect(
+        capturedInstance!.completedAt,
+        equals(resolvedInstance.completedAt),
+      );
+      expect(capturedInstance!.status, equals('dismissed'));
+    },
+  );
+
+  testWidgets(
+    'TaskWidget swipe LTR undo passes resolved (completedAt set) instance to action',
+    (tester) async {
+      // Same regression test for the complete (LTR) swipe direction.
+      final resolvedInstance = createInstanceFor(testTask).copyWith(
+        status: 'completed',
+        completedByUserId: 'user-1',
+        completedAt: DateTime(2026, 6, 18, 9, 0),
+      );
+      when(
+        mockTaskRepository.completeTaskInstance(any),
+      ).thenAnswer((_) async => resolvedInstance);
+
+      TaskInstance? capturedInstance;
+      when(mockTaskRepository.undoResolveTaskInstance(any)).thenAnswer((
+        invocation,
+      ) async {
+        capturedInstance = invocation.positionalArguments[0] as TaskInstance;
+      });
+
+      await tester.pumpWidget(createWidget(testTask));
+
+      // Fling LTR to complete
+      await tester.fling(
+        find.text(testTask.title),
+        const Offset(500.0, 0.0),
+        1000.0,
+      );
+      await tester.pumpAndSettle();
+
+      // Tap Undo
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+
+      // The resolved instance (with completedAt set) should be passed to undo.
+      expect(capturedInstance, isNotNull);
+      expect(
+        capturedInstance!.completedAt,
+        equals(resolvedInstance.completedAt),
+      );
+      expect(capturedInstance!.status, equals('completed'));
     },
   );
 }
