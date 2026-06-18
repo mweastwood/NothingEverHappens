@@ -694,8 +694,9 @@ class FakeTaskRepository extends TaskRepository {
       );
 
   @override
-  Future<void> completeTaskInstance(String id) async {
+  Future<TaskInstance?> completeTaskInstance(String id) async {
     await onComplete(id);
+    return null;
   }
 
   @override
@@ -714,13 +715,14 @@ class FakeTaskRepository extends TaskRepository {
   }
 
   @override
-  Future<void> dismissTaskInstance(String id) async {
+  Future<TaskInstance?> dismissTaskInstance(String id) async {
     await onComplete(id);
+    return null;
   }
 
   @override
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
-    // No-op for playground
+    // No-op for playground simulation
   }
 }
 

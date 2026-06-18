@@ -85,32 +85,44 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
       ),
     );
 
-    _controller.addStatusListener((status) {
+    _controller.addStatusListener((status) async {
       if (status == AnimationStatus.completed) {
         if (!mounted) return;
         final repo = ref.read(taskRepositoryProvider)!;
         final instance = widget.instance;
+        // Capture context-sensitive values before any async gap.
+        final messenger = ScaffoldMessenger.of(context);
+        final dismissMsg = context.l10n.taskDismissed(instance.title);
+        final completeMsg = context.l10n.taskCompleted(instance.title);
+        final undoLabel = context.l10n.undoButton;
+        final undoneLabel = context.l10n.actionUndone;
         if (_isDeleting) {
-          repo.dismissTaskInstance(instance.id);
-          UndoSnackBar.show(
-            context: context,
+          final resolved = await repo.dismissTaskInstance(instance.id);
+          if (!mounted) return;
+          UndoSnackBar.showWithMessenger(
+            messenger: messenger,
             ref: ref,
             action: UndoResolveTaskInstanceAction(
-              message: context.l10n.taskDismissed(instance.title),
-              instance: instance,
+              message: dismissMsg,
+              instance: resolved ?? instance,
             ),
             repository: repo,
+            undoLabel: undoLabel,
+            undoneLabel: undoneLabel,
           );
         } else {
-          repo.completeTaskInstance(instance.id);
-          UndoSnackBar.show(
-            context: context,
+          final resolved = await repo.completeTaskInstance(instance.id);
+          if (!mounted) return;
+          UndoSnackBar.showWithMessenger(
+            messenger: messenger,
             ref: ref,
             action: UndoResolveTaskInstanceAction(
-              message: context.l10n.taskCompleted(instance.title),
-              instance: instance,
+              message: completeMsg,
+              instance: resolved ?? instance,
             ),
             repository: repo,
+            undoLabel: undoLabel,
+            undoneLabel: undoneLabel,
           );
         }
       }
@@ -387,30 +399,42 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               _swipeProgress = details.progress;
             });
           },
-          onDismissed: (direction) {
+          onDismissed: (direction) async {
             final repo = ref.read(taskRepositoryProvider)!;
             final instance = widget.instance;
+            // Capture context-sensitive values before any async gap.
+            final messenger = ScaffoldMessenger.of(context);
+            final completeMsg = context.l10n.taskCompleted(instance.title);
+            final dismissMsg = context.l10n.taskDismissed(instance.title);
+            final undoLabel = context.l10n.undoButton;
+            final undoneLabel = context.l10n.actionUndone;
             if (direction == DismissDirection.startToEnd) {
-              repo.completeTaskInstance(instance.id);
-              UndoSnackBar.show(
-                context: context,
+              final resolved = await repo.completeTaskInstance(instance.id);
+              if (!mounted) return;
+              UndoSnackBar.showWithMessenger(
+                messenger: messenger,
                 ref: ref,
                 action: UndoResolveTaskInstanceAction(
-                  message: context.l10n.taskCompleted(instance.title),
-                  instance: instance,
+                  message: completeMsg,
+                  instance: resolved ?? instance,
                 ),
                 repository: repo,
+                undoLabel: undoLabel,
+                undoneLabel: undoneLabel,
               );
             } else if (direction == DismissDirection.endToStart) {
-              repo.dismissTaskInstance(instance.id);
-              UndoSnackBar.show(
-                context: context,
+              final resolved = await repo.dismissTaskInstance(instance.id);
+              if (!mounted) return;
+              UndoSnackBar.showWithMessenger(
+                messenger: messenger,
                 ref: ref,
                 action: UndoResolveTaskInstanceAction(
-                  message: context.l10n.taskDismissed(instance.title),
-                  instance: instance,
+                  message: dismissMsg,
+                  instance: resolved ?? instance,
                 ),
                 repository: repo,
+                undoLabel: undoLabel,
+                undoneLabel: undoneLabel,
               );
             }
           },

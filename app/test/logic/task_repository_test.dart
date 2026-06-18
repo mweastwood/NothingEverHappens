@@ -308,6 +308,71 @@ void main() {
     );
 
     test(
+      'completeTaskInstance returns the resolved instance with completedAt set '
+      '(regression: undo for recurring tasks needs the resolved instance)',
+      () async {
+        // This test guards against regression where completeTaskInstance
+        // returned void, forcing callers to pass the pending instance to
+        // undoResolveTaskInstance. The pending instance has completedAt==null,
+        // so undoResolveTaskInstance would fall back to AppClock.now and could
+        // compute the wrong refDate, deleting the wrong next spawned instance.
+        final dailyTask = TaskSchedule(
+          id: 'task-daily',
+          title: 'Daily Task',
+          description: 'desc',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 1),
+              interval: 1,
+            ),
+          ],
+        );
+
+        AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        addTearDown(AppClock.reset);
+
+        await repository.addTaskSchedule(dailyTask);
+        await Future.delayed(Duration.zero);
+
+        final instanceId = '${dailyTask.id}_2026-06-01';
+
+        // completeTaskInstance must return the resolved instance
+        final resolved = await repository.completeTaskInstance(instanceId);
+
+        expect(resolved, isNotNull);
+        expect(resolved!.id, instanceId);
+        expect(resolved.status, 'completed');
+        expect(resolved.completedAt, isNotNull);
+        expect(resolved.completedByUserId, userId);
+
+        // dismissTaskInstance must also return the resolved instance
+        // (create a separate task to test the dismiss path)
+        final dailyTask2 = TaskSchedule(
+          id: 'task-daily-2',
+          title: 'Daily Task 2',
+          description: 'desc',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 1),
+              interval: 1,
+            ),
+          ],
+        );
+        await repository.addTaskSchedule(dailyTask2);
+        await Future.delayed(Duration.zero);
+
+        final instanceId2 = '${dailyTask2.id}_2026-06-01';
+        final resolvedDismissed = await repository.dismissTaskInstance(
+          instanceId2,
+        );
+
+        expect(resolvedDismissed, isNotNull);
+        expect(resolvedDismissed!.status, 'dismissed');
+        expect(resolvedDismissed.completedAt, isNotNull);
+      },
+    );
+
+    test(
       'editing weekly schedule to add monthly schedule does not duplicate or timeout',
       () async {
         // Fix the clock to June 15 2026 (the task startDate) so this test is

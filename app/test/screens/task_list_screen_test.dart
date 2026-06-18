@@ -341,6 +341,7 @@ void main() {
           ],
         );
         tasksSubject.add([advancedTask]);
+        return null;
       });
 
       await tester.pumpWidget(createScreen());
@@ -546,6 +547,7 @@ void main() {
         _,
       ) async {
         tasksSubject.add([task2]); // Remove task 1
+        return null;
       });
 
       await tester.pumpWidget(createScreen());

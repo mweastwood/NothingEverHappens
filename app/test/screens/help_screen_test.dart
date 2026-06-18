@@ -161,6 +161,65 @@ void main() {
       );
       await screenMatchesGolden(tester, 'basic_task_completion_tab_golden');
     });
+
+    testWidgets('tapping Undo after completing a task restores the task card', (
+      WidgetTester tester,
+    ) async {
+      // Regression: FakeTaskRepository.undoResolveTaskInstance was a no-op,
+      // so tapping Undo on the help screen did nothing visually.
+      await tester.pumpWidget(buildTestWidget(const BasicTaskCompletionTab()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Practice Tasks (10 remaining)'), findsOneWidget);
+
+      // Complete the first task
+      await tester.tap(find.byType(FunCheckButton).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pumpAndSettle();
+
+      // Task is now removed
+      expect(find.text('Water the Houseplants'), findsNothing);
+      expect(find.text('Practice Tasks (9 remaining)'), findsOneWidget);
+
+      // Undo snackbar should be visible
+      expect(find.text('Undo'), findsOneWidget);
+
+      // Tap Undo
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+
+      // Task should be restored
+      expect(find.text('Water the Houseplants'), findsOneWidget);
+      expect(find.text('Practice Tasks (10 remaining)'), findsOneWidget);
+    });
+
+    testWidgets(
+      'tapping Undo after dismissing a task (delete button) restores the task card',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          buildTestWidget(const BasicTaskCompletionTab()),
+        );
+        await tester.pumpAndSettle();
+
+        // Dismiss the first task via the delete button
+        await tester.tap(find.byKey(const Key('delete_task_button')).first);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Water the Houseplants'), findsNothing);
+        expect(find.text('Practice Tasks (9 remaining)'), findsOneWidget);
+
+        // Tap Undo
+        await tester.tap(find.text('Undo'));
+        await tester.pumpAndSettle();
+
+        // Task should be restored
+        expect(find.text('Water the Houseplants'), findsOneWidget);
+        expect(find.text('Practice Tasks (10 remaining)'), findsOneWidget);
+      },
+    );
   });
 
   group('SchedulingPlaygroundTab Standalone Tests', () {

@@ -55,6 +55,7 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
     _fakeRepository = FakeTaskRepository(
       onComplete: _handleComplete,
       onDelete: _handleDelete,
+      onUndo: _handleUndo,
     );
   }
 
@@ -113,6 +114,16 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
     if (!mounted) return;
     setState(() {
       _instances.removeWhere((inst) => inst.scheduleId == scheduleId);
+    });
+  }
+
+  void _handleUndo(TaskInstance instance) {
+    if (!mounted) return;
+    setState(() {
+      // Only restore if not already present
+      if (!_instances.any((i) => i.id == instance.id)) {
+        _instances.add(instance);
+      }
     });
   }
 
@@ -215,17 +226,22 @@ class DummyFirebaseFirestore implements FirebaseFirestore {
 class FakeTaskRepository extends TaskRepository {
   final void Function(String) onComplete;
   final void Function(String) onDelete;
+  final void Function(TaskInstance) onUndo;
 
-  FakeTaskRepository({required this.onComplete, required this.onDelete})
-    : super(
-        firestore: DummyFirebaseFirestore(),
-        userId: 'practice_user',
-        notificationService: null,
-      );
+  FakeTaskRepository({
+    required this.onComplete,
+    required this.onDelete,
+    required this.onUndo,
+  }) : super(
+         firestore: DummyFirebaseFirestore(),
+         userId: 'practice_user',
+         notificationService: null,
+       );
 
   @override
-  Future<void> completeTaskInstance(String id) async {
+  Future<TaskInstance?> completeTaskInstance(String id) async {
     onComplete(id);
+    return null;
   }
 
   @override
@@ -244,12 +260,19 @@ class FakeTaskRepository extends TaskRepository {
   }
 
   @override
-  Future<void> dismissTaskInstance(String id) async {
+  Future<TaskInstance?> dismissTaskInstance(String id) async {
     onComplete(id);
+    return null;
   }
 
   @override
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
-    // No-op for practice
+    // Restore the pending version of the instance to the list
+    final pending = resolvedInstance.copyWith(
+      status: 'pending',
+      clearCompletedByUserId: true,
+      clearCompletedAt: true,
+    );
+    onUndo(pending);
   }
 }
