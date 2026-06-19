@@ -586,40 +586,7 @@ class TaskRepository {
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
-      final today = CivilDay.fromDateTime(now);
-      final CivilDay refDate;
-      if (task.missedPolicy == MissedPolicy.stack ||
-          task.missedPolicy == MissedPolicy.rollover ||
-          today.isBefore(instance.scheduledDate)) {
-        refDate = instance.scheduledDate.addDays(1);
-      } else {
-        refDate = today.addDays(1);
-      }
-
-      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(task, refDate);
-      if (nextOcc != null) {
-        final date = nextOcc.$1;
-        final s = nextOcc.$2;
-        final idx = nextOcc.$3;
-        final nextInstId = instanceIdFor(task, date, idx);
-
-        final newInst = TaskInstance(
-          id: nextInstId,
-          scheduleId: task.id,
-          title: task.title,
-          description: task.description,
-          scheduledDate: date,
-          startRelativeTime: s.startRelativeTime,
-          dueRelativeTime: s.dueRelativeTime,
-          notificationRelativeTime: s.notificationRelativeTime,
-          isFamily: task.isFamily,
-          priority: task.priority,
-          cycleId: task.cycleId,
-          assignedUserId: task.assignedUserId,
-          status: 'pending',
-        );
-        batch.set(_instanceRefFor(newInst, familyId), newInst);
-      }
+      _spawnNextOccurrence(task, instance, now, batch, familyId);
     }
 
     await batch.commit();
@@ -647,40 +614,7 @@ class TaskRepository {
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
-      final today = CivilDay.fromDateTime(now);
-      final CivilDay refDate;
-      if (task.missedPolicy == MissedPolicy.stack ||
-          task.missedPolicy == MissedPolicy.rollover ||
-          today.isBefore(instance.scheduledDate)) {
-        refDate = instance.scheduledDate.addDays(1);
-      } else {
-        refDate = today.addDays(1);
-      }
-
-      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(task, refDate);
-      if (nextOcc != null) {
-        final date = nextOcc.$1;
-        final s = nextOcc.$2;
-        final idx = nextOcc.$3;
-        final nextInstId = instanceIdFor(task, date, idx);
-
-        final newInst = TaskInstance(
-          id: nextInstId,
-          scheduleId: task.id,
-          title: task.title,
-          description: task.description,
-          scheduledDate: date,
-          startRelativeTime: s.startRelativeTime,
-          dueRelativeTime: s.dueRelativeTime,
-          notificationRelativeTime: s.notificationRelativeTime,
-          isFamily: task.isFamily,
-          priority: task.priority,
-          cycleId: task.cycleId,
-          assignedUserId: task.assignedUserId,
-          status: 'pending',
-        );
-        batch.set(_instanceRefFor(newInst, familyId), newInst);
-      }
+      _spawnNextOccurrence(task, instance, now, batch, familyId);
     }
 
     await batch.commit();
@@ -704,28 +638,43 @@ class TaskRepository {
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
       final now = resolvedInstance.completedAt ?? AppClock.now;
-      final today = CivilDay.fromDateTime(now);
-      final CivilDay refDate;
-      if (task.missedPolicy == MissedPolicy.stack ||
-          task.missedPolicy == MissedPolicy.rollover ||
-          today.isBefore(resolvedInstance.scheduledDate)) {
-        refDate = resolvedInstance.scheduledDate.addDays(1);
-      } else {
-        refDate = today.addDays(1);
-      }
-
-      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(task, refDate);
-      if (nextOcc != null) {
-        final date = nextOcc.$1;
-        final idx = nextOcc.$3;
-        final nextInstId = instanceIdFor(task, date, idx);
-
+      final nextId = _nextOccurrenceId(task, resolvedInstance, now);
+      if (nextId != null) {
         batch.delete(
-          _instanceRefForId(nextInstId, resolvedInstance.isFamily, familyId),
+          _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
         );
       }
     }
 
     await batch.commit();
+  }
+
+  void _spawnNextOccurrence(
+    TaskSchedule task,
+    TaskInstance completedInstance,
+    DateTime now,
+    WriteBatch batch,
+    String? familyId,
+  ) {
+    final nextInst = SchedulerEngine.getNextOccurrenceToSpawn(
+      task,
+      completedInstance,
+      now,
+    );
+    if (nextInst != null) {
+      batch.set(_instanceRefFor(nextInst, familyId), nextInst);
+    }
+  }
+
+  String? _nextOccurrenceId(
+    TaskSchedule task,
+    TaskInstance completedInstance,
+    DateTime now,
+  ) {
+    return SchedulerEngine.getNextOccurrenceIdToDelete(
+      task,
+      completedInstance,
+      now,
+    );
   }
 }

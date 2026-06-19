@@ -419,4 +419,140 @@ class SchedulerEngine {
       time: TimeOfDay.fromDateTime(newNotifRef),
     );
   }
+
+  static TaskInstance? getNextOccurrenceToSpawn(
+    TaskSchedule task,
+    TaskInstance completedInstance,
+    DateTime now,
+  ) {
+    final ruleIndex = _ruleIndexOfInstance(task, completedInstance);
+    if (ruleIndex < 0 || ruleIndex >= task.schedules.length) return null;
+    final rule = task.schedules[ruleIndex];
+
+    if (rule.schedulingPolicy is CompletionRelativePolicy) {
+      final policy = rule.schedulingPolicy as CompletionRelativePolicy;
+      final nextDate = CivilDay.fromDateTime(now.add(policy.interval));
+      final nextInstId = _instanceIdFor(task, nextDate, ruleIndex);
+
+      final startRelative = RelativeTime(dayOffset: 0, time: policy.targetTime);
+      final dueRelative = _getCompletionRelativeDue(rule, policy, nextDate);
+      final notifRelative = _getCompletionRelativeNotification(
+        rule,
+        policy,
+        nextDate,
+      );
+
+      return TaskInstance(
+        id: nextInstId,
+        scheduleId: task.id,
+        title: task.title,
+        description: task.description,
+        scheduledDate: nextDate,
+        startRelativeTime: startRelative,
+        dueRelativeTime: dueRelative,
+        notificationRelativeTime: notifRelative,
+        isFamily: task.isFamily,
+        priority: task.priority,
+        cycleId: task.cycleId,
+        assignedUserId: task.assignedUserId,
+        status: 'pending',
+      );
+    } else {
+      final today = CivilDay.fromDateTime(now);
+      final CivilDay refDate;
+      final ruleMissedPolicy = rule.missedOccurrencePolicy.legacyPolicy;
+      if (ruleMissedPolicy == MissedPolicy.stack ||
+          ruleMissedPolicy == MissedPolicy.rollover ||
+          today.isBefore(completedInstance.scheduledDate)) {
+        refDate = completedInstance.scheduledDate.addDays(1);
+      } else {
+        refDate = today.addDays(1);
+      }
+
+      CivilDay? nextDate;
+      if (rule.occursOn(refDate)) {
+        nextDate = refDate;
+      } else {
+        final candidate = rule.nextOccurrenceAfter(refDate);
+        if (candidate != null && !candidate.isBefore(refDate)) {
+          nextDate = candidate;
+        }
+      }
+
+      if (nextDate != null) {
+        final nextInstId = _instanceIdFor(task, nextDate, ruleIndex);
+        return TaskInstance(
+          id: nextInstId,
+          scheduleId: task.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: nextDate,
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          notificationRelativeTime: rule.notificationRelativeTime,
+          isFamily: task.isFamily,
+          priority: task.priority,
+          cycleId: task.cycleId,
+          assignedUserId: task.assignedUserId,
+          status: 'pending',
+        );
+      }
+    }
+    return null;
+  }
+
+  static String? getNextOccurrenceIdToDelete(
+    TaskSchedule task,
+    TaskInstance completedInstance,
+    DateTime now,
+  ) {
+    final ruleIndex = _ruleIndexOfInstance(task, completedInstance);
+    if (ruleIndex < 0 || ruleIndex >= task.schedules.length) return null;
+    final rule = task.schedules[ruleIndex];
+
+    if (rule.schedulingPolicy is CompletionRelativePolicy) {
+      final policy = rule.schedulingPolicy as CompletionRelativePolicy;
+      final nextDate = CivilDay.fromDateTime(now.add(policy.interval));
+      return _instanceIdFor(task, nextDate, ruleIndex);
+    } else {
+      final today = CivilDay.fromDateTime(now);
+      final CivilDay refDate;
+      final ruleMissedPolicy = rule.missedOccurrencePolicy.legacyPolicy;
+      if (ruleMissedPolicy == MissedPolicy.stack ||
+          ruleMissedPolicy == MissedPolicy.rollover ||
+          today.isBefore(completedInstance.scheduledDate)) {
+        refDate = completedInstance.scheduledDate.addDays(1);
+      } else {
+        refDate = today.addDays(1);
+      }
+
+      CivilDay? nextDate;
+      if (rule.occursOn(refDate)) {
+        nextDate = refDate;
+      } else {
+        final candidate = rule.nextOccurrenceAfter(refDate);
+        if (candidate != null && !candidate.isBefore(refDate)) {
+          nextDate = candidate;
+        }
+      }
+
+      if (nextDate != null) {
+        return _instanceIdFor(task, nextDate, ruleIndex);
+      }
+    }
+    return null;
+  }
+
+  static int _ruleIndexOfInstance(TaskSchedule task, TaskInstance instance) {
+    if (task.schedules.length <= 1) return 0;
+    final parts = instance.id.split('_');
+    if (parts.isNotEmpty) {
+      final idxStr = parts.last;
+      final idx = int.tryParse(idxStr);
+      if (idx != null && idx >= 0 && idx < task.schedules.length) {
+        return idx;
+      }
+    }
+    return 0;
+  }
 }
