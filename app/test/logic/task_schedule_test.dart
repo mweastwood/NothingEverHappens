@@ -2046,7 +2046,6 @@ void main() {
           await Future.delayed(Duration.zero);
 
           // Next scheduledDate is completionTime + 3 days = Saturday May 30
-          final nextDate = const CivilDay(year: 2026, month: 5, day: 30);
           final nextInstId = 'comp-relative-complete_2026-05-30';
 
           final nextSnap = await firestore

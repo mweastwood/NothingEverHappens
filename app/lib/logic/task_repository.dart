@@ -360,7 +360,6 @@ class TaskRepository {
           );
           hasChanges = true;
         }
-        }
       }
 
       if (hasChanges) {
