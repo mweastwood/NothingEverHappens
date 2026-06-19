@@ -474,5 +474,15 @@
   },
   "loadingBadge": "Loading...",
   "assignedBadge": "Assigned",
-  "recurringLabel": "Recurring"
+  "recurringLabel": "Recurring",
+  "searchTasksPlaceholder": "Search tasks...",
+  "noTasksMatching": "No matching tasks found for \"{query}\"",
+  "@noTasksMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "clearSearchButton": "Clear Search"
 }

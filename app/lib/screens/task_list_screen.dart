@@ -6,6 +6,8 @@ import '../widgets/task_widget.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
 
+final taskSearchQueryProvider = StateProvider<String>((ref) => '');
+
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
 
@@ -41,22 +43,69 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         } else {
           final schedules = schedulesVal.value ?? [];
           final instances = instancesVal.value ?? [];
+          final searchQuery = ref
+              .watch(taskSearchQueryProvider)
+              .trim()
+              .toLowerCase();
 
           final today = CivilDay.fromDateTime(AppClock.now);
           final filteredInstances = instances.where((inst) {
             final startsDate = inst.scheduledDate.addDays(
               inst.startRelativeTime.dayOffset,
             );
-            return inst.status == 'pending' && !today.isBefore(startsDate);
+            final isPending =
+                inst.status == 'pending' && !today.isBefore(startsDate);
+            if (!isPending) return false;
+            if (searchQuery.isEmpty) return true;
+
+            final queryWords = searchQuery
+                .split(RegExp(r'\s+'))
+                .where((word) => word.isNotEmpty);
+            if (queryWords.isEmpty) return true;
+
+            return queryWords.every((word) {
+              final matchesTitle = inst.title.toLowerCase().contains(word);
+              final matchesDesc = inst.description.toLowerCase().contains(word);
+              return matchesTitle || matchesDesc;
+            });
           }).toList();
 
           if (filteredInstances.isEmpty) {
-            bodySliver = SliverToBoxAdapter(
-              child: SizedBox(
-                height: 200,
-                child: Center(child: Text(context.l10n.noTasksYet)),
-              ),
-            );
+            if (searchQuery.isNotEmpty) {
+              bodySliver = SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 200,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          context.l10n.noTasksMatching(
+                            ref.read(taskSearchQueryProvider),
+                          ),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () {
+                            ref.read(taskSearchQueryProvider.notifier).state =
+                                '';
+                          },
+                          child: Text(context.l10n.clearSearchButton),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            } else {
+              bodySliver = SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 200,
+                  child: Center(child: Text(context.l10n.noTasksYet)),
+                ),
+              );
+            }
           } else {
             bodySliver = SliverPadding(
               padding: const EdgeInsets.all(8.0),

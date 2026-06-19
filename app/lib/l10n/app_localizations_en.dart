@@ -799,4 +799,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recurringLabel => 'Recurring';
+
+  @override
+  String get searchTasksPlaceholder => 'Search tasks...';
+
+  @override
+  String noTasksMatching(String query) {
+    return 'No matching tasks found for \"$query\"';
+  }
+
+  @override
+  String get clearSearchButton => 'Clear Search';
 }

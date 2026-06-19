@@ -318,5 +318,15 @@
   },
   "loadingBadge": "Cargando...",
   "assignedBadge": "Asignado",
-  "recurringLabel": "Recurrente"
+  "recurringLabel": "Recurrente",
+  "searchTasksPlaceholder": "Buscar tareas...",
+  "noTasksMatching": "No se encontraron tareas coincidentes para \"{query}\"",
+  "@noTasksMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "clearSearchButton": "Limpiar búsqueda"
 }
