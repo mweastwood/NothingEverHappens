@@ -43,6 +43,25 @@ class MissedOccurrencePolicy {
     };
   }
 
+  /// Calculates when the occurrence expires based on its [dueDateTime].
+  /// Returns null if the policy is keepAround (which never expires).
+  DateTime? calculateExpiration(DateTime dueDateTime) {
+    if (type == MissedOccurrenceType.autoDismiss) {
+      return dueDateTime.add(gracePeriod ?? Duration.zero);
+    }
+    if (legacyPolicy == MissedPolicy.skip) {
+      return dueDateTime;
+    }
+    return null;
+  }
+
+  /// Checks if the occurrence is expired at [now] given its [dueDateTime].
+  bool isExpired(DateTime dueDateTime, DateTime now) {
+    final expiration = calculateExpiration(dueDateTime);
+    if (expiration == null) return false;
+    return now.isAfter(expiration);
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

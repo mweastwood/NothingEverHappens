@@ -115,5 +115,75 @@ void main() {
         );
       });
     });
+
+    group('calculateExpiration and isExpired helper methods', () {
+      final baseTime = DateTime(2026, 6, 1, 12, 0);
+
+      test(
+        'keepAround policy calculates null expiration and is never expired',
+        () {
+          const policy = MissedOccurrencePolicy.keepAround();
+          expect(policy.calculateExpiration(baseTime), isNull);
+          expect(
+            policy.isExpired(baseTime, baseTime.add(const Duration(days: 100))),
+            isFalse,
+          );
+        },
+      );
+
+      test('autoDismiss policy calculates correct expiration time', () {
+        const policy = MissedOccurrencePolicy.autoDismiss(
+          gracePeriod: Duration(hours: 3),
+        );
+        expect(
+          policy.calculateExpiration(baseTime),
+          baseTime.add(const Duration(hours: 3)),
+        );
+      });
+
+      test('autoDismiss policy properly evaluates isExpired', () {
+        const policy = MissedOccurrencePolicy.autoDismiss(
+          gracePeriod: Duration(hours: 3),
+        );
+        // Exactly at due time: not expired
+        expect(policy.isExpired(baseTime, baseTime), isFalse);
+        // Within grace period (2 hours past due): not expired
+        expect(
+          policy.isExpired(baseTime, baseTime.add(const Duration(hours: 2))),
+          isFalse,
+        );
+        // Exactly at grace period expiration: not expired (needs to be strictly after)
+        expect(
+          policy.isExpired(baseTime, baseTime.add(const Duration(hours: 3))),
+          isFalse,
+        );
+        // After grace period expiration (3 hours and 1 second past due): expired
+        expect(
+          policy.isExpired(
+            baseTime,
+            baseTime.add(const Duration(hours: 3, seconds: 1)),
+          ),
+          isTrue,
+        );
+      });
+
+      test(
+        'legacy skip policy acts like autoDismiss with zero grace period',
+        () {
+          const policy = MissedOccurrencePolicy.keepAround(
+            legacyPolicy: MissedPolicy.skip,
+          );
+          expect(policy.calculateExpiration(baseTime), baseTime);
+          expect(
+            policy.isExpired(
+              baseTime,
+              baseTime.add(const Duration(seconds: 1)),
+            ),
+            isTrue,
+          );
+          expect(policy.isExpired(baseTime, baseTime), isFalse);
+        },
+      );
+    });
   });
 }

@@ -485,15 +485,12 @@ class TaskRepository {
             } else if (s.missedOccurrencePolicy.type ==
                     MissedOccurrenceType.autoDismiss ||
                 ruleMissedPolicy == MissedPolicy.skip) {
-              final gracePeriod =
-                  s.missedOccurrencePolicy.gracePeriod ?? Duration.zero;
               bool spawnedNext = false;
               for (final pending in pendingForSchedule) {
                 final dueDateTime = pending.dueRelativeTime.referenceTo(
                   pending.scheduledDate,
                 );
-                final expirationTime = dueDateTime.add(gracePeriod);
-                if (now.isAfter(expirationTime)) {
+                if (s.missedOccurrencePolicy.isExpired(dueDateTime, now)) {
                   final updatedInst = pending.copyWith(status: 'skipped');
                   batch.set(
                     _instanceRefFor(updatedInst, familyId),
@@ -525,8 +522,10 @@ class TaskRepository {
                     final dueDateTime = s.dueRelativeTime.referenceTo(
                       checkDate,
                     );
-                    final expirationTime = dueDateTime.add(gracePeriod);
-                    final isMissed = now.isAfter(expirationTime);
+                    final isMissed = s.missedOccurrencePolicy.isExpired(
+                      dueDateTime,
+                      now,
+                    );
                     final status = isMissed ? 'skipped' : 'pending';
 
                     final skippedInst = TaskInstance(
@@ -566,8 +565,7 @@ class TaskRepository {
                 final dueDateTime = inst.dueRelativeTime.referenceTo(
                   inst.scheduledDate,
                 );
-                final expirationTime = dueDateTime.add(gracePeriod);
-                return !now.isAfter(expirationTime);
+                return !s.missedOccurrencePolicy.isExpired(dueDateTime, now);
               });
 
               if (spawnedNext || !hasActivePending) {
