@@ -158,6 +158,7 @@ class TaskScheduleScreen extends ConsumerWidget {
                       pendingInstances: deletedData.pendingInstances,
                     ),
                     repository: repository,
+                    undoneLabel: context.l10n.taskRestored(task.title),
                   );
                 }
               },

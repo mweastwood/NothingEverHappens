@@ -245,5 +245,21 @@
         "type": "String"
       }
     }
+  },
+  "taskRestored": "\"{title}\" restaurada",
+  "@taskRestored": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "editsReverted": "Se deshicieron los cambios en \"{title}\"",
+  "@editsReverted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   }
 }
