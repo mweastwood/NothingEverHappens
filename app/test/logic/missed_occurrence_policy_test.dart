@@ -1,6 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
 import 'package:nothing_ever_happens/logic/missed_policy.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
+import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:flutter/material.dart';
 
 void main() {
   group('MissedOccurrencePolicy Tests', () {
@@ -184,6 +188,35 @@ void main() {
           expect(policy.isExpired(baseTime, baseTime), isFalse);
         },
       );
+
+      test('isInstanceExpired correctly checks a TaskInstance', () {
+        const policy = MissedOccurrencePolicy.autoDismiss(
+          gracePeriod: Duration(hours: 2),
+        );
+        final instance = TaskInstance(
+          id: 'test-inst',
+          scheduleId: 'test-sched',
+          title: 'Test',
+          description: '',
+          scheduledDate: CivilDay(year: 2026, month: 6, day: 19),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 12, minute: 0),
+          ),
+        );
+
+        // Instance is due at 2026-06-19 12:00:00.
+        // Expiration is due + 2 hours = 14:00:00.
+        final dueTime = DateTime(2026, 6, 19, 12, 0);
+        final expiredTime = DateTime(2026, 6, 19, 14, 0, 1);
+
+        expect(policy.isInstanceExpired(instance, dueTime), isFalse);
+        expect(policy.isInstanceExpired(instance, expiredTime), isTrue);
+      });
     });
   });
 }

@@ -1,4 +1,5 @@
 import 'missed_policy.dart';
+import 'task_instance.dart';
 
 enum MissedOccurrenceType { keepAround, autoDismiss }
 
@@ -60,6 +61,14 @@ class MissedOccurrencePolicy {
     final expiration = calculateExpiration(dueDateTime);
     if (expiration == null) return false;
     return now.isAfter(expiration);
+  }
+
+  /// Checks if the task instance is expired at [now] under this policy.
+  bool isInstanceExpired(TaskInstance instance, DateTime now) {
+    final dueDateTime = instance.dueRelativeTime.referenceTo(
+      instance.scheduledDate,
+    );
+    return isExpired(dueDateTime, now);
   }
 
   @override
