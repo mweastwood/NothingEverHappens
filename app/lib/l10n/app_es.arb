@@ -261,5 +261,62 @@
         "type": "String"
       }
     }
-  }
+  },
+  "dueTodayAt": "Vence hoy a las {time}",
+  "@dueTodayAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "overdueTodayAt": "Atrasado: hoy a las {time}",
+  "@overdueTodayAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "overdueYesterdayAt": "Atrasado: ayer a las {time}",
+  "@overdueYesterdayAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dueTomorrowAt": "Vence mañana a las {time}",
+  "@dueTomorrowAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dueAt": "Vence el {date} a las {time}",
+  "@dueAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "overdueAt": "Atrasado: el {date} a las {time}",
+  "@overdueAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingBadge": "Cargando...",
+  "assignedBadge": "Asignado",
+  "recurringLabel": "Recurrente"
 }

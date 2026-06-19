@@ -417,5 +417,62 @@
         "type": "String"
       }
     }
-  }
+  },
+  "dueTodayAt": "Due Today at {time}",
+  "@dueTodayAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "overdueTodayAt": "Overdue: Today at {time}",
+  "@overdueTodayAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "overdueYesterdayAt": "Overdue: Yesterday at {time}",
+  "@overdueYesterdayAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dueTomorrowAt": "Due Tomorrow at {time}",
+  "@dueTomorrowAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dueAt": "Due {date} at {time}",
+  "@dueAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "overdueAt": "Overdue: {date} at {time}",
+  "@overdueAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingBadge": "Loading...",
+  "assignedBadge": "Assigned",
+  "recurringLabel": "Recurring"
 }

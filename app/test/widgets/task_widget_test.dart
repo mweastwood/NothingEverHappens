@@ -10,6 +10,7 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mockito/mockito.dart';
@@ -581,7 +582,7 @@ void main() {
         ),
       ),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(450, 800),
+      surfaceSize: const Size(450, 850),
     );
 
     await expectLater(
@@ -1098,6 +1099,99 @@ void main() {
 
       // Verify SnackBar with undo option is still shown
       expect(find.text('Undo'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'TaskWidget displays due date badge with correct formatting and colors based on urgency',
+    (tester) async {
+      // Set clock to 2026-06-19 09:00 AM
+      final now = DateTime(2026, 6, 19, 9, 0);
+      AppClock.setMockTime(now);
+
+      final overdueTask = TaskSchedule(
+        id: 'overdue_1',
+        title: 'Overdue Task',
+        description: 'Due yesterday',
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 18),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final dueTodayTask = TaskSchedule(
+        id: 'today_1',
+        title: 'Due Today Task',
+        description: 'Due today at 5:00 PM',
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 19),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final dueTomorrowTask = TaskSchedule(
+        id: 'tomorrow_1',
+        title: 'Due Tomorrow Task',
+        description: 'Due tomorrow at 5:00 PM',
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 20),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      // Test Overdue
+      await tester.pumpWidget(createWidget(overdueTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Overdue: Yesterday at 5:00 PM'), findsOneWidget);
+      final Text overdueTextWidget = tester.widget(
+        find.text('Overdue: Yesterday at 5:00 PM'),
+      );
+      expect(
+        overdueTextWidget.style?.color,
+        Theme.of(
+          tester.element(find.text('Overdue: Yesterday at 5:00 PM')),
+        ).colorScheme.error,
+      );
+
+      // Test Due Today
+      await tester.pumpWidget(createWidget(dueTodayTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due Today at 5:00 PM'), findsOneWidget);
+      final Text todayTextWidget = tester.widget(
+        find.text('Due Today at 5:00 PM'),
+      );
+      expect(todayTextWidget.style?.color, Colors.orange.shade800);
+
+      // Test Due Tomorrow
+      await tester.pumpWidget(createWidget(dueTomorrowTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due Tomorrow at 5:00 PM'), findsOneWidget);
+      final Text tomorrowTextWidget = tester.widget(
+        find.text('Due Tomorrow at 5:00 PM'),
+      );
+      expect(
+        tomorrowTextWidget.style?.color,
+        Theme.of(
+          tester.element(find.text('Due Tomorrow at 5:00 PM')),
+        ).colorScheme.secondary,
+      );
+
+      AppClock.reset();
     },
   );
 }

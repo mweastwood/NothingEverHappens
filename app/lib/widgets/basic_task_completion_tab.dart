@@ -8,6 +8,7 @@ import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/app_clock.dart';
 import 'task_widget.dart';
 
 const List<String> _taskTitles = [
@@ -64,13 +65,15 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
       _tasks = List.generate(10, (index) {
         final title = _taskTitles[index];
         final desc = _taskDescriptions[index];
+        final tomorrow = AppClock.now.add(const Duration(days: 1));
+        final tomorrowDay = CivilDay.fromDateTime(tomorrow);
         return TaskSchedule(
           id: 'practice-task-$index',
           title: title,
           description: desc,
           schedules: [
             OneOffSchedule(
-              date: const CivilDay(year: 2026, month: 6, day: 4),
+              date: tomorrowDay,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
                 time: TimeOfDay(hour: 9, minute: 0),

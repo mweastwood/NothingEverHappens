@@ -13,7 +13,9 @@ import 'fun_delete_button.dart';
 import '../logic/task_instance.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/undo_notifier.dart';
+import '../logic/app_clock.dart';
 import 'undo_snackbar.dart';
+import 'package:intl/intl.dart';
 
 class TaskWidget extends ConsumerStatefulWidget {
   final TaskInstance instance;
@@ -232,13 +234,14 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     return '${minutes}m';
   }
 
-  String _getScheduleLabel(TaskScheduleRule schedule) {
-    if (schedule is OneOffSchedule) return 'One-off';
-    if (schedule is DailySchedule) return 'Daily';
-    if (schedule is WeeklySchedule) return 'Weekly';
-    if (schedule is MonthlySchedule) return 'Monthly';
-    if (schedule is YearlySchedule) return 'Yearly';
-    return 'Recurring';
+  String _getScheduleLabel(BuildContext context, TaskScheduleRule schedule) {
+    final l10n = context.l10n;
+    if (schedule is OneOffSchedule) return l10n.oneOffLabel;
+    if (schedule is DailySchedule) return l10n.dailyLabel;
+    if (schedule is WeeklySchedule) return l10n.weeklyLabel;
+    if (schedule is MonthlySchedule) return l10n.monthlyLabel;
+    if (schedule is YearlySchedule) return l10n.yearlyLabel;
+    return l10n.recurringLabel;
   }
 
   IconData _getScheduleIcon(TaskScheduleRule schedule) {
@@ -250,14 +253,15 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     return Icons.settings_backup_restore;
   }
 
-  String _getPriorityLabel(TaskPriority priority) {
+  String _getPriorityLabel(BuildContext context, TaskPriority priority) {
+    final l10n = context.l10n;
     switch (priority) {
       case TaskPriority.high:
-        return 'High';
+        return l10n.priorityHigh;
       case TaskPriority.medium:
-        return 'Medium';
+        return l10n.priorityMedium;
       case TaskPriority.low:
-        return 'Low';
+        return l10n.priorityLow;
     }
   }
 
@@ -280,19 +284,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         return Icons.info_outline;
       case TaskPriority.low:
         return Icons.arrow_downward;
-    }
-  }
-
-  String _getMissedPolicyLabel(MissedPolicy policy) {
-    switch (policy) {
-      case MissedPolicy.rollover:
-        return 'Rollover';
-      case MissedPolicy.skip:
-        return 'Skip';
-      case MissedPolicy.shift:
-        return 'Shift';
-      case MissedPolicy.stack:
-        return 'Stack';
     }
   }
 
@@ -329,6 +320,77 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         ],
       ),
     );
+  }
+
+  Widget _buildDueDateBadge(BuildContext context) {
+    final now = AppClock.now;
+    final dueDateTime = widget.instance.dueRelativeTime.referenceTo(
+      widget.instance.scheduledDate,
+    );
+    final isOverdue = dueDateTime.isBefore(now);
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDay = DateTime(
+      dueDateTime.year,
+      dueDateTime.month,
+      dueDateTime.day,
+    );
+
+    Color color;
+    if (isOverdue) {
+      color = Theme.of(context).colorScheme.error;
+    } else if (dueDay == today) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      color = isDark ? Colors.orange.shade300 : Colors.orange.shade800;
+    } else {
+      color = Theme.of(context).colorScheme.secondary;
+    }
+
+    return _buildBadge(
+      context,
+      icon: Icons.event,
+      label: _formatDueDate(context, dueDateTime, now),
+      color: color,
+    );
+  }
+
+  String _formatDueDate(
+    BuildContext context,
+    DateTime dueDateTime,
+    DateTime now,
+  ) {
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final tomorrow = today.add(const Duration(days: 1));
+
+    final dueDay = DateTime(
+      dueDateTime.year,
+      dueDateTime.month,
+      dueDateTime.day,
+    );
+    final timeStr = TimeOfDay.fromDateTime(dueDateTime).format(context);
+    final isOverdue = dueDateTime.isBefore(now);
+    final l10n = context.l10n;
+
+    if (dueDay == today) {
+      return isOverdue
+          ? l10n.overdueTodayAt(timeStr)
+          : l10n.dueTodayAt(timeStr);
+    } else if (dueDay == yesterday) {
+      return l10n.overdueYesterdayAt(timeStr);
+    } else if (dueDay == tomorrow) {
+      return l10n.dueTomorrowAt(timeStr);
+    } else {
+      final locale = Localizations.localeOf(context).languageCode;
+      final dateFormat = dueDateTime.year != now.year
+          ? DateFormat.yMMMd(locale)
+          : DateFormat.MMMd(locale);
+      final dateStr = dateFormat.format(dueDateTime);
+      if (isOverdue) {
+        return l10n.overdueAt(dateStr, timeStr);
+      } else {
+        return l10n.dueAt(dateStr, timeStr);
+      }
+    }
   }
 
   int _getRuleIndex(TaskInstance instance, TaskSchedule schedule) {
@@ -534,34 +596,37 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                       spacing: 6.0,
                       runSpacing: 6.0,
                       children: [
-                        // Scope (Family vs Personal)
-                        _buildBadge(
-                          context,
-                          icon: widget.instance.isFamily
-                              ? Icons.people_alt
-                              : Icons.person,
-                          label: widget.instance.isFamily
-                              ? 'Family'
-                              : 'Personal',
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                        // Due Date Badge
+                        _buildDueDateBadge(context),
+                        // Scope (Family only)
+                        if (widget.instance.isFamily)
+                          _buildBadge(
+                            context,
+                            icon: Icons.people_alt,
+                            label: context.l10n.familyTab,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         // Priority
                         _buildBadge(
                           context,
                           icon: _getPriorityIcon(widget.instance.priority),
-                          label: _getPriorityLabel(widget.instance.priority),
+                          label: _getPriorityLabel(
+                            context,
+                            widget.instance.priority,
+                          ),
                           color: _getPriorityColor(
                             context,
                             widget.instance.priority,
                           ),
                         ),
-                        // Schedule
-                        _buildBadge(
-                          context,
-                          icon: _getScheduleIcon(schedule),
-                          label: _getScheduleLabel(schedule),
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                        // Schedule (Recurring only)
+                        if (schedule is! OneOffSchedule)
+                          _buildBadge(
+                            context,
+                            icon: _getScheduleIcon(schedule),
+                            label: _getScheduleLabel(context, schedule),
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         // Effort/Duration (if any)
                         if (widget.schedule?.estimatedDuration != null)
                           _buildBadge(
@@ -572,16 +637,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                             ),
                             color: Theme.of(context).colorScheme.primary,
                           ),
-                        // Missed Policy (if recurring)
-                        if (schedule is! OneOffSchedule &&
-                            widget.schedule != null)
-                          _buildBadge(
-                            context,
-                            icon: Icons.refresh,
-                            label:
-                                'Policy: ${_getMissedPolicyLabel(widget.schedule!.missedPolicy)}',
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
                         // Assignee (if family & assigned)
                         if (widget.instance.isFamily &&
                             widget.instance.assignedUserId != null)
@@ -589,10 +644,10 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                             context,
                             icon: Icons.assignment_ind,
                             label: _isLoadingAssignee
-                                ? 'Loading...'
+                                ? context.l10n.loadingBadge
                                 : (_assigneeName != null
-                                      ? 'Assigned: $_assigneeName'
-                                      : 'Assigned'),
+                                      ? context.l10n.assignedTo(_assigneeName!)
+                                      : context.l10n.assignedBadge),
                             color: Theme.of(context).colorScheme.primary,
                           ),
                       ],
@@ -608,7 +663,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                       IconButton(
                         key: const Key('edit_pencil_button'),
                         icon: const Icon(Icons.edit, size: 20),
-                        tooltip: 'Edit TaskSchedule',
+                        tooltip: context.l10n.editScheduleTooltip,
                         onPressed: () {
                           Navigator.push(
                             context,
