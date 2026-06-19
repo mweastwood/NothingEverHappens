@@ -704,6 +704,120 @@ void main() {
     AppClock.reset();
   });
 
+  testGoldens('TaskListScreen - Search Active with Results', (tester) async {
+    AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    final task = TaskSchedule(
+      id: '1',
+      title: 'Water the Houseplants',
+      description: 'Give them water',
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 19),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
+    );
+
+    final instance = TaskInstance(
+      id: '1_2026-06-19',
+      scheduleId: '1',
+      title: 'Water the Houseplants',
+      description: 'Give them water',
+      scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      status: 'pending',
+    );
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([task]));
+    when(
+      mockTaskRepository.getInstances(),
+    ).thenAnswer((_) => Stream.value([instance]));
+
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: const HomeScreen(),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Tap search icon to open search
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+
+    // Enter query
+    await tester.enterText(find.byType(TextField), 'water');
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'task_list_screen_search_results');
+
+    AppClock.reset();
+  });
+
+  testGoldens('TaskListScreen - Search Active No Results Fallback', (
+    tester,
+  ) async {
+    AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([]));
+    when(mockTaskRepository.getInstances()).thenAnswer((_) => Stream.value([]));
+
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: const HomeScreen(),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Tap search icon to open search
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+
+    // Enter query that has no match
+    await tester.enterText(find.byType(TextField), 'nonexistent');
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'task_list_screen_search_no_results');
+
+    AppClock.reset();
+  });
+
   testWidgets('TaskListScreen search filters by title and description', (
     WidgetTester tester,
   ) async {
