@@ -17,6 +17,7 @@ import 'package:nothing_ever_happens/screens/settings_screen.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
 import 'package:nothing_ever_happens/screens/family_screen.dart';
+import 'package:nothing_ever_happens/screens/help_screen.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -203,5 +204,38 @@ void main() {
 
     // Match golden
     await screenMatchesGolden(tester, 'home_screen_drawer_open');
+  });
+
+  testWidgets(
+    'HomeScreen tasks tab shows help button and navigates to HelpScreen',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      // Verify help icon button is present
+      expect(find.byIcon(Icons.help_outline), findsOneWidget);
+
+      // Tap help button
+      await tester.tap(find.byIcon(Icons.help_outline));
+      await tester.pumpAndSettle();
+
+      // Verify HelpScreen is pushed
+      expect(find.byType(HelpScreen), findsOneWidget);
+    },
+  );
+
+  testGoldens('HomeScreen tasks tab with help button golden', (tester) async {
+    await tester.pumpWidgetBuilder(
+      createScreen(),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Verify help button is shown
+    expect(find.byIcon(Icons.help_outline), findsOneWidget);
+
+    await screenMatchesGolden(tester, 'home_screen_tasks_tab_with_help');
   });
 }

@@ -5,7 +5,8 @@ import '../widgets/scheduling_playground_tab.dart';
 import '../widgets/missed_policies_playground_tab.dart';
 
 class HelpScreen extends StatefulWidget {
-  const HelpScreen({super.key});
+  final int initialIndex;
+  const HelpScreen({super.key, this.initialIndex = 0});
 
   @override
   State<HelpScreen> createState() => _HelpScreenState();
@@ -22,7 +23,11 @@ class _HelpScreenState extends State<HelpScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialIndex,
+    );
     _tabController.addListener(_handleTabChange);
   }
 

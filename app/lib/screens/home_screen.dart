@@ -104,7 +104,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   _searchFocusNode.requestFocus();
                 },
               )
-            else if (_currentIndex == 0)
+            else if (_currentIndex == 0) ...[
+              IconButton(
+                icon: const Icon(Icons.help_outline),
+                tooltip: context.l10n.helpTooltip,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HelpScreen(initialIndex: 0),
+                    ),
+                  );
+                },
+              ),
               IconButton(
                 icon: const Icon(Icons.search),
                 onPressed: () {
@@ -114,6 +126,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   _searchFocusNode.requestFocus();
                 },
               ),
+            ],
           ],
         ),
         drawer: _buildDrawer(context),
