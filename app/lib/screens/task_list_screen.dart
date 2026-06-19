@@ -70,6 +70,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                       ? null
                       : matchingSchedules.first;
                   return Padding(
+                    key: ValueKey(inst.id),
                     padding: const EdgeInsets.only(bottom: 8.0),
                     child: TaskWidget(
                       key: ValueKey(inst.id),

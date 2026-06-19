@@ -616,4 +616,90 @@ void main() {
     // Reset back to dev environment for other tests
     AppConfig.environment = AppEnvironment.dev;
   });
+
+  testGoldens('TaskListScreen - Shows Undo SnackBar', (tester) async {
+    AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    final task = TaskSchedule(
+      id: '1',
+      title: 'Water the Houseplants',
+      description: 'Give them water',
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 19),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
+    );
+
+    final instance = TaskInstance(
+      id: '1_2026-06-19',
+      scheduleId: '1',
+      title: 'Water the Houseplants',
+      description: 'Give them water',
+      scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      status: 'pending',
+    );
+
+    final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([task]);
+    final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+      instance,
+    ]);
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubject.stream);
+    when(
+      mockTaskRepository.getInstances(),
+    ).thenAnswer((_) => instancesSubject.stream);
+    when(mockTaskRepository.completeTaskInstance(any)).thenAnswer((_) async {
+      // Optimistically remove the instance to mimic Firestore latency compensation
+      instancesSubject.add([]);
+      return instance.copyWith(status: 'completed');
+    });
+
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: const HomeScreen(),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Complete the task using the robot helper
+    final robot = TaskWidgetRobot(tester);
+    await robot.tapCheckbox();
+    await robot.waitForCompletion();
+    await tester.pumpAndSettle();
+
+    // Verify the SnackBar is visible
+    expect(find.text('Undo'), findsOneWidget);
+
+    await screenMatchesGolden(tester, 'task_list_screen_with_snackbar');
+
+    AppClock.reset();
+  });
 }

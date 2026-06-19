@@ -89,6 +89,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
       if (status == AnimationStatus.completed) {
         if (!mounted) return;
         final repo = ref.read(taskRepositoryProvider)!;
+        final notifier = ref.read(undoNotifierProvider.notifier);
         final instance = widget.instance;
         // Capture context-sensitive values before any async gap.
         final messenger = ScaffoldMessenger.of(context);
@@ -98,10 +99,9 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         final undoneLabel = context.l10n.actionUndone;
         if (_isDeleting) {
           final resolved = await repo.dismissTaskInstance(instance.id);
-          if (!mounted) return;
           UndoSnackBar.showWithMessenger(
             messenger: messenger,
-            ref: ref,
+            notifier: notifier,
             action: UndoResolveTaskInstanceAction(
               message: dismissMsg,
               instance: resolved ?? instance,
@@ -112,10 +112,9 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
           );
         } else {
           final resolved = await repo.completeTaskInstance(instance.id);
-          if (!mounted) return;
           UndoSnackBar.showWithMessenger(
             messenger: messenger,
-            ref: ref,
+            notifier: notifier,
             action: UndoResolveTaskInstanceAction(
               message: completeMsg,
               instance: resolved ?? instance,
@@ -401,6 +400,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
           },
           onDismissed: (direction) async {
             final repo = ref.read(taskRepositoryProvider)!;
+            final notifier = ref.read(undoNotifierProvider.notifier);
             final instance = widget.instance;
             // Capture context-sensitive values before any async gap.
             final messenger = ScaffoldMessenger.of(context);
@@ -410,10 +410,9 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
             final undoneLabel = context.l10n.actionUndone;
             if (direction == DismissDirection.startToEnd) {
               final resolved = await repo.completeTaskInstance(instance.id);
-              if (!mounted) return;
               UndoSnackBar.showWithMessenger(
                 messenger: messenger,
-                ref: ref,
+                notifier: notifier,
                 action: UndoResolveTaskInstanceAction(
                   message: completeMsg,
                   instance: resolved ?? instance,
@@ -424,10 +423,9 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               );
             } else if (direction == DismissDirection.endToStart) {
               final resolved = await repo.dismissTaskInstance(instance.id);
-              if (!mounted) return;
               UndoSnackBar.showWithMessenger(
                 messenger: messenger,
-                ref: ref,
+                notifier: notifier,
                 action: UndoResolveTaskInstanceAction(
                   message: dismissMsg,
                   instance: resolved ?? instance,
