@@ -1954,5 +1954,271 @@ void main() {
         },
       );
     });
+
+    group('Completion-Relative Scheduling Policy Tests', () {
+      test('Initial Spawning spawns on scheduledDate', () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(
+          firestore: firestore,
+          userId: 'user-1',
+        );
+        final monday = const CivilDay(year: 2026, month: 5, day: 25);
+
+        final task = TaskSchedule(
+          id: 'comp-relative-spawn',
+          title: 'Comp Relative Spawn',
+          description: 'Testing initial spawn',
+          schedules: [
+            DailySchedule(
+              startDate: monday,
+              interval: 1,
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 3),
+                targetTime: TimeOfDay(hour: 10, minute: 0),
+              ),
+              missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(),
+            ),
+          ],
+        );
+
+        AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
+        await repository.addTaskSchedule(task);
+        await Future.delayed(Duration.zero);
+
+        final instId = 'comp-relative-spawn_2026-05-25';
+        final instSnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc(instId)
+            .get();
+        expect(instSnap.exists, isTrue);
+        expect(instSnap.data()!['status'], 'pending');
+
+        AppClock.reset();
+      });
+
+      test(
+        'Completion spawns next instance exactly interval after completion time',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          final repository = TaskRepository(
+            firestore: firestore,
+            userId: 'user-1',
+          );
+          final monday = const CivilDay(year: 2026, month: 5, day: 25);
+
+          final task = TaskSchedule(
+            id: 'comp-relative-complete',
+            title: 'Comp Relative Complete',
+            description: 'Testing completion spawn',
+            schedules: [
+              DailySchedule(
+                startDate: monday,
+                interval: 1,
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 9, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+                schedulingPolicy: const CompletionRelativePolicy(
+                  interval: Duration(days: 3),
+                  targetTime: TimeOfDay(hour: 10, minute: 0),
+                ),
+              ),
+            ],
+          );
+
+          // Monday May 25, 9:00 AM - initial spawned
+          AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
+          await repository.addTaskSchedule(task);
+          await Future.delayed(Duration.zero);
+
+          // User completes it on Wednesday May 27 at 2:00 PM
+          final completionTime = DateTime(2026, 5, 27, 14, 0);
+          AppClock.setMockTime(completionTime);
+
+          final instId = 'comp-relative-complete_2026-05-25';
+          await repository.completeTaskInstance(instId);
+          await Future.delayed(Duration.zero);
+
+          // Next scheduledDate is completionTime + 3 days = Saturday May 30
+          final nextDate = const CivilDay(year: 2026, month: 5, day: 30);
+          final nextInstId = 'comp-relative-complete_2026-05-30';
+
+          final nextSnap = await firestore
+              .collection('users')
+              .doc('user-1')
+              .collection('instances')
+              .doc(nextInstId)
+              .get();
+          expect(nextSnap.exists, isTrue);
+          expect(nextSnap.data()!['status'], 'pending');
+          expect(nextSnap.data()!['scheduledDate']['year'], 2026);
+          expect(nextSnap.data()!['scheduledDate']['month'], 5);
+          expect(nextSnap.data()!['scheduledDate']['day'], 30);
+
+          // Verify startRelativeTime is targetTime (10:00 AM)
+          expect(nextSnap.data()!['startRelativeTime']['hour'], 10);
+          expect(nextSnap.data()!['startRelativeTime']['minute'], 0);
+
+          // Verify dueRelativeTime maintains original duration of 8 hours (10:00 AM -> 6:00 PM)
+          expect(nextSnap.data()!['dueRelativeTime']['hour'], 18);
+          expect(nextSnap.data()!['dueRelativeTime']['minute'], 0);
+
+          AppClock.reset();
+        },
+      );
+
+      test('Completion-Relative tasks ignore Auto-Dismiss policy', () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(
+          firestore: firestore,
+          userId: 'user-1',
+        );
+        final monday = const CivilDay(year: 2026, month: 5, day: 25);
+
+        final task = TaskSchedule(
+          id: 'comp-relative-ignore-dismiss',
+          title: 'Comp Relative Ignore Dismiss',
+          description: 'Testing ignore dismiss',
+          schedules: [
+            DailySchedule(
+              startDate: monday,
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 3),
+                targetTime: TimeOfDay(hour: 10, minute: 0),
+              ),
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration(hours: 1),
+              ),
+            ),
+          ],
+        );
+
+        AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
+        await repository.addTaskSchedule(task);
+        await Future.delayed(Duration.zero);
+
+        final instId = 'comp-relative-ignore-dismiss_2026-05-25';
+
+        // Fast forward past due time (5:00 PM) and grace period (1 hour) to 7:00 PM
+        AppClock.setMockTime(DateTime(2026, 5, 25, 19, 0));
+        await repository.getTasks().first; // trigger evaluation
+        await Future.delayed(Duration.zero);
+
+        // Verify task instance is STILL pending (not skipped/dismissed)
+        final instSnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc(instId)
+            .get();
+        expect(instSnap.data()!['status'], 'pending');
+
+        AppClock.reset();
+      });
+
+      test(
+        'Spawning triggers on interval expiration if pending instance is deleted',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          final repository = TaskRepository(
+            firestore: firestore,
+            userId: 'user-1',
+          );
+          final monday = const CivilDay(year: 2026, month: 5, day: 25);
+
+          final task = TaskSchedule(
+            id: 'comp-relative-bg-spawn',
+            title: 'Comp Relative BG Spawn',
+            description: 'Testing bg spawn',
+            schedules: [
+              DailySchedule(
+                startDate: monday,
+                interval: 1,
+                schedulingPolicy: const CompletionRelativePolicy(
+                  interval: Duration(days: 3),
+                  targetTime: TimeOfDay(hour: 10, minute: 0),
+                ),
+              ),
+            ],
+          );
+
+          AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
+          await repository.addTaskSchedule(task);
+          await Future.delayed(Duration.zero);
+
+          // Complete the first instance
+          final completionTime = DateTime(2026, 5, 25, 11, 0);
+          AppClock.setMockTime(completionTime);
+          await repository.completeTaskInstance(
+            'comp-relative-bg-spawn_2026-05-25',
+          );
+          await Future.delayed(Duration.zero);
+
+          // A new pending instance for May 28 should have been spawned immediately
+          final nextInstId = 'comp-relative-bg-spawn_2026-05-28';
+          final nextSnap = await firestore
+              .collection('users')
+              .doc('user-1')
+              .collection('instances')
+              .doc(nextInstId)
+              .get();
+          expect(nextSnap.exists, isTrue);
+
+          // Delete that pending instance to simulate it missing
+          await firestore
+              .collection('users')
+              .doc('user-1')
+              .collection('instances')
+              .doc(nextInstId)
+              .delete();
+
+          // 1. Time is before completionTime + 3 days (e.g. May 27)
+          AppClock.setMockTime(DateTime(2026, 5, 27, 12, 0));
+          await repository.getTasks().first; // trigger evaluation
+          await Future.delayed(Duration.zero);
+
+          // Verify still no pending instance exists
+          final checkSnapBefore = await firestore
+              .collection('users')
+              .doc('user-1')
+              .collection('instances')
+              .doc(nextInstId)
+              .get();
+          expect(checkSnapBefore.exists, isFalse);
+
+          // 2. Time is on or after completionTime + 3 days (e.g. May 28, 12:00 PM)
+          AppClock.setMockTime(DateTime(2026, 5, 28, 12, 0));
+          await repository.getTasks().first; // trigger evaluation
+          await Future.delayed(Duration.zero);
+
+          // Verify that the background scheduler has spawned the next instance
+          final checkSnapAfter = await firestore
+              .collection('users')
+              .doc('user-1')
+              .collection('instances')
+              .doc(nextInstId)
+              .get();
+          expect(checkSnapAfter.exists, isTrue);
+          expect(checkSnapAfter.data()!['status'], 'pending');
+
+          AppClock.reset();
+        },
+      );
+    });
   });
 }

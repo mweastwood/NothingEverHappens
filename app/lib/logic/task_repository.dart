@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import 'app_clock.dart';
 import 'civil_day.dart';
+import 'relative_time.dart';
 import 'task_schedule.dart';
 import 'task_instance.dart';
 import 'notification_service.dart';
@@ -358,6 +360,7 @@ class TaskRepository {
           );
           hasChanges = true;
         }
+        }
       }
 
       if (hasChanges) {
@@ -586,40 +589,7 @@ class TaskRepository {
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
-      final today = CivilDay.fromDateTime(now);
-      final CivilDay refDate;
-      if (task.missedPolicy == MissedPolicy.stack ||
-          task.missedPolicy == MissedPolicy.rollover ||
-          today.isBefore(instance.scheduledDate)) {
-        refDate = instance.scheduledDate.addDays(1);
-      } else {
-        refDate = today.addDays(1);
-      }
-
-      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(task, refDate);
-      if (nextOcc != null) {
-        final date = nextOcc.$1;
-        final s = nextOcc.$2;
-        final idx = nextOcc.$3;
-        final nextInstId = instanceIdFor(task, date, idx);
-
-        final newInst = TaskInstance(
-          id: nextInstId,
-          scheduleId: task.id,
-          title: task.title,
-          description: task.description,
-          scheduledDate: date,
-          startRelativeTime: s.startRelativeTime,
-          dueRelativeTime: s.dueRelativeTime,
-          notificationRelativeTime: s.notificationRelativeTime,
-          isFamily: task.isFamily,
-          priority: task.priority,
-          cycleId: task.cycleId,
-          assignedUserId: task.assignedUserId,
-          status: 'pending',
-        );
-        batch.set(_instanceRefFor(newInst, familyId), newInst);
-      }
+      _spawnNextOccurrence(task, instance, now, batch, familyId);
     }
 
     await batch.commit();
@@ -647,40 +617,7 @@ class TaskRepository {
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
-      final today = CivilDay.fromDateTime(now);
-      final CivilDay refDate;
-      if (task.missedPolicy == MissedPolicy.stack ||
-          task.missedPolicy == MissedPolicy.rollover ||
-          today.isBefore(instance.scheduledDate)) {
-        refDate = instance.scheduledDate.addDays(1);
-      } else {
-        refDate = today.addDays(1);
-      }
-
-      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(task, refDate);
-      if (nextOcc != null) {
-        final date = nextOcc.$1;
-        final s = nextOcc.$2;
-        final idx = nextOcc.$3;
-        final nextInstId = instanceIdFor(task, date, idx);
-
-        final newInst = TaskInstance(
-          id: nextInstId,
-          scheduleId: task.id,
-          title: task.title,
-          description: task.description,
-          scheduledDate: date,
-          startRelativeTime: s.startRelativeTime,
-          dueRelativeTime: s.dueRelativeTime,
-          notificationRelativeTime: s.notificationRelativeTime,
-          isFamily: task.isFamily,
-          priority: task.priority,
-          cycleId: task.cycleId,
-          assignedUserId: task.assignedUserId,
-          status: 'pending',
-        );
-        batch.set(_instanceRefFor(newInst, familyId), newInst);
-      }
+      _spawnNextOccurrence(task, instance, now, batch, familyId);
     }
 
     await batch.commit();
@@ -704,28 +641,210 @@ class TaskRepository {
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
       final now = resolvedInstance.completedAt ?? AppClock.now;
-      final today = CivilDay.fromDateTime(now);
-      final CivilDay refDate;
-      if (task.missedPolicy == MissedPolicy.stack ||
-          task.missedPolicy == MissedPolicy.rollover ||
-          today.isBefore(resolvedInstance.scheduledDate)) {
-        refDate = resolvedInstance.scheduledDate.addDays(1);
-      } else {
-        refDate = today.addDays(1);
-      }
-
-      final nextOcc = nextOccurrenceRuleOfScheduleOnOrAfter(task, refDate);
-      if (nextOcc != null) {
-        final date = nextOcc.$1;
-        final idx = nextOcc.$3;
-        final nextInstId = instanceIdFor(task, date, idx);
-
+      final nextId = _nextOccurrenceId(task, resolvedInstance, now);
+      if (nextId != null) {
         batch.delete(
-          _instanceRefForId(nextInstId, resolvedInstance.isFamily, familyId),
+          _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
         );
       }
     }
 
     await batch.commit();
+  }
+
+  int _ruleIndexOfInstance(TaskSchedule task, TaskInstance instance) {
+    if (task.schedules.length <= 1) return 0;
+    final parts = instance.id.split('_');
+    if (parts.isNotEmpty) {
+      final idxStr = parts.last;
+      final idx = int.tryParse(idxStr);
+      if (idx != null && idx >= 0 && idx < task.schedules.length) {
+        return idx;
+      }
+    }
+    return 0;
+  }
+
+  RelativeTime _getCompletionRelativeDue(
+    TaskScheduleRule rule,
+    CompletionRelativePolicy policy,
+    CivilDay newScheduledDate,
+  ) {
+    final originalStartRef = rule.startRelativeTime.referenceTo(
+      rule.scheduledDate,
+    );
+    final originalDueRef = rule.dueRelativeTime.referenceTo(rule.scheduledDate);
+    final duration = originalDueRef.difference(originalStartRef);
+
+    final newStartRef = DateTime(
+      newScheduledDate.year,
+      newScheduledDate.month,
+      newScheduledDate.day,
+      policy.targetTime.hour,
+      policy.targetTime.minute,
+    );
+    final newDueRef = newStartRef.add(duration);
+    final dueDay = CivilDay.fromDateTime(newDueRef);
+    return RelativeTime(
+      dayOffset: dueDay
+          .toDateTime()
+          .difference(newScheduledDate.toDateTime())
+          .inDays,
+      time: TimeOfDay.fromDateTime(newDueRef),
+    );
+  }
+
+  RelativeTime? _getCompletionRelativeNotification(
+    TaskScheduleRule rule,
+    CompletionRelativePolicy policy,
+    CivilDay newScheduledDate,
+  ) {
+    if (rule.notificationRelativeTime == null) return null;
+    final originalStartRef = rule.startRelativeTime.referenceTo(
+      rule.scheduledDate,
+    );
+    final originalNotifRef = rule.notificationRelativeTime!.referenceTo(
+      rule.scheduledDate,
+    );
+    final duration = originalNotifRef.difference(originalStartRef);
+
+    final newStartRef = DateTime(
+      newScheduledDate.year,
+      newScheduledDate.month,
+      newScheduledDate.day,
+      policy.targetTime.hour,
+      policy.targetTime.minute,
+    );
+    final newNotifRef = newStartRef.add(duration);
+    final notifDay = CivilDay.fromDateTime(newNotifRef);
+    return RelativeTime(
+      dayOffset: notifDay
+          .toDateTime()
+          .difference(newScheduledDate.toDateTime())
+          .inDays,
+      time: TimeOfDay.fromDateTime(newNotifRef),
+    );
+  }
+
+  void _spawnNextOccurrence(
+    TaskSchedule task,
+    TaskInstance completedInstance,
+    DateTime now,
+    WriteBatch batch,
+    String? familyId,
+  ) {
+    final ruleIndex = _ruleIndexOfInstance(task, completedInstance);
+    final rule = task.schedules[ruleIndex];
+    if (rule.schedulingPolicy is CompletionRelativePolicy) {
+      final policy = rule.schedulingPolicy as CompletionRelativePolicy;
+      final nextDate = CivilDay.fromDateTime(now.add(policy.interval));
+      final nextInstId = instanceIdFor(task, nextDate, ruleIndex);
+
+      final startRelative = RelativeTime(dayOffset: 0, time: policy.targetTime);
+      final dueRelative = _getCompletionRelativeDue(rule, policy, nextDate);
+      final notifRelative = _getCompletionRelativeNotification(
+        rule,
+        policy,
+        nextDate,
+      );
+
+      final newInst = TaskInstance(
+        id: nextInstId,
+        scheduleId: task.id,
+        title: task.title,
+        description: task.description,
+        scheduledDate: nextDate,
+        startRelativeTime: startRelative,
+        dueRelativeTime: dueRelative,
+        notificationRelativeTime: notifRelative,
+        isFamily: task.isFamily,
+        priority: task.priority,
+        cycleId: task.cycleId,
+        assignedUserId: task.assignedUserId,
+        status: 'pending',
+      );
+      batch.set(_instanceRefFor(newInst, familyId), newInst);
+    } else {
+      final today = CivilDay.fromDateTime(now);
+      final CivilDay refDate;
+      final ruleMissedPolicy = rule.missedOccurrencePolicy.legacyPolicy;
+      if (ruleMissedPolicy == MissedPolicy.stack ||
+          ruleMissedPolicy == MissedPolicy.rollover ||
+          today.isBefore(completedInstance.scheduledDate)) {
+        refDate = completedInstance.scheduledDate.addDays(1);
+      } else {
+        refDate = today.addDays(1);
+      }
+
+      CivilDay? nextDate;
+      if (rule.occursOn(refDate)) {
+        nextDate = refDate;
+      } else {
+        final candidate = rule.nextOccurrenceAfter(refDate);
+        if (candidate != null && !candidate.isBefore(refDate)) {
+          nextDate = candidate;
+        }
+      }
+
+      if (nextDate != null) {
+        final nextInstId = instanceIdFor(task, nextDate, ruleIndex);
+        final newInst = TaskInstance(
+          id: nextInstId,
+          scheduleId: task.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: nextDate,
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          notificationRelativeTime: rule.notificationRelativeTime,
+          isFamily: task.isFamily,
+          priority: task.priority,
+          cycleId: task.cycleId,
+          assignedUserId: task.assignedUserId,
+          status: 'pending',
+        );
+        batch.set(_instanceRefFor(newInst, familyId), newInst);
+      }
+    }
+  }
+
+  String? _nextOccurrenceId(
+    TaskSchedule task,
+    TaskInstance completedInstance,
+    DateTime now,
+  ) {
+    final ruleIndex = _ruleIndexOfInstance(task, completedInstance);
+    final rule = task.schedules[ruleIndex];
+    if (rule.schedulingPolicy is CompletionRelativePolicy) {
+      final policy = rule.schedulingPolicy as CompletionRelativePolicy;
+      final nextDate = CivilDay.fromDateTime(now.add(policy.interval));
+      return instanceIdFor(task, nextDate, ruleIndex);
+    } else {
+      final today = CivilDay.fromDateTime(now);
+      final CivilDay refDate;
+      final ruleMissedPolicy = rule.missedOccurrencePolicy.legacyPolicy;
+      if (ruleMissedPolicy == MissedPolicy.stack ||
+          ruleMissedPolicy == MissedPolicy.rollover ||
+          today.isBefore(completedInstance.scheduledDate)) {
+        refDate = completedInstance.scheduledDate.addDays(1);
+      } else {
+        refDate = today.addDays(1);
+      }
+
+      CivilDay? nextDate;
+      if (rule.occursOn(refDate)) {
+        nextDate = refDate;
+      } else {
+        final candidate = rule.nextOccurrenceAfter(refDate);
+        if (candidate != null && !candidate.isBefore(refDate)) {
+          nextDate = candidate;
+        }
+      }
+
+      if (nextDate != null) {
+        return instanceIdFor(task, nextDate, ruleIndex);
+      }
+    }
+    return null;
   }
 }
