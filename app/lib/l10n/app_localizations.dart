@@ -1477,6 +1477,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recurring'**
   String get recurringLabel;
+
+  /// No description provided for @searchTasksPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search tasks...'**
+  String get searchTasksPlaceholder;
+
+  /// No description provided for @noTasksMatching.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching tasks found for \"{query}\"'**
+  String noTasksMatching(String query);
+
+  /// No description provided for @clearSearchButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Search'**
+  String get clearSearchButton;
 }
 
 class _AppLocalizationsDelegate

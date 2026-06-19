@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/auth_repository.dart';
 import '../widgets/dev_clock_widget.dart';
@@ -20,6 +21,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   Future<void> _addNewTask() async {
     await Navigator.push(
@@ -29,52 +33,164 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(title: Text(context.l10n.appName)),
-          drawer: _buildDrawer(context),
-          body: _currentIndex == 0
-              ? const TaskListScreen()
-              : _currentIndex == 1
-              ? const TaskScheduleScreen()
-              : const FamilyScreen(),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _currentIndex,
-            onDestinationSelected: (int index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.list_outlined),
-                selectedIcon: const Icon(Icons.list),
-                label: context.l10n.tasksTab,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.calendar_month_outlined),
-                selectedIcon: const Icon(Icons.calendar_month),
-                label: context.l10n.scheduleTab,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.people_outline),
-                selectedIcon: const Icon(Icons.people),
-                label: context.l10n.familyTab,
-              ),
-            ],
-          ),
-          floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
-              ? FloatingActionButton(
-                  onPressed: _addNewTask,
-                  tooltip: context.l10n.addTaskTooltip,
-                  child: const Icon(Icons.add),
+    ref.listen<String>(taskSearchQueryProvider, (previous, next) {
+      if (_searchController.text != next) {
+        _searchController.text = next;
+      }
+    });
+
+    final mainContent = PopScope(
+      canPop: !_isSearching,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_isSearching) {
+          setState(() {
+            _isSearching = false;
+            _searchController.clear();
+            ref.read(taskSearchQueryProvider.notifier).state = '';
+          });
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: _isSearching
+              ? TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: context.l10n.searchTasksPlaceholder,
+                    hintStyle: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (value) {
+                    ref.read(taskSearchQueryProvider.notifier).state = value;
+                  },
+                )
+              : Text(context.l10n.appName),
+          leading: _isSearching
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    setState(() {
+                      _isSearching = false;
+                      _searchController.clear();
+                      ref.read(taskSearchQueryProvider.notifier).state = '';
+                    });
+                  },
                 )
               : null,
+          actions: [
+            if (_isSearching)
+              IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  _searchController.clear();
+                  ref.read(taskSearchQueryProvider.notifier).state = '';
+                  _searchFocusNode.requestFocus();
+                },
+              )
+            else if (_currentIndex == 0)
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () {
+                  setState(() {
+                    _isSearching = true;
+                  });
+                  _searchFocusNode.requestFocus();
+                },
+              ),
+          ],
         ),
-        const DevClockWidget(bottomOffset: 80.0),
-      ],
+        drawer: _buildDrawer(context),
+        body: _currentIndex == 0
+            ? const TaskListScreen()
+            : _currentIndex == 1
+            ? const TaskScheduleScreen()
+            : const FamilyScreen(),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (int index) {
+            setState(() {
+              _currentIndex = index;
+              if (index != 0 && _isSearching) {
+                _isSearching = false;
+                _searchController.clear();
+                ref.read(taskSearchQueryProvider.notifier).state = '';
+              }
+            });
+          },
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(Icons.list_outlined),
+              selectedIcon: const Icon(Icons.list),
+              label: context.l10n.tasksTab,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.calendar_month_outlined),
+              selectedIcon: const Icon(Icons.calendar_month),
+              label: context.l10n.scheduleTab,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.people_outline),
+              selectedIcon: const Icon(Icons.people),
+              label: context.l10n.familyTab,
+            ),
+          ],
+        ),
+        floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
+            ? FloatingActionButton(
+                onPressed: _addNewTask,
+                tooltip: context.l10n.addTaskTooltip,
+                child: const Icon(Icons.add),
+              )
+            : null,
+      ),
+    );
+
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.slash): () {
+          final primaryFocus = FocusManager.instance.primaryFocus;
+          final isEditableFocused =
+              primaryFocus?.context?.widget is EditableText;
+          if (_currentIndex == 0 && !_isSearching && !isEditableFocused) {
+            setState(() {
+              _isSearching = true;
+            });
+            _searchFocusNode.requestFocus();
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_isSearching) {
+            setState(() {
+              _isSearching = false;
+              _searchController.clear();
+              ref.read(taskSearchQueryProvider.notifier).state = '';
+            });
+          }
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Stack(
+          children: [mainContent, const DevClockWidget(bottomOffset: 80.0)],
+        ),
+      ),
     );
   }
 

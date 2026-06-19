@@ -801,4 +801,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get recurringLabel => 'Recurrente';
+
+  @override
+  String get searchTasksPlaceholder => 'Buscar tareas...';
+
+  @override
+  String noTasksMatching(String query) {
+    return 'No se encontraron tareas coincidentes para \"$query\"';
+  }
+
+  @override
+  String get clearSearchButton => 'Limpiar búsqueda';
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/mockito.dart';
@@ -701,5 +702,399 @@ void main() {
     await screenMatchesGolden(tester, 'task_list_screen_with_snackbar');
 
     AppClock.reset();
+  });
+
+  testGoldens('TaskListScreen - Search Active with Results', (tester) async {
+    AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    final task = TaskSchedule(
+      id: '1',
+      title: 'Water the Houseplants',
+      description: 'Give them water',
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 19),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
+    );
+
+    final instance = TaskInstance(
+      id: '1_2026-06-19',
+      scheduleId: '1',
+      title: 'Water the Houseplants',
+      description: 'Give them water',
+      scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      status: 'pending',
+    );
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([task]));
+    when(
+      mockTaskRepository.getInstances(),
+    ).thenAnswer((_) => Stream.value([instance]));
+
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: const HomeScreen(),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Tap search icon to open search
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+
+    // Enter query
+    await tester.enterText(find.byType(TextField), 'water');
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'task_list_screen_search_results');
+
+    AppClock.reset();
+  });
+
+  testGoldens('TaskListScreen - Search Active No Results Fallback', (
+    tester,
+  ) async {
+    AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([]));
+    when(mockTaskRepository.getInstances()).thenAnswer((_) => Stream.value([]));
+
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: const HomeScreen(),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Tap search icon to open search
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+
+    // Enter query that has no match
+    await tester.enterText(find.byType(TextField), 'nonexistent');
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'task_list_screen_search_no_results');
+
+    AppClock.reset();
+  });
+
+  testWidgets('TaskListScreen search filters by title and description', (
+    WidgetTester tester,
+  ) async {
+    // Set mock time
+    AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    final task1 = TaskSchedule(
+      id: '1',
+      title: 'Water the Houseplants',
+      description: 'Use warm water',
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 19),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
+    );
+
+    final task2 = TaskSchedule(
+      id: '2',
+      title: 'Buy Groceries',
+      description: 'Get some fresh bread',
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 6, day: 19),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
+    );
+
+    final inst1 = TaskInstance(
+      id: '1_2026-06-19',
+      scheduleId: '1',
+      title: 'Water the Houseplants',
+      description: 'Use warm water',
+      scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      status: 'pending',
+    );
+
+    final inst2 = TaskInstance(
+      id: '2_2026-06-19',
+      scheduleId: '2',
+      title: 'Buy Groceries',
+      description: 'Get some fresh bread',
+      scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      status: 'pending',
+    );
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(
+      mockTaskRepository.getTasks(),
+    ).thenAnswer((_) => Stream.value([task1, task2]));
+    when(
+      mockTaskRepository.getInstances(),
+    ).thenAnswer((_) => Stream.value([inst1, inst2]));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: buildTestableWidget(child: const HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Verify both tasks are visible initially
+    expect(find.text('Water the Houseplants'), findsOneWidget);
+    expect(find.text('Buy Groceries'), findsOneWidget);
+
+    // Tap search button to expand search bar
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+
+    // Type query to filter (by title)
+    await tester.enterText(find.byType(TextField), 'houseplants');
+    await tester.pumpAndSettle();
+
+    // Verify task1 matches and is visible, task2 is filtered out
+    expect(find.text('Water the Houseplants'), findsOneWidget);
+    expect(find.text('Buy Groceries'), findsNothing);
+
+    // Type query to filter (by description)
+    await tester.enterText(find.byType(TextField), 'bread');
+    await tester.pumpAndSettle();
+
+    // Verify task2 matches and is visible, task1 is filtered out
+    expect(find.text('Buy Groceries'), findsOneWidget);
+    expect(find.text('Water the Houseplants'), findsNothing);
+
+    // Type query with multiple words that should match (non-adjacent/individual words)
+    await tester.enterText(find.byType(TextField), 'water houseplant');
+    await tester.pumpAndSettle();
+
+    // Verify task1 matches (contains both 'water' and 'houseplant')
+    expect(find.text('Water the Houseplants'), findsOneWidget);
+    expect(find.text('Buy Groceries'), findsNothing);
+
+    // Type query with multiple words that do not exist together in one task
+    await tester.enterText(find.byType(TextField), 'water bread');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Water the Houseplants'), findsNothing);
+    expect(find.text('Buy Groceries'), findsNothing);
+
+    // Type query that matches nothing
+    await tester.enterText(find.byType(TextField), 'xyz123');
+    await tester.pumpAndSettle();
+
+    // Verify both are gone, and fallback/empty state is shown
+    expect(find.text('Water the Houseplants'), findsNothing);
+    expect(find.text('Buy Groceries'), findsNothing);
+    expect(
+      find.textContaining('No matching tasks found for "xyz123"'),
+      findsOneWidget,
+    );
+
+    // Tap Clear Search button
+    await tester.tap(find.text('Clear Search'));
+    await tester.pumpAndSettle();
+
+    // Verify search field is cleared and both tasks are back
+    expect(find.text('Water the Houseplants'), findsOneWidget);
+    expect(find.text('Buy Groceries'), findsOneWidget);
+
+    AppClock.reset();
+  });
+
+  testWidgets('pressing slash key focuses the search input', (
+    WidgetTester tester,
+  ) async {
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([]));
+    when(mockTaskRepository.getInstances()).thenAnswer((_) => Stream.value([]));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: buildTestableWidget(child: const HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Search bar should not be visible initially
+    expect(find.byType(TextField), findsNothing);
+
+    // Focus the main Focus widget to enable shortcut listening
+    final node = Focus.of(tester.element(find.byType(Scaffold).first));
+    node.requestFocus();
+    await tester.pump();
+
+    // Press slash key with character '/'
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.slash, character: '/');
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.slash);
+    await tester.pumpAndSettle();
+
+    // Search bar should expand and focus
+    expect(find.byType(TextField), findsOneWidget);
+    final textFieldFocus = tester
+        .widget<TextField>(find.byType(TextField))
+        .focusNode;
+    expect(textFieldFocus?.hasFocus, isTrue);
+  });
+
+  testWidgets('pressing Escape key collapses the search input', (
+    WidgetTester tester,
+  ) async {
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([]));
+    when(mockTaskRepository.getInstances()).thenAnswer((_) => Stream.value([]));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: buildTestableWidget(child: const HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Tap search button to expand search bar
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+
+    // Press Escape key
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    // Search bar should be collapsed
+    expect(find.byType(TextField), findsNothing);
+  });
+
+  testWidgets('system back button collapses the search input', (
+    WidgetTester tester,
+  ) async {
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([]));
+    when(mockTaskRepository.getInstances()).thenAnswer((_) => Stream.value([]));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: buildTestableWidget(child: const HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Tap search button to expand search bar
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+
+    // Simulate system back button press using handlePopRoute
+    final bool handled = await tester.binding.handlePopRoute();
+    expect(handled, isTrue);
+    await tester.pumpAndSettle();
+
+    // Search bar should be collapsed
+    expect(find.byType(TextField), findsNothing);
   });
 }
