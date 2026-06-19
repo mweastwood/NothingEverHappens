@@ -828,6 +828,88 @@ void main() {
     });
 
     test(
+      'Auto-Dismiss missed policy respects custom grace period and auto-dismisses after grace period passes',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(
+          firestore: firestore,
+          userId: 'user-1',
+        );
+
+        final monday = const CivilDay(year: 2026, month: 5, day: 25);
+
+        final task = TaskSchedule(
+          id: 'grace-skip-task',
+          title: 'Grace Skip Task',
+          description: 'Testing grace period skip policy',
+          schedules: [
+            DailySchedule(
+              startDate: monday,
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration(hours: 3),
+              ),
+            ),
+          ],
+        );
+
+        // Set mock clock to Monday at 10:00 AM (pending)
+        AppClock.setMockTime(DateTime(2026, 5, 25, 10, 0));
+        await repository.addTaskSchedule(task);
+        await Future.delayed(Duration.zero);
+
+        // Verify task instance exists and is pending
+        final instId = 'grace-skip-task_2026-05-25';
+        final instSnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc(instId)
+            .get();
+        expect(instSnap.exists, isTrue);
+        expect(instSnap.data()!['status'], 'pending');
+
+        // Move time to 6:00 PM (past due time of 5:00 PM, but within 3-hour grace period)
+        AppClock.setMockTime(DateTime(2026, 5, 25, 18, 0));
+        await repository.getTasks().first; // trigger evaluation
+        await Future.delayed(Duration.zero);
+
+        // Verify task instance is STILL pending
+        final instSnapGrace = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc(instId)
+            .get();
+        expect(instSnapGrace.data()!['status'], 'pending');
+
+        // Move time to 8:05 PM (past 3-hour grace period)
+        AppClock.setMockTime(DateTime(2026, 5, 25, 20, 5));
+        await repository.getTasks().first; // trigger evaluation
+        await Future.delayed(Duration.zero);
+
+        // Verify task instance is now SKIPPED
+        final instSnapExpired = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc(instId)
+            .get();
+        expect(instSnapExpired.data()!['status'], 'skipped');
+
+        AppClock.reset();
+      },
+    );
+
+    test(
       '4. Stack/Overlap (Allow Concurrency): Master task missed for Monday and Tuesday spawns separate cards on Wednesday',
       () async {
         final firestore = FakeFirebaseFirestore();
