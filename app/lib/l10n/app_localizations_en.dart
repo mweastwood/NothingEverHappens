@@ -760,4 +760,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String editsReverted(String title) {
     return 'Changes to \"$title\" reverted';
   }
+
+  @override
+  String dueTodayAt(String time) {
+    return 'Due Today at $time';
+  }
+
+  @override
+  String overdueTodayAt(String time) {
+    return 'Overdue: Today at $time';
+  }
+
+  @override
+  String overdueYesterdayAt(String time) {
+    return 'Overdue: Yesterday at $time';
+  }
+
+  @override
+  String dueTomorrowAt(String time) {
+    return 'Due Tomorrow at $time';
+  }
+
+  @override
+  String dueAt(String date, String time) {
+    return 'Due $date at $time';
+  }
+
+  @override
+  String overdueAt(String date, String time) {
+    return 'Overdue: $date at $time';
+  }
+
+  @override
+  String get loadingBadge => 'Loading...';
+
+  @override
+  String get assignedBadge => 'Assigned';
+
+  @override
+  String get recurringLabel => 'Recurring';
 }

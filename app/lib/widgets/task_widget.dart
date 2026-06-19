@@ -15,6 +15,7 @@ import '../logic/l10n_extension.dart';
 import '../logic/undo_notifier.dart';
 import '../logic/app_clock.dart';
 import 'undo_snackbar.dart';
+import 'package:intl/intl.dart';
 
 class TaskWidget extends ConsumerStatefulWidget {
   final TaskInstance instance;
@@ -233,13 +234,14 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     return '${minutes}m';
   }
 
-  String _getScheduleLabel(TaskScheduleRule schedule) {
-    if (schedule is OneOffSchedule) return 'One-off';
-    if (schedule is DailySchedule) return 'Daily';
-    if (schedule is WeeklySchedule) return 'Weekly';
-    if (schedule is MonthlySchedule) return 'Monthly';
-    if (schedule is YearlySchedule) return 'Yearly';
-    return 'Recurring';
+  String _getScheduleLabel(BuildContext context, TaskScheduleRule schedule) {
+    final l10n = context.l10n;
+    if (schedule is OneOffSchedule) return l10n.oneOffLabel;
+    if (schedule is DailySchedule) return l10n.dailyLabel;
+    if (schedule is WeeklySchedule) return l10n.weeklyLabel;
+    if (schedule is MonthlySchedule) return l10n.monthlyLabel;
+    if (schedule is YearlySchedule) return l10n.yearlyLabel;
+    return l10n.recurringLabel;
   }
 
   IconData _getScheduleIcon(TaskScheduleRule schedule) {
@@ -251,14 +253,15 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     return Icons.settings_backup_restore;
   }
 
-  String _getPriorityLabel(TaskPriority priority) {
+  String _getPriorityLabel(BuildContext context, TaskPriority priority) {
+    final l10n = context.l10n;
     switch (priority) {
       case TaskPriority.high:
-        return 'High';
+        return l10n.priorityHigh;
       case TaskPriority.medium:
-        return 'Medium';
+        return l10n.priorityMedium;
       case TaskPriority.low:
-        return 'Low';
+        return l10n.priorityLow;
     }
   }
 
@@ -345,12 +348,16 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     return _buildBadge(
       context,
       icon: Icons.event,
-      label: _formatDueDate(dueDateTime, now),
+      label: _formatDueDate(context, dueDateTime, now),
       color: color,
     );
   }
 
-  String _formatDueDate(DateTime dueDateTime, DateTime now) {
+  String _formatDueDate(
+    BuildContext context,
+    DateTime dueDateTime,
+    DateTime now,
+  ) {
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final tomorrow = today.add(const Duration(days: 1));
@@ -360,55 +367,30 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
       dueDateTime.month,
       dueDateTime.day,
     );
-    final timeStr = _formatTimeOfDay(TimeOfDay.fromDateTime(dueDateTime));
+    final timeStr = TimeOfDay.fromDateTime(dueDateTime).format(context);
     final isOverdue = dueDateTime.isBefore(now);
+    final l10n = context.l10n;
 
     if (dueDay == today) {
-      return isOverdue ? 'Overdue: Today at $timeStr' : 'Due Today at $timeStr';
+      return isOverdue
+          ? l10n.overdueTodayAt(timeStr)
+          : l10n.dueTodayAt(timeStr);
     } else if (dueDay == yesterday) {
-      return 'Overdue: Yesterday at $timeStr';
+      return l10n.overdueYesterdayAt(timeStr);
     } else if (dueDay == tomorrow) {
-      return 'Due Tomorrow at $timeStr';
+      return l10n.dueTomorrowAt(timeStr);
     } else {
-      final monthStr = _getMonthAbbreviation(dueDateTime.month);
-      final dayStr = dueDateTime.day.toString();
-      final yearSuffix = dueDateTime.year != now.year
-          ? ', ${dueDateTime.year}'
-          : '';
+      final locale = Localizations.localeOf(context).languageCode;
+      final dateFormat = dueDateTime.year != now.year
+          ? DateFormat.yMMMd(locale)
+          : DateFormat.MMMd(locale);
+      final dateStr = dateFormat.format(dueDateTime);
       if (isOverdue) {
-        return 'Overdue: $monthStr $dayStr$yearSuffix at $timeStr';
+        return l10n.overdueAt(dateStr, timeStr);
       } else {
-        return 'Due $monthStr $dayStr$yearSuffix at $timeStr';
+        return l10n.dueAt(dateStr, timeStr);
       }
     }
-  }
-
-  String _getMonthAbbreviation(int month) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    if (month >= 1 && month <= 12) {
-      return months[month - 1];
-    }
-    return '';
-  }
-
-  String _formatTimeOfDay(TimeOfDay time) {
-    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    final minuteStr = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minuteStr $period';
   }
 
   int _getRuleIndex(TaskInstance instance, TaskSchedule schedule) {
@@ -621,14 +603,17 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                           _buildBadge(
                             context,
                             icon: Icons.people_alt,
-                            label: 'Family',
+                            label: context.l10n.familyTab,
                             color: Theme.of(context).colorScheme.primary,
                           ),
                         // Priority
                         _buildBadge(
                           context,
                           icon: _getPriorityIcon(widget.instance.priority),
-                          label: _getPriorityLabel(widget.instance.priority),
+                          label: _getPriorityLabel(
+                            context,
+                            widget.instance.priority,
+                          ),
                           color: _getPriorityColor(
                             context,
                             widget.instance.priority,
@@ -639,7 +624,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                           _buildBadge(
                             context,
                             icon: _getScheduleIcon(schedule),
-                            label: _getScheduleLabel(schedule),
+                            label: _getScheduleLabel(context, schedule),
                             color: Theme.of(context).colorScheme.primary,
                           ),
                         // Effort/Duration (if any)
@@ -659,10 +644,10 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                             context,
                             icon: Icons.assignment_ind,
                             label: _isLoadingAssignee
-                                ? 'Loading...'
+                                ? context.l10n.loadingBadge
                                 : (_assigneeName != null
-                                      ? 'Assigned: $_assigneeName'
-                                      : 'Assigned'),
+                                      ? context.l10n.assignedTo(_assigneeName!)
+                                      : context.l10n.assignedBadge),
                             color: Theme.of(context).colorScheme.primary,
                           ),
                       ],
@@ -678,7 +663,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                       IconButton(
                         key: const Key('edit_pencil_button'),
                         icon: const Icon(Icons.edit, size: 20),
-                        tooltip: 'Edit TaskSchedule',
+                        tooltip: context.l10n.editScheduleTooltip,
                         onPressed: () {
                           Navigator.push(
                             context,

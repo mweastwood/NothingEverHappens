@@ -1423,6 +1423,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Changes to \"{title}\" reverted'**
   String editsReverted(String title);
+
+  /// No description provided for @dueTodayAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Due Today at {time}'**
+  String dueTodayAt(String time);
+
+  /// No description provided for @overdueTodayAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue: Today at {time}'**
+  String overdueTodayAt(String time);
+
+  /// No description provided for @overdueYesterdayAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue: Yesterday at {time}'**
+  String overdueYesterdayAt(String time);
+
+  /// No description provided for @dueTomorrowAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Due Tomorrow at {time}'**
+  String dueTomorrowAt(String time);
+
+  /// No description provided for @dueAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Due {date} at {time}'**
+  String dueAt(String date, String time);
+
+  /// No description provided for @overdueAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue: {date} at {time}'**
+  String overdueAt(String date, String time);
+
+  /// No description provided for @loadingBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get loadingBadge;
+
+  /// No description provided for @assignedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned'**
+  String get assignedBadge;
+
+  /// No description provided for @recurringLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurring'**
+  String get recurringLabel;
 }
 
 class _AppLocalizationsDelegate
