@@ -78,7 +78,78 @@ void main() {
         expect(map['schedules'], isA<List>());
         expect(map['schedules'].length, 2);
         expect(map['schedules'][0]['type'], 'daily');
+        expect(
+          map['schedules'][0]['schedulingPolicy']['type'],
+          'fixedCalendar',
+        );
         expect(map['activeOccurrenceIndex'], 1);
+      },
+    );
+
+    test(
+      'serializes and deserializes CompletionRelativePolicy and autoDismiss missed policy correctly',
+      () async {
+        final task = TaskSchedule(
+          id: 'task-completion-relative-test',
+          title: 'Completion Relative Task',
+          description: 'Chore',
+          schedules: [
+            OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
+          ],
+          schedulingPolicy: CompletionRelativePolicy(
+            interval: const Duration(days: 7),
+            targetTime: const TimeOfDay(hour: 9, minute: 30),
+          ),
+          missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+            gracePeriod: Duration(hours: 4),
+          ),
+        );
+
+        final map = task.toFirestore();
+        expect(
+          map['schedules'][0]['schedulingPolicy']['type'],
+          'completionRelative',
+        );
+        expect(
+          map['schedules'][0]['schedulingPolicy']['intervalMinutes'],
+          7 * 24 * 60,
+        );
+        expect(map['schedules'][0]['schedulingPolicy']['targetHour'], 9);
+        expect(map['schedules'][0]['schedulingPolicy']['targetMinute'], 30);
+        expect(
+          map['schedules'][0]['missedOccurrencePolicy']['type'],
+          'autoDismiss',
+        );
+        expect(
+          map['schedules'][0]['missedOccurrencePolicy']['graceMinutes'],
+          4 * 60,
+        );
+
+        final firestore = FakeFirebaseFirestore();
+        await firestore
+            .collection('tasks')
+            .doc('task-completion-relative-test')
+            .set(map);
+        final snapshot = await firestore
+            .collection('tasks')
+            .doc('task-completion-relative-test')
+            .get();
+        final deserialized = TaskSchedule.fromFirestore(snapshot);
+
+        expect(deserialized.id, 'task-completion-relative-test');
+        expect(deserialized.schedulingPolicy, isA<CompletionRelativePolicy>());
+        final policy =
+            deserialized.schedulingPolicy as CompletionRelativePolicy;
+        expect(policy.interval, const Duration(days: 7));
+        expect(policy.targetTime, const TimeOfDay(hour: 9, minute: 30));
+        expect(
+          deserialized.missedOccurrencePolicy.type,
+          MissedOccurrenceType.autoDismiss,
+        );
+        expect(
+          deserialized.missedOccurrencePolicy.gracePeriod,
+          const Duration(hours: 4),
+        );
       },
     );
 
@@ -1587,5 +1658,219 @@ void main() {
         AppClock.reset();
       },
     );
+
+    group('Multiple Rules & Nested Policies Tests', () {
+      test(
+        'supports different policies on different rules in the same TaskSchedule',
+        () async {
+          final task = TaskSchedule(
+            id: 'multi-rule-policies-task',
+            title: 'Mixed Policies Task',
+            description: 'Testing independent rule policies',
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 1),
+                interval: 1,
+                schedulingPolicy: const FixedCalendarPolicy(),
+                missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
+                  legacyPolicy: MissedPolicy.rollover,
+                ),
+              ),
+              WeeklySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 1),
+                interval: 1,
+                daysOfWeek: const {1, 3, 5},
+                schedulingPolicy: const CompletionRelativePolicy(
+                  interval: Duration(days: 3),
+                  targetTime: TimeOfDay(hour: 15, minute: 0),
+                ),
+                missedOccurrencePolicy:
+                    const MissedOccurrencePolicy.autoDismiss(
+                      gracePeriod: Duration(hours: 12),
+                    ),
+              ),
+            ],
+          );
+
+          // Verify model representation
+          expect(task.schedules.length, 2);
+          expect(
+            task.schedules[0].schedulingPolicy,
+            isA<FixedCalendarPolicy>(),
+          );
+          expect(
+            task.schedules[0].missedOccurrencePolicy.type,
+            MissedOccurrenceType.keepAround,
+          );
+          expect(
+            task.schedules[0].missedOccurrencePolicy.legacyPolicy,
+            MissedPolicy.rollover,
+          );
+
+          expect(
+            task.schedules[1].schedulingPolicy,
+            isA<CompletionRelativePolicy>(),
+          );
+          final relPolicy =
+              task.schedules[1].schedulingPolicy as CompletionRelativePolicy;
+          expect(relPolicy.interval, const Duration(days: 3));
+          expect(relPolicy.targetTime, const TimeOfDay(hour: 15, minute: 0));
+          expect(
+            task.schedules[1].missedOccurrencePolicy.type,
+            MissedOccurrenceType.autoDismiss,
+          );
+          expect(
+            task.schedules[1].missedOccurrencePolicy.gracePeriod,
+            const Duration(hours: 12),
+          );
+
+          // Test toFirestore serialization
+          final map = task.toFirestore();
+          final rulesList = map['schedules'] as List<dynamic>;
+          expect(rulesList.length, 2);
+
+          // Rule 0 checks
+          expect(rulesList[0]['type'], 'daily');
+          expect(rulesList[0]['schedulingPolicy']['type'], 'fixedCalendar');
+          expect(rulesList[0]['missedOccurrencePolicy']['type'], 'keepAround');
+          expect(
+            rulesList[0]['missedOccurrencePolicy']['legacyPolicy'],
+            'rollover',
+          );
+
+          // Rule 1 checks
+          expect(rulesList[1]['type'], 'weekly');
+          expect(
+            rulesList[1]['schedulingPolicy']['type'],
+            'completionRelative',
+          );
+          expect(
+            rulesList[1]['schedulingPolicy']['intervalMinutes'],
+            3 * 24 * 60,
+          );
+          expect(rulesList[1]['schedulingPolicy']['targetHour'], 15);
+          expect(rulesList[1]['schedulingPolicy']['targetMinute'], 0);
+          expect(rulesList[1]['missedOccurrencePolicy']['type'], 'autoDismiss');
+          expect(
+            rulesList[1]['missedOccurrencePolicy']['graceMinutes'],
+            12 * 60,
+          );
+
+          // Test fromFirestore deserialization
+          final firestore = FakeFirebaseFirestore();
+          await firestore
+              .collection('tasks')
+              .doc('multi-rule-policies-task')
+              .set(map);
+          final snapshot = await firestore
+              .collection('tasks')
+              .doc('multi-rule-policies-task')
+              .get();
+          final deserialized = TaskSchedule.fromFirestore(snapshot);
+
+          expect(deserialized.schedules.length, 2);
+          expect(
+            deserialized.schedules[0].schedulingPolicy,
+            isA<FixedCalendarPolicy>(),
+          );
+          expect(
+            deserialized.schedules[0].missedOccurrencePolicy.type,
+            MissedOccurrenceType.keepAround,
+          );
+
+          expect(
+            deserialized.schedules[1].schedulingPolicy,
+            isA<CompletionRelativePolicy>(),
+          );
+          final desRelPolicy =
+              deserialized.schedules[1].schedulingPolicy
+                  as CompletionRelativePolicy;
+          expect(desRelPolicy.interval, const Duration(days: 3));
+          expect(
+            deserialized.schedules[1].missedOccurrencePolicy.type,
+            MissedOccurrenceType.autoDismiss,
+          );
+          expect(
+            deserialized.schedules[1].missedOccurrencePolicy.gracePeriod,
+            const Duration(hours: 12),
+          );
+        },
+      );
+
+      test(
+        'edit updates independent rules and correctly computes changes map',
+        () {
+          final task = TaskSchedule(
+            id: 'edit-multi-task',
+            title: 'Task Title',
+            description: 'Desc',
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 1),
+                interval: 1,
+                schedulingPolicy: const FixedCalendarPolicy(),
+                missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
+                  legacyPolicy: MissedPolicy.rollover,
+                ),
+              ),
+            ],
+          );
+
+          // Edit the rule to have autoDismiss missedOccurrencePolicy and completionRelative schedulingPolicy
+          final editResult = task.edit(
+            newTitle: 'Task Title',
+            newDescription: 'Desc',
+            newSchedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 1),
+                interval: 1,
+                schedulingPolicy: const CompletionRelativePolicy(
+                  interval: Duration(days: 1),
+                  targetTime: TimeOfDay(hour: 9, minute: 0),
+                ),
+                missedOccurrencePolicy:
+                    const MissedOccurrencePolicy.autoDismiss(
+                      gracePeriod: Duration(hours: 2),
+                    ),
+              ),
+            ],
+            newEstimatedDuration: null,
+            newMissedPolicy: MissedPolicy.skip,
+            newIsMaster: false,
+            newLastSpawnedDate: null,
+            newIsFamily: false,
+            newPriority: TaskPriority.medium,
+          );
+
+          final updatedTask = editResult.newTask;
+          final changes = editResult.changes;
+
+          // Verify new values on the rule
+          expect(
+            updatedTask.schedules.first.schedulingPolicy,
+            isA<CompletionRelativePolicy>(),
+          );
+          expect(
+            updatedTask.schedules.first.missedOccurrencePolicy.type,
+            MissedOccurrenceType.autoDismiss,
+          );
+
+          // Verify updates are recorded in changes map
+          expect(changes.containsKey('schedules'), isTrue);
+          expect(
+            changes['schedules'][0]['schedulingPolicy']['type'],
+            'completionRelative',
+          );
+          expect(
+            changes['schedules'][0]['missedOccurrencePolicy']['type'],
+            'autoDismiss',
+          );
+          expect(
+            changes['schedules'][0]['missedOccurrencePolicy']['graceMinutes'],
+            120,
+          );
+        },
+      );
+    });
   });
 }
