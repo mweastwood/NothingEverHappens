@@ -162,6 +162,27 @@ void main() {
       await screenMatchesGolden(tester, 'basic_task_completion_tab_golden');
     });
 
+    testGoldens('BasicTaskCompletionTab shows snackbar golden', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidgetBuilder(
+        const BasicTaskCompletionTab(),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(400, 800),
+      );
+
+      // Complete the first task
+      await tester.tap(find.byType(FunCheckButton).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(
+        tester,
+        'basic_task_completion_tab_with_snackbar',
+      );
+    });
+
     testWidgets('tapping Undo after completing a task restores the task card', (
       WidgetTester tester,
     ) async {
@@ -189,9 +210,13 @@ void main() {
       await tester.tap(find.text('Undo'));
       await tester.pumpAndSettle();
 
-      // Task should be restored
+      // Task should be restored at its original index (top of the list)
       expect(find.text('Water the Houseplants'), findsOneWidget);
       expect(find.text('Practice Tasks (10 remaining)'), findsOneWidget);
+      final taskWidgets = tester
+          .widgetList<TaskWidget>(find.byType(TaskWidget))
+          .toList();
+      expect(taskWidgets.first.instance.title, equals('Water the Houseplants'));
     });
 
     testWidgets(
@@ -215,9 +240,16 @@ void main() {
         await tester.tap(find.text('Undo'));
         await tester.pumpAndSettle();
 
-        // Task should be restored
+        // Task should be restored at its original index (top of the list)
         expect(find.text('Water the Houseplants'), findsOneWidget);
         expect(find.text('Practice Tasks (10 remaining)'), findsOneWidget);
+        final taskWidgets = tester
+            .widgetList<TaskWidget>(find.byType(TaskWidget))
+            .toList();
+        expect(
+          taskWidgets.first.instance.title,
+          equals('Water the Houseplants'),
+        );
       },
     );
   });

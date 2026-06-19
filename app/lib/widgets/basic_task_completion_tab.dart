@@ -123,6 +123,11 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
       // Only restore if not already present
       if (!_instances.any((i) => i.id == instance.id)) {
         _instances.add(instance);
+        _instances.sort((a, b) {
+          final aIndex = int.tryParse(a.id.split('-').last) ?? 0;
+          final bIndex = int.tryParse(b.id.split('-').last) ?? 0;
+          return aIndex.compareTo(bIndex);
+        });
       }
     });
   }
@@ -201,6 +206,7 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
                     (t) => t.id == instance.scheduleId,
                   );
                   return Padding(
+                    key: ValueKey(instance.id),
                     padding: const EdgeInsets.only(bottom: 8.0),
                     child: TaskWidget(
                       key: ValueKey(instance.id),

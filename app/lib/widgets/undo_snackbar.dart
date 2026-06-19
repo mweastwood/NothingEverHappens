@@ -32,19 +32,18 @@ class UndoSnackBar {
     );
   }
 
-  /// Show an undo snackbar using a pre-captured [ScaffoldMessengerState].
+  /// Show an undo snackbar using a pre-captured [ScaffoldMessengerState] and [UndoNotifier].
   /// Use this variant inside async callbacks where [BuildContext] may no longer
-  /// be valid after an await gap. Capture the messenger and any localized
-  /// strings from [context] *before* the first await, then call this method.
+  /// be valid after an await gap. Capture the messenger, undo notifier, and any
+  /// localized strings from [context] *before* the first await, then call this method.
   static void showWithMessenger({
     required ScaffoldMessengerState messenger,
-    required WidgetRef ref,
+    required UndoNotifier notifier,
     required UndoableAction action,
     required TaskRepository repository,
     String undoLabel = 'Undo',
     String undoneLabel = 'Undone',
   }) {
-    final notifier = ref.read(undoNotifierProvider.notifier);
     notifier.register(action);
 
     _showSnackBar(

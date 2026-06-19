@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/gestures.dart';
@@ -1041,6 +1042,62 @@ void main() {
         equals(resolvedInstance.completedAt),
       );
       expect(capturedInstance!.status, equals('completed'));
+    },
+  );
+
+  testWidgets(
+    'TaskWidget shows undo SnackBar even if unmounted during the repository async gap',
+    (tester) async {
+      final completeCompleter = Completer<TaskInstance?>();
+      when(
+        mockTaskRepository.completeTaskInstance(any),
+      ).thenAnswer((_) => completeCompleter.future);
+
+      bool showTask = true;
+      late StateSetter setWrapperState;
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: ProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              ],
+              child: StatefulBuilder(
+                builder: (context, setState) {
+                  setWrapperState = setState;
+                  return showTask
+                      ? TaskWidget(
+                          instance: createInstanceFor(testTask),
+                          schedule: testTask,
+                        )
+                      : const SizedBox.shrink();
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Tap the checkbox to complete the task
+      await tester.tap(find.byType(FunCheckButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500)); // wait for confetti
+      await tester.pumpAndSettle(); // start and complete collapse animation
+
+      // At this point, repo.completeTaskInstance has been called and is pending.
+      // Manually unmount the TaskWidget before the repository completes
+      setWrapperState(() {
+        showTask = false;
+      });
+      await tester.pump(); // TaskWidget is now unmounted/disposed
+
+      // Complete the repository future
+      completeCompleter.complete(createInstanceFor(testTask));
+      await tester.pump(); // let microtasks run to show SnackBar
+      await tester.pumpAndSettle(); // wait for snackbar animation
+
+      // Verify SnackBar with undo option is still shown
+      expect(find.text('Undo'), findsOneWidget);
     },
   );
 }
