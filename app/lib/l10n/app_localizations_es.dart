@@ -557,6 +557,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get helpTitle => 'Ayuda';
 
   @override
+  String get helpTooltip => 'Ayuda';
+
+  @override
   String get helpTabInteractions => 'Completado Básico de Tareas';
 
   @override

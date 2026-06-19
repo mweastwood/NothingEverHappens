@@ -555,6 +555,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get helpTitle => 'Help';
 
   @override
+  String get helpTooltip => 'Help';
+
+  @override
   String get helpTabInteractions => 'Basic Task Completion';
 
   @override

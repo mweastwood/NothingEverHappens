@@ -1076,6 +1076,12 @@ abstract class AppLocalizations {
   /// **'Help'**
   String get helpTitle;
 
+  /// No description provided for @helpTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Help'**
+  String get helpTooltip;
+
   /// No description provided for @helpTabInteractions.
   ///
   /// In en, this message translates to:
