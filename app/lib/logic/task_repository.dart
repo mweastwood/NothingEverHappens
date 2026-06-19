@@ -491,7 +491,10 @@ class TaskRepository {
 
               bool spawnedNext = false;
               for (final pending in pendingForSchedule) {
-                if (pending.scheduledDate.isBefore(today)) {
+                final dueDateTime = pending.dueRelativeTime.referenceTo(
+                  pending.scheduledDate,
+                );
+                if (now.isAfter(dueDateTime)) {
                   final updatedInst = pending.copyWith(status: 'skipped');
                   batch.set(
                     _instanceRefFor(updatedInst, familyId),
@@ -520,6 +523,12 @@ class TaskRepository {
                 if (s.occursOn(checkDate)) {
                   final instId = instanceIdFor(task, checkDate, i);
                   if (!taskInstances.any((inst) => inst.id == instId)) {
+                    final dueDateTime = s.dueRelativeTime.referenceTo(
+                      checkDate,
+                    );
+                    final isMissed = now.isAfter(dueDateTime);
+                    final status = isMissed ? 'skipped' : 'pending';
+
                     final skippedInst = TaskInstance(
                       id: instId,
                       scheduleId: task.id,
@@ -533,29 +542,34 @@ class TaskRepository {
                       priority: task.priority,
                       cycleId: task.cycleId,
                       assignedUserId: task.assignedUserId,
-                      status: 'skipped',
+                      status: status,
                     );
                     batch.set(
                       _instanceRefFor(skippedInst, familyId),
                       skippedInst,
                     );
+                    taskInstances.add(skippedInst);
+                    schedInstances.add(skippedInst);
                     hasChanges = true;
 
-                    spawnedNext = true;
+                    if (isMissed) {
+                      spawnedNext = true;
+                    }
                   }
                 }
                 checkDate = checkDate.addDays(1);
                 daysChecked++;
               }
 
-              final hasFuturePending = schedInstances.any(
-                (inst) =>
-                    inst.status == 'pending' &&
-                    (today.isBefore(inst.scheduledDate) ||
-                        inst.scheduledDate == today),
-              );
+              final hasActivePending = schedInstances.any((inst) {
+                if (inst.status != 'pending') return false;
+                final dueDateTime = inst.dueRelativeTime.referenceTo(
+                  inst.scheduledDate,
+                );
+                return !now.isAfter(dueDateTime);
+              });
 
-              if (spawnedNext || !hasFuturePending) {
+              if (spawnedNext || !hasActivePending) {
                 CivilDay? date;
                 if (s.occursOn(today)) {
                   date = today;
@@ -586,6 +600,8 @@ class TaskRepository {
                       status: 'pending',
                     );
                     batch.set(_instanceRefFor(newInst, familyId), newInst);
+                    taskInstances.add(newInst);
+                    schedInstances.add(newInst);
                     hasChanges = true;
                   }
                 }
