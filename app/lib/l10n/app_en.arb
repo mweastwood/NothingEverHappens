@@ -401,5 +401,21 @@
         "type": "String"
       }
     }
+  },
+  "taskRestored": "\"{title}\" restored",
+  "@taskRestored": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "editsReverted": "Changes to \"{title}\" reverted",
+  "@editsReverted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   }
 }

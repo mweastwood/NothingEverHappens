@@ -657,7 +657,7 @@ void main() {
       verify(mockTaskRepository.undoResolveTaskInstance(any)).called(1);
 
       // Verify action undone confirmation SnackBar is shown
-      expect(find.text('Action undone'), findsOneWidget);
+      expect(find.text('"${testTask.title}" restored'), findsOneWidget);
     },
   );
 

@@ -201,6 +201,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                   currentSchedule: modification.newTask,
                 ),
                 repository: repository,
+                undoneLabel: context.l10n.editsReverted(previousSchedule.title),
               );
               Navigator.pop(context);
             }

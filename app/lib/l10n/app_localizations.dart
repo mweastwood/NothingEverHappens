@@ -1411,6 +1411,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Saved \"{title}\"'**
   String taskEditsSaved(String title);
+
+  /// No description provided for @taskRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{title}\" restored'**
+  String taskRestored(String title);
+
+  /// No description provided for @editsReverted.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes to \"{title}\" reverted'**
+  String editsReverted(String title);
 }
 
 class _AppLocalizationsDelegate

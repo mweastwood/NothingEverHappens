@@ -752,4 +752,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String taskEditsSaved(String title) {
     return 'Se guardó \"$title\"';
   }
+
+  @override
+  String taskRestored(String title) {
+    return '\"$title\" restaurada';
+  }
+
+  @override
+  String editsReverted(String title) {
+    return 'Se deshicieron los cambios en \"$title\"';
+  }
 }

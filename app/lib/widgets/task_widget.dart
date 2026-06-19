@@ -96,7 +96,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         final dismissMsg = context.l10n.taskDismissed(instance.title);
         final completeMsg = context.l10n.taskCompleted(instance.title);
         final undoLabel = context.l10n.undoButton;
-        final undoneLabel = context.l10n.actionUndone;
+        final undoneLabel = context.l10n.taskRestored(instance.title);
         if (_isDeleting) {
           final resolved = await repo.dismissTaskInstance(instance.id);
           UndoSnackBar.showWithMessenger(
@@ -407,7 +407,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
             final completeMsg = context.l10n.taskCompleted(instance.title);
             final dismissMsg = context.l10n.taskDismissed(instance.title);
             final undoLabel = context.l10n.undoButton;
-            final undoneLabel = context.l10n.actionUndone;
+            final undoneLabel = context.l10n.taskRestored(instance.title);
             if (direction == DismissDirection.startToEnd) {
               final resolved = await repo.completeTaskInstance(instance.id);
               UndoSnackBar.showWithMessenger(
