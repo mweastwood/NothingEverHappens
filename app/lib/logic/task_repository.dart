@@ -373,74 +373,80 @@ class TaskRepository {
           }
         } else {
           // Recurring Schedule
-          if (task.missedPolicy == MissedPolicy.stack) {
-            final lastSpawned = task.lastSpawnedDate;
-            final minStartDate = task.schedules
-                .map((s) => s.scheduledDate)
-                .reduce((a, b) => a.isBefore(b) ? a : b);
+          for (int i = 0; i < task.schedules.length; i++) {
+            final s = task.schedules[i];
+            final schedInstances = taskInstances.where((inst) {
+              if (task.schedules.length <= 1) return true;
+              return inst.id.endsWith('_$i');
+            }).toList();
 
-            CivilDay checkDate = lastSpawned != null
-                ? lastSpawned.addDays(1)
-                : minStartDate;
+            final pendingForSchedule = schedInstances
+                .where((inst) => inst.status == 'pending')
+                .toList();
 
-            List<(CivilDay, TaskScheduleRule, int)> occurrencesToSpawn = [];
-            int daysChecked = 0;
-            while ((checkDate.isBefore(today) || checkDate == today) &&
-                daysChecked < 30) {
-              for (int i = 0; i < task.schedules.length; i++) {
-                final s = task.schedules[i];
+            final ruleMissedPolicy = s.missedOccurrencePolicy.legacyPolicy;
+
+            if (ruleMissedPolicy == MissedPolicy.stack) {
+              final lastSpawned = task.lastSpawnedDate;
+              final minStartDate = s.scheduledDate;
+
+              CivilDay checkDate = lastSpawned != null
+                  ? lastSpawned.addDays(1)
+                  : minStartDate;
+
+              List<CivilDay> datesToSpawn = [];
+              int daysChecked = 0;
+              while ((checkDate.isBefore(today) || checkDate == today) &&
+                  daysChecked < 30) {
                 if (s.occursOn(checkDate)) {
-                  occurrencesToSpawn.add((checkDate, s, i));
+                  datesToSpawn.add(checkDate);
                 }
+                if (datesToSpawn.length >= 30) {
+                  break;
+                }
+                checkDate = checkDate.addDays(1);
+                daysChecked++;
               }
-              if (occurrencesToSpawn.length >= 30) {
-                break;
-              }
-              checkDate = checkDate.addDays(1);
-              daysChecked++;
-            }
 
-            if (occurrencesToSpawn.isNotEmpty) {
-              for (final occ in occurrencesToSpawn) {
-                final date = occ.$1;
-                final s = occ.$2;
-                final idx = occ.$3;
+              if (datesToSpawn.isNotEmpty) {
+                for (final date in datesToSpawn) {
+                  final instId = instanceIdFor(task, date, i);
+                  if (!taskInstances.any((inst) => inst.id == instId)) {
+                    final newInst = TaskInstance(
+                      id: instId,
+                      scheduleId: task.id,
+                      title: task.title,
+                      description: task.description,
+                      scheduledDate: date,
+                      startRelativeTime: s.startRelativeTime,
+                      dueRelativeTime: s.dueRelativeTime,
+                      notificationRelativeTime: s.notificationRelativeTime,
+                      isFamily: task.isFamily,
+                      priority: task.priority,
+                      cycleId: task.cycleId,
+                      assignedUserId: task.assignedUserId,
+                      status: 'pending',
+                    );
+                    batch.set(_instanceRefFor(newInst, familyId), newInst);
+                  }
+                }
 
-                final instId = instanceIdFor(task, date, idx);
-                if (!taskInstances.any((inst) => inst.id == instId)) {
-                  final newInst = TaskInstance(
-                    id: instId,
-                    scheduleId: task.id,
-                    title: task.title,
-                    description: task.description,
-                    scheduledDate: date,
-                    startRelativeTime: s.startRelativeTime,
-                    dueRelativeTime: s.dueRelativeTime,
-                    notificationRelativeTime: s.notificationRelativeTime,
-                    isFamily: task.isFamily,
-                    priority: task.priority,
-                    cycleId: task.cycleId,
-                    assignedUserId: task.assignedUserId,
-                    status: 'pending',
+                final latestSpawned = datesToSpawn.last;
+                if (task.lastSpawnedDate == null ||
+                    task.lastSpawnedDate!.isBefore(latestSpawned)) {
+                  final updatedMaster = task.copyWith(
+                    lastSpawnedDate: latestSpawned,
                   );
-                  batch.set(_instanceRefFor(newInst, familyId), newInst);
+                  batch.set(
+                    _taskRefFor(updatedMaster, familyId),
+                    updatedMaster,
+                  );
                 }
+                hasChanges = true;
               }
-
-              final updatedMaster = task.copyWith(
-                lastSpawnedDate: occurrencesToSpawn.last.$1,
-              );
-              batch.set(_taskRefFor(updatedMaster, familyId), updatedMaster);
-              hasChanges = true;
-            }
-          } else if (task.missedPolicy == MissedPolicy.rollover ||
-              task.missedPolicy == MissedPolicy.shift) {
-            for (int i = 0; i < task.schedules.length; i++) {
-              final s = task.schedules[i];
-              final hasPendingForSchedule = pendingInstances.any((inst) {
-                if (task.schedules.length <= 1) return true;
-                return inst.id.endsWith('_$i');
-              });
+            } else if (ruleMissedPolicy == MissedPolicy.rollover ||
+                ruleMissedPolicy == MissedPolicy.shift) {
+              final hasPendingForSchedule = pendingForSchedule.isNotEmpty;
 
               if (!hasPendingForSchedule) {
                 CivilDay? date;
@@ -476,25 +482,18 @@ class TaskRepository {
                   }
                 }
               }
-            }
-          } else if (task.missedPolicy == MissedPolicy.skip) {
-            for (int i = 0; i < task.schedules.length; i++) {
-              final s = task.schedules[i];
-              final schedInstances = taskInstances.where((inst) {
-                if (task.schedules.length <= 1) return true;
-                return inst.id.endsWith('_$i');
-              }).toList();
-
-              final pendingForSchedule = schedInstances
-                  .where((inst) => inst.status == 'pending')
-                  .toList();
-
+            } else if (s.missedOccurrencePolicy.type ==
+                    MissedOccurrenceType.autoDismiss ||
+                ruleMissedPolicy == MissedPolicy.skip) {
+              final gracePeriod =
+                  s.missedOccurrencePolicy.gracePeriod ?? Duration.zero;
               bool spawnedNext = false;
               for (final pending in pendingForSchedule) {
                 final dueDateTime = pending.dueRelativeTime.referenceTo(
                   pending.scheduledDate,
                 );
-                if (now.isAfter(dueDateTime)) {
+                final expirationTime = dueDateTime.add(gracePeriod);
+                if (now.isAfter(expirationTime)) {
                   final updatedInst = pending.copyWith(status: 'skipped');
                   batch.set(
                     _instanceRefFor(updatedInst, familyId),
@@ -526,7 +525,8 @@ class TaskRepository {
                     final dueDateTime = s.dueRelativeTime.referenceTo(
                       checkDate,
                     );
-                    final isMissed = now.isAfter(dueDateTime);
+                    final expirationTime = dueDateTime.add(gracePeriod);
+                    final isMissed = now.isAfter(expirationTime);
                     final status = isMissed ? 'skipped' : 'pending';
 
                     final skippedInst = TaskInstance(
@@ -566,7 +566,8 @@ class TaskRepository {
                 final dueDateTime = inst.dueRelativeTime.referenceTo(
                   inst.scheduledDate,
                 );
-                return !now.isAfter(dueDateTime);
+                final expirationTime = dueDateTime.add(gracePeriod);
+                return !now.isAfter(expirationTime);
               });
 
               if (spawnedNext || !hasActivePending) {
