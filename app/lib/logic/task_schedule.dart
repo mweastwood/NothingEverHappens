@@ -5,11 +5,15 @@ import 'relative_time.dart';
 import 'missed_policy.dart';
 import 'task_priority.dart';
 import 'task_schedule_rule.dart';
+import 'scheduling_policy.dart';
+import 'missed_occurrence_policy.dart';
 
 export 'missed_policy.dart';
 export 'task_priority.dart';
 export 'daily_occurrence_time.dart';
 export 'task_schedule_rule.dart';
+export 'scheduling_policy.dart';
+export 'missed_occurrence_policy.dart';
 
 /// Result of a task update operation.
 typedef TaskModification = ({
@@ -28,17 +32,56 @@ class TaskSchedule {
   /// Detailed description of the task.
   String description;
 
-  /// The list of recurrence schedules for the task.
+  /// The schedule rules associated with this task.
   List<TaskScheduleRule> schedules;
+
+  /// Legacy getter/setter for schedulingPolicy
+  SchedulingPolicy get schedulingPolicy {
+    if (schedules.isEmpty) return const FixedCalendarPolicy();
+    return schedules.first.schedulingPolicy;
+  }
+
+  set schedulingPolicy(SchedulingPolicy policy) {
+    if (schedules.isEmpty) return;
+    schedules = schedules
+        .map((s) => s.copyWithTiming(schedulingPolicy: policy))
+        .toList();
+  }
+
+  /// Legacy getter/setter for missedOccurrencePolicy
+  MissedOccurrencePolicy get missedOccurrencePolicy {
+    if (schedules.isEmpty) return const MissedOccurrencePolicy.keepAround();
+    return schedules.first.missedOccurrencePolicy;
+  }
+
+  set missedOccurrencePolicy(MissedOccurrencePolicy policy) {
+    if (schedules.isEmpty) return;
+    schedules = schedules
+        .map((s) => s.copyWithTiming(missedOccurrencePolicy: policy))
+        .toList();
+  }
+
+  /// Legacy getter/setter for missedPolicy
+  MissedPolicy get missedPolicy {
+    if (schedules.isEmpty) return MissedPolicy.rollover;
+    return schedules.first.missedOccurrencePolicy.legacyPolicy;
+  }
+
+  set missedPolicy(MissedPolicy policy) {
+    if (schedules.isEmpty) return;
+    final newPolicy = policy == MissedPolicy.skip
+        ? const MissedOccurrencePolicy.autoDismiss(gracePeriod: Duration.zero)
+        : MissedOccurrencePolicy.keepAround(legacyPolicy: policy);
+    schedules = schedules
+        .map((s) => s.copyWithTiming(missedOccurrencePolicy: newPolicy))
+        .toList();
+  }
 
   /// The index of the currently active occurrence time in [dailyTimes].
   int activeOccurrenceIndex;
 
   /// The estimated effort for the task (optional).
   Duration? estimatedDuration;
-
-  /// The policy to apply when a task occurrence is missed.
-  MissedPolicy missedPolicy;
 
   /// Whether this task represents a master/template recurring schedule.
   bool isMaster;
@@ -68,10 +111,9 @@ class TaskSchedule {
     required this.id,
     required this.title,
     required this.description,
-    required this.schedules,
+    List<TaskScheduleRule>? schedules,
     this.activeOccurrenceIndex = 0,
     this.estimatedDuration,
-    this.missedPolicy = MissedPolicy.rollover,
     this.isMaster = false,
     this.lastSpawnedDate,
     this.parentTaskId,
@@ -80,7 +122,27 @@ class TaskSchedule {
     this.cycleId,
     this.preferredBy = const {},
     this.assignedUserId,
-  });
+    SchedulingPolicy? schedulingPolicy,
+    MissedOccurrencePolicy? missedOccurrencePolicy,
+    MissedPolicy? missedPolicy,
+  }) : schedules = (schedules ?? []).map((s) {
+         final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
+         final mPolicy =
+             missedOccurrencePolicy ??
+             (missedPolicy == MissedPolicy.skip
+                 ? const MissedOccurrencePolicy.autoDismiss(
+                     gracePeriod: Duration.zero,
+                   )
+                 : (missedPolicy != null
+                       ? MissedOccurrencePolicy.keepAround(
+                           legacyPolicy: missedPolicy,
+                         )
+                       : s.missedOccurrencePolicy));
+         return s.copyWithTiming(
+           schedulingPolicy: sPolicy,
+           missedOccurrencePolicy: mPolicy,
+         );
+       }).toList();
 
   /// The starting day of this occurrence.
   CivilDay get startDate {
@@ -107,11 +169,10 @@ class TaskSchedule {
       throw Exception('Data is null for document ${snapshot.id}');
     }
 
-    final missedPolicyStr = data['missedPolicy'] as String? ?? 'rollover';
-    final missedPolicy = MissedPolicy.values.firstWhere(
-      (e) => e.name == missedPolicyStr,
-      orElse: () => MissedPolicy.rollover,
-    );
+    final schedulesRaw = data['schedules'] as List<dynamic>? ?? [];
+    final schedules = schedulesRaw
+        .map((item) => TaskScheduleRule.fromJson(item as Map<String, dynamic>))
+        .toList();
 
     final isMaster = data['isMaster'] as bool? ?? false;
     final lastSpawnedDateRaw = data['lastSpawnedDate'] as Map<String, dynamic>?;
@@ -130,16 +191,6 @@ class TaskSchedule {
     final preferredBy = preferredByRaw.map((k, v) => MapEntry(k, v as bool));
     final assignedUserId = data['assignedUserId'] as String?;
 
-    final schedulesRaw = data['schedules'] as List<dynamic>?;
-    final schedules = schedulesRaw != null
-        ? schedulesRaw
-              .map(
-                (item) =>
-                    TaskScheduleRule.fromJson(item as Map<String, dynamic>),
-              )
-              .toList()
-        : <TaskScheduleRule>[];
-
     return TaskSchedule(
       id: snapshot.id,
       title: data['title'] as String? ?? 'Untitled',
@@ -149,7 +200,6 @@ class TaskSchedule {
       estimatedDuration: data['estimatedDuration'] != null
           ? Duration(minutes: data['estimatedDuration'] as int)
           : null,
-      missedPolicy: missedPolicy,
       isMaster: isMaster,
       lastSpawnedDate: lastSpawnedDate,
       parentTaskId: parentTaskId,
@@ -168,7 +218,6 @@ class TaskSchedule {
       'schedules': schedules.map((s) => s.toJson()).toList(),
       'activeOccurrenceIndex': activeOccurrenceIndex,
       'estimatedDuration': estimatedDuration?.inMinutes,
-      'missedPolicy': missedPolicy.name,
       'isMaster': isMaster,
       if (lastSpawnedDate != null) 'lastSpawnedDate': lastSpawnedDate!.toJson(),
       if (parentTaskId != null) 'parentTaskId': parentTaskId,
@@ -194,14 +243,48 @@ class TaskSchedule {
     String? newCycleId,
     Map<String, bool>? newPreferredBy,
     String? newAssignedUserId,
+    SchedulingPolicy? newSchedulingPolicy,
+    MissedOccurrencePolicy? newMissedOccurrencePolicy,
   }) {
+    final resolvedSchedules = newSchedules.map((s) {
+      final sPolicy = newSchedulingPolicy ?? s.schedulingPolicy;
+      MissedOccurrencePolicy mPolicy;
+      if (newMissedOccurrencePolicy != null) {
+        mPolicy = newMissedOccurrencePolicy;
+      } else {
+        final legacyMatchesNew =
+            (newMissedPolicy == MissedPolicy.skip &&
+                s.missedOccurrencePolicy.type ==
+                    MissedOccurrenceType.autoDismiss) ||
+            (newMissedPolicy != MissedPolicy.skip &&
+                s.missedOccurrencePolicy.type ==
+                    MissedOccurrenceType.keepAround &&
+                s.missedOccurrencePolicy.legacyPolicy == newMissedPolicy);
+
+        if (legacyMatchesNew) {
+          mPolicy = s.missedOccurrencePolicy;
+        } else {
+          mPolicy = newMissedPolicy == MissedPolicy.skip
+              ? const MissedOccurrencePolicy.autoDismiss(
+                  gracePeriod: Duration.zero,
+                )
+              : MissedOccurrencePolicy.keepAround(
+                  legacyPolicy: newMissedPolicy,
+                );
+        }
+      }
+      return s.copyWithTiming(
+        schedulingPolicy: sPolicy,
+        missedOccurrencePolicy: mPolicy,
+      );
+    }).toList();
+
     final newTask = _copyWith(
       title: newTitle,
       description: newDescription,
-      schedules: newSchedules,
+      schedules: resolvedSchedules,
       estimatedDuration: newEstimatedDuration,
       clearEstimatedDuration: newEstimatedDuration == null,
-      missedPolicy: newMissedPolicy,
       isMaster: newIsMaster,
       lastSpawnedDate: newLastSpawnedDate,
       clearLastSpawnedDate: newLastSpawnedDate == null,
@@ -222,20 +305,26 @@ class TaskSchedule {
         .map((s) => s.toJson())
         .toList()
         .toString();
-    final newSchedulesJson = newSchedules
+    final newSchedulesJson = resolvedSchedules
         .map((s) => s.toJson())
         .toList()
         .toString();
     if (oldSchedulesJson != newSchedulesJson) {
-      changes['schedules'] = newSchedules.map((s) => s.toJson()).toList();
+      changes['schedules'] = resolvedSchedules.map((s) => s.toJson()).toList();
+      if (resolvedSchedules.isNotEmpty) {
+        changes['schedulingPolicy'] = resolvedSchedules.first.schedulingPolicy
+            .toJson();
+        changes['missedOccurrencePolicy'] = resolvedSchedules
+            .first
+            .missedOccurrencePolicy
+            .toJson();
+        changes['missedPolicy'] =
+            resolvedSchedules.first.missedOccurrencePolicy.legacyPolicy.name;
+      }
     }
 
     if (estimatedDuration != newEstimatedDuration) {
       changes['estimatedDuration'] = newEstimatedDuration?.inMinutes;
-    }
-
-    if (missedPolicy != newMissedPolicy) {
-      changes['missedPolicy'] = newMissedPolicy.name;
     }
 
     if (isMaster != newIsMaster) {
@@ -288,7 +377,11 @@ class TaskSchedule {
     final newTask = _copyWith(schedules: newSchedules);
     return (
       newTask: newTask,
-      changes: {'schedules': newSchedules.map((s) => s.toJson()).toList()},
+      changes: {
+        'schedules': newSchedules.map((s) => s.toJson()).toList(),
+        if (newSchedules.isNotEmpty)
+          'schedulingPolicy': newSchedules.first.schedulingPolicy.toJson(),
+      },
     );
   }
 
@@ -304,7 +397,10 @@ class TaskSchedule {
     final newTask = _copyWith(schedules: newSchedules);
     return (
       newTask: newTask,
-      changes: {'schedules': newSchedules.map((s) => s.toJson()).toList()},
+      changes: {
+        'schedules': newSchedules.map((s) => s.toJson()).toList(),
+        'schedulingPolicy': newTask.schedulingPolicy.toJson(),
+      },
     );
   }
 
@@ -320,7 +416,10 @@ class TaskSchedule {
     final newTask = _copyWith(schedules: newSchedules);
     return (
       newTask: newTask,
-      changes: {'schedules': newSchedules.map((s) => s.toJson()).toList()},
+      changes: {
+        'schedules': newSchedules.map((s) => s.toJson()).toList(),
+        'schedulingPolicy': newTask.schedulingPolicy.toJson(),
+      },
     );
   }
 
@@ -367,6 +466,8 @@ class TaskSchedule {
     Map<String, bool>? preferredBy,
     String? assignedUserId,
     bool clearAssignedUserId = false,
+    SchedulingPolicy? schedulingPolicy,
+    MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
     return _copyWith(
       title: title,
@@ -387,6 +488,8 @@ class TaskSchedule {
       preferredBy: preferredBy,
       assignedUserId: assignedUserId,
       clearAssignedUserId: clearAssignedUserId,
+      schedulingPolicy: schedulingPolicy,
+      missedOccurrencePolicy: missedOccurrencePolicy,
     );
   }
 
@@ -409,18 +512,39 @@ class TaskSchedule {
     Map<String, bool>? preferredBy,
     String? assignedUserId,
     bool clearAssignedUserId = false,
+    SchedulingPolicy? schedulingPolicy,
+    MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
+    final baseSchedules = schedules ?? this.schedules;
+    final resolvedSchedules = baseSchedules.map((s) {
+      final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
+      final mPolicy =
+          missedOccurrencePolicy ??
+          (missedPolicy != null
+              ? (missedPolicy == MissedPolicy.skip
+                    ? const MissedOccurrencePolicy.autoDismiss(
+                        gracePeriod: Duration.zero,
+                      )
+                    : MissedOccurrencePolicy.keepAround(
+                        legacyPolicy: missedPolicy,
+                      ))
+              : s.missedOccurrencePolicy);
+      return s.copyWithTiming(
+        schedulingPolicy: sPolicy,
+        missedOccurrencePolicy: mPolicy,
+      );
+    }).toList();
+
     return TaskSchedule(
       id: id,
       title: title ?? this.title,
       description: description ?? this.description,
-      schedules: schedules ?? this.schedules,
+      schedules: resolvedSchedules,
       activeOccurrenceIndex:
           activeOccurrenceIndex ?? this.activeOccurrenceIndex,
       estimatedDuration: clearEstimatedDuration
           ? null
           : (estimatedDuration ?? this.estimatedDuration),
-      missedPolicy: missedPolicy ?? this.missedPolicy,
       isMaster: isMaster ?? this.isMaster,
       lastSpawnedDate: clearLastSpawnedDate
           ? null
