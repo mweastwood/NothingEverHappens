@@ -478,5 +478,121 @@ void main() {
         },
       );
     });
+
+    group('Spawning on completion/undo calculations', () {
+      test(
+        'spawns completion relative next instance and calculates delete ID correctly',
+        () {
+          final completedDate = today;
+          final task = TaskSchedule(
+            id: 'relative-spawn',
+            title: 'Relative Task',
+            description: 'Spawning next test',
+            schedules: [
+              DailySchedule(
+                startDate: completedDate,
+                interval: 1,
+                schedulingPolicy: const CompletionRelativePolicy(
+                  interval: Duration(days: 3),
+                  targetTime: TimeOfDay(hour: 10, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 18, minute: 0),
+                ),
+              ),
+            ],
+          );
+
+          final completedInstance = TaskInstance(
+            id: 'relative-spawn_2026-06-19_0',
+            scheduleId: task.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: completedDate,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'completed',
+            completedAt: DateTime(2026, 6, 19, 14, 0),
+          );
+
+          final nextInst = SchedulerEngine.getNextOccurrenceToSpawn(
+            task,
+            completedInstance,
+            DateTime(2026, 6, 19, 14, 0),
+          );
+          expect(nextInst, isNotNull);
+          expect(nextInst!.scheduledDate, today.addDays(3));
+          expect(nextInst.id, 'relative-spawn_2026-06-22');
+          expect(nextInst.status, 'pending');
+
+          final deleteId = SchedulerEngine.getNextOccurrenceIdToDelete(
+            task,
+            completedInstance,
+            DateTime(2026, 6, 19, 14, 0),
+          );
+          expect(deleteId, 'relative-spawn_2026-06-22');
+        },
+      );
+
+      test('spawns calendar-fixed rollover next instance correctly', () {
+        final yesterday = today.addDays(-1);
+        final task = TaskSchedule(
+          id: 'fixed-spawn',
+          title: 'Fixed Task',
+          description: 'Calendar fixed test',
+          schedules: [
+            DailySchedule(
+              startDate: yesterday,
+              interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
+                legacyPolicy: MissedPolicy.rollover,
+              ),
+            ),
+          ],
+        );
+
+        final completedInstance = TaskInstance(
+          id: 'fixed-spawn_2026-06-18_0',
+          scheduleId: task.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: yesterday,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: 'completed',
+          completedAt: now,
+        );
+
+        final nextInst = SchedulerEngine.getNextOccurrenceToSpawn(
+          task,
+          completedInstance,
+          now,
+        );
+        expect(nextInst, isNotNull);
+        expect(nextInst!.scheduledDate, today);
+        expect(nextInst.id, 'fixed-spawn_2026-06-19');
+        expect(nextInst.status, 'pending');
+
+        final deleteId = SchedulerEngine.getNextOccurrenceIdToDelete(
+          task,
+          completedInstance,
+          now,
+        );
+        expect(deleteId, 'fixed-spawn_2026-06-19');
+      });
+    });
   });
 }
