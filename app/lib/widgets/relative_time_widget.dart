@@ -440,6 +440,8 @@ class _DayOffsetPickerDialogState extends State<_DayOffsetPickerDialog> {
                   key: Key('preset_chip_$offset'),
                   label: Text(_getOffsetLabel(offset)),
                   selected: isSelected,
+                  showCheckmark: false,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.normal),
                   onSelected: (selected) {
                     if (selected) {
                       setState(() {
