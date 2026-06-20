@@ -482,13 +482,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          context.l10n.scheduleHeader,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
         AbsorbPointer(
           absorbing: readOnly,
           child: Opacity(
