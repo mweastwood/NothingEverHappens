@@ -216,7 +216,7 @@ void main() {
 
       final domField = find.widgetWithText(
         TextFormField,
-        'Day of Month (1-28, or negative -1 to -28 from end)',
+        'Day of Month (1-28, or -1 to -28)',
       );
       expect(domField, findsOneWidget);
 
