@@ -216,24 +216,23 @@ void main() {
         ),
       );
 
-      // Verify custom textfield is not yet visible (since no dialog is open)
-      expect(find.byType(TextField), findsNothing);
+      // Verify stepper buttons are not yet visible (since no dialog is open)
+      expect(find.byKey(const Key('stepper_increment_button')), findsNothing);
 
       // Tap calendar icon for Start Window
       final calendars = find.byIcon(Icons.calendar_today);
       await tester.tap(calendars.first);
       await tester.pumpAndSettle();
 
-      // Tap "Custom"
-      await tester.tap(find.text('Custom').last);
-      await tester.pumpAndSettle();
+      // Verify custom stepper increment button is now visible (in dialog)
+      expect(find.byKey(const Key('stepper_increment_button')), findsOneWidget);
 
-      // Verify custom input is now visible (in dialog)
-      expect(find.byType(TextField), findsOneWidget);
+      // Tap increment button 42 times
+      for (int i = 0; i < 42; i++) {
+        await tester.tap(find.byKey(const Key('stepper_increment_button')));
+        await tester.pump();
+      }
 
-      // Enter "42" days
-      await tester.enterText(find.byType(TextField), '42');
-      await tester.pump();
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
 

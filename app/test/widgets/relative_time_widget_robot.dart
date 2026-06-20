@@ -58,16 +58,31 @@ class RelativeTimeWidgetRobot {
     await tester.pumpAndSettle();
   }
 
-  Future<void> selectCustom() async {
+  Future<void> openDialog() async {
     await _openOffsetDialog();
-    await tester.tap(find.text('Custom').last);
+  }
+
+  Future<void> tapIncrement([int times = 1]) async {
+    for (int i = 0; i < times; i++) {
+      await tester.tap(find.byKey(const Key('stepper_increment_button')));
+      await tester.pump();
+    }
+  }
+
+  Future<void> tapDecrement([int times = 1]) async {
+    for (int i = 0; i < times; i++) {
+      await tester.tap(find.byKey(const Key('stepper_decrement_button')));
+      await tester.pump();
+    }
+  }
+
+  Future<void> commitDialog() async {
+    await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
   }
 
-  Future<void> enterCustomDays(String days) async {
-    await tester.enterText(customTextField, days);
-    await tester.pump();
-    await tester.tap(find.text('OK'));
+  Future<void> cancelDialog() async {
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
   }
 
@@ -90,16 +105,9 @@ class RelativeTimeWidgetRobot {
     await tester.pumpAndSettle(); // Wait for dialog to close
   }
 
-  Future<void> closeCustomMode() async {
-    await selectDayOf();
-  }
-
   Finder get segmentedButton {
-    // No segmented button in new design, return an empty finder or one that finds nothing
     return find.byWidgetPredicate((widget) => false);
   }
-
-  Finder get customTextField => _find(find.byType(TextField));
 
   Finder get timeTextFinder => find.byIcon(Icons.access_time);
 }
