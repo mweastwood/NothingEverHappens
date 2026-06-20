@@ -27,45 +27,7 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          context.l10n.dueLabel,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        AbsoluteTimeWidget(controller: widget.dueDateTime),
-        const SizedBox(height: 6),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.help_outline,
-              size: 14,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                context.l10n.dueDescription,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Text(
-          context.l10n.advancedHeader,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.outline,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          context.l10n.snoozeUntilLabel,
+          context.l10n.startLabel,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -85,6 +47,36 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
             Expanded(
               child: Text(
                 context.l10n.snoozeUntilDescription,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Text(
+          context.l10n.dueWithoutColon,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        AbsoluteTimeWidget(controller: widget.dueDateTime),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                context.l10n.dueDescription,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,

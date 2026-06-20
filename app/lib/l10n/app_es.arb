@@ -29,6 +29,8 @@
   "saveButton": "Guardar",
   "selectAtLeastOneDayError": "Por favor selecciona al menos un día de la semana",
   "dueLabel": "Vence: ",
+  "startLabel": "Inicio",
+  "dueWithoutColon": "Vence",
   "dueDescription": "¿Cuándo debe completarse esta tarea antes de considerarse atrasada?",
   "advancedHeader": "Avanzado",
   "snoozeUntilLabel": "Posponer hasta: ",

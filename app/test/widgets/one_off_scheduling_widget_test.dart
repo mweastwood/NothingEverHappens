@@ -24,9 +24,9 @@ void main() {
         ),
       );
 
-      expect(find.text('Due: '), findsOneWidget);
-      expect(find.byType(AbsoluteTimeWidget), findsAtLeastNWidgets(1));
-      expect(find.text('Advanced'), findsOneWidget);
+      expect(find.text('Start'), findsOneWidget);
+      expect(find.text('Due'), findsOneWidget);
+      expect(find.byType(AbsoluteTimeWidget), findsAtLeastNWidgets(2));
     });
 
     testWidgets('shows snooze option always (expanded by default/design)', (
@@ -46,9 +46,9 @@ void main() {
         ),
       );
 
-      // Snooze should be visible now as we removed ExpansionTile
-      expect(find.text('Snooze Until: '), findsOneWidget);
-      expect(find.byType(AbsoluteTimeWidget), findsNWidgets(2)); // Due + Snooze
+      // Start should be visible now
+      expect(find.text('Start'), findsOneWidget);
+      expect(find.byType(AbsoluteTimeWidget), findsNWidgets(2)); // Start + Due
     });
 
     testWidgets('updates controllers when time is changed', (tester) async {

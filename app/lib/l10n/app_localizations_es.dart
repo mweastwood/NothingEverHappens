@@ -103,6 +103,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dueLabel => 'Vence: ';
 
   @override
+  String get startLabel => 'Inicio';
+
+  @override
+  String get dueWithoutColon => 'Vence';
+
+  @override
   String get dueDescription =>
       '¿Cuándo debe completarse esta tarea antes de considerarse atrasada?';
 

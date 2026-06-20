@@ -103,6 +103,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dueLabel => 'Due: ';
 
   @override
+  String get startLabel => 'Start';
+
+  @override
+  String get dueWithoutColon => 'Due';
+
+  @override
   String get dueDescription =>
       'When does this task need to be completed before it should be considered overdue?';
 
