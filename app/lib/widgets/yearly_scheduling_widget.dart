@@ -1,25 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../logic/task_schedule.dart';
-import 'daily_time_list_widget.dart';
+import '../logic/civil_day.dart';
+import '../logic/relative_time.dart';
+import '../logic/missed_occurrence_policy.dart';
 import '../logic/l10n_extension.dart';
+import 'relative_timing_widget.dart';
+import 'missed_occurrence_policy_selector.dart';
 
 class YearlySchedulingWidget extends StatefulWidget {
-  final DateTime startDate;
-  final ValueChanged<DateTime> onStartDateChanged;
-  final ValueNotifier<List<DailyOccurrenceTime>> dailyTimesController;
-  final TextEditingController intervalController;
-  final ValueNotifier<int> monthController;
-  final TextEditingController dayController;
+  final CivilDay startDate;
+  final ValueChanged<CivilDay> onStartDateChanged;
+  final int interval;
+  final ValueChanged<int> onIntervalChanged;
+  final int month;
+  final ValueChanged<int> onMonthChanged;
+  final int day;
+  final ValueChanged<int> onDayChanged;
+
+  final RelativeTime startRelativeTime;
+  final ValueChanged<RelativeTime> onStartRelativeTimeChanged;
+  final RelativeTime dueRelativeTime;
+  final ValueChanged<RelativeTime> onDueRelativeTimeChanged;
+  final RelativeTime? notificationRelativeTime;
+  final ValueChanged<RelativeTime?> onNotificationRelativeTimeChanged;
+  final MissedOccurrencePolicy? missedOccurrencePolicy;
+  final ValueChanged<MissedOccurrencePolicy>? onMissedOccurrencePolicyChanged;
+
+  final bool showNotification;
+  final bool showMissedPolicy;
+  final bool readOnly;
+  final TextEditingController? intervalController;
+  final TextEditingController? dayController;
 
   const YearlySchedulingWidget({
     super.key,
     required this.startDate,
     required this.onStartDateChanged,
-    required this.dailyTimesController,
-    required this.intervalController,
-    required this.monthController,
-    required this.dayController,
+    required this.interval,
+    required this.onIntervalChanged,
+    required this.month,
+    required this.onMonthChanged,
+    required this.day,
+    required this.onDayChanged,
+    required this.startRelativeTime,
+    required this.onStartRelativeTimeChanged,
+    required this.dueRelativeTime,
+    required this.onDueRelativeTimeChanged,
+    required this.notificationRelativeTime,
+    required this.onNotificationRelativeTimeChanged,
+    this.missedOccurrencePolicy,
+    this.onMissedOccurrencePolicyChanged,
+    this.showNotification = true,
+    this.showMissedPolicy = true,
+    this.readOnly = false,
+    this.intervalController,
+    this.dayController,
   });
 
   @override
@@ -27,16 +62,57 @@ class YearlySchedulingWidget extends StatefulWidget {
 }
 
 class _YearlySchedulingWidgetState extends State<YearlySchedulingWidget> {
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: widget.startDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-    );
-    if (picked != null) {
-      widget.onStartDateChanged(picked);
+  late TextEditingController _intervalController;
+  late TextEditingController _dayController;
+  bool _isIntervalExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _intervalController =
+        widget.intervalController ??
+        TextEditingController(text: widget.interval.toString());
+    _dayController =
+        widget.dayController ??
+        TextEditingController(text: widget.day.toString());
+  }
+
+  @override
+  void didUpdateWidget(YearlySchedulingWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.intervalController == null) {
+      if (oldWidget.interval != widget.interval) {
+        if (_intervalController.text != widget.interval.toString()) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _intervalController.text = widget.interval.toString();
+            }
+          });
+        }
+      }
     }
+    if (widget.dayController == null) {
+      if (oldWidget.day != widget.day) {
+        if (_dayController.text != widget.day.toString()) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _dayController.text = widget.day.toString();
+            }
+          });
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.intervalController == null) {
+      _intervalController.dispose();
+    }
+    if (widget.dayController == null) {
+      _dayController.dispose();
+    }
+    super.dispose();
   }
 
   int _maxDaysInMonth(int month) {
@@ -55,122 +131,198 @@ class _YearlySchedulingWidgetState extends State<YearlySchedulingWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+
+    final dt = DateTime(
+      widget.startDate.year,
+      widget.startDate.month,
+      widget.startDate.day,
+    );
+
+    final summaryText = widget.interval == 1
+        ? l10n.everyYear
+        : l10n.everyNYears(widget.interval);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        DailyTimeListWidget(controller: widget.dailyTimesController),
-        const SizedBox(height: 24),
+        // Start Recurrence Date
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
           child: Material(
             color: Colors.transparent,
-            child: InkWell(
-              onTap: _pickDate,
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            context.l10n.startDateLabel,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                  height: 1.1,
-                                ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.2,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.calendar_today,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 20,
-                    ),
-                  ],
+            child: ListTile(
+              key: const Key('yearly_start_recurrence_date_tile'),
+              dense: true,
+              title: Text(
+                l10n.startRecurrenceDateLabel,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              subtitle: Text(
+                '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              trailing: Icon(
+                Icons.calendar_today,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
+              onTap: widget.readOnly
+                  ? null
+                  : () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: dt,
+                        firstDate: DateTime.now().subtract(
+                          const Duration(days: 365),
+                        ),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 365 * 5),
+                        ),
+                      );
+                      if (picked != null) {
+                        widget.onStartDateChanged(
+                          CivilDay(
+                            year: picked.year,
+                            month: picked.month,
+                            day: picked.day,
+                          ),
+                        );
+                      }
+                    },
             ),
           ),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          controller: widget.intervalController,
-          decoration: InputDecoration(
-            labelText: context.l10n.yearsIntervalLabel,
-            border: const OutlineInputBorder(),
+
+        // Interval expandable card/tile
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: theme.colorScheme.outlineVariant),
+            borderRadius: BorderRadius.circular(8),
           ),
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          color: Colors.transparent,
+          margin: EdgeInsets.zero,
+          child: Column(
+            children: [
+              ListTile(
+                key: const Key('yearly_interval_expansion_tile'),
+                dense: true,
+                title: Text(
+                  l10n.intervalLabel,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                subtitle: Text(
+                  summaryText,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                trailing: Icon(
+                  _isIntervalExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+                onTap: () {
+                  setState(() {
+                    _isIntervalExpanded = !_isIntervalExpanded;
+                  });
+                },
+              ),
+              if (_isIntervalExpanded) ...[
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: TextFormField(
+                    key: const Key('yearly_interval_field'),
+                    controller: _intervalController,
+                    enabled: !widget.readOnly,
+                    decoration: InputDecoration(
+                      labelText: l10n.yearsIntervalLabel,
+                      border: const OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Interval is required';
+                      }
+                      final interval = int.tryParse(val);
+                      if (interval == null || interval <= 0) {
+                        return 'Please enter a positive number';
+                      }
+                      return null;
+                    },
+                    onChanged: (val) {
+                      final newInterval = int.tryParse(val);
+                      if (newInterval != null && newInterval > 0) {
+                        widget.onIntervalChanged(newInterval);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
         const SizedBox(height: 16),
+
+        // Month and Day selection row
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               flex: 2,
-              child: ValueListenableBuilder<int>(
-                valueListenable: widget.monthController,
-                builder: (context, month, _) {
-                  return DropdownButtonFormField<int>(
-                    initialValue: month,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.monthLabel,
-                      border: const OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 1, child: Text('January')),
-                      DropdownMenuItem(value: 2, child: Text('February')),
-                      DropdownMenuItem(value: 3, child: Text('March')),
-                      DropdownMenuItem(value: 4, child: Text('April')),
-                      DropdownMenuItem(value: 5, child: Text('May')),
-                      DropdownMenuItem(value: 6, child: Text('June')),
-                      DropdownMenuItem(value: 7, child: Text('July')),
-                      DropdownMenuItem(value: 8, child: Text('August')),
-                      DropdownMenuItem(value: 9, child: Text('September')),
-                      DropdownMenuItem(value: 10, child: Text('October')),
-                      DropdownMenuItem(value: 11, child: Text('November')),
-                      DropdownMenuItem(value: 12, child: Text('December')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        widget.monthController.value = value;
-                      }
-                    },
-                  );
-                },
+              child: DropdownButtonFormField<int>(
+                key: const Key('yearly_month_dropdown'),
+                initialValue: widget.month,
+                decoration: InputDecoration(
+                  labelText: l10n.monthLabel,
+                  border: const OutlineInputBorder(),
+                ),
+                items: [
+                  DropdownMenuItem(value: 1, child: Text(l10n.monthJanuary)),
+                  DropdownMenuItem(value: 2, child: Text(l10n.monthFebruary)),
+                  DropdownMenuItem(value: 3, child: Text(l10n.monthMarch)),
+                  DropdownMenuItem(value: 4, child: Text(l10n.monthApril)),
+                  DropdownMenuItem(value: 5, child: Text(l10n.monthMay)),
+                  DropdownMenuItem(value: 6, child: Text(l10n.monthJune)),
+                  DropdownMenuItem(value: 7, child: Text(l10n.monthJuly)),
+                  DropdownMenuItem(value: 8, child: Text(l10n.monthAugust)),
+                  DropdownMenuItem(value: 9, child: Text(l10n.monthSeptember)),
+                  DropdownMenuItem(value: 10, child: Text(l10n.monthOctober)),
+                  DropdownMenuItem(value: 11, child: Text(l10n.monthNovember)),
+                  DropdownMenuItem(value: 12, child: Text(l10n.monthDecember)),
+                ],
+                onChanged: widget.readOnly
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          widget.onMonthChanged(value);
+                        }
+                      },
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
               flex: 1,
               child: TextFormField(
-                controller: widget.dayController,
+                key: const Key('yearly_day_field'),
+                controller: _dayController,
+                enabled: !widget.readOnly,
                 decoration: InputDecoration(
-                  labelText: context.l10n.dayLabel,
+                  labelText: l10n.dayLabel,
                   border: const OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
@@ -179,17 +331,51 @@ class _YearlySchedulingWidgetState extends State<YearlySchedulingWidget> {
                   if (value == null || value.trim().isEmpty) {
                     return 'Required';
                   }
-                  final day = int.tryParse(value.trim());
-                  final maxDays = _maxDaysInMonth(widget.monthController.value);
-                  if (day == null || day < 1 || day > maxDays) {
+                  final dayVal = int.tryParse(value.trim());
+                  final maxDays = _maxDaysInMonth(widget.month);
+                  if (dayVal == null || dayVal < 1 || dayVal > maxDays) {
                     return '1-$maxDays';
                   }
                   return null;
+                },
+                onChanged: (val) {
+                  final dayVal = int.tryParse(val.trim());
+                  final maxDays = _maxDaysInMonth(widget.month);
+                  if (dayVal != null && dayVal >= 1 && dayVal <= maxDays) {
+                    widget.onDayChanged(dayVal);
+                  }
                 },
               ),
             ),
           ],
         ),
+        const SizedBox(height: 16),
+
+        // Start & Due relative selectors (and notification reminder if showNotification is true)
+        RelativeTimingWidget(
+          key: const Key('yearly_relative_timing'),
+          startRelativeTime: widget.startRelativeTime,
+          dueRelativeTime: widget.dueRelativeTime,
+          notificationRelativeTime: widget.notificationRelativeTime,
+          onStartChanged: widget.onStartRelativeTimeChanged,
+          onDueChanged: widget.onDueRelativeTimeChanged,
+          onNotificationChanged: widget.onNotificationRelativeTimeChanged,
+          showNotification: widget.showNotification,
+        ),
+
+        // Missed occurrence policy selector
+        if (widget.showMissedPolicy &&
+            widget.missedOccurrencePolicy != null &&
+            widget.onMissedOccurrencePolicyChanged != null) ...[
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 12),
+          MissedOccurrencePolicySelector(
+            key: const Key('yearly_missed_policy'),
+            policy: widget.missedOccurrencePolicy!,
+            onChanged: widget.onMissedOccurrencePolicyChanged!,
+          ),
+        ],
       ],
     );
   }

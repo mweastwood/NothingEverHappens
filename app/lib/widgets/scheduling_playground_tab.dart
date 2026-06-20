@@ -282,6 +282,9 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
               interval: interval,
               month: yMonth,
               day: yDay,
+              startRelativeTime: _startRelativeTime,
+              dueRelativeTime: _dueRelativeTime,
+              notificationRelativeTime: _notificationRelativeTime,
             );
             break;
         }
@@ -631,16 +634,62 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                         )
                       else if (_scheduleType == RecurrenceType.yearly)
                         YearlySchedulingWidget(
-                          startDate: _startDate,
+                          startDate: CivilDay.fromDateTime(_startDate),
                           onStartDateChanged: (date) {
                             setState(() {
-                              _startDate = date;
+                              _startDate = DateTime(
+                                date.year,
+                                date.month,
+                                date.day,
+                              );
                               _recalculate();
                             });
                           },
-                          dailyTimesController: _dailyTimesController,
+                          interval: int.tryParse(_intervalController.text) ?? 1,
+                          onIntervalChanged: (val) {
+                            setState(() {
+                              _intervalController.text = val.toString();
+                              _recalculate();
+                            });
+                          },
+                          month: _yearlyMonthController.value,
+                          onMonthChanged: (val) {
+                            setState(() {
+                              _yearlyMonthController.value = val;
+                              _recalculate();
+                            });
+                          },
+                          day: int.tryParse(_yearlyDayController.text) ?? 1,
+                          onDayChanged: (val) {
+                            setState(() {
+                              _yearlyDayController.text = val.toString();
+                              _recalculate();
+                            });
+                          },
+                          startRelativeTime: _startRelativeTime,
+                          onStartRelativeTimeChanged: (val) {
+                            setState(() {
+                              _startRelativeTime = val;
+                              _recalculate();
+                            });
+                          },
+                          dueRelativeTime: _dueRelativeTime,
+                          onDueRelativeTimeChanged: (val) {
+                            setState(() {
+                              _dueRelativeTime = val;
+                              _recalculate();
+                            });
+                          },
+                          notificationRelativeTime: _notificationRelativeTime,
+                          onNotificationRelativeTimeChanged: (val) {
+                            setState(() {
+                              _notificationRelativeTime = val;
+                              _recalculate();
+                            });
+                          },
+                          showNotification: false,
+                          showMissedPolicy: false,
                           intervalController: _intervalController,
-                          monthController: _yearlyMonthController,
                           dayController: _yearlyDayController,
                         ),
                     ],

@@ -262,7 +262,7 @@ void main() {
         ),
       );
 
-      final dayField = find.widgetWithText(TextFormField, 'Day of Month');
+      final dayField = find.widgetWithText(TextFormField, 'Day');
       expect(dayField, findsOneWidget);
 
       // Enter invalid day (30 for February)
@@ -273,7 +273,7 @@ void main() {
       await tester.tap(find.byKey(const Key('validate_button')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Day must be between 1 and 29'), findsOneWidget);
+      expect(find.text('1-29'), findsOneWidget);
 
       // Enter valid day (28)
       await tester.enterText(dayField, '28');
