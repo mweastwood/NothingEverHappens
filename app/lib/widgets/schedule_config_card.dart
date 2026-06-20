@@ -9,6 +9,7 @@ import 'monthly_scheduling_widget.dart';
 import 'yearly_scheduling_widget.dart';
 import 'one_off_scheduling_widget.dart';
 import 'recurrence_type_selector.dart';
+import '../logic/app_clock.dart';
 
 class ScheduleConfigCard extends StatefulWidget {
   final TaskScheduleRule schedule;
@@ -52,10 +53,10 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
     final s = widget.schedule;
     final initialStart = s is OneOffSchedule
         ? _relativeToAbsolute(s.date, s.startRelativeTime)
-        : DateTime.now();
+        : AppClock.now;
     final initialDue = s is OneOffSchedule
         ? _relativeToAbsolute(s.date, s.dueRelativeTime)
-        : DateTime.now();
+        : AppClock.now;
     final initialNotif =
         s is OneOffSchedule && s.notificationRelativeTime != null
         ? s.notificationRelativeTime!.time
@@ -789,7 +790,6 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
                     ),
                   ] else if (s is OneOffSchedule) ...[
                     OneOffSchedulingWidget(
-                      startDateTime: _oneOffStartController,
                       dueDateTime: _oneOffDueController,
                       notificationTimeController: _oneOffNotificationController,
                     ),
