@@ -4,13 +4,14 @@ import '../logic/l10n_extension.dart';
 
 class OneOffSchedulingWidget extends StatefulWidget {
   final ValueNotifier<DateTime> dueDateTime;
-
   final ValueNotifier<TimeOfDay?>? notificationTimeController;
+  final bool showNotification;
 
   const OneOffSchedulingWidget({
     super.key,
     required this.dueDateTime,
     this.notificationTimeController,
+    this.showNotification = true,
   });
 
   @override
@@ -53,7 +54,8 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
             ),
           ],
         ),
-        if (widget.notificationTimeController != null) ...[
+        if (widget.showNotification &&
+            widget.notificationTimeController != null) ...[
           const SizedBox(height: 20),
           ValueListenableBuilder<TimeOfDay?>(
             valueListenable: widget.notificationTimeController!,

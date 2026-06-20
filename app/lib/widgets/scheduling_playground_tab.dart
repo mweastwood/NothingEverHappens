@@ -445,6 +445,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           dueDateTime: _dueDateTimeController,
                           notificationTimeController:
                               _oneOffNotificationController,
+                          showNotification: false,
                         )
                       else if (_scheduleType == RecurrenceType.daily)
                         DailySchedulingWidget(

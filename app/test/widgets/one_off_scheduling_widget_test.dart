@@ -23,6 +23,32 @@ void main() {
       expect(find.byType(AbsoluteTimeWidget), findsOneWidget);
     });
 
+    testWidgets('hides notification section when showNotification is false', (
+      tester,
+    ) async {
+      final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
+      final notificationTime = ValueNotifier<TimeOfDay?>(
+        const TimeOfDay(hour: 9, minute: 0),
+      );
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: OneOffSchedulingWidget(
+              dueDateTime: due,
+              notificationTimeController: notificationTime,
+              showNotification: false,
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const Key('one_off_notification_button')),
+        findsNothing,
+      );
+    });
+
     testWidgets('updates controllers when time is changed', (tester) async {
       final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
       final oneOffRobot = OneOffSchedulingWidgetRobot(tester);
