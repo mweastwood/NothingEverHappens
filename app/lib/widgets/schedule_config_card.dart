@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_schedule_rule.dart';
 import '../logic/scheduling_policy.dart';
 import '../logic/missed_occurrence_policy.dart';
-import 'relative_timing_widget.dart';
 import 'schedule_type_selector.dart';
 import 'completion_relative_config_widget.dart';
-import 'missed_occurrence_policy_selector.dart';
 import 'daily_scheduling_widget.dart';
 import 'weekly_scheduling_widget.dart';
 import 'monthly_scheduling_widget.dart';
@@ -762,47 +759,27 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
                         dayController: _yearlyDayController,
                       ),
                     ] else ...[
-                      _buildRecurrenceConfigForm(s),
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 12),
-                      if (s is OneOffSchedule)
-                        _buildOneOffTimingPicker(s)
-                      else
-                        RelativeTimingWidget(
-                          startRelativeTime: s.startRelativeTime,
-                          dueRelativeTime: s.dueRelativeTime,
-                          notificationRelativeTime: s.notificationRelativeTime,
-                          onStartChanged: (start) {
+                      if (s is OneOffSchedule) ...[
+                        _buildStartDateTile(
+                          label: 'Occurrence Date',
+                          date: s.date,
+                          onDateChanged: (d) {
                             widget.onChanged(
-                              s.copyWithTiming(startRelativeTime: start),
-                            );
-                          },
-                          onDueChanged: (due) {
-                            widget.onChanged(
-                              s.copyWithTiming(dueRelativeTime: due),
-                            );
-                          },
-                          onNotificationChanged: (notif) {
-                            widget.onChanged(
-                              s.copyWithTiming(
-                                notificationRelativeTime: notif,
-                                clearNotification: notif == null,
+                              OneOffSchedule(
+                                date: d,
+                                startRelativeTime: s.startRelativeTime,
+                                dueRelativeTime: s.dueRelativeTime,
+                                notificationRelativeTime:
+                                    s.notificationRelativeTime,
                               ),
                             );
                           },
                         ),
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 12),
-                      MissedOccurrencePolicySelector(
-                        policy: s.missedOccurrencePolicy,
-                        onChanged: (policy) {
-                          widget.onChanged(
-                            s.copyWithTiming(missedOccurrencePolicy: policy),
-                          );
-                        },
-                      ),
+                        const SizedBox(height: 16),
+                        const Divider(),
+                        const SizedBox(height: 12),
+                        _buildOneOffTimingPicker(s),
+                      ],
                     ],
                   ],
                 ],
@@ -811,294 +788,6 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildRecurrenceConfigForm(TaskScheduleRule s) {
-    if (s is OneOffSchedule) {
-      return _buildStartDateTile(
-        label: 'Occurrence Date',
-        date: s.date,
-        onDateChanged: (d) {
-          widget.onChanged(
-            OneOffSchedule(
-              date: d,
-              startRelativeTime: s.startRelativeTime,
-              dueRelativeTime: s.dueRelativeTime,
-              notificationRelativeTime: s.notificationRelativeTime,
-            ),
-          );
-        },
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStartDateTile(
-          label: 'Start Recurrence Date',
-          date: s.scheduledDate,
-          onDateChanged: (d) {
-            widget.onChanged(s.copyWithStartDate(d));
-          },
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _intervalController,
-          decoration: InputDecoration(
-            labelText: s is DailySchedule
-                ? 'Days Interval'
-                : s is WeeklySchedule
-                ? 'Weeks Interval'
-                : s is MonthlySchedule
-                ? 'Months Interval'
-                : 'Years Interval',
-            border: const OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          validator: (val) {
-            if (val == null || val.trim().isEmpty) {
-              return 'Interval is required';
-            }
-            final interval = int.tryParse(val);
-            if (interval == null || interval <= 0) {
-              return 'Please enter a positive number';
-            }
-            return null;
-          },
-          onChanged: (val) {
-            final interval = int.tryParse(val) ?? 1;
-            if (s is DailySchedule) {
-              widget.onChanged(
-                DailySchedule(
-                  startDate: s.startDate,
-                  interval: interval,
-                  startRelativeTime: s.startRelativeTime,
-                  dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
-                ),
-              );
-            } else if (s is WeeklySchedule) {
-              widget.onChanged(
-                WeeklySchedule(
-                  startDate: s.startDate,
-                  interval: interval,
-                  daysOfWeek: s.daysOfWeek,
-                  startRelativeTime: s.startRelativeTime,
-                  dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
-                ),
-              );
-            } else if (s is MonthlySchedule) {
-              widget.onChanged(
-                MonthlySchedule(
-                  startDate: s.startDate,
-                  interval: interval,
-                  dayOfMonth: s.dayOfMonth,
-                  dayOfWeek: s.dayOfWeek,
-                  occurrence: s.occurrence,
-                  startRelativeTime: s.startRelativeTime,
-                  dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
-                ),
-              );
-            } else if (s is YearlySchedule) {
-              widget.onChanged(
-                YearlySchedule(
-                  startDate: s.startDate,
-                  interval: interval,
-                  month: s.month,
-                  day: s.day,
-                  startRelativeTime: s.startRelativeTime,
-                  dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
-                ),
-              );
-            }
-          },
-        ),
-        if (s is WeeklySchedule) ...[
-          const SizedBox(height: 16),
-          const Text('Repeats on'),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8.0,
-            children: List.generate(7, (index) {
-              final dayIndex = index + 1;
-              final labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-              final isSelected = s.daysOfWeek.contains(dayIndex);
-              return FilterChip(
-                label: Text(labels[index]),
-                selected: isSelected,
-                onSelected: (selected) {
-                  final newSet = Set<int>.from(s.daysOfWeek);
-                  if (selected) {
-                    newSet.add(dayIndex);
-                  } else {
-                    newSet.remove(dayIndex);
-                  }
-                  widget.onChanged(
-                    WeeklySchedule(
-                      startDate: s.startDate,
-                      interval: s.interval,
-                      daysOfWeek: newSet,
-                      startRelativeTime: s.startRelativeTime,
-                      dueRelativeTime: s.dueRelativeTime,
-                      notificationRelativeTime: s.notificationRelativeTime,
-                    ),
-                  );
-                },
-              );
-            }),
-          ),
-        ],
-        if (s is MonthlySchedule) ...[
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: s.dayOfMonth != null ? 'dayOfMonth' : 'nthDayOfWeek',
-            decoration: const InputDecoration(
-              labelText: 'Monthly Recurrence Rule',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: 'dayOfMonth',
-                child: Text('Day of Month'),
-              ),
-              DropdownMenuItem(
-                value: 'nthDayOfWeek',
-                child: Text('Nth Day of Week'),
-              ),
-            ],
-            onChanged: (value) {
-              if (value == 'dayOfMonth') {
-                widget.onChanged(
-                  MonthlySchedule(
-                    startDate: s.startDate,
-                    interval: s.interval,
-                    dayOfMonth: 1,
-                    startRelativeTime: s.startRelativeTime,
-                    dueRelativeTime: s.dueRelativeTime,
-                    notificationRelativeTime: s.notificationRelativeTime,
-                  ),
-                );
-              } else {
-                widget.onChanged(
-                  MonthlySchedule(
-                    startDate: s.startDate,
-                    interval: s.interval,
-                    dayOfWeek: 1,
-                    occurrence: 1,
-                    startRelativeTime: s.startRelativeTime,
-                    dueRelativeTime: s.dueRelativeTime,
-                    notificationRelativeTime: s.notificationRelativeTime,
-                  ),
-                );
-              }
-            },
-          ),
-          const SizedBox(height: 16),
-          if (s.dayOfMonth != null)
-            TextFormField(
-              controller: _monthlyDayOfMonthController,
-              decoration: const InputDecoration(
-                labelText:
-                    'Day of Month (1-28, or negative -1 to -28 from end)',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: const TextInputType.numberWithOptions(signed: true),
-              validator: (val) {
-                if (val == null || val.trim().isEmpty) {
-                  return 'Day of month is required';
-                }
-                final dom = int.tryParse(val);
-                if (dom == null || dom == 0 || dom.abs() > 28) {
-                  return 'Please enter a valid day number: 1 to 28, or -1 to -28';
-                }
-                return null;
-              },
-              onChanged: (val) {
-                final dom = int.tryParse(val) ?? 1;
-                if (dom != 0 && dom.abs() <= 28) {
-                  widget.onChanged(
-                    MonthlySchedule(
-                      startDate: s.startDate,
-                      interval: s.interval,
-                      dayOfMonth: dom,
-                      startRelativeTime: s.startRelativeTime,
-                      dueRelativeTime: s.dueRelativeTime,
-                      notificationRelativeTime: s.notificationRelativeTime,
-                    ),
-                  );
-                }
-              },
-            )
-          else ...[
-            DropdownButtonFormField<int>(
-              initialValue: s.occurrence,
-              decoration: const InputDecoration(
-                labelText: 'Occurrence',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('First')),
-                DropdownMenuItem(value: 2, child: Text('Second')),
-                DropdownMenuItem(value: 3, child: Text('Third')),
-                DropdownMenuItem(value: 4, child: Text('Fourth')),
-                DropdownMenuItem(value: -1, child: Text('Last')),
-              ],
-              onChanged: (val) {
-                if (val != null) {
-                  widget.onChanged(
-                    MonthlySchedule(
-                      startDate: s.startDate,
-                      interval: s.interval,
-                      dayOfWeek: s.dayOfWeek,
-                      occurrence: val,
-                      startRelativeTime: s.startRelativeTime,
-                      dueRelativeTime: s.dueRelativeTime,
-                      notificationRelativeTime: s.notificationRelativeTime,
-                    ),
-                  );
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
-              initialValue: s.dayOfWeek,
-              decoration: const InputDecoration(
-                labelText: 'Day of Week',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('Monday')),
-                DropdownMenuItem(value: 2, child: Text('Tuesday')),
-                DropdownMenuItem(value: 3, child: Text('Wednesday')),
-                DropdownMenuItem(value: 4, child: Text('Thursday')),
-                DropdownMenuItem(value: 5, child: Text('Friday')),
-                DropdownMenuItem(value: 6, child: Text('Saturday')),
-                DropdownMenuItem(value: 7, child: Text('Sunday')),
-              ],
-              onChanged: (val) {
-                if (val != null) {
-                  widget.onChanged(
-                    MonthlySchedule(
-                      startDate: s.startDate,
-                      interval: s.interval,
-                      dayOfWeek: val,
-                      occurrence: s.occurrence,
-                      startRelativeTime: s.startRelativeTime,
-                      dueRelativeTime: s.dueRelativeTime,
-                      notificationRelativeTime: s.notificationRelativeTime,
-                    ),
-                  );
-                }
-              },
-            ),
-          ],
-        ],
-      ],
     );
   }
 
