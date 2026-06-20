@@ -537,17 +537,18 @@ void main() {
       await tester.tap(find.text('Yearly').last);
       await tester.pumpAndSettle();
 
+      // Expand the years interval card
+      await tester.tap(find.byKey(const Key('yearly_interval_expansion_tile')));
+      await tester.pumpAndSettle();
+
       // Enter Years Interval
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Years Interval'),
         '2',
       );
 
-      // Day of month
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Day of Month'),
-        '24',
-      );
+      // Day
+      await tester.enterText(find.widgetWithText(TextFormField, 'Day'), '24');
       await tester.pump();
 
       await tester.tap(find.text('Save'));

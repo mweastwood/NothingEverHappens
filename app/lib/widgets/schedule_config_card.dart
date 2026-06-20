@@ -12,6 +12,7 @@ import 'missed_occurrence_policy_selector.dart';
 import 'daily_scheduling_widget.dart';
 import 'weekly_scheduling_widget.dart';
 import 'monthly_scheduling_widget.dart';
+import 'yearly_scheduling_widget.dart';
 
 class ScheduleConfigCard extends StatefulWidget {
   final TaskScheduleRule schedule;
@@ -671,6 +672,95 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
                         showNotification: true,
                         showMissedPolicy: true,
                       ),
+                    ] else if (s is YearlySchedule) ...[
+                      YearlySchedulingWidget(
+                        startDate: s.startDate,
+                        onStartDateChanged: (date) {
+                          widget.onChanged(s.copyWithStartDate(date));
+                        },
+                        interval: s.interval,
+                        onIntervalChanged: (val) {
+                          widget.onChanged(
+                            YearlySchedule(
+                              startDate: s.startDate,
+                              interval: val,
+                              month: s.month,
+                              day: s.day,
+                              startRelativeTime: s.startRelativeTime,
+                              dueRelativeTime: s.dueRelativeTime,
+                              notificationRelativeTime:
+                                  s.notificationRelativeTime,
+                              schedulingPolicy: s.schedulingPolicy,
+                              missedOccurrencePolicy: s.missedOccurrencePolicy,
+                            ),
+                          );
+                        },
+                        month: s.month,
+                        onMonthChanged: (val) {
+                          widget.onChanged(
+                            YearlySchedule(
+                              startDate: s.startDate,
+                              interval: s.interval,
+                              month: val,
+                              day: s.day,
+                              startRelativeTime: s.startRelativeTime,
+                              dueRelativeTime: s.dueRelativeTime,
+                              notificationRelativeTime:
+                                  s.notificationRelativeTime,
+                              schedulingPolicy: s.schedulingPolicy,
+                              missedOccurrencePolicy: s.missedOccurrencePolicy,
+                            ),
+                          );
+                        },
+                        day: s.day,
+                        onDayChanged: (val) {
+                          widget.onChanged(
+                            YearlySchedule(
+                              startDate: s.startDate,
+                              interval: s.interval,
+                              month: s.month,
+                              day: val,
+                              startRelativeTime: s.startRelativeTime,
+                              dueRelativeTime: s.dueRelativeTime,
+                              notificationRelativeTime:
+                                  s.notificationRelativeTime,
+                              schedulingPolicy: s.schedulingPolicy,
+                              missedOccurrencePolicy: s.missedOccurrencePolicy,
+                            ),
+                          );
+                        },
+                        startRelativeTime: s.startRelativeTime,
+                        onStartRelativeTimeChanged: (start) {
+                          widget.onChanged(
+                            s.copyWithTiming(startRelativeTime: start),
+                          );
+                        },
+                        dueRelativeTime: s.dueRelativeTime,
+                        onDueRelativeTimeChanged: (due) {
+                          widget.onChanged(
+                            s.copyWithTiming(dueRelativeTime: due),
+                          );
+                        },
+                        notificationRelativeTime: s.notificationRelativeTime,
+                        onNotificationRelativeTimeChanged: (notif) {
+                          widget.onChanged(
+                            s.copyWithTiming(
+                              notificationRelativeTime: notif,
+                              clearNotification: notif == null,
+                            ),
+                          );
+                        },
+                        missedOccurrencePolicy: s.missedOccurrencePolicy,
+                        onMissedOccurrencePolicyChanged: (policy) {
+                          widget.onChanged(
+                            s.copyWithTiming(missedOccurrencePolicy: policy),
+                          );
+                        },
+                        showNotification: true,
+                        showMissedPolicy: true,
+                        intervalController: _intervalController,
+                        dayController: _yearlyDayController,
+                      ),
                     ] else ...[
                       _buildRecurrenceConfigForm(s),
                       const SizedBox(height: 16),
@@ -1007,88 +1097,6 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
               },
             ),
           ],
-        ],
-        if (s is YearlySchedule) ...[
-          const SizedBox(height: 16),
-          DropdownButtonFormField<int>(
-            initialValue: s.month,
-            decoration: const InputDecoration(
-              labelText: 'Month',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(value: 1, child: Text('January')),
-              DropdownMenuItem(value: 2, child: Text('February')),
-              DropdownMenuItem(value: 3, child: Text('March')),
-              DropdownMenuItem(value: 4, child: Text('April')),
-              DropdownMenuItem(value: 5, child: Text('May')),
-              DropdownMenuItem(value: 6, child: Text('June')),
-              DropdownMenuItem(value: 7, child: Text('July')),
-              DropdownMenuItem(value: 8, child: Text('August')),
-              DropdownMenuItem(value: 9, child: Text('September')),
-              DropdownMenuItem(value: 10, child: Text('October')),
-              DropdownMenuItem(value: 11, child: Text('November')),
-              DropdownMenuItem(value: 12, child: Text('December')),
-            ],
-            onChanged: (val) {
-              if (val != null) {
-                widget.onChanged(
-                  YearlySchedule(
-                    startDate: s.startDate,
-                    interval: s.interval,
-                    month: val,
-                    day: s.day,
-                    startRelativeTime: s.startRelativeTime,
-                    dueRelativeTime: s.dueRelativeTime,
-                    notificationRelativeTime: s.notificationRelativeTime,
-                  ),
-                );
-              }
-            },
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _yearlyDayController,
-            decoration: const InputDecoration(
-              labelText: 'Day of Month',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.number,
-            validator: (val) {
-              if (val == null || val.trim().isEmpty) {
-                return 'Day is required';
-              }
-              final d = int.tryParse(val);
-              if (d == null) return 'Please enter a valid number';
-              final month = s.month;
-              int maxDays = 31;
-              if (month == 2) {
-                maxDays = 29;
-              } else if ([4, 6, 9, 11].contains(month)) {
-                maxDays = 30;
-              }
-              if (d < 1 || d > maxDays) {
-                return 'Day must be between 1 and $maxDays';
-              }
-              return null;
-            },
-            onChanged: (val) {
-              final d = int.tryParse(val) ?? 1;
-              if (d >= 1 && d <= 31) {
-                widget.onChanged(
-                  YearlySchedule(
-                    startDate: s.startDate,
-                    interval: s.interval,
-                    month: s.month,
-                    day: d,
-                    startRelativeTime: s.startRelativeTime,
-                    dueRelativeTime: s.dueRelativeTime,
-                    notificationRelativeTime: s.notificationRelativeTime,
-                  ),
-                );
-              }
-            },
-          ),
         ],
       ],
     );
