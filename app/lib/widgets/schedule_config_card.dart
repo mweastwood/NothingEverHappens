@@ -8,7 +8,7 @@ import 'weekly_scheduling_widget.dart';
 import 'monthly_scheduling_widget.dart';
 import 'yearly_scheduling_widget.dart';
 import 'one_off_scheduling_widget.dart';
-import 'recurrence_type_selector.dart';
+import 'hierarchical_recurrence_selector.dart';
 import '../logic/app_clock.dart';
 
 class ScheduleConfigCard extends StatefulWidget {
@@ -284,65 +284,6 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
     );
   }
 
-  void _changeRecurrenceType(RecurrenceType type) {
-    final current = widget.schedule;
-
-    TaskScheduleRule next;
-    switch (type) {
-      case RecurrenceType.oneOff:
-        next = OneOffSchedule(
-          date: current.scheduledDate,
-          startRelativeTime: current.startRelativeTime,
-          dueRelativeTime: current.dueRelativeTime,
-          notificationRelativeTime: current.notificationRelativeTime,
-        );
-        break;
-      case RecurrenceType.daily:
-        next = DailySchedule(
-          startDate: current.scheduledDate,
-          interval: 1,
-          startRelativeTime: current.startRelativeTime,
-          dueRelativeTime: current.dueRelativeTime,
-          notificationRelativeTime: current.notificationRelativeTime,
-        );
-        break;
-      case RecurrenceType.weekly:
-        next = WeeklySchedule(
-          startDate: current.scheduledDate,
-          interval: 1,
-          daysOfWeek: {current.scheduledDate.toUtcDateTime().weekday},
-          startRelativeTime: current.startRelativeTime,
-          dueRelativeTime: current.dueRelativeTime,
-          notificationRelativeTime: current.notificationRelativeTime,
-        );
-        break;
-      case RecurrenceType.monthly:
-        next = MonthlySchedule(
-          startDate: current.scheduledDate,
-          interval: 1,
-          dayOfMonth: current.scheduledDate.day <= 28
-              ? current.scheduledDate.day
-              : 28,
-          startRelativeTime: current.startRelativeTime,
-          dueRelativeTime: current.dueRelativeTime,
-          notificationRelativeTime: current.notificationRelativeTime,
-        );
-        break;
-      case RecurrenceType.yearly:
-        next = YearlySchedule(
-          startDate: current.scheduledDate,
-          interval: 1,
-          month: current.scheduledDate.month,
-          day: current.scheduledDate.day,
-          startRelativeTime: current.startRelativeTime,
-          dueRelativeTime: current.dueRelativeTime,
-          notificationRelativeTime: current.notificationRelativeTime,
-        );
-        break;
-    }
-    widget.onChanged(next);
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -350,15 +291,7 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
     final summary = _getSummaryText(s);
     final icon = _getIcon(s);
 
-    final recurrenceType = s is OneOffSchedule
-        ? RecurrenceType.oneOff
-        : s is DailySchedule
-        ? RecurrenceType.daily
-        : s is WeeklySchedule
-        ? RecurrenceType.weekly
-        : s is MonthlySchedule
-        ? RecurrenceType.monthly
-        : RecurrenceType.yearly;
+    final hierarchicalKind = s.hierarchicalKind;
 
     return Card(
       elevation: 0,
@@ -410,9 +343,12 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RecurrenceTypeSelector(
-                    selectedValue: recurrenceType,
-                    onSelected: _changeRecurrenceType,
+                  HierarchicalRecurrenceSelector(
+                    selectedValue: hierarchicalKind,
+                    onSelected: (kind) {
+                      final updatedRule = convertRuleToKind(s, kind);
+                      widget.onChanged(updatedRule);
+                    },
                   ),
                   const SizedBox(height: 16),
                   if (s is DailySchedule) ...[

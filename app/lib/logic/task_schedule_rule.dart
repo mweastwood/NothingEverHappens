@@ -896,3 +896,206 @@ class YearlySchedule extends TaskScheduleRule {
     };
   }
 }
+
+enum HierarchicalRecurrenceKind {
+  oneOff,
+  dailyFixed,
+  dailyCompletionRelative,
+  weeklyFixed,
+  weeklyCompletionRelative,
+  monthlyFixedDay,
+  monthlyNthWeekday,
+  monthlyCompletionRelative,
+  yearlyFixed,
+  yearlyCompletionRelative,
+}
+
+extension TaskScheduleRuleHierarchicalExtension on TaskScheduleRule {
+  HierarchicalRecurrenceKind get hierarchicalKind {
+    final self = this;
+    if (self is OneOffSchedule) {
+      return HierarchicalRecurrenceKind.oneOff;
+    } else if (self is DailySchedule) {
+      if (self.schedulingPolicy is CompletionRelativePolicy) {
+        return HierarchicalRecurrenceKind.dailyCompletionRelative;
+      }
+      return HierarchicalRecurrenceKind.dailyFixed;
+    } else if (self is WeeklySchedule) {
+      if (self.schedulingPolicy is CompletionRelativePolicy) {
+        return HierarchicalRecurrenceKind.weeklyCompletionRelative;
+      }
+      return HierarchicalRecurrenceKind.weeklyFixed;
+    } else if (self is MonthlySchedule) {
+      if (self.schedulingPolicy is CompletionRelativePolicy) {
+        return HierarchicalRecurrenceKind.monthlyCompletionRelative;
+      } else if (self.dayOfMonth != null) {
+        return HierarchicalRecurrenceKind.monthlyFixedDay;
+      }
+      return HierarchicalRecurrenceKind.monthlyNthWeekday;
+    } else if (self is YearlySchedule) {
+      if (self.schedulingPolicy is CompletionRelativePolicy) {
+        return HierarchicalRecurrenceKind.yearlyCompletionRelative;
+      }
+      return HierarchicalRecurrenceKind.yearlyFixed;
+    }
+    throw StateError('Unknown schedule rule type');
+  }
+}
+
+TaskScheduleRule convertRuleToKind(
+  TaskScheduleRule existingRule,
+  HierarchicalRecurrenceKind kind,
+) {
+  final scheduledDate = existingRule.scheduledDate;
+  final startRelativeTime = existingRule.startRelativeTime;
+  final dueRelativeTime = existingRule.dueRelativeTime;
+  final notificationRelativeTime = existingRule.notificationRelativeTime;
+  final missedOccurrencePolicy = existingRule.missedOccurrencePolicy;
+
+  // Read existing interval if possible, default to 1
+  int interval = 1;
+  final self = existingRule;
+  if (self is DailySchedule) {
+    interval = self.interval;
+  } else if (self is WeeklySchedule) {
+    interval = self.interval;
+  } else if (self is MonthlySchedule) {
+    interval = self.interval;
+  } else if (self is YearlySchedule) {
+    interval = self.interval;
+  }
+
+  switch (kind) {
+    case HierarchicalRecurrenceKind.oneOff:
+      return OneOffSchedule(
+        date: scheduledDate,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTime: notificationRelativeTime,
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.dailyFixed:
+      return DailySchedule(
+        startDate: scheduledDate,
+        interval: interval,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTime: notificationRelativeTime,
+        schedulingPolicy: const FixedCalendarPolicy(),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.dailyCompletionRelative:
+      return DailySchedule(
+        startDate: scheduledDate,
+        interval: interval,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTime: notificationRelativeTime,
+        schedulingPolicy: CompletionRelativePolicy(
+          interval: Duration(days: interval),
+          targetTime: startRelativeTime.time,
+        ),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.weeklyFixed:
+      return WeeklySchedule(
+        startDate: scheduledDate,
+        interval: interval,
+        daysOfWeek: {scheduledDate.toUtcDateTime().weekday},
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTime: notificationRelativeTime,
+        schedulingPolicy: const FixedCalendarPolicy(),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.weeklyCompletionRelative:
+      return WeeklySchedule(
+        startDate: scheduledDate,
+        interval: interval,
+        daysOfWeek: {scheduledDate.toUtcDateTime().weekday},
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTime: notificationRelativeTime,
+        schedulingPolicy: CompletionRelativePolicy(
+          interval: Duration(days: interval * 7),
+          targetTime: startRelativeTime.time,
+        ),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.monthlyFixedDay:
+      return MonthlySchedule(
+        startDate: scheduledDate,
+        interval: interval,
+        dayOfMonth: scheduledDate.day <= 28 ? scheduledDate.day : 28,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTime: notificationRelativeTime,
+        schedulingPolicy: const FixedCalendarPolicy(),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.monthlyNthWeekday:
+      final weekday = scheduledDate.toUtcDateTime().weekday;
+      final occurrence = (scheduledDate.day - 1) ~/ 7 + 1;
+      return MonthlySchedule(
+        startDate: scheduledDate,
+        interval: interval,
+        dayOfWeek: weekday,
+        occurrence: occurrence,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTime: notificationRelativeTime,
+        schedulingPolicy: const FixedCalendarPolicy(),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.monthlyCompletionRelative:
+      return MonthlySchedule(
+        startDate: scheduledDate,
+        interval: interval,
+        dayOfMonth: scheduledDate.day <= 28 ? scheduledDate.day : 28,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTime: notificationRelativeTime,
+        schedulingPolicy: CompletionRelativePolicy(
+          interval: Duration(days: interval * 30),
+          targetTime: startRelativeTime.time,
+        ),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.yearlyFixed:
+      return YearlySchedule(
+        startDate: scheduledDate,
+        interval: interval,
+        month: scheduledDate.month,
+        day: scheduledDate.day,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTime: notificationRelativeTime,
+        schedulingPolicy: const FixedCalendarPolicy(),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.yearlyCompletionRelative:
+      return YearlySchedule(
+        startDate: scheduledDate,
+        interval: interval,
+        month: scheduledDate.month,
+        day: scheduledDate.day,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTime: notificationRelativeTime,
+        schedulingPolicy: CompletionRelativePolicy(
+          interval: Duration(days: interval * 365),
+          targetTime: startRelativeTime.time,
+        ),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+  }
+}
