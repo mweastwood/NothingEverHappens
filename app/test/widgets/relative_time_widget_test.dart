@@ -36,8 +36,15 @@ void main() {
       expect(find.textContaining('2:30'), findsOneWidget);
 
       expect(find.text('Day of'), findsOneWidget);
+      // Open the menu to verify options exist
+      await tester.tap(find.byIcon(Icons.calendar_today));
+      await tester.pumpAndSettle();
       expect(find.text('1 day after'), findsOneWidget);
       expect(find.text('Custom'), findsOneWidget);
+
+      // Dismiss menu
+      await tester.tapAt(Offset.zero);
+      await tester.pumpAndSettle();
 
       // Verify text field is not visible
       expect(robot.customTextField, findsNothing);
@@ -117,10 +124,10 @@ void main() {
 
         await robot.selectCustom();
 
-        // Default assertion for custom mode logic (starts at 2 days for forward)
-        expect(controller.value.dayOffset, 2);
-        expect(robot.customTextField, findsOneWidget);
-        expect(find.text('days later'), findsOneWidget);
+        // Default assertion for custom mode logic (starts at 2 days for forward, not committed yet)
+        expect(controller.value.dayOffset, 0);
+        expect(find.text('Days later'), findsOneWidget);
+        expect(find.text('2'), findsOneWidget);
 
         await robot.enterCustomDays('5');
 
@@ -151,14 +158,15 @@ void main() {
           ),
         );
 
-        // Initially in custom mode due to 5 days
-        expect(robot.customTextField, findsOneWidget);
+        // Initially displays 5 days later
+        expect(find.text('5 days later'), findsOneWidget);
+        expect(robot.customTextField, findsNothing);
 
         await robot.closeCustomMode();
 
         expect(controller.value.dayOffset, 0);
         expect(robot.customTextField, findsNothing);
-        expect(robot.segmentedButton, findsOneWidget);
+        expect(find.text('Day of'), findsOneWidget);
       },
     );
 
@@ -298,12 +306,12 @@ void main() {
 
       await robot.selectCustom();
 
-      // Default custom logic for backward is -2 days
+      // Default custom logic for backward is -2 days (not committed yet)
       expect(
         controller.value,
-        const RelativeTime(dayOffset: -2, time: TimeOfDay(hour: 10, minute: 0)),
+        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
       );
-      expect(find.text('days before'), findsOneWidget);
+      expect(find.text('Days before'), findsOneWidget);
       // The text field displays absolute value
       expect(find.text('2'), findsOneWidget);
 

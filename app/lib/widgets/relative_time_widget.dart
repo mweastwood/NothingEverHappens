@@ -9,6 +9,9 @@ enum RelativeTimeConstraint {
 
   /// The time must be on or before the reference day (offset <= 0).
   dayOfOrBefore,
+
+  /// No constraint on the day offset.
+  unconstrained,
 }
 
 /// A widget that allows users to select a time relative to a reference day.
@@ -50,10 +53,14 @@ enum _RelativeTimeOption { dayOf, dayAfter, dayBefore, custom }
 
 class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
   /// Stores the time of day component of the relative time.
-  late final ValueNotifier<TimeOfDay> _timeNotifier;
+  late final ValueNotifier<TimeOfDay> _timeNotifier = ValueNotifier(
+    _currentRelativeTime.time,
+  );
 
   /// Stores the day offset component of the relative time.
-  late final ValueNotifier<int> _daysNotifier;
+  late final ValueNotifier<int> _daysNotifier = ValueNotifier(
+    _currentRelativeTime.dayOffset,
+  );
 
   final _textController = TextEditingController();
 
@@ -64,10 +71,6 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
   @override
   void initState() {
     super.initState();
-    // Initialize notifiers with current controller value
-    _timeNotifier = ValueNotifier(_currentRelativeTime.time);
-    _daysNotifier = ValueNotifier(_currentRelativeTime.dayOffset);
-
     // Ensure text controller matches initial state
     _updateTextController(_currentRelativeTime.dayOffset);
 
@@ -115,6 +118,8 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
             offset <= 0,
             'Given value ($_currentRelativeTime) does not represent a time on or before the reference day.',
           );
+        case RelativeTimeConstraint.unconstrained:
+          break;
       }
 
       // Sync internal state if different
@@ -189,163 +194,323 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
     }
   }
 
+  String _getOffsetDisplayString(int days, bool isForward) {
+    if (days == 0) {
+      return 'Day of';
+    }
+    final absDays = days.abs();
+    final positive = widget.constraint == RelativeTimeConstraint.unconstrained
+        ? days >= 0
+        : isForward;
+    if (absDays == 1) {
+      return positive ? '1 day after' : '1 day before';
+    }
+    return positive ? '$absDays days later' : '$absDays days before';
+  }
+
+  Future<void> _showOffsetDialog(BuildContext context, bool isForward) async {
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) {
+        return _DayOffsetPickerDialog(
+          initialOffset: _daysNotifier.value,
+          isForward: isForward,
+          constraint: widget.constraint,
+        );
+      },
+    );
+
+    if (result != null) {
+      _internalUpdateDays(result);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final (oneDayLabel, isForward) = switch (widget.constraint) {
-      RelativeTimeConstraint.dayOfOrAfter => ('1 day after', true),
-      RelativeTimeConstraint.dayOfOrBefore => ('1 day before', false),
-    };
-
-    // Use a fixed height to avoid layout jumps when switching modes.
-    const double commonHeight = 40.0;
-    // Estimated width to accommodate segments comfortably.
-    const double commonWidth = 320.0;
+    final isForward = widget.constraint == RelativeTimeConstraint.unconstrained
+        ? _daysNotifier.value >= 0
+        : widget.constraint == RelativeTimeConstraint.dayOfOrAfter;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Time Button
-        ValueListenableBuilder<TimeOfDay>(
-          valueListenable: _timeNotifier,
-          builder: (context, time, child) {
-            return FilledButton.tonalIcon(
-              onPressed: _pickTime,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 0,
+        // Time Card
+        Expanded(
+          child: ValueListenableBuilder<TimeOfDay>(
+            valueListenable: _timeNotifier,
+            builder: (context, time, child) {
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
-                fixedSize: const Size.fromHeight(commonHeight),
-              ),
-              icon: const Icon(Icons.access_time, size: 18),
-              label: Text(
-                time.format(context),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            );
-          },
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _pickTime,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Time',
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                        height: 1.1,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  time.format(context),
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.2,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.access_time,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
-        const SizedBox(width: 16),
-        // Right side: Offset Selector
-        SizedBox(
-          height: commonHeight,
-          width: commonWidth,
+        const SizedBox(width: 8),
+        // Day Card (previously Offset Card)
+        Expanded(
           child: ValueListenableBuilder<int>(
             valueListenable: _daysNotifier,
             builder: (context, days, child) {
-              final segment = _getSegment(days);
-              final isCustom = segment == _RelativeTimeOption.custom;
-
-              if (isCustom) {
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 48,
-                          child: TextField(
-                            controller: _textController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            style: const TextStyle(fontSize: 14),
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 8,
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: Builder(
+                    builder: (context) {
+                      return InkWell(
+                        onTap: () => _showOffsetDialog(context, isForward),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Day',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                            height: 1.1,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _getOffsetDisplayString(days, isForward),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            height: 1.2,
+                                          ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            textAlign: TextAlign.center,
-                            onChanged: (text) {
-                              final daysAbs = int.tryParse(text);
-                              if (daysAbs != null) {
-                                final signedDays = isForward
-                                    ? daysAbs
-                                    : -daysAbs;
-                                _internalUpdateDays(signedDays);
-                              }
-                            },
+                              Icon(
+                                Icons.calendar_today,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 20,
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isForward ? 'days later' : 'days before',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      constraints: const BoxConstraints(
-                        minWidth: 40,
-                        minHeight: 40,
-                      ),
-                      padding: EdgeInsets.zero,
-                      onPressed: () {
-                        _internalUpdateDays(0);
-                      },
-                      tooltip: 'Reset to Day of',
-                    ),
-                  ],
-                );
-              } else {
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SegmentedButton<_RelativeTimeOption>(
-                      segments: [
-                        const ButtonSegment(
-                          value: _RelativeTimeOption.dayOf,
-                          label: Text('Day of'),
-                        ),
-                        ButtonSegment(
-                          value: isForward
-                              ? _RelativeTimeOption.dayAfter
-                              : _RelativeTimeOption.dayBefore,
-                          label: Text(oneDayLabel),
-                        ),
-                        const ButtonSegment(
-                          value: _RelativeTimeOption.custom,
-                          label: Text('Custom'),
-                        ),
-                      ],
-                      selected: {segment},
-                      onSelectionChanged:
-                          (Set<_RelativeTimeOption> newSelection) {
-                            final val = newSelection.first;
-                            switch (val) {
-                              case _RelativeTimeOption.dayOf:
-                                _internalUpdateDays(0);
-                              case _RelativeTimeOption.dayAfter:
-                                _internalUpdateDays(1);
-                              case _RelativeTimeOption.dayBefore:
-                                _internalUpdateDays(-1);
-                              case _RelativeTimeOption.custom:
-                                int defaultCustom = isForward ? 2 : -2;
-                                if (segment != _RelativeTimeOption.custom) {
-                                  _internalUpdateDays(defaultCustom);
-                                  // Controller sync happens via listener
-                                }
-                            }
-                          },
-                      showSelectedIcon: false,
-                      style: ButtonStyle(
-                        visualDensity: VisualDensity.standard,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        padding: WidgetStateProperty.all(EdgeInsets.zero),
-                        fixedSize: WidgetStateProperty.all(
-                          Size.fromHeight(constraints.maxHeight),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              }
+                      );
+                    },
+                  ),
+                ),
+              );
             },
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DayOffsetPickerDialog extends StatefulWidget {
+  final int initialOffset;
+  final bool isForward;
+  final RelativeTimeConstraint constraint;
+
+  const _DayOffsetPickerDialog({
+    required this.initialOffset,
+    required this.isForward,
+    required this.constraint,
+  });
+
+  @override
+  State<_DayOffsetPickerDialog> createState() => _DayOffsetPickerDialogState();
+}
+
+class _DayOffsetPickerDialogState extends State<_DayOffsetPickerDialog> {
+  late _RelativeTimeOption _selectedOption;
+  late final TextEditingController _customDaysController;
+
+  @override
+  void initState() {
+    super.initState();
+    final offset = widget.initialOffset;
+    if (offset == 0) {
+      _selectedOption = _RelativeTimeOption.dayOf;
+    } else if (offset == 1 && widget.isForward) {
+      _selectedOption = _RelativeTimeOption.dayAfter;
+    } else if (offset == -1 && !widget.isForward) {
+      _selectedOption = _RelativeTimeOption.dayBefore;
+    } else {
+      _selectedOption = _RelativeTimeOption.custom;
+    }
+    final initialText = offset == 0 ? '2' : offset.abs().toString();
+    _customDaysController = TextEditingController(text: initialText);
+  }
+
+  @override
+  void dispose() {
+    _customDaysController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showBeforeOption =
+        widget.constraint == RelativeTimeConstraint.unconstrained ||
+        widget.constraint == RelativeTimeConstraint.dayOfOrBefore;
+    final showAfterOption =
+        widget.constraint == RelativeTimeConstraint.unconstrained ||
+        widget.constraint == RelativeTimeConstraint.dayOfOrAfter;
+
+    return AlertDialog(
+      title: const Text('Select Day'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RadioListTile<_RelativeTimeOption>(
+              title: const Text('Day of'),
+              value: _RelativeTimeOption.dayOf,
+              groupValue: _selectedOption,
+              onChanged: (val) {
+                setState(() => _selectedOption = val!);
+              },
+            ),
+            if (showAfterOption)
+              RadioListTile<_RelativeTimeOption>(
+                title: const Text('1 day after'),
+                value: _RelativeTimeOption.dayAfter,
+                groupValue: _selectedOption,
+                onChanged: (val) {
+                  setState(() => _selectedOption = val!);
+                },
+              ),
+            if (showBeforeOption)
+              RadioListTile<_RelativeTimeOption>(
+                title: const Text('1 day before'),
+                value: _RelativeTimeOption.dayBefore,
+                groupValue: _selectedOption,
+                onChanged: (val) {
+                  setState(() => _selectedOption = val!);
+                },
+              ),
+            RadioListTile<_RelativeTimeOption>(
+              title: const Text('Custom'),
+              value: _RelativeTimeOption.custom,
+              groupValue: _selectedOption,
+              onChanged: (val) {
+                setState(() => _selectedOption = val!);
+              },
+            ),
+            if (_selectedOption == _RelativeTimeOption.custom) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: TextField(
+                  controller: _customDaysController,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    labelText: widget.isForward ? 'Days later' : 'Days before',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            switch (_selectedOption) {
+              case _RelativeTimeOption.dayOf:
+                Navigator.of(context).pop(0);
+                break;
+              case _RelativeTimeOption.dayAfter:
+                Navigator.of(context).pop(1);
+                break;
+              case _RelativeTimeOption.dayBefore:
+                Navigator.of(context).pop(-1);
+                break;
+              case _RelativeTimeOption.custom:
+                final val = int.tryParse(_customDaysController.text) ?? 2;
+                Navigator.of(context).pop(widget.isForward ? val : -val);
+                break;
+            }
+          },
+          child: const Text('OK'),
         ),
       ],
     );
