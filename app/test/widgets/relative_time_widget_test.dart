@@ -36,25 +36,22 @@ void main() {
       expect(find.textContaining('2:30'), findsOneWidget);
 
       expect(find.text('Day of'), findsOneWidget);
-      // Open the menu to verify options exist
+      // Open the dialog to verify options exist
       await tester.tap(find.byIcon(Icons.calendar_today));
       await tester.pumpAndSettle();
       expect(find.text('1 day after'), findsOneWidget);
-      expect(find.text('Custom'), findsOneWidget);
+      expect(find.text('2 days later'), findsOneWidget);
+      expect(find.text('7 days later'), findsOneWidget);
 
-      // Dismiss menu
-      await tester.tapAt(Offset.zero);
+      // Dismiss dialog
+      await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
-
-      // Verify text field is not visible
-      expect(robot.customTextField, findsNothing);
     });
 
     testWidgets('renders correctly with "1 day after" state', (tester) async {
       final controller = ValueNotifier(
         const RelativeTime(dayOffset: 1, time: TimeOfDay(hour: 9, minute: 0)),
       );
-      final robot = RelativeTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
         buildTestableWidget(
@@ -68,10 +65,9 @@ void main() {
       );
 
       expect(find.text('1 day after'), findsOneWidget);
-      expect(robot.customTextField, findsNothing);
     });
 
-    testWidgets('updates controller when "1 day after" segment is selected', (
+    testWidgets('updates controller when "1 day after" chip is selected', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(1200, 800);
@@ -100,75 +96,61 @@ void main() {
       expect(controller.value.time.hour, 10);
     });
 
-    testWidgets(
-      'updates controller when Custom mode is selected and days entered',
-      (tester) async {
-        final controller = ValueNotifier(
-          const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 10, minute: 0),
-          ),
-        );
-        final robot = RelativeTimeWidgetRobot(tester);
+    testWidgets('updates controller when stepper is used to change days', (
+      tester,
+    ) async {
+      final controller = ValueNotifier(
+        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
+      );
+      final robot = RelativeTimeWidgetRobot(tester);
 
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: Scaffold(
-              body: RelativeTimeWidget(
-                controller: controller,
-                constraint: RelativeTimeConstraint.dayOfOrAfter,
-              ),
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: RelativeTimeWidget(
+              controller: controller,
+              constraint: RelativeTimeConstraint.dayOfOrAfter,
             ),
           ),
-        );
+        ),
+      );
 
-        await robot.selectCustom();
+      await robot.openDialog();
+      await robot.tapIncrement(3);
+      await robot.commitDialog();
 
-        // Default assertion for custom mode logic (starts at 2 days for forward, not committed yet)
-        expect(controller.value.dayOffset, 0);
-        expect(find.text('Days later'), findsOneWidget);
-        expect(find.text('2'), findsOneWidget);
+      expect(controller.value.dayOffset, 3);
+      expect(controller.value.time.hour, 10);
+    });
 
-        await robot.enterCustomDays('5');
+    testWidgets('does not update controller when dialog is cancelled', (
+      tester,
+    ) async {
+      final controller = ValueNotifier(
+        const RelativeTime(dayOffset: 1, time: TimeOfDay(hour: 10, minute: 0)),
+      );
+      final robot = RelativeTimeWidgetRobot(tester);
 
-        expect(controller.value.dayOffset, 5);
-        expect(controller.value.time.hour, 10);
-      },
-    );
-
-    testWidgets(
-      'resets to "Day of" when close button is tapped in custom mode',
-      (tester) async {
-        final controller = ValueNotifier(
-          const RelativeTime(
-            dayOffset: 5,
-            time: TimeOfDay(hour: 10, minute: 0),
-          ),
-        );
-        final robot = RelativeTimeWidgetRobot(tester);
-
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: Scaffold(
-              body: RelativeTimeWidget(
-                controller: controller,
-                constraint: RelativeTimeConstraint.dayOfOrAfter,
-              ),
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: RelativeTimeWidget(
+              controller: controller,
+              constraint: RelativeTimeConstraint.dayOfOrAfter,
             ),
           ),
-        );
+        ),
+      );
 
-        // Initially displays 5 days later
-        expect(find.text('5 days later'), findsOneWidget);
-        expect(robot.customTextField, findsNothing);
+      expect(find.text('1 day after'), findsOneWidget);
 
-        await robot.closeCustomMode();
+      await robot.openDialog();
+      await robot.tapIncrement(2);
+      await robot.cancelDialog();
 
-        expect(controller.value.dayOffset, 0);
-        expect(robot.customTextField, findsNothing);
-        expect(find.text('Day of'), findsOneWidget);
-      },
-    );
+      expect(controller.value.dayOffset, 1);
+      expect(find.text('1 day after'), findsOneWidget);
+    });
 
     testWidgets('updates controller when time is picked', (tester) async {
       final controller = ValueNotifier(
@@ -233,7 +215,6 @@ void main() {
       final controller = ValueNotifier(
         const RelativeTime(dayOffset: -1, time: TimeOfDay(hour: 9, minute: 0)),
       );
-      final robot = RelativeTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
         buildTestableWidget(
@@ -247,10 +228,9 @@ void main() {
       );
 
       expect(find.text('1 day before'), findsOneWidget);
-      expect(robot.customTextField, findsNothing);
     });
 
-    testWidgets('updates controller when "1 day before" segment is selected', (
+    testWidgets('updates controller when "1 day before" chip is selected', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(1200, 800);
@@ -281,48 +261,45 @@ void main() {
       );
     });
 
-    testWidgets('handles custom input for backward constraint correctly', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1200, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
+    testWidgets(
+      'handles custom stepper input for backward constraint correctly',
+      (tester) async {
+        tester.view.physicalSize = const Size(1200, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
 
-      final controller = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
-      );
-      final robot = RelativeTimeWidgetRobot(tester);
+        final controller = ValueNotifier(
+          const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 0),
+          ),
+        );
+        final robot = RelativeTimeWidgetRobot(tester);
 
-      await tester.pumpWidget(
-        buildTestableWidget(
-          child: Scaffold(
-            body: RelativeTimeWidget(
-              controller: controller,
-              constraint: RelativeTimeConstraint.dayOfOrBefore,
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: RelativeTimeWidget(
+                controller: controller,
+                constraint: RelativeTimeConstraint.dayOfOrBefore,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      await robot.selectCustom();
+        await robot.openDialog();
+        await robot.tapDecrement(5);
+        await robot.commitDialog();
 
-      // Default custom logic for backward is -2 days (not committed yet)
-      expect(
-        controller.value,
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
-      );
-      expect(find.text('Days before'), findsOneWidget);
-      // The text field displays absolute value
-      expect(find.text('2'), findsOneWidget);
-
-      await robot.enterCustomDays('5');
-
-      // Should be -5 days
-      expect(
-        controller.value,
-        const RelativeTime(dayOffset: -5, time: TimeOfDay(hour: 10, minute: 0)),
-      );
-    });
+        expect(
+          controller.value,
+          const RelativeTime(
+            dayOffset: -5,
+            time: TimeOfDay(hour: 10, minute: 0),
+          ),
+        );
+      },
+    );
   });
   testGoldens('RelativeTimeWidget renders correctly', (tester) async {
     final builder = GoldenBuilder.grid(columns: 2, widthToHeightRatio: 3)

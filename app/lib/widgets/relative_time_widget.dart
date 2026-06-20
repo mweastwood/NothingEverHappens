@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../logic/relative_time.dart';
 
 /// Constraints for the relative time widget.
@@ -47,9 +46,6 @@ class RelativeTimeWidget extends StatefulWidget {
   @override
   State<RelativeTimeWidget> createState() => _RelativeTimeWidgetState();
 }
-
-/// Options for the relative time selector.
-enum _RelativeTimeOption { dayOf, dayAfter, dayBefore, custom }
 
 class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
   /// Stores the time of day component of the relative time.
@@ -380,90 +376,133 @@ class _DayOffsetPickerDialog extends StatefulWidget {
 }
 
 class _DayOffsetPickerDialogState extends State<_DayOffsetPickerDialog> {
-  late _RelativeTimeOption _selectedOption;
-  late final TextEditingController _customDaysController;
+  late int _currentOffset;
 
   @override
   void initState() {
     super.initState();
-    final offset = widget.initialOffset;
-    if (offset == 0) {
-      _selectedOption = _RelativeTimeOption.dayOf;
-    } else if (offset == 1 && widget.isForward) {
-      _selectedOption = _RelativeTimeOption.dayAfter;
-    } else if (offset == -1 && !widget.isForward) {
-      _selectedOption = _RelativeTimeOption.dayBefore;
-    } else {
-      _selectedOption = _RelativeTimeOption.custom;
-    }
-    final initialText = offset == 0 ? '2' : offset.abs().toString();
-    _customDaysController = TextEditingController(text: initialText);
+    _currentOffset = widget.initialOffset;
   }
 
-  @override
-  void dispose() {
-    _customDaysController.dispose();
-    super.dispose();
+  String _getOffsetLabel(int offset) {
+    if (offset == 0) return 'Day of';
+    final absOffset = offset.abs();
+    final isPositive = offset > 0;
+    if (absOffset == 1) {
+      return isPositive ? '1 day after' : '1 day before';
+    }
+    return isPositive ? '$absOffset days later' : '$absOffset days before';
   }
 
   @override
   Widget build(BuildContext context) {
-    final showBeforeOption =
-        widget.constraint == RelativeTimeConstraint.unconstrained ||
-        widget.constraint == RelativeTimeConstraint.dayOfOrBefore;
-    final showAfterOption =
-        widget.constraint == RelativeTimeConstraint.unconstrained ||
-        widget.constraint == RelativeTimeConstraint.dayOfOrAfter;
+    final theme = Theme.of(context);
+    final isDecrementDisabled =
+        (widget.constraint == RelativeTimeConstraint.dayOfOrAfter &&
+        _currentOffset <= 0);
+    final isIncrementDisabled =
+        (widget.constraint == RelativeTimeConstraint.dayOfOrBefore &&
+        _currentOffset >= 0);
+
+    final presets = <int>[];
+    switch (widget.constraint) {
+      case RelativeTimeConstraint.dayOfOrAfter:
+        presets.addAll([0, 1, 2, 7]);
+      case RelativeTimeConstraint.dayOfOrBefore:
+        presets.addAll([-7, -2, -1, 0]);
+      case RelativeTimeConstraint.unconstrained:
+        presets.addAll([-7, -2, -1, 0, 1, 2, 7]);
+    }
 
     return AlertDialog(
       title: const Text('Select Day'),
       content: SingleChildScrollView(
-        child: RadioGroup<_RelativeTimeOption>(
-          groupValue: _selectedOption,
-          onChanged: (val) {
-            setState(() => _selectedOption = val!);
-          },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              RadioListTile<_RelativeTimeOption>(
-                title: const Text('Day of'),
-                value: _RelativeTimeOption.dayOf,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Presets',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
               ),
-              if (showAfterOption)
-                RadioListTile<_RelativeTimeOption>(
-                  title: const Text('1 day after'),
-                  value: _RelativeTimeOption.dayAfter,
-                ),
-              if (showBeforeOption)
-                RadioListTile<_RelativeTimeOption>(
-                  title: const Text('1 day before'),
-                  value: _RelativeTimeOption.dayBefore,
-                ),
-              RadioListTile<_RelativeTimeOption>(
-                title: const Text('Custom'),
-                value: _RelativeTimeOption.custom,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: presets.map((offset) {
+                final isSelected = _currentOffset == offset;
+                return ChoiceChip(
+                  key: Key('preset_chip_$offset'),
+                  label: Text(_getOffsetLabel(offset)),
+                  selected: isSelected,
+                  showCheckmark: false,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.normal),
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _currentOffset = offset;
+                      });
+                    }
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 16),
+            Text(
+              'Adjust Offset',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
               ),
-              if (_selectedOption == _RelativeTimeOption.custom) ...[
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: TextField(
-                    controller: _customDaysController,
-                    keyboardType: TextInputType.number,
-                    autofocus: true,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: InputDecoration(
-                      labelText: widget.isForward
-                          ? 'Days later'
-                          : 'Days before',
-                      border: const OutlineInputBorder(),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton.filledTonal(
+                  key: const Key('stepper_decrement_button'),
+                  icon: const Icon(Icons.remove),
+                  onPressed: isDecrementDisabled
+                      ? null
+                      : () {
+                          setState(() {
+                            _currentOffset--;
+                          });
+                        },
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _getOffsetLabel(_currentOffset),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
+                const SizedBox(width: 12),
+                IconButton.filledTonal(
+                  key: const Key('stepper_increment_button'),
+                  icon: const Icon(Icons.add),
+                  onPressed: isIncrementDisabled
+                      ? null
+                      : () {
+                          setState(() {
+                            _currentOffset++;
+                          });
+                        },
+                ),
               ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       actions: [
@@ -472,23 +511,7 @@ class _DayOffsetPickerDialogState extends State<_DayOffsetPickerDialog> {
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: () {
-            switch (_selectedOption) {
-              case _RelativeTimeOption.dayOf:
-                Navigator.of(context).pop(0);
-                break;
-              case _RelativeTimeOption.dayAfter:
-                Navigator.of(context).pop(1);
-                break;
-              case _RelativeTimeOption.dayBefore:
-                Navigator.of(context).pop(-1);
-                break;
-              case _RelativeTimeOption.custom:
-                final val = int.tryParse(_customDaysController.text) ?? 2;
-                Navigator.of(context).pop(widget.isForward ? val : -val);
-                break;
-            }
-          },
+          onPressed: () => Navigator.of(context).pop(_currentOffset),
           child: const Text('OK'),
         ),
       ],
