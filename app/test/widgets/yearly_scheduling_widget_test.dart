@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/scheduling_policy.dart';
 import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
 import 'package:nothing_ever_happens/widgets/yearly_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/relative_timing_widget.dart';
@@ -33,6 +34,8 @@ void main() {
                 onStartDateChanged: (_) {},
                 interval: 1,
                 onIntervalChanged: (_) {},
+                schedulingPolicy: const FixedCalendarPolicy(),
+                onSchedulingPolicyChanged: (_) {},
                 month: 10,
                 onMonthChanged: (_) {},
                 day: 26,
@@ -56,7 +59,10 @@ void main() {
       expect(find.text('Start Recurrence Date'), findsOneWidget);
       expect(find.text('2026-10-26'), findsOneWidget);
       expect(find.text('Interval'), findsOneWidget);
-      expect(find.text('Every year'), findsOneWidget);
+      expect(
+        find.text('Every 1 year(s) (since last scheduled)'),
+        findsOneWidget,
+      );
       expect(find.text('Month'), findsOneWidget);
       expect(find.text('October'), findsOneWidget);
       expect(find.text('Day'), findsOneWidget);
@@ -85,6 +91,8 @@ void main() {
                 onStartDateChanged: (d) => newDate = d,
                 interval: interval,
                 onIntervalChanged: (i) => newInterval = i,
+                schedulingPolicy: const FixedCalendarPolicy(),
+                onSchedulingPolicyChanged: (_) {},
                 month: month,
                 onMonthChanged: (m) => newMonth = m,
                 day: day,
@@ -145,6 +153,8 @@ void main() {
               onStartDateChanged: (_) {},
               interval: 2,
               onIntervalChanged: (_) {},
+              schedulingPolicy: const FixedCalendarPolicy(),
+              onSchedulingPolicyChanged: (_) {},
               month: 10,
               onMonthChanged: (_) {},
               day: 26,
@@ -170,6 +180,8 @@ void main() {
               onStartDateChanged: (_) {},
               interval: 2,
               onIntervalChanged: (_) {},
+              schedulingPolicy: const FixedCalendarPolicy(),
+              onSchedulingPolicyChanged: (_) {},
               month: 10,
               onMonthChanged: (_) {},
               day: 26,

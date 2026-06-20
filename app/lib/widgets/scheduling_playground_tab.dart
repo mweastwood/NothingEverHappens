@@ -10,7 +10,6 @@ import 'daily_scheduling_widget.dart';
 import 'weekly_scheduling_widget.dart';
 import 'monthly_scheduling_widget.dart';
 import 'yearly_scheduling_widget.dart';
-import 'recurrence_type_selector.dart';
 import 'month_grid.dart';
 import 'upcoming_occurrences_preview.dart';
 
@@ -232,6 +231,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                 startRelativeTime: _startRelativeTime,
                 dueRelativeTime: _dueRelativeTime,
                 notificationRelativeTime: _notificationRelativeTime,
+                schedulingPolicy: _schedulingPolicy,
               );
             } else {
               schedule = MonthlySchedule(
@@ -242,6 +242,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                 startRelativeTime: _startRelativeTime,
                 dueRelativeTime: _dueRelativeTime,
                 notificationRelativeTime: _notificationRelativeTime,
+                schedulingPolicy: _schedulingPolicy,
               );
             }
             break;
@@ -285,6 +286,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
               startRelativeTime: _startRelativeTime,
               dueRelativeTime: _dueRelativeTime,
               notificationRelativeTime: _notificationRelativeTime,
+              schedulingPolicy: _schedulingPolicy,
             );
             break;
         }
@@ -425,15 +427,101 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      RecurrenceTypeSelector(
-                        selectedValue: _scheduleType,
-                        onSelected: (newType) {
-                          setState(() {
-                            _scheduleType = newType;
-                            _recalculate();
-                          });
+                      SegmentedButton<bool>(
+                        segments: [
+                          ButtonSegment<bool>(
+                            value: true,
+                            icon: const Icon(Icons.event),
+                            label: Text(context.l10n.oneOffLabel),
+                          ),
+                          ButtonSegment<bool>(
+                            value: false,
+                            icon: const Icon(Icons.replay),
+                            label: Text(context.l10n.repeatingLabel),
+                          ),
+                        ],
+                        selected: {_scheduleType == RecurrenceType.oneOff},
+                        onSelectionChanged: (Set<bool> selection) {
+                          if (selection.isNotEmpty) {
+                            final isOneOff = selection.first;
+                            setState(() {
+                              if (isOneOff) {
+                                _scheduleType = RecurrenceType.oneOff;
+                              } else {
+                                _scheduleType = RecurrenceType.daily;
+                              }
+                              _recalculate();
+                            });
+                          }
                         },
                       ),
+                      if (_scheduleType != RecurrenceType.oneOff) ...[
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 8.0,
+                          children:
+                              [
+                                RecurrenceType.daily,
+                                RecurrenceType.weekly,
+                                RecurrenceType.monthly,
+                                RecurrenceType.yearly,
+                              ].map((type) {
+                                final String label;
+                                switch (type) {
+                                  case RecurrenceType.daily:
+                                    label = context.l10n.dailyLabel;
+                                    break;
+                                  case RecurrenceType.weekly:
+                                    label = context.l10n.weeklyLabel;
+                                    break;
+                                  case RecurrenceType.monthly:
+                                    label = context.l10n.monthlyLabel;
+                                    break;
+                                  case RecurrenceType.yearly:
+                                    label = context.l10n.yearlyLabel;
+                                    break;
+                                  default:
+                                    label = '';
+                                }
+                                final isSelected = _scheduleType == type;
+                                return ChoiceChip(
+                                  key: Key('recurrence_chip_${type.name}'),
+                                  label: Text(label),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    if (selected) {
+                                      setState(() {
+                                        _scheduleType = type;
+                                        _recalculate();
+                                      });
+                                    }
+                                  },
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  selectedColor:
+                                      theme.colorScheme.primaryContainer,
+                                  backgroundColor:
+                                      theme.colorScheme.surfaceContainerLow,
+                                  labelStyle: TextStyle(
+                                    fontSize: 13,
+                                    color: isSelected
+                                        ? theme.colorScheme.onPrimaryContainer
+                                        : theme.colorScheme.onSurface,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? theme.colorScheme.primary
+                                        : theme.colorScheme.outlineVariant,
+                                  ),
+                                );
+                              }).toList(),
+                        ),
+                      ],
                       const SizedBox(height: 24),
 
                       // Reused Scheduling Widget
@@ -575,6 +663,13 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                               _recalculate();
                             });
                           },
+                          schedulingPolicy: _schedulingPolicy,
+                          onSchedulingPolicyChanged: (policy) {
+                            setState(() {
+                              _schedulingPolicy = policy;
+                              _recalculate();
+                            });
+                          },
                           ruleType: _monthlyRuleTypeController.value,
                           onRuleTypeChanged: (type) {
                             setState(() {
@@ -649,6 +744,13 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           onIntervalChanged: (val) {
                             setState(() {
                               _intervalController.text = val.toString();
+                              _recalculate();
+                            });
+                          },
+                          schedulingPolicy: _schedulingPolicy,
+                          onSchedulingPolicyChanged: (policy) {
+                            setState(() {
+                              _schedulingPolicy = policy;
                               _recalculate();
                             });
                           },

@@ -268,13 +268,20 @@ void main() {
 
       // Segmented buttons
       expect(find.text('One-off'), findsOneWidget);
+      expect(find.text('Repeating'), findsOneWidget);
+      expect(find.text('Daily'), findsNothing);
+
+      // Default should show OneOffSchedulingWidget
+      expect(find.byType(OneOffSchedulingWidget), findsOneWidget);
+
+      // Tap Repeating to show repeating chips
+      await tester.tap(find.text('Repeating'));
+      await tester.pumpAndSettle();
+
       expect(find.text('Daily'), findsOneWidget);
       expect(find.text('Weekly'), findsOneWidget);
       expect(find.text('Monthly'), findsOneWidget);
       expect(find.text('Yearly'), findsOneWidget);
-
-      // Default should show OneOffSchedulingWidget
-      expect(find.byType(OneOffSchedulingWidget), findsOneWidget);
     });
 
     testWidgets('switching recurrence type displays corresponding widget', (
@@ -285,7 +292,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Switch to Daily
-      await tester.tap(find.text('Daily'));
+      await tester.tap(find.text('Repeating'));
       await tester.pumpAndSettle();
       expect(find.byType(DailySchedulingWidget), findsOneWidget);
 
@@ -313,7 +320,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Switch to Daily
-      await tester.tap(find.text('Daily'));
+      await tester.tap(find.text('Repeating'));
       await tester.pumpAndSettle();
 
       // Expand the interval selection tile
@@ -362,7 +369,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Switch to Daily
-      await tester.tap(find.text('Daily'));
+      await tester.tap(find.text('Repeating'));
       await tester.pumpAndSettle();
 
       // Verify next 10 occurrences header
@@ -388,7 +395,7 @@ void main() {
       expect(find.textContaining('Due'), findsNWidgets(2));
 
       // Let's switch to Daily
-      await tester.tap(find.text('Daily'));
+      await tester.tap(find.text('Repeating'));
       await tester.pumpAndSettle();
 
       // Verify that the daily recurrence list cards also display "Appears:" and "Due:"
