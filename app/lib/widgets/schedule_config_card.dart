@@ -3,7 +3,6 @@ import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_schedule_rule.dart';
 import '../logic/scheduling_policy.dart';
-import '../logic/l10n_extension.dart';
 import 'daily_scheduling_widget.dart';
 import 'weekly_scheduling_widget.dart';
 import 'monthly_scheduling_widget.dart';
