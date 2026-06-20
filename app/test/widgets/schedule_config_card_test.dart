@@ -359,7 +359,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(600, 4200),
+        surfaceSize: const Size(600, 5000),
       );
 
       await screenMatchesGolden(tester, 'schedule_config_card_golden');

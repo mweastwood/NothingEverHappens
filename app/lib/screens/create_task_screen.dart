@@ -46,7 +46,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   List<TaskScheduleRule> _schedules = [];
   int? _expandedScheduleIndex;
-  MissedPolicy _missedPolicy = MissedPolicy.rollover;
 
   bool _isSaving = false;
 
@@ -64,7 +63,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       final task = widget.taskToEdit!;
       _titleController.text = task.title;
       _descriptionController.text = task.description;
-      _missedPolicy = task.missedPolicy;
       _isFamily = task.isFamily;
       _priority = task.priority;
       _cycleId = task.cycleId;
@@ -140,6 +138,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             : null;
 
         final hasRepeating = _schedules.any((s) => s is! OneOffSchedule);
+        final firstRepeating =
+            _schedules.where((s) => s is! OneOffSchedule).firstOrNull ??
+            (_schedules.isNotEmpty ? _schedules.first : null);
+        final firstLegacyPolicy =
+            firstRepeating?.missedOccurrencePolicy.legacyPolicy ??
+            MissedPolicy.rollover;
 
         final newTask = TaskSchedule(
           id: AppClock.now.millisecondsSinceEpoch.toString(),
@@ -147,9 +151,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           description: _descriptionController.text,
           schedules: _schedules,
           estimatedDuration: estimatedDuration,
-          missedPolicy: hasRepeating ? _missedPolicy : MissedPolicy.rollover,
-          isMaster: hasRepeating && _missedPolicy == MissedPolicy.stack,
-          lastSpawnedDate: hasRepeating && _missedPolicy == MissedPolicy.stack
+          missedPolicy: hasRepeating
+              ? firstLegacyPolicy
+              : MissedPolicy.rollover,
+          isMaster: hasRepeating && firstLegacyPolicy == MissedPolicy.stack,
+          lastSpawnedDate:
+              hasRepeating && firstLegacyPolicy == MissedPolicy.stack
               ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
               : null,
           isFamily: _isFamily,
@@ -169,12 +176,13 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               newSchedules: _schedules,
               newEstimatedDuration: estimatedDuration,
               newMissedPolicy: hasRepeating
-                  ? _missedPolicy
+                  ? firstLegacyPolicy
                   : MissedPolicy.rollover,
-              newIsMaster: hasRepeating && _missedPolicy == MissedPolicy.stack,
+              newIsMaster:
+                  hasRepeating && firstLegacyPolicy == MissedPolicy.stack,
               newLastSpawnedDate:
                   widget.taskToEdit!.lastSpawnedDate ??
-                  (hasRepeating && _missedPolicy == MissedPolicy.stack
+                  (hasRepeating && firstLegacyPolicy == MissedPolicy.stack
                       ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
                       : null),
               newIsFamily: _isFamily,
@@ -470,7 +478,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   Widget _buildScheduleCard(BuildContext context, bool readOnly) {
     final theme = Theme.of(context);
-    final hasRepeating = _schedules.any((s) => s is! OneOffSchedule);
 
     return Card(
       elevation: 0,
@@ -577,68 +584,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                 ),
               ),
             ),
-            if (hasRepeating) ...[
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 16),
-              Text(
-                context.l10n.missedPolicyHeader,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                key: const Key('missed_policy_dropdown'),
-                spacing: 8.0,
-                runSpacing: 8.0,
-                children: MissedPolicy.values.map((policy) {
-                  final String label;
-                  switch (policy) {
-                    case MissedPolicy.rollover:
-                      label = context.l10n.rolloverLabel;
-                      break;
-                    case MissedPolicy.skip:
-                      label = context.l10n.skipLabel;
-                      break;
-                    case MissedPolicy.shift:
-                      label = context.l10n.shiftLabel;
-                      break;
-                    case MissedPolicy.stack:
-                      label = context.l10n.stackLabel;
-                      break;
-                  }
-                  return StandardChoiceChip(
-                    key: Key('missed_policy_chip_${policy.name}'),
-                    label: label,
-                    selected: _missedPolicy == policy,
-                    onSelected: readOnly
-                        ? null
-                        : (selected) {
-                            if (selected) {
-                              setState(() {
-                                _missedPolicy = policy;
-                              });
-                            }
-                          },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                context.l10n.missedPolicyHelper,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _getMissedPolicyDescription(context, _missedPolicy),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
-                ),
-              ),
-            ],
+
             if (_schedules.any((s) => s is! OneOffSchedule)) ...[
               const SizedBox(height: 24),
               const Divider(),
@@ -840,21 +786,5 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         );
       },
     );
-  }
-
-  String _getMissedPolicyDescription(
-    BuildContext context,
-    MissedPolicy policy,
-  ) {
-    switch (policy) {
-      case MissedPolicy.rollover:
-        return context.l10n.rolloverDescription;
-      case MissedPolicy.skip:
-        return context.l10n.skipDescription;
-      case MissedPolicy.shift:
-        return context.l10n.shiftDescription;
-      case MissedPolicy.stack:
-        return context.l10n.stackDescription;
-    }
   }
 }

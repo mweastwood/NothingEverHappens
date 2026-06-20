@@ -3,7 +3,12 @@ import 'package:flutter/services.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_schedule_rule.dart';
+import '../logic/scheduling_policy.dart';
+import '../logic/missed_occurrence_policy.dart';
 import 'relative_timing_widget.dart';
+import 'schedule_type_selector.dart';
+import 'completion_relative_config_widget.dart';
+import 'missed_occurrence_policy_selector.dart';
 
 class ScheduleConfigCard extends StatefulWidget {
   final TaskScheduleRule schedule;
@@ -103,7 +108,24 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
     return '1';
   }
 
+  (int, String) _getCompletionRelativeValueAndUnit(Duration duration) {
+    if (duration.inMinutes == 0) return (0, 'day(s)');
+    if (duration.inMinutes % (7 * 24 * 60) == 0) {
+      return (duration.inDays ~/ 7, 'week(s)');
+    }
+    if (duration.inMinutes % (24 * 60) == 0) {
+      return (duration.inDays, 'day(s)');
+    }
+    return (duration.inHours, 'hour(s)');
+  }
+
   String _getSummaryText(TaskScheduleRule schedule) {
+    if (schedule.schedulingPolicy is CompletionRelativePolicy) {
+      final policy = schedule.schedulingPolicy as CompletionRelativePolicy;
+      final (val, unit) = _getCompletionRelativeValueAndUnit(policy.interval);
+      final timeStr = policy.targetTime.format(context);
+      return 'Completion-relative: every $val $unit @ $timeStr';
+    }
     if (schedule is OneOffSchedule) {
       return 'One-off on ${schedule.date.year}-${schedule.date.month.toString().padLeft(2, '0')}-${schedule.date.day.toString().padLeft(2, '0')}';
     } else if (schedule is DailySchedule) {
@@ -148,6 +170,9 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
   }
 
   IconData _getIcon(TaskScheduleRule schedule) {
+    if (schedule.schedulingPolicy is CompletionRelativePolicy) {
+      return Icons.replay;
+    }
     if (schedule is OneOffSchedule) return Icons.event;
     if (schedule is DailySchedule) return Icons.today;
     if (schedule is WeeklySchedule) return Icons.calendar_view_week;
@@ -300,69 +325,117 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DropdownButtonFormField<RecurrenceType>(
-                    initialValue: recurrenceType,
-                    decoration: const InputDecoration(
-                      labelText: 'Recurrence Type',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: RecurrenceType.oneOff,
-                        child: Text('One-off'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceType.daily,
-                        child: Text('Daily'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceType.weekly,
-                        child: Text('Weekly'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceType.monthly,
-                        child: Text('Monthly'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceType.yearly,
-                        child: Text('Yearly'),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) _changeRecurrenceType(val);
+                  ScheduleTypeSelector(
+                    selectedType: s.schedulingPolicy.type,
+                    onChanged: (type) {
+                      if (type == SchedulingType.completionRelative) {
+                        widget.onChanged(
+                          s.copyWithTiming(
+                            schedulingPolicy: const CompletionRelativePolicy(
+                              interval: Duration(days: 1),
+                              targetTime: TimeOfDay(hour: 9, minute: 0),
+                            ),
+                            missedOccurrencePolicy:
+                                const MissedOccurrencePolicy.keepAround(),
+                          ),
+                        );
+                      } else {
+                        widget.onChanged(
+                          s.copyWithTiming(
+                            schedulingPolicy: const FixedCalendarPolicy(),
+                            missedOccurrencePolicy:
+                                const MissedOccurrencePolicy.keepAround(),
+                          ),
+                        );
+                      }
                     },
                   ),
                   const SizedBox(height: 16),
-                  _buildRecurrenceConfigForm(s),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  if (s is OneOffSchedule)
-                    _buildOneOffTimingPicker(s)
-                  else
-                    RelativeTimingWidget(
-                      startRelativeTime: s.startRelativeTime,
-                      dueRelativeTime: s.dueRelativeTime,
-                      notificationRelativeTime: s.notificationRelativeTime,
-                      onStartChanged: (start) {
+                  if (s.schedulingPolicy is CompletionRelativePolicy) ...[
+                    CompletionRelativeConfigWidget(
+                      policy: s.schedulingPolicy as CompletionRelativePolicy,
+                      onChanged: (policy) {
                         widget.onChanged(
-                          s.copyWithTiming(startRelativeTime: start),
-                        );
-                      },
-                      onDueChanged: (due) {
-                        widget.onChanged(
-                          s.copyWithTiming(dueRelativeTime: due),
-                        );
-                      },
-                      onNotificationChanged: (notif) {
-                        widget.onChanged(
-                          s.copyWithTiming(
-                            notificationRelativeTime: notif,
-                            clearNotification: notif == null,
-                          ),
+                          s.copyWithTiming(schedulingPolicy: policy),
                         );
                       },
                     ),
+                  ] else ...[
+                    DropdownButtonFormField<RecurrenceType>(
+                      initialValue: recurrenceType,
+                      decoration: const InputDecoration(
+                        labelText: 'Recurrence Type',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: RecurrenceType.oneOff,
+                          child: Text('One-off'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceType.daily,
+                          child: Text('Daily'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceType.weekly,
+                          child: Text('Weekly'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceType.monthly,
+                          child: Text('Monthly'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceType.yearly,
+                          child: Text('Yearly'),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) _changeRecurrenceType(val);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildRecurrenceConfigForm(s),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    if (s is OneOffSchedule)
+                      _buildOneOffTimingPicker(s)
+                    else
+                      RelativeTimingWidget(
+                        startRelativeTime: s.startRelativeTime,
+                        dueRelativeTime: s.dueRelativeTime,
+                        notificationRelativeTime: s.notificationRelativeTime,
+                        onStartChanged: (start) {
+                          widget.onChanged(
+                            s.copyWithTiming(startRelativeTime: start),
+                          );
+                        },
+                        onDueChanged: (due) {
+                          widget.onChanged(
+                            s.copyWithTiming(dueRelativeTime: due),
+                          );
+                        },
+                        onNotificationChanged: (notif) {
+                          widget.onChanged(
+                            s.copyWithTiming(
+                              notificationRelativeTime: notif,
+                              clearNotification: notif == null,
+                            ),
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    MissedOccurrencePolicySelector(
+                      policy: s.missedOccurrencePolicy,
+                      onChanged: (policy) {
+                        widget.onChanged(
+                          s.copyWithTiming(missedOccurrencePolicy: policy),
+                        );
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
