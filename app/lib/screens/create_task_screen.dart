@@ -476,127 +476,102 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     );
   }
 
-  Widget _buildScheduleCard(BuildContext context, bool readOnly) {
-    final theme = Theme.of(context);
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
-      color: theme.colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.scheduleHeader,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            AbsorbPointer(
-              absorbing: readOnly,
-              child: Opacity(
-                opacity: readOnly ? 0.6 : 1.0,
-                child: Column(
-                  children: [
-                    for (int i = 0; i < _schedules.length; i++)
-                      ScheduleConfigCard(
-                        key: ValueKey('schedule_card_$i'),
-                        schedule: _schedules[i],
-                        onChanged: (newSchedule) {
-                          setState(() {
-                            _schedules[i] = newSchedule;
-                          });
-                        },
-                        onDelete: _schedules.length > 1
-                            ? () {
-                                setState(() {
-                                  _schedules.removeAt(i);
-                                  if (_expandedScheduleIndex == i) {
-                                    _expandedScheduleIndex = null;
-                                  } else if (_expandedScheduleIndex != null &&
-                                      _expandedScheduleIndex! > i) {
-                                    _expandedScheduleIndex =
-                                        _expandedScheduleIndex! - 1;
-                                  }
-                                });
+  Widget _buildScheduleSection(BuildContext context, bool readOnly) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AbsorbPointer(
+          absorbing: readOnly,
+          child: Opacity(
+            opacity: readOnly ? 0.6 : 1.0,
+            child: Column(
+              children: [
+                for (int i = 0; i < _schedules.length; i++)
+                  ScheduleConfigCard(
+                    key: ValueKey('schedule_card_$i'),
+                    schedule: _schedules[i],
+                    onChanged: (newSchedule) {
+                      setState(() {
+                        _schedules[i] = newSchedule;
+                      });
+                    },
+                    onDelete: _schedules.length > 1
+                        ? () {
+                            setState(() {
+                              _schedules.removeAt(i);
+                              if (_expandedScheduleIndex == i) {
+                                _expandedScheduleIndex = null;
+                              } else if (_expandedScheduleIndex != null &&
+                                  _expandedScheduleIndex! > i) {
+                                _expandedScheduleIndex =
+                                    _expandedScheduleIndex! - 1;
                               }
-                            : null,
-                        isExpanded: _expandedScheduleIndex == i,
-                        onExpansionChanged: (expanded) {
-                          setState(() {
-                            _expandedScheduleIndex = expanded ? i : null;
-                          });
-                        },
-                      ),
-                    if (!readOnly) ...[
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        key: const Key('add_schedule_button'),
-                        onPressed: () {
-                          setState(() {
-                            final now = AppClock.now;
-                            final tomorrow = now.add(const Duration(days: 1));
-                            final civilTomorrow = CivilDay.fromDateTime(
-                              tomorrow,
-                            );
+                            });
+                          }
+                        : null,
+                    isExpanded: _expandedScheduleIndex == i,
+                    onExpansionChanged: (expanded) {
+                      setState(() {
+                        _expandedScheduleIndex = expanded ? i : null;
+                      });
+                    },
+                  ),
+                if (!readOnly) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    key: const Key('add_schedule_button'),
+                    onPressed: () {
+                      setState(() {
+                        final now = AppClock.now;
+                        final tomorrow = now.add(const Duration(days: 1));
+                        final civilTomorrow = CivilDay.fromDateTime(tomorrow);
 
-                            final startMidnight = DateTime.utc(
-                              now.year,
-                              now.month,
-                              now.day,
-                            );
-                            final dueMidnight = DateTime.utc(
-                              tomorrow.year,
-                              tomorrow.month,
-                              tomorrow.day,
-                            );
-                            final diff = startMidnight
-                                .difference(dueMidnight)
-                                .inDays;
+                        final startMidnight = DateTime.utc(
+                          now.year,
+                          now.month,
+                          now.day,
+                        );
+                        final dueMidnight = DateTime.utc(
+                          tomorrow.year,
+                          tomorrow.month,
+                          tomorrow.day,
+                        );
+                        final diff = startMidnight
+                            .difference(dueMidnight)
+                            .inDays;
 
-                            _schedules.add(
-                              OneOffSchedule(
-                                date: civilTomorrow,
-                                startRelativeTime: RelativeTime(
-                                  dayOffset: diff,
-                                  time: TimeOfDay.fromDateTime(now),
-                                ),
-                                dueRelativeTime: const RelativeTime(
-                                  dayOffset: 0,
-                                  time: TimeOfDay(hour: 17, minute: 0),
-                                ),
-                              ),
-                            );
-                            _expandedScheduleIndex = _schedules.length - 1;
-                          });
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Schedule'),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+                        _schedules.add(
+                          OneOffSchedule(
+                            date: civilTomorrow,
+                            startRelativeTime: RelativeTime(
+                              dayOffset: diff,
+                              time: TimeOfDay.fromDateTime(now),
+                            ),
+                            dueRelativeTime: const RelativeTime(
+                              dayOffset: 0,
+                              time: TimeOfDay(hour: 17, minute: 0),
+                            ),
+                          ),
+                        );
+                        _expandedScheduleIndex = _schedules.length - 1;
+                      });
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Schedule'),
+                  ),
+                ],
+              ],
             ),
-
-            if (_schedules.any((s) => s is! OneOffSchedule)) ...[
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 16),
-              UpcomingOccurrencesPreview(
-                schedules: _schedules,
-                maxOccurrences: 10,
-              ),
-            ],
-          ],
+          ),
         ),
-      ),
+
+        if (_schedules.any((s) => s is! OneOffSchedule)) ...[
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          UpcomingOccurrencesPreview(schedules: _schedules, maxOccurrences: 10),
+        ],
+      ],
     );
   }
 
@@ -674,7 +649,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                           context,
                           readOnly,
                         );
-                        final scheduleCard = _buildScheduleCard(
+                        final scheduleSection = _buildScheduleSection(
                           context,
                           readOnly,
                         );
@@ -700,7 +675,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(child: scheduleCard),
+                                      Expanded(child: scheduleSection),
                                       const SizedBox(width: 16),
                                       Expanded(
                                         child: Column(
@@ -731,7 +706,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                 children: [
                                   detailsCard,
                                   const SizedBox(height: 16),
-                                  scheduleCard,
+                                  scheduleSection,
                                   const SizedBox(height: 16),
                                   effortAndPriorityCard,
                                   if (inFamily) ...[
