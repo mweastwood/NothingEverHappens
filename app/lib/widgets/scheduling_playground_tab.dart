@@ -195,6 +195,10 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
               startDate: startCivil,
               interval: interval,
               daysOfWeek: Set.from(_selectedWeekdays),
+              startRelativeTime: _startRelativeTime,
+              dueRelativeTime: _dueRelativeTime,
+              notificationRelativeTime: _notificationRelativeTime,
+              schedulingPolicy: _schedulingPolicy,
             );
             break;
 
@@ -485,15 +489,31 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                         )
                       else if (_scheduleType == RecurrenceType.weekly)
                         WeeklySchedulingWidget(
-                          startDate: _startDate,
+                          startDate: CivilDay.fromDateTime(_startDate),
                           onStartDateChanged: (date) {
                             setState(() {
-                              _startDate = date;
+                              _startDate = DateTime(
+                                date.year,
+                                date.month,
+                                date.day,
+                              );
                               _recalculate();
                             });
                           },
-                          dailyTimesController: _dailyTimesController,
-                          intervalController: _intervalController,
+                          interval: int.tryParse(_intervalController.text) ?? 1,
+                          onIntervalChanged: (val) {
+                            setState(() {
+                              _intervalController.text = val.toString();
+                              _recalculate();
+                            });
+                          },
+                          schedulingPolicy: _schedulingPolicy,
+                          onSchedulingPolicyChanged: (policy) {
+                            setState(() {
+                              _schedulingPolicy = policy;
+                              _recalculate();
+                            });
+                          },
                           selectedWeekdays: _selectedWeekdays,
                           onWeekdaysChanged: (days) {
                             setState(() {
@@ -501,6 +521,30 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                               _recalculate();
                             });
                           },
+                          startRelativeTime: _startRelativeTime,
+                          onStartRelativeTimeChanged: (val) {
+                            setState(() {
+                              _startRelativeTime = val;
+                              _recalculate();
+                            });
+                          },
+                          dueRelativeTime: _dueRelativeTime,
+                          onDueRelativeTimeChanged: (val) {
+                            setState(() {
+                              _dueRelativeTime = val;
+                              _recalculate();
+                            });
+                          },
+                          notificationRelativeTime: _notificationRelativeTime,
+                          onNotificationRelativeTimeChanged: (val) {
+                            setState(() {
+                              _notificationRelativeTime = val;
+                              _recalculate();
+                            });
+                          },
+                          showNotification: false,
+                          showMissedPolicy: false,
+                          intervalController: _intervalController,
                         )
                       else if (_scheduleType == RecurrenceType.monthly)
                         MonthlySchedulingWidget(
@@ -620,7 +664,9 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
 
               UpcomingOccurrencesPreview(
                 schedule: _schedule,
-                dailyTimes: _scheduleType == RecurrenceType.daily
+                dailyTimes:
+                    (_scheduleType == RecurrenceType.daily ||
+                        _scheduleType == RecurrenceType.weekly)
                     ? const []
                     : _dailyTimesController.value,
                 startDateTime: _scheduleType == RecurrenceType.oneOff

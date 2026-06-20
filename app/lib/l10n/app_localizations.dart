@@ -344,6 +344,18 @@ abstract class AppLocalizations {
   /// **'Every {count} day(s) (since last completion)'**
   String everyNDaysSinceLastCompletion(int count);
 
+  /// No description provided for @everyNWeeksSinceLastScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} week(s) (since last scheduled)'**
+  String everyNWeeksSinceLastScheduled(int count);
+
+  /// No description provided for @everyNWeeksSinceLastCompletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} week(s) (since last completion)'**
+  String everyNWeeksSinceLastCompletion(int count);
+
   /// No description provided for @daysIntervalLabel.
   ///
   /// In en, this message translates to:
