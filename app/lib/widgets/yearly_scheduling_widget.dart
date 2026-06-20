@@ -7,6 +7,7 @@ import '../logic/missed_occurrence_policy.dart';
 import '../logic/l10n_extension.dart';
 import 'relative_timing_widget.dart';
 import 'missed_occurrence_policy_selector.dart';
+import 'absolute_date_widget.dart';
 
 class YearlySchedulingWidget extends StatefulWidget {
   final CivilDay startDate;
@@ -156,58 +157,21 @@ class _YearlySchedulingWidgetState extends State<YearlySchedulingWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Start Recurrence Date
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: ListTile(
-              key: const Key('yearly_start_recurrence_date_tile'),
-              dense: true,
-              title: Text(
-                l10n.startRecurrenceDateLabel,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              subtitle: Text(
-                '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              trailing: Icon(
-                Icons.calendar_today,
-                color: theme.colorScheme.primary,
-                size: 20,
-              ),
-              onTap: widget.readOnly
-                  ? null
-                  : () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: dt,
-                        firstDate: DateTime.now().subtract(
-                          const Duration(days: 365),
-                        ),
-                        lastDate: DateTime.now().add(
-                          const Duration(days: 365 * 5),
-                        ),
-                      );
-                      if (picked != null) {
-                        widget.onStartDateChanged(
-                          CivilDay(
-                            year: picked.year,
-                            month: picked.month,
-                            day: picked.day,
-                          ),
-                        );
-                      }
-                    },
-            ),
-          ),
+        AbsoluteDateWidget(
+          key: const Key('yearly_start_recurrence_date_tile'),
+          date: dt,
+          onDateChanged: widget.readOnly
+              ? null
+              : (picked) {
+                  widget.onStartDateChanged(
+                    CivilDay(
+                      year: picked.year,
+                      month: picked.month,
+                      day: picked.day,
+                    ),
+                  );
+                },
+          label: l10n.startRecurrenceDateLabel,
         ),
         const SizedBox(height: 16),
 

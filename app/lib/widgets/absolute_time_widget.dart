@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'absolute_date_widget.dart';
 
 /// A widget that allows users to select a specific date and time.
 ///
@@ -66,25 +67,6 @@ class _AbsoluteTimeWidgetState extends State<AbsoluteTimeWidget> {
         current.day,
         picked.hour,
         picked.minute,
-      );
-    }
-  }
-
-  Future<void> _pickDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _dateTimeNotifier.value,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-    );
-    if (picked != null) {
-      final current = _dateTimeNotifier.value;
-      _dateTimeNotifier.value = DateTime(
-        picked.year,
-        picked.month,
-        picked.day,
-        current.hour,
-        current.minute,
       );
     }
   }
@@ -159,62 +141,19 @@ class _AbsoluteTimeWidgetState extends State<AbsoluteTimeWidget> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _pickDate,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Date',
-                                  style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                        height: 1.1,
-                                      ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}',
-                                  style: Theme.of(context).textTheme.bodyLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        height: 1.2,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.calendar_today,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              child: AbsoluteDateWidget(
+                date: dateTime,
+                onDateChanged: (picked) {
+                  final current = _dateTimeNotifier.value;
+                  _dateTimeNotifier.value = DateTime(
+                    picked.year,
+                    picked.month,
+                    picked.day,
+                    current.hour,
+                    current.minute,
+                  );
+                },
+                label: 'Date',
               ),
             ),
           ],
