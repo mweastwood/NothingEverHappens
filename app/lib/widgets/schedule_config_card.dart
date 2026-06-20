@@ -366,7 +366,7 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
         side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(12),
       ),
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(left: 4, right: 4, bottom: 12),
       child: Column(
         children: [
           ListTile(
