@@ -265,6 +265,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get yearlyLabel => 'Anual';
 
   @override
+  String get repeatingLabel => 'Repetitiva';
+
+  @override
+  String get sinceLastScheduledLabel => 'Desde la última programada';
+
+  @override
+  String get sinceLastCompletionLabel => 'Desde el último completado';
+
+  @override
+  String get intervalTypeLabel => 'Tipo de intervalo';
+
+  @override
+  String get startRecurrenceDateLabel => 'Fecha de inicio de recurrencia';
+
+  @override
+  String get addNotificationLabel => 'Añadir notificación';
+
+  @override
   String get dayOfMonthLabel => 'Día del Mes';
 
   @override

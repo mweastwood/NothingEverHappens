@@ -566,6 +566,42 @@ abstract class AppLocalizations {
   /// **'Yearly'**
   String get yearlyLabel;
 
+  /// No description provided for @repeatingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeating'**
+  String get repeatingLabel;
+
+  /// No description provided for @sinceLastScheduledLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Since last scheduled'**
+  String get sinceLastScheduledLabel;
+
+  /// No description provided for @sinceLastCompletionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Since last completion'**
+  String get sinceLastCompletionLabel;
+
+  /// No description provided for @intervalTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Interval Type'**
+  String get intervalTypeLabel;
+
+  /// No description provided for @startRecurrenceDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Recurrence Date'**
+  String get startRecurrenceDateLabel;
+
+  /// No description provided for @addNotificationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add notification'**
+  String get addNotificationLabel;
+
   /// No description provided for @dayOfMonthLabel.
   ///
   /// In en, this message translates to:
