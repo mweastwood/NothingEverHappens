@@ -477,8 +477,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   }
 
   Widget _buildScheduleSection(BuildContext context, bool readOnly) {
-    final theme = Theme.of(context);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
