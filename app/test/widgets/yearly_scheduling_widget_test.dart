@@ -65,7 +65,7 @@ void main() {
       );
       expect(find.text('Month'), findsOneWidget);
       expect(find.text('October'), findsOneWidget);
-      expect(find.text('Day'), findsOneWidget);
+      expect(find.text('Day'), findsNWidgets(3));
       expect(find.byType(RelativeTimingWidget), findsOneWidget);
       expect(find.byType(MissedOccurrencePolicySelector), findsOneWidget);
     });

@@ -93,7 +93,7 @@ void main() {
 
       // Verify labels and values
       expect(find.text('Start window'), findsOneWidget);
-      expect(find.text('Same day'), findsOneWidget);
+      expect(find.text('Day of'), findsOneWidget);
       expect(find.text('9:00 AM'), findsOneWidget);
 
       expect(find.text('Due window'), findsOneWidget);
@@ -168,17 +168,21 @@ void main() {
         ),
       );
 
-      // Tap dropdown for Start Window
-      final dropdowns = find.byType(DropdownButtonFormField<int>);
-      await tester.tap(dropdowns.first);
+      // Tap calendar icon for Start Window
+      final calendars = find.byIcon(Icons.calendar_today);
+      await tester.tap(calendars.first);
       await tester.pumpAndSettle();
 
-      // Tap "2 days after"
-      await tester.tap(find.text('2 days after').last);
+      // Tap "1 day after"
+      await tester.tap(find.text('1 day after').last);
+      await tester.pumpAndSettle();
+
+      // Tap OK to commit
+      await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
 
       expect(updatedStart, isNotNull);
-      expect(updatedStart!.dayOffset, 2);
+      expect(updatedStart!.dayOffset, 1);
     });
 
     testWidgets('shows custom offset input when Custom is selected', (
@@ -212,23 +216,25 @@ void main() {
         ),
       );
 
-      // Verify custom textfield is not yet visible
-      expect(find.byType(TextFormField), findsNothing);
+      // Verify custom textfield is not yet visible (since no dialog is open)
+      expect(find.byType(TextField), findsNothing);
 
-      // Tap dropdown for Start Window
-      final dropdowns = find.byType(DropdownButtonFormField<int>);
-      await tester.tap(dropdowns.first);
+      // Tap calendar icon for Start Window
+      final calendars = find.byIcon(Icons.calendar_today);
+      await tester.tap(calendars.first);
       await tester.pumpAndSettle();
 
-      // Tap "Custom offset..."
-      await tester.tap(find.text('Custom offset...').last);
+      // Tap "Custom"
+      await tester.tap(find.text('Custom').last);
       await tester.pumpAndSettle();
 
-      // Verify custom input is now visible
-      expect(find.byType(TextFormField), findsOneWidget);
+      // Verify custom input is now visible (in dialog)
+      expect(find.byType(TextField), findsOneWidget);
 
       // Enter "42" days
-      await tester.enterText(find.byType(TextFormField), '42');
+      await tester.enterText(find.byType(TextField), '42');
+      await tester.pump();
+      await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
 
       expect(updatedStart, isNotNull);

@@ -32,33 +32,47 @@ class RelativeTimeWidgetRobot {
     return finder;
   }
 
+  Future<void> _openOffsetDialog() async {
+    await tester.tap(find.byIcon(Icons.calendar_today));
+    await tester.pumpAndSettle();
+  }
+
   Future<void> selectDayOf() async {
-    await tester.tap(_find(find.text('Day of')));
+    await _openOffsetDialog();
+    await tester.tap(find.text('Day of').last);
+    await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
   }
 
   Future<void> selectDayAfter() async {
-    await tester.tap(_find(find.text('1 day after')));
+    await _openOffsetDialog();
+    await tester.tap(find.text('1 day after').last);
+    await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
   }
 
   Future<void> selectDayBefore() async {
-    await tester.tap(_find(find.text('1 day before')));
+    await _openOffsetDialog();
+    await tester.tap(find.text('1 day before').last);
+    await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
   }
 
   Future<void> selectCustom() async {
-    await tester.tap(_find(find.text('Custom')));
+    await _openOffsetDialog();
+    await tester.tap(find.text('Custom').last);
     await tester.pumpAndSettle();
   }
 
   Future<void> enterCustomDays(String days) async {
     await tester.enterText(customTextField, days);
     await tester.pump();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
   }
 
   Future<void> pickTime(int hour, int minute) async {
-    // Tap the time button
+    // Tap the time button/icon
     await tester.tap(_find(timeTextFinder));
     await tester.pumpAndSettle(); // Wait for dialog
 
@@ -77,30 +91,15 @@ class RelativeTimeWidgetRobot {
   }
 
   Future<void> closeCustomMode() async {
-    await tester.tap(_find(find.byIcon(Icons.close)));
-    await tester.pumpAndSettle();
+    await selectDayOf();
   }
 
   Finder get segmentedButton {
-    return _find(find.byWidgetPredicate((widget) => widget is SegmentedButton));
+    // No segmented button in new design, return an empty finder or one that finds nothing
+    return find.byWidgetPredicate((widget) => false);
   }
 
   Finder get customTextField => _find(find.byType(TextField));
 
-  Finder get timeTextFinder => find.byWidgetPredicate((widget) {
-    if (widget is FilledButton) {
-      final child = widget.child;
-      if (child is Row) {
-        // Look for the text inside the button
-        for (final childWidget in child.children) {
-          if (childWidget is Text &&
-              (childWidget.data?.contains(':') ?? false)) {
-            return true;
-          }
-        }
-      }
-      return true;
-    }
-    return false;
-  }).first;
+  Finder get timeTextFinder => find.byIcon(Icons.access_time);
 }
