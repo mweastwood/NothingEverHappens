@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
-import 'package:nothing_ever_happens/widgets/standard_choice_chip.dart';
 import 'package:nothing_ever_happens/widgets/recurrence_type_selector.dart';
 import '../test_helper.dart';
 
 void main() {
   group('RecurrenceTypeSelector', () {
-    testWidgets('renders all chips and shows selected value', (tester) async {
+    testWidgets('renders segmented button and repeating chips based on value', (
+      tester,
+    ) async {
       RecurrenceType? selected;
 
+      // 1. Render with oneOff
       await tester.pumpWidget(
         buildTestableWidget(
           child: Scaffold(
@@ -24,24 +26,49 @@ void main() {
         ),
       );
 
-      // Verify all options are rendered
+      // Verify One-off and Repeating segments are present
       expect(find.text('One-off'), findsOneWidget);
-      expect(find.text('Daily'), findsOneWidget);
-      expect(find.text('Weekly'), findsOneWidget);
-      expect(find.text('Monthly'), findsOneWidget);
-      expect(find.text('Yearly'), findsOneWidget);
+      expect(find.text('Repeating'), findsOneWidget);
 
-      // Verify One-off chip is selected
-      final oneOffChipFinder = find.byKey(const Key('recurrence_chip_oneOff'));
-      expect(oneOffChipFinder, findsOneWidget);
-      final StandardChoiceChip oneOffChip = tester.widget(oneOffChipFinder);
-      expect(oneOffChip.selected, isTrue);
+      // Verify repeating chips are NOT rendered when one-off is selected
+      expect(find.byKey(const Key('recurrence_chip_daily')), findsNothing);
+      expect(find.byKey(const Key('recurrence_chip_weekly')), findsNothing);
 
-      // Tap the Daily chip and verify callback
-      await tester.tap(find.byKey(const Key('recurrence_chip_daily')));
+      // Tap the Repeating segment and verify callback to daily
+      await tester.tap(find.text('Repeating'));
       await tester.pump();
-
       expect(selected, RecurrenceType.daily);
+
+      // 2. Render with repeating type (daily)
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: RecurrenceTypeSelector(
+              selectedValue: RecurrenceType.daily,
+              onSelected: (val) {
+                selected = val;
+              },
+            ),
+          ),
+        ),
+      );
+
+      // Verify repeating chips are rendered now
+      expect(find.byKey(const Key('recurrence_chip_daily')), findsOneWidget);
+      expect(find.byKey(const Key('recurrence_chip_weekly')), findsOneWidget);
+      expect(find.byKey(const Key('recurrence_chip_monthly')), findsOneWidget);
+      expect(find.byKey(const Key('recurrence_chip_yearly')), findsOneWidget);
+
+      // Verify Daily chip is selected
+      final ChoiceChip dailyChip = tester.widget(
+        find.byKey(const Key('recurrence_chip_daily')),
+      );
+      expect(dailyChip.selected, isTrue);
+
+      // Tap the Weekly chip and verify callback
+      await tester.tap(find.byKey(const Key('recurrence_chip_weekly')));
+      await tester.pump();
+      expect(selected, RecurrenceType.weekly);
     });
 
     testGoldens('RecurrenceTypeSelector renders correctly', (tester) async {

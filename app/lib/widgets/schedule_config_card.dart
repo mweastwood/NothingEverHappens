@@ -8,6 +8,8 @@ import 'daily_scheduling_widget.dart';
 import 'weekly_scheduling_widget.dart';
 import 'monthly_scheduling_widget.dart';
 import 'yearly_scheduling_widget.dart';
+import 'one_off_scheduling_widget.dart';
+import 'recurrence_type_selector.dart';
 
 class ScheduleConfigCard extends StatefulWidget {
   final TaskScheduleRule schedule;
@@ -34,6 +36,11 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
   late TextEditingController _monthlyDayOfMonthController;
   late TextEditingController _yearlyDayController;
 
+  late ValueNotifier<DateTime> _oneOffStartController;
+  late ValueNotifier<DateTime> _oneOffDueController;
+  late ValueNotifier<TimeOfDay?> _oneOffNotificationController;
+  bool _ignoreControllerEvents = false;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +49,61 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
       text: _getMonthlyDayOfMonthText(),
     );
     _yearlyDayController = TextEditingController(text: _getYearlyDayText());
+
+    final s = widget.schedule;
+    final initialStart = s is OneOffSchedule
+        ? _relativeToAbsolute(s.date, s.startRelativeTime)
+        : DateTime.now();
+    final initialDue = s is OneOffSchedule
+        ? _relativeToAbsolute(s.date, s.dueRelativeTime)
+        : DateTime.now();
+    final initialNotif =
+        s is OneOffSchedule && s.notificationRelativeTime != null
+        ? s.notificationRelativeTime!.time
+        : null;
+
+    _oneOffStartController = ValueNotifier<DateTime>(initialStart);
+    _oneOffDueController = ValueNotifier<DateTime>(initialDue);
+    _oneOffNotificationController = ValueNotifier<TimeOfDay?>(initialNotif);
+
+    _oneOffStartController.addListener(_onOneOffControllersChanged);
+    _oneOffDueController.addListener(_onOneOffControllersChanged);
+    _oneOffNotificationController.addListener(_onOneOffControllersChanged);
+  }
+
+  void _onOneOffControllersChanged() {
+    if (_ignoreControllerEvents) return;
+    final s = widget.schedule;
+    if (s is OneOffSchedule) {
+      final startAbs = _oneOffStartController.value;
+      final dueAbs = _oneOffDueController.value;
+      final notifTime = _oneOffNotificationController.value;
+
+      final newDate = CivilDay.fromDateTime(dueAbs);
+      final newStartRel = _absoluteToRelative(newDate, startAbs);
+      final newDueRel = _absoluteToRelative(newDate, dueAbs);
+      final newNotifRel = notifTime != null
+          ? _absoluteToRelative(
+              newDate,
+              DateTime(
+                newDate.year,
+                newDate.month,
+                newDate.day,
+                notifTime.hour,
+                notifTime.minute,
+              ),
+            )
+          : null;
+
+      widget.onChanged(
+        OneOffSchedule(
+          date: newDate,
+          startRelativeTime: newStartRel,
+          dueRelativeTime: newDueRel,
+          notificationRelativeTime: newNotifRel,
+        ),
+      );
+    }
   }
 
   @override
@@ -49,6 +111,12 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
     _intervalController.dispose();
     _monthlyDayOfMonthController.dispose();
     _yearlyDayController.dispose();
+    _oneOffStartController.removeListener(_onOneOffControllersChanged);
+    _oneOffDueController.removeListener(_onOneOffControllersChanged);
+    _oneOffNotificationController.removeListener(_onOneOffControllersChanged);
+    _oneOffStartController.dispose();
+    _oneOffDueController.dispose();
+    _oneOffNotificationController.dispose();
     super.dispose();
   }
 
@@ -79,6 +147,24 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
           _yearlyDayController.text = yearlyDayText;
         }
       });
+    }
+    if (widget.schedule is OneOffSchedule) {
+      final s = widget.schedule as OneOffSchedule;
+      final startAbs = _relativeToAbsolute(s.date, s.startRelativeTime);
+      final dueAbs = _relativeToAbsolute(s.date, s.dueRelativeTime);
+      final notifTime = s.notificationRelativeTime?.time;
+
+      _ignoreControllerEvents = true;
+      if (_oneOffStartController.value != startAbs) {
+        _oneOffStartController.value = startAbs;
+      }
+      if (_oneOffDueController.value != dueAbs) {
+        _oneOffDueController.value = dueAbs;
+      }
+      if (_oneOffNotificationController.value != notifTime) {
+        _oneOffNotificationController.value = notifTime;
+      }
+      _ignoreControllerEvents = false;
     }
   }
 
@@ -324,95 +410,11 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SegmentedButton<bool>(
-                    segments: [
-                      ButtonSegment<bool>(
-                        value: true,
-                        icon: const Icon(Icons.event),
-                        label: Text(context.l10n.oneOffLabel),
-                      ),
-                      ButtonSegment<bool>(
-                        value: false,
-                        icon: const Icon(Icons.replay),
-                        label: Text(context.l10n.repeatingLabel),
-                      ),
-                    ],
-                    selected: {s is OneOffSchedule},
-                    onSelectionChanged: (Set<bool> selection) {
-                      if (selection.isNotEmpty) {
-                        final isOneOff = selection.first;
-                        if (isOneOff) {
-                          _changeRecurrenceType(RecurrenceType.oneOff);
-                        } else {
-                          _changeRecurrenceType(RecurrenceType.daily);
-                        }
-                      }
-                    },
+                  RecurrenceTypeSelector(
+                    selectedValue: recurrenceType,
+                    onSelected: _changeRecurrenceType,
                   ),
                   const SizedBox(height: 16),
-                  if (s is! OneOffSchedule) ...[
-                    Wrap(
-                      spacing: 8.0,
-                      runSpacing: 8.0,
-                      children:
-                          [
-                            RecurrenceType.daily,
-                            RecurrenceType.weekly,
-                            RecurrenceType.monthly,
-                            RecurrenceType.yearly,
-                          ].map((type) {
-                            final String label;
-                            switch (type) {
-                              case RecurrenceType.daily:
-                                label = context.l10n.dailyLabel;
-                                break;
-                              case RecurrenceType.weekly:
-                                label = context.l10n.weeklyLabel;
-                                break;
-                              case RecurrenceType.monthly:
-                                label = context.l10n.monthlyLabel;
-                                break;
-                              case RecurrenceType.yearly:
-                                label = context.l10n.yearlyLabel;
-                                break;
-                              default:
-                                label = '';
-                            }
-                            final isSelected = recurrenceType == type;
-                            return ChoiceChip(
-                              key: Key('recurrence_chip_${type.name}'),
-                              label: Text(label),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  _changeRecurrenceType(type);
-                                }
-                              },
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              selectedColor: theme.colorScheme.primaryContainer,
-                              backgroundColor:
-                                  theme.colorScheme.surfaceContainerLow,
-                              labelStyle: TextStyle(
-                                fontSize: 13,
-                                color: isSelected
-                                    ? theme.colorScheme.onPrimaryContainer
-                                    : theme.colorScheme.onSurface,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                              side: BorderSide(
-                                color: isSelected
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.outlineVariant,
-                              ),
-                            );
-                          }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
                   if (s is DailySchedule) ...[
                     DailySchedulingWidget(
                       startDate: s.startDate,
@@ -787,281 +789,17 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
                       dayController: _yearlyDayController,
                     ),
                   ] else if (s is OneOffSchedule) ...[
-                    _buildStartDateTile(
-                      label: 'Occurrence Date',
-                      date: s.date,
-                      onDateChanged: (d) {
-                        widget.onChanged(
-                          OneOffSchedule(
-                            date: d,
-                            startRelativeTime: s.startRelativeTime,
-                            dueRelativeTime: s.dueRelativeTime,
-                            notificationRelativeTime:
-                                s.notificationRelativeTime,
-                          ),
-                        );
-                      },
+                    OneOffSchedulingWidget(
+                      startDateTime: _oneOffStartController,
+                      dueDateTime: _oneOffDueController,
+                      notificationTimeController: _oneOffNotificationController,
                     ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                    _buildOneOffTimingPicker(s),
                   ],
                 ],
               ),
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  Widget _buildStartDateTile({
-    required String label,
-    required CivilDay date,
-    required ValueChanged<CivilDay> onDateChanged,
-  }) {
-    final theme = Theme.of(context);
-    final dt = DateTime(date.year, date.month, date.day);
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: ListTile(
-          dense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 4,
-          ),
-          title: Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          subtitle: Text(
-            '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          trailing: Icon(
-            Icons.calendar_today,
-            color: theme.colorScheme.primary,
-            size: 20,
-          ),
-          onTap: () async {
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: dt,
-              firstDate: DateTime.now().subtract(const Duration(days: 365)),
-              lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-            );
-            if (picked != null) {
-              onDateChanged(
-                CivilDay(
-                  year: picked.year,
-                  month: picked.month,
-                  day: picked.day,
-                ),
-              );
-            }
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOneOffTimingPicker(OneOffSchedule s) {
-    final theme = Theme.of(context);
-    final startAbs = _relativeToAbsolute(s.date, s.startRelativeTime);
-    final dueAbs = _relativeToAbsolute(s.date, s.dueRelativeTime);
-    final notificationEnabled = s.notificationRelativeTime != null;
-    final notifAbs = notificationEnabled
-        ? _relativeToAbsolute(s.date, s.notificationRelativeTime!)
-        : null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Absolute Timing (One-Off)',
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _buildAbsoluteDateTimePicker(
-          label: 'Start Date & Time',
-          value: startAbs,
-          onChanged: (dt) {
-            widget.onChanged(
-              s.copyWithTiming(
-                startRelativeTime: _absoluteToRelative(s.date, dt),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildAbsoluteDateTimePicker(
-          label: 'Due Date & Time',
-          value: dueAbs,
-          onChanged: (dt) {
-            widget.onChanged(
-              s.copyWithTiming(
-                dueRelativeTime: _absoluteToRelative(s.date, dt),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        CheckboxListTile(
-          title: Text(
-            'Enable notification reminder',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          value: notificationEnabled,
-          onChanged: (enabled) {
-            if (enabled == true) {
-              widget.onChanged(
-                s.copyWithTiming(
-                  notificationRelativeTime: const RelativeTime(
-                    dayOffset: 0,
-                    time: TimeOfDay(hour: 9, minute: 0),
-                  ),
-                ),
-              );
-            } else {
-              widget.onChanged(
-                s.copyWithTiming(
-                  notificationRelativeTime: null,
-                  clearNotification: true,
-                ),
-              );
-            }
-          },
-          controlAffinity: ListTileControlAffinity.leading,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (notificationEnabled && notifAbs != null) ...[
-          const SizedBox(height: 8),
-          _buildAbsoluteDateTimePicker(
-            label: 'Notification Date & Time',
-            value: notifAbs,
-            onChanged: (dt) {
-              widget.onChanged(
-                s.copyWithTiming(
-                  notificationRelativeTime: _absoluteToRelative(s.date, dt),
-                ),
-              );
-            },
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildAbsoluteDateTimePicker({
-    required String label,
-    required DateTime value,
-    required ValueChanged<DateTime> onChanged,
-  }) {
-    final theme = Theme.of(context);
-    final timeOfDay = TimeOfDay(hour: value.hour, minute: value.minute);
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')} @ ${timeOfDay.format(context)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.calendar_today,
-                    color: theme.colorScheme.primary,
-                    size: 20,
-                  ),
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: value,
-                      firstDate: DateTime.now().subtract(
-                        const Duration(days: 365),
-                      ),
-                      lastDate: DateTime.now().add(
-                        const Duration(days: 365 * 5),
-                      ),
-                    );
-                    if (picked != null) {
-                      onChanged(
-                        DateTime(
-                          picked.year,
-                          picked.month,
-                          picked.day,
-                          value.hour,
-                          value.minute,
-                        ),
-                      );
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.access_time,
-                    color: theme.colorScheme.primary,
-                    size: 20,
-                  ),
-                  onPressed: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: timeOfDay,
-                    );
-                    if (picked != null) {
-                      onChanged(
-                        DateTime(
-                          value.year,
-                          value.month,
-                          value.day,
-                          picked.hour,
-                          picked.minute,
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
