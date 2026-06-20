@@ -144,6 +144,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String everyNWeeksSinceLastScheduled(int count) {
+    return 'Every $count week(s) (since last scheduled)';
+  }
+
+  @override
+  String everyNWeeksSinceLastCompletion(int count) {
+    return 'Every $count week(s) (since last completion)';
+  }
+
+  @override
   String get daysIntervalLabel => 'Days Interval';
 
   @override

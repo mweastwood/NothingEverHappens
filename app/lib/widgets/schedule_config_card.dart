@@ -10,6 +10,7 @@ import 'schedule_type_selector.dart';
 import 'completion_relative_config_widget.dart';
 import 'missed_occurrence_policy_selector.dart';
 import 'daily_scheduling_widget.dart';
+import 'weekly_scheduling_widget.dart';
 
 class ScheduleConfigCard extends StatefulWidget {
   final TaskScheduleRule schedule;
@@ -420,6 +421,80 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
                         onSchedulingPolicyChanged: (policy) {
                           widget.onChanged(
                             s.copyWithTiming(schedulingPolicy: policy),
+                          );
+                        },
+                        startRelativeTime: s.startRelativeTime,
+                        onStartRelativeTimeChanged: (start) {
+                          widget.onChanged(
+                            s.copyWithTiming(startRelativeTime: start),
+                          );
+                        },
+                        dueRelativeTime: s.dueRelativeTime,
+                        onDueRelativeTimeChanged: (due) {
+                          widget.onChanged(
+                            s.copyWithTiming(dueRelativeTime: due),
+                          );
+                        },
+                        notificationRelativeTime: s.notificationRelativeTime,
+                        onNotificationRelativeTimeChanged: (notif) {
+                          widget.onChanged(
+                            s.copyWithTiming(
+                              notificationRelativeTime: notif,
+                              clearNotification: notif == null,
+                            ),
+                          );
+                        },
+                        missedOccurrencePolicy: s.missedOccurrencePolicy,
+                        onMissedOccurrencePolicyChanged: (policy) {
+                          widget.onChanged(
+                            s.copyWithTiming(missedOccurrencePolicy: policy),
+                          );
+                        },
+                        showNotification: true,
+                        showMissedPolicy: true,
+                      ),
+                    ] else if (s is WeeklySchedule) ...[
+                      WeeklySchedulingWidget(
+                        startDate: s.startDate,
+                        onStartDateChanged: (date) {
+                          widget.onChanged(s.copyWithStartDate(date));
+                        },
+                        interval: s.interval,
+                        onIntervalChanged: (val) {
+                          widget.onChanged(
+                            WeeklySchedule(
+                              startDate: s.startDate,
+                              interval: val,
+                              daysOfWeek: s.daysOfWeek,
+                              startRelativeTime: s.startRelativeTime,
+                              dueRelativeTime: s.dueRelativeTime,
+                              notificationRelativeTime:
+                                  s.notificationRelativeTime,
+                              schedulingPolicy: s.schedulingPolicy,
+                              missedOccurrencePolicy: s.missedOccurrencePolicy,
+                            ),
+                          );
+                        },
+                        schedulingPolicy: s.schedulingPolicy,
+                        onSchedulingPolicyChanged: (policy) {
+                          widget.onChanged(
+                            s.copyWithTiming(schedulingPolicy: policy),
+                          );
+                        },
+                        selectedWeekdays: s.daysOfWeek,
+                        onWeekdaysChanged: (days) {
+                          widget.onChanged(
+                            WeeklySchedule(
+                              startDate: s.startDate,
+                              interval: s.interval,
+                              daysOfWeek: days,
+                              startRelativeTime: s.startRelativeTime,
+                              dueRelativeTime: s.dueRelativeTime,
+                              notificationRelativeTime:
+                                  s.notificationRelativeTime,
+                              schedulingPolicy: s.schedulingPolicy,
+                              missedOccurrencePolicy: s.missedOccurrencePolicy,
+                            ),
                           );
                         },
                         startRelativeTime: s.startRelativeTime,

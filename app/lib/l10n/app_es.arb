@@ -61,6 +61,22 @@
       }
     }
   },
+  "everyNWeeksSinceLastScheduled": "Cada {count} semana(s) (desde la última programada)",
+  "@everyNWeeksSinceLastScheduled": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "everyNWeeksSinceLastCompletion": "Cada {count} semana(s) (desde el último completado)",
+  "@everyNWeeksSinceLastCompletion": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "daysIntervalLabel": "Intervalo de días",
   "daysIntervalHelper": "Ej., 1 para cada día, 2 para días alternos",
   "weeksIntervalLabel": "Intervalo de semanas",
