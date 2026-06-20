@@ -36,6 +36,31 @@
   "snoozeUntilLabel": "Posponer hasta: ",
   "snoozeUntilDescription": "La tarea estará oculta de tu lista principal de tareas hasta esta hora.",
   "startDateLabel": "Fecha de inicio",
+  "intervalLabel": "Intervalo",
+  "everyNDays": "Cada {count} día(s)",
+  "@everyNDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "everyNDaysSinceLastScheduled": "Cada {count} día(s) (desde la última programada)",
+  "@everyNDaysSinceLastScheduled": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "everyNDaysSinceLastCompletion": "Cada {count} día(s) (desde el último completado)",
+  "@everyNDaysSinceLastCompletion": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "daysIntervalLabel": "Intervalo de días",
   "daysIntervalHelper": "Ej., 1 para cada día, 2 para días alternos",
   "weeksIntervalLabel": "Intervalo de semanas",

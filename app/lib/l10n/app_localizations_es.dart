@@ -126,6 +126,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get startDateLabel => 'Fecha de inicio';
 
   @override
+  String get intervalLabel => 'Intervalo';
+
+  @override
+  String everyNDays(int count) {
+    return 'Cada $count días';
+  }
+
+  @override
+  String everyNDaysSinceLastScheduled(int count) {
+    return 'Cada $count día(s) (desde la última programada)';
+  }
+
+  @override
+  String everyNDaysSinceLastCompletion(int count) {
+    return 'Cada $count día(s) (desde el último completado)';
+  }
+
+  @override
   String get daysIntervalLabel => 'Intervalo de días';
 
   @override
@@ -205,11 +223,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get everyDay => 'Todos los días';
-
-  @override
-  String everyNDays(int count) {
-    return 'Cada $count días';
-  }
 
   @override
   String get everyWeek => 'Cada semana';

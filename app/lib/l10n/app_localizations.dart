@@ -320,6 +320,30 @@ abstract class AppLocalizations {
   /// **'Start Date'**
   String get startDateLabel;
 
+  /// No description provided for @intervalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Interval'**
+  String get intervalLabel;
+
+  /// No description provided for @everyNDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} days'**
+  String everyNDays(int count);
+
+  /// No description provided for @everyNDaysSinceLastScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} day(s) (since last scheduled)'**
+  String everyNDaysSinceLastScheduled(int count);
+
+  /// No description provided for @everyNDaysSinceLastCompletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} day(s) (since last completion)'**
+  String everyNDaysSinceLastCompletion(int count);
+
   /// No description provided for @daysIntervalLabel.
   ///
   /// In en, this message translates to:
@@ -475,12 +499,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Every day'**
   String get everyDay;
-
-  /// No description provided for @everyNDays.
-  ///
-  /// In en, this message translates to:
-  /// **'Every {count} days'**
-  String everyNDays(int count);
 
   /// No description provided for @everyWeek.
   ///

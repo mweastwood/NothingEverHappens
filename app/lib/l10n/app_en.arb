@@ -36,6 +36,31 @@
   "snoozeUntilLabel": "Snooze Until: ",
   "snoozeUntilDescription": "The task will be hidden from your primary list of tasks until this time.",
   "startDateLabel": "Start Date",
+  "intervalLabel": "Interval",
+  "everyNDays": "Every {count} day(s)",
+  "@everyNDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "everyNDaysSinceLastScheduled": "Every {count} day(s) (since last scheduled)",
+  "@everyNDaysSinceLastScheduled": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "everyNDaysSinceLastCompletion": "Every {count} day(s) (since last completion)",
+  "@everyNDaysSinceLastCompletion": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "daysIntervalLabel": "Days Interval",
   "daysIntervalHelper": "E.g., 1 for every day, 2 for every other day",
   "weeksIntervalLabel": "Weeks Interval",

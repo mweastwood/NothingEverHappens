@@ -4,6 +4,7 @@ import '../logic/task_schedule.dart';
 import '../logic/civil_day.dart';
 import '../logic/app_clock.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/relative_time.dart';
 import 'one_off_scheduling_widget.dart';
 import 'daily_scheduling_widget.dart';
 import 'weekly_scheduling_widget.dart';
@@ -41,6 +42,12 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
   late ValueNotifier<int> _yearlyMonthController;
   late TextEditingController _yearlyDayController;
 
+  // For Daily redesigned widget
+  late RelativeTime _startRelativeTime;
+  late RelativeTime _dueRelativeTime;
+  late RelativeTime? _notificationRelativeTime;
+  late SchedulingPolicy _schedulingPolicy;
+
   List<CivilDay> _occurrences = [];
   Set<CivilDay> _startDays = {};
   Set<CivilDay> _dueDays = {};
@@ -74,6 +81,17 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
     _monthlyDayOfWeekController = ValueNotifier<int>(1);
     _yearlyMonthController = ValueNotifier<int>(1);
     _yearlyDayController = TextEditingController(text: '1');
+
+    _startRelativeTime = const RelativeTime(
+      dayOffset: 0,
+      time: TimeOfDay(hour: 9, minute: 0),
+    );
+    _dueRelativeTime = const RelativeTime(
+      dayOffset: 0,
+      time: TimeOfDay(hour: 17, minute: 0),
+    );
+    _notificationRelativeTime = null;
+    _schedulingPolicy = const FixedCalendarPolicy();
 
     // Add listeners to trigger recalculation on changes
     _dueDateTimeController.addListener(_recalculate);
@@ -148,7 +166,14 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
               _validationError = context.l10n.invalidIntervalError;
               return;
             }
-            schedule = DailySchedule(startDate: startCivil, interval: interval);
+            schedule = DailySchedule(
+              startDate: startCivil,
+              interval: interval,
+              startRelativeTime: _startRelativeTime,
+              dueRelativeTime: _dueRelativeTime,
+              notificationRelativeTime: _notificationRelativeTime,
+              schedulingPolicy: _schedulingPolicy,
+            );
             break;
 
           case RecurrenceType.weekly:
@@ -408,14 +433,54 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                         )
                       else if (_scheduleType == RecurrenceType.daily)
                         DailySchedulingWidget(
-                          startDate: _startDate,
+                          startDate: CivilDay.fromDateTime(_startDate),
                           onStartDateChanged: (date) {
                             setState(() {
-                              _startDate = date;
+                              _startDate = DateTime(
+                                date.year,
+                                date.month,
+                                date.day,
+                              );
                               _recalculate();
                             });
                           },
-                          dailyTimesController: _dailyTimesController,
+                          interval: int.tryParse(_intervalController.text) ?? 1,
+                          onIntervalChanged: (val) {
+                            setState(() {
+                              _intervalController.text = val.toString();
+                              _recalculate();
+                            });
+                          },
+                          schedulingPolicy: _schedulingPolicy,
+                          onSchedulingPolicyChanged: (policy) {
+                            setState(() {
+                              _schedulingPolicy = policy;
+                              _recalculate();
+                            });
+                          },
+                          startRelativeTime: _startRelativeTime,
+                          onStartRelativeTimeChanged: (val) {
+                            setState(() {
+                              _startRelativeTime = val;
+                              _recalculate();
+                            });
+                          },
+                          dueRelativeTime: _dueRelativeTime,
+                          onDueRelativeTimeChanged: (val) {
+                            setState(() {
+                              _dueRelativeTime = val;
+                              _recalculate();
+                            });
+                          },
+                          notificationRelativeTime: _notificationRelativeTime,
+                          onNotificationRelativeTimeChanged: (val) {
+                            setState(() {
+                              _notificationRelativeTime = val;
+                              _recalculate();
+                            });
+                          },
+                          showNotification: false,
+                          showMissedPolicy: false,
                           intervalController: _intervalController,
                         )
                       else if (_scheduleType == RecurrenceType.weekly)
@@ -555,9 +620,15 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
 
               UpcomingOccurrencesPreview(
                 schedule: _schedule,
-                dailyTimes: _dailyTimesController.value,
-                startDateTime: _startDateTimeController.value,
-                dueDateTime: _dueDateTimeController.value,
+                dailyTimes: _scheduleType == RecurrenceType.daily
+                    ? const []
+                    : _dailyTimesController.value,
+                startDateTime: _scheduleType == RecurrenceType.oneOff
+                    ? _startDateTimeController.value
+                    : null,
+                dueDateTime: _scheduleType == RecurrenceType.oneOff
+                    ? _dueDateTimeController.value
+                    : null,
                 scheduleType: _scheduleType,
                 maxOccurrences: 10,
               ),
