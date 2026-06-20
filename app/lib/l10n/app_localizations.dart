@@ -752,6 +752,18 @@ abstract class AppLocalizations {
   /// **'Every {count} months'**
   String everyNMonths(int count);
 
+  /// No description provided for @everyNMonthsSinceLastScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} month(s) (since last scheduled)'**
+  String everyNMonthsSinceLastScheduled(int count);
+
+  /// No description provided for @everyNMonthsSinceLastCompletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} month(s) (since last completion)'**
+  String everyNMonthsSinceLastCompletion(int count);
+
   /// No description provided for @everyYear.
   ///
   /// In en, this message translates to:
@@ -763,6 +775,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Every {count} years'**
   String everyNYears(int count);
+
+  /// No description provided for @everyNYearsSinceLastScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} year(s) (since last scheduled)'**
+  String everyNYearsSinceLastScheduled(int count);
+
+  /// No description provided for @everyNYearsSinceLastCompletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {count} year(s) (since last completion)'**
+  String everyNYearsSinceLastCompletion(int count);
 
   /// No description provided for @dayOfMonthOnDay.
   ///

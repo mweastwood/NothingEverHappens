@@ -369,11 +369,31 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String everyNMonthsSinceLastScheduled(int count) {
+    return 'Cada $count meses (desde la última programada)';
+  }
+
+  @override
+  String everyNMonthsSinceLastCompletion(int count) {
+    return 'Cada $count meses (desde el último completado)';
+  }
+
+  @override
   String get everyYear => 'Cada año';
 
   @override
   String everyNYears(int count) {
     return 'Cada $count años';
+  }
+
+  @override
+  String everyNYearsSinceLastScheduled(int count) {
+    return 'Cada $count años (desde la última programada)';
+  }
+
+  @override
+  String everyNYearsSinceLastCompletion(int count) {
+    return 'Cada $count años (desde el último completado)';
   }
 
   @override

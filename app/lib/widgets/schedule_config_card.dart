@@ -3,9 +3,7 @@ import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_schedule_rule.dart';
 import '../logic/scheduling_policy.dart';
-import '../logic/missed_occurrence_policy.dart';
-import 'schedule_type_selector.dart';
-import 'completion_relative_config_widget.dart';
+import '../logic/l10n_extension.dart';
 import 'daily_scheduling_widget.dart';
 import 'weekly_scheduling_widget.dart';
 import 'monthly_scheduling_widget.dart';
@@ -326,461 +324,488 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ScheduleTypeSelector(
-                    selectedType: s.schedulingPolicy.type,
-                    onChanged: (type) {
-                      if (type == SchedulingType.completionRelative) {
-                        widget.onChanged(
-                          s.copyWithTiming(
-                            schedulingPolicy: const CompletionRelativePolicy(
-                              interval: Duration(days: 1),
-                              targetTime: TimeOfDay(hour: 9, minute: 0),
-                            ),
-                            missedOccurrencePolicy:
-                                const MissedOccurrencePolicy.keepAround(),
-                          ),
-                        );
-                      } else {
-                        widget.onChanged(
-                          s.copyWithTiming(
-                            schedulingPolicy: const FixedCalendarPolicy(),
-                            missedOccurrencePolicy:
-                                const MissedOccurrencePolicy.keepAround(),
-                          ),
-                        );
+                  SegmentedButton<bool>(
+                    segments: [
+                      ButtonSegment<bool>(
+                        value: true,
+                        icon: const Icon(Icons.event),
+                        label: Text(context.l10n.oneOffLabel),
+                      ),
+                      ButtonSegment<bool>(
+                        value: false,
+                        icon: const Icon(Icons.replay),
+                        label: Text(context.l10n.repeatingLabel),
+                      ),
+                    ],
+                    selected: {s is OneOffSchedule},
+                    onSelectionChanged: (Set<bool> selection) {
+                      if (selection.isNotEmpty) {
+                        final isOneOff = selection.first;
+                        if (isOneOff) {
+                          _changeRecurrenceType(RecurrenceType.oneOff);
+                        } else {
+                          _changeRecurrenceType(RecurrenceType.daily);
+                        }
                       }
                     },
                   ),
                   const SizedBox(height: 16),
-                  if (s.schedulingPolicy is CompletionRelativePolicy) ...[
-                    CompletionRelativeConfigWidget(
-                      policy: s.schedulingPolicy as CompletionRelativePolicy,
-                      onChanged: (policy) {
+                  if (s is! OneOffSchedule) ...[
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children:
+                          [
+                            RecurrenceType.daily,
+                            RecurrenceType.weekly,
+                            RecurrenceType.monthly,
+                            RecurrenceType.yearly,
+                          ].map((type) {
+                            final String label;
+                            switch (type) {
+                              case RecurrenceType.daily:
+                                label = context.l10n.dailyLabel;
+                                break;
+                              case RecurrenceType.weekly:
+                                label = context.l10n.weeklyLabel;
+                                break;
+                              case RecurrenceType.monthly:
+                                label = context.l10n.monthlyLabel;
+                                break;
+                              case RecurrenceType.yearly:
+                                label = context.l10n.yearlyLabel;
+                                break;
+                              default:
+                                label = '';
+                            }
+                            final isSelected = recurrenceType == type;
+                            return ChoiceChip(
+                              key: Key('recurrence_chip_${type.name}'),
+                              label: Text(label),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  _changeRecurrenceType(type);
+                                }
+                              },
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              selectedColor: theme.colorScheme.primaryContainer,
+                              backgroundColor:
+                                  theme.colorScheme.surfaceContainerLow,
+                              labelStyle: TextStyle(
+                                fontSize: 13,
+                                color: isSelected
+                                    ? theme.colorScheme.onPrimaryContainer
+                                    : theme.colorScheme.onSurface,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outlineVariant,
+                              ),
+                            );
+                          }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (s is DailySchedule) ...[
+                    DailySchedulingWidget(
+                      startDate: s.startDate,
+                      onStartDateChanged: (date) {
+                        widget.onChanged(s.copyWithStartDate(date));
+                      },
+                      interval: s.interval,
+                      onIntervalChanged: (val) {
+                        widget.onChanged(
+                          DailySchedule(
+                            startDate: s.startDate,
+                            interval: val,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                            schedulingPolicy: s.schedulingPolicy,
+                            missedOccurrencePolicy: s.missedOccurrencePolicy,
+                          ),
+                        );
+                      },
+                      schedulingPolicy: s.schedulingPolicy,
+                      onSchedulingPolicyChanged: (policy) {
                         widget.onChanged(
                           s.copyWithTiming(schedulingPolicy: policy),
                         );
                       },
+                      startRelativeTime: s.startRelativeTime,
+                      onStartRelativeTimeChanged: (start) {
+                        widget.onChanged(
+                          s.copyWithTiming(startRelativeTime: start),
+                        );
+                      },
+                      dueRelativeTime: s.dueRelativeTime,
+                      onDueRelativeTimeChanged: (due) {
+                        widget.onChanged(
+                          s.copyWithTiming(dueRelativeTime: due),
+                        );
+                      },
+                      notificationRelativeTime: s.notificationRelativeTime,
+                      onNotificationRelativeTimeChanged: (notif) {
+                        widget.onChanged(
+                          s.copyWithTiming(
+                            notificationRelativeTime: notif,
+                            clearNotification: notif == null,
+                          ),
+                        );
+                      },
+                      missedOccurrencePolicy: s.missedOccurrencePolicy,
+                      onMissedOccurrencePolicyChanged: (policy) {
+                        widget.onChanged(
+                          s.copyWithTiming(missedOccurrencePolicy: policy),
+                        );
+                      },
+                      showNotification: true,
+                      showMissedPolicy: true,
                     ),
-                  ] else ...[
-                    DropdownButtonFormField<RecurrenceType>(
-                      initialValue: recurrenceType,
-                      decoration: const InputDecoration(
-                        labelText: 'Recurrence Type',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: RecurrenceType.oneOff,
-                          child: Text('One-off'),
-                        ),
-                        DropdownMenuItem(
-                          value: RecurrenceType.daily,
-                          child: Text('Daily'),
-                        ),
-                        DropdownMenuItem(
-                          value: RecurrenceType.weekly,
-                          child: Text('Weekly'),
-                        ),
-                        DropdownMenuItem(
-                          value: RecurrenceType.monthly,
-                          child: Text('Monthly'),
-                        ),
-                        DropdownMenuItem(
-                          value: RecurrenceType.yearly,
-                          child: Text('Yearly'),
-                        ),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) _changeRecurrenceType(val);
+                  ] else if (s is WeeklySchedule) ...[
+                    WeeklySchedulingWidget(
+                      startDate: s.startDate,
+                      onStartDateChanged: (date) {
+                        widget.onChanged(s.copyWithStartDate(date));
+                      },
+                      interval: s.interval,
+                      onIntervalChanged: (val) {
+                        widget.onChanged(
+                          WeeklySchedule(
+                            startDate: s.startDate,
+                            interval: val,
+                            daysOfWeek: s.daysOfWeek,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                            schedulingPolicy: s.schedulingPolicy,
+                            missedOccurrencePolicy: s.missedOccurrencePolicy,
+                          ),
+                        );
+                      },
+                      schedulingPolicy: s.schedulingPolicy,
+                      onSchedulingPolicyChanged: (policy) {
+                        widget.onChanged(
+                          s.copyWithTiming(schedulingPolicy: policy),
+                        );
+                      },
+                      selectedWeekdays: s.daysOfWeek,
+                      onWeekdaysChanged: (days) {
+                        widget.onChanged(
+                          WeeklySchedule(
+                            startDate: s.startDate,
+                            interval: s.interval,
+                            daysOfWeek: days,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                            schedulingPolicy: s.schedulingPolicy,
+                            missedOccurrencePolicy: s.missedOccurrencePolicy,
+                          ),
+                        );
+                      },
+                      startRelativeTime: s.startRelativeTime,
+                      onStartRelativeTimeChanged: (start) {
+                        widget.onChanged(
+                          s.copyWithTiming(startRelativeTime: start),
+                        );
+                      },
+                      dueRelativeTime: s.dueRelativeTime,
+                      onDueRelativeTimeChanged: (due) {
+                        widget.onChanged(
+                          s.copyWithTiming(dueRelativeTime: due),
+                        );
+                      },
+                      notificationRelativeTime: s.notificationRelativeTime,
+                      onNotificationRelativeTimeChanged: (notif) {
+                        widget.onChanged(
+                          s.copyWithTiming(
+                            notificationRelativeTime: notif,
+                            clearNotification: notif == null,
+                          ),
+                        );
+                      },
+                      missedOccurrencePolicy: s.missedOccurrencePolicy,
+                      onMissedOccurrencePolicyChanged: (policy) {
+                        widget.onChanged(
+                          s.copyWithTiming(missedOccurrencePolicy: policy),
+                        );
+                      },
+                      showNotification: true,
+                      showMissedPolicy: true,
+                    ),
+                  ] else if (s is MonthlySchedule) ...[
+                    MonthlySchedulingWidget(
+                      startDate: s.startDate,
+                      onStartDateChanged: (date) {
+                        widget.onChanged(s.copyWithStartDate(date));
+                      },
+                      interval: s.interval,
+                      onIntervalChanged: (val) {
+                        widget.onChanged(
+                          MonthlySchedule(
+                            startDate: s.startDate,
+                            interval: val,
+                            dayOfMonth: s.dayOfMonth,
+                            dayOfWeek: s.dayOfWeek,
+                            occurrence: s.occurrence,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                            schedulingPolicy: s.schedulingPolicy,
+                            missedOccurrencePolicy: s.missedOccurrencePolicy,
+                          ),
+                        );
+                      },
+                      schedulingPolicy: s.schedulingPolicy,
+                      onSchedulingPolicyChanged: (policy) {
+                        widget.onChanged(
+                          s.copyWithTiming(schedulingPolicy: policy),
+                        );
+                      },
+                      ruleType: s.dayOfMonth != null
+                          ? 'dayOfMonth'
+                          : 'nthDayOfWeek',
+                      onRuleTypeChanged: (type) {
+                        if (type == 'dayOfMonth') {
+                          widget.onChanged(
+                            MonthlySchedule(
+                              startDate: s.startDate,
+                              interval: s.interval,
+                              dayOfMonth: s.startDate.day <= 28
+                                  ? s.startDate.day
+                                  : 28,
+                              startRelativeTime: s.startRelativeTime,
+                              dueRelativeTime: s.dueRelativeTime,
+                              notificationRelativeTime:
+                                  s.notificationRelativeTime,
+                              schedulingPolicy: s.schedulingPolicy,
+                              missedOccurrencePolicy: s.missedOccurrencePolicy,
+                            ),
+                          );
+                        } else {
+                          widget.onChanged(
+                            MonthlySchedule(
+                              startDate: s.startDate,
+                              interval: s.interval,
+                              dayOfWeek: s.startDate.toUtcDateTime().weekday,
+                              occurrence: 1,
+                              startRelativeTime: s.startRelativeTime,
+                              dueRelativeTime: s.dueRelativeTime,
+                              notificationRelativeTime:
+                                  s.notificationRelativeTime,
+                              schedulingPolicy: s.schedulingPolicy,
+                              missedOccurrencePolicy: s.missedOccurrencePolicy,
+                            ),
+                          );
+                        }
+                      },
+                      dayOfMonth: s.dayOfMonth,
+                      onDayOfMonthChanged: (val) {
+                        widget.onChanged(
+                          MonthlySchedule(
+                            startDate: s.startDate,
+                            interval: s.interval,
+                            dayOfMonth: val,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                            schedulingPolicy: s.schedulingPolicy,
+                            missedOccurrencePolicy: s.missedOccurrencePolicy,
+                          ),
+                        );
+                      },
+                      occurrence: s.occurrence,
+                      onOccurrenceChanged: (val) {
+                        widget.onChanged(
+                          MonthlySchedule(
+                            startDate: s.startDate,
+                            interval: s.interval,
+                            dayOfWeek: s.dayOfWeek,
+                            occurrence: val,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                            schedulingPolicy: s.schedulingPolicy,
+                            missedOccurrencePolicy: s.missedOccurrencePolicy,
+                          ),
+                        );
+                      },
+                      dayOfWeek: s.dayOfWeek,
+                      onDayOfWeekChanged: (val) {
+                        widget.onChanged(
+                          MonthlySchedule(
+                            startDate: s.startDate,
+                            interval: s.interval,
+                            dayOfWeek: val,
+                            occurrence: s.occurrence,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                            schedulingPolicy: s.schedulingPolicy,
+                            missedOccurrencePolicy: s.missedOccurrencePolicy,
+                          ),
+                        );
+                      },
+                      startRelativeTime: s.startRelativeTime,
+                      onStartRelativeTimeChanged: (start) {
+                        widget.onChanged(
+                          s.copyWithTiming(startRelativeTime: start),
+                        );
+                      },
+                      dueRelativeTime: s.dueRelativeTime,
+                      onDueRelativeTimeChanged: (due) {
+                        widget.onChanged(
+                          s.copyWithTiming(dueRelativeTime: due),
+                        );
+                      },
+                      notificationRelativeTime: s.notificationRelativeTime,
+                      onNotificationRelativeTimeChanged: (notif) {
+                        widget.onChanged(
+                          s.copyWithTiming(
+                            notificationRelativeTime: notif,
+                            clearNotification: notif == null,
+                          ),
+                        );
+                      },
+                      missedOccurrencePolicy: s.missedOccurrencePolicy,
+                      onMissedOccurrencePolicyChanged: (policy) {
+                        widget.onChanged(
+                          s.copyWithTiming(missedOccurrencePolicy: policy),
+                        );
+                      },
+                      showNotification: true,
+                      showMissedPolicy: true,
+                    ),
+                  ] else if (s is YearlySchedule) ...[
+                    YearlySchedulingWidget(
+                      startDate: s.startDate,
+                      onStartDateChanged: (date) {
+                        widget.onChanged(s.copyWithStartDate(date));
+                      },
+                      interval: s.interval,
+                      onIntervalChanged: (val) {
+                        widget.onChanged(
+                          YearlySchedule(
+                            startDate: s.startDate,
+                            interval: val,
+                            month: s.month,
+                            day: s.day,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                            schedulingPolicy: s.schedulingPolicy,
+                            missedOccurrencePolicy: s.missedOccurrencePolicy,
+                          ),
+                        );
+                      },
+                      schedulingPolicy: s.schedulingPolicy,
+                      onSchedulingPolicyChanged: (policy) {
+                        widget.onChanged(
+                          s.copyWithTiming(schedulingPolicy: policy),
+                        );
+                      },
+                      month: s.month,
+                      onMonthChanged: (val) {
+                        widget.onChanged(
+                          YearlySchedule(
+                            startDate: s.startDate,
+                            interval: s.interval,
+                            month: val,
+                            day: s.day,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                            schedulingPolicy: s.schedulingPolicy,
+                            missedOccurrencePolicy: s.missedOccurrencePolicy,
+                          ),
+                        );
+                      },
+                      day: s.day,
+                      onDayChanged: (val) {
+                        widget.onChanged(
+                          YearlySchedule(
+                            startDate: s.startDate,
+                            interval: s.interval,
+                            month: s.month,
+                            day: val,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                            schedulingPolicy: s.schedulingPolicy,
+                            missedOccurrencePolicy: s.missedOccurrencePolicy,
+                          ),
+                        );
+                      },
+                      startRelativeTime: s.startRelativeTime,
+                      onStartRelativeTimeChanged: (start) {
+                        widget.onChanged(
+                          s.copyWithTiming(startRelativeTime: start),
+                        );
+                      },
+                      dueRelativeTime: s.dueRelativeTime,
+                      onDueRelativeTimeChanged: (due) {
+                        widget.onChanged(
+                          s.copyWithTiming(dueRelativeTime: due),
+                        );
+                      },
+                      notificationRelativeTime: s.notificationRelativeTime,
+                      onNotificationRelativeTimeChanged: (notif) {
+                        widget.onChanged(
+                          s.copyWithTiming(
+                            notificationRelativeTime: notif,
+                            clearNotification: notif == null,
+                          ),
+                        );
+                      },
+                      missedOccurrencePolicy: s.missedOccurrencePolicy,
+                      onMissedOccurrencePolicyChanged: (policy) {
+                        widget.onChanged(
+                          s.copyWithTiming(missedOccurrencePolicy: policy),
+                        );
+                      },
+                      showNotification: true,
+                      showMissedPolicy: true,
+                      intervalController: _intervalController,
+                      dayController: _yearlyDayController,
+                    ),
+                  ] else if (s is OneOffSchedule) ...[
+                    _buildStartDateTile(
+                      label: 'Occurrence Date',
+                      date: s.date,
+                      onDateChanged: (d) {
+                        widget.onChanged(
+                          OneOffSchedule(
+                            date: d,
+                            startRelativeTime: s.startRelativeTime,
+                            dueRelativeTime: s.dueRelativeTime,
+                            notificationRelativeTime:
+                                s.notificationRelativeTime,
+                          ),
+                        );
                       },
                     ),
                     const SizedBox(height: 16),
-                    if (s is DailySchedule) ...[
-                      DailySchedulingWidget(
-                        startDate: s.startDate,
-                        onStartDateChanged: (date) {
-                          widget.onChanged(s.copyWithStartDate(date));
-                        },
-                        interval: s.interval,
-                        onIntervalChanged: (val) {
-                          widget.onChanged(
-                            DailySchedule(
-                              startDate: s.startDate,
-                              interval: val,
-                              startRelativeTime: s.startRelativeTime,
-                              dueRelativeTime: s.dueRelativeTime,
-                              notificationRelativeTime:
-                                  s.notificationRelativeTime,
-                              schedulingPolicy: s.schedulingPolicy,
-                              missedOccurrencePolicy: s.missedOccurrencePolicy,
-                            ),
-                          );
-                        },
-                        schedulingPolicy: s.schedulingPolicy,
-                        onSchedulingPolicyChanged: (policy) {
-                          widget.onChanged(
-                            s.copyWithTiming(schedulingPolicy: policy),
-                          );
-                        },
-                        startRelativeTime: s.startRelativeTime,
-                        onStartRelativeTimeChanged: (start) {
-                          widget.onChanged(
-                            s.copyWithTiming(startRelativeTime: start),
-                          );
-                        },
-                        dueRelativeTime: s.dueRelativeTime,
-                        onDueRelativeTimeChanged: (due) {
-                          widget.onChanged(
-                            s.copyWithTiming(dueRelativeTime: due),
-                          );
-                        },
-                        notificationRelativeTime: s.notificationRelativeTime,
-                        onNotificationRelativeTimeChanged: (notif) {
-                          widget.onChanged(
-                            s.copyWithTiming(
-                              notificationRelativeTime: notif,
-                              clearNotification: notif == null,
-                            ),
-                          );
-                        },
-                        missedOccurrencePolicy: s.missedOccurrencePolicy,
-                        onMissedOccurrencePolicyChanged: (policy) {
-                          widget.onChanged(
-                            s.copyWithTiming(missedOccurrencePolicy: policy),
-                          );
-                        },
-                        showNotification: true,
-                        showMissedPolicy: true,
-                      ),
-                    ] else if (s is WeeklySchedule) ...[
-                      WeeklySchedulingWidget(
-                        startDate: s.startDate,
-                        onStartDateChanged: (date) {
-                          widget.onChanged(s.copyWithStartDate(date));
-                        },
-                        interval: s.interval,
-                        onIntervalChanged: (val) {
-                          widget.onChanged(
-                            WeeklySchedule(
-                              startDate: s.startDate,
-                              interval: val,
-                              daysOfWeek: s.daysOfWeek,
-                              startRelativeTime: s.startRelativeTime,
-                              dueRelativeTime: s.dueRelativeTime,
-                              notificationRelativeTime:
-                                  s.notificationRelativeTime,
-                              schedulingPolicy: s.schedulingPolicy,
-                              missedOccurrencePolicy: s.missedOccurrencePolicy,
-                            ),
-                          );
-                        },
-                        schedulingPolicy: s.schedulingPolicy,
-                        onSchedulingPolicyChanged: (policy) {
-                          widget.onChanged(
-                            s.copyWithTiming(schedulingPolicy: policy),
-                          );
-                        },
-                        selectedWeekdays: s.daysOfWeek,
-                        onWeekdaysChanged: (days) {
-                          widget.onChanged(
-                            WeeklySchedule(
-                              startDate: s.startDate,
-                              interval: s.interval,
-                              daysOfWeek: days,
-                              startRelativeTime: s.startRelativeTime,
-                              dueRelativeTime: s.dueRelativeTime,
-                              notificationRelativeTime:
-                                  s.notificationRelativeTime,
-                              schedulingPolicy: s.schedulingPolicy,
-                              missedOccurrencePolicy: s.missedOccurrencePolicy,
-                            ),
-                          );
-                        },
-                        startRelativeTime: s.startRelativeTime,
-                        onStartRelativeTimeChanged: (start) {
-                          widget.onChanged(
-                            s.copyWithTiming(startRelativeTime: start),
-                          );
-                        },
-                        dueRelativeTime: s.dueRelativeTime,
-                        onDueRelativeTimeChanged: (due) {
-                          widget.onChanged(
-                            s.copyWithTiming(dueRelativeTime: due),
-                          );
-                        },
-                        notificationRelativeTime: s.notificationRelativeTime,
-                        onNotificationRelativeTimeChanged: (notif) {
-                          widget.onChanged(
-                            s.copyWithTiming(
-                              notificationRelativeTime: notif,
-                              clearNotification: notif == null,
-                            ),
-                          );
-                        },
-                        missedOccurrencePolicy: s.missedOccurrencePolicy,
-                        onMissedOccurrencePolicyChanged: (policy) {
-                          widget.onChanged(
-                            s.copyWithTiming(missedOccurrencePolicy: policy),
-                          );
-                        },
-                        showNotification: true,
-                        showMissedPolicy: true,
-                      ),
-                    ] else if (s is MonthlySchedule) ...[
-                      MonthlySchedulingWidget(
-                        startDate: s.startDate,
-                        onStartDateChanged: (date) {
-                          widget.onChanged(s.copyWithStartDate(date));
-                        },
-                        interval: s.interval,
-                        onIntervalChanged: (val) {
-                          widget.onChanged(
-                            MonthlySchedule(
-                              startDate: s.startDate,
-                              interval: val,
-                              dayOfMonth: s.dayOfMonth,
-                              dayOfWeek: s.dayOfWeek,
-                              occurrence: s.occurrence,
-                              startRelativeTime: s.startRelativeTime,
-                              dueRelativeTime: s.dueRelativeTime,
-                              notificationRelativeTime:
-                                  s.notificationRelativeTime,
-                              schedulingPolicy: s.schedulingPolicy,
-                              missedOccurrencePolicy: s.missedOccurrencePolicy,
-                            ),
-                          );
-                        },
-                        ruleType: s.dayOfMonth != null
-                            ? 'dayOfMonth'
-                            : 'nthDayOfWeek',
-                        onRuleTypeChanged: (type) {
-                          if (type == 'dayOfMonth') {
-                            widget.onChanged(
-                              MonthlySchedule(
-                                startDate: s.startDate,
-                                interval: s.interval,
-                                dayOfMonth: s.startDate.day <= 28
-                                    ? s.startDate.day
-                                    : 28,
-                                startRelativeTime: s.startRelativeTime,
-                                dueRelativeTime: s.dueRelativeTime,
-                                notificationRelativeTime:
-                                    s.notificationRelativeTime,
-                                schedulingPolicy: s.schedulingPolicy,
-                                missedOccurrencePolicy:
-                                    s.missedOccurrencePolicy,
-                              ),
-                            );
-                          } else {
-                            widget.onChanged(
-                              MonthlySchedule(
-                                startDate: s.startDate,
-                                interval: s.interval,
-                                dayOfWeek: s.startDate.toUtcDateTime().weekday,
-                                occurrence: 1,
-                                startRelativeTime: s.startRelativeTime,
-                                dueRelativeTime: s.dueRelativeTime,
-                                notificationRelativeTime:
-                                    s.notificationRelativeTime,
-                                schedulingPolicy: s.schedulingPolicy,
-                                missedOccurrencePolicy:
-                                    s.missedOccurrencePolicy,
-                              ),
-                            );
-                          }
-                        },
-                        dayOfMonth: s.dayOfMonth,
-                        onDayOfMonthChanged: (val) {
-                          widget.onChanged(
-                            MonthlySchedule(
-                              startDate: s.startDate,
-                              interval: s.interval,
-                              dayOfMonth: val,
-                              startRelativeTime: s.startRelativeTime,
-                              dueRelativeTime: s.dueRelativeTime,
-                              notificationRelativeTime:
-                                  s.notificationRelativeTime,
-                              schedulingPolicy: s.schedulingPolicy,
-                              missedOccurrencePolicy: s.missedOccurrencePolicy,
-                            ),
-                          );
-                        },
-                        occurrence: s.occurrence,
-                        onOccurrenceChanged: (val) {
-                          widget.onChanged(
-                            MonthlySchedule(
-                              startDate: s.startDate,
-                              interval: s.interval,
-                              dayOfWeek: s.dayOfWeek,
-                              occurrence: val,
-                              startRelativeTime: s.startRelativeTime,
-                              dueRelativeTime: s.dueRelativeTime,
-                              notificationRelativeTime:
-                                  s.notificationRelativeTime,
-                              schedulingPolicy: s.schedulingPolicy,
-                              missedOccurrencePolicy: s.missedOccurrencePolicy,
-                            ),
-                          );
-                        },
-                        dayOfWeek: s.dayOfWeek,
-                        onDayOfWeekChanged: (val) {
-                          widget.onChanged(
-                            MonthlySchedule(
-                              startDate: s.startDate,
-                              interval: s.interval,
-                              dayOfWeek: val,
-                              occurrence: s.occurrence,
-                              startRelativeTime: s.startRelativeTime,
-                              dueRelativeTime: s.dueRelativeTime,
-                              notificationRelativeTime:
-                                  s.notificationRelativeTime,
-                              schedulingPolicy: s.schedulingPolicy,
-                              missedOccurrencePolicy: s.missedOccurrencePolicy,
-                            ),
-                          );
-                        },
-                        startRelativeTime: s.startRelativeTime,
-                        onStartRelativeTimeChanged: (start) {
-                          widget.onChanged(
-                            s.copyWithTiming(startRelativeTime: start),
-                          );
-                        },
-                        dueRelativeTime: s.dueRelativeTime,
-                        onDueRelativeTimeChanged: (due) {
-                          widget.onChanged(
-                            s.copyWithTiming(dueRelativeTime: due),
-                          );
-                        },
-                        notificationRelativeTime: s.notificationRelativeTime,
-                        onNotificationRelativeTimeChanged: (notif) {
-                          widget.onChanged(
-                            s.copyWithTiming(
-                              notificationRelativeTime: notif,
-                              clearNotification: notif == null,
-                            ),
-                          );
-                        },
-                        missedOccurrencePolicy: s.missedOccurrencePolicy,
-                        onMissedOccurrencePolicyChanged: (policy) {
-                          widget.onChanged(
-                            s.copyWithTiming(missedOccurrencePolicy: policy),
-                          );
-                        },
-                        showNotification: true,
-                        showMissedPolicy: true,
-                      ),
-                    ] else if (s is YearlySchedule) ...[
-                      YearlySchedulingWidget(
-                        startDate: s.startDate,
-                        onStartDateChanged: (date) {
-                          widget.onChanged(s.copyWithStartDate(date));
-                        },
-                        interval: s.interval,
-                        onIntervalChanged: (val) {
-                          widget.onChanged(
-                            YearlySchedule(
-                              startDate: s.startDate,
-                              interval: val,
-                              month: s.month,
-                              day: s.day,
-                              startRelativeTime: s.startRelativeTime,
-                              dueRelativeTime: s.dueRelativeTime,
-                              notificationRelativeTime:
-                                  s.notificationRelativeTime,
-                              schedulingPolicy: s.schedulingPolicy,
-                              missedOccurrencePolicy: s.missedOccurrencePolicy,
-                            ),
-                          );
-                        },
-                        month: s.month,
-                        onMonthChanged: (val) {
-                          widget.onChanged(
-                            YearlySchedule(
-                              startDate: s.startDate,
-                              interval: s.interval,
-                              month: val,
-                              day: s.day,
-                              startRelativeTime: s.startRelativeTime,
-                              dueRelativeTime: s.dueRelativeTime,
-                              notificationRelativeTime:
-                                  s.notificationRelativeTime,
-                              schedulingPolicy: s.schedulingPolicy,
-                              missedOccurrencePolicy: s.missedOccurrencePolicy,
-                            ),
-                          );
-                        },
-                        day: s.day,
-                        onDayChanged: (val) {
-                          widget.onChanged(
-                            YearlySchedule(
-                              startDate: s.startDate,
-                              interval: s.interval,
-                              month: s.month,
-                              day: val,
-                              startRelativeTime: s.startRelativeTime,
-                              dueRelativeTime: s.dueRelativeTime,
-                              notificationRelativeTime:
-                                  s.notificationRelativeTime,
-                              schedulingPolicy: s.schedulingPolicy,
-                              missedOccurrencePolicy: s.missedOccurrencePolicy,
-                            ),
-                          );
-                        },
-                        startRelativeTime: s.startRelativeTime,
-                        onStartRelativeTimeChanged: (start) {
-                          widget.onChanged(
-                            s.copyWithTiming(startRelativeTime: start),
-                          );
-                        },
-                        dueRelativeTime: s.dueRelativeTime,
-                        onDueRelativeTimeChanged: (due) {
-                          widget.onChanged(
-                            s.copyWithTiming(dueRelativeTime: due),
-                          );
-                        },
-                        notificationRelativeTime: s.notificationRelativeTime,
-                        onNotificationRelativeTimeChanged: (notif) {
-                          widget.onChanged(
-                            s.copyWithTiming(
-                              notificationRelativeTime: notif,
-                              clearNotification: notif == null,
-                            ),
-                          );
-                        },
-                        missedOccurrencePolicy: s.missedOccurrencePolicy,
-                        onMissedOccurrencePolicyChanged: (policy) {
-                          widget.onChanged(
-                            s.copyWithTiming(missedOccurrencePolicy: policy),
-                          );
-                        },
-                        showNotification: true,
-                        showMissedPolicy: true,
-                        intervalController: _intervalController,
-                        dayController: _yearlyDayController,
-                      ),
-                    ] else ...[
-                      if (s is OneOffSchedule) ...[
-                        _buildStartDateTile(
-                          label: 'Occurrence Date',
-                          date: s.date,
-                          onDateChanged: (d) {
-                            widget.onChanged(
-                              OneOffSchedule(
-                                date: d,
-                                startRelativeTime: s.startRelativeTime,
-                                dueRelativeTime: s.dueRelativeTime,
-                                notificationRelativeTime:
-                                    s.notificationRelativeTime,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        const Divider(),
-                        const SizedBox(height: 12),
-                        _buildOneOffTimingPicker(s),
-                      ],
-                    ],
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    _buildOneOffTimingPicker(s),
                   ],
                 ],
               ),

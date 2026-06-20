@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
+import '../logic/scheduling_policy.dart';
 import '../logic/missed_occurrence_policy.dart';
 import '../logic/l10n_extension.dart';
 import 'relative_timing_widget.dart';
@@ -12,6 +13,8 @@ class YearlySchedulingWidget extends StatefulWidget {
   final ValueChanged<CivilDay> onStartDateChanged;
   final int interval;
   final ValueChanged<int> onIntervalChanged;
+  final SchedulingPolicy schedulingPolicy;
+  final ValueChanged<SchedulingPolicy> onSchedulingPolicyChanged;
   final int month;
   final ValueChanged<int> onMonthChanged;
   final int day;
@@ -38,6 +41,8 @@ class YearlySchedulingWidget extends StatefulWidget {
     required this.onStartDateChanged,
     required this.interval,
     required this.onIntervalChanged,
+    required this.schedulingPolicy,
+    required this.onSchedulingPolicyChanged,
     required this.month,
     required this.onMonthChanged,
     required this.day,
@@ -140,9 +145,12 @@ class _YearlySchedulingWidgetState extends State<YearlySchedulingWidget> {
       widget.startDate.day,
     );
 
-    final summaryText = widget.interval == 1
-        ? l10n.everyYear
-        : l10n.everyNYears(widget.interval);
+    final isCompletionRelative =
+        widget.schedulingPolicy is CompletionRelativePolicy;
+
+    final summaryText = isCompletionRelative
+        ? l10n.everyNYearsSinceLastCompletion(widget.interval)
+        : l10n.everyNYearsSinceLastScheduled(widget.interval);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,32 +252,83 @@ class _YearlySchedulingWidgetState extends State<YearlySchedulingWidget> {
                 const Divider(height: 1),
                 Padding(
                   padding: const EdgeInsets.all(12.0),
-                  child: TextFormField(
-                    key: const Key('yearly_interval_field'),
-                    controller: _intervalController,
-                    enabled: !widget.readOnly,
-                    decoration: InputDecoration(
-                      labelText: l10n.yearsIntervalLabel,
-                      border: const OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Interval is required';
-                      }
-                      final interval = int.tryParse(val);
-                      if (interval == null || interval <= 0) {
-                        return 'Please enter a positive number';
-                      }
-                      return null;
-                    },
-                    onChanged: (val) {
-                      final newInterval = int.tryParse(val);
-                      if (newInterval != null && newInterval > 0) {
-                        widget.onIntervalChanged(newInterval);
-                      }
-                    },
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        key: const Key('yearly_interval_field'),
+                        controller: _intervalController,
+                        enabled: !widget.readOnly,
+                        decoration: InputDecoration(
+                          labelText: l10n.yearsIntervalLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Interval is required';
+                          }
+                          final interval = int.tryParse(val);
+                          if (interval == null || interval <= 0) {
+                            return 'Please enter a positive number';
+                          }
+                          return null;
+                        },
+                        onChanged: (val) {
+                          final newInterval = int.tryParse(val);
+                          if (newInterval != null && newInterval > 0) {
+                            widget.onIntervalChanged(newInterval);
+                            if (isCompletionRelative) {
+                              widget.onSchedulingPolicyChanged(
+                                CompletionRelativePolicy(
+                                  interval: Duration(days: newInterval * 365),
+                                  targetTime: widget.startRelativeTime.time,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<SchedulingType>(
+                        key: const Key('yearly_interval_type_dropdown'),
+                        initialValue: widget.schedulingPolicy.type,
+                        decoration: InputDecoration(
+                          labelText: l10n.intervalTypeLabel,
+                          border: const OutlineInputBorder(),
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: SchedulingType.fixedCalendar,
+                            child: Text(l10n.sinceLastScheduledLabel),
+                          ),
+                          DropdownMenuItem(
+                            value: SchedulingType.completionRelative,
+                            child: Text(l10n.sinceLastCompletionLabel),
+                          ),
+                        ],
+                        onChanged: widget.readOnly
+                            ? null
+                            : (type) {
+                                if (type == SchedulingType.completionRelative) {
+                                  widget.onSchedulingPolicyChanged(
+                                    CompletionRelativePolicy(
+                                      interval: Duration(
+                                        days: widget.interval * 365,
+                                      ),
+                                      targetTime: widget.startRelativeTime.time,
+                                    ),
+                                  );
+                                } else {
+                                  widget.onSchedulingPolicyChanged(
+                                    const FixedCalendarPolicy(),
+                                  );
+                                }
+                              },
+                      ),
+                    ],
                   ),
                 ),
               ],

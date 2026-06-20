@@ -124,13 +124,15 @@ void main() {
     );
 
     // Change to Daily
-    await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Daily').last);
+    await tester.tap(find.text('Repeating'));
     await tester.pumpAndSettle();
 
     // Expand the interval selection tile
-    await tester.tap(find.byKey(const Key('daily_interval_expansion_tile')));
+    final expansionTile = find.byKey(
+      const Key('daily_interval_expansion_tile'),
+    );
+    await tester.ensureVisible(expansionTile);
+    await tester.tap(expansionTile);
     await tester.pumpAndSettle();
 
     // Check for interval field
@@ -222,9 +224,9 @@ void main() {
     );
 
     // Switch to Monthly
-    await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+    await tester.tap(find.text('Repeating'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Monthly').last);
+    await tester.tap(find.byKey(const Key('recurrence_chip_monthly')));
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'create_task_screen_monthly');
@@ -245,9 +247,9 @@ void main() {
     );
 
     // Switch to Yearly
-    await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+    await tester.tap(find.text('Repeating'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Yearly').last);
+    await tester.tap(find.byKey(const Key('recurrence_chip_yearly')));
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'create_task_screen_yearly');
@@ -447,15 +449,17 @@ void main() {
       );
 
       // Select Monthly recurrence
-      await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+      await tester.tap(find.text('Repeating'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Monthly').last);
+      await tester.tap(find.byKey(const Key('recurrence_chip_monthly')));
       await tester.pumpAndSettle();
 
       // Expand the months interval card
-      await tester.tap(
-        find.byKey(const Key('monthly_interval_expansion_tile')),
+      final expansionTile = find.byKey(
+        const Key('monthly_interval_expansion_tile'),
       );
+      await tester.ensureVisible(expansionTile);
+      await tester.tap(expansionTile);
       await tester.pumpAndSettle();
 
       // Enter Months Interval
@@ -495,9 +499,9 @@ void main() {
         );
 
         // Select Monthly recurrence
-        await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+        await tester.tap(find.text('Repeating'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Monthly').last);
+        await tester.tap(find.byKey(const Key('recurrence_chip_monthly')));
         await tester.pumpAndSettle();
 
         // Enter invalid day of month (e.g. 29)
@@ -532,13 +536,17 @@ void main() {
       );
 
       // Select Yearly recurrence
-      await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
+      await tester.tap(find.text('Repeating'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Yearly').last);
+      await tester.tap(find.byKey(const Key('recurrence_chip_yearly')));
       await tester.pumpAndSettle();
 
       // Expand the years interval card
-      await tester.tap(find.byKey(const Key('yearly_interval_expansion_tile')));
+      final expansionTile = find.byKey(
+        const Key('yearly_interval_expansion_tile'),
+      );
+      await tester.ensureVisible(expansionTile);
+      await tester.tap(expansionTile);
       await tester.pumpAndSettle();
 
       // Enter Years Interval
@@ -792,9 +800,7 @@ void main() {
       expect(find.byKey(const Key('occurrence_card_1')), findsNothing);
 
       // Switch to Daily schedule
-      await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Daily').last);
+      await tester.tap(find.text('Repeating'));
       await tester.pumpAndSettle();
 
       // Should show 10 occurrences by default (maxOccurrences = 10 in CreateTaskScreen)
@@ -803,7 +809,11 @@ void main() {
       expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
 
       // Expand the interval selection tile
-      await tester.tap(find.byKey(const Key('daily_interval_expansion_tile')));
+      final expansionTile = find.byKey(
+        const Key('daily_interval_expansion_tile'),
+      );
+      await tester.ensureVisible(expansionTile);
+      await tester.tap(expansionTile);
       await tester.pumpAndSettle();
 
       // Change interval to 3

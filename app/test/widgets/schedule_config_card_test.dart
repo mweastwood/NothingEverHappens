@@ -99,11 +99,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(deleteCalled, isTrue);
 
-      // Tap dropdown to switch recurrence to Daily
-      await tester.tap(find.byType(DropdownButtonFormField<RecurrenceType>));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Daily').last);
+      // Tap SegmentedButton to switch recurrence to Repeating (which defaults to Daily)
+      await tester.tap(find.text('Repeating'));
       await tester.pumpAndSettle();
 
       expect(updatedSchedule, isA<DailySchedule>());

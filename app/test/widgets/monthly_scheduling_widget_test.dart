@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/scheduling_policy.dart';
 import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
 import 'package:nothing_ever_happens/widgets/monthly_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/relative_timing_widget.dart';
@@ -33,6 +34,8 @@ void main() {
                 onStartDateChanged: (_) {},
                 interval: 1,
                 onIntervalChanged: (_) {},
+                schedulingPolicy: const FixedCalendarPolicy(),
+                onSchedulingPolicyChanged: (_) {},
                 ruleType: 'dayOfMonth',
                 onRuleTypeChanged: (_) {},
                 dayOfMonth: 15,
@@ -60,7 +63,10 @@ void main() {
       expect(find.text('Start Recurrence Date'), findsOneWidget);
       expect(find.text('2026-10-26'), findsOneWidget);
       expect(find.text('Interval'), findsOneWidget);
-      expect(find.text('Every month'), findsOneWidget);
+      expect(
+        find.text('Every 1 month(s) (since last scheduled)'),
+        findsOneWidget,
+      );
       expect(find.text('Recurrence Rule'), findsOneWidget);
       expect(find.text('Day of Month (1-28, or -1 to -28)'), findsOneWidget);
       expect(find.byType(RelativeTimingWidget), findsOneWidget);
@@ -88,6 +94,8 @@ void main() {
                 onStartDateChanged: (d) => newDate = d,
                 interval: interval,
                 onIntervalChanged: (i) => newInterval = i,
+                schedulingPolicy: const FixedCalendarPolicy(),
+                onSchedulingPolicyChanged: (_) {},
                 ruleType: ruleType,
                 onRuleTypeChanged: (t) => newRuleType = t,
                 dayOfMonth: dayOfMonth,
@@ -152,6 +160,8 @@ void main() {
               onStartDateChanged: (_) {},
               interval: 2,
               onIntervalChanged: (_) {},
+              schedulingPolicy: const FixedCalendarPolicy(),
+              onSchedulingPolicyChanged: (_) {},
               ruleType: 'dayOfMonth',
               onRuleTypeChanged: (_) {},
               dayOfMonth: 15,
@@ -181,6 +191,8 @@ void main() {
               onStartDateChanged: (_) {},
               interval: 2,
               onIntervalChanged: (_) {},
+              schedulingPolicy: const FixedCalendarPolicy(),
+              onSchedulingPolicyChanged: (_) {},
               ruleType: 'nthDayOfWeek',
               onRuleTypeChanged: (_) {},
               dayOfMonth: null,

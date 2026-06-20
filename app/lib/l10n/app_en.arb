@@ -186,9 +186,41 @@
       }
     }
   },
+  "everyNMonthsSinceLastScheduled": "Every {count} month(s) (since last scheduled)",
+  "@everyNMonthsSinceLastScheduled": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "everyNMonthsSinceLastCompletion": "Every {count} month(s) (since last completion)",
+  "@everyNMonthsSinceLastCompletion": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "everyYear": "Every year",
   "everyNYears": "Every {count} years",
   "@everyNYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "everyNYearsSinceLastScheduled": "Every {count} year(s) (since last scheduled)",
+  "@everyNYearsSinceLastScheduled": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "everyNYearsSinceLastCompletion": "Every {count} year(s) (since last completion)",
+  "@everyNYearsSinceLastCompletion": {
     "placeholders": {
       "count": {
         "type": "int"
