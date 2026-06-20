@@ -171,19 +171,6 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
     }
   }
 
-  _RelativeTimeOption _getSegment(int days) {
-    switch (days) {
-      case 0:
-        return _RelativeTimeOption.dayOf;
-      case 1:
-        return _RelativeTimeOption.dayAfter;
-      case -1:
-        return _RelativeTimeOption.dayBefore;
-      default:
-        return _RelativeTimeOption.custom;
-    }
-  }
-
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
@@ -431,60 +418,52 @@ class _DayOffsetPickerDialogState extends State<_DayOffsetPickerDialog> {
     return AlertDialog(
       title: const Text('Select Day'),
       content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<_RelativeTimeOption>(
-              title: const Text('Day of'),
-              value: _RelativeTimeOption.dayOf,
-              groupValue: _selectedOption,
-              onChanged: (val) {
-                setState(() => _selectedOption = val!);
-              },
-            ),
-            if (showAfterOption)
+        child: RadioGroup<_RelativeTimeOption>(
+          groupValue: _selectedOption,
+          onChanged: (val) {
+            setState(() => _selectedOption = val!);
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               RadioListTile<_RelativeTimeOption>(
-                title: const Text('1 day after'),
-                value: _RelativeTimeOption.dayAfter,
-                groupValue: _selectedOption,
-                onChanged: (val) {
-                  setState(() => _selectedOption = val!);
-                },
+                title: const Text('Day of'),
+                value: _RelativeTimeOption.dayOf,
               ),
-            if (showBeforeOption)
+              if (showAfterOption)
+                RadioListTile<_RelativeTimeOption>(
+                  title: const Text('1 day after'),
+                  value: _RelativeTimeOption.dayAfter,
+                ),
+              if (showBeforeOption)
+                RadioListTile<_RelativeTimeOption>(
+                  title: const Text('1 day before'),
+                  value: _RelativeTimeOption.dayBefore,
+                ),
               RadioListTile<_RelativeTimeOption>(
-                title: const Text('1 day before'),
-                value: _RelativeTimeOption.dayBefore,
-                groupValue: _selectedOption,
-                onChanged: (val) {
-                  setState(() => _selectedOption = val!);
-                },
+                title: const Text('Custom'),
+                value: _RelativeTimeOption.custom,
               ),
-            RadioListTile<_RelativeTimeOption>(
-              title: const Text('Custom'),
-              value: _RelativeTimeOption.custom,
-              groupValue: _selectedOption,
-              onChanged: (val) {
-                setState(() => _selectedOption = val!);
-              },
-            ),
-            if (_selectedOption == _RelativeTimeOption.custom) ...[
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: TextField(
-                  controller: _customDaysController,
-                  keyboardType: TextInputType.number,
-                  autofocus: true,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: InputDecoration(
-                    labelText: widget.isForward ? 'Days later' : 'Days before',
-                    border: const OutlineInputBorder(),
+              if (_selectedOption == _RelativeTimeOption.custom) ...[
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: TextField(
+                    controller: _customDaysController,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      labelText: widget.isForward
+                          ? 'Days later'
+                          : 'Days before',
+                      border: const OutlineInputBorder(),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
       actions: [
