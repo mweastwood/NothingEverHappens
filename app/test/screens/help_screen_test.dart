@@ -316,6 +316,10 @@ void main() {
       await tester.tap(find.text('Daily'));
       await tester.pumpAndSettle();
 
+      // Expand the interval selection tile
+      await tester.tap(find.byKey(const Key('daily_interval_expansion_tile')));
+      await tester.pumpAndSettle();
+
       // Empty interval
       final intervalField = find.widgetWithText(TextFormField, 'Days Interval');
       expect(intervalField, findsOneWidget);

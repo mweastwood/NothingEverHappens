@@ -9,6 +9,7 @@ import 'relative_timing_widget.dart';
 import 'schedule_type_selector.dart';
 import 'completion_relative_config_widget.dart';
 import 'missed_occurrence_policy_selector.dart';
+import 'daily_scheduling_widget.dart';
 
 class ScheduleConfigCard extends StatefulWidget {
   final TaskScheduleRule schedule;
@@ -394,28 +395,47 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    _buildRecurrenceConfigForm(s),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                    if (s is OneOffSchedule)
-                      _buildOneOffTimingPicker(s)
-                    else
-                      RelativeTimingWidget(
+                    if (s is DailySchedule) ...[
+                      DailySchedulingWidget(
+                        startDate: s.startDate,
+                        onStartDateChanged: (date) {
+                          widget.onChanged(s.copyWithStartDate(date));
+                        },
+                        interval: s.interval,
+                        onIntervalChanged: (val) {
+                          widget.onChanged(
+                            DailySchedule(
+                              startDate: s.startDate,
+                              interval: val,
+                              startRelativeTime: s.startRelativeTime,
+                              dueRelativeTime: s.dueRelativeTime,
+                              notificationRelativeTime:
+                                  s.notificationRelativeTime,
+                              schedulingPolicy: s.schedulingPolicy,
+                              missedOccurrencePolicy: s.missedOccurrencePolicy,
+                            ),
+                          );
+                        },
+                        schedulingPolicy: s.schedulingPolicy,
+                        onSchedulingPolicyChanged: (policy) {
+                          widget.onChanged(
+                            s.copyWithTiming(schedulingPolicy: policy),
+                          );
+                        },
                         startRelativeTime: s.startRelativeTime,
-                        dueRelativeTime: s.dueRelativeTime,
-                        notificationRelativeTime: s.notificationRelativeTime,
-                        onStartChanged: (start) {
+                        onStartRelativeTimeChanged: (start) {
                           widget.onChanged(
                             s.copyWithTiming(startRelativeTime: start),
                           );
                         },
-                        onDueChanged: (due) {
+                        dueRelativeTime: s.dueRelativeTime,
+                        onDueRelativeTimeChanged: (due) {
                           widget.onChanged(
                             s.copyWithTiming(dueRelativeTime: due),
                           );
                         },
-                        onNotificationChanged: (notif) {
+                        notificationRelativeTime: s.notificationRelativeTime,
+                        onNotificationRelativeTimeChanged: (notif) {
                           widget.onChanged(
                             s.copyWithTiming(
                               notificationRelativeTime: notif,
@@ -423,18 +443,58 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
                             ),
                           );
                         },
+                        missedOccurrencePolicy: s.missedOccurrencePolicy,
+                        onMissedOccurrencePolicyChanged: (policy) {
+                          widget.onChanged(
+                            s.copyWithTiming(missedOccurrencePolicy: policy),
+                          );
+                        },
+                        showNotification: true,
+                        showMissedPolicy: true,
                       ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                    MissedOccurrencePolicySelector(
-                      policy: s.missedOccurrencePolicy,
-                      onChanged: (policy) {
-                        widget.onChanged(
-                          s.copyWithTiming(missedOccurrencePolicy: policy),
-                        );
-                      },
-                    ),
+                    ] else ...[
+                      _buildRecurrenceConfigForm(s),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      if (s is OneOffSchedule)
+                        _buildOneOffTimingPicker(s)
+                      else
+                        RelativeTimingWidget(
+                          startRelativeTime: s.startRelativeTime,
+                          dueRelativeTime: s.dueRelativeTime,
+                          notificationRelativeTime: s.notificationRelativeTime,
+                          onStartChanged: (start) {
+                            widget.onChanged(
+                              s.copyWithTiming(startRelativeTime: start),
+                            );
+                          },
+                          onDueChanged: (due) {
+                            widget.onChanged(
+                              s.copyWithTiming(dueRelativeTime: due),
+                            );
+                          },
+                          onNotificationChanged: (notif) {
+                            widget.onChanged(
+                              s.copyWithTiming(
+                                notificationRelativeTime: notif,
+                                clearNotification: notif == null,
+                              ),
+                            );
+                          },
+                        ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      MissedOccurrencePolicySelector(
+                        policy: s.missedOccurrencePolicy,
+                        onChanged: (policy) {
+                          widget.onChanged(
+                            s.copyWithTiming(missedOccurrencePolicy: policy),
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ],
               ),

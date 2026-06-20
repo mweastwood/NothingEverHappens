@@ -129,6 +129,10 @@ void main() {
     await tester.tap(find.text('Daily').last);
     await tester.pumpAndSettle();
 
+    // Expand the interval selection tile
+    await tester.tap(find.byKey(const Key('daily_interval_expansion_tile')));
+    await tester.pumpAndSettle();
+
     // Check for interval field
     expect(find.widgetWithText(TextFormField, 'Days Interval'), findsOneWidget);
   });
@@ -793,6 +797,10 @@ void main() {
       expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
       expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
       expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
+
+      // Expand the interval selection tile
+      await tester.tap(find.byKey(const Key('daily_interval_expansion_tile')));
+      await tester.pumpAndSettle();
 
       // Change interval to 3
       final intervalField = find.widgetWithText(TextFormField, 'Days Interval');

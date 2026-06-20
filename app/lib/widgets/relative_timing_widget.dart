@@ -9,6 +9,7 @@ class RelativeTimingWidget extends StatefulWidget {
   final ValueChanged<RelativeTime> onStartChanged;
   final ValueChanged<RelativeTime> onDueChanged;
   final ValueChanged<RelativeTime?> onNotificationChanged;
+  final bool showNotification;
 
   const RelativeTimingWidget({
     super.key,
@@ -18,6 +19,7 @@ class RelativeTimingWidget extends StatefulWidget {
     required this.onStartChanged,
     required this.onDueChanged,
     required this.onNotificationChanged,
+    this.showNotification = true,
   });
 
   @override
@@ -331,69 +333,71 @@ class _RelativeTimingWidgetState extends State<RelativeTimingWidget> {
             }
           },
         ),
-        const SizedBox(height: 12),
-        const Divider(),
-        CheckboxListTile(
-          title: Text(
-            'Enable notification reminder',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+        if (widget.showNotification) ...[
+          const SizedBox(height: 12),
+          const Divider(),
+          CheckboxListTile(
+            title: Text(
+              'Enable notification reminder',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          value: notificationEnabled,
-          onChanged: (enabled) {
-            if (enabled == true) {
-              widget.onNotificationChanged(
-                const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 9, minute: 0),
-                ),
-              );
-            } else {
-              widget.onNotificationChanged(null);
-            }
-          },
-          controlAffinity: ListTileControlAffinity.leading,
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (notificationEnabled)
-          _buildOffsetField(
-            label: 'Notification window',
-            currentOffset: widget.notificationRelativeTime!.dayOffset,
-            currentTime: widget.notificationRelativeTime!.time,
-            customController: _notifOffsetController,
-            isCustom: _customNotif,
-            onOffsetChanged: (offset) {
-              setState(() {
-                _customNotif = !_standardOffsets.contains(offset);
-              });
-              widget.onNotificationChanged(
-                RelativeTime(
-                  dayOffset: offset,
-                  time: widget.notificationRelativeTime!.time,
-                ),
-              );
-            },
-            onCustomChanged: (custom) {
-              setState(() {
-                _customNotif = custom;
-              });
-            },
-            onTimePickerTap: () async {
-              final picked = await showTimePicker(
-                context: context,
-                initialTime: widget.notificationRelativeTime!.time,
-              );
-              if (picked != null) {
+            value: notificationEnabled,
+            onChanged: (enabled) {
+              if (enabled == true) {
                 widget.onNotificationChanged(
-                  RelativeTime(
-                    dayOffset: widget.notificationRelativeTime!.dayOffset,
-                    time: picked,
+                  const RelativeTime(
+                    dayOffset: 0,
+                    time: TimeOfDay(hour: 9, minute: 0),
                   ),
                 );
+              } else {
+                widget.onNotificationChanged(null);
               }
             },
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
           ),
+          if (notificationEnabled)
+            _buildOffsetField(
+              label: 'Notification window',
+              currentOffset: widget.notificationRelativeTime!.dayOffset,
+              currentTime: widget.notificationRelativeTime!.time,
+              customController: _notifOffsetController,
+              isCustom: _customNotif,
+              onOffsetChanged: (offset) {
+                setState(() {
+                  _customNotif = !_standardOffsets.contains(offset);
+                });
+                widget.onNotificationChanged(
+                  RelativeTime(
+                    dayOffset: offset,
+                    time: widget.notificationRelativeTime!.time,
+                  ),
+                );
+              },
+              onCustomChanged: (custom) {
+                setState(() {
+                  _customNotif = custom;
+                });
+              },
+              onTimePickerTap: () async {
+                final picked = await showTimePicker(
+                  context: context,
+                  initialTime: widget.notificationRelativeTime!.time,
+                );
+                if (picked != null) {
+                  widget.onNotificationChanged(
+                    RelativeTime(
+                      dayOffset: widget.notificationRelativeTime!.dayOffset,
+                      time: picked,
+                    ),
+                  );
+                }
+              },
+            ),
+        ],
       ],
     );
   }
