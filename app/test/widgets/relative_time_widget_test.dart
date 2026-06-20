@@ -325,30 +325,139 @@ void main() {
     });
   });
   testGoldens('RelativeTimeWidget renders correctly', (tester) async {
-    final controller = ValueNotifier(
-      const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
-    );
-
-    final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 4)
+    final builder = GoldenBuilder.grid(columns: 2, widthToHeightRatio: 3)
       ..addScenario(
-        'DayOfOrAfter',
+        'DayOfOrAfter - Day of',
         RelativeTimeWidget(
-          controller: controller,
+          controller: ValueNotifier(
+            const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+          ),
           constraint: RelativeTimeConstraint.dayOfOrAfter,
         ),
       )
       ..addScenario(
-        'DayOfOrBefore',
+        'DayOfOrBefore - Day of',
         RelativeTimeWidget(
-          controller: controller,
+          controller: ValueNotifier(
+            const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+          ),
           constraint: RelativeTimeConstraint.dayOfOrBefore,
+        ),
+      )
+      ..addScenario(
+        'DayOfOrAfter - 1 day after',
+        RelativeTimeWidget(
+          controller: ValueNotifier(
+            const RelativeTime(
+              dayOffset: 1,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+          ),
+          constraint: RelativeTimeConstraint.dayOfOrAfter,
+        ),
+      )
+      ..addScenario(
+        'DayOfOrBefore - 1 day before',
+        RelativeTimeWidget(
+          controller: ValueNotifier(
+            const RelativeTime(
+              dayOffset: -1,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+          ),
+          constraint: RelativeTimeConstraint.dayOfOrBefore,
+        ),
+      )
+      ..addScenario(
+        'Unconstrained - 5 days later',
+        RelativeTimeWidget(
+          controller: ValueNotifier(
+            const RelativeTime(
+              dayOffset: 5,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+          ),
+          constraint: RelativeTimeConstraint.unconstrained,
+        ),
+      )
+      ..addScenario(
+        'Unconstrained - 5 days before',
+        RelativeTimeWidget(
+          controller: ValueNotifier(
+            const RelativeTime(
+              dayOffset: -5,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+          ),
+          constraint: RelativeTimeConstraint.unconstrained,
         ),
       );
 
     await tester.pumpWidgetBuilder(
       builder.build(),
       wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(800, 600),
     );
     await screenMatchesGolden(tester, 'relative_time_widget');
+  });
+
+  testGoldens('RelativeTimeWidget offset dialog renders correctly', (
+    tester,
+  ) async {
+    final controller = ValueNotifier(
+      const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
+    );
+
+    await tester.pumpWidgetBuilder(
+      Scaffold(
+        body: Center(
+          child: RelativeTimeWidget(
+            controller: controller,
+            constraint: RelativeTimeConstraint.unconstrained,
+          ),
+        ),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 600),
+    );
+
+    // Open the dialog
+    await tester.tap(find.byIcon(Icons.calendar_today));
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'relative_time_widget_dialog_standard');
+  });
+
+  testGoldens('RelativeTimeWidget custom offset dialog renders correctly', (
+    tester,
+  ) async {
+    final controller = ValueNotifier(
+      const RelativeTime(dayOffset: 5, time: TimeOfDay(hour: 10, minute: 0)),
+    );
+
+    await tester.pumpWidgetBuilder(
+      Scaffold(
+        body: Center(
+          child: RelativeTimeWidget(
+            controller: controller,
+            constraint: RelativeTimeConstraint.unconstrained,
+          ),
+        ),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 600),
+    );
+
+    // Open the dialog
+    await tester.tap(find.byIcon(Icons.calendar_today));
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'relative_time_widget_dialog_custom');
   });
 }
