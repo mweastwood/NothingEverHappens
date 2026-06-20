@@ -4,14 +4,12 @@ import '../logic/l10n_extension.dart';
 
 class OneOffSchedulingWidget extends StatefulWidget {
   final ValueNotifier<DateTime> dueDateTime;
-  final ValueNotifier<DateTime> startDateTime;
 
   final ValueNotifier<TimeOfDay?>? notificationTimeController;
 
   const OneOffSchedulingWidget({
     super.key,
     required this.dueDateTime,
-    required this.startDateTime,
     this.notificationTimeController,
   });
 
@@ -26,36 +24,6 @@ class _OneOffSchedulingWidgetState extends State<OneOffSchedulingWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          context.l10n.startLabel,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        AbsoluteTimeWidget(controller: widget.startDateTime),
-        const SizedBox(height: 6),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.help_outline,
-              size: 14,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                context.l10n.snoozeUntilDescription,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
         Text(
           context.l10n.dueWithoutColon,
           style: theme.textTheme.titleSmall?.copyWith(

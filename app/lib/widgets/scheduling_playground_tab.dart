@@ -443,7 +443,6 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                       if (_scheduleType == RecurrenceType.oneOff)
                         OneOffSchedulingWidget(
                           dueDateTime: _dueDateTimeController,
-                          startDateTime: _startDateTimeController,
                           notificationTimeController:
                               _oneOffNotificationController,
                         )

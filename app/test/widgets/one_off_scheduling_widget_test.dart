@@ -11,60 +11,26 @@ void main() {
   group('OneOffSchedulingWidget', () {
     testWidgets('renders basic fields', (tester) async {
       final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
-      final start = ValueNotifier(DateTime(2026, 10, 26, 9, 0));
 
       await tester.pumpWidget(
         buildTestableWidget(
-          child: Scaffold(
-            body: OneOffSchedulingWidget(
-              dueDateTime: due,
-              startDateTime: start,
-            ),
-          ),
+          child: Scaffold(body: OneOffSchedulingWidget(dueDateTime: due)),
         ),
       );
 
-      expect(find.text('Start'), findsOneWidget);
+      expect(find.text('Start'), findsNothing);
       expect(find.text('Due'), findsOneWidget);
-      expect(find.byType(AbsoluteTimeWidget), findsAtLeastNWidgets(2));
-    });
-
-    testWidgets('shows snooze option always (expanded by default/design)', (
-      tester,
-    ) async {
-      final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
-      final start = ValueNotifier(DateTime(2026, 10, 26, 9, 0));
-
-      await tester.pumpWidget(
-        buildTestableWidget(
-          child: Scaffold(
-            body: OneOffSchedulingWidget(
-              dueDateTime: due,
-              startDateTime: start,
-            ),
-          ),
-        ),
-      );
-
-      // Start should be visible now
-      expect(find.text('Start'), findsOneWidget);
-      expect(find.byType(AbsoluteTimeWidget), findsNWidgets(2)); // Start + Due
+      expect(find.byType(AbsoluteTimeWidget), findsOneWidget);
     });
 
     testWidgets('updates controllers when time is changed', (tester) async {
       final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
-      final start = ValueNotifier(DateTime(2026, 10, 26, 9, 0));
       final oneOffRobot = OneOffSchedulingWidgetRobot(tester);
       final absoluteRobot = AbsoluteTimeWidgetRobot(tester);
 
       await tester.pumpWidget(
         buildTestableWidget(
-          child: Scaffold(
-            body: OneOffSchedulingWidget(
-              dueDateTime: due,
-              startDateTime: start,
-            ),
-          ),
+          child: Scaffold(body: OneOffSchedulingWidget(dueDateTime: due)),
         ),
       );
 
@@ -73,23 +39,13 @@ void main() {
       await absoluteRobot.pickTime(10, 0, isAM: false); // 10 PM = 22:00
 
       expect(due.value.hour, 22);
-
-      // Change Snooze time
-      await oneOffRobot.openSnoozeTimePicker();
-      await absoluteRobot.pickTime(8, 30, isAM: true); // 8:30 AM
-
-      expect(start.value.hour, 8);
-      expect(start.value.minute, 30);
     });
+
     testGoldens('OneOffSchedulingWidget renders correctly', (tester) async {
       final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
-      final start = ValueNotifier(DateTime(2026, 10, 26, 9, 0));
 
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2)
-        ..addScenario(
-          'Default',
-          OneOffSchedulingWidget(dueDateTime: due, startDateTime: start),
-        );
+        ..addScenario('Default', OneOffSchedulingWidget(dueDateTime: due));
 
       await tester.pumpWidgetBuilder(
         builder.build(),

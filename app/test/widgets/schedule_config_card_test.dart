@@ -89,8 +89,8 @@ void main() {
         ),
       );
 
-      // Verify date text is present
-      expect(find.text('2026-06-15'), findsNWidgets(2));
+      // Verify date text
+      expect(find.text('2026-06-15'), findsOneWidget);
 
       // Tap delete button
       final deleteBtn = find.byTooltip('Delete Schedule');
