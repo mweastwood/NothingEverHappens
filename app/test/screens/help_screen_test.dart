@@ -381,7 +381,7 @@ void main() {
       // Default is One-off. One-off card lists Appears and Due dates/times.
       expect(find.textContaining('Appears:'), findsOneWidget);
       // There are two "Due:" text widgets: one in the editor label ("Due: ") and one in the card ("Due: ...")
-      expect(find.textContaining('Due:'), findsNWidgets(2));
+      expect(find.textContaining('Due'), findsNWidgets(2));
 
       // Let's switch to Daily
       await tester.tap(find.text('Daily'));

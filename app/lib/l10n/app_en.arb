@@ -29,6 +29,8 @@
   "saveButton": "Save",
   "selectAtLeastOneDayError": "Please select at least one day of the week",
   "dueLabel": "Due: ",
+  "startLabel": "Start",
+  "dueWithoutColon": "Due",
   "dueDescription": "When does this task need to be completed before it should be considered overdue?",
   "advancedHeader": "Advanced",
   "snoozeUntilLabel": "Snooze Until: ",

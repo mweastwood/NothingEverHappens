@@ -7,15 +7,13 @@ class OneOffSchedulingWidgetRobot {
 
   OneOffSchedulingWidgetRobot(this.tester);
 
-  Finder get dueTimeWidget => find.descendant(
+  Finder get snoozeTimeWidget => find.descendant(
     of: find.byType(AbsoluteTimeWidget).first,
     matching: find.byIcon(Icons.access_time),
   );
 
-  Finder get snoozeTimeWidget => find.descendant(
-    of: find
-        .byType(AbsoluteTimeWidget)
-        .last, // Assuming ordered Due then Snooze
+  Finder get dueTimeWidget => find.descendant(
+    of: find.byType(AbsoluteTimeWidget).last, // Assuming ordered Start then Due
     matching: find.byIcon(Icons.access_time),
   );
 

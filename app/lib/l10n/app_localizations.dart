@@ -278,6 +278,18 @@ abstract class AppLocalizations {
   /// **'Due: '**
   String get dueLabel;
 
+  /// No description provided for @startLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get startLabel;
+
+  /// No description provided for @dueWithoutColon.
+  ///
+  /// In en, this message translates to:
+  /// **'Due'**
+  String get dueWithoutColon;
+
   /// No description provided for @dueDescription.
   ///
   /// In en, this message translates to:
