@@ -452,6 +452,12 @@ void main() {
       await tester.tap(find.text('Monthly').last);
       await tester.pumpAndSettle();
 
+      // Expand the months interval card
+      await tester.tap(
+        find.byKey(const Key('monthly_interval_expansion_tile')),
+      );
+      await tester.pumpAndSettle();
+
       // Enter Months Interval
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Months Interval'),
@@ -460,10 +466,7 @@ void main() {
 
       // Enter Day of Month (e.g. 15)
       await tester.enterText(
-        find.widgetWithText(
-          TextFormField,
-          'Day of Month (1-28, or negative -1 to -28 from end)',
-        ),
+        find.widgetWithText(TextFormField, 'Day of Month (1-28, or -1 to -28)'),
         '15',
       );
       await tester.pump();
@@ -501,7 +504,7 @@ void main() {
         await tester.enterText(
           find.widgetWithText(
             TextFormField,
-            'Day of Month (1-28, or negative -1 to -28 from end)',
+            'Day of Month (1-28, or -1 to -28)',
           ),
           '29',
         );
