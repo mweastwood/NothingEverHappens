@@ -141,8 +141,8 @@ void main() {
           find.text('2 weeks after the task was last completed.'),
           findsOneWidget,
         );
-        expect(find.text('Repeats on'), findsOneWidget);
-        expect(find.byType(WeeklyDayOfWeekSelector), findsOneWidget);
+        expect(find.text('Repeats on'), findsNothing);
+        expect(find.byType(WeeklyDayOfWeekSelector), findsNothing);
         expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
         expect(find.byType(MissedOccurrencePolicySelector), findsNothing);
       },

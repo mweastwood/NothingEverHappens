@@ -603,22 +603,6 @@ class _WeeklyCompletionRelativeSchedulingWidgetState
         ),
         const SizedBox(height: 20),
 
-        // Repeats on weekdays section
-        Text(
-          l10n.repeatsOnLabel,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        WeeklyDayOfWeekSelector(
-          selectedWeekdays: widget.selectedWeekdays,
-          onChanged: widget.onWeekdaysChanged,
-          readOnly: widget.readOnly,
-        ),
-        const SizedBox(height: 20),
-
         // 2. Start
         Text(
           'Start',
