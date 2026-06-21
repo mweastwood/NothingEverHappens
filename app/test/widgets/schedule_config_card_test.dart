@@ -177,7 +177,7 @@ void main() {
       );
 
       // Tap Wednesday checkbox/chip (daysOfWeek: 3)
-      final wedChip = find.widgetWithText(FilterChip, 'W');
+      final wedChip = find.byKey(const Key('weekly_weekday_chip_3'));
       expect(wedChip, findsOneWidget);
       await tester.tap(wedChip);
       await tester.pumpAndSettle();

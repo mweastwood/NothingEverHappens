@@ -1603,6 +1603,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear Search'**
   String get clearSearchButton;
+
+  /// No description provided for @presetWeekdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays'**
+  String get presetWeekdays;
+
+  /// No description provided for @presetWeekends.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekends'**
+  String get presetWeekends;
+
+  /// No description provided for @presetAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get presetAll;
+
+  /// No description provided for @presetClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get presetClear;
 }
 
 class _AppLocalizationsDelegate

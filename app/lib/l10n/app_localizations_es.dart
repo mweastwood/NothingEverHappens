@@ -882,4 +882,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get clearSearchButton => 'Limpiar búsqueda';
+
+  @override
+  String get presetWeekdays => 'Entre semana';
+
+  @override
+  String get presetWeekends => 'Fin de semana';
+
+  @override
+  String get presetAll => 'Todos';
+
+  @override
+  String get presetClear => 'Limpiar';
 }

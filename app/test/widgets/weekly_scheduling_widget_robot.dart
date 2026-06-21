@@ -32,10 +32,29 @@ class WeeklySchedulingWidgetRobot {
   }
 
   Future<void> toggleDayByIndex(int index) async {
-    // Weekdays are in a Wrap. Index 0 = Monday.
-    final wrap = find.byType(Wrap);
-    final chips = find.descendant(of: wrap, matching: find.byType(FilterChip));
-    await tester.tap(chips.at(index));
+    // Index 0 = Monday (dayIndex = 1)
+    final dayIndex = index + 1;
+    await tester.tap(find.byKey(Key('weekly_weekday_chip_$dayIndex')));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tapPresetWeekdays() async {
+    await tester.tap(find.byKey(const Key('preset_weekdays_button')));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tapPresetWeekends() async {
+    await tester.tap(find.byKey(const Key('preset_weekends_button')));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tapPresetAll() async {
+    await tester.tap(find.byKey(const Key('preset_all_button')));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tapPresetClear() async {
+    await tester.tap(find.byKey(const Key('preset_clear_button')));
     await tester.pumpAndSettle();
   }
 }

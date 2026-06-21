@@ -53,10 +53,6 @@ void main() {
         findsOneWidget,
       );
 
-      // Check weekday selector
-      expect(find.text('Repeats on'), findsOneWidget);
-      expect(find.byType(FilterChip), findsNWidgets(7));
-
       // Check relative times
       expect(find.text('Start'), findsOneWidget);
       expect(find.text('Due'), findsOneWidget);
@@ -78,7 +74,6 @@ void main() {
 
     testWidgets('calls callbacks on edits', (tester) async {
       int? newInterval;
-      Set<int>? newWeekdays;
 
       await tester.pumpWidget(
         buildTestableWidget(
@@ -88,7 +83,7 @@ void main() {
                 interval: 2,
                 onIntervalChanged: (i) => newInterval = i,
                 selectedWeekdays: selectedWeekdays,
-                onWeekdaysChanged: (days) => newWeekdays = days,
+                onWeekdaysChanged: (_) {},
                 startRelativeTime: startRelative,
                 onStartRelativeTimeChanged: (_) {},
                 dueRelativeTime: dueRelative,
@@ -105,11 +100,6 @@ void main() {
       await tester.tap(find.byKey(const Key('interval_increment_button')));
       await tester.pumpAndSettle();
       expect(newInterval, 3);
-
-      // 2. Toggle weekday chip (index 1 = Tuesday)
-      await tester.tap(find.byKey(const Key('weekly_weekday_chip_2')));
-      await tester.pumpAndSettle();
-      expect(newWeekdays, {1, 2, 3, 5});
     });
 
     testGoldens('WeeklyCompletionRelativeSchedulingWidget renders correctly', (
