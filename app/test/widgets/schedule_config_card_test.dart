@@ -207,7 +207,7 @@ void main() {
         ),
       );
 
-      final domField = find.widgetWithText(TextFormField, 'Day of Month');
+      final domField = find.byKey(const Key('day_text_field'));
       expect(domField, findsOneWidget);
 
       // Enter invalid day of month (29)
@@ -216,13 +216,11 @@ void main() {
       await tester.tap(find.byKey(const Key('validate_button')));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Please enter a valid day number: 1 to 28'),
-        findsOneWidget,
-      );
+      expect(find.text('Enter 1-28'), findsOneWidget);
 
       // Enter valid day of month (-10)
-      await tester.enterText(domField, '-10');
+      await tester.tap(find.text('From end of month'));
+      await tester.enterText(domField, '10');
       await tester.pumpAndSettle();
       expect(updatedSchedule, isA<MonthlySchedule>());
       expect((updatedSchedule as MonthlySchedule).dayOfMonth, -10);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/missed_occurrence_policy.dart';
@@ -64,6 +65,7 @@ class _MonthlyFixedSchedulingWidgetState
   late final ValueNotifier<RelativeTime> _dueController;
   late final ValueNotifier<RelativeTime> _notificationController;
   late TextEditingController _dayOfMonthController;
+  late bool _fromStart;
 
   bool _ignoreEvents = false;
 
@@ -76,9 +78,11 @@ class _MonthlyFixedSchedulingWidgetState
       widget.notificationRelativeTime ??
           const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
     );
+    final initialDay = widget.dayOfMonth ?? 1;
+    _fromStart = initialDay > 0;
     _dayOfMonthController =
         widget.dayOfMonthController ??
-        TextEditingController(text: widget.dayOfMonth?.toString() ?? '1');
+        TextEditingController(text: initialDay.abs().toString());
 
     _startController.addListener(_onStartChanged);
     _dueController.addListener(_onDueChanged);
@@ -117,9 +121,10 @@ class _MonthlyFixedSchedulingWidgetState
           _notificationController.value != widget.notificationRelativeTime) {
         _notificationController.value = widget.notificationRelativeTime!;
       }
-      if (widget.dayOfMonthController == null) {
-        if (oldWidget.dayOfMonth != widget.dayOfMonth) {
-          final newText = widget.dayOfMonth?.toString() ?? '1';
+      if (widget.dayOfMonth != oldWidget.dayOfMonth) {
+        _fromStart = (widget.dayOfMonth ?? 1) > 0;
+        if (widget.dayOfMonthController == null) {
+          final newText = (widget.dayOfMonth ?? 1).abs().toString();
           if (_dayOfMonthController.text != newText) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
@@ -236,31 +241,77 @@ class _MonthlyFixedSchedulingWidgetState
         const SizedBox(height: 8),
 
         // Recurrence Rule Options
-        TextFormField(
-          key: const Key('monthly_day_of_month_field'),
-          controller: _dayOfMonthController,
-          enabled: !widget.readOnly,
-          decoration: InputDecoration(
-            labelText: l10n.dayOfMonthFieldLabel,
-            border: const OutlineInputBorder(),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _DayOfMonthStepper(
+                  key: const Key('monthly_day_of_month_stepper'),
+                  day: (widget.dayOfMonth ?? 1).abs(),
+                  onDayChanged: (val) {
+                    widget.onDayOfMonthChanged(_fromStart ? val : -val);
+                  },
+                  label: l10n.dayOfMonthStepperLabel,
+                  readOnly: widget.readOnly,
+                  controller: _dayOfMonthController,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _DirectionSelector(
+                  key: const Key('monthly_direction_selector'),
+                  fromStart: _fromStart,
+                  onChanged: widget.readOnly
+                      ? null
+                      : (val) {
+                          setState(() {
+                            _fromStart = val;
+                          });
+                          final currentAbsVal = (widget.dayOfMonth ?? 1).abs();
+                          widget.onDayOfMonthChanged(
+                            val ? currentAbsVal : -currentAbsVal,
+                          );
+                        },
+                  readOnly: widget.readOnly,
+                ),
+              ),
+            ],
           ),
-          keyboardType: const TextInputType.numberWithOptions(signed: true),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return l10n.dayOfMonthValidationError;
-            }
-            final val = int.tryParse(value.trim());
-            if (val == null || val == 0 || val.abs() > 28) {
-              return l10n.dayOfMonthValidationError;
-            }
-            return null;
-          },
-          onChanged: (val) {
-            final value = int.tryParse(val.trim());
-            if (value != null && value != 0 && value.abs() <= 28) {
-              widget.onDayOfMonthChanged(value);
-            }
-          },
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                _fromStart
+                    ? l10n.repeatsOnDayOfMonthHelp(
+                        _formatDayText((widget.dayOfMonth ?? 1).abs()),
+                      )
+                    : (() {
+                        final val = widget.dayOfMonth ?? -1;
+                        if (val == -1) {
+                          return 'Repeats on the last day of the month.';
+                        } else if (val == -2) {
+                          return 'Repeats on the 2nd to the last day of the month.';
+                        } else {
+                          return 'Repeats ${val.abs() - 1} days before the last day of the month.';
+                        }
+                      })(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 20),
 
@@ -395,6 +446,356 @@ class _MonthlyFixedSchedulingWidgetState
           ),
         ],
       ],
+    );
+  }
+}
+
+String _formatDayText(int val) {
+  final absVal = val.abs();
+  if (absVal >= 11 && absVal <= 13) {
+    return '${absVal}th';
+  }
+  switch (absVal % 10) {
+    case 1:
+      return '${absVal}st';
+    case 2:
+      return '${absVal}nd';
+    case 3:
+      return '${absVal}rd';
+    default:
+      return '${absVal}th';
+  }
+}
+
+class _DayOfMonthStepper extends StatefulWidget {
+  final int day;
+  final ValueChanged<int> onDayChanged;
+  final String label;
+  final bool readOnly;
+  final TextEditingController? controller;
+
+  const _DayOfMonthStepper({
+    super.key,
+    required this.day,
+    required this.onDayChanged,
+    required this.label,
+    this.readOnly = false,
+    this.controller,
+  });
+
+  @override
+  State<_DayOfMonthStepper> createState() => _DayOfMonthStepperState();
+}
+
+class _DayOfMonthStepperState extends State<_DayOfMonthStepper> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  double _getFieldWidth() {
+    final textLength = _controller.text.isEmpty ? 1 : _controller.text.length;
+    return textLength * 11.0;
+  }
+
+  String _getSuffix() {
+    final parsed = int.tryParse(_controller.text);
+    return _getDaySuffix(parsed ?? widget.day);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final initialText = widget.day.toString();
+    _controller = widget.controller ?? TextEditingController(text: initialText);
+    if (widget.controller == null) {
+      _controller.text = initialText;
+    } else {
+      final cleanText = _controller.text.replaceAll(RegExp(r'\D'), '');
+      if (_controller.text != cleanText) {
+        _controller.text = cleanText;
+      }
+    }
+
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      final parsed = int.tryParse(_controller.text) ?? widget.day;
+      if (parsed < 1) {
+        _controller.text = '1';
+        widget.onDayChanged(1);
+      } else if (parsed > 28) {
+        _controller.text = '28';
+        widget.onDayChanged(28);
+      } else {
+        _controller.text = parsed.toString();
+        if (parsed != widget.day) {
+          widget.onDayChanged(parsed);
+        }
+      }
+      setState(() {});
+    }
+  }
+
+  @override
+  void didUpdateWidget(_DayOfMonthStepper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.day != widget.day) {
+      final expectedText = widget.day.toString();
+      if (_controller.text != expectedText) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _controller.text != expectedText) {
+            _controller.text = expectedText;
+            setState(() {});
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Padding(
+            padding: EdgeInsets.zero,
+            child: Row(
+              children: [
+                IconButton(
+                  key: const Key('day_decrement_button'),
+                  icon: const Icon(Icons.remove),
+                  onPressed: widget.readOnly || widget.day <= 1
+                      ? null
+                      : () {
+                          final newVal = widget.day - 1;
+                          _controller.text = newVal.toString();
+                          widget.onDayChanged(newVal);
+                          setState(() {});
+                        },
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  constraints: const BoxConstraints(),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.label,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: _getFieldWidth(),
+                              child: TextFormField(
+                                key: const Key('day_text_field'),
+                                controller: _controller,
+                                focusNode: _focusNode,
+                                enabled: !widget.readOnly,
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.2,
+                                ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                validator: (val) {
+                                  if (val == null || val.trim().isEmpty) {
+                                    return 'Required';
+                                  }
+                                  final parsed = int.tryParse(val.trim());
+                                  if (parsed == null ||
+                                      parsed < 1 ||
+                                      parsed > 28) {
+                                    return 'Enter 1-28';
+                                  }
+                                  return null;
+                                },
+                                onChanged: (val) {
+                                  final parsed = int.tryParse(val.trim());
+                                  if (parsed != null &&
+                                      parsed >= 1 &&
+                                      parsed <= 28) {
+                                    widget.onDayChanged(parsed);
+                                  }
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                            Text(
+                              _getSuffix(),
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                height: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                IconButton(
+                  key: const Key('day_increment_button'),
+                  icon: const Icon(Icons.add),
+                  onPressed: widget.readOnly || widget.day >= 28
+                      ? null
+                      : () {
+                          final newVal = widget.day + 1;
+                          _controller.text = newVal.toString();
+                          widget.onDayChanged(newVal);
+                          setState(() {});
+                        },
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _getDaySuffix(int val) {
+  final absVal = val.abs();
+  if (absVal >= 11 && absVal <= 13) {
+    return 'th';
+  }
+  switch (absVal % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
+}
+
+class _DirectionSelector extends StatelessWidget {
+  final bool fromStart;
+  final ValueChanged<bool>? onChanged;
+  final bool readOnly;
+
+  const _DirectionSelector({
+    super.key,
+    required this.fromStart,
+    required this.onChanged,
+    required this.readOnly,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+
+    final options = [
+      (true, l10n.monthlyFromStart),
+      (false, l10n.monthlyFromEnd),
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: options.map((option) {
+        final value = option.$1;
+        final label = option.$2;
+        final isSelected = fromStart == value;
+
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+            child: Material(
+              color: isSelected
+                  ? theme.colorScheme.primaryContainer
+                  : theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                key: Key('monthly_direction_chip_${value ? 'start' : 'end'}'),
+                onTap: readOnly || onChanged == null
+                    ? null
+                    : () {
+                        if (!isSelected) {
+                          onChanged!(value);
+                        }
+                      },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outlineVariant,
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? theme.colorScheme.onPrimaryContainer
+                            : theme.colorScheme.onSurface,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

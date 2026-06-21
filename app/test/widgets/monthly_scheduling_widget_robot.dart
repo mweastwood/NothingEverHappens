@@ -9,8 +9,7 @@ class MonthlySchedulingWidgetRobot {
   Finder get startRecurrenceDateTile =>
       find.byKey(const Key('start_recurrence_date_tile'));
   Finder get intervalField => find.byKey(const Key('interval_text_field'));
-  Finder get dayOfMonthField =>
-      find.byKey(const Key('monthly_day_of_month_field'));
+  Finder get dayOfMonthField => find.byKey(const Key('day_text_field'));
   Finder get occurrenceDropdown =>
       find.byKey(const Key('monthly_occurrence_dropdown'));
   Finder get dayOfWeekDropdown =>

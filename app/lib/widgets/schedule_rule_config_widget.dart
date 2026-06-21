@@ -261,7 +261,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
 
   String _getMonthlyDayOfMonthText(TaskScheduleRule s) {
     if (s is MonthlySchedule && s.dayOfMonth != null) {
-      return s.dayOfMonth.toString();
+      return s.dayOfMonth!.abs().toString();
     }
     return '1';
   }

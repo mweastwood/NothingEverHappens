@@ -70,7 +70,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Repeats on'), findsOneWidget);
-      expect(find.text('Day of Month'), findsOneWidget);
+      expect(
+        find.byKey(const Key('monthly_day_of_month_stepper')),
+        findsOneWidget,
+      );
       expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
       expect(find.byType(MissedOccurrencePolicySelector), findsOneWidget);
     });
