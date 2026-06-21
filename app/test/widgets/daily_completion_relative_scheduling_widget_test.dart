@@ -44,12 +44,25 @@ void main() {
       expect(find.text('Interval'), findsOneWidget);
       expect(find.text('2 days'), findsOneWidget);
       // Check helper text
-      expect(find.textContaining('Every 2 day(s)'), findsOneWidget);
+      expect(
+        find.text('2 days after the task was last completed.'),
+        findsOneWidget,
+      );
 
       // Check relative times
       expect(find.text('Start'), findsOneWidget);
       expect(find.text('Due'), findsOneWidget);
       expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
+      expect(
+        find.text('When does the task appear in your list of tasks?'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'When does this task need to be completed before it should be considered overdue?',
+        ),
+        findsOneWidget,
+      );
 
       // Check notification checkbox
       expect(find.text('Enable notification reminder'), findsOneWidget);
