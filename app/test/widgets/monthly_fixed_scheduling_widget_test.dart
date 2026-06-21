@@ -141,7 +141,7 @@ void main() {
     testGoldens('MonthlyFixedSchedulingWidget renders correctly', (
       tester,
     ) async {
-      final builder = GoldenBuilder.grid(columns: 2, widthToHeightRatio: 0.6)
+      final builder = GoldenBuilder.grid(columns: 2, widthToHeightRatio: 0.5)
         ..addScenario(
           'MonthlyFixed From Start',
           Material(
@@ -194,7 +194,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(1000, 850),
+        surfaceSize: const Size(1000, 950),
       );
       await screenMatchesGolden(
         tester,

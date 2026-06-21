@@ -309,6 +309,33 @@ class _MonthlyFixedSchedulingWidgetState
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                _fromStart
+                    ? l10n.repeatsOnDayOfMonthHelp(
+                        _formatDayText((widget.dayOfMonth ?? 1).abs()),
+                      )
+                    : l10n.repeatsOnDayFromEndHelp(
+                        _formatDayText((widget.dayOfMonth ?? 1).abs()),
+                      ),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 20),
 
         // Start
