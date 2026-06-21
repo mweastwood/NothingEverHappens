@@ -351,32 +351,14 @@ class _MonthlyFixedSchedulingWidgetState
         const SizedBox(height: 20),
 
         // Monthly Recurrence Rule
-        DropdownButtonFormField<String>(
-          key: const Key('monthly_rule_type_dropdown'),
-          initialValue: widget.ruleType,
-          decoration: InputDecoration(
-            labelText: l10n.monthlyRecurrenceTypeLabel,
-            border: const OutlineInputBorder(),
+        Text(
+          l10n.repeatsOnLabel,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
           ),
-          items: [
-            DropdownMenuItem(
-              value: 'dayOfMonth',
-              child: Text(l10n.dayOfMonthLabel),
-            ),
-            DropdownMenuItem(
-              value: 'nthDayOfWeek',
-              child: Text(l10n.nthDayOfWeekLabel),
-            ),
-          ],
-          onChanged: widget.readOnly
-              ? null
-              : (value) {
-                  if (value != null) {
-                    widget.onRuleTypeChanged(value);
-                  }
-                },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
 
         // Recurrence Rule Options
         if (widget.ruleType == 'dayOfMonth')

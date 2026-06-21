@@ -69,7 +69,7 @@ void main() {
         find.text('Repeats every month starting 2026-10-26.'),
         findsOneWidget,
       );
-      expect(find.text('Recurrence Rule'), findsOneWidget);
+      expect(find.text('Repeats on'), findsOneWidget);
       expect(find.text('Day of Month (1-28, or -1 to -28)'), findsOneWidget);
       expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
       expect(find.byType(MissedOccurrencePolicySelector), findsOneWidget);
@@ -131,7 +131,7 @@ void main() {
           find.text('2 months after the task was last completed.'),
           findsOneWidget,
         );
-        expect(find.text('Recurrence Rule'), findsNothing);
+        expect(find.text('Repeats on'), findsNothing);
         expect(find.text('Day of Month (1-28, or -1 to -28)'), findsNothing);
         expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
         expect(find.byType(MissedOccurrencePolicySelector), findsNothing);
@@ -144,7 +144,6 @@ void main() {
       int interval = 1;
       int? newInterval;
       String ruleType = 'dayOfMonth';
-      String? newRuleType;
       int? dayOfMonth = 15;
       int? newDayOfMonth;
 
@@ -162,7 +161,7 @@ void main() {
                 schedulingPolicy: const FixedCalendarPolicy(),
                 onSchedulingPolicyChanged: (_) {},
                 ruleType: ruleType,
-                onRuleTypeChanged: (t) => newRuleType = t,
+                onRuleTypeChanged: (_) {},
                 dayOfMonth: dayOfMonth,
                 onDayOfMonthChanged: (dom) => newDayOfMonth = dom,
                 occurrence: 1,
@@ -198,10 +197,6 @@ void main() {
       // 3. Change Day of Month
       await robot.enterDayOfMonth('20');
       expect(newDayOfMonth, 20);
-
-      // 4. Change rule type
-      await robot.selectRuleType('Nth Day of Week');
-      expect(newRuleType, 'nthDayOfWeek');
     });
 
     testGoldens('MonthlySchedulingWidget renders correctly', (tester) async {
