@@ -898,4 +898,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get presetMonthPlural => 'months';
+
+  @override
+  String get presetYearSingular => 'year';
+
+  @override
+  String get presetYearPlural => 'years';
 }

@@ -7,10 +7,8 @@ class YearlySchedulingWidgetRobot {
   YearlySchedulingWidgetRobot(this.tester);
 
   Finder get startRecurrenceDateTile =>
-      find.byKey(const Key('yearly_start_recurrence_date_tile'));
-  Finder get intervalExpansionTile =>
-      find.byKey(const Key('yearly_interval_expansion_tile'));
-  Finder get intervalField => find.byKey(const Key('yearly_interval_field'));
+      find.byKey(const Key('start_recurrence_date_tile'));
+  Finder get intervalField => find.byKey(const Key('interval_text_field'));
   Finder get monthDropdown => find.byKey(const Key('yearly_month_dropdown'));
   Finder get dayField => find.byKey(const Key('yearly_day_field'));
 
@@ -23,14 +21,10 @@ class YearlySchedulingWidgetRobot {
   }
 
   Future<void> expandIntervalSection() async {
-    await tester.tap(intervalExpansionTile);
-    await tester.pumpAndSettle();
+    // No-op: Interval is always visible in the new design
   }
 
   Future<void> enterInterval(String val) async {
-    if (find.byKey(const Key('yearly_interval_field')).evaluate().isEmpty) {
-      await expandIntervalSection();
-    }
     await tester.enterText(intervalField, val);
     await tester.pumpAndSettle();
   }

@@ -523,19 +523,8 @@ void main() {
       await tester.tap(find.byKey(const Key('recurrence_chip_yearly')));
       await tester.pumpAndSettle();
 
-      // Expand the years interval card
-      final expansionTile = find.byKey(
-        const Key('yearly_interval_expansion_tile'),
-      );
-      await tester.ensureVisible(expansionTile);
-      await tester.tap(expansionTile);
-      await tester.pumpAndSettle();
-
       // Enter Years Interval
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Years Interval'),
-        '2',
-      );
+      await tester.enterText(find.byKey(const Key('interval_text_field')), '2');
 
       // Day
       await tester.enterText(find.widgetWithText(TextFormField, 'Day'), '24');
