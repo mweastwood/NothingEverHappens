@@ -3,19 +3,33 @@
 # Check if dart command is available
 if ! command -v dart >/dev/null 2>&1; then
   echo "Warning: 'dart' command not found. Skipping auto-formatting."
-  exit 0
+else
+  # Get all staged Dart files (excluding deleted ones)
+  STAGED_DART_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.dart$')
+
+  if [ -n "$STAGED_DART_FILES" ]; then
+    echo "Formatting staged Dart files..."
+    for file in $STAGED_DART_FILES; do
+      if [ -f "$file" ]; then
+        dart format "$file"
+        git add "$file" # Restage the formatted file
+      fi
+    done
+    echo "Dart formatting complete!"
+  fi
 fi
 
-# Get all staged Dart files (excluding deleted ones)
-STAGED_DART_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.dart$')
+# Check if flutter command is available
+if ! command -v flutter >/dev/null 2>&1; then
+  echo "Error: 'flutter' command not found. Cannot run analysis. Commit aborted."
+  exit 1
+fi
 
-if [ -n "$STAGED_DART_FILES" ]; then
-  echo "Formatting staged Dart files..."
-  for file in $STAGED_DART_FILES; do
-    if [ -f "$file" ]; then
-      dart format "$file"
-      git add "$file" # Restage the formatted file
-    fi
-  done
-  echo "Dart formatting complete!"
+echo "Running flutter analyze..."
+(cd app && flutter analyze --fatal-infos)
+ANALYZE_RESULT=$?
+
+if [ $ANALYZE_RESULT -ne 0 ]; then
+  echo "Error: Flutter analysis failed (exit code $ANALYZE_RESULT). Commit aborted."
+  exit $ANALYZE_RESULT
 fi
