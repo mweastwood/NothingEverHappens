@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/scheduling_policy.dart';
 import '../logic/missed_occurrence_policy.dart';
 import '../logic/l10n_extension.dart';
-import 'relative_timing_widget.dart';
+import 'interval_stepper.dart';
+import 'date_stepper.dart';
+import 'relative_time_widget.dart';
 import 'missed_occurrence_policy_selector.dart';
-import 'absolute_date_widget.dart';
 
-class WeeklySchedulingWidget extends StatefulWidget {
+class WeeklySchedulingWidget extends StatelessWidget {
   final CivilDay startDate;
   final ValueChanged<CivilDay> onStartDateChanged;
   final int interval;
@@ -57,42 +57,166 @@ class WeeklySchedulingWidget extends StatefulWidget {
   });
 
   @override
-  State<WeeklySchedulingWidget> createState() => _WeeklySchedulingWidgetState();
+  Widget build(BuildContext context) {
+    if (schedulingPolicy is CompletionRelativePolicy) {
+      return WeeklyCompletionRelativeSchedulingWidget(
+        key: const Key('weekly_completion_relative_scheduling_widget'),
+        interval: interval,
+        onIntervalChanged: onIntervalChanged,
+        selectedWeekdays: selectedWeekdays,
+        onWeekdaysChanged: onWeekdaysChanged,
+        startRelativeTime: startRelativeTime,
+        onStartRelativeTimeChanged: onStartRelativeTimeChanged,
+        dueRelativeTime: dueRelativeTime,
+        onDueRelativeTimeChanged: onDueRelativeTimeChanged,
+        notificationRelativeTime: notificationRelativeTime,
+        onNotificationRelativeTimeChanged: onNotificationRelativeTimeChanged,
+        showNotification: showNotification,
+        readOnly: readOnly,
+        intervalController: intervalController,
+      );
+    } else {
+      return WeeklyFixedSchedulingWidget(
+        key: const Key('weekly_fixed_scheduling_widget'),
+        startDate: startDate,
+        onStartDateChanged: onStartDateChanged,
+        interval: interval,
+        onIntervalChanged: onIntervalChanged,
+        selectedWeekdays: selectedWeekdays,
+        onWeekdaysChanged: onWeekdaysChanged,
+        startRelativeTime: startRelativeTime,
+        onStartRelativeTimeChanged: onStartRelativeTimeChanged,
+        dueRelativeTime: dueRelativeTime,
+        onDueRelativeTimeChanged: onDueRelativeTimeChanged,
+        notificationRelativeTime: notificationRelativeTime,
+        onNotificationRelativeTimeChanged: onNotificationRelativeTimeChanged,
+        missedOccurrencePolicy: missedOccurrencePolicy,
+        onMissedOccurrencePolicyChanged: onMissedOccurrencePolicyChanged,
+        showNotification: showNotification,
+        showMissedPolicy: showMissedPolicy,
+        readOnly: readOnly,
+        intervalController: intervalController,
+      );
+    }
+  }
 }
 
-class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
-  late TextEditingController _intervalController;
-  bool _isIntervalExpanded = false;
+class WeeklyFixedSchedulingWidget extends StatefulWidget {
+  final CivilDay startDate;
+  final ValueChanged<CivilDay> onStartDateChanged;
+  final int interval;
+  final ValueChanged<int> onIntervalChanged;
+  final Set<int> selectedWeekdays;
+  final ValueChanged<Set<int>> onWeekdaysChanged;
+  final RelativeTime startRelativeTime;
+  final ValueChanged<RelativeTime> onStartRelativeTimeChanged;
+  final RelativeTime dueRelativeTime;
+  final ValueChanged<RelativeTime> onDueRelativeTimeChanged;
+  final RelativeTime? notificationRelativeTime;
+  final ValueChanged<RelativeTime?> onNotificationRelativeTimeChanged;
+  final MissedOccurrencePolicy? missedOccurrencePolicy;
+  final ValueChanged<MissedOccurrencePolicy>? onMissedOccurrencePolicyChanged;
+
+  final bool showNotification;
+  final bool showMissedPolicy;
+  final bool readOnly;
+  final TextEditingController? intervalController;
+
+  const WeeklyFixedSchedulingWidget({
+    super.key,
+    required this.startDate,
+    required this.onStartDateChanged,
+    required this.interval,
+    required this.onIntervalChanged,
+    required this.selectedWeekdays,
+    required this.onWeekdaysChanged,
+    required this.startRelativeTime,
+    required this.onStartRelativeTimeChanged,
+    required this.dueRelativeTime,
+    required this.onDueRelativeTimeChanged,
+    required this.notificationRelativeTime,
+    required this.onNotificationRelativeTimeChanged,
+    this.missedOccurrencePolicy,
+    this.onMissedOccurrencePolicyChanged,
+    this.showNotification = true,
+    this.showMissedPolicy = true,
+    this.readOnly = false,
+    this.intervalController,
+  });
+
+  @override
+  State<WeeklyFixedSchedulingWidget> createState() =>
+      _WeeklyFixedSchedulingWidgetState();
+}
+
+class _WeeklyFixedSchedulingWidgetState
+    extends State<WeeklyFixedSchedulingWidget> {
+  late final ValueNotifier<RelativeTime> _startController;
+  late final ValueNotifier<RelativeTime> _dueController;
+  late final ValueNotifier<RelativeTime> _notificationController;
+
+  bool _ignoreEvents = false;
 
   @override
   void initState() {
     super.initState();
-    _intervalController =
-        widget.intervalController ??
-        TextEditingController(text: widget.interval.toString());
+    _startController = ValueNotifier(widget.startRelativeTime);
+    _dueController = ValueNotifier(widget.dueRelativeTime);
+    _notificationController = ValueNotifier(
+      widget.notificationRelativeTime ??
+          const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+    );
+
+    _startController.addListener(_onStartChanged);
+    _dueController.addListener(_onDueChanged);
+    _notificationController.addListener(_onNotificationChanged);
+  }
+
+  void _onStartChanged() {
+    if (_ignoreEvents) return;
+    widget.onStartRelativeTimeChanged(_startController.value);
+  }
+
+  void _onDueChanged() {
+    if (_ignoreEvents) return;
+    widget.onDueRelativeTimeChanged(_dueController.value);
+  }
+
+  void _onNotificationChanged() {
+    if (_ignoreEvents) return;
+    if (widget.notificationRelativeTime != null) {
+      widget.onNotificationRelativeTimeChanged(_notificationController.value);
+    }
   }
 
   @override
-  void didUpdateWidget(WeeklySchedulingWidget oldWidget) {
+  void didUpdateWidget(WeeklyFixedSchedulingWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.intervalController == null) {
-      if (oldWidget.interval != widget.interval) {
-        if (_intervalController.text != widget.interval.toString()) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              _intervalController.text = widget.interval.toString();
-            }
-          });
-        }
+    _ignoreEvents = true;
+    try {
+      if (_startController.value != widget.startRelativeTime) {
+        _startController.value = widget.startRelativeTime;
       }
+      if (_dueController.value != widget.dueRelativeTime) {
+        _dueController.value = widget.dueRelativeTime;
+      }
+      if (widget.notificationRelativeTime != null &&
+          _notificationController.value != widget.notificationRelativeTime) {
+        _notificationController.value = widget.notificationRelativeTime!;
+      }
+    } finally {
+      _ignoreEvents = false;
     }
   }
 
   @override
   void dispose() {
-    if (widget.intervalController == null) {
-      _intervalController.dispose();
-    }
+    _startController.removeListener(_onStartChanged);
+    _dueController.removeListener(_onDueChanged);
+    _notificationController.removeListener(_onNotificationChanged);
+    _startController.dispose();
+    _dueController.dispose();
+    _notificationController.dispose();
     super.dispose();
   }
 
@@ -100,173 +224,85 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = context.l10n;
-
     final dt = DateTime(
       widget.startDate.year,
       widget.startDate.month,
       widget.startDate.day,
     );
-    final isCompletionRelative =
-        widget.schedulingPolicy is CompletionRelativePolicy;
-
-    final summaryText = isCompletionRelative
-        ? l10n.everyNWeeksSinceLastCompletion(widget.interval)
-        : l10n.everyNWeeksSinceLastScheduled(widget.interval);
+    final notificationEnabled = widget.notificationRelativeTime != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Start Recurrence Date
-        AbsoluteDateWidget(
-          key: const Key('weekly_start_recurrence_date_tile'),
-          date: dt,
-          onDateChanged: widget.readOnly
-              ? null
-              : (picked) {
-                  widget.onStartDateChanged(
-                    CivilDay(
-                      year: picked.year,
-                      month: picked.month,
-                      day: picked.day,
-                    ),
-                  );
-                },
-          label: l10n.startRecurrenceDateLabel,
-        ),
-        const SizedBox(height: 16),
-
-        // Interval expandable card/tile
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: theme.colorScheme.outlineVariant),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          color: Colors.transparent,
-          margin: EdgeInsets.zero,
-          child: Column(
-            children: [
-              ListTile(
-                key: const Key('weekly_interval_expansion_tile'),
-                dense: true,
-                title: Text(
-                  l10n.intervalLabel,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                subtitle: Text(
-                  summaryText,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                trailing: Icon(
-                  _isIntervalExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: theme.colorScheme.primary,
-                  size: 20,
-                ),
-                onTap: () {
-                  setState(() {
-                    _isIntervalExpanded = !_isIntervalExpanded;
-                  });
-                },
+        // 1 & 2. Interval and Start Recurrence Date side-by-side
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: IntervalStepper(
+                key: const Key('weekly_fixed_interval_stepper'),
+                interval: widget.interval,
+                onIntervalChanged: widget.onIntervalChanged,
+                label: 'Interval',
+                unitSingular: 'week',
+                unitPlural: 'weeks',
+                readOnly: widget.readOnly,
+                intervalController: widget.intervalController,
               ),
-              if (_isIntervalExpanded) ...[
-                const Divider(height: 1),
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        key: const Key('weekly_interval_field'),
-                        controller: _intervalController,
-                        enabled: !widget.readOnly,
-                        decoration: InputDecoration(
-                          labelText: l10n.weeksIntervalLabel,
-                          border: const OutlineInputBorder(),
-                          helperText: l10n.weeksIntervalHelper,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Interval is required';
-                          }
-                          final interval = int.tryParse(val);
-                          if (interval == null || interval <= 0) {
-                            return 'Please enter a positive number';
-                          }
-                          return null;
-                        },
-                        onChanged: (val) {
-                          final newInterval = int.tryParse(val);
-                          if (newInterval != null && newInterval > 0) {
-                            widget.onIntervalChanged(newInterval);
-                            if (isCompletionRelative) {
-                              widget.onSchedulingPolicyChanged(
-                                CompletionRelativePolicy(
-                                  interval: Duration(days: newInterval * 7),
-                                  targetTime: widget.startRelativeTime.time,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<SchedulingType>(
-                        key: const Key('weekly_interval_type_dropdown'),
-                        initialValue: widget.schedulingPolicy.type,
-                        decoration: InputDecoration(
-                          labelText: l10n.intervalTypeLabel,
-                          border: const OutlineInputBorder(),
-                        ),
-                        items: [
-                          DropdownMenuItem(
-                            value: SchedulingType.fixedCalendar,
-                            child: Text(l10n.sinceLastScheduledLabel),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: DateStepper(
+                key: const Key('weekly_fixed_date_stepper'),
+                date: dt,
+                onDateChanged: widget.readOnly
+                    ? null
+                    : (picked) {
+                        widget.onStartDateChanged(
+                          CivilDay(
+                            year: picked.year,
+                            month: picked.month,
+                            day: picked.day,
                           ),
-                          DropdownMenuItem(
-                            value: SchedulingType.completionRelative,
-                            child: Text(l10n.sinceLastCompletionLabel),
-                          ),
-                        ],
-                        onChanged: widget.readOnly
-                            ? null
-                            : (type) {
-                                if (type == SchedulingType.completionRelative) {
-                                  widget.onSchedulingPolicyChanged(
-                                    CompletionRelativePolicy(
-                                      interval: Duration(
-                                        days: widget.interval * 7,
-                                      ),
-                                      targetTime: widget.startRelativeTime.time,
-                                    ),
-                                  );
-                                } else {
-                                  widget.onSchedulingPolicyChanged(
-                                    const FixedCalendarPolicy(),
-                                  );
-                                }
-                              },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
+                        );
+                      },
+                label: 'Start Date',
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        // Shared help text for the combination
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                widget.interval == 1
+                    ? 'Repeats every week starting ${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}.'
+                    : 'Repeats every ${widget.interval} weeks starting ${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
 
         // Repeats on weekdays section
         Text(
           l10n.repeatsOnLabel,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 8),
@@ -302,21 +338,126 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
             );
           }),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
-        // Start & Due relative selectors (and notification reminder if showNotification is true)
-        RelativeTimingWidget(
-          key: const Key('weekly_relative_timing'),
-          startRelativeTime: widget.startRelativeTime,
-          dueRelativeTime: widget.dueRelativeTime,
-          notificationRelativeTime: widget.notificationRelativeTime,
-          onStartChanged: widget.onStartRelativeTimeChanged,
-          onDueChanged: widget.onDueRelativeTimeChanged,
-          onNotificationChanged: widget.onNotificationRelativeTimeChanged,
-          showNotification: widget.showNotification,
+        // 3. Start Window & help text
+        Text(
+          'Start',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        RelativeTimeWidget(
+          key: const Key('weekly_fixed_start_relative_time_picker'),
+          constraint: RelativeTimeConstraint.unconstrained,
+          controller: _startController,
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'When does the task appear in your list of tasks?',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // 4. Due Window & help text
+        Text(
+          'Due',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        RelativeTimeWidget(
+          key: const Key('weekly_fixed_due_relative_time_picker'),
+          constraint: RelativeTimeConstraint.unconstrained,
+          controller: _dueController,
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                l10n.dueDescription,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
         ),
 
-        // Missed occurrence policy selector
+        // 5. Notifications
+        if (widget.showNotification) ...[
+          const SizedBox(height: 16),
+          const Divider(),
+          CheckboxListTile(
+            key: const Key('weekly_fixed_notification_checkbox'),
+            title: Text(
+              'Enable notification reminder',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            value: notificationEnabled,
+            onChanged: widget.readOnly
+                ? null
+                : (enabled) {
+                    if (enabled == true) {
+                      widget.onNotificationRelativeTimeChanged(
+                        _notificationController.value,
+                      );
+                    } else {
+                      widget.onNotificationRelativeTimeChanged(null);
+                    }
+                  },
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (notificationEnabled) ...[
+            Text(
+              'Notification window',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            RelativeTimeWidget(
+              key: const Key('weekly_fixed_notification_relative_time_picker'),
+              constraint: RelativeTimeConstraint.unconstrained,
+              controller: _notificationController,
+            ),
+          ],
+        ],
+
+        // 6. Missed occurrence policy selector
         if (widget.showMissedPolicy &&
             widget.missedOccurrencePolicy != null &&
             widget.onMissedOccurrencePolicyChanged != null) ...[
@@ -324,10 +465,330 @@ class _WeeklySchedulingWidgetState extends State<WeeklySchedulingWidget> {
           const Divider(),
           const SizedBox(height: 12),
           MissedOccurrencePolicySelector(
-            key: const Key('weekly_missed_policy'),
+            key: const Key('weekly_fixed_missed_policy'),
             policy: widget.missedOccurrencePolicy!,
             onChanged: widget.onMissedOccurrencePolicyChanged!,
           ),
+        ],
+      ],
+    );
+  }
+}
+
+class WeeklyCompletionRelativeSchedulingWidget extends StatefulWidget {
+  final int interval;
+  final ValueChanged<int> onIntervalChanged;
+  final Set<int> selectedWeekdays;
+  final ValueChanged<Set<int>> onWeekdaysChanged;
+  final RelativeTime startRelativeTime;
+  final ValueChanged<RelativeTime> onStartRelativeTimeChanged;
+  final RelativeTime dueRelativeTime;
+  final ValueChanged<RelativeTime> onDueRelativeTimeChanged;
+  final RelativeTime? notificationRelativeTime;
+  final ValueChanged<RelativeTime?> onNotificationRelativeTimeChanged;
+
+  final bool showNotification;
+  final bool readOnly;
+  final TextEditingController? intervalController;
+
+  const WeeklyCompletionRelativeSchedulingWidget({
+    super.key,
+    required this.interval,
+    required this.onIntervalChanged,
+    required this.selectedWeekdays,
+    required this.onWeekdaysChanged,
+    required this.startRelativeTime,
+    required this.onStartRelativeTimeChanged,
+    required this.dueRelativeTime,
+    required this.onDueRelativeTimeChanged,
+    required this.notificationRelativeTime,
+    required this.onNotificationRelativeTimeChanged,
+    this.showNotification = true,
+    this.readOnly = false,
+    this.intervalController,
+  });
+
+  @override
+  State<WeeklyCompletionRelativeSchedulingWidget> createState() =>
+      _WeeklyCompletionRelativeSchedulingWidgetState();
+}
+
+class _WeeklyCompletionRelativeSchedulingWidgetState
+    extends State<WeeklyCompletionRelativeSchedulingWidget> {
+  late final ValueNotifier<RelativeTime> _startController;
+  late final ValueNotifier<RelativeTime> _dueController;
+  late final ValueNotifier<RelativeTime> _notificationController;
+
+  bool _ignoreEvents = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startController = ValueNotifier(widget.startRelativeTime);
+    _dueController = ValueNotifier(widget.dueRelativeTime);
+    _notificationController = ValueNotifier(
+      widget.notificationRelativeTime ??
+          const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+    );
+
+    _startController.addListener(_onStartChanged);
+    _dueController.addListener(_onDueChanged);
+    _notificationController.addListener(_onNotificationChanged);
+  }
+
+  void _onStartChanged() {
+    if (_ignoreEvents) return;
+    widget.onStartRelativeTimeChanged(_startController.value);
+  }
+
+  void _onDueChanged() {
+    if (_ignoreEvents) return;
+    widget.onDueRelativeTimeChanged(_dueController.value);
+  }
+
+  void _onNotificationChanged() {
+    if (_ignoreEvents) return;
+    if (widget.notificationRelativeTime != null) {
+      widget.onNotificationRelativeTimeChanged(_notificationController.value);
+    }
+  }
+
+  @override
+  void didUpdateWidget(WeeklyCompletionRelativeSchedulingWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _ignoreEvents = true;
+    try {
+      if (_startController.value != widget.startRelativeTime) {
+        _startController.value = widget.startRelativeTime;
+      }
+      if (_dueController.value != widget.dueRelativeTime) {
+        _dueController.value = widget.dueRelativeTime;
+      }
+      if (widget.notificationRelativeTime != null &&
+          _notificationController.value != widget.notificationRelativeTime) {
+        _notificationController.value = widget.notificationRelativeTime!;
+      }
+    } finally {
+      _ignoreEvents = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _startController.removeListener(_onStartChanged);
+    _dueController.removeListener(_onDueChanged);
+    _notificationController.removeListener(_onNotificationChanged);
+    _startController.dispose();
+    _dueController.dispose();
+    _notificationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final notificationEnabled = widget.notificationRelativeTime != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Interval
+        IntervalStepper(
+          key: const Key('weekly_completion_interval_stepper'),
+          interval: widget.interval,
+          onIntervalChanged: widget.onIntervalChanged,
+          label: 'Interval',
+          unitSingular: 'week',
+          unitPlural: 'weeks',
+          readOnly: widget.readOnly,
+          intervalController: widget.intervalController,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                widget.interval == 1
+                    ? '1 week after the task was last completed.'
+                    : '${widget.interval} weeks after the task was last completed.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Repeats on weekdays section
+        Text(
+          l10n.repeatsOnLabel,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8.0,
+          children: List.generate(7, (index) {
+            final dayIndex = index + 1; // 1 = Monday
+            final labels = [
+              l10n.weekdayHeaderMonday,
+              l10n.weekdayHeaderTuesday,
+              l10n.weekdayHeaderWednesday,
+              l10n.weekdayHeaderThursday,
+              l10n.weekdayHeaderFriday,
+              l10n.weekdayHeaderSaturday,
+              l10n.weekdayHeaderSunday,
+            ];
+            final isSelected = widget.selectedWeekdays.contains(dayIndex);
+            return FilterChip(
+              key: Key('weekly_weekday_chip_$dayIndex'),
+              label: Text(labels[index]),
+              selected: isSelected,
+              onSelected: widget.readOnly
+                  ? null
+                  : (selected) {
+                      final newSet = Set<int>.from(widget.selectedWeekdays);
+                      if (selected) {
+                        newSet.add(dayIndex);
+                      } else {
+                        newSet.remove(dayIndex);
+                      }
+                      widget.onWeekdaysChanged(newSet);
+                    },
+            );
+          }),
+        ),
+        const SizedBox(height: 20),
+
+        // 2. Start
+        Text(
+          'Start',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        RelativeTimeWidget(
+          key: const Key('weekly_completion_start_relative_time_picker'),
+          constraint: RelativeTimeConstraint.unconstrained,
+          controller: _startController,
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'When does the task appear in your list of tasks?',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // 3. Due
+        Text(
+          'Due',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        RelativeTimeWidget(
+          key: const Key('weekly_completion_due_relative_time_picker'),
+          constraint: RelativeTimeConstraint.unconstrained,
+          controller: _dueController,
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                l10n.dueDescription,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        // 4. Notifications
+        if (widget.showNotification) ...[
+          const SizedBox(height: 16),
+          const Divider(),
+          CheckboxListTile(
+            key: const Key('weekly_completion_notification_checkbox'),
+            title: Text(
+              'Enable notification reminder',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            value: notificationEnabled,
+            onChanged: widget.readOnly
+                ? null
+                : (enabled) {
+                    if (enabled == true) {
+                      widget.onNotificationRelativeTimeChanged(
+                        _notificationController.value,
+                      );
+                    } else {
+                      widget.onNotificationRelativeTimeChanged(null);
+                    }
+                  },
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (notificationEnabled) ...[
+            Text(
+              'Notification window',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            RelativeTimeWidget(
+              key: const Key(
+                'weekly_completion_notification_relative_time_picker',
+              ),
+              constraint: RelativeTimeConstraint.unconstrained,
+              controller: _notificationController,
+            ),
+          ],
         ],
       ],
     );
