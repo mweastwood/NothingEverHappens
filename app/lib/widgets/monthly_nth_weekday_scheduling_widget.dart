@@ -7,6 +7,7 @@ import 'interval_stepper.dart';
 import 'date_stepper.dart';
 import 'relative_time_widget.dart';
 import 'missed_occurrence_policy_selector.dart';
+import 'day_of_week_selector.dart';
 
 class MonthlyNthWeekdaySchedulingWidget extends StatefulWidget {
   final CivilDay startDate;
@@ -219,66 +220,54 @@ class _MonthlyNthWeekdaySchedulingWidgetState
         const SizedBox(height: 8),
 
         // Recurrence Rule Options
-        Row(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: DropdownButtonFormField<int>(
-                key: const Key('monthly_occurrence_dropdown'),
-                initialValue: widget.occurrence ?? 1,
-                decoration: InputDecoration(
-                  labelText: l10n.nthOccurrenceLabel,
-                  border: const OutlineInputBorder(),
-                ),
-                items: [
-                  DropdownMenuItem(value: 1, child: Text(l10n.firstOccurrence)),
-                  DropdownMenuItem(
-                    value: 2,
-                    child: Text(l10n.secondOccurrence),
-                  ),
-                  DropdownMenuItem(value: 3, child: Text(l10n.thirdOccurrence)),
-                  DropdownMenuItem(
-                    value: 4,
-                    child: Text(l10n.fourthOccurrence),
-                  ),
-                  DropdownMenuItem(value: -1, child: Text(l10n.lastOccurrence)),
-                ],
-                onChanged: widget.readOnly
-                    ? null
-                    : (value) {
-                        if (value != null) {
-                          widget.onOccurrenceChanged(value);
-                        }
-                      },
-              ),
+            _OccurrenceSelector(
+              key: const Key('monthly_occurrence_selector'),
+              selectedOccurrence: widget.occurrence ?? 1,
+              onChanged: (val) {
+                widget.onOccurrenceChanged(val);
+              },
+              readOnly: widget.readOnly,
             ),
-            const SizedBox(width: 16),
+            const SizedBox(height: 12),
+            DayOfWeekSelector(
+              key: const Key('monthly_nth_weekday_day_selector'),
+              selectedWeekdays: {widget.dayOfWeek ?? 1},
+              onChanged: (days) {
+                if (days.isNotEmpty) {
+                  widget.onDayOfWeekChanged(days.first);
+                }
+              },
+              readOnly: widget.readOnly,
+              multiSelect: false,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
             Expanded(
-              child: DropdownButtonFormField<int>(
-                key: const Key('monthly_day_of_week_dropdown'),
-                initialValue: widget.dayOfWeek ?? 1,
-                decoration: InputDecoration(
-                  labelText: l10n.dayOfWeekLabel,
-                  border: const OutlineInputBorder(),
+              child: Text(
+                l10n.repeatsOnNthWeekdayHelp(
+                  _getDayOfWeekString(context, widget.dayOfWeek ?? 1),
+                  _getOccurrenceString(
+                    context,
+                    widget.occurrence ?? 1,
+                  ).toLowerCase(),
                 ),
-                items: [
-                  DropdownMenuItem(value: 1, child: Text(l10n.weekdayMonday)),
-                  DropdownMenuItem(value: 2, child: Text(l10n.weekdayTuesday)),
-                  DropdownMenuItem(
-                    value: 3,
-                    child: Text(l10n.weekdayWednesday),
-                  ),
-                  DropdownMenuItem(value: 4, child: Text(l10n.weekdayThursday)),
-                  DropdownMenuItem(value: 5, child: Text(l10n.weekdayFriday)),
-                  DropdownMenuItem(value: 6, child: Text(l10n.weekdaySaturday)),
-                  DropdownMenuItem(value: 7, child: Text(l10n.weekdaySunday)),
-                ],
-                onChanged: widget.readOnly
-                    ? null
-                    : (value) {
-                        if (value != null) {
-                          widget.onDayOfWeekChanged(value);
-                        }
-                      },
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
           ],
@@ -416,6 +405,128 @@ class _MonthlyNthWeekdaySchedulingWidgetState
           ),
         ],
       ],
+    );
+  }
+}
+
+String _getOccurrenceString(BuildContext context, int occurrence) {
+  final l10n = context.l10n;
+  switch (occurrence) {
+    case 1:
+      return l10n.firstOccurrence;
+    case 2:
+      return l10n.secondOccurrence;
+    case 3:
+      return l10n.thirdOccurrence;
+    case 4:
+      return l10n.fourthOccurrence;
+    case -1:
+      return l10n.lastOccurrence;
+    default:
+      return '';
+  }
+}
+
+String _getDayOfWeekString(BuildContext context, int dayOfWeek) {
+  final l10n = context.l10n;
+  switch (dayOfWeek) {
+    case 1:
+      return l10n.weekdayMonday;
+    case 2:
+      return l10n.weekdayTuesday;
+    case 3:
+      return l10n.weekdayWednesday;
+    case 4:
+      return l10n.weekdayThursday;
+    case 5:
+      return l10n.weekdayFriday;
+    case 6:
+      return l10n.weekdaySaturday;
+    case 7:
+      return l10n.weekdaySunday;
+    default:
+      return '';
+  }
+}
+
+class _OccurrenceSelector extends StatelessWidget {
+  final int selectedOccurrence;
+  final ValueChanged<int> onChanged;
+  final bool readOnly;
+
+  const _OccurrenceSelector({
+    super.key,
+    required this.selectedOccurrence,
+    required this.onChanged,
+    required this.readOnly,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+
+    final options = [
+      (1, l10n.firstOccurrence),
+      (2, l10n.secondOccurrence),
+      (3, l10n.thirdOccurrence),
+      (4, l10n.fourthOccurrence),
+      (-1, l10n.lastOccurrence),
+    ];
+
+    return Row(
+      children: options.map((option) {
+        final value = option.$1;
+        final label = option.$2;
+        final isSelected = selectedOccurrence == value;
+
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+            child: Material(
+              color: isSelected
+                  ? theme.colorScheme.primaryContainer
+                  : theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                onTap: readOnly
+                    ? null
+                    : () {
+                        if (!isSelected) {
+                          onChanged(value);
+                        }
+                      },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outlineVariant,
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? theme.colorScheme.onPrimaryContainer
+                            : theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

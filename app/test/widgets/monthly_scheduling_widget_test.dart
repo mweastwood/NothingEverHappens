@@ -70,7 +70,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Repeats on'), findsOneWidget);
-      expect(find.text('Day of Month (1-28, or -1 to -28)'), findsOneWidget);
+      expect(find.text('Day of Month'), findsOneWidget);
       expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
       expect(find.byType(MissedOccurrencePolicySelector), findsOneWidget);
     });

@@ -677,14 +677,32 @@ abstract class AppLocalizations {
   /// No description provided for @dayOfMonthFieldLabel.
   ///
   /// In en, this message translates to:
-  /// **'Day of Month (1-28, or -1 to -28)'**
+  /// **'Day of Month'**
   String get dayOfMonthFieldLabel;
 
   /// No description provided for @dayOfMonthValidationError.
   ///
   /// In en, this message translates to:
-  /// **'Please enter a valid day number: 1 to 28, or -1 to -28'**
+  /// **'Please enter a valid day number: 1 to 28'**
   String get dayOfMonthValidationError;
+
+  /// No description provided for @monthlyFromStart.
+  ///
+  /// In en, this message translates to:
+  /// **'From start of month'**
+  String get monthlyFromStart;
+
+  /// No description provided for @monthlyFromEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'From end of month'**
+  String get monthlyFromEnd;
+
+  /// No description provided for @dayOfMonthStepperLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get dayOfMonthStepperLabel;
 
   /// No description provided for @nthOccurrenceLabel.
   ///
@@ -799,6 +817,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'On the {day} day from the end'**
   String dayOfMonthFromEnd(Object day);
+
+  /// No description provided for @repeatsOnDayOfMonthHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats on the {day} day of the month.'**
+  String repeatsOnDayOfMonthHelp(Object day);
+
+  /// No description provided for @repeatsOnDayFromEndHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats on the {day} day from the end of the month.'**
+  String repeatsOnDayFromEndHelp(Object day);
+
+  /// No description provided for @repeatsOnNthWeekdayHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats on the {occurrence} {dayOfWeek} of the month.'**
+  String repeatsOnNthWeekdayHelp(Object dayOfWeek, Object occurrence);
 
   /// No description provided for @nthDayOfWeekOccurrence.
   ///

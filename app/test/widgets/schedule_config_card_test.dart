@@ -207,10 +207,7 @@ void main() {
         ),
       );
 
-      final domField = find.widgetWithText(
-        TextFormField,
-        'Day of Month (1-28, or -1 to -28)',
-      );
+      final domField = find.widgetWithText(TextFormField, 'Day of Month');
       expect(domField, findsOneWidget);
 
       // Enter invalid day of month (29)
@@ -220,7 +217,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Please enter a valid day number: 1 to 28, or -1 to -28'),
+        find.text('Please enter a valid day number: 1 to 28'),
         findsOneWidget,
       );
 

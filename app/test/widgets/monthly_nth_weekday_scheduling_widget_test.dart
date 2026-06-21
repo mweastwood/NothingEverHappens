@@ -5,6 +5,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
 import 'package:nothing_ever_happens/widgets/monthly_nth_weekday_scheduling_widget.dart';
+import 'package:nothing_ever_happens/widgets/day_of_week_selector.dart';
 import 'package:nothing_ever_happens/widgets/interval_stepper.dart';
 import 'package:nothing_ever_happens/widgets/date_stepper.dart';
 import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
@@ -69,9 +70,10 @@ void main() {
       // Check repeats on header
       expect(find.text('Repeats on'), findsOneWidget);
       expect(
-        find.byType(DropdownButtonFormField<int>),
-        findsNWidgets(2),
-      ); // occurrence & dayOfWeek
+        find.byKey(const Key('monthly_occurrence_selector')),
+        findsOneWidget,
+      );
+      expect(find.byType(DayOfWeekSelector), findsOneWidget);
 
       // Check relative times
       expect(find.text('Start'), findsOneWidget);
@@ -123,17 +125,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(newInterval, 3);
 
-      // 3. Change occurrence dropdown
-      await tester.tap(find.byKey(const Key('monthly_occurrence_dropdown')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('3rd').last);
+      // 3. Change occurrence via SegmentedButton
+      await tester.tap(find.text('3rd'));
       await tester.pumpAndSettle();
       expect(newOccurrence, 3);
 
-      // 4. Change dayOfWeek dropdown
-      await tester.tap(find.byKey(const Key('monthly_day_of_week_dropdown')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Thursday').last);
+      // 4. Change dayOfWeek via DayOfWeekSelector chip
+      await tester.tap(
+        find.byKey(const Key('weekly_weekday_chip_4')),
+      ); // Thursday
       await tester.pumpAndSettle();
       expect(newDayOfWeek, 4);
     });
@@ -141,7 +141,7 @@ void main() {
     testGoldens('MonthlyNthWeekdaySchedulingWidget renders correctly', (
       tester,
     ) async {
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.8)
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.5)
         ..addScenario(
           'MonthlyNthWeekday Default',
           Material(
@@ -172,7 +172,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(500, 850),
+        surfaceSize: const Size(500, 950),
       );
       await screenMatchesGolden(
         tester,

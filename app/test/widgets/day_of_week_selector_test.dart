@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
-import 'package:nothing_ever_happens/widgets/weekly_day_of_week_selector.dart';
+import 'package:nothing_ever_happens/widgets/day_of_week_selector.dart';
 import '../test_helper.dart';
 
 void main() {
-  group('WeeklyDayOfWeekSelector', () {
-    testWidgets('renders days with correct selections', (tester) async {
+  group('DayOfWeekSelector', () {
+    testWidgets('renders days with correct selections (multi-select)', (
+      tester,
+    ) async {
       Set<int> selected = {1, 3, 5}; // Mon, Wed, Fri
       Set<int>? updated;
 
       await tester.pumpWidget(
         buildTestableWidget(
           child: Scaffold(
-            body: WeeklyDayOfWeekSelector(
+            body: DayOfWeekSelector(
               selectedWeekdays: selected,
               onChanged: (val) => updated = val,
+              multiSelect: true,
             ),
           ),
         ),
       );
 
-      // Verify that Mon, Wed, Fri look different (selected) from Tue, Thu, Sat, Sun
       Material getMaterialForDay(int dayIndex) {
         return tester.widget<Material>(
           find
@@ -33,7 +35,6 @@ void main() {
         );
       }
 
-      // Selected vs Unselected colors
       final selectedColor = getMaterialForDay(1).color;
       final unselectedColor = getMaterialForDay(2).color;
       expect(selectedColor, isNot(unselectedColor));
@@ -41,7 +42,6 @@ void main() {
       expect(getMaterialForDay(3).color, selectedColor);
       expect(getMaterialForDay(4).color, unselectedColor);
 
-      // Verify short names (depending on localization wrapper, in English they should be Mon, Tue, etc.)
       expect(find.text('Mon'), findsOneWidget);
       expect(find.text('Tue'), findsOneWidget);
       expect(find.text('Wed'), findsOneWidget);
@@ -57,13 +57,43 @@ void main() {
       expect(updated, {3, 5});
     });
 
+    testWidgets('renders single-select mode correctly', (tester) async {
+      Set<int>? updated;
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: DayOfWeekSelector(
+              selectedWeekdays: const {3}, // Wed
+              onChanged: (val) => updated = val,
+              multiSelect: false,
+            ),
+          ),
+        ),
+      );
+
+      // No preset buttons should be found
+      expect(find.byKey(const Key('preset_weekdays_button')), findsNothing);
+      expect(find.byKey(const Key('preset_clear_button')), findsNothing);
+
+      // Tap Wednesday (already selected) -> should not trigger change or no-op
+      await tester.tap(find.byKey(const Key('weekly_weekday_chip_3')));
+      await tester.pumpAndSettle();
+      expect(updated, null);
+
+      // Tap Friday (not selected) -> should trigger change to {5}
+      await tester.tap(find.byKey(const Key('weekly_weekday_chip_5')));
+      await tester.pumpAndSettle();
+      expect(updated, {5});
+    });
+
     testWidgets('triggers preset callbacks correctly', (tester) async {
       Set<int>? updated;
 
       await tester.pumpWidget(
         buildTestableWidget(
           child: Scaffold(
-            body: WeeklyDayOfWeekSelector(
+            body: DayOfWeekSelector(
               selectedWeekdays: const {},
               onChanged: (val) => updated = val,
             ),
@@ -71,32 +101,30 @@ void main() {
         ),
       );
 
-      // Weekdays preset
       await tester.tap(find.byKey(const Key('preset_weekdays_button')));
       await tester.pumpAndSettle();
       expect(updated, {1, 2, 3, 4, 5});
 
-      // Weekends preset
       await tester.tap(find.byKey(const Key('preset_weekends_button')));
       await tester.pumpAndSettle();
       expect(updated, {6, 7});
 
-      // All preset
       await tester.tap(find.byKey(const Key('preset_all_button')));
       await tester.pumpAndSettle();
       expect(updated, {1, 2, 3, 4, 5, 6, 7});
 
-      // Clear preset
       await tester.tap(find.byKey(const Key('preset_clear_button')));
       await tester.pumpAndSettle();
       expect(updated, isEmpty);
     });
 
-    testWidgets('shows validation warning when empty', (tester) async {
+    testWidgets('shows validation warning when empty in multi-select', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         buildTestableWidget(
           child: Scaffold(
-            body: WeeklyDayOfWeekSelector(
+            body: DayOfWeekSelector(
               selectedWeekdays: const {},
               onChanged: (_) {},
             ),
@@ -110,14 +138,14 @@ void main() {
       );
     });
 
-    testGoldens('WeeklyDayOfWeekSelector renders correctly', (tester) async {
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.5)
+    testGoldens('DayOfWeekSelector renders correctly', (tester) async {
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
         ..addScenario(
-          'With Selection',
+          'With Selection (Multi)',
           Material(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: WeeklyDayOfWeekSelector(
+              child: DayOfWeekSelector(
                 selectedWeekdays: const {1, 3, 5},
                 onChanged: (_) {},
               ),
@@ -125,13 +153,26 @@ void main() {
           ),
         )
         ..addScenario(
-          'Empty (Warning)',
+          'Empty (Warning) (Multi)',
           Material(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: WeeklyDayOfWeekSelector(
+              child: DayOfWeekSelector(
                 selectedWeekdays: const {},
                 onChanged: (_) {},
+              ),
+            ),
+          ),
+        )
+        ..addScenario(
+          'Single Select',
+          Material(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: DayOfWeekSelector(
+                selectedWeekdays: const {4},
+                onChanged: (_) {},
+                multiSelect: false,
               ),
             ),
           ),
@@ -140,7 +181,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(600, 400),
+        surfaceSize: const Size(600, 500),
       );
       await screenMatchesGolden(tester, 'weekly_day_of_week_selector_golden');
     });
