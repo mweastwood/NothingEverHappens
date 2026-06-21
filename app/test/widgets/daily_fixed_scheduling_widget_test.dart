@@ -108,10 +108,6 @@ void main() {
     testWidgets('calls callbacks on edits', (tester) async {
       CivilDay? newDate;
       int? newInterval;
-      RelativeTime? newStart;
-      RelativeTime? newDue;
-      RelativeTime? newNotif;
-      MissedOccurrencePolicy? newPolicy;
 
       await tester.pumpWidget(
         buildTestableWidget(
@@ -123,16 +119,16 @@ void main() {
                 interval: 2,
                 onIntervalChanged: (i) => newInterval = i,
                 startRelativeTime: startRelative,
-                onStartRelativeTimeChanged: (t) => newStart = t,
+                onStartRelativeTimeChanged: (_) {},
                 dueRelativeTime: dueRelative,
-                onDueRelativeTimeChanged: (t) => newDue = t,
+                onDueRelativeTimeChanged: (_) {},
                 notificationRelativeTime: const RelativeTime(
                   dayOffset: 0,
                   time: TimeOfDay(hour: 8, minute: 0),
                 ),
-                onNotificationRelativeTimeChanged: (t) => newNotif = t,
+                onNotificationRelativeTimeChanged: (_) {},
                 missedOccurrencePolicy: missed,
-                onMissedOccurrencePolicyChanged: (p) => newPolicy = p,
+                onMissedOccurrencePolicyChanged: (_) {},
               ),
             ),
           ),
