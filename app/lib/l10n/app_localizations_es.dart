@@ -900,4 +900,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get presetMonthPlural => 'meses';
+
+  @override
+  String get presetYearSingular => 'año';
+
+  @override
+  String get presetYearPlural => 'años';
 }

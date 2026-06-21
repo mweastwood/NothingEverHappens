@@ -1639,6 +1639,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'months'**
   String get presetMonthPlural;
+
+  /// No description provided for @presetYearSingular.
+  ///
+  /// In en, this message translates to:
+  /// **'year'**
+  String get presetYearSingular;
+
+  /// No description provided for @presetYearPlural.
+  ///
+  /// In en, this message translates to:
+  /// **'years'**
+  String get presetYearPlural;
 }
 
 class _AppLocalizationsDelegate

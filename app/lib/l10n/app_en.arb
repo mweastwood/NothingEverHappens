@@ -572,5 +572,7 @@
   "presetAll": "All",
   "presetClear": "Clear",
   "presetMonthSingular": "month",
-  "presetMonthPlural": "months"
+  "presetMonthPlural": "months",
+  "presetYearSingular": "year",
+  "presetYearPlural": "years"
 }

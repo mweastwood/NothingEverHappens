@@ -388,5 +388,7 @@
   "presetAll": "Todos",
   "presetClear": "Limpiar",
   "presetMonthSingular": "mes",
-  "presetMonthPlural": "meses"
+  "presetMonthPlural": "meses",
+  "presetYearSingular": "año",
+  "presetYearPlural": "años"
 }
