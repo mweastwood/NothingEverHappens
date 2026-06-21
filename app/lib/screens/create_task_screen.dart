@@ -44,6 +44,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   final _descriptionController = TextEditingController();
   final _estimatedDurationController = TextEditingController();
 
+  final _scrollController = ScrollController();
+  final _titleFieldKey = GlobalKey();
+  final _showTitleInAppBar = ValueNotifier<bool>(false);
+
   List<TaskScheduleRule> _schedules = [];
   int? _expandedScheduleIndex;
 
@@ -59,6 +63,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     if (widget.taskToEdit != null) {
       final task = widget.taskToEdit!;
       _titleController.text = task.title;
@@ -108,11 +113,35 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _showTitleInAppBar.dispose();
     _titleController.dispose();
     _titleFocusNode.dispose();
     _descriptionController.dispose();
     _estimatedDurationController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!mounted) return;
+    final context = _titleFieldKey.currentContext;
+    if (context == null) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final position = box.localToGlobal(Offset.zero);
+    final height = box.size.height;
+
+    double appBarHeight = 56.0;
+    try {
+      appBarHeight = Scaffold.of(this.context).appBarMaxHeight ?? 56.0;
+    } catch (_) {}
+
+    final isTitleObscured = (position.dy + height) <= appBarHeight;
+    if (_showTitleInAppBar.value != isTitleObscured) {
+      _showTitleInAppBar.value = isTitleObscured;
+    }
   }
 
   Future<void> _saveTask() async {
@@ -246,6 +275,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   Widget _buildTitleField(BuildContext context, bool readOnly) {
     final theme = Theme.of(context);
     return TextFormField(
+      key: _titleFieldKey,
       controller: _titleController,
       focusNode: _titleFocusNode,
       autofocus: !readOnly,
@@ -613,12 +643,57 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             },
             child: Scaffold(
               appBar: AppBar(
-                title: Text(
-                  readOnly
-                      ? context.l10n.viewTaskTitle
-                      : (widget.taskToEdit != null
-                            ? context.l10n.editTaskTitle
-                            : context.l10n.newTaskTitle),
+                title: AnimatedBuilder(
+                  animation: Listenable.merge([
+                    _titleController,
+                    _showTitleInAppBar,
+                  ]),
+                  builder: (context, _) {
+                    final currentTitle = _titleController.text;
+                    final showTitle = _showTitleInAppBar.value;
+                    final String displayTitle;
+                    final Key textKey;
+                    if (showTitle && currentTitle.isNotEmpty) {
+                      displayTitle = currentTitle;
+                      textKey = const ValueKey('scrolled_title');
+                    } else {
+                      textKey = const ValueKey('default_title');
+                      if (readOnly) {
+                        displayTitle = context.l10n.viewTaskTitle;
+                      } else if (widget.taskToEdit != null) {
+                        displayTitle = context.l10n.editTaskTitle;
+                      } else {
+                        displayTitle = context.l10n.newTaskTitle;
+                      }
+                    }
+                    return AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) {
+                            final isDefault =
+                                child.key == const ValueKey('default_title');
+                            final beginOffset = isDefault
+                                ? const Offset(0.0, -0.2)
+                                : const Offset(0.0, 0.2);
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: beginOffset,
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            );
+                          },
+                      child: Text(
+                        displayTitle,
+                        key: textKey,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  },
                 ),
               ),
               body: LayoutBuilder(
@@ -660,6 +735,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                         ),
                       Expanded(
                         child: SingleChildScrollView(
+                          controller: _scrollController,
                           padding: const EdgeInsets.all(16.0),
                           child: Form(
                             key: _formKey,

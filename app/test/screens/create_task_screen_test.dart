@@ -699,6 +699,112 @@ void main() {
     });
 
     testWidgets(
+      'shows task title in AppBar when editing and scrolled down, updating dynamically',
+      (WidgetTester tester) async {
+        // Set physical size and device pixel ratio to ensure layout is scrollable
+        tester.view.physicalSize = const Size(800, 400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final existingTask = TaskSchedule(
+          id: 'existing-id',
+          title: 'Original Title',
+          description: 'Original Desc',
+          schedules: List.generate(
+            10,
+            (index) => OneOffSchedule(
+              date: CivilDay(year: 2026, month: 3, day: 8 + index),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ),
+        );
+
+        await tester.pumpWidget(createWidget(taskToEdit: existingTask));
+        await tester.pumpAndSettle();
+
+        // 1. Initially, Title field is visible, so AppBar title should be "Edit Task"
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('Edit Task'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('Original Title'),
+          ),
+          findsNothing,
+        );
+
+        // 2. Scroll down to push the Title field out of view
+        await tester.drag(
+          find.byType(SingleChildScrollView),
+          const Offset(0, -300),
+        );
+        await tester.pumpAndSettle();
+
+        // AppBar title should now show the task's title ("Original Title")
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('Original Title'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('Edit Task'),
+          ),
+          findsNothing,
+        );
+
+        // 3. Edit the title field (scrolling back up to make it editable or just enter text)
+        await tester.drag(
+          find.byType(SingleChildScrollView),
+          const Offset(0, 300),
+        );
+        await tester.pumpAndSettle();
+
+        final titleFieldFinder = find.widgetWithText(TextFormField, 'Title');
+        await tester.enterText(titleFieldFinder, 'Updated Title');
+        await tester.pumpAndSettle();
+
+        // Scroll down again to see the updated title in the AppBar
+        await tester.drag(
+          find.byType(SingleChildScrollView),
+          const Offset(0, -300),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('Updated Title'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('Original Title'),
+          ),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
       'configures and saves One-off task with custom notification successfully',
       (WidgetTester tester) async {
         tester.view.physicalSize = const Size(1000, 2000);
