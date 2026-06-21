@@ -124,9 +124,31 @@ class _DailyCompletionRelativeSchedulingWidgetState
           interval: widget.interval,
           onIntervalChanged: widget.onIntervalChanged,
           label: 'Interval',
-          helperText: l10n.everyNDaysSinceLastCompletion(widget.interval),
           readOnly: widget.readOnly,
           intervalController: widget.intervalController,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                widget.interval == 1
+                    ? '1 day after the task was last completed.'
+                    : '${widget.interval} days after the task was last completed.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 20),
 
@@ -144,7 +166,28 @@ class _DailyCompletionRelativeSchedulingWidgetState
           constraint: RelativeTimeConstraint.unconstrained,
           controller: _startController,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'When does the task appear in your list of tasks?',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
 
         // 3. Due
         Text(
@@ -159,6 +202,27 @@ class _DailyCompletionRelativeSchedulingWidgetState
           key: const Key('daily_completion_due_relative_time_picker'),
           constraint: RelativeTimeConstraint.unconstrained,
           controller: _dueController,
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                l10n.dueDescription,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
         ),
 
         // 4. Notifications
