@@ -67,7 +67,7 @@ void main() {
       // Check repeats on header
       expect(find.text('Repeats on'), findsOneWidget);
       expect(
-        find.byKey(const Key('monthly_direction_segmented_button')),
+        find.byKey(const Key('monthly_direction_selector')),
         findsOneWidget,
       );
       expect(
@@ -200,6 +200,88 @@ void main() {
         tester,
         'monthly_fixed_scheduling_widget_golden',
       );
+    });
+
+    group('Day Suffix and Help Text Formatting', () {
+      final suffixCases = {
+        1: 'st',
+        2: 'nd',
+        3: 'rd',
+        4: 'th',
+        11: 'th',
+        12: 'th',
+        13: 'th',
+        21: 'st',
+        22: 'nd',
+        23: 'rd',
+        28: 'th',
+        -1: 'st',
+        -2: 'nd',
+        -3: 'rd',
+        -4: 'th',
+        -11: 'th',
+        -12: 'th',
+        -13: 'th',
+        -21: 'st',
+        -22: 'nd',
+        -23: 'rd',
+        -28: 'th',
+      };
+
+      suffixCases.forEach((day, expectedSuffix) {
+        testWidgets('displays correct suffix "$expectedSuffix" for day $day', (
+          tester,
+        ) async {
+          final controller = TextEditingController(text: day.toString());
+          await tester.pumpWidget(
+            buildTestableWidget(
+              child: Scaffold(
+                body: MonthlyFixedSchedulingWidget(
+                  startDate: startDate,
+                  onStartDateChanged: (_) {},
+                  interval: 1,
+                  onIntervalChanged: (_) {},
+                  dayOfMonth: day,
+                  onDayOfMonthChanged: (_) {},
+                  startRelativeTime: startRelative,
+                  onStartRelativeTimeChanged: (_) {},
+                  dueRelativeTime: dueRelative,
+                  onDueRelativeTimeChanged: (_) {},
+                  notificationRelativeTime: null,
+                  onNotificationRelativeTimeChanged: (_) {},
+                  missedOccurrencePolicy: missed,
+                  onMissedOccurrencePolicyChanged: (_) {},
+                  showNotification: false,
+                  showMissedPolicy: false,
+                  dayOfMonthController: controller,
+                ),
+              ),
+            ),
+          );
+
+          // Find the suffix text widget
+          expect(find.text(expectedSuffix), findsAtLeast(1));
+
+          // Also check the help text format
+          final absVal = day.abs();
+          final expectedFormattedText = '$absVal$expectedSuffix';
+          if (day > 0) {
+            expect(
+              find.textContaining(
+                'Repeats on the $expectedFormattedText day of the month.',
+              ),
+              findsOneWidget,
+            );
+          } else {
+            expect(
+              find.textContaining(
+                'Repeats on the $expectedFormattedText day from the end of the month.',
+              ),
+              findsOneWidget,
+            );
+          }
+        });
+      });
     });
   });
 }
