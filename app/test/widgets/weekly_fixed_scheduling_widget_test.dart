@@ -5,7 +5,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
 import 'package:nothing_ever_happens/widgets/weekly_scheduling_widget.dart';
-import 'package:nothing_ever_happens/widgets/weekly_day_of_week_selector.dart';
+import 'package:nothing_ever_happens/widgets/day_of_week_selector.dart';
 import 'package:nothing_ever_happens/widgets/interval_stepper.dart';
 import 'package:nothing_ever_happens/widgets/date_stepper.dart';
 import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
@@ -68,7 +68,7 @@ void main() {
 
       // Check weekday selector
       expect(find.text('Repeats on'), findsOneWidget);
-      expect(find.byType(WeeklyDayOfWeekSelector), findsOneWidget);
+      expect(find.byType(DayOfWeekSelector), findsOneWidget);
 
       // Check relative times
       expect(find.text('Start'), findsOneWidget);

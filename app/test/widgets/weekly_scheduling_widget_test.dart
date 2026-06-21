@@ -6,7 +6,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/scheduling_policy.dart';
 import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
 import 'package:nothing_ever_happens/widgets/weekly_scheduling_widget.dart';
-import 'package:nothing_ever_happens/widgets/weekly_day_of_week_selector.dart';
+import 'package:nothing_ever_happens/widgets/day_of_week_selector.dart';
 import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
 import 'package:nothing_ever_happens/widgets/missed_occurrence_policy_selector.dart';
 import '../test_helper.dart';
@@ -68,7 +68,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Repeats on'), findsOneWidget);
-      expect(find.byType(WeeklyDayOfWeekSelector), findsOneWidget);
+      expect(find.byType(DayOfWeekSelector), findsOneWidget);
       expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
       expect(find.byType(MissedOccurrencePolicySelector), findsOneWidget);
 
@@ -142,7 +142,7 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('Repeats on'), findsNothing);
-        expect(find.byType(WeeklyDayOfWeekSelector), findsNothing);
+        expect(find.byType(DayOfWeekSelector), findsNothing);
         expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
         expect(find.byType(MissedOccurrencePolicySelector), findsNothing);
       },

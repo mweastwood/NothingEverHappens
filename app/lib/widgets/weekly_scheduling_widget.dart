@@ -8,7 +8,7 @@ import 'interval_stepper.dart';
 import 'date_stepper.dart';
 import 'relative_time_widget.dart';
 import 'missed_occurrence_policy_selector.dart';
-import 'weekly_day_of_week_selector.dart';
+import 'day_of_week_selector.dart';
 
 class WeeklySchedulingWidget extends StatelessWidget {
   final CivilDay startDate;
@@ -307,7 +307,7 @@ class _WeeklyFixedSchedulingWidgetState
           ),
         ),
         const SizedBox(height: 8),
-        WeeklyDayOfWeekSelector(
+        DayOfWeekSelector(
           selectedWeekdays: widget.selectedWeekdays,
           onChanged: widget.onWeekdaysChanged,
           readOnly: widget.readOnly,

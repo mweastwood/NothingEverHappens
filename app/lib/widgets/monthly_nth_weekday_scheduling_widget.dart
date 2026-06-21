@@ -7,6 +7,7 @@ import 'interval_stepper.dart';
 import 'date_stepper.dart';
 import 'relative_time_widget.dart';
 import 'missed_occurrence_policy_selector.dart';
+import 'day_of_week_selector.dart';
 
 class MonthlyNthWeekdaySchedulingWidget extends StatefulWidget {
   final CivilDay startDate;
@@ -219,67 +220,70 @@ class _MonthlyNthWeekdaySchedulingWidgetState
         const SizedBox(height: 8),
 
         // Recurrence Rule Options
-        Row(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: DropdownButtonFormField<int>(
-                key: const Key('monthly_occurrence_dropdown'),
-                initialValue: widget.occurrence ?? 1,
-                decoration: InputDecoration(
-                  labelText: l10n.nthOccurrenceLabel,
-                  border: const OutlineInputBorder(),
-                ),
-                items: [
-                  DropdownMenuItem(value: 1, child: Text(l10n.firstOccurrence)),
-                  DropdownMenuItem(
+            Text(
+              l10n.nthOccurrenceLabel,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<int>(
+                key: const Key('monthly_occurrence_segmented_button'),
+                segments: [
+                  ButtonSegment<int>(
+                    value: 1,
+                    label: Text(l10n.firstOccurrence),
+                  ),
+                  ButtonSegment<int>(
                     value: 2,
-                    child: Text(l10n.secondOccurrence),
+                    label: Text(l10n.secondOccurrence),
                   ),
-                  DropdownMenuItem(value: 3, child: Text(l10n.thirdOccurrence)),
-                  DropdownMenuItem(
+                  ButtonSegment<int>(
+                    value: 3,
+                    label: Text(l10n.thirdOccurrence),
+                  ),
+                  ButtonSegment<int>(
                     value: 4,
-                    child: Text(l10n.fourthOccurrence),
+                    label: Text(l10n.fourthOccurrence),
                   ),
-                  DropdownMenuItem(value: -1, child: Text(l10n.lastOccurrence)),
+                  ButtonSegment<int>(
+                    value: -1,
+                    label: Text(l10n.lastOccurrence),
+                  ),
                 ],
-                onChanged: widget.readOnly
+                selected: {widget.occurrence ?? 1},
+                onSelectionChanged: widget.readOnly
                     ? null
-                    : (value) {
-                        if (value != null) {
-                          widget.onOccurrenceChanged(value);
+                    : (Set<int> selection) {
+                        if (selection.isNotEmpty) {
+                          widget.onOccurrenceChanged(selection.first);
                         }
                       },
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: DropdownButtonFormField<int>(
-                key: const Key('monthly_day_of_week_dropdown'),
-                initialValue: widget.dayOfWeek ?? 1,
-                decoration: InputDecoration(
-                  labelText: l10n.dayOfWeekLabel,
-                  border: const OutlineInputBorder(),
-                ),
-                items: [
-                  DropdownMenuItem(value: 1, child: Text(l10n.weekdayMonday)),
-                  DropdownMenuItem(value: 2, child: Text(l10n.weekdayTuesday)),
-                  DropdownMenuItem(
-                    value: 3,
-                    child: Text(l10n.weekdayWednesday),
-                  ),
-                  DropdownMenuItem(value: 4, child: Text(l10n.weekdayThursday)),
-                  DropdownMenuItem(value: 5, child: Text(l10n.weekdayFriday)),
-                  DropdownMenuItem(value: 6, child: Text(l10n.weekdaySaturday)),
-                  DropdownMenuItem(value: 7, child: Text(l10n.weekdaySunday)),
-                ],
-                onChanged: widget.readOnly
-                    ? null
-                    : (value) {
-                        if (value != null) {
-                          widget.onDayOfWeekChanged(value);
-                        }
-                      },
+            const SizedBox(height: 16),
+            Text(
+              l10n.dayOfWeekLabel,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
+            ),
+            const SizedBox(height: 8),
+            DayOfWeekSelector(
+              key: const Key('monthly_nth_weekday_day_selector'),
+              selectedWeekdays: {widget.dayOfWeek ?? 1},
+              onChanged: (days) {
+                if (days.isNotEmpty) {
+                  widget.onDayOfWeekChanged(days.first);
+                }
+              },
+              readOnly: widget.readOnly,
+              multiSelect: false,
             ),
           ],
         ),
