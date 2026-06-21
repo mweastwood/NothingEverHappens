@@ -447,19 +447,8 @@ void main() {
       await tester.tap(find.byKey(const Key('recurrence_chip_monthly')));
       await tester.pumpAndSettle();
 
-      // Expand the months interval card
-      final expansionTile = find.byKey(
-        const Key('monthly_interval_expansion_tile'),
-      );
-      await tester.ensureVisible(expansionTile);
-      await tester.tap(expansionTile);
-      await tester.pumpAndSettle();
-
       // Enter Months Interval
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Months Interval'),
-        '3',
-      );
+      await tester.enterText(find.byKey(const Key('interval_text_field')), '3');
 
       // Enter Day of Month (e.g. 15)
       await tester.enterText(

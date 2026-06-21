@@ -892,4 +892,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get presetClear => 'Clear';
+
+  @override
+  String get presetMonthSingular => 'month';
+
+  @override
+  String get presetMonthPlural => 'months';
 }

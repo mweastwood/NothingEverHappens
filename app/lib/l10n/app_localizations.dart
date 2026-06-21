@@ -1627,6 +1627,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear'**
   String get presetClear;
+
+  /// No description provided for @presetMonthSingular.
+  ///
+  /// In en, this message translates to:
+  /// **'month'**
+  String get presetMonthSingular;
+
+  /// No description provided for @presetMonthPlural.
+  ///
+  /// In en, this message translates to:
+  /// **'months'**
+  String get presetMonthPlural;
 }
 
 class _AppLocalizationsDelegate
