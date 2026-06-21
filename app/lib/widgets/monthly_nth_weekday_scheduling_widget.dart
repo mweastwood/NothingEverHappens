@@ -287,6 +287,30 @@ class _MonthlyNthWeekdaySchedulingWidgetState
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                l10n.repeatsOnNthWeekdayHelp(
+                  _getOccurrenceString(context, widget.occurrence ?? 1),
+                  _getDayOfWeekString(context, widget.dayOfWeek ?? 1),
+                ),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 20),
 
         // Start
@@ -421,5 +445,45 @@ class _MonthlyNthWeekdaySchedulingWidgetState
         ],
       ],
     );
+  }
+}
+
+String _getOccurrenceString(BuildContext context, int occurrence) {
+  final l10n = context.l10n;
+  switch (occurrence) {
+    case 1:
+      return l10n.firstOccurrence;
+    case 2:
+      return l10n.secondOccurrence;
+    case 3:
+      return l10n.thirdOccurrence;
+    case 4:
+      return l10n.fourthOccurrence;
+    case -1:
+      return l10n.lastOccurrence;
+    default:
+      return '';
+  }
+}
+
+String _getDayOfWeekString(BuildContext context, int dayOfWeek) {
+  final l10n = context.l10n;
+  switch (dayOfWeek) {
+    case 1:
+      return l10n.weekdayMonday;
+    case 2:
+      return l10n.weekdayTuesday;
+    case 3:
+      return l10n.weekdayWednesday;
+    case 4:
+      return l10n.weekdayThursday;
+    case 5:
+      return l10n.weekdayFriday;
+    case 6:
+      return l10n.weekdaySaturday;
+    case 7:
+      return l10n.weekdaySunday;
+    default:
+      return '';
   }
 }

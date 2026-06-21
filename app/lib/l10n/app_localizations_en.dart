@@ -327,11 +327,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get yearsIntervalLabel => 'Years Interval';
 
   @override
-  String get dayOfMonthFieldLabel => 'Day of Month (1-28, or -1 to -28)';
+  String get dayOfMonthFieldLabel => 'Day of Month';
 
   @override
   String get dayOfMonthValidationError =>
-      'Please enter a valid day number: 1 to 28, or -1 to -28';
+      'Please enter a valid day number: 1 to 28';
+
+  @override
+  String get monthlyFromStart => 'From start of month';
+
+  @override
+  String get monthlyFromEnd => 'From end of month';
+
+  @override
+  String get dayOfMonthStepperLabel => 'Day';
 
   @override
   String get nthOccurrenceLabel => 'Occurrence';
@@ -404,6 +413,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String dayOfMonthFromEnd(Object day) {
     return 'On the $day day from the end';
+  }
+
+  @override
+  String repeatsOnDayOfMonthHelp(Object day) {
+    return 'Repeats on the $day day of the month.';
+  }
+
+  @override
+  String repeatsOnDayFromEndHelp(Object day) {
+    return 'Repeats on the $day day from the end of the month.';
+  }
+
+  @override
+  String repeatsOnNthWeekdayHelp(Object dayOfWeek, Object occurrence) {
+    return 'Repeats on the $occurrence $dayOfWeek of the month.';
   }
 
   @override
