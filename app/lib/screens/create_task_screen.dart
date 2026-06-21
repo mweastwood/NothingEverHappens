@@ -621,140 +621,138 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                             : context.l10n.newTaskTitle),
                 ),
               ),
-              body: Column(
-                children: [
-                  if (readOnly)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 16,
-                      ),
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      child: Text(
-                        context.l10n.onlyParentsCanEditFamilyTasks,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onErrorContainer,
-                          fontWeight: FontWeight.bold,
+              body: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isDesktop = constraints.maxWidth >= 800;
+
+                  final detailsCard = _buildDetailsCard(context, readOnly);
+                  final scheduleSection = _buildScheduleSection(
+                    context,
+                    readOnly,
+                  );
+                  final effortAndPriorityCard = _buildEffortAndPriorityCard(
+                    context,
+                    readOnly,
+                    isDesktop,
+                  );
+                  final familyCard = _buildFamilyCard(context, readOnly);
+
+                  return Column(
+                    children: [
+                      if (readOnly)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 16,
+                          ),
+                          color: Theme.of(context).colorScheme.errorContainer,
+                          child: Text(
+                            context.l10n.onlyParentsCanEditFamilyTasks,
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isDesktop = constraints.maxWidth >= 800;
-
-                        final detailsCard = _buildDetailsCard(
-                          context,
-                          readOnly,
-                        );
-                        final scheduleSection = _buildScheduleSection(
-                          context,
-                          readOnly,
-                        );
-                        final effortAndPriorityCard =
-                            _buildEffortAndPriorityCard(
-                              context,
-                              readOnly,
-                              isDesktop,
-                            );
-                        final familyCard = _buildFamilyCard(context, readOnly);
-
-                        if (isDesktop) {
-                          return SingleChildScrollView(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  detailsCard,
-                                  const SizedBox(height: 16),
-                                  Row(
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Form(
+                            key: _formKey,
+                            child: isDesktop
+                                ? Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(child: scheduleSection),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            effortAndPriorityCard,
-                                            if (inFamily) ...[
-                                              const SizedBox(height: 16),
-                                              familyCard,
-                                            ],
-                                          ],
-                                        ),
+                                      detailsCard,
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(child: scheduleSection),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                effortAndPriorityCard,
+                                                if (inFamily) ...[
+                                                  const SizedBox(height: 16),
+                                                  familyCard,
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
+                                  )
+                                : Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      detailsCard,
+                                      const SizedBox(height: 16),
+                                      scheduleSection,
+                                      const SizedBox(height: 16),
+                                      effortAndPriorityCard,
+                                      if (inFamily) ...[
+                                        const SizedBox(height: 16),
+                                        familyCard,
+                                      ],
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
-                          );
-                        } else {
-                          return SingleChildScrollView(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  detailsCard,
-                                  const SizedBox(height: 16),
-                                  scheduleSection,
-                                  const SizedBox(height: 16),
-                                  effortAndPriorityCard,
-                                  if (inFamily) ...[
-                                    const SizedBox(height: 16),
-                                    familyCard,
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton(
-                          onPressed: _isSaving
-                              ? null
-                              : () => Navigator.pop(context),
-                          child: Text(context.l10n.discardButton),
+                          ),
                         ),
-                        const SizedBox(width: 16),
-                        FilledButton(
-                          key: const Key('save_task_button'),
-                          onPressed: (_isSaving || readOnly) ? null : _saveTask,
-                          child: _isSaving
-                              ? SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    value:
-                                        CreateTaskScreen.debugDisableAnimations
-                                        ? 0.8
-                                        : null,
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(context.l10n.saveButton),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8.0,
                         ),
-                      ],
-                    ),
-                  ),
-                ],
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            OutlinedButton(
+                              onPressed: _isSaving
+                                  ? null
+                                  : () => Navigator.pop(context),
+                              child: Text(context.l10n.discardButton),
+                            ),
+                            const SizedBox(width: 16),
+                            FilledButton(
+                              key: const Key('save_task_button'),
+                              onPressed: (_isSaving || readOnly)
+                                  ? null
+                                  : _saveTask,
+                              child: _isSaving
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        value:
+                                            CreateTaskScreen
+                                                .debugDisableAnimations
+                                            ? 0.8
+                                            : null,
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(context.l10n.saveButton),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
