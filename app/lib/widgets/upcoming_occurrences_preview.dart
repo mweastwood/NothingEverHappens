@@ -198,6 +198,7 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
           )
         else
           ListView.builder(
+            padding: EdgeInsets.zero,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: occurrences.length,
