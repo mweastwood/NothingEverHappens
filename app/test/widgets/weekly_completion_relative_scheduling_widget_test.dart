@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/widgets/weekly_scheduling_widget.dart';
+import 'package:nothing_ever_happens/widgets/weekly_day_of_week_selector.dart';
 import 'package:nothing_ever_happens/widgets/interval_stepper.dart';
 import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
 import '../test_helper.dart';
@@ -55,7 +56,7 @@ void main() {
 
       // Check weekday selector
       expect(find.text('Repeats on'), findsOneWidget);
-      expect(find.byType(FilterChip), findsNWidgets(7));
+      expect(find.byType(WeeklyDayOfWeekSelector), findsOneWidget);
 
       // Check relative times
       expect(find.text('Start'), findsOneWidget);
@@ -110,6 +111,11 @@ void main() {
       await tester.tap(find.byKey(const Key('weekly_weekday_chip_2')));
       await tester.pumpAndSettle();
       expect(newWeekdays, {1, 2, 3, 5});
+
+      // 3. Preset Clear
+      await tester.tap(find.byKey(const Key('preset_clear_button')));
+      await tester.pumpAndSettle();
+      expect(newWeekdays, isEmpty);
     });
 
     testGoldens('WeeklyCompletionRelativeSchedulingWidget renders correctly', (

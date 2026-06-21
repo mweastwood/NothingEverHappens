@@ -566,5 +566,9 @@
       }
     }
   },
-  "clearSearchButton": "Clear Search"
+  "clearSearchButton": "Clear Search",
+  "presetWeekdays": "Weekdays",
+  "presetWeekends": "Weekends",
+  "presetAll": "All",
+  "presetClear": "Clear"
 }

@@ -6,6 +6,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/scheduling_policy.dart';
 import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
 import 'package:nothing_ever_happens/widgets/weekly_scheduling_widget.dart';
+import 'package:nothing_ever_happens/widgets/weekly_day_of_week_selector.dart';
 import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
 import 'package:nothing_ever_happens/widgets/missed_occurrence_policy_selector.dart';
 import '../test_helper.dart';
@@ -67,19 +68,25 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Repeats on'), findsOneWidget);
-      expect(find.byType(FilterChip), findsNWidgets(7));
-      expect(find.byType(RelativeTimeWidget), findsAtLeast(2));
+      expect(find.byType(WeeklyDayOfWeekSelector), findsOneWidget);
+      expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
       expect(find.byType(MissedOccurrencePolicySelector), findsOneWidget);
 
-      final mondayChip = tester.widget<FilterChip>(
-        find.byKey(const Key('weekly_weekday_chip_1')),
-      );
-      expect(mondayChip.selected, isTrue);
+      Material getMaterialForDay(int dayIndex) {
+        return tester.widget<Material>(
+          find
+              .ancestor(
+                of: find.byKey(Key('weekly_weekday_chip_$dayIndex')),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+      }
 
-      final tuesdayChip = tester.widget<FilterChip>(
-        find.byKey(const Key('weekly_weekday_chip_2')),
-      );
-      expect(tuesdayChip.selected, isFalse);
+      expect(
+        getMaterialForDay(1).color,
+        isNot(getMaterialForDay(2).color),
+      ); // Mon (selected) vs Tue (unselected)
     });
 
     testWidgets(
@@ -135,8 +142,8 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('Repeats on'), findsOneWidget);
-        expect(find.byType(FilterChip), findsNWidgets(7));
-        expect(find.byType(RelativeTimeWidget), findsAtLeast(2));
+        expect(find.byType(WeeklyDayOfWeekSelector), findsOneWidget);
+        expect(find.byType(RelativeTimeWidget), findsNWidgets(2));
         expect(find.byType(MissedOccurrencePolicySelector), findsNothing);
       },
     );
@@ -191,9 +198,22 @@ void main() {
       await robot.enterInterval('3');
       expect(newInterval, 3);
 
-      // 3. Toggle weekday chip
-      await robot.toggleDayByIndex(1); // Tuesday
+      // 3. Toggle weekday chip (index 1 = Tuesday)
+      await robot.toggleDayByIndex(1);
       expect(newWeekdays, {1, 2});
+
+      // 4. Test presets
+      await robot.tapPresetWeekends();
+      expect(newWeekdays, {6, 7});
+
+      await robot.tapPresetWeekdays();
+      expect(newWeekdays, {1, 2, 3, 4, 5});
+
+      await robot.tapPresetAll();
+      expect(newWeekdays, {1, 2, 3, 4, 5, 6, 7});
+
+      await robot.tapPresetClear();
+      expect(newWeekdays, isEmpty);
     });
 
     testGoldens('WeeklySchedulingWidget renders correctly', (tester) async {

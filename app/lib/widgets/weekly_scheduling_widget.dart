@@ -8,6 +8,7 @@ import 'interval_stepper.dart';
 import 'date_stepper.dart';
 import 'relative_time_widget.dart';
 import 'missed_occurrence_policy_selector.dart';
+import 'weekly_day_of_week_selector.dart';
 
 class WeeklySchedulingWidget extends StatelessWidget {
   final CivilDay startDate;
@@ -306,37 +307,10 @@ class _WeeklyFixedSchedulingWidgetState
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8.0,
-          children: List.generate(7, (index) {
-            final dayIndex = index + 1; // 1 = Monday
-            final labels = [
-              l10n.weekdayHeaderMonday,
-              l10n.weekdayHeaderTuesday,
-              l10n.weekdayHeaderWednesday,
-              l10n.weekdayHeaderThursday,
-              l10n.weekdayHeaderFriday,
-              l10n.weekdayHeaderSaturday,
-              l10n.weekdayHeaderSunday,
-            ];
-            final isSelected = widget.selectedWeekdays.contains(dayIndex);
-            return FilterChip(
-              key: Key('weekly_weekday_chip_$dayIndex'),
-              label: Text(labels[index]),
-              selected: isSelected,
-              onSelected: widget.readOnly
-                  ? null
-                  : (selected) {
-                      final newSet = Set<int>.from(widget.selectedWeekdays);
-                      if (selected) {
-                        newSet.add(dayIndex);
-                      } else {
-                        newSet.remove(dayIndex);
-                      }
-                      widget.onWeekdaysChanged(newSet);
-                    },
-            );
-          }),
+        WeeklyDayOfWeekSelector(
+          selectedWeekdays: widget.selectedWeekdays,
+          onChanged: widget.onWeekdaysChanged,
+          readOnly: widget.readOnly,
         ),
         const SizedBox(height: 20),
 
@@ -638,37 +612,10 @@ class _WeeklyCompletionRelativeSchedulingWidgetState
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8.0,
-          children: List.generate(7, (index) {
-            final dayIndex = index + 1; // 1 = Monday
-            final labels = [
-              l10n.weekdayHeaderMonday,
-              l10n.weekdayHeaderTuesday,
-              l10n.weekdayHeaderWednesday,
-              l10n.weekdayHeaderThursday,
-              l10n.weekdayHeaderFriday,
-              l10n.weekdayHeaderSaturday,
-              l10n.weekdayHeaderSunday,
-            ];
-            final isSelected = widget.selectedWeekdays.contains(dayIndex);
-            return FilterChip(
-              key: Key('weekly_weekday_chip_$dayIndex'),
-              label: Text(labels[index]),
-              selected: isSelected,
-              onSelected: widget.readOnly
-                  ? null
-                  : (selected) {
-                      final newSet = Set<int>.from(widget.selectedWeekdays);
-                      if (selected) {
-                        newSet.add(dayIndex);
-                      } else {
-                        newSet.remove(dayIndex);
-                      }
-                      widget.onWeekdaysChanged(newSet);
-                    },
-            );
-          }),
+        WeeklyDayOfWeekSelector(
+          selectedWeekdays: widget.selectedWeekdays,
+          onChanged: widget.onWeekdaysChanged,
+          readOnly: widget.readOnly,
         ),
         const SizedBox(height: 20),
 
