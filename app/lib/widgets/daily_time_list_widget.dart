@@ -108,6 +108,7 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
         ),
         const SizedBox(height: 8),
         ListView.builder(
+          padding: EdgeInsets.zero,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: _times.length,
