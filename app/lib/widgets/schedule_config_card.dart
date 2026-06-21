@@ -44,7 +44,11 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
   @override
   void initState() {
     super.initState();
-    _intervalController = TextEditingController(text: _getIntervalText());
+    final intervalText = _getIntervalText();
+    final initialFormattedText = widget.schedule is DailySchedule
+        ? (intervalText == '1' ? '1 day' : '$intervalText days')
+        : intervalText;
+    _intervalController = TextEditingController(text: initialFormattedText);
     _monthlyDayOfMonthController = TextEditingController(
       text: _getMonthlyDayOfMonthText(),
     );
@@ -123,12 +127,19 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
   @override
   void didUpdateWidget(ScheduleConfigCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final intervalDigits = _intervalController.text.replaceAll(
+      RegExp(r'\D'),
+      '',
+    );
     if (oldWidget.schedule.runtimeType != widget.schedule.runtimeType ||
-        _getIntervalText() != _intervalController.text) {
+        _getIntervalText() != intervalDigits) {
       final intervalText = _getIntervalText();
+      final formattedText = widget.schedule is DailySchedule
+          ? (intervalText == '1' ? '1 day' : '$intervalText days')
+          : intervalText;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          _intervalController.text = intervalText;
+          _intervalController.text = formattedText;
         }
       });
     }

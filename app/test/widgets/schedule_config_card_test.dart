@@ -126,12 +126,8 @@ void main() {
         ),
       );
 
-      // Expand the interval selection tile
-      await tester.tap(find.byKey(const Key('daily_interval_expansion_tile')));
-      await tester.pumpAndSettle();
-
       // Verify interval field is displayed
-      final intervalField = find.widgetWithText(TextFormField, 'Days Interval');
+      final intervalField = find.byKey(const Key('interval_text_field'));
       expect(intervalField, findsOneWidget);
 
       // Clear interval input

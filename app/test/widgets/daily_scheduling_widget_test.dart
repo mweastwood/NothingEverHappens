@@ -6,7 +6,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/scheduling_policy.dart';
 import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
 import 'package:nothing_ever_happens/widgets/daily_scheduling_widget.dart';
-import 'package:nothing_ever_happens/widgets/relative_timing_widget.dart';
+import 'package:nothing_ever_happens/widgets/relative_time_widget.dart';
 import 'package:nothing_ever_happens/widgets/missed_occurrence_policy_selector.dart';
 import '../test_helper.dart';
 import 'daily_scheduling_widget_robot.dart';
@@ -54,14 +54,14 @@ void main() {
         ),
       );
 
-      expect(find.text('Start Recurrence Date'), findsOneWidget);
+      expect(find.text('Start Date'), findsOneWidget);
       expect(find.text('2026-10-26'), findsOneWidget);
       expect(find.text('Interval'), findsOneWidget);
       expect(
-        find.text('Every 1 day(s) (since last scheduled)'),
+        find.text('Repeats every day starting 2026-10-26.'),
         findsOneWidget,
       );
-      expect(find.byType(RelativeTimingWidget), findsOneWidget);
+      expect(find.byType(RelativeTimeWidget), findsAtLeast(2));
       expect(find.byType(MissedOccurrencePolicySelector), findsOneWidget);
     });
 
@@ -71,7 +71,6 @@ void main() {
       int interval = 1;
       int? newInterval;
       SchedulingPolicy policy = const FixedCalendarPolicy();
-      SchedulingPolicy? newPolicy;
 
       final robot = DailySchedulingWidgetRobot(tester);
 
@@ -85,7 +84,7 @@ void main() {
                 interval: interval,
                 onIntervalChanged: (i) => newInterval = i,
                 schedulingPolicy: policy,
-                onSchedulingPolicyChanged: (p) => newPolicy = p,
+                onSchedulingPolicyChanged: (_) {},
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
                   time: TimeOfDay(hour: 9, minute: 0),
@@ -108,14 +107,9 @@ void main() {
       await robot.pickStartDate('27');
       expect(newDate, CivilDay(year: 2026, month: 10, day: 27));
 
-      // 2. Expand and type interval
+      // 2. Type interval
       await robot.enterInterval('3');
       expect(newInterval, 3);
-
-      // 3. Dropdown choose completion relative
-      await robot.selectIntervalType('Since last completion');
-      expect(newPolicy, isA<CompletionRelativePolicy>());
-      expect((newPolicy as CompletionRelativePolicy).interval.inDays, 1);
     });
 
     testGoldens('DailySchedulingWidget renders correctly', (tester) async {
