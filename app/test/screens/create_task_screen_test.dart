@@ -451,10 +451,7 @@ void main() {
       await tester.enterText(find.byKey(const Key('interval_text_field')), '3');
 
       // Enter Day of Month (e.g. 15)
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Day of Month'),
-        '15',
-      );
+      await tester.enterText(find.byKey(const Key('day_text_field')), '15');
       await tester.pump();
 
       await tester.tap(find.text('Save'));
@@ -487,19 +484,13 @@ void main() {
         await tester.pumpAndSettle();
 
         // Enter invalid day of month (e.g. 29)
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Day of Month'),
-          '29',
-        );
+        await tester.enterText(find.byKey(const Key('day_text_field')), '29');
         await tester.pump();
 
         await tester.tap(find.text('Save'));
         await tester.pump(); // Run validator
 
-        expect(
-          find.text('Please enter a valid day number: 1 to 28'),
-          findsOneWidget,
-        );
+        expect(find.text('Enter 1-28'), findsOneWidget);
         verifyNever(mockRepository.addTaskSchedule(any));
       },
     );
