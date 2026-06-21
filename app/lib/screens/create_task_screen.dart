@@ -712,12 +712,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                         ),
                       ),
                       Padding(
-                        padding: isDesktop
-                            ? const EdgeInsets.all(16.0)
-                            : const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                                vertical: 8.0,
-                              ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8.0,
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
