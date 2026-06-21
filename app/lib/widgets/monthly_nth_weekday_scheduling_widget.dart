@@ -300,8 +300,11 @@ class _MonthlyNthWeekdaySchedulingWidgetState
             Expanded(
               child: Text(
                 l10n.repeatsOnNthWeekdayHelp(
-                  _getOccurrenceString(context, widget.occurrence ?? 1),
                   _getDayOfWeekString(context, widget.dayOfWeek ?? 1),
+                  _getOccurrenceString(
+                    context,
+                    widget.occurrence ?? 1,
+                  ).toLowerCase(),
                 ),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
