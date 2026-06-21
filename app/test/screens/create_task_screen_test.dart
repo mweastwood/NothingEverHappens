@@ -452,7 +452,7 @@ void main() {
 
       // Enter Day of Month (e.g. 15)
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Day of Month (1-28, or -1 to -28)'),
+        find.widgetWithText(TextFormField, 'Day of Month'),
         '15',
       );
       await tester.pump();
@@ -488,10 +488,7 @@ void main() {
 
         // Enter invalid day of month (e.g. 29)
         await tester.enterText(
-          find.widgetWithText(
-            TextFormField,
-            'Day of Month (1-28, or -1 to -28)',
-          ),
+          find.widgetWithText(TextFormField, 'Day of Month'),
           '29',
         );
         await tester.pump();
@@ -500,7 +497,7 @@ void main() {
         await tester.pump(); // Run validator
 
         expect(
-          find.text('Please enter a valid day number: 1 to 28, or -1 to -28'),
+          find.text('Please enter a valid day number: 1 to 28'),
           findsOneWidget,
         );
         verifyNever(mockRepository.addTaskSchedule(any));
