@@ -10,7 +10,7 @@ import 'daily_scheduling_widget.dart';
 import 'weekly_scheduling_widget.dart';
 import 'monthly_scheduling_widget.dart';
 import 'yearly_scheduling_widget.dart';
-import 'recurrence_type_selector.dart';
+import 'hierarchical_recurrence_selector.dart';
 import 'month_grid.dart';
 import 'upcoming_occurrences_preview.dart';
 
@@ -25,7 +25,60 @@ class SchedulingPlaygroundTab extends StatefulWidget {
 class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
   final _formKey = GlobalKey<FormState>();
 
-  RecurrenceType _scheduleType = RecurrenceType.oneOff;
+  HierarchicalRecurrenceKind _scheduleType = HierarchicalRecurrenceKind.oneOff;
+
+  RecurrenceType get _recurrenceType {
+    switch (_scheduleType) {
+      case HierarchicalRecurrenceKind.oneOff:
+        return RecurrenceType.oneOff;
+      case HierarchicalRecurrenceKind.dailyFixed:
+      case HierarchicalRecurrenceKind.dailyCompletionRelative:
+        return RecurrenceType.daily;
+      case HierarchicalRecurrenceKind.weeklyFixed:
+      case HierarchicalRecurrenceKind.weeklyCompletionRelative:
+        return RecurrenceType.weekly;
+      case HierarchicalRecurrenceKind.monthlyFixedDay:
+      case HierarchicalRecurrenceKind.monthlyNthWeekday:
+      case HierarchicalRecurrenceKind.monthlyCompletionRelative:
+        return RecurrenceType.monthly;
+      case HierarchicalRecurrenceKind.yearlyFixed:
+      case HierarchicalRecurrenceKind.yearlyCompletionRelative:
+        return RecurrenceType.yearly;
+    }
+  }
+
+  void _syncHierarchicalKind() {
+    final isCompletion = _schedulingPolicy is CompletionRelativePolicy;
+    switch (_recurrenceType) {
+      case RecurrenceType.oneOff:
+        _scheduleType = HierarchicalRecurrenceKind.oneOff;
+        break;
+      case RecurrenceType.daily:
+        _scheduleType = isCompletion
+            ? HierarchicalRecurrenceKind.dailyCompletionRelative
+            : HierarchicalRecurrenceKind.dailyFixed;
+        break;
+      case RecurrenceType.weekly:
+        _scheduleType = isCompletion
+            ? HierarchicalRecurrenceKind.weeklyCompletionRelative
+            : HierarchicalRecurrenceKind.weeklyFixed;
+        break;
+      case RecurrenceType.monthly:
+        if (isCompletion) {
+          _scheduleType = HierarchicalRecurrenceKind.monthlyCompletionRelative;
+        } else if (_monthlyRuleTypeController.value == 'dayOfMonth') {
+          _scheduleType = HierarchicalRecurrenceKind.monthlyFixedDay;
+        } else {
+          _scheduleType = HierarchicalRecurrenceKind.monthlyNthWeekday;
+        }
+        break;
+      case RecurrenceType.yearly:
+        _scheduleType = isCompletion
+            ? HierarchicalRecurrenceKind.yearlyCompletionRelative
+            : HierarchicalRecurrenceKind.yearlyFixed;
+        break;
+    }
+  }
 
   // State & Controllers
   late DateTime _startDate;
@@ -148,7 +201,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
         final startCivil = CivilDay.fromDateTime(_startDate);
         TaskScheduleRule schedule;
 
-        switch (_scheduleType) {
+        switch (_recurrenceType) {
           case RecurrenceType.oneOff:
             final dueDateTime = _dueDateTimeController.value;
             final civilDate = CivilDay.fromDateTime(dueDateTime);
@@ -428,11 +481,46 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      RecurrenceTypeSelector(
+                      HierarchicalRecurrenceSelector(
                         selectedValue: _scheduleType,
-                        onSelected: (type) {
+                        onSelected: (kind) {
                           setState(() {
-                            _scheduleType = type;
+                            _scheduleType = kind;
+
+                            // Map kind back to scheduling policy and monthly rules
+                            final isCompletion =
+                                kind ==
+                                    HierarchicalRecurrenceKind
+                                        .dailyCompletionRelative ||
+                                kind ==
+                                    HierarchicalRecurrenceKind
+                                        .weeklyCompletionRelative ||
+                                kind ==
+                                    HierarchicalRecurrenceKind
+                                        .monthlyCompletionRelative ||
+                                kind ==
+                                    HierarchicalRecurrenceKind
+                                        .yearlyCompletionRelative;
+
+                            if (isCompletion) {
+                              final intDays =
+                                  int.tryParse(_intervalController.text) ?? 1;
+                              _schedulingPolicy = CompletionRelativePolicy(
+                                interval: Duration(days: intDays),
+                                targetTime: _startRelativeTime.time,
+                              );
+                            } else {
+                              _schedulingPolicy = const FixedCalendarPolicy();
+                            }
+
+                            if (kind ==
+                                HierarchicalRecurrenceKind.monthlyFixedDay) {
+                              _monthlyRuleTypeController.value = 'dayOfMonth';
+                            } else if (kind ==
+                                HierarchicalRecurrenceKind.monthlyNthWeekday) {
+                              _monthlyRuleTypeController.value = 'nthDayOfWeek';
+                            }
+
                             _recalculate();
                           });
                         },
@@ -440,14 +528,14 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                       const SizedBox(height: 24),
 
                       // Reused Scheduling Widget
-                      if (_scheduleType == RecurrenceType.oneOff)
+                      if (_recurrenceType == RecurrenceType.oneOff)
                         OneOffSchedulingWidget(
                           dueDateTime: _dueDateTimeController,
                           notificationTimeController:
                               _oneOffNotificationController,
                           showNotification: false,
                         )
-                      else if (_scheduleType == RecurrenceType.daily)
+                      else if (_recurrenceType == RecurrenceType.daily)
                         DailySchedulingWidget(
                           startDate: CivilDay.fromDateTime(_startDate),
                           onStartDateChanged: (date) {
@@ -471,6 +559,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           onSchedulingPolicyChanged: (policy) {
                             setState(() {
                               _schedulingPolicy = policy;
+                              _syncHierarchicalKind();
                               _recalculate();
                             });
                           },
@@ -499,7 +588,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           showMissedPolicy: false,
                           intervalController: _intervalController,
                         )
-                      else if (_scheduleType == RecurrenceType.weekly)
+                      else if (_recurrenceType == RecurrenceType.weekly)
                         WeeklySchedulingWidget(
                           startDate: CivilDay.fromDateTime(_startDate),
                           onStartDateChanged: (date) {
@@ -523,6 +612,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           onSchedulingPolicyChanged: (policy) {
                             setState(() {
                               _schedulingPolicy = policy;
+                              _syncHierarchicalKind();
                               _recalculate();
                             });
                           },
@@ -558,7 +648,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           showMissedPolicy: false,
                           intervalController: _intervalController,
                         )
-                      else if (_scheduleType == RecurrenceType.monthly)
+                      else if (_recurrenceType == RecurrenceType.monthly)
                         MonthlySchedulingWidget(
                           startDate: CivilDay.fromDateTime(_startDate),
                           onStartDateChanged: (date) {
@@ -582,6 +672,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           onSchedulingPolicyChanged: (policy) {
                             setState(() {
                               _schedulingPolicy = policy;
+                              _syncHierarchicalKind();
                               _recalculate();
                             });
                           },
@@ -589,6 +680,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           onRuleTypeChanged: (type) {
                             setState(() {
                               _monthlyRuleTypeController.value = type;
+                              _syncHierarchicalKind();
                               _recalculate();
                             });
                           },
@@ -642,7 +734,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           intervalController: _intervalController,
                           dayOfMonthController: _monthlyDayOfMonthController,
                         )
-                      else if (_scheduleType == RecurrenceType.yearly)
+                      else if (_recurrenceType == RecurrenceType.yearly)
                         YearlySchedulingWidget(
                           startDate: CivilDay.fromDateTime(_startDate),
                           onStartDateChanged: (date) {
@@ -666,6 +758,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                           onSchedulingPolicyChanged: (policy) {
                             setState(() {
                               _schedulingPolicy = policy;
+                              _syncHierarchicalKind();
                               _recalculate();
                             });
                           },
@@ -797,17 +890,17 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
               UpcomingOccurrencesPreview(
                 schedule: _schedule,
                 dailyTimes:
-                    (_scheduleType == RecurrenceType.daily ||
-                        _scheduleType == RecurrenceType.weekly)
+                    (_recurrenceType == RecurrenceType.daily ||
+                        _recurrenceType == RecurrenceType.weekly)
                     ? const []
                     : _dailyTimesController.value,
-                startDateTime: _scheduleType == RecurrenceType.oneOff
+                startDateTime: _recurrenceType == RecurrenceType.oneOff
                     ? _startDateTimeController.value
                     : null,
-                dueDateTime: _scheduleType == RecurrenceType.oneOff
+                dueDateTime: _recurrenceType == RecurrenceType.oneOff
                     ? _dueDateTimeController.value
                     : null,
-                scheduleType: _scheduleType,
+                scheduleType: _recurrenceType,
                 maxOccurrences: 10,
               ),
             ],

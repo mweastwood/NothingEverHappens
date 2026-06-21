@@ -324,7 +324,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Expand the interval selection tile
-      await tester.tap(find.byKey(const Key('daily_interval_expansion_tile')));
+      final expansionTile = find.byKey(
+        const Key('daily_interval_expansion_tile'),
+      );
+      await tester.ensureVisible(expansionTile);
+      await tester.tap(expansionTile);
       await tester.pumpAndSettle();
 
       // Empty interval
