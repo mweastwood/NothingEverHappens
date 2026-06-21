@@ -273,12 +273,27 @@ void main() {
               findsOneWidget,
             );
           } else {
-            expect(
-              find.textContaining(
-                'Repeats on the $expectedFormattedText day from the end of the month.',
-              ),
-              findsOneWidget,
-            );
+            if (day == -1) {
+              expect(
+                find.textContaining('Repeats on the last day of the month.'),
+                findsOneWidget,
+              );
+            } else if (day == -2) {
+              expect(
+                find.textContaining(
+                  'Repeats on the 2nd to the last day of the month.',
+                ),
+                findsOneWidget,
+              );
+            } else {
+              final daysBefore = day.abs() - 1;
+              expect(
+                find.textContaining(
+                  'Repeats $daysBefore days before the last day of the month.',
+                ),
+                findsOneWidget,
+              );
+            }
           }
         });
       });

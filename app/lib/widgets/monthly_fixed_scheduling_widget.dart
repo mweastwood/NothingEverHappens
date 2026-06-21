@@ -295,9 +295,16 @@ class _MonthlyFixedSchedulingWidgetState
                     ? l10n.repeatsOnDayOfMonthHelp(
                         _formatDayText((widget.dayOfMonth ?? 1).abs()),
                       )
-                    : l10n.repeatsOnDayFromEndHelp(
-                        _formatDayText((widget.dayOfMonth ?? 1).abs()),
-                      ),
+                    : (() {
+                        final val = widget.dayOfMonth ?? -1;
+                        if (val == -1) {
+                          return 'Repeats on the last day of the month.';
+                        } else if (val == -2) {
+                          return 'Repeats on the 2nd to the last day of the month.';
+                        } else {
+                          return 'Repeats ${val.abs() - 1} days before the last day of the month.';
+                        }
+                      })(),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -484,6 +491,11 @@ class _DayOfMonthStepperState extends State<_DayOfMonthStepper> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
 
+  double _getFieldWidth() {
+    final textLength = _controller.text.isEmpty ? 1 : _controller.text.length;
+    return textLength * 11.0;
+  }
+
   String _getSuffix() {
     final parsed = int.tryParse(_controller.text);
     return _getDaySuffix(parsed ?? widget.day);
@@ -604,7 +616,7 @@ class _DayOfMonthStepperState extends State<_DayOfMonthStepper> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             SizedBox(
-                              width: 24,
+                              width: _getFieldWidth(),
                               child: TextFormField(
                                 key: const Key('day_text_field'),
                                 controller: _controller,
