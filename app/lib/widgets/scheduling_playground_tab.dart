@@ -188,6 +188,11 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
     super.dispose();
   }
 
+  int? _parseInterval() {
+    final text = _intervalController.text.replaceAll(RegExp(r'\D'), '');
+    return int.tryParse(text);
+  }
+
   void _recalculate() {
     if (!mounted) return;
     setState(() {
@@ -209,12 +214,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
             break;
 
           case RecurrenceType.daily:
-            final intervalText = _intervalController.text.trim();
-            if (intervalText.isEmpty) {
-              _validationError = context.l10n.invalidIntervalError;
-              return;
-            }
-            final interval = int.tryParse(intervalText);
+            final interval = _parseInterval();
             if (interval == null || interval <= 0) {
               _validationError = context.l10n.invalidIntervalError;
               return;
@@ -230,12 +230,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
             break;
 
           case RecurrenceType.weekly:
-            final intervalText = _intervalController.text.trim();
-            if (intervalText.isEmpty) {
-              _validationError = context.l10n.invalidIntervalError;
-              return;
-            }
-            final interval = int.tryParse(intervalText);
+            final interval = _parseInterval();
             if (interval == null || interval <= 0) {
               _validationError = context.l10n.invalidIntervalError;
               return;
@@ -256,12 +251,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
             break;
 
           case RecurrenceType.monthly:
-            final intervalText = _intervalController.text.trim();
-            if (intervalText.isEmpty) {
-              _validationError = context.l10n.invalidIntervalError;
-              return;
-            }
-            final interval = int.tryParse(intervalText);
+            final interval = _parseInterval();
             if (interval == null || interval <= 0) {
               _validationError = context.l10n.invalidIntervalError;
               return;
@@ -302,12 +292,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
             break;
 
           case RecurrenceType.yearly:
-            final intervalText = _intervalController.text.trim();
-            if (intervalText.isEmpty) {
-              _validationError = context.l10n.invalidIntervalError;
-              return;
-            }
-            final interval = int.tryParse(intervalText);
+            final interval = _parseInterval();
             if (interval == null || interval <= 0) {
               _validationError = context.l10n.invalidIntervalError;
               return;
@@ -503,8 +488,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                                         .yearlyCompletionRelative;
 
                             if (isCompletion) {
-                              final intDays =
-                                  int.tryParse(_intervalController.text) ?? 1;
+                              final intDays = _parseInterval() ?? 1;
                               _schedulingPolicy = CompletionRelativePolicy(
                                 interval: Duration(days: intDays),
                                 targetTime: _startRelativeTime.time,
@@ -548,7 +532,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                               _recalculate();
                             });
                           },
-                          interval: int.tryParse(_intervalController.text) ?? 1,
+                          interval: _parseInterval() ?? 1,
                           onIntervalChanged: (val) {
                             setState(() {
                               _intervalController.text = val.toString();
@@ -601,7 +585,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                               _recalculate();
                             });
                           },
-                          interval: int.tryParse(_intervalController.text) ?? 1,
+                          interval: _parseInterval() ?? 1,
                           onIntervalChanged: (val) {
                             setState(() {
                               _intervalController.text = val.toString();
@@ -661,7 +645,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                               _recalculate();
                             });
                           },
-                          interval: int.tryParse(_intervalController.text) ?? 1,
+                          interval: _parseInterval() ?? 1,
                           onIntervalChanged: (val) {
                             setState(() {
                               _intervalController.text = val.toString();
@@ -747,7 +731,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                               _recalculate();
                             });
                           },
-                          interval: int.tryParse(_intervalController.text) ?? 1,
+                          interval: _parseInterval() ?? 1,
                           onIntervalChanged: (val) {
                             setState(() {
                               _intervalController.text = val.toString();

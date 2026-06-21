@@ -128,16 +128,8 @@ void main() {
     await tester.tap(find.text('Repeating'));
     await tester.pumpAndSettle();
 
-    // Expand the interval selection tile
-    final expansionTile = find.byKey(
-      const Key('daily_interval_expansion_tile'),
-    );
-    await tester.ensureVisible(expansionTile);
-    await tester.tap(expansionTile);
-    await tester.pumpAndSettle();
-
     // Check for interval field
-    expect(find.widgetWithText(TextFormField, 'Days Interval'), findsOneWidget);
+    expect(find.byKey(const Key('interval_text_field')), findsOneWidget);
   });
 
   testGoldens('CreateTaskScreen renders correctly', (tester) async {
@@ -810,16 +802,8 @@ void main() {
       expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
       expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
 
-      // Expand the interval selection tile
-      final expansionTile = find.byKey(
-        const Key('daily_interval_expansion_tile'),
-      );
-      await tester.ensureVisible(expansionTile);
-      await tester.tap(expansionTile);
-      await tester.pumpAndSettle();
-
       // Change interval to 3
-      final intervalField = find.widgetWithText(TextFormField, 'Days Interval');
+      final intervalField = find.byKey(const Key('interval_text_field'));
       expect(intervalField, findsOneWidget);
       await tester.enterText(intervalField, '3');
       await tester.pumpAndSettle();

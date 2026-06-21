@@ -8,41 +8,27 @@ class DailySchedulingWidgetRobot {
 
   Finder get startRecurrenceDateTile =>
       find.byKey(const Key('start_recurrence_date_tile'));
-  Finder get intervalExpansionTile =>
-      find.byKey(const Key('daily_interval_expansion_tile'));
-  Finder get intervalField => find.byKey(const Key('daily_interval_field'));
-  Finder get intervalTypeDropdown =>
-      find.byKey(const Key('daily_interval_type_dropdown'));
+  Finder get intervalField => find.byKey(const Key('interval_text_field'));
 
   Future<void> pickStartDate(String day) async {
     await tester.tap(startRecurrenceDateTile);
     await tester.pumpAndSettle();
+    // In Flutter date picker, the day number text is tapped.
     await tester.tap(find.text(day));
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
   }
 
   Future<void> expandIntervalSection() async {
-    await tester.tap(intervalExpansionTile);
-    await tester.pumpAndSettle();
+    // No-op: Interval is always visible in the new design
   }
 
   Future<void> enterInterval(String val) async {
-    if (find.byKey(const Key('daily_interval_field')).evaluate().isEmpty) {
-      await expandIntervalSection();
-    }
     await tester.enterText(intervalField, val);
     await tester.pumpAndSettle();
   }
 
   Future<void> selectIntervalType(String typeText) async {
-    if (find.byKey(const Key('daily_interval_field')).evaluate().isEmpty) {
-      await expandIntervalSection();
-    }
-    await tester.tap(intervalTypeDropdown);
-    await tester.pumpAndSettle();
-    // Tap the dropdown option from the pop-up/overlay
-    await tester.tap(find.text(typeText).last);
-    await tester.pumpAndSettle();
+    // No-op: Done at a higher level via HierarchicalRecurrenceSelector now
   }
 }
