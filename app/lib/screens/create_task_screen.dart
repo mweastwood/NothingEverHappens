@@ -670,11 +670,16 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                       duration: const Duration(milliseconds: 200),
                       transitionBuilder:
                           (Widget child, Animation<double> animation) {
+                            final isDefault =
+                                child.key == const ValueKey('default_title');
+                            final beginOffset = isDefault
+                                ? const Offset(0.0, -0.2)
+                                : const Offset(0.0, 0.2);
                             return FadeTransition(
                               opacity: animation,
                               child: SlideTransition(
                                 position: Tween<Offset>(
-                                  begin: const Offset(0.0, 0.2),
+                                  begin: beginOffset,
                                   end: Offset.zero,
                                 ).animate(animation),
                                 child: child,
