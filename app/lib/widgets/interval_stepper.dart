@@ -104,7 +104,7 @@ class _IntervalStepperState extends State<IntervalStepper> {
             border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            padding: EdgeInsets.zero,
             child: Row(
               children: [
                 IconButton(
@@ -119,59 +119,65 @@ class _IntervalStepperState extends State<IntervalStepper> {
                               : (newVal == 1 ? '1 day' : '$newVal days');
                           widget.onIntervalChanged(newVal);
                         },
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  constraints: const BoxConstraints(),
                 ),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.label,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          height: 1.1,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.label,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.1,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      TextFormField(
-                        key: const Key('interval_text_field'),
-                        controller: _controller,
-                        focusNode: _focusNode,
-                        enabled: !widget.readOnly,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          height: 1.2,
+                        const SizedBox(height: 2),
+                        TextFormField(
+                          key: const Key('interval_text_field'),
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          enabled: !widget.readOnly,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            height: 1.2,
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Interval is required';
+                            }
+                            final digits = val.replaceAll(RegExp(r'\D'), '');
+                            final parsed = int.tryParse(digits);
+                            if (parsed == null || parsed <= 0) {
+                              return 'Please enter a positive number';
+                            }
+                            return null;
+                          },
+                          onChanged: (val) {
+                            final digits = val.replaceAll(RegExp(r'\D'), '');
+                            final parsed = int.tryParse(digits);
+                            if (parsed != null && parsed > 0) {
+                              widget.onIntervalChanged(parsed);
+                            }
+                          },
                         ),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Interval is required';
-                          }
-                          final digits = val.replaceAll(RegExp(r'\D'), '');
-                          final parsed = int.tryParse(digits);
-                          if (parsed == null || parsed <= 0) {
-                            return 'Please enter a positive number';
-                          }
-                          return null;
-                        },
-                        onChanged: (val) {
-                          final digits = val.replaceAll(RegExp(r'\D'), '');
-                          final parsed = int.tryParse(digits);
-                          if (parsed != null && parsed > 0) {
-                            widget.onIntervalChanged(parsed);
-                          }
-                        },
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 IconButton(
@@ -186,6 +192,9 @@ class _IntervalStepperState extends State<IntervalStepper> {
                               : (newVal == 1 ? '1 day' : '$newVal days');
                           widget.onIntervalChanged(newVal);
                         },
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  constraints: const BoxConstraints(),
                 ),
               ],
             ),

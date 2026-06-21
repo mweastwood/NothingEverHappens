@@ -33,6 +33,9 @@ class DateStepper extends StatelessWidget {
                     final newDate = date.subtract(const Duration(days: 1));
                     onDateChanged!(newDate);
                   },
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            constraints: const BoxConstraints(),
           ),
           Expanded(
             child: Material(
@@ -107,6 +110,9 @@ class DateStepper extends StatelessWidget {
                     final newDate = date.add(const Duration(days: 1));
                     onDateChanged!(newDate);
                   },
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            constraints: const BoxConstraints(),
           ),
         ],
       ),
