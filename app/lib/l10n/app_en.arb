@@ -570,5 +570,7 @@
   "presetWeekdays": "Weekdays",
   "presetWeekends": "Weekends",
   "presetAll": "All",
-  "presetClear": "Clear"
+  "presetClear": "Clear",
+  "presetMonthSingular": "month",
+  "presetMonthPlural": "months"
 }

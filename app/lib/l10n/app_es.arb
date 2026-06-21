@@ -386,5 +386,7 @@
   "presetWeekdays": "Entre semana",
   "presetWeekends": "Fin de semana",
   "presetAll": "Todos",
-  "presetClear": "Limpiar"
+  "presetClear": "Limpiar",
+  "presetMonthSingular": "mes",
+  "presetMonthPlural": "meses"
 }
