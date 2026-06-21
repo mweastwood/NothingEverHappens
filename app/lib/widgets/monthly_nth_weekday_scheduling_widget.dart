@@ -230,41 +230,13 @@ class _MonthlyNthWeekdaySchedulingWidgetState
               ),
             ),
             const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<int>(
-                key: const Key('monthly_occurrence_segmented_button'),
-                segments: [
-                  ButtonSegment<int>(
-                    value: 1,
-                    label: Text(l10n.firstOccurrence),
-                  ),
-                  ButtonSegment<int>(
-                    value: 2,
-                    label: Text(l10n.secondOccurrence),
-                  ),
-                  ButtonSegment<int>(
-                    value: 3,
-                    label: Text(l10n.thirdOccurrence),
-                  ),
-                  ButtonSegment<int>(
-                    value: 4,
-                    label: Text(l10n.fourthOccurrence),
-                  ),
-                  ButtonSegment<int>(
-                    value: -1,
-                    label: Text(l10n.lastOccurrence),
-                  ),
-                ],
-                selected: {widget.occurrence ?? 1},
-                onSelectionChanged: widget.readOnly
-                    ? null
-                    : (Set<int> selection) {
-                        if (selection.isNotEmpty) {
-                          widget.onOccurrenceChanged(selection.first);
-                        }
-                      },
-              ),
+            _OccurrenceSelector(
+              key: const Key('monthly_occurrence_selector'),
+              selectedOccurrence: widget.occurrence ?? 1,
+              onChanged: (val) {
+                widget.onOccurrenceChanged(val);
+              },
+              readOnly: widget.readOnly,
             ),
             const SizedBox(height: 16),
             Text(
@@ -488,5 +460,87 @@ String _getDayOfWeekString(BuildContext context, int dayOfWeek) {
       return l10n.weekdaySunday;
     default:
       return '';
+  }
+}
+
+class _OccurrenceSelector extends StatelessWidget {
+  final int selectedOccurrence;
+  final ValueChanged<int> onChanged;
+  final bool readOnly;
+
+  const _OccurrenceSelector({
+    super.key,
+    required this.selectedOccurrence,
+    required this.onChanged,
+    required this.readOnly,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+
+    final options = [
+      (1, l10n.firstOccurrence),
+      (2, l10n.secondOccurrence),
+      (3, l10n.thirdOccurrence),
+      (4, l10n.fourthOccurrence),
+      (-1, l10n.lastOccurrence),
+    ];
+
+    return Row(
+      children: options.map((option) {
+        final value = option.$1;
+        final label = option.$2;
+        final isSelected = selectedOccurrence == value;
+
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+            child: Material(
+              color: isSelected
+                  ? theme.colorScheme.primaryContainer
+                  : theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                onTap: readOnly
+                    ? null
+                    : () {
+                        if (!isSelected) {
+                          onChanged(value);
+                        }
+                      },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outlineVariant,
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? theme.colorScheme.onPrimaryContainer
+                            : theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 }

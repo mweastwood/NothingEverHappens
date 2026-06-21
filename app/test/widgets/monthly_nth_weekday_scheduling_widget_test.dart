@@ -70,7 +70,7 @@ void main() {
       // Check repeats on header
       expect(find.text('Repeats on'), findsOneWidget);
       expect(
-        find.byKey(const Key('monthly_occurrence_segmented_button')),
+        find.byKey(const Key('monthly_occurrence_selector')),
         findsOneWidget,
       );
       expect(find.byType(DayOfWeekSelector), findsOneWidget);
