@@ -5,12 +5,7 @@ import '../logic/civil_day.dart';
 import '../logic/app_clock.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/relative_time.dart';
-import 'one_off_scheduling_widget.dart';
-import 'daily_scheduling_widget.dart';
-import 'weekly_scheduling_widget.dart';
-import 'monthly_scheduling_widget.dart';
-import 'yearly_scheduling_widget.dart';
-import 'hierarchical_recurrence_selector.dart';
+import 'schedule_rule_config_widget.dart';
 import 'month_grid.dart';
 import 'upcoming_occurrences_preview.dart';
 
@@ -25,310 +20,56 @@ class SchedulingPlaygroundTab extends StatefulWidget {
 class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
   final _formKey = GlobalKey<FormState>();
 
-  HierarchicalRecurrenceKind _scheduleType = HierarchicalRecurrenceKind.oneOff;
-
-  RecurrenceType get _recurrenceType {
-    switch (_scheduleType) {
-      case HierarchicalRecurrenceKind.oneOff:
-        return RecurrenceType.oneOff;
-      case HierarchicalRecurrenceKind.dailyFixed:
-      case HierarchicalRecurrenceKind.dailyCompletionRelative:
-        return RecurrenceType.daily;
-      case HierarchicalRecurrenceKind.weeklyFixed:
-      case HierarchicalRecurrenceKind.weeklyCompletionRelative:
-        return RecurrenceType.weekly;
-      case HierarchicalRecurrenceKind.monthlyFixedDay:
-      case HierarchicalRecurrenceKind.monthlyNthWeekday:
-      case HierarchicalRecurrenceKind.monthlyCompletionRelative:
-        return RecurrenceType.monthly;
-      case HierarchicalRecurrenceKind.yearlyFixed:
-      case HierarchicalRecurrenceKind.yearlyCompletionRelative:
-        return RecurrenceType.yearly;
-    }
-  }
-
-  void _syncHierarchicalKind() {
-    final isCompletion = _schedulingPolicy is CompletionRelativePolicy;
-    switch (_recurrenceType) {
-      case RecurrenceType.oneOff:
-        _scheduleType = HierarchicalRecurrenceKind.oneOff;
-        break;
-      case RecurrenceType.daily:
-        _scheduleType = isCompletion
-            ? HierarchicalRecurrenceKind.dailyCompletionRelative
-            : HierarchicalRecurrenceKind.dailyFixed;
-        break;
-      case RecurrenceType.weekly:
-        _scheduleType = isCompletion
-            ? HierarchicalRecurrenceKind.weeklyCompletionRelative
-            : HierarchicalRecurrenceKind.weeklyFixed;
-        break;
-      case RecurrenceType.monthly:
-        if (isCompletion) {
-          _scheduleType = HierarchicalRecurrenceKind.monthlyCompletionRelative;
-        } else if (_monthlyRuleTypeController.value == 'dayOfMonth') {
-          _scheduleType = HierarchicalRecurrenceKind.monthlyFixedDay;
-        } else {
-          _scheduleType = HierarchicalRecurrenceKind.monthlyNthWeekday;
-        }
-        break;
-      case RecurrenceType.yearly:
-        _scheduleType = isCompletion
-            ? HierarchicalRecurrenceKind.yearlyCompletionRelative
-            : HierarchicalRecurrenceKind.yearlyFixed;
-        break;
-    }
-  }
-
-  // State & Controllers
   late DateTime _startDate;
-  late ValueNotifier<DateTime> _dueDateTimeController;
-  late ValueNotifier<DateTime> _startDateTimeController;
-  late ValueNotifier<TimeOfDay?> _oneOffNotificationController;
-  late ValueNotifier<List<DailyOccurrenceTime>> _dailyTimesController;
-  late TextEditingController _intervalController;
-  late Set<int> _selectedWeekdays;
-  late ValueNotifier<String> _monthlyRuleTypeController;
-  late TextEditingController _monthlyDayOfMonthController;
-  late ValueNotifier<int> _monthlyNthOccurrenceController;
-  late ValueNotifier<int> _monthlyDayOfWeekController;
-  late ValueNotifier<int> _yearlyMonthController;
-  late TextEditingController _yearlyDayController;
-
-  // For Daily redesigned widget
-  late RelativeTime _startRelativeTime;
-  late RelativeTime _dueRelativeTime;
-  late RelativeTime? _notificationRelativeTime;
-  late SchedulingPolicy _schedulingPolicy;
+  late TaskScheduleRule _schedule;
 
   List<CivilDay> _occurrences = [];
   Set<CivilDay> _startDays = {};
   Set<CivilDay> _dueDays = {};
   Set<CivilDay> _rangeDays = {};
-  String? _validationError;
-  TaskScheduleRule? _schedule;
+  String? _inputValidationError;
+  String? _calculationError;
+  String? get _validationError => _inputValidationError ?? _calculationError;
 
   @override
   void initState() {
     super.initState();
     final now = AppClock.now;
     _startDate = DateTime(now.year, now.month, now.day);
-    _dueDateTimeController = ValueNotifier<DateTime>(
-      _startDate.add(const Duration(hours: 17)),
-    );
-    _startDateTimeController = ValueNotifier<DateTime>(
-      _startDate.add(const Duration(hours: 9)),
-    );
-    _oneOffNotificationController = ValueNotifier<TimeOfDay?>(null);
-    _dailyTimesController = ValueNotifier<List<DailyOccurrenceTime>>([
-      DailyOccurrenceTime(
-        startTime: const TimeOfDay(hour: 9, minute: 0),
-        dueTime: const TimeOfDay(hour: 17, minute: 0),
+    final civilToday = CivilDay.fromDateTime(_startDate);
+
+    _schedule = OneOffSchedule(
+      date: civilToday,
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
       ),
-    ]);
-    _intervalController = TextEditingController(text: '1');
-    _selectedWeekdays = {1}; // Monday
-    _monthlyRuleTypeController = ValueNotifier<String>('dayOfMonth');
-    _monthlyDayOfMonthController = TextEditingController(text: '1');
-    _monthlyNthOccurrenceController = ValueNotifier<int>(1);
-    _monthlyDayOfWeekController = ValueNotifier<int>(1);
-    _yearlyMonthController = ValueNotifier<int>(1);
-    _yearlyDayController = TextEditingController(text: '1');
-
-    _startRelativeTime = const RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
     );
-    _dueRelativeTime = const RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 17, minute: 0),
-    );
-    _notificationRelativeTime = null;
-    _schedulingPolicy = const FixedCalendarPolicy();
-
-    // Add listeners to trigger recalculation on changes
-    _dueDateTimeController.addListener(_recalculate);
-    _startDateTimeController.addListener(_recalculate);
-    _dailyTimesController.addListener(_recalculate);
-    _oneOffNotificationController.addListener(_recalculate);
-    _intervalController.addListener(_recalculate);
-    _monthlyRuleTypeController.addListener(_recalculate);
-    _monthlyDayOfMonthController.addListener(_recalculate);
-    _monthlyNthOccurrenceController.addListener(_recalculate);
-    _monthlyDayOfWeekController.addListener(_recalculate);
-    _yearlyMonthController.addListener(_recalculate);
-    _yearlyDayController.addListener(_recalculate);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _recalculate();
     });
   }
 
-  @override
-  void dispose() {
-    _dueDateTimeController.removeListener(_recalculate);
-    _startDateTimeController.removeListener(_recalculate);
-    _oneOffNotificationController.removeListener(_recalculate);
-    _dailyTimesController.removeListener(_recalculate);
-    _intervalController.removeListener(_recalculate);
-    _monthlyRuleTypeController.removeListener(_recalculate);
-    _monthlyDayOfMonthController.removeListener(_recalculate);
-    _monthlyNthOccurrenceController.removeListener(_recalculate);
-    _monthlyDayOfWeekController.removeListener(_recalculate);
-    _yearlyMonthController.removeListener(_recalculate);
-    _yearlyDayController.removeListener(_recalculate);
-
-    _dueDateTimeController.dispose();
-    _startDateTimeController.dispose();
-    _oneOffNotificationController.dispose();
-    _dailyTimesController.dispose();
-    _intervalController.dispose();
-    _monthlyDayOfMonthController.dispose();
-    _yearlyDayController.dispose();
-    super.dispose();
-  }
-
-  int? _parseInterval() {
-    final text = _intervalController.text.replaceAll(RegExp(r'\D'), '');
-    return int.tryParse(text);
-  }
-
   void _recalculate() {
     if (!mounted) return;
     setState(() {
-      _validationError = null;
       _occurrences = [];
+      _startDays = {};
+      _dueDays = {};
+      _rangeDays = {};
+      _calculationError = null;
 
-      // Run validators to highlight form fields if needed
-      _formKey.currentState?.validate();
+      if (_inputValidationError != null) {
+        return;
+      }
 
       try {
-        final startCivil = CivilDay.fromDateTime(_startDate);
-        TaskScheduleRule schedule;
-
-        switch (_recurrenceType) {
-          case RecurrenceType.oneOff:
-            final dueDateTime = _dueDateTimeController.value;
-            final civilDate = CivilDay.fromDateTime(dueDateTime);
-            schedule = OneOffSchedule(date: civilDate);
-            break;
-
-          case RecurrenceType.daily:
-            final interval = _parseInterval();
-            if (interval == null || interval <= 0) {
-              _validationError = context.l10n.invalidIntervalError;
-              return;
-            }
-            schedule = DailySchedule(
-              startDate: startCivil,
-              interval: interval,
-              startRelativeTime: _startRelativeTime,
-              dueRelativeTime: _dueRelativeTime,
-              notificationRelativeTime: _notificationRelativeTime,
-              schedulingPolicy: _schedulingPolicy,
-            );
-            break;
-
-          case RecurrenceType.weekly:
-            final interval = _parseInterval();
-            if (interval == null || interval <= 0) {
-              _validationError = context.l10n.invalidIntervalError;
-              return;
-            }
-            if (_selectedWeekdays.isEmpty) {
-              _validationError = context.l10n.selectAtLeastOneDayError;
-              return;
-            }
-            schedule = WeeklySchedule(
-              startDate: startCivil,
-              interval: interval,
-              daysOfWeek: Set.from(_selectedWeekdays),
-              startRelativeTime: _startRelativeTime,
-              dueRelativeTime: _dueRelativeTime,
-              notificationRelativeTime: _notificationRelativeTime,
-              schedulingPolicy: _schedulingPolicy,
-            );
-            break;
-
-          case RecurrenceType.monthly:
-            final interval = _parseInterval();
-            if (interval == null || interval <= 0) {
-              _validationError = context.l10n.invalidIntervalError;
-              return;
-            }
-
-            if (_monthlyRuleTypeController.value == 'dayOfMonth') {
-              final domText = _monthlyDayOfMonthController.text.trim();
-              if (domText.isEmpty) {
-                _validationError = context.l10n.dayOfMonthValidationError;
-                return;
-              }
-              final dom = int.tryParse(domText);
-              if (dom == null || dom == 0 || dom.abs() > 28) {
-                _validationError = context.l10n.dayOfMonthValidationError;
-                return;
-              }
-              schedule = MonthlySchedule(
-                startDate: startCivil,
-                interval: interval,
-                dayOfMonth: dom,
-                startRelativeTime: _startRelativeTime,
-                dueRelativeTime: _dueRelativeTime,
-                notificationRelativeTime: _notificationRelativeTime,
-                schedulingPolicy: _schedulingPolicy,
-              );
-            } else {
-              schedule = MonthlySchedule(
-                startDate: startCivil,
-                interval: interval,
-                dayOfWeek: _monthlyDayOfWeekController.value,
-                occurrence: _monthlyNthOccurrenceController.value,
-                startRelativeTime: _startRelativeTime,
-                dueRelativeTime: _dueRelativeTime,
-                notificationRelativeTime: _notificationRelativeTime,
-                schedulingPolicy: _schedulingPolicy,
-              );
-            }
-            break;
-
-          case RecurrenceType.yearly:
-            final interval = _parseInterval();
-            if (interval == null || interval <= 0) {
-              _validationError = context.l10n.invalidIntervalError;
-              return;
-            }
-            final yMonth = _yearlyMonthController.value;
-            final yDayText = _yearlyDayController.text.trim();
-            if (yDayText.isEmpty) {
-              _validationError = context.l10n.dayIsRequiredError;
-              return;
-            }
-            final yDay = int.tryParse(yDayText);
-
-            int maxDays = 31;
-            if (yMonth == 2) {
-              maxDays = 29;
-            } else if ([4, 6, 9, 11].contains(yMonth)) {
-              maxDays = 30;
-            }
-
-            if (yDay == null || yDay < 1 || yDay > maxDays) {
-              _validationError = context.l10n.dayMustBeBetweenError(maxDays);
-              return;
-            }
-
-            schedule = YearlySchedule(
-              startDate: startCivil,
-              interval: interval,
-              month: yMonth,
-              day: yDay,
-              startRelativeTime: _startRelativeTime,
-              dueRelativeTime: _dueRelativeTime,
-              notificationRelativeTime: _notificationRelativeTime,
-              schedulingPolicy: _schedulingPolicy,
-            );
-            break;
-        }
+        final schedule = _schedule;
 
         // Calculate up to 10 occurrences
         List<CivilDay> occurrences = [];
@@ -367,12 +108,14 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
 
         for (final occurrence in occurrences) {
           if (schedule is OneOffSchedule) {
-            final startCivil = CivilDay.fromDateTime(
-              _startDateTimeController.value,
+            final startAbs = schedule.startRelativeTime.referenceTo(
+              schedule.scheduledDate,
             );
-            final dueCivil = CivilDay.fromDateTime(
-              _dueDateTimeController.value,
+            final dueAbs = schedule.dueRelativeTime.referenceTo(
+              schedule.scheduledDate,
             );
+            final startCivil = CivilDay.fromDateTime(startAbs);
+            final dueCivil = CivilDay.fromDateTime(dueAbs);
 
             startDays.add(startCivil);
             dueDays.add(dueCivil);
@@ -399,10 +142,8 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
         _startDays = startDays;
         _dueDays = dueDays;
         _rangeDays = rangeDays;
-        _schedule = schedule;
       } catch (e) {
-        _validationError = context.l10n.calculationError(e.toString());
-        _schedule = null;
+        _calculationError = context.l10n.calculationError(e.toString());
       }
     });
   }
@@ -466,326 +207,23 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      HierarchicalRecurrenceSelector(
-                        selectedValue: _scheduleType,
-                        onSelected: (kind) {
+                      ScheduleRuleConfigWidget(
+                        schedule: _schedule,
+                        onChanged: (newSchedule) {
                           setState(() {
-                            _scheduleType = kind;
-
-                            // Map kind back to scheduling policy and monthly rules
-                            final isCompletion =
-                                kind ==
-                                    HierarchicalRecurrenceKind
-                                        .dailyCompletionRelative ||
-                                kind ==
-                                    HierarchicalRecurrenceKind
-                                        .weeklyCompletionRelative ||
-                                kind ==
-                                    HierarchicalRecurrenceKind
-                                        .monthlyCompletionRelative ||
-                                kind ==
-                                    HierarchicalRecurrenceKind
-                                        .yearlyCompletionRelative;
-
-                            if (isCompletion) {
-                              final intDays = _parseInterval() ?? 1;
-                              _schedulingPolicy = CompletionRelativePolicy(
-                                interval: Duration(days: intDays),
-                                targetTime: _startRelativeTime.time,
-                              );
-                            } else {
-                              _schedulingPolicy = const FixedCalendarPolicy();
-                            }
-
-                            if (kind ==
-                                HierarchicalRecurrenceKind.monthlyFixedDay) {
-                              _monthlyRuleTypeController.value = 'dayOfMonth';
-                            } else if (kind ==
-                                HierarchicalRecurrenceKind.monthlyNthWeekday) {
-                              _monthlyRuleTypeController.value = 'nthDayOfWeek';
-                            }
-
-                            _recalculate();
+                            _schedule = newSchedule;
                           });
+                          _recalculate();
                         },
+                        onValidationError: (error) {
+                          setState(() {
+                            _inputValidationError = error;
+                          });
+                          _recalculate();
+                        },
+                        showNotification: false,
+                        showMissedPolicy: false,
                       ),
-                      const SizedBox(height: 24),
-
-                      // Reused Scheduling Widget
-                      if (_recurrenceType == RecurrenceType.oneOff)
-                        OneOffSchedulingWidget(
-                          dueDateTime: _dueDateTimeController,
-                          notificationTimeController:
-                              _oneOffNotificationController,
-                          showNotification: false,
-                        )
-                      else if (_recurrenceType == RecurrenceType.daily)
-                        DailySchedulingWidget(
-                          startDate: CivilDay.fromDateTime(_startDate),
-                          onStartDateChanged: (date) {
-                            setState(() {
-                              _startDate = DateTime(
-                                date.year,
-                                date.month,
-                                date.day,
-                              );
-                              _recalculate();
-                            });
-                          },
-                          interval: _parseInterval() ?? 1,
-                          onIntervalChanged: (val) {
-                            setState(() {
-                              _intervalController.text = val.toString();
-                              _recalculate();
-                            });
-                          },
-                          schedulingPolicy: _schedulingPolicy,
-                          onSchedulingPolicyChanged: (policy) {
-                            setState(() {
-                              _schedulingPolicy = policy;
-                              _syncHierarchicalKind();
-                              _recalculate();
-                            });
-                          },
-                          startRelativeTime: _startRelativeTime,
-                          onStartRelativeTimeChanged: (val) {
-                            setState(() {
-                              _startRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          dueRelativeTime: _dueRelativeTime,
-                          onDueRelativeTimeChanged: (val) {
-                            setState(() {
-                              _dueRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          notificationRelativeTime: _notificationRelativeTime,
-                          onNotificationRelativeTimeChanged: (val) {
-                            setState(() {
-                              _notificationRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          showNotification: false,
-                          showMissedPolicy: false,
-                          intervalController: _intervalController,
-                        )
-                      else if (_recurrenceType == RecurrenceType.weekly)
-                        WeeklySchedulingWidget(
-                          startDate: CivilDay.fromDateTime(_startDate),
-                          onStartDateChanged: (date) {
-                            setState(() {
-                              _startDate = DateTime(
-                                date.year,
-                                date.month,
-                                date.day,
-                              );
-                              _recalculate();
-                            });
-                          },
-                          interval: _parseInterval() ?? 1,
-                          onIntervalChanged: (val) {
-                            setState(() {
-                              _intervalController.text = val.toString();
-                              _recalculate();
-                            });
-                          },
-                          schedulingPolicy: _schedulingPolicy,
-                          onSchedulingPolicyChanged: (policy) {
-                            setState(() {
-                              _schedulingPolicy = policy;
-                              _syncHierarchicalKind();
-                              _recalculate();
-                            });
-                          },
-                          selectedWeekdays: _selectedWeekdays,
-                          onWeekdaysChanged: (days) {
-                            setState(() {
-                              _selectedWeekdays = days;
-                              _recalculate();
-                            });
-                          },
-                          startRelativeTime: _startRelativeTime,
-                          onStartRelativeTimeChanged: (val) {
-                            setState(() {
-                              _startRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          dueRelativeTime: _dueRelativeTime,
-                          onDueRelativeTimeChanged: (val) {
-                            setState(() {
-                              _dueRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          notificationRelativeTime: _notificationRelativeTime,
-                          onNotificationRelativeTimeChanged: (val) {
-                            setState(() {
-                              _notificationRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          showNotification: false,
-                          showMissedPolicy: false,
-                          intervalController: _intervalController,
-                        )
-                      else if (_recurrenceType == RecurrenceType.monthly)
-                        MonthlySchedulingWidget(
-                          startDate: CivilDay.fromDateTime(_startDate),
-                          onStartDateChanged: (date) {
-                            setState(() {
-                              _startDate = DateTime(
-                                date.year,
-                                date.month,
-                                date.day,
-                              );
-                              _recalculate();
-                            });
-                          },
-                          interval: _parseInterval() ?? 1,
-                          onIntervalChanged: (val) {
-                            setState(() {
-                              _intervalController.text = val.toString();
-                              _recalculate();
-                            });
-                          },
-                          schedulingPolicy: _schedulingPolicy,
-                          onSchedulingPolicyChanged: (policy) {
-                            setState(() {
-                              _schedulingPolicy = policy;
-                              _syncHierarchicalKind();
-                              _recalculate();
-                            });
-                          },
-                          ruleType: _monthlyRuleTypeController.value,
-                          onRuleTypeChanged: (type) {
-                            setState(() {
-                              _monthlyRuleTypeController.value = type;
-                              _syncHierarchicalKind();
-                              _recalculate();
-                            });
-                          },
-                          dayOfMonth: int.tryParse(
-                            _monthlyDayOfMonthController.text,
-                          ),
-                          onDayOfMonthChanged: (val) {
-                            setState(() {
-                              _monthlyDayOfMonthController.text =
-                                  val?.toString() ?? '';
-                              _recalculate();
-                            });
-                          },
-                          occurrence: _monthlyNthOccurrenceController.value,
-                          onOccurrenceChanged: (val) {
-                            setState(() {
-                              _monthlyNthOccurrenceController.value = val ?? 1;
-                              _recalculate();
-                            });
-                          },
-                          dayOfWeek: _monthlyDayOfWeekController.value,
-                          onDayOfWeekChanged: (val) {
-                            setState(() {
-                              _monthlyDayOfWeekController.value = val ?? 1;
-                              _recalculate();
-                            });
-                          },
-                          startRelativeTime: _startRelativeTime,
-                          onStartRelativeTimeChanged: (val) {
-                            setState(() {
-                              _startRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          dueRelativeTime: _dueRelativeTime,
-                          onDueRelativeTimeChanged: (val) {
-                            setState(() {
-                              _dueRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          notificationRelativeTime: _notificationRelativeTime,
-                          onNotificationRelativeTimeChanged: (val) {
-                            setState(() {
-                              _notificationRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          showNotification: false,
-                          showMissedPolicy: false,
-                          intervalController: _intervalController,
-                          dayOfMonthController: _monthlyDayOfMonthController,
-                        )
-                      else if (_recurrenceType == RecurrenceType.yearly)
-                        YearlySchedulingWidget(
-                          startDate: CivilDay.fromDateTime(_startDate),
-                          onStartDateChanged: (date) {
-                            setState(() {
-                              _startDate = DateTime(
-                                date.year,
-                                date.month,
-                                date.day,
-                              );
-                              _recalculate();
-                            });
-                          },
-                          interval: _parseInterval() ?? 1,
-                          onIntervalChanged: (val) {
-                            setState(() {
-                              _intervalController.text = val.toString();
-                              _recalculate();
-                            });
-                          },
-                          schedulingPolicy: _schedulingPolicy,
-                          onSchedulingPolicyChanged: (policy) {
-                            setState(() {
-                              _schedulingPolicy = policy;
-                              _syncHierarchicalKind();
-                              _recalculate();
-                            });
-                          },
-                          month: _yearlyMonthController.value,
-                          onMonthChanged: (val) {
-                            setState(() {
-                              _yearlyMonthController.value = val;
-                              _recalculate();
-                            });
-                          },
-                          day: int.tryParse(_yearlyDayController.text) ?? 1,
-                          onDayChanged: (val) {
-                            setState(() {
-                              _yearlyDayController.text = val.toString();
-                              _recalculate();
-                            });
-                          },
-                          startRelativeTime: _startRelativeTime,
-                          onStartRelativeTimeChanged: (val) {
-                            setState(() {
-                              _startRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          dueRelativeTime: _dueRelativeTime,
-                          onDueRelativeTimeChanged: (val) {
-                            setState(() {
-                              _dueRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          notificationRelativeTime: _notificationRelativeTime,
-                          onNotificationRelativeTimeChanged: (val) {
-                            setState(() {
-                              _notificationRelativeTime = val;
-                              _recalculate();
-                            });
-                          },
-                          showNotification: false,
-                          showMissedPolicy: false,
-                          intervalController: _intervalController,
-                          dayController: _yearlyDayController,
-                        ),
                     ],
                   ),
                 ),
@@ -872,19 +310,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
               const SizedBox(height: 24),
 
               UpcomingOccurrencesPreview(
-                schedule: _schedule,
-                dailyTimes:
-                    (_recurrenceType == RecurrenceType.daily ||
-                        _recurrenceType == RecurrenceType.weekly)
-                    ? const []
-                    : _dailyTimesController.value,
-                startDateTime: _recurrenceType == RecurrenceType.oneOff
-                    ? _startDateTimeController.value
-                    : null,
-                dueDateTime: _recurrenceType == RecurrenceType.oneOff
-                    ? _dueDateTimeController.value
-                    : null,
-                scheduleType: _recurrenceType,
+                schedules: [_schedule],
                 maxOccurrences: 10,
               ),
             ],
