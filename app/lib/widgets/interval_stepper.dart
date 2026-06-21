@@ -8,12 +8,16 @@ class IntervalStepper extends StatefulWidget {
   final String? helperText;
   final bool readOnly;
   final TextEditingController? intervalController;
+  final String unitSingular;
+  final String unitPlural;
 
   const IntervalStepper({
     super.key,
     required this.interval,
     required this.onIntervalChanged,
     required this.label,
+    this.unitSingular = 'day',
+    this.unitPlural = 'days',
     this.helperText,
     this.readOnly = false,
     this.intervalController,
@@ -27,12 +31,15 @@ class _IntervalStepperState extends State<IntervalStepper> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
 
+  String _formatText(int val) {
+    final unit = val == 1 ? widget.unitSingular : widget.unitPlural;
+    return '$val $unit';
+  }
+
   @override
   void initState() {
     super.initState();
-    final initialText = widget.interval == 1
-        ? '1 day'
-        : '${widget.interval} days';
+    final initialText = _formatText(widget.interval);
     _controller =
         widget.intervalController ?? TextEditingController(text: initialText);
 
@@ -61,7 +68,7 @@ class _IntervalStepperState extends State<IntervalStepper> {
       // Format display when focus lost
       final digits = _controller.text.replaceAll(RegExp(r'\D'), '');
       final parsed = int.tryParse(digits) ?? widget.interval;
-      _controller.text = parsed == 1 ? '1 day' : '$parsed days';
+      _controller.text = _formatText(parsed);
     }
   }
 
@@ -71,7 +78,7 @@ class _IntervalStepperState extends State<IntervalStepper> {
     if (oldWidget.interval != widget.interval) {
       final expectedText = _focusNode.hasFocus
           ? widget.interval.toString()
-          : (widget.interval == 1 ? '1 day' : '${widget.interval} days');
+          : _formatText(widget.interval);
       if (_controller.text != expectedText) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && _controller.text != expectedText) {
@@ -116,7 +123,7 @@ class _IntervalStepperState extends State<IntervalStepper> {
                           final newVal = widget.interval - 1;
                           _controller.text = _focusNode.hasFocus
                               ? newVal.toString()
-                              : (newVal == 1 ? '1 day' : '$newVal days');
+                              : _formatText(newVal);
                           widget.onIntervalChanged(newVal);
                         },
                   visualDensity: VisualDensity.compact,
@@ -189,7 +196,7 @@ class _IntervalStepperState extends State<IntervalStepper> {
                           final newVal = widget.interval + 1;
                           _controller.text = _focusNode.hasFocus
                               ? newVal.toString()
-                              : (newVal == 1 ? '1 day' : '$newVal days');
+                              : _formatText(newVal);
                           widget.onIntervalChanged(newVal);
                         },
                   visualDensity: VisualDensity.compact,
