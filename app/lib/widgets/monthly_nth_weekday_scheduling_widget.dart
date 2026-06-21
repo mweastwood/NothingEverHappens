@@ -223,13 +223,6 @@ class _MonthlyNthWeekdaySchedulingWidgetState
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.nthOccurrenceLabel,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
             _OccurrenceSelector(
               key: const Key('monthly_occurrence_selector'),
               selectedOccurrence: widget.occurrence ?? 1,
@@ -238,14 +231,7 @@ class _MonthlyNthWeekdaySchedulingWidgetState
               },
               readOnly: widget.readOnly,
             ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.dayOfWeekLabel,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             DayOfWeekSelector(
               key: const Key('monthly_nth_weekday_day_selector'),
               selectedWeekdays: {widget.dayOfWeek ?? 1},
