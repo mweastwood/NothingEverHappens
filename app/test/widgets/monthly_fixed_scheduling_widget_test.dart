@@ -67,9 +67,13 @@ void main() {
       // Check repeats on header
       expect(find.text('Repeats on'), findsOneWidget);
       expect(
-        find.byKey(const Key('monthly_day_of_month_field')),
+        find.byKey(const Key('monthly_direction_segmented_button')),
         findsOneWidget,
-      ); // dayOfMonth input
+      );
+      expect(
+        find.byKey(const Key('monthly_day_of_month_stepper')),
+        findsOneWidget,
+      );
 
       // Check relative times
       expect(find.text('Start'), findsOneWidget);
@@ -89,19 +93,24 @@ void main() {
         buildTestableWidget(
           child: Scaffold(
             body: SingleChildScrollView(
-              child: MonthlyFixedSchedulingWidget(
-                startDate: startDate,
-                onStartDateChanged: (d) => newDate = d,
-                interval: 2,
-                onIntervalChanged: (i) => newInterval = i,
-                dayOfMonth: 15,
-                onDayOfMonthChanged: (dom) => newDayOfMonth = dom,
-                startRelativeTime: startRelative,
-                onStartRelativeTimeChanged: (_) {},
-                dueRelativeTime: dueRelative,
-                onDueRelativeTimeChanged: (_) {},
-                notificationRelativeTime: null,
-                onNotificationRelativeTimeChanged: (_) {},
+              child: StatefulBuilder(
+                builder: (context, setState) {
+                  return MonthlyFixedSchedulingWidget(
+                    startDate: startDate,
+                    onStartDateChanged: (d) => newDate = d,
+                    interval: newInterval ?? 2,
+                    onIntervalChanged: (i) => setState(() => newInterval = i),
+                    dayOfMonth: newDayOfMonth ?? 15,
+                    onDayOfMonthChanged: (dom) =>
+                        setState(() => newDayOfMonth = dom),
+                    startRelativeTime: startRelative,
+                    onStartRelativeTimeChanged: (_) {},
+                    dueRelativeTime: dueRelative,
+                    onDueRelativeTimeChanged: (_) {},
+                    notificationRelativeTime: null,
+                    onNotificationRelativeTimeChanged: (_) {},
+                  );
+                },
               ),
             ),
           ),
@@ -118,21 +127,23 @@ void main() {
       await tester.pumpAndSettle();
       expect(newInterval, 3);
 
-      // 3. Change Day of Month field
-      await tester.enterText(
-        find.byKey(const Key('monthly_day_of_month_field')),
-        '20',
-      );
+      // 3. Change Day of Month via Stepper increment button
+      await tester.tap(find.byKey(const Key('day_increment_button')));
       await tester.pumpAndSettle();
-      expect(newDayOfMonth, 20);
+      expect(newDayOfMonth, 16);
+
+      // 4. Change direction to From end of month
+      await tester.tap(find.text('From end of month'));
+      await tester.pumpAndSettle();
+      expect(newDayOfMonth, -16);
     });
 
     testGoldens('MonthlyFixedSchedulingWidget renders correctly', (
       tester,
     ) async {
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.8)
+      final builder = GoldenBuilder.grid(columns: 2, widthToHeightRatio: 0.6)
         ..addScenario(
-          'MonthlyFixed Default',
+          'MonthlyFixed From Start',
           Material(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -154,12 +165,36 @@ void main() {
               ),
             ),
           ),
+        )
+        ..addScenario(
+          'MonthlyFixed From End',
+          Material(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: MonthlyFixedSchedulingWidget(
+                startDate: startDate,
+                onStartDateChanged: (_) {},
+                interval: 2,
+                onIntervalChanged: (_) {},
+                dayOfMonth: -10,
+                onDayOfMonthChanged: (_) {},
+                startRelativeTime: startRelative,
+                onStartRelativeTimeChanged: (_) {},
+                dueRelativeTime: dueRelative,
+                onDueRelativeTimeChanged: (_) {},
+                notificationRelativeTime: null,
+                onNotificationRelativeTimeChanged: (_) {},
+                missedOccurrencePolicy: missed,
+                onMissedOccurrencePolicyChanged: (_) {},
+              ),
+            ),
+          ),
         );
 
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(500, 850),
+        surfaceSize: const Size(1000, 850),
       );
       await screenMatchesGolden(
         tester,
