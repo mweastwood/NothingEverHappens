@@ -500,6 +500,41 @@ void main() {
     },
   );
 
+  testWidgets('TaskSchedule list screen hides tasks starting later today', (
+    WidgetTester tester,
+  ) async {
+    AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+
+    final futureTodayTask = TaskSchedule(
+      id: 'future-today-task',
+      title: 'Future Today Task',
+      description: 'Starts at 10 AM',
+      schedules: [
+        OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
+    );
+
+    tasksSubject.add([futureTodayTask]);
+
+    await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle();
+
+    // Since it starts at 10:00 AM and mock time is 9:00 AM, it should NOT be shown
+    expect(find.text('Future Today Task'), findsNothing);
+
+    AppClock.reset();
+  });
+
   testWidgets(
     'Completing a task does not affect the next task state (bug repro)',
     (WidgetTester tester) async {

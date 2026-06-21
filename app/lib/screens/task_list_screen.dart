@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
-import '../logic/civil_day.dart';
 import '../widgets/task_widget.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
@@ -48,13 +47,13 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               .trim()
               .toLowerCase();
 
-          final today = CivilDay.fromDateTime(AppClock.now);
           final filteredInstances = instances.where((inst) {
-            final startsDate = inst.scheduledDate.addDays(
-              inst.startRelativeTime.dayOffset,
+            final startDateTime = inst.startRelativeTime.referenceTo(
+              inst.scheduledDate,
             );
             final isPending =
-                inst.status == 'pending' && !today.isBefore(startsDate);
+                inst.status == 'pending' &&
+                !AppClock.now.isBefore(startDateTime);
             if (!isPending) return false;
             if (searchQuery.isEmpty) return true;
 
