@@ -159,7 +159,14 @@ void main() {
           authRepositoryProvider.overrideWithValue(mockAuthRepository),
           taskRepositoryProvider.overrideWithValue(mockTaskRepository),
         ],
-        child: const Scaffold(body: TaskScheduleScreen()),
+        child: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.zero,
+            viewPadding: EdgeInsets.zero,
+            viewInsets: EdgeInsets.zero,
+          ),
+          child: const Scaffold(body: TaskScheduleScreen()),
+        ),
       ),
       wrapper: l10nMaterialAppWrapper(),
       surfaceSize: const Size(400, 800),
@@ -223,7 +230,14 @@ void main() {
           authRepositoryProvider.overrideWithValue(mockAuthRepository),
           taskRepositoryProvider.overrideWithValue(mockTaskRepository),
         ],
-        child: const Scaffold(body: TaskScheduleScreen()),
+        child: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.zero,
+            viewPadding: EdgeInsets.zero,
+            viewInsets: EdgeInsets.zero,
+          ),
+          child: const Scaffold(body: TaskScheduleScreen()),
+        ),
       ),
       wrapper: l10nMaterialAppWrapper(),
       surfaceSize: const Size(400, 800),
@@ -855,7 +869,14 @@ void main() {
           taskRepositoryProvider.overrideWithValue(mockTaskRepository),
           userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
         ],
-        child: const Scaffold(body: TaskScheduleScreen()),
+        child: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.zero,
+            viewPadding: EdgeInsets.zero,
+            viewInsets: EdgeInsets.zero,
+          ),
+          child: const Scaffold(body: TaskScheduleScreen()),
+        ),
       ),
       wrapper: l10nMaterialAppWrapper(),
       surfaceSize: const Size(400, 800),

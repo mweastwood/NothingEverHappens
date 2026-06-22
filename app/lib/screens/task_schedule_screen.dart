@@ -397,71 +397,82 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
   }
 
   Widget _buildSortBar(BuildContext context, ThemeData theme) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Row(
-        children: [
-          Text(
-            context.l10n.scheduleSortByLabel,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurfaceVariant,
+    return SizedBox(
+      height: 48.0,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+        child: Row(
+          children: [
+            Text(
+              context.l10n.scheduleSortByLabel,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          ChoiceChip(
-            label: Text(context.l10n.titleFieldLabel),
-            selected: _sortColumn == 'title',
-            showCheckmark: false,
-            avatar: _sortColumn == 'title'
-                ? Icon(
-                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14,
-                  )
-                : null,
-            onSelected: (_) => _onSort('title'),
-          ),
-          const SizedBox(width: 8),
-          ChoiceChip(
-            label: Text(context.l10n.scheduleSortNextStartLabel),
-            selected: _sortColumn == 'next_start',
-            showCheckmark: false,
-            avatar: _sortColumn == 'next_start'
-                ? Icon(
-                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14,
-                  )
-                : null,
-            onSelected: (_) => _onSort('next_start'),
-          ),
-          const SizedBox(width: 8),
-          ChoiceChip(
-            label: Text(context.l10n.scheduleSortNextDueLabel),
-            selected: _sortColumn == 'next_due',
-            showCheckmark: false,
-            avatar: _sortColumn == 'next_due'
-                ? Icon(
-                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14,
-                  )
-                : null,
-            onSelected: (_) => _onSort('next_due'),
-          ),
-          const SizedBox(width: 8),
-          ChoiceChip(
-            label: Text(context.l10n.taskPriorityLabel),
-            selected: _sortColumn == 'priority',
-            showCheckmark: false,
-            avatar: _sortColumn == 'priority'
-                ? Icon(
-                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14,
-                  )
-                : null,
-            onSelected: (_) => _onSort('priority'),
-          ),
-        ],
+            const SizedBox(width: 12),
+            ChoiceChip(
+              label: Text(context.l10n.titleFieldLabel),
+              selected: _sortColumn == 'title',
+              showCheckmark: false,
+              avatar: _sortColumn == 'title'
+                  ? Icon(
+                      _sortAscending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 14,
+                    )
+                  : null,
+              onSelected: (_) => _onSort('title'),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: Text(context.l10n.scheduleSortNextStartLabel),
+              selected: _sortColumn == 'next_start',
+              showCheckmark: false,
+              avatar: _sortColumn == 'next_start'
+                  ? Icon(
+                      _sortAscending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 14,
+                    )
+                  : null,
+              onSelected: (_) => _onSort('next_start'),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: Text(context.l10n.scheduleSortNextDueLabel),
+              selected: _sortColumn == 'next_due',
+              showCheckmark: false,
+              avatar: _sortColumn == 'next_due'
+                  ? Icon(
+                      _sortAscending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 14,
+                    )
+                  : null,
+              onSelected: (_) => _onSort('next_due'),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: Text(context.l10n.taskPriorityLabel),
+              selected: _sortColumn == 'priority',
+              showCheckmark: false,
+              avatar: _sortColumn == 'priority'
+                  ? Icon(
+                      _sortAscending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 14,
+                    )
+                  : null,
+              onSelected: (_) => _onSort('priority'),
+            ),
+          ],
+        ),
       ),
     );
   }
