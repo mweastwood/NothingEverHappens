@@ -572,7 +572,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                   color: theme.colorScheme.onSurfaceVariant.withValues(
                     alpha: 0.6,
                   ),
-                  fontFamily: 'monospace',
                 ),
               ),
             ),
