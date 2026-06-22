@@ -1308,6 +1308,9 @@ void main() {
   ) async {
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
+    final settingsSubject = BehaviorSubject<UserSettings>.seeded(
+      const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
+    );
 
     final startTime = DateTime(2026, 6, 22, 12, 0);
     AppClock.setMockTime(startTime);
@@ -1360,11 +1363,7 @@ void main() {
         overrides: [
           authRepositoryProvider.overrideWithValue(mockAuthRepository),
           taskRepositoryProvider.overrideWithValue(mockTaskRepository),
-          userSettingsProvider.overrideWith(
-            (ref) => Stream.value(
-              const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
-            ),
-          ),
+          userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
         ],
         child: const HomeScreen(),
       ),
@@ -1376,6 +1375,7 @@ void main() {
 
     await screenMatchesGolden(tester, 'task_list_screen_pending_tasks');
 
+    await settingsSubject.close();
     AppClock.reset();
   });
 }

@@ -793,6 +793,9 @@ void main() {
   ) async {
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
+    final settingsSubject = BehaviorSubject<UserSettings>.seeded(
+      const UserSettings(hoursAvailable: 8.0, showLastSpawnedDate: true),
+    );
 
     final dailyTask = TaskSchedule(
       id: '1',
@@ -846,14 +849,7 @@ void main() {
         overrides: [
           authRepositoryProvider.overrideWithValue(mockAuthRepository),
           taskRepositoryProvider.overrideWithValue(mockTaskRepository),
-          userSettingsProvider.overrideWith(
-            (ref) => Stream.value(
-              const UserSettings(
-                hoursAvailable: 8.0,
-                showLastSpawnedDate: true,
-              ),
-            ),
-          ),
+          userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
         ],
         child: const Scaffold(body: TaskScheduleScreen()),
       ),
@@ -864,5 +860,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'task_schedule_screen_last_spawned_date');
+
+    await settingsSubject.close();
   });
 }
