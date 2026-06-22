@@ -296,94 +296,100 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
           ), // Avoid overlap with dev clock banner
           child: taskRepository == null
               ? const Center(child: CircularProgressIndicator())
-              : schedulesVal.when(
+              : settingsVal.when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
                   error: (err, stack) => Center(
                     child: Text('${context.l10n.errorOccurred}: $err'),
                   ),
-                  data: (allTasks) {
-                    final showLastSpawnedDate =
-                        settingsVal.value?.showLastSpawnedDate ?? false;
-                    final recurringTasks = allTasks
-                        .where(
-                          (task) =>
-                              task.schedules.any((s) => s is! OneOffSchedule),
-                        )
-                        .toList();
+                  data: (settings) => schedulesVal.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (err, stack) => Center(
+                      child: Text('${context.l10n.errorOccurred}: $err'),
+                    ),
+                    data: (allTasks) {
+                      final showLastSpawnedDate = settings.showLastSpawnedDate;
+                      final recurringTasks = allTasks
+                          .where(
+                            (task) =>
+                                task.schedules.any((s) => s is! OneOffSchedule),
+                          )
+                          .toList();
 
-                    // Filter based on search query
-                    final filteredTasks = recurringTasks.where((task) {
-                      if (searchQuery.isEmpty) return true;
-                      final queryWords = searchQuery
-                          .split(RegExp(r'\s+'))
-                          .where((word) => word.isNotEmpty);
-                      if (queryWords.isEmpty) return true;
+                      // Filter based on search query
+                      final filteredTasks = recurringTasks.where((task) {
+                        if (searchQuery.isEmpty) return true;
+                        final queryWords = searchQuery
+                            .split(RegExp(r'\s+'))
+                            .where((word) => word.isNotEmpty);
+                        if (queryWords.isEmpty) return true;
 
-                      return queryWords.every((word) {
-                        final matchesTitle = task.title.toLowerCase().contains(
-                          word,
-                        );
-                        final matchesDesc = task.description
-                            .toLowerCase()
-                            .contains(word);
-                        return matchesTitle || matchesDesc;
-                      });
-                    }).toList();
+                        return queryWords.every((word) {
+                          final matchesTitle = task.title
+                              .toLowerCase()
+                              .contains(word);
+                          final matchesDesc = task.description
+                              .toLowerCase()
+                              .contains(word);
+                          return matchesTitle || matchesDesc;
+                        });
+                      }).toList();
 
-                    if (recurringTasks.isEmpty) {
-                      return _buildEmptyState(context);
-                    }
-
-                    if (filteredTasks.isEmpty && searchQuery.isNotEmpty) {
-                      return _buildNoMatchesState(context);
-                    }
-
-                    // Sort filtered tasks using sort history (stable multi-key sort)
-                    final originalIndices = {
-                      for (int i = 0; i < filteredTasks.length; i++)
-                        filteredTasks[i].id: i,
-                    };
-                    filteredTasks.sort((a, b) {
-                      for (final sort in _sortHistory) {
-                        final result = _compareTasks(
-                          a,
-                          b,
-                          sort.column,
-                          sort.ascending,
-                        );
-                        if (result != 0) return result;
+                      if (recurringTasks.isEmpty) {
+                        return _buildEmptyState(context);
                       }
-                      final indexA = originalIndices[a.id] ?? 0;
-                      final indexB = originalIndices[b.id] ?? 0;
-                      return indexA.compareTo(indexB);
-                    });
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Sort bar at the top
-                        _buildSortBar(context, theme),
-                        const Divider(height: 1, thickness: 0.5),
-                        // Scrollable list of task cards
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: filteredTasks.length,
-                            itemBuilder: (context, index) {
-                              final task = filteredTasks[index];
-                              return _buildTaskCard(
-                                context,
-                                task,
-                                theme,
-                                taskRepository,
-                                showLastSpawnedDate,
-                              );
-                            },
+                      if (filteredTasks.isEmpty && searchQuery.isNotEmpty) {
+                        return _buildNoMatchesState(context);
+                      }
+
+                      // Sort filtered tasks using sort history (stable multi-key sort)
+                      final originalIndices = {
+                        for (int i = 0; i < filteredTasks.length; i++)
+                          filteredTasks[i].id: i,
+                      };
+                      filteredTasks.sort((a, b) {
+                        for (final sort in _sortHistory) {
+                          final result = _compareTasks(
+                            a,
+                            b,
+                            sort.column,
+                            sort.ascending,
+                          );
+                          if (result != 0) return result;
+                        }
+                        final indexA = originalIndices[a.id] ?? 0;
+                        final indexB = originalIndices[b.id] ?? 0;
+                        return indexA.compareTo(indexB);
+                      });
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Sort bar at the top
+                          _buildSortBar(context, theme),
+                          const Divider(height: 1, thickness: 0.5),
+                          // Scrollable list of task cards
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: filteredTasks.length,
+                              itemBuilder: (context, index) {
+                                final task = filteredTasks[index];
+                                return _buildTaskCard(
+                                  context,
+                                  task,
+                                  theme,
+                                  taskRepository,
+                                  showLastSpawnedDate,
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    );
-                  },
+                        ],
+                      );
+                    },
+                  ),
                 ),
         );
       },

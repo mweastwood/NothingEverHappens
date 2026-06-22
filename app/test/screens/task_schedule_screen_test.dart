@@ -793,9 +793,6 @@ void main() {
   ) async {
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
-    final settingsSubject = BehaviorSubject<UserSettings>.seeded(
-      const UserSettings(hoursAvailable: 8.0, showLastSpawnedDate: true),
-    );
 
     final dailyTask = TaskSchedule(
       id: '1',
@@ -840,9 +837,16 @@ void main() {
       ],
     );
 
-    when(
-      mockTaskRepository.getTasks(),
-    ).thenAnswer((_) => Stream.value([dailyTask, weeklyTask]));
+    final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+      dailyTask,
+      weeklyTask,
+    ], sync: true);
+    final settingsSubject = BehaviorSubject<UserSettings>.seeded(
+      const UserSettings(hoursAvailable: 8.0, showLastSpawnedDate: true),
+      sync: true,
+    );
+
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubject.stream);
 
     await tester.pumpWidgetBuilder(
       ProviderScope(
@@ -861,6 +865,7 @@ void main() {
 
     await screenMatchesGolden(tester, 'task_schedule_screen_last_spawned_date');
 
+    await tasksSubject.close();
     await settingsSubject.close();
   });
 }
