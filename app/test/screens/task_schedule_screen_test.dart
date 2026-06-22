@@ -863,6 +863,14 @@ void main() {
 
     await tester.pumpAndSettle();
 
+    final titleFinder = find.text('Daily Exercises');
+    if (titleFinder.evaluate().isNotEmpty) {
+      // ignore: avoid_print
+      print('DEBUG TITLE Y: ${tester.getTopLeft(titleFinder).dy}');
+      // ignore: avoid_print
+      print('DEBUG CARD SIZE: ${tester.getSize(find.byType(Card).first)}');
+    }
+
     await screenMatchesGolden(tester, 'task_schedule_screen_last_spawned_date');
 
     await tasksSubject.close();
