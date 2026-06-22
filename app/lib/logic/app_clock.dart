@@ -1,8 +1,9 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 
 /// A globally accessible, reactive mockable clock service.
 ///
-/// In standard operation, it returns the real system time using [DateTime.now()].
+/// In standard operation, it returns the real system time using [clock.now()].
 /// In development/testing mode, it can be overridden to return a custom time.
 class AppClock {
   /// Reactive notifier for the active mock date/time.
@@ -10,7 +11,7 @@ class AppClock {
   static final timeNotifier = ValueNotifier<DateTime?>(null);
 
   /// Gets the current simulated or real time.
-  static DateTime get now => timeNotifier.value ?? DateTime.now();
+  static DateTime get now => timeNotifier.value ?? clock.now();
 
   /// Sets a specific simulated date/time. Passing `null` reverts to system time.
   static void setMockTime(DateTime? mockTime) {

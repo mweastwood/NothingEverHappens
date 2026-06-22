@@ -1132,4 +1132,93 @@ void main() {
     // Search bar should be collapsed
     expect(find.byType(TextField), findsNothing);
   });
+
+  testWidgets(
+    'does not show task when system clock crosses start time in real-time mode',
+    (WidgetTester tester) async {
+      final mockAuthRepository = MockAuthRepository();
+      final mockTaskRepository = MockTaskRepository();
+
+      // Revert to system clock (make sure no mock is active)
+      AppClock.reset();
+
+      // Get the initial test clock time (which is the fake DateTime.now() managed by tester)
+      final startTime = DateTime.now(); // e.g. 2015-01-01 00:00:00
+      final taskDate = CivilDay.fromDateTime(startTime);
+
+      // Schedule the task to start 5 minutes in the future
+      final taskStartLocalTime = startTime.add(const Duration(minutes: 5));
+      final relativeStart = RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay.fromDateTime(taskStartLocalTime),
+      );
+      final relativeDue = RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay.fromDateTime(startTime.add(const Duration(hours: 1))),
+      );
+
+      final futureTask = TaskSchedule(
+        id: 'future-task-1',
+        title: 'Future Task',
+        description: 'Starts in 5 minutes',
+        schedules: [
+          OneOffSchedule(
+            date: taskDate,
+            startRelativeTime: relativeStart,
+            dueRelativeTime: relativeDue,
+          ),
+        ],
+      );
+
+      // Prepare behavior subjects
+      final tasksSubj = BehaviorSubject<List<TaskSchedule>>.seeded([
+        futureTask,
+      ]);
+      // Create the instance representing the task.
+      final futureInstance = TaskInstance(
+        id: 'future-task-1_inst',
+        scheduleId: futureTask.id,
+        title: futureTask.title,
+        description: futureTask.description,
+        scheduledDate: taskDate,
+        startRelativeTime: relativeStart,
+        dueRelativeTime: relativeDue,
+        status: 'pending',
+      );
+      final instancesSubj = BehaviorSubject<List<TaskInstance>>.seeded([
+        futureInstance,
+      ]);
+
+      when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+      when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubj.stream);
+      when(
+        mockTaskRepository.getInstances(),
+      ).thenAnswer((_) => instancesSubj.stream);
+
+      // Pump the screen
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+          ],
+          child: buildTestableWidget(child: const HomeScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // At startTime, the task should NOT be visible because startRelativeTime is 5 minutes in the future.
+      expect(find.text('Future Task'), findsNothing);
+
+      // Elapse 10 minutes. This advances the fake system clock past the task's start time.
+      await tester.pump(const Duration(minutes: 10));
+
+      // Under the fixed implementation (where TaskListScreen has a periodic timer),
+      // the screen should rebuild and show the task once the clock passes the start time.
+      expect(find.text('Future Task'), findsOneWidget);
+
+      await tasksSubj.close();
+      await instancesSubj.close();
+    },
+  );
 }

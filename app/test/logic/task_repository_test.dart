@@ -873,5 +873,72 @@ void main() {
         AppClock.reset();
       },
     );
+
+    test(
+      'regression: concurrent/rapid stream emissions do not skip spawning tasks',
+      () async {
+        final taskA = TaskSchedule(
+          id: 'task-a',
+          title: 'Task A',
+          description: 'Desc A',
+          lastSpawnedDate: null,
+          schedules: [
+            DailySchedule(
+              startDate: CivilDay.fromDateTime(AppClock.now),
+              interval: 1,
+            ),
+          ],
+        );
+
+        final taskB = TaskSchedule(
+          id: 'task-b',
+          title: 'Task B',
+          description: 'Desc B',
+          lastSpawnedDate: null,
+          schedules: [
+            DailySchedule(
+              startDate: CivilDay.fromDateTime(AppClock.now),
+              interval: 1,
+            ),
+          ],
+        );
+
+        // Start listening to the tasks stream to activate the auto missed policy processing.
+        final subscription = repository.getTasks().listen((_) {});
+
+        // Add task A to Firestore.
+        await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .doc(taskA.id)
+            .set(taskA.toFirestore());
+
+        // Immediately write task B to Firestore, causing two rapid snapshot emissions.
+        await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .doc(taskB.id)
+            .set(taskB.toFirestore());
+
+        // Wait a moment for the streams and background futures to complete.
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Verify if instances for both Task A and Task B were spawned.
+        final instancesSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+
+        final spawnedIds = instancesSnapshot.docs.map((d) => d.id).toList();
+
+        expect(spawnedIds.any((id) => id.contains('task-a')), isTrue);
+        expect(spawnedIds.any((id) => id.contains('task-b')), isTrue);
+
+        await subscription.cancel();
+      },
+    );
   });
 }
