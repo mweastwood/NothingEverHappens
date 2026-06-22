@@ -10,6 +10,8 @@ import 'monthly_scheduling_widget.dart';
 import 'yearly_scheduling_widget.dart';
 import 'one_off_scheduling_widget.dart';
 import 'hierarchical_recurrence_selector.dart';
+import 'notification_list_widget.dart';
+import 'missed_occurrence_policy_selector.dart';
 
 class ScheduleRuleConfigWidget extends StatefulWidget {
   final TaskScheduleRule schedule;
@@ -70,8 +72,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
         ? _relativeToAbsolute(s.date, s.dueRelativeTime)
         : AppClock.now;
     final initialNotif =
-        s is OneOffSchedule && s.notificationRelativeTime != null
-        ? s.notificationRelativeTime!.time
+        s is OneOffSchedule && s.notificationRelativeTimes.isNotEmpty
+        ? s.notificationRelativeTimes.first.time
         : null;
 
     _oneOffStartController = ValueNotifier<DateTime>(initialStart);
@@ -146,30 +148,17 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     if (s is OneOffSchedule) {
       final startAbs = _oneOffStartController.value;
       final dueAbs = _oneOffDueController.value;
-      final notifTime = _oneOffNotificationController.value;
 
       final newDate = CivilDay.fromDateTime(dueAbs);
       final newStartRel = _absoluteToRelative(newDate, startAbs);
       final newDueRel = _absoluteToRelative(newDate, dueAbs);
-      final newNotifRel = notifTime != null
-          ? _absoluteToRelative(
-              newDate,
-              DateTime(
-                newDate.year,
-                newDate.month,
-                newDate.day,
-                notifTime.hour,
-                notifTime.minute,
-              ),
-            )
-          : null;
 
       widget.onChanged(
         OneOffSchedule(
           date: newDate,
           startRelativeTime: newStartRel,
           dueRelativeTime: newDueRel,
-          notificationRelativeTime: newNotifRel,
+          notificationRelativeTimes: s.notificationRelativeTimes,
         ),
       );
     }
@@ -232,7 +221,9 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
       final s = widget.schedule as OneOffSchedule;
       final startAbs = _relativeToAbsolute(s.date, s.startRelativeTime);
       final dueAbs = _relativeToAbsolute(s.date, s.dueRelativeTime);
-      final notifTime = s.notificationRelativeTime?.time;
+      final notifTime = s.notificationRelativeTimes.isNotEmpty
+          ? s.notificationRelativeTimes.first.time
+          : null;
 
       _ignoreControllerEvents = true;
       if (_oneOffStartController.value != startAbs) {
@@ -322,7 +313,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   interval: val,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   schedulingPolicy: s.schedulingPolicy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
@@ -340,23 +331,16 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onDueRelativeTimeChanged: (due) {
               widget.onChanged(s.copyWithTiming(dueRelativeTime: due));
             },
-            notificationRelativeTime: s.notificationRelativeTime,
-            onNotificationRelativeTimeChanged: (notif) {
-              widget.onChanged(
-                s.copyWithTiming(
-                  notificationRelativeTime: notif,
-                  clearNotification: notif == null,
-                ),
-              );
-            },
+            notificationRelativeTime: null,
+            onNotificationRelativeTimeChanged: (_) {},
             missedOccurrencePolicy: s.missedOccurrencePolicy,
             onMissedOccurrencePolicyChanged: (policy) {
               widget.onChanged(
                 s.copyWithTiming(missedOccurrencePolicy: policy),
               );
             },
-            showNotification: widget.showNotification,
-            showMissedPolicy: widget.showMissedPolicy,
+            showNotification: false,
+            showMissedPolicy: false,
             readOnly: widget.readOnly,
             intervalController: _intervalController,
           ),
@@ -375,7 +359,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   daysOfWeek: s.daysOfWeek,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   schedulingPolicy: s.schedulingPolicy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
@@ -394,7 +378,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   daysOfWeek: days,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   schedulingPolicy: s.schedulingPolicy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
@@ -408,23 +392,16 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onDueRelativeTimeChanged: (due) {
               widget.onChanged(s.copyWithTiming(dueRelativeTime: due));
             },
-            notificationRelativeTime: s.notificationRelativeTime,
-            onNotificationRelativeTimeChanged: (notif) {
-              widget.onChanged(
-                s.copyWithTiming(
-                  notificationRelativeTime: notif,
-                  clearNotification: notif == null,
-                ),
-              );
-            },
+            notificationRelativeTime: null,
+            onNotificationRelativeTimeChanged: (_) {},
             missedOccurrencePolicy: s.missedOccurrencePolicy,
             onMissedOccurrencePolicyChanged: (policy) {
               widget.onChanged(
                 s.copyWithTiming(missedOccurrencePolicy: policy),
               );
             },
-            showNotification: widget.showNotification,
-            showMissedPolicy: widget.showMissedPolicy,
+            showNotification: false,
+            showMissedPolicy: false,
             readOnly: widget.readOnly,
             intervalController: _intervalController,
           ),
@@ -445,7 +422,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   occurrence: s.occurrence,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   schedulingPolicy: s.schedulingPolicy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
@@ -465,7 +442,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                     dayOfMonth: s.startDate.day <= 28 ? s.startDate.day : 28,
                     startRelativeTime: s.startRelativeTime,
                     dueRelativeTime: s.dueRelativeTime,
-                    notificationRelativeTime: s.notificationRelativeTime,
+                    notificationRelativeTimes: s.notificationRelativeTimes,
                     schedulingPolicy: s.schedulingPolicy,
                     missedOccurrencePolicy: s.missedOccurrencePolicy,
                   ),
@@ -479,7 +456,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                     occurrence: 1,
                     startRelativeTime: s.startRelativeTime,
                     dueRelativeTime: s.dueRelativeTime,
-                    notificationRelativeTime: s.notificationRelativeTime,
+                    notificationRelativeTimes: s.notificationRelativeTimes,
                     schedulingPolicy: s.schedulingPolicy,
                     missedOccurrencePolicy: s.missedOccurrencePolicy,
                   ),
@@ -495,7 +472,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   dayOfMonth: val,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   schedulingPolicy: s.schedulingPolicy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
@@ -511,7 +488,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   occurrence: val,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   schedulingPolicy: s.schedulingPolicy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
@@ -527,7 +504,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   occurrence: s.occurrence,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   schedulingPolicy: s.schedulingPolicy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
@@ -541,23 +518,16 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onDueRelativeTimeChanged: (due) {
               widget.onChanged(s.copyWithTiming(dueRelativeTime: due));
             },
-            notificationRelativeTime: s.notificationRelativeTime,
-            onNotificationRelativeTimeChanged: (notif) {
-              widget.onChanged(
-                s.copyWithTiming(
-                  notificationRelativeTime: notif,
-                  clearNotification: notif == null,
-                ),
-              );
-            },
+            notificationRelativeTime: null,
+            onNotificationRelativeTimeChanged: (_) {},
             missedOccurrencePolicy: s.missedOccurrencePolicy,
             onMissedOccurrencePolicyChanged: (policy) {
               widget.onChanged(
                 s.copyWithTiming(missedOccurrencePolicy: policy),
               );
             },
-            showNotification: widget.showNotification,
-            showMissedPolicy: widget.showMissedPolicy,
+            showNotification: false,
+            showMissedPolicy: false,
             readOnly: widget.readOnly,
             intervalController: _intervalController,
             dayOfMonthController: _monthlyDayOfMonthController,
@@ -578,7 +548,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   day: s.day,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   schedulingPolicy: s.schedulingPolicy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
@@ -598,7 +568,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   day: s.day,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   schedulingPolicy: s.schedulingPolicy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
@@ -614,7 +584,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   day: val,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   schedulingPolicy: s.schedulingPolicy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
@@ -628,23 +598,16 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onDueRelativeTimeChanged: (due) {
               widget.onChanged(s.copyWithTiming(dueRelativeTime: due));
             },
-            notificationRelativeTime: s.notificationRelativeTime,
-            onNotificationRelativeTimeChanged: (notif) {
-              widget.onChanged(
-                s.copyWithTiming(
-                  notificationRelativeTime: notif,
-                  clearNotification: notif == null,
-                ),
-              );
-            },
+            notificationRelativeTime: null,
+            onNotificationRelativeTimeChanged: (_) {},
             missedOccurrencePolicy: s.missedOccurrencePolicy,
             onMissedOccurrencePolicyChanged: (policy) {
               widget.onChanged(
                 s.copyWithTiming(missedOccurrencePolicy: policy),
               );
             },
-            showNotification: widget.showNotification,
-            showMissedPolicy: widget.showMissedPolicy,
+            showNotification: false,
+            showMissedPolicy: false,
             readOnly: widget.readOnly,
             intervalController: _intervalController,
             dayController: _yearlyDayController,
@@ -653,7 +616,36 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
           OneOffSchedulingWidget(
             dueDateTime: _oneOffDueController,
             notificationTimeController: _oneOffNotificationController,
-            showNotification: widget.showNotification,
+            showNotification: false,
+          ),
+        ],
+        if (widget.showNotification) ...[
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          NotificationListWidget(
+            notifications: s.notificationRelativeTimes,
+            onChanged: (newNotifs) {
+              widget.onChanged(
+                s.copyWithTiming(notificationRelativeTimes: newNotifs),
+              );
+            },
+            referenceDate: s is OneOffSchedule ? s.scheduledDate : null,
+            readOnly: widget.readOnly,
+          ),
+        ],
+        if (widget.showMissedPolicy && s is! OneOffSchedule) ...[
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          MissedOccurrencePolicySelector(
+            policy: s.missedOccurrencePolicy,
+            onChanged: (policy) {
+              widget.onChanged(
+                s.copyWithTiming(missedOccurrencePolicy: policy),
+              );
+            },
+            readOnly: widget.readOnly,
           ),
         ],
       ],

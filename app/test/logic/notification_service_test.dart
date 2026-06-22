@@ -120,10 +120,9 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          notificationRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 30),
-          ),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 30)),
+          ],
         ),
       ],
     );
@@ -150,8 +149,8 @@ void main() {
       () async {
         await notificationService.cancelNotifications(testTask.id);
 
-        // Should attempt to cancel all associated slot IDs (0 through 9)
-        expect(mockPlugin.cancelled.length, 10);
+        // Should attempt to cancel all associated slot IDs (10 rules * 5 notification slots each)
+        expect(mockPlugin.cancelled.length, 50);
       },
     );
 

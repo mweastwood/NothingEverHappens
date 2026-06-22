@@ -55,9 +55,9 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
         return s.copyWithTiming(
           startRelativeTime: RelativeTime(dayOffset: 0, time: dt.startTime),
           dueRelativeTime: RelativeTime(dayOffset: 0, time: dt.dueTime),
-          notificationRelativeTime: dt.notificationTime != null
-              ? RelativeTime(dayOffset: 0, time: dt.notificationTime!)
-              : null,
+          notificationRelativeTimes: dt.notificationTime != null
+              ? [RelativeTime(dayOffset: 0, time: dt.notificationTime!)]
+              : const [],
         );
       }).toList();
     } else {

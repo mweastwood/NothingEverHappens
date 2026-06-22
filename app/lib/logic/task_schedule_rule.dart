@@ -5,17 +5,31 @@ import 'scheduling_policy.dart';
 import 'missed_occurrence_policy.dart';
 
 /// Defines how often a task reoccurs.
+List<RelativeTime> _parseNotificationRelativeTimes(Map<String, dynamic> json) {
+  if (json['notificationRelativeTimes'] != null) {
+    final list = json['notificationRelativeTimes'] as List;
+    return list
+        .map((item) => RelativeTime.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+  if (json['notificationRelativeTime'] != null) {
+    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>;
+    return [RelativeTime.fromJson(notifJson)];
+  }
+  return [];
+}
+
 abstract class TaskScheduleRule {
   final RelativeTime startRelativeTime;
   final RelativeTime dueRelativeTime;
-  final RelativeTime? notificationRelativeTime;
+  final List<RelativeTime> notificationRelativeTimes;
   final SchedulingPolicy schedulingPolicy;
   final MissedOccurrencePolicy missedOccurrencePolicy;
 
   const TaskScheduleRule({
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
-    this.notificationRelativeTime,
+    List<RelativeTime>? notificationRelativeTimes,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) : startRelativeTime =
@@ -30,6 +44,7 @@ abstract class TaskScheduleRule {
              dayOffset: 0,
              time: TimeOfDay(hour: 17, minute: 0),
            ),
+       notificationRelativeTimes = notificationRelativeTimes ?? const [],
        schedulingPolicy = schedulingPolicy ?? const FixedCalendarPolicy(),
        missedOccurrencePolicy =
            missedOccurrencePolicy ?? const MissedOccurrencePolicy.keepAround();
@@ -50,8 +65,7 @@ abstract class TaskScheduleRule {
   TaskScheduleRule copyWithTiming({
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
+    List<RelativeTime>? notificationRelativeTimes,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   });
@@ -89,7 +103,7 @@ class OneOffSchedule extends TaskScheduleRule {
     required this.date,
     super.startRelativeTime,
     super.dueRelativeTime,
-    super.notificationRelativeTime,
+    super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
   });
@@ -100,8 +114,6 @@ class OneOffSchedule extends TaskScheduleRule {
   factory OneOffSchedule.fromJson(Map<String, dynamic> json) {
     final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
     final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
-
     final start = startJson != null
         ? RelativeTime.fromJson(startJson)
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
@@ -113,7 +125,7 @@ class OneOffSchedule extends TaskScheduleRule {
             time: TimeOfDay(hour: 17, minute: 0),
           );
 
-    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
+    final notifs = _parseNotificationRelativeTimes(json);
 
     final schedulingPolicy = json['schedulingPolicy'] != null
         ? SchedulingPolicy.fromJson(
@@ -131,7 +143,7 @@ class OneOffSchedule extends TaskScheduleRule {
       date: CivilDay.fromJson(json['date'] as Map<String, dynamic>),
       startRelativeTime: start,
       dueRelativeTime: due,
-      notificationRelativeTime: notif,
+      notificationRelativeTimes: notifs,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -156,7 +168,7 @@ class OneOffSchedule extends TaskScheduleRule {
       date: newStartDate,
       startRelativeTime: startRelativeTime,
       dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
+      notificationRelativeTimes: notificationRelativeTimes,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -166,8 +178,7 @@ class OneOffSchedule extends TaskScheduleRule {
   TaskScheduleRule copyWithTiming({
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
+    List<RelativeTime>? notificationRelativeTimes,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
@@ -175,9 +186,8 @@ class OneOffSchedule extends TaskScheduleRule {
       date: date,
       startRelativeTime: startRelativeTime ?? this.startRelativeTime,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotification
-          ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
+      notificationRelativeTimes:
+          notificationRelativeTimes ?? this.notificationRelativeTimes,
       schedulingPolicy: schedulingPolicy ?? this.schedulingPolicy,
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
@@ -193,8 +203,10 @@ class OneOffSchedule extends TaskScheduleRule {
       'dueRelativeTime': dueRelativeTime.toJson(),
       'schedulingPolicy': schedulingPolicy.toJson(),
       'missedOccurrencePolicy': missedOccurrencePolicy.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
+      if (notificationRelativeTimes.isNotEmpty)
+        'notificationRelativeTimes': notificationRelativeTimes
+            .map((t) => t.toJson())
+            .toList(),
     };
   }
 }
@@ -212,7 +224,7 @@ class DailySchedule extends TaskScheduleRule {
     required this.interval,
     super.startRelativeTime,
     super.dueRelativeTime,
-    super.notificationRelativeTime,
+    super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
   });
@@ -223,8 +235,6 @@ class DailySchedule extends TaskScheduleRule {
   factory DailySchedule.fromJson(Map<String, dynamic> json) {
     final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
     final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
-
     final start = startJson != null
         ? RelativeTime.fromJson(startJson)
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
@@ -236,7 +246,7 @@ class DailySchedule extends TaskScheduleRule {
             time: TimeOfDay(hour: 17, minute: 0),
           );
 
-    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
+    final notifs = _parseNotificationRelativeTimes(json);
 
     final schedulingPolicy = json['schedulingPolicy'] != null
         ? SchedulingPolicy.fromJson(
@@ -255,7 +265,7 @@ class DailySchedule extends TaskScheduleRule {
       interval: json['interval'] as int,
       startRelativeTime: start,
       dueRelativeTime: due,
-      notificationRelativeTime: notif,
+      notificationRelativeTimes: notifs,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -302,7 +312,7 @@ class DailySchedule extends TaskScheduleRule {
       interval: interval,
       startRelativeTime: startRelativeTime,
       dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
+      notificationRelativeTimes: notificationRelativeTimes,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -312,8 +322,7 @@ class DailySchedule extends TaskScheduleRule {
   TaskScheduleRule copyWithTiming({
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
+    List<RelativeTime>? notificationRelativeTimes,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
@@ -322,9 +331,8 @@ class DailySchedule extends TaskScheduleRule {
       interval: interval,
       startRelativeTime: startRelativeTime ?? this.startRelativeTime,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotification
-          ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
+      notificationRelativeTimes:
+          notificationRelativeTimes ?? this.notificationRelativeTimes,
       schedulingPolicy: schedulingPolicy ?? this.schedulingPolicy,
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
@@ -341,8 +349,10 @@ class DailySchedule extends TaskScheduleRule {
       'dueRelativeTime': dueRelativeTime.toJson(),
       'schedulingPolicy': schedulingPolicy.toJson(),
       'missedOccurrencePolicy': missedOccurrencePolicy.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
+      if (notificationRelativeTimes.isNotEmpty)
+        'notificationRelativeTimes': notificationRelativeTimes
+            .map((t) => t.toJson())
+            .toList(),
     };
   }
 }
@@ -364,7 +374,7 @@ class WeeklySchedule extends TaskScheduleRule {
     required this.daysOfWeek,
     super.startRelativeTime,
     super.dueRelativeTime,
-    super.notificationRelativeTime,
+    super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
   });
@@ -375,8 +385,6 @@ class WeeklySchedule extends TaskScheduleRule {
   factory WeeklySchedule.fromJson(Map<String, dynamic> json) {
     final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
     final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
-
     final start = startJson != null
         ? RelativeTime.fromJson(startJson)
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
@@ -388,7 +396,7 @@ class WeeklySchedule extends TaskScheduleRule {
             time: TimeOfDay(hour: 17, minute: 0),
           );
 
-    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
+    final notifs = _parseNotificationRelativeTimes(json);
 
     final schedulingPolicy = json['schedulingPolicy'] != null
         ? SchedulingPolicy.fromJson(
@@ -408,7 +416,7 @@ class WeeklySchedule extends TaskScheduleRule {
       daysOfWeek: (json['daysOfWeek'] as List<dynamic>).cast<int>().toSet(),
       startRelativeTime: start,
       dueRelativeTime: due,
-      notificationRelativeTime: notif,
+      notificationRelativeTimes: notifs,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -472,7 +480,7 @@ class WeeklySchedule extends TaskScheduleRule {
       daysOfWeek: daysOfWeek,
       startRelativeTime: startRelativeTime,
       dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
+      notificationRelativeTimes: notificationRelativeTimes,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -482,8 +490,7 @@ class WeeklySchedule extends TaskScheduleRule {
   TaskScheduleRule copyWithTiming({
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
+    List<RelativeTime>? notificationRelativeTimes,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
@@ -493,9 +500,8 @@ class WeeklySchedule extends TaskScheduleRule {
       daysOfWeek: daysOfWeek,
       startRelativeTime: startRelativeTime ?? this.startRelativeTime,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotification
-          ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
+      notificationRelativeTimes:
+          notificationRelativeTimes ?? this.notificationRelativeTimes,
       schedulingPolicy: schedulingPolicy ?? this.schedulingPolicy,
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
@@ -513,8 +519,10 @@ class WeeklySchedule extends TaskScheduleRule {
       'dueRelativeTime': dueRelativeTime.toJson(),
       'schedulingPolicy': schedulingPolicy.toJson(),
       'missedOccurrencePolicy': missedOccurrencePolicy.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
+      if (notificationRelativeTimes.isNotEmpty)
+        'notificationRelativeTimes': notificationRelativeTimes
+            .map((t) => t.toJson())
+            .toList(),
     };
   }
 }
@@ -546,7 +554,7 @@ class MonthlySchedule extends TaskScheduleRule {
     this.occurrence,
     super.startRelativeTime,
     super.dueRelativeTime,
-    super.notificationRelativeTime,
+    super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
   }) : assert(
@@ -565,8 +573,6 @@ class MonthlySchedule extends TaskScheduleRule {
   factory MonthlySchedule.fromJson(Map<String, dynamic> json) {
     final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
     final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
-
     final start = startJson != null
         ? RelativeTime.fromJson(startJson)
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
@@ -578,7 +584,7 @@ class MonthlySchedule extends TaskScheduleRule {
             time: TimeOfDay(hour: 17, minute: 0),
           );
 
-    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
+    final notifs = _parseNotificationRelativeTimes(json);
 
     final schedulingPolicy = json['schedulingPolicy'] != null
         ? SchedulingPolicy.fromJson(
@@ -600,7 +606,7 @@ class MonthlySchedule extends TaskScheduleRule {
       occurrence: json['occurrence'] as int?,
       startRelativeTime: start,
       dueRelativeTime: due,
-      notificationRelativeTime: notif,
+      notificationRelativeTimes: notifs,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -680,7 +686,7 @@ class MonthlySchedule extends TaskScheduleRule {
       occurrence: occurrence,
       startRelativeTime: startRelativeTime,
       dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
+      notificationRelativeTimes: notificationRelativeTimes,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -690,8 +696,7 @@ class MonthlySchedule extends TaskScheduleRule {
   TaskScheduleRule copyWithTiming({
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
+    List<RelativeTime>? notificationRelativeTimes,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
@@ -703,9 +708,8 @@ class MonthlySchedule extends TaskScheduleRule {
       occurrence: occurrence,
       startRelativeTime: startRelativeTime ?? this.startRelativeTime,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotification
-          ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
+      notificationRelativeTimes:
+          notificationRelativeTimes ?? this.notificationRelativeTimes,
       schedulingPolicy: schedulingPolicy ?? this.schedulingPolicy,
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
@@ -725,8 +729,10 @@ class MonthlySchedule extends TaskScheduleRule {
       'dueRelativeTime': dueRelativeTime.toJson(),
       'schedulingPolicy': schedulingPolicy.toJson(),
       'missedOccurrencePolicy': missedOccurrencePolicy.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
+      if (notificationRelativeTimes.isNotEmpty)
+        'notificationRelativeTimes': notificationRelativeTimes
+            .map((t) => t.toJson())
+            .toList(),
     };
   }
 }
@@ -752,7 +758,7 @@ class YearlySchedule extends TaskScheduleRule {
     required this.day,
     super.startRelativeTime,
     super.dueRelativeTime,
-    super.notificationRelativeTime,
+    super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
   });
@@ -763,8 +769,6 @@ class YearlySchedule extends TaskScheduleRule {
   factory YearlySchedule.fromJson(Map<String, dynamic> json) {
     final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
     final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>?;
-
     final start = startJson != null
         ? RelativeTime.fromJson(startJson)
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
@@ -776,7 +780,7 @@ class YearlySchedule extends TaskScheduleRule {
             time: TimeOfDay(hour: 17, minute: 0),
           );
 
-    final notif = notifJson != null ? RelativeTime.fromJson(notifJson) : null;
+    final notifs = _parseNotificationRelativeTimes(json);
 
     final schedulingPolicy = json['schedulingPolicy'] != null
         ? SchedulingPolicy.fromJson(
@@ -797,7 +801,7 @@ class YearlySchedule extends TaskScheduleRule {
       day: json['day'] as int,
       startRelativeTime: start,
       dueRelativeTime: due,
-      notificationRelativeTime: notif,
+      notificationRelativeTimes: notifs,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -848,7 +852,7 @@ class YearlySchedule extends TaskScheduleRule {
       day: day,
       startRelativeTime: startRelativeTime,
       dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
+      notificationRelativeTimes: notificationRelativeTimes,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -858,8 +862,7 @@ class YearlySchedule extends TaskScheduleRule {
   TaskScheduleRule copyWithTiming({
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotification = false,
+    List<RelativeTime>? notificationRelativeTimes,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
@@ -870,9 +873,8 @@ class YearlySchedule extends TaskScheduleRule {
       day: day,
       startRelativeTime: startRelativeTime ?? this.startRelativeTime,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotification
-          ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
+      notificationRelativeTimes:
+          notificationRelativeTimes ?? this.notificationRelativeTimes,
       schedulingPolicy: schedulingPolicy ?? this.schedulingPolicy,
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
@@ -891,8 +893,10 @@ class YearlySchedule extends TaskScheduleRule {
       'dueRelativeTime': dueRelativeTime.toJson(),
       'schedulingPolicy': schedulingPolicy.toJson(),
       'missedOccurrencePolicy': missedOccurrencePolicy.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
+      if (notificationRelativeTimes.isNotEmpty)
+        'notificationRelativeTimes': notificationRelativeTimes
+            .map((t) => t.toJson())
+            .toList(),
     };
   }
 }
@@ -949,7 +953,7 @@ TaskScheduleRule convertRuleToKind(
   final scheduledDate = existingRule.scheduledDate;
   final startRelativeTime = existingRule.startRelativeTime;
   final dueRelativeTime = existingRule.dueRelativeTime;
-  final notificationRelativeTime = existingRule.notificationRelativeTime;
+  final notificationRelativeTimes = existingRule.notificationRelativeTimes;
   final missedOccurrencePolicy = existingRule.missedOccurrencePolicy;
 
   // Read existing interval if possible, default to 1
@@ -971,7 +975,7 @@ TaskScheduleRule convertRuleToKind(
         date: scheduledDate,
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
-        notificationRelativeTime: notificationRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
         missedOccurrencePolicy: missedOccurrencePolicy,
       );
 
@@ -981,7 +985,7 @@ TaskScheduleRule convertRuleToKind(
         interval: interval,
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
-        notificationRelativeTime: notificationRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
         schedulingPolicy: const FixedCalendarPolicy(),
         missedOccurrencePolicy: missedOccurrencePolicy,
       );
@@ -992,7 +996,7 @@ TaskScheduleRule convertRuleToKind(
         interval: interval,
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
-        notificationRelativeTime: notificationRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
         schedulingPolicy: CompletionRelativePolicy(
           interval: Duration(days: interval),
           targetTime: startRelativeTime.time,
@@ -1007,7 +1011,7 @@ TaskScheduleRule convertRuleToKind(
         daysOfWeek: {scheduledDate.toUtcDateTime().weekday},
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
-        notificationRelativeTime: notificationRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
         schedulingPolicy: const FixedCalendarPolicy(),
         missedOccurrencePolicy: missedOccurrencePolicy,
       );
@@ -1019,7 +1023,7 @@ TaskScheduleRule convertRuleToKind(
         daysOfWeek: {scheduledDate.toUtcDateTime().weekday},
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
-        notificationRelativeTime: notificationRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
         schedulingPolicy: CompletionRelativePolicy(
           interval: Duration(days: interval * 7),
           targetTime: startRelativeTime.time,
@@ -1034,7 +1038,7 @@ TaskScheduleRule convertRuleToKind(
         dayOfMonth: scheduledDate.day <= 28 ? scheduledDate.day : 28,
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
-        notificationRelativeTime: notificationRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
         schedulingPolicy: const FixedCalendarPolicy(),
         missedOccurrencePolicy: missedOccurrencePolicy,
       );
@@ -1049,7 +1053,7 @@ TaskScheduleRule convertRuleToKind(
         occurrence: occurrence,
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
-        notificationRelativeTime: notificationRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
         schedulingPolicy: const FixedCalendarPolicy(),
         missedOccurrencePolicy: missedOccurrencePolicy,
       );
@@ -1061,7 +1065,7 @@ TaskScheduleRule convertRuleToKind(
         dayOfMonth: scheduledDate.day <= 28 ? scheduledDate.day : 28,
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
-        notificationRelativeTime: notificationRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
         schedulingPolicy: CompletionRelativePolicy(
           interval: Duration(days: interval * 30),
           targetTime: startRelativeTime.time,
@@ -1077,7 +1081,7 @@ TaskScheduleRule convertRuleToKind(
         day: scheduledDate.day,
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
-        notificationRelativeTime: notificationRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
         schedulingPolicy: const FixedCalendarPolicy(),
         missedOccurrencePolicy: missedOccurrencePolicy,
       );
@@ -1090,7 +1094,7 @@ TaskScheduleRule convertRuleToKind(
         day: scheduledDate.day,
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
-        notificationRelativeTime: notificationRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
         schedulingPolicy: CompletionRelativePolicy(
           interval: Duration(days: interval * 365),
           targetTime: startRelativeTime.time,

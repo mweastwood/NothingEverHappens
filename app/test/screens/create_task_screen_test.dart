@@ -15,7 +15,6 @@ import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
-import 'package:nothing_ever_happens/widgets/one_off_scheduling_widget.dart';
 
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'create_task_screen_test.mocks.dart';
@@ -818,16 +817,10 @@ void main() {
           'Oneoff task notification',
         );
 
-        // Set notification time on OneOffSchedulingWidget
-        final oneOffFinder = find.byType(OneOffSchedulingWidget);
-        expect(oneOffFinder, findsOneWidget);
-        final oneOffWidget = tester.widget<OneOffSchedulingWidget>(
-          oneOffFinder,
-        );
-        oneOffWidget.notificationTimeController!.value = const TimeOfDay(
-          hour: 9,
-          minute: 0,
-        );
+        // Tap Add Notification button
+        final addNotifFinder = find.byKey(const Key('add_notification_button'));
+        expect(addNotifFinder, findsOneWidget);
+        await tester.tap(addNotifFinder);
         await tester.pumpAndSettle();
 
         // Save the task
@@ -841,7 +834,7 @@ void main() {
                 ).captured.single
                 as TaskSchedule;
         expect(captured.schedules, isNotEmpty);
-        expect(captured.schedules.first.notificationRelativeTime, isNotNull);
+        expect(captured.schedules.first.notificationRelativeTimes, isNotEmpty);
       },
     );
 

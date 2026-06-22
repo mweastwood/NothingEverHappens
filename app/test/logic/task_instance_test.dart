@@ -33,7 +33,7 @@ void main() {
         scheduledDate: testDate,
         startRelativeTime: testStart,
         dueRelativeTime: testDue,
-        notificationRelativeTime: testNotification,
+        notificationRelativeTimes: [testNotification],
         isFamily: true,
         priority: TaskPriority.high,
         cycleId: 'cycle-789',
@@ -50,7 +50,7 @@ void main() {
       expect(instance.scheduledDate, testDate);
       expect(instance.startRelativeTime, testStart);
       expect(instance.dueRelativeTime, testDue);
-      expect(instance.notificationRelativeTime, testNotification);
+      expect(instance.notificationRelativeTimes, [testNotification]);
       expect(instance.isFamily, true);
       expect(instance.priority, TaskPriority.high);
       expect(instance.cycleId, 'cycle-789');
@@ -70,7 +70,7 @@ void main() {
         scheduledDate: testDate,
         startRelativeTime: testStart,
         dueRelativeTime: testDue,
-        notificationRelativeTime: testNotification,
+        notificationRelativeTimes: [testNotification],
         isFamily: true,
         priority: TaskPriority.high,
         cycleId: 'cycle-789',
@@ -87,7 +87,7 @@ void main() {
       expect(map['scheduledDate'], testDate.toJson());
       expect(map['startRelativeTime'], testStart.toJson());
       expect(map['dueRelativeTime'], testDue.toJson());
-      expect(map['notificationRelativeTime'], testNotification.toJson());
+      expect(map['notificationRelativeTimes'], [testNotification.toJson()]);
       expect(map['isFamily'], true);
       expect(map['priority'], 'high');
       expect(map['cycleId'], 'cycle-789');
@@ -129,7 +129,7 @@ void main() {
       expect(instance.scheduledDate, testDate);
       expect(instance.startRelativeTime, testStart);
       expect(instance.dueRelativeTime, testDue);
-      expect(instance.notificationRelativeTime, testNotification);
+      expect(instance.notificationRelativeTimes, [testNotification]);
       expect(instance.isFamily, true);
       expect(instance.priority, TaskPriority.high);
       expect(instance.cycleId, 'cycle-789');
@@ -168,7 +168,7 @@ void main() {
         scheduledDate: testDate,
         startRelativeTime: testStart,
         dueRelativeTime: testDue,
-        notificationRelativeTime: testNotification,
+        notificationRelativeTimes: [testNotification],
         isFamily: false,
         priority: TaskPriority.low,
         cycleId: 'cycle-789',
@@ -190,7 +190,7 @@ void main() {
           dayOffset: 1,
           time: TimeOfDay(hour: 18, minute: 0),
         ),
-        clearNotificationRelativeTime: true,
+        clearNotificationRelativeTimes: true,
         isFamily: true,
         priority: TaskPriority.high,
         clearCycleId: true,
@@ -216,7 +216,7 @@ void main() {
         updated.dueRelativeTime,
         const RelativeTime(dayOffset: 1, time: TimeOfDay(hour: 18, minute: 0)),
       );
-      expect(updated.notificationRelativeTime, isNull);
+      expect(updated.notificationRelativeTimes, isEmpty);
       expect(updated.isFamily, true);
       expect(updated.priority, TaskPriority.high);
       expect(updated.cycleId, isNull);

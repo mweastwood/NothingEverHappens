@@ -35,10 +35,9 @@ void main() {
             dayOffset: 1,
             time: TimeOfDay(hour: 12, minute: 0),
           ),
-          notificationRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 0),
-          ),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 0)),
+          ],
         ),
       ];
 
@@ -61,7 +60,7 @@ void main() {
       expect(task.schedules[1].startRelativeTime.dayOffset, -1);
       expect(task.schedules[1].dueRelativeTime.dayOffset, 1);
       expect(task.schedules[1].dueRelativeTime.time.hour, 12);
-      expect(task.schedules[1].notificationRelativeTime?.time.hour, 8);
+      expect(task.schedules[1].notificationRelativeTimes.first.time.hour, 8);
     });
 
     test('TaskList.complete advances multiple repeating schedules correctly', () {
