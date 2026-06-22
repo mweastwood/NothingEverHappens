@@ -575,6 +575,8 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
               child: Text(
                 'lastSpawnedDate: ${task.lastSpawnedDate?.toString() ?? "null"}',
                 style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 11.0,
+                  height: 1.2,
                   color: theme.colorScheme.onSurfaceVariant.withValues(
                     alpha: 0.6,
                   ),
