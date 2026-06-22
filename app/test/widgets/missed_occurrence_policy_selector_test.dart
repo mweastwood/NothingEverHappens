@@ -13,9 +13,11 @@ void main() {
       await tester.pumpWidget(
         buildTestableWidget(
           child: Scaffold(
-            body: MissedOccurrencePolicySelector(
-              policy: policy,
-              onChanged: (_) {},
+            body: SingleChildScrollView(
+              child: MissedOccurrencePolicySelector(
+                policy: policy,
+                onChanged: (_) {},
+              ),
             ),
           ),
         ),
@@ -25,7 +27,7 @@ void main() {
       expect(find.text('Stack'), findsWidgets); // Both in dropdown and preview
       expect(
         find.text(
-          'Visual Simulation (Assume Mon/Tue were missed; Today is Wed)',
+          "In the examples shown below, assume we have a daily task that we didn't complete, check-off, or dismiss the task in any way on Monday or Tuesday. It is now Wednesday, so what should be done with the older tasks?",
         ),
         findsOneWidget,
       );
@@ -41,9 +43,11 @@ void main() {
         await tester.pumpWidget(
           buildTestableWidget(
             child: Scaffold(
-              body: MissedOccurrencePolicySelector(
-                policy: policy,
-                onChanged: (_) {},
+              body: SingleChildScrollView(
+                child: MissedOccurrencePolicySelector(
+                  policy: policy,
+                  onChanged: (_) {},
+                ),
               ),
             ),
           ),
@@ -106,7 +110,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(600, 1400),
+        surfaceSize: const Size(600, 1100),
       );
       await screenMatchesGolden(tester, 'missed_occurrence_policy_selector');
     });
