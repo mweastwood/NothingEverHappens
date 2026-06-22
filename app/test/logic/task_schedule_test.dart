@@ -449,10 +449,9 @@ void main() {
       },
     );
   });
-
   group('Missed Occurrence Policies Strategy Unit Tests', () {
     test(
-      '1. Rollover (Push to Next Day): Overdue Monday task completed on Tuesday reschedules to Tuesday (original path)',
+      '1. Rollover (Push to Next Day): Overdue Monday task completed on Tuesday reschedules to Wednesday',
       () {
         // Create a daily task scheduled for Monday
         final monday = const CivilDay(year: 2026, month: 5, day: 25);
@@ -486,13 +485,13 @@ void main() {
         final state = TaskList([task]).complete('rollover-task');
         AppClock.reset();
 
-        // The next occurrence should continue relative to original path -> Tuesday
+        // The next occurrence should continue relative to original path -> Wednesday
         final completedTask = state.activeTasks.firstWhere(
           (t) => t.id == 'rollover-task',
         );
         expect(
           completedTask.schedules.first.scheduledDate,
-          const CivilDay(year: 2026, month: 5, day: 26),
+          const CivilDay(year: 2026, month: 5, day: 27),
         );
       },
     );
@@ -788,14 +787,15 @@ void main() {
           .get();
       expect(sched1SnapMidnight.data()!['status'], 'pending');
 
-      // Verify that the next day's instance for Schedule 1 has NOT been spawned yet
+      // Verify that the next day's instance for Schedule 1 has been spawned as pending (since Friday has arrived)
       final sched1SnapNextDay = await firestore
           .collection('users')
           .doc('user-1')
           .collection('instances')
           .doc('cross-midnight-task_2026-06-19_1')
           .get();
-      expect(sched1SnapNextDay.exists, isFalse);
+      expect(sched1SnapNextDay.exists, isTrue);
+      expect(sched1SnapNextDay.data()!['status'], 'pending');
 
       // Move to Friday June 19th 2:05 AM (AFTER due time 2:00 AM)
       final fri205am = DateTime(2026, 6, 19, 2, 5);
@@ -1358,8 +1358,8 @@ void main() {
             .collection('instances')
             .get();
         // Daily schedule should have instance for June 1 (since it starts June 1).
-        // Weekly schedule should have instance for June 3 (its next occurrence after June 1).
-        expect(instsBefore.docs.length, 2);
+        // Weekly schedule should NOT have instance for June 3 yet (since it's in the future).
+        expect(instsBefore.docs.length, 1);
         expect(
           instsBefore.docs.any(
             (d) => d.id == 'repo-rollover-mixed_2026-06-01_0',
@@ -1370,7 +1370,7 @@ void main() {
           instsBefore.docs.any(
             (d) => d.id == 'repo-rollover-mixed_2026-06-03_1',
           ),
-          isTrue,
+          isFalse,
         );
 
         AppClock.reset();
@@ -1451,11 +1451,8 @@ void main() {
             .collection('instances')
             .doc('repo-skip-mixed_2026-07-01_1')
             .get();
-
-        expect(weeklyJune15.exists, isTrue);
-        expect(weeklyJune15.data()?['status'], 'pending');
-        expect(monthlyJuly1.exists, isTrue);
-        expect(monthlyJuly1.data()?['status'], 'pending');
+        expect(weeklyJune15.exists, isFalse);
+        expect(monthlyJuly1.exists, isFalse);
 
         AppClock.reset();
       },
@@ -1505,7 +1502,10 @@ void main() {
             .length;
 
         expect(skippedCount, 31); // June 1 + 30 backfilled (June 2 to July 1)
-        expect(pendingCount, 1); // July 16
+        expect(
+          pendingCount,
+          0,
+        ); // July 16 is not spawned yet due to the 30-day backfill cap
 
         AppClock.reset();
       },

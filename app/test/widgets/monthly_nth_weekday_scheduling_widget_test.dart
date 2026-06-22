@@ -141,7 +141,7 @@ void main() {
     testGoldens('MonthlyNthWeekdaySchedulingWidget renders correctly', (
       tester,
     ) async {
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.5)
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.4)
         ..addScenario(
           'MonthlyNthWeekday Default',
           Material(
@@ -172,7 +172,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(500, 950),
+        surfaceSize: const Size(500, 1300),
       );
       await screenMatchesGolden(
         tester,

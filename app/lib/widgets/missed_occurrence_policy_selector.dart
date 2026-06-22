@@ -30,9 +30,7 @@ class _MissedOccurrencePolicySelectorState
   void initState() {
     super.initState();
     _preset = _getGracePreset(widget.policy.gracePeriod);
-    final (val, unit) = _getCustomValueAndUnit(
-      widget.policy.gracePeriod ?? const Duration(hours: 1),
-    );
+    final (val, unit) = _getCustomValueAndUnit(widget.policy.gracePeriod);
     _customController = TextEditingController(text: val.toString());
     _customUnit = unit;
   }
@@ -42,9 +40,7 @@ class _MissedOccurrencePolicySelectorState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.policy != widget.policy) {
       _preset = _getGracePreset(widget.policy.gracePeriod);
-      final (val, unit) = _getCustomValueAndUnit(
-        widget.policy.gracePeriod ?? const Duration(hours: 1),
-      );
+      final (val, unit) = _getCustomValueAndUnit(widget.policy.gracePeriod);
       if (_customController.text != val.toString()) {
         _customController.text = val.toString();
       }
@@ -58,8 +54,7 @@ class _MissedOccurrencePolicySelectorState
     super.dispose();
   }
 
-  String _getGracePreset(Duration? gracePeriod) {
-    if (gracePeriod == null) return '1h';
+  String _getGracePreset(Duration gracePeriod) {
     if (gracePeriod == Duration.zero) return 'immediate';
     if (gracePeriod == const Duration(hours: 1)) return '1h';
     if (gracePeriod == const Duration(hours: 6)) return '6h';
@@ -111,20 +106,16 @@ class _MissedOccurrencePolicySelectorState
   }
 
   void _triggerChange({
-    MissedOccurrenceType? type,
+    MissedPolicy? policy,
     String? preset,
     int? customVal,
     String? customUnit,
-    MissedPolicy? legacyPolicy,
   }) {
-    final currentType = type ?? widget.policy.type;
+    final currentPolicy = policy ?? widget.policy.policy;
     final currentPreset = preset ?? _preset;
-    final currentLegacy = legacyPolicy ?? widget.policy.legacyPolicy;
 
-    if (currentType == MissedOccurrenceType.keepAround) {
-      widget.onChanged(
-        MissedOccurrencePolicy.keepAround(legacyPolicy: currentLegacy),
-      );
+    if (currentPolicy != MissedPolicy.autoDismiss) {
+      widget.onChanged(MissedOccurrencePolicy(policy: currentPolicy));
     } else {
       final parsedVal = customVal ?? int.tryParse(_customController.text) ?? 1;
       final parsedUnit = customUnit ?? _customUnit;
@@ -140,72 +131,50 @@ class _MissedOccurrencePolicySelectorState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final type = widget.policy.type;
+    final selectedPolicy = widget.policy.policy;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'If task is missed...',
+          'Missed Occurrence Policy',
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 8),
-        SegmentedButton<MissedOccurrenceType>(
-          segments: const [
-            ButtonSegment<MissedOccurrenceType>(
-              value: MissedOccurrenceType.keepAround,
-              icon: Icon(Icons.stacked_line_chart),
-              label: Text('Keep Around'),
+        DropdownButtonFormField<MissedPolicy>(
+          initialValue: selectedPolicy,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: MissedPolicy.preferNewer,
+              child: Text('Prefer Newer'),
             ),
-            ButtonSegment<MissedOccurrenceType>(
-              value: MissedOccurrenceType.autoDismiss,
-              icon: Icon(Icons.timer_outlined),
-              label: Text('Auto-Dismiss'),
+            DropdownMenuItem(
+              value: MissedPolicy.preferOlder,
+              child: Text('Prefer Older'),
+            ),
+            DropdownMenuItem(value: MissedPolicy.stack, child: Text('Stack')),
+            DropdownMenuItem(
+              value: MissedPolicy.autoDismiss,
+              child: Text('Auto-Dismiss'),
             ),
           ],
-          selected: {type},
-          onSelectionChanged: widget.readOnly
+          onChanged: widget.readOnly
               ? null
-              : (selection) {
-                  if (selection.isNotEmpty) {
-                    _triggerChange(type: selection.first);
+              : (val) {
+                  if (val != null) {
+                    _triggerChange(policy: val);
                   }
                 },
         ),
-        const SizedBox(height: 16),
-        if (type == MissedOccurrenceType.keepAround) ...[
-          DropdownButtonFormField<MissedPolicy>(
-            initialValue: widget.policy.legacyPolicy,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Overdue Treatment',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: MissedPolicy.rollover,
-                child: Text('Rollover (single card, original due ref)'),
-              ),
-              DropdownMenuItem(
-                value: MissedPolicy.shift,
-                child: Text('Shift (single card, completion ref)'),
-              ),
-              DropdownMenuItem(
-                value: MissedPolicy.stack,
-                child: Text('Stack (allow multiple pending cards)'),
-              ),
-            ],
-            onChanged: widget.readOnly
-                ? null
-                : (val) {
-                    if (val != null) {
-                      _triggerChange(legacyPolicy: val);
-                    }
-                  },
-          ),
-        ] else ...[
+        if (selectedPolicy == MissedPolicy.autoDismiss) ...[
+          const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _preset,
             isExpanded: true,
@@ -291,7 +260,212 @@ class _MissedOccurrencePolicySelectorState
             ),
           ],
         ],
+        const SizedBox(height: 20),
+        _buildTimelinePreview(theme, selectedPolicy),
+        const SizedBox(height: 12),
+        _buildExplanatoryText(theme, selectedPolicy),
       ],
     );
   }
+
+  Widget _buildTimelinePreview(ThemeData theme, MissedPolicy policy) {
+    // 5-day layout: Monday, Tuesday, Wednesday (Today), Thursday, Friday
+    // Let's assume user missed Mon and Tue. Today is Wed.
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    final List<_TimelineDayState> states;
+
+    switch (policy) {
+      case MissedPolicy.preferNewer:
+        states = [
+          _TimelineDayState.skipped,
+          _TimelineDayState.skipped,
+          _TimelineDayState.active,
+          _TimelineDayState.future,
+          _TimelineDayState.future,
+        ];
+        break;
+      case MissedPolicy.preferOlder:
+        states = [
+          _TimelineDayState.active, // Monday remains active
+          _TimelineDayState.skipped,
+          _TimelineDayState.skipped,
+          _TimelineDayState.future,
+          _TimelineDayState.future,
+        ];
+        break;
+      case MissedPolicy.stack:
+        states = [
+          _TimelineDayState.active, // Monday active/overdue
+          _TimelineDayState.active, // Tuesday active/overdue
+          _TimelineDayState.active, // Wednesday active/today
+          _TimelineDayState.future,
+          _TimelineDayState.future,
+        ];
+        break;
+      case MissedPolicy.autoDismiss:
+        states = [
+          _TimelineDayState.skipped, // Monday expired (> 24h)
+          _TimelineDayState.skipped, // Tuesday expired (> 24h)
+          _TimelineDayState.active, // Wednesday active/today
+          _TimelineDayState.future,
+          _TimelineDayState.future,
+        ];
+        break;
+      case MissedPolicy.rollover:
+      case MissedPolicy.skip:
+      case MissedPolicy.shift:
+        states = [];
+        break;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Visual Simulation (Assume Mon/Tue were missed; Today is Wed)',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(days.length, (idx) {
+            final day = days[idx];
+            final state = states[idx];
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _buildDayBadge(theme, day, state),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDayBadge(ThemeData theme, String day, _TimelineDayState state) {
+    Color cardColor;
+    Color textColor;
+    Border? border;
+
+    switch (state) {
+      case _TimelineDayState.active:
+        cardColor = theme.colorScheme.primaryContainer;
+        textColor = theme.colorScheme.onPrimaryContainer;
+        border = Border.all(color: theme.colorScheme.primary, width: 1.5);
+        break;
+      case _TimelineDayState.skipped:
+        cardColor = theme.colorScheme.surface;
+        textColor = theme.colorScheme.onSurface.withValues(alpha: 0.4);
+        border = Border.all(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+          style: BorderStyle.solid,
+        );
+        break;
+      case _TimelineDayState.future:
+        cardColor = theme.colorScheme.surface;
+        textColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+        border = Border.all(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+        );
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(8),
+        border: border,
+      ),
+      child: Column(
+        children: [
+          Text(
+            day,
+            style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+          ),
+          const SizedBox(height: 4),
+          _getStatusLabel(state, textColor),
+        ],
+      ),
+    );
+  }
+
+  Widget _getStatusLabel(_TimelineDayState state, Color color) {
+    String text;
+    IconData? icon;
+
+    switch (state) {
+      case _TimelineDayState.active:
+        text = 'Active';
+        icon = Icons.play_arrow_rounded;
+        break;
+      case _TimelineDayState.skipped:
+        text = 'Skipped';
+        icon = Icons.block_flipped;
+        break;
+      case _TimelineDayState.future:
+        text = 'Future';
+        icon = Icons.calendar_month_outlined;
+        break;
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 10, color: color),
+        const SizedBox(width: 2),
+        Text(text, style: TextStyle(fontSize: 9, color: color)),
+      ],
+    );
+  }
+
+  Widget _buildExplanatoryText(ThemeData theme, MissedPolicy policy) {
+    String text;
+    switch (policy) {
+      case MissedPolicy.preferNewer:
+        text =
+            'Keep Newer, Skip Older:\nOnly the latest occurrence stays active. Monday and Tuesday are automatically skipped so you can start fresh on Wednesday.';
+        break;
+      case MissedPolicy.preferOlder:
+        text =
+            'Keep Older, Skip Newer:\nOnly the oldest unfinished occurrence (Monday) stays active. Tuesday and Wednesday are skipped so you don\'t have a backlog to catch up on.';
+        break;
+      case MissedPolicy.stack:
+        text =
+            'Keep Both (Stack):\nAll occurrences pile up. Monday, Tuesday, and Wednesday are all active simultaneously. You must complete or dismiss them individually.';
+        break;
+      case MissedPolicy.autoDismiss:
+        text =
+            'Auto-Dismiss:\nOccurrences stack but expire after a grace period. Monday and Tuesday have automatically been skipped; only Wednesday remains active.';
+        break;
+      case MissedPolicy.rollover:
+      case MissedPolicy.skip:
+      case MissedPolicy.shift:
+        text = '';
+        break;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Text(
+        text,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          height: 1.4,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+    );
+  }
 }
+
+enum _TimelineDayState { active, skipped, future }

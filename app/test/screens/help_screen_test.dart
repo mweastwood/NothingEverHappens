@@ -653,10 +653,10 @@ void main() {
       expect(find.textContaining('Missed Occurrence Policies'), findsOneWidget);
 
       // Check policy options
-      expect(find.text('Rollover'), findsOneWidget);
-      expect(find.text('Skip'), findsOneWidget);
-      expect(find.text('Shift Schedule'), findsOneWidget);
-      expect(find.text('Stack/Overlap'), findsOneWidget);
+      expect(find.text('Prefer Newer'), findsOneWidget);
+      expect(find.text('Prefer Older'), findsOneWidget);
+      expect(find.text('Stack'), findsWidgets);
+      expect(find.text('Auto-Dismiss'), findsOneWidget);
 
       // Check Simulated Today starts at June 1
       expect(find.text('Simulated Today: June 1'), findsOneWidget);
@@ -666,7 +666,7 @@ void main() {
       expect(find.text('Scheduled: June 1'), findsOneWidget);
     });
 
-    testWidgets('rollover policy: advance and complete shifts correctly', (
+    testWidgets('prefer older policy: advance and complete shifts correctly', (
       WidgetTester tester,
     ) async {
       setLargeScreenSize(tester);
@@ -675,7 +675,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Advance 1 day (should make June 1 task overdue on June 2)
+      // Switch to Prefer Older
+      await tester.tap(find.text('Prefer Older'));
+      await tester.pumpAndSettle();
+
+      // Advance 1 day (should make June 1 task overdue on June 2, skipping June 2)
       await tester.tap(find.text('Advance 1 Day'));
       await tester.pumpAndSettle();
 
@@ -689,11 +693,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
       await tester.pumpAndSettle();
 
-      // In Rollover, it reschedules to June 2 (which is today/June 2, so it's active)
-      expect(find.text('Scheduled: June 2'), findsOneWidget);
+      // Reschedules to June 3
+      expect(find.text('Scheduled: June 3'), findsOneWidget);
     });
 
-    testWidgets('skip policy: auto-skips overdue tasks', (
+    testWidgets('prefer newer policy: auto-skips overdue tasks', (
       WidgetTester tester,
     ) async {
       setLargeScreenSize(tester);
@@ -702,8 +706,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Switch to Skip
-      await tester.tap(find.text('Skip'));
+      // Switch to Prefer Newer
+      await tester.tap(find.text('Prefer Newer'));
       await tester.pumpAndSettle();
 
       expect(find.text('Simulated Today: June 1'), findsOneWidget);
@@ -713,12 +717,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Simulated Today: June 2'), findsOneWidget);
-      // Under Skip, the June 1 task is auto-skipped, so the only active task should be scheduled for June 2 (active)
+      // Under Prefer Newer, the June 1 task is auto-skipped, so the only active task should be scheduled for June 2 (active)
       expect(find.text('Scheduled: June 2'), findsOneWidget);
       expect(find.textContaining('(Overdue)'), findsNothing);
     });
 
-    testWidgets('shift policy: reschedules relative to completion date', (
+    testWidgets('auto-dismiss policy: auto-skips after grace period', (
       WidgetTester tester,
     ) async {
       setLargeScreenSize(tester);
@@ -727,23 +731,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Switch to Shift
-      await tester.tap(find.text('Shift Schedule'));
+      // Switch to Auto-Dismiss
+      await tester.tap(find.text('Auto-Dismiss'));
       await tester.pumpAndSettle();
 
-      // Advance 1 day (June 2)
+      // Advance 1 day (June 2) - June 1 expires (grace period of 1 day) and is skipped
       await tester.tap(find.text('Advance 1 Day'));
       await tester.pumpAndSettle();
 
-      // Complete task
-      await tester.ensureVisible(find.byType(FunCheckButton).first);
-      await tester.tap(find.byType(FunCheckButton).first);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 700));
-      await tester.pumpAndSettle();
-
-      // In Shift, completed on June 2 -> reschedules to June 3 (active)
-      expect(find.text('Scheduled: June 3'), findsOneWidget);
+      expect(find.text('Simulated Today: June 2'), findsOneWidget);
+      expect(find.text('Scheduled: June 2'), findsOneWidget);
+      expect(find.textContaining('(Overdue)'), findsNothing);
     });
 
     testWidgets('stack policy: spawns concurrent instances', (
@@ -756,7 +754,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Switch to Stack
-      await tester.tap(find.text('Stack/Overlap'));
+      await tester.tap(find.text('Stack'));
       await tester.pumpAndSettle();
 
       // Advance 1 day (June 2) -> should spawn a task for June 2, keeping June 1 overdue

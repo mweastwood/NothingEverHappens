@@ -771,8 +771,8 @@ void main() {
             .get();
         expect(completedSnapshot.data()!['status'], 'completed');
 
-        // Rollover policy reschedules relative to scheduledDate (June 1) -> June 2 (even if June 2 is in the past)
-        final nextInstanceId = '${rolloverTask.id}_2026-06-02';
+        // Reschedules relative to completion date/today -> June 10
+        final nextInstanceId = '${rolloverTask.id}_2026-06-10';
         final nextSnapshot = await firestore
             .collection('users')
             .doc(userId)
@@ -813,8 +813,31 @@ void main() {
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
-        // Verify June 3 instance exists and is pending
         final instanceId = '${task.id}_2026-06-03';
+        final initialInstance = TaskInstance(
+          id: instanceId,
+          scheduleId: task.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 6, day: 3),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: 'pending',
+        );
+        await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(instanceId)
+            .set(initialInstance.toFirestore());
+
+        // Verify June 3 instance exists and is pending
         final initialSnapshot = await firestore
             .collection('users')
             .doc(userId)
