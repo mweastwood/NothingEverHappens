@@ -127,6 +127,23 @@ void main() {
     await screenMatchesGolden(tester, 'settings_screen_validation_error');
   });
 
+  testGoldens('SettingsScreen with all options enabled golden', (tester) async {
+    settingsSubject.add(
+      const UserSettings(
+        hoursAvailable: 8.0,
+        showPendingTasks: true,
+        showLastSpawnedDate: true,
+      ),
+    );
+
+    await tester.pumpWidgetBuilder(
+      buildTestWidget(),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+    await screenMatchesGolden(tester, 'settings_screen_all_enabled');
+  });
+
   testWidgets(
     'SettingsScreen updates and saves showPendingTasks switch correctly',
     (WidgetTester tester) async {

@@ -1302,4 +1302,78 @@ void main() {
       await instancesSubj.close();
     },
   );
+
+  testGoldens('TaskListScreen - Shows Pending Tasks with Badge', (
+    tester,
+  ) async {
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    final startTime = DateTime(2026, 6, 22, 12, 0);
+    AppClock.setMockTime(startTime);
+    final taskDate = CivilDay.fromDateTime(startTime);
+
+    final taskStartLocalTime = startTime.add(const Duration(minutes: 5));
+    final relativeStart = RelativeTime(
+      dayOffset: 0,
+      time: TimeOfDay.fromDateTime(taskStartLocalTime),
+    );
+    final relativeDue = RelativeTime(
+      dayOffset: 0,
+      time: TimeOfDay.fromDateTime(startTime.add(const Duration(hours: 1))),
+    );
+
+    final futureTask = TaskSchedule(
+      id: 'future-task-1',
+      title: 'Future Pending Task',
+      description: 'Starts in 5 minutes',
+      schedules: [
+        OneOffSchedule(
+          date: taskDate,
+          startRelativeTime: relativeStart,
+          dueRelativeTime: relativeDue,
+        ),
+      ],
+    );
+
+    final futureInstance = TaskInstance(
+      id: 'future-task-1_inst',
+      scheduleId: futureTask.id,
+      title: futureTask.title,
+      description: futureTask.description,
+      scheduledDate: taskDate,
+      startRelativeTime: relativeStart,
+      dueRelativeTime: relativeDue,
+      status: 'pending',
+    );
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(
+      mockTaskRepository.getTasks(),
+    ).thenAnswer((_) => Stream.value([futureTask]));
+    when(
+      mockTaskRepository.getInstances(),
+    ).thenAnswer((_) => Stream.value([futureInstance]));
+
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+          userSettingsProvider.overrideWith(
+            (ref) => Stream.value(
+              const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
+            ),
+          ),
+        ],
+        child: const HomeScreen(),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    await screenMatchesGolden(tester, 'task_list_screen_pending_tasks');
+
+    AppClock.reset();
+  });
 }
