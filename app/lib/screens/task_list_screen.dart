@@ -5,6 +5,8 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../widgets/task_widget.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/user_settings.dart';
+import '../logic/user_settings_repository.dart';
 
 final taskSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -43,23 +45,31 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         final isMocked = mockTime != null;
         final schedulesVal = ref.watch(taskSchedulesProvider);
         final instancesVal = ref.watch(taskInstancesProvider);
+        final settingsVal = ref.watch(userSettingsProvider);
 
         Widget bodySliver;
-        if (schedulesVal.isLoading || instancesVal.isLoading) {
+        if (schedulesVal.isLoading ||
+            instancesVal.isLoading ||
+            settingsVal.isLoading) {
           bodySliver = const SliverToBoxAdapter(
             child: SizedBox(
               height: 200,
               child: Center(child: CircularProgressIndicator()),
             ),
           );
-        } else if (schedulesVal.hasError || instancesVal.hasError) {
-          final err = schedulesVal.error ?? instancesVal.error;
+        } else if (schedulesVal.hasError ||
+            instancesVal.hasError ||
+            settingsVal.hasError) {
+          final err =
+              schedulesVal.error ?? instancesVal.error ?? settingsVal.error;
           bodySliver = SliverToBoxAdapter(
             child: Center(child: Text('${context.l10n.errorOccurred}: $err')),
           );
         } else {
           final schedules = schedulesVal.value ?? [];
           final instances = instancesVal.value ?? [];
+          final settings =
+              settingsVal.value ?? const UserSettings(hoursAvailable: 8.0);
           final searchQuery = ref
               .watch(taskSearchQueryProvider)
               .trim()
@@ -69,9 +79,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             final startDateTime = inst.startRelativeTime.referenceTo(
               inst.scheduledDate,
             );
+            final isFuture = AppClock.now.isBefore(startDateTime);
             final isPending =
                 inst.status == 'pending' &&
-                !AppClock.now.isBefore(startDateTime);
+                (!isFuture || settings.showPendingTasks);
             if (!isPending) return false;
             if (searchQuery.isEmpty) return true;
 

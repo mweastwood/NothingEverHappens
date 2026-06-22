@@ -19,6 +19,8 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/main.dart';
 import 'package:nothing_ever_happens/widgets/dev_clock_widget.dart';
+import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import '../widgets/task_widget_robot.dart';
 
 @GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<TaskRepository>()])
@@ -1216,6 +1218,85 @@ void main() {
       // Under the fixed implementation (where TaskListScreen has a periodic timer),
       // the screen should rebuild and show the task once the clock passes the start time.
       expect(find.text('Future Task'), findsOneWidget);
+
+      await tasksSubj.close();
+      await instancesSubj.close();
+    },
+  );
+
+  testWidgets(
+    'TaskListScreen displays future pending tasks when showPendingTasks is enabled in UserSettings',
+    (WidgetTester tester) async {
+      final mockAuthRepository = MockAuthRepository();
+      final mockTaskRepository = MockTaskRepository();
+
+      final startTime = DateTime.now();
+      final taskDate = CivilDay.fromDateTime(startTime);
+
+      final taskStartLocalTime = startTime.add(const Duration(minutes: 5));
+      final relativeStart = RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay.fromDateTime(taskStartLocalTime),
+      );
+      final relativeDue = RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay.fromDateTime(startTime.add(const Duration(hours: 1))),
+      );
+
+      final futureTask = TaskSchedule(
+        id: 'future-task-1',
+        title: 'Future Task',
+        description: 'Starts in 5 minutes',
+        schedules: [
+          OneOffSchedule(
+            date: taskDate,
+            startRelativeTime: relativeStart,
+            dueRelativeTime: relativeDue,
+          ),
+        ],
+      );
+
+      final tasksSubj = BehaviorSubject<List<TaskSchedule>>.seeded([
+        futureTask,
+      ]);
+      final futureInstance = TaskInstance(
+        id: 'future-task-1_inst',
+        scheduleId: futureTask.id,
+        title: futureTask.title,
+        description: futureTask.description,
+        scheduledDate: taskDate,
+        startRelativeTime: relativeStart,
+        dueRelativeTime: relativeDue,
+        status: 'pending',
+      );
+      final instancesSubj = BehaviorSubject<List<TaskInstance>>.seeded([
+        futureInstance,
+      ]);
+
+      when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+      when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubj.stream);
+      when(
+        mockTaskRepository.getInstances(),
+      ).thenAnswer((_) => instancesSubj.stream);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userSettingsProvider.overrideWith(
+              (ref) => Stream.value(
+                const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
+              ),
+            ),
+          ],
+          child: buildTestableWidget(child: const HomeScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Future Task'), findsOneWidget);
+      expect(find.text('Pending'), findsOneWidget);
 
       await tasksSubj.close();
       await instancesSubj.close();

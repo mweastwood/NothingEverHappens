@@ -458,6 +458,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsSavedSuccessfully => 'Configuración guardada exitosamente';
 
   @override
+  String get showPendingTasksLabel => 'Mostrar tareas pendientes';
+
+  @override
+  String get showPendingTasksHelper =>
+      'Mostrar tareas en la lista principal cuya hora de inicio sea en el futuro.';
+
+  @override
+  String get showLastSpawnedDateLabel => 'Mostrar fecha de último spawn';
+
+  @override
+  String get showLastSpawnedDateHelper =>
+      'Mostrar la fecha del último spawn en cada tarjeta de programación de tareas para depuración.';
+
+  @override
+  String get pendingBadge => 'Pendiente';
+
+  @override
   String get familyTab => 'Familia';
 
   @override

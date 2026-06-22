@@ -9,6 +9,7 @@ import 'create_task_screen.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/undo_notifier.dart';
 import '../widgets/undo_snackbar.dart';
+import '../logic/user_settings_repository.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -277,6 +278,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
   Widget build(BuildContext context) {
     final taskRepository = ref.watch(taskRepositoryProvider);
     final schedulesVal = ref.watch(taskSchedulesProvider);
+    final settingsVal = ref.watch(userSettingsProvider);
     final searchQuery = ref
         .watch(scheduleSearchQueryProvider)
         .trim()
@@ -301,6 +303,8 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                     child: Text('${context.l10n.errorOccurred}: $err'),
                   ),
                   data: (allTasks) {
+                    final showLastSpawnedDate =
+                        settingsVal.value?.showLastSpawnedDate ?? false;
                     final recurringTasks = allTasks
                         .where(
                           (task) =>
@@ -372,6 +376,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                 task,
                                 theme,
                                 taskRepository,
+                                showLastSpawnedDate,
                               );
                             },
                           ),
@@ -460,6 +465,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     TaskSchedule task,
     ThemeData theme,
     TaskRepository repository,
+    bool showLastSpawnedDate,
   ) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
@@ -553,6 +559,23 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
               ),
             ),
           ],
+          if (showLastSpawnedDate)
+            Padding(
+              padding: const EdgeInsets.only(
+                left: 28.0,
+                right: 12.0,
+                bottom: 8.0,
+              ),
+              child: Text(
+                'lastSpawnedDate: ${task.lastSpawnedDate?.toString() ?? "null"}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.6,
+                  ),
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
           const Divider(height: 1, thickness: 0.5),
           // Rule list inside task card (high density)
           ListView.separated(

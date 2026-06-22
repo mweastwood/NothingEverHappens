@@ -47,3 +47,11 @@ class UserSettingsRepository {
     await _settingsRef.set(settings, SetOptions(merge: true));
   }
 }
+
+final userSettingsProvider = StreamProvider<UserSettings>((ref) {
+  final repo = ref.watch(userSettingsRepositoryProvider);
+  if (repo == null) {
+    return Stream.value(const UserSettings(hoursAvailable: 8.0));
+  }
+  return repo.getSettings();
+});

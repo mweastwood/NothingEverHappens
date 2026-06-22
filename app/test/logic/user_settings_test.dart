@@ -8,40 +8,94 @@ void main() {
     test('default instantiation has 8.0 hoursAvailable', () {
       const settings = UserSettings(hoursAvailable: 8.0);
       expect(settings.hoursAvailable, 8.0);
+      expect(settings.showPendingTasks, isFalse);
+      expect(settings.showLastSpawnedDate, isFalse);
     });
 
-    test('fromJson handles empty JSON by falling back to 8.0', () {
+    test('fromJson handles empty JSON by falling back to 8.0 and false', () {
       final settings = UserSettings.fromJson(const {});
       expect(settings.hoursAvailable, 8.0);
+      expect(settings.showPendingTasks, isFalse);
+      expect(settings.showLastSpawnedDate, isFalse);
     });
 
     test('fromJson handles valid JSON input', () {
-      final settings = UserSettings.fromJson(const {'hoursAvailable': 12.5});
+      final settings = UserSettings.fromJson(const {
+        'hoursAvailable': 12.5,
+        'showPendingTasks': true,
+        'showLastSpawnedDate': true,
+      });
       expect(settings.hoursAvailable, 12.5);
+      expect(settings.showPendingTasks, isTrue);
+      expect(settings.showLastSpawnedDate, isTrue);
     });
 
     test('toJson serializes correctly', () {
-      const settings = UserSettings(hoursAvailable: 6.0);
-      expect(settings.toJson(), {'hoursAvailable': 6.0});
+      const settings = UserSettings(
+        hoursAvailable: 6.0,
+        showPendingTasks: true,
+        showLastSpawnedDate: true,
+      );
+      expect(settings.toJson(), {
+        'hoursAvailable': 6.0,
+        'showPendingTasks': true,
+        'showLastSpawnedDate': true,
+      });
     });
 
     test('copyWith updates value correctly', () {
-      const settings = UserSettings(hoursAvailable: 8.0);
-      final updated = settings.copyWith(hoursAvailable: 4.5);
+      const settings = UserSettings(
+        hoursAvailable: 8.0,
+        showPendingTasks: false,
+        showLastSpawnedDate: false,
+      );
+      final updated = settings.copyWith(
+        hoursAvailable: 4.5,
+        showPendingTasks: true,
+        showLastSpawnedDate: true,
+      );
       expect(updated.hoursAvailable, 4.5);
+      expect(updated.showPendingTasks, isTrue);
+      expect(updated.showLastSpawnedDate, isTrue);
 
       final copyOfSame = updated.copyWith();
       expect(copyOfSame.hoursAvailable, 4.5);
+      expect(copyOfSame.showPendingTasks, isTrue);
+      expect(copyOfSame.showLastSpawnedDate, isTrue);
     });
 
     test('equality and hashCode work as expected', () {
-      const s1 = UserSettings(hoursAvailable: 5.0);
-      const s2 = UserSettings(hoursAvailable: 5.0);
-      const s3 = UserSettings(hoursAvailable: 6.0);
+      const s1 = UserSettings(
+        hoursAvailable: 5.0,
+        showPendingTasks: true,
+        showLastSpawnedDate: true,
+      );
+      const s2 = UserSettings(
+        hoursAvailable: 5.0,
+        showPendingTasks: true,
+        showLastSpawnedDate: true,
+      );
+      const s3 = UserSettings(
+        hoursAvailable: 6.0,
+        showPendingTasks: true,
+        showLastSpawnedDate: true,
+      );
+      const s4 = UserSettings(
+        hoursAvailable: 5.0,
+        showPendingTasks: false,
+        showLastSpawnedDate: true,
+      );
+      const s5 = UserSettings(
+        hoursAvailable: 5.0,
+        showPendingTasks: true,
+        showLastSpawnedDate: false,
+      );
 
       expect(s1, s2);
       expect(s1.hashCode, s2.hashCode);
       expect(s1, isNot(s3));
+      expect(s1, isNot(s4));
+      expect(s1, isNot(s5));
     });
   });
 
@@ -76,7 +130,11 @@ void main() {
     });
 
     test('updateSettings creates or updates settings in Firestore', () async {
-      const updated = UserSettings(hoursAvailable: 15.0);
+      const updated = UserSettings(
+        hoursAvailable: 15.0,
+        showPendingTasks: true,
+        showLastSpawnedDate: true,
+      );
       await repository.updateSettings(updated);
 
       final snapshot = await firestore
@@ -87,10 +145,16 @@ void main() {
           .get();
 
       expect(snapshot.exists, isTrue);
-      expect(snapshot.data(), {'hoursAvailable': 15.0});
+      expect(snapshot.data(), {
+        'hoursAvailable': 15.0,
+        'showPendingTasks': true,
+        'showLastSpawnedDate': true,
+      });
 
       final settingsFromRepository = await repository.getSettings().first;
       expect(settingsFromRepository.hoursAvailable, 15.0);
+      expect(settingsFromRepository.showPendingTasks, isTrue);
+      expect(settingsFromRepository.showLastSpawnedDate, isTrue);
     });
   });
 }

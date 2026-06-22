@@ -458,6 +458,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSavedSuccessfully => 'Settings saved successfully';
 
   @override
+  String get showPendingTasksLabel => 'Show Pending Tasks';
+
+  @override
+  String get showPendingTasksHelper =>
+      'Show tasks on the main list whose start time is in the future.';
+
+  @override
+  String get showLastSpawnedDateLabel => 'Show Last Spawned Date';
+
+  @override
+  String get showLastSpawnedDateHelper =>
+      'Display the last spawned date on each task schedule card for debugging.';
+
+  @override
+  String get pendingBadge => 'Pending';
+
+  @override
   String get familyTab => 'Family';
 
   @override
