@@ -34,6 +34,13 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      - name: Upload golden failure diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: app/test/**/failures/
+
   test-integration:
     name: Integration Tests (Flutter Web Emulator)
     runs-on: ubuntu-latest
