@@ -928,4 +928,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get presetYearPlural => 'years';
+
+  @override
+  String get scheduleSortByLabel => 'Sort by';
+
+  @override
+  String get scheduleGridTypeHeader => 'Type';
+
+  @override
+  String get scheduleSortNextStartLabel => 'Next Start';
+
+  @override
+  String get scheduleSortNextDueLabel => 'Next Due';
+
+  @override
+  String get scheduleGridTimeWindowHeader => 'Time Window';
+
+  @override
+  String get scheduleGridActionsHeader => 'Actions';
+
+  @override
+  String get searchSchedulesPlaceholder => 'Search schedules...';
+
+  @override
+  String noSchedulesMatching(String query) {
+    return 'No matching schedules found for \"$query\"';
+  }
 }

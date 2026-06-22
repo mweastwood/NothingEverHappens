@@ -580,5 +580,20 @@
   "presetMonthSingular": "month",
   "presetMonthPlural": "months",
   "presetYearSingular": "year",
-  "presetYearPlural": "years"
+  "presetYearPlural": "years",
+  "scheduleSortByLabel": "Sort by",
+  "scheduleGridTypeHeader": "Type",
+  "scheduleSortNextStartLabel": "Next Start",
+  "scheduleSortNextDueLabel": "Next Due",
+  "scheduleGridTimeWindowHeader": "Time Window",
+  "scheduleGridActionsHeader": "Actions",
+  "searchSchedulesPlaceholder": "Search schedules...",
+  "noSchedulesMatching": "No matching schedules found for \"{query}\"",
+  "@noSchedulesMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  }
 }

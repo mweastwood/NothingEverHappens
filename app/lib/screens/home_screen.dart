@@ -42,7 +42,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen<String>(taskSearchQueryProvider, (previous, next) {
-      if (_searchController.text != next) {
+      if (_currentIndex == 0 && _searchController.text != next) {
+        _searchController.text = next;
+      }
+    });
+    ref.listen<String>(scheduleSearchQueryProvider, (previous, next) {
+      if (_currentIndex == 1 && _searchController.text != next) {
         _searchController.text = next;
       }
     });
@@ -55,7 +60,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           setState(() {
             _isSearching = false;
             _searchController.clear();
-            ref.read(taskSearchQueryProvider.notifier).state = '';
+            if (_currentIndex == 0) {
+              ref.read(taskSearchQueryProvider.notifier).state = '';
+            } else if (_currentIndex == 1) {
+              ref.read(scheduleSearchQueryProvider.notifier).state = '';
+            }
           });
         }
       },
@@ -69,7 +78,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                   decoration: InputDecoration(
-                    hintText: context.l10n.searchTasksPlaceholder,
+                    hintText: _currentIndex == 0
+                        ? context.l10n.searchTasksPlaceholder
+                        : context.l10n.searchSchedulesPlaceholder,
                     hintStyle: TextStyle(
                       color: Theme.of(
                         context,
@@ -78,7 +89,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     border: InputBorder.none,
                   ),
                   onChanged: (value) {
-                    ref.read(taskSearchQueryProvider.notifier).state = value;
+                    if (_currentIndex == 0) {
+                      ref.read(taskSearchQueryProvider.notifier).state = value;
+                    } else if (_currentIndex == 1) {
+                      ref.read(scheduleSearchQueryProvider.notifier).state =
+                          value;
+                    }
                   },
                 )
               : Text(context.l10n.appName),
@@ -89,7 +105,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     setState(() {
                       _isSearching = false;
                       _searchController.clear();
-                      ref.read(taskSearchQueryProvider.notifier).state = '';
+                      if (_currentIndex == 0) {
+                        ref.read(taskSearchQueryProvider.notifier).state = '';
+                      } else if (_currentIndex == 1) {
+                        ref.read(scheduleSearchQueryProvider.notifier).state =
+                            '';
+                      }
                     });
                   },
                 )
@@ -100,11 +121,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 icon: const Icon(Icons.clear),
                 onPressed: () {
                   _searchController.clear();
-                  ref.read(taskSearchQueryProvider.notifier).state = '';
+                  if (_currentIndex == 0) {
+                    ref.read(taskSearchQueryProvider.notifier).state = '';
+                  } else if (_currentIndex == 1) {
+                    ref.read(scheduleSearchQueryProvider.notifier).state = '';
+                  }
                   _searchFocusNode.requestFocus();
                 },
               )
-            else if (_currentIndex == 0) ...[
+            else if (_currentIndex == 0 || _currentIndex == 1) ...[
               IconButton(
                 icon: const Icon(Icons.help_outline),
                 tooltip: context.l10n.helpTooltip,
@@ -112,7 +137,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const HelpScreen(initialIndex: 0),
+                      builder: (context) =>
+                          HelpScreen(initialIndex: _currentIndex == 0 ? 0 : 1),
                     ),
                   );
                 },
@@ -140,10 +166,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           onDestinationSelected: (int index) {
             setState(() {
               _currentIndex = index;
-              if (index != 0 && _isSearching) {
+              if (_isSearching) {
                 _isSearching = false;
                 _searchController.clear();
                 ref.read(taskSearchQueryProvider.notifier).state = '';
+                ref.read(scheduleSearchQueryProvider.notifier).state = '';
               }
             });
           },
@@ -181,7 +208,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           final primaryFocus = FocusManager.instance.primaryFocus;
           final isEditableFocused =
               primaryFocus?.context?.widget is EditableText;
-          if (_currentIndex == 0 && !_isSearching && !isEditableFocused) {
+          if ((_currentIndex == 0 || _currentIndex == 1) &&
+              !_isSearching &&
+              !isEditableFocused) {
             setState(() {
               _isSearching = true;
             });
@@ -193,7 +222,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             setState(() {
               _isSearching = false;
               _searchController.clear();
-              ref.read(taskSearchQueryProvider.notifier).state = '';
+              if (_currentIndex == 0) {
+                ref.read(taskSearchQueryProvider.notifier).state = '';
+              } else if (_currentIndex == 1) {
+                ref.read(scheduleSearchQueryProvider.notifier).state = '';
+              }
             });
           }
         },

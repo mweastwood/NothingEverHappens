@@ -14,6 +14,8 @@ import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 
+import 'package:nothing_ever_happens/logic/app_clock.dart';
+
 import 'task_list_screen_test.mocks.dart';
 
 void main() {
@@ -28,10 +30,12 @@ void main() {
     tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([]);
 
     when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubject.stream);
+    AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0));
   });
 
   tearDown(() {
     tasksSubject.close();
+    AppClock.reset();
   });
 
   Widget createScreen() {
@@ -359,4 +363,321 @@ void main() {
       verify(mockTaskRepository.restoreTaskSchedule(dailyTask, any)).called(1);
     },
   );
+
+  testWidgets(
+    'TaskScheduleScreen shows arrow indicator only on active sort column and toggles correctly',
+    (WidgetTester tester) async {
+      final taskA = TaskSchedule(
+        id: 'A',
+        title: 'A Task',
+        description: 'Desc',
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+      tasksSubject.add([taskA]);
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      // 1. Initial State: Title ascending
+      expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_downward), findsNothing);
+
+      // Verify avatar of Title chip has arrow_upward
+      final titleChipFinder = find.widgetWithText(ChoiceChip, 'Title');
+      final ChoiceChip titleChip = tester.widget(titleChipFinder);
+      expect(titleChip.selected, isTrue);
+      expect(titleChip.avatar, isNotNull);
+
+      // Verify Priority, Next Start and Next Due chips are not selected and have no avatar
+      final nextStartChipFinder = find.widgetWithText(ChoiceChip, 'Next Start');
+      final ChoiceChip nextStartChip = tester.widget(nextStartChipFinder);
+      expect(nextStartChip.selected, isFalse);
+      expect(nextStartChip.avatar, isNull);
+
+      final nextDueChipFinder = find.widgetWithText(ChoiceChip, 'Next Due');
+      final ChoiceChip nextDueChip = tester.widget(nextDueChipFinder);
+      expect(nextDueChip.selected, isFalse);
+      expect(nextDueChip.avatar, isNull);
+
+      final priorityChipFinder = find.widgetWithText(ChoiceChip, 'Priority');
+      final ChoiceChip priorityChip = tester.widget(priorityChipFinder);
+      expect(priorityChip.selected, isFalse);
+      expect(priorityChip.avatar, isNull);
+
+      // 2. Tap Title Chip again -> should toggle to descending
+      await tester.ensureVisible(titleChipFinder);
+      await tester.tap(titleChipFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.arrow_upward), findsNothing);
+      expect(find.byIcon(Icons.arrow_downward), findsOneWidget);
+
+      final ChoiceChip updatedTitleChip = tester.widget(titleChipFinder);
+      expect(updatedTitleChip.selected, isTrue);
+
+      // 3. Tap Priority Chip -> should set priority ascending
+      await tester.ensureVisible(priorityChipFinder);
+      await tester.tap(priorityChipFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_downward), findsNothing);
+
+      final ChoiceChip selectedPriorityChip = tester.widget(priorityChipFinder);
+      expect(selectedPriorityChip.selected, isTrue);
+      expect(selectedPriorityChip.avatar, isNotNull);
+
+      final ChoiceChip unselectedTitleChip = tester.widget(titleChipFinder);
+      expect(unselectedTitleChip.selected, isFalse);
+      expect(unselectedTitleChip.avatar, isNull);
+    },
+  );
+
+  testWidgets(
+    'TaskScheduleScreen sorts by Title, Next Start, Next Due, and Priority correctly',
+    (WidgetTester tester) async {
+      TaskSchedule makeTask({
+        required String id,
+        required String title,
+        required int startHour,
+        required int dueHour,
+        TaskPriority priority = TaskPriority.medium,
+      }) {
+        final startDate = const CivilDay(year: 2024, month: 1, day: 1);
+        return TaskSchedule(
+          id: id,
+          title: title,
+          description: 'Desc',
+          priority: priority,
+          schedules: [
+            DailySchedule(
+              startDate: startDate,
+              interval: 1,
+              startRelativeTime: RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: startHour, minute: 0),
+              ),
+              dueRelativeTime: RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: dueHour, minute: 0),
+              ),
+            ),
+          ],
+        );
+      }
+
+      final taskA = makeTask(
+        id: 'A',
+        title: 'Apple Task',
+        startHour: 10,
+        dueHour: 18,
+        priority: TaskPriority.medium,
+      );
+      final taskB = makeTask(
+        id: 'B',
+        title: 'Banana Task',
+        startHour: 8,
+        dueHour: 20,
+        priority: TaskPriority.high,
+      );
+      final taskC = makeTask(
+        id: 'C',
+        title: 'Cherry Task',
+        startHour: 12,
+        dueHour: 15,
+        priority: TaskPriority.low,
+      );
+
+      tasksSubject.add([taskB, taskC, taskA]);
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      List<String> getTitlesInOrder() {
+        final List<({String title, double y})> items = [];
+        for (final title in ['Apple Task', 'Banana Task', 'Cherry Task']) {
+          final finder = find.text(title);
+          if (finder.evaluate().isNotEmpty) {
+            items.add((title: title, y: tester.getTopLeft(finder).dy));
+          }
+        }
+        items.sort((a, b) => a.y.compareTo(b.y));
+        return items.map((e) => e.title).toList();
+      }
+
+      // 1. Default sorting: Title ascending
+      expect(getTitlesInOrder(), ['Apple Task', 'Banana Task', 'Cherry Task']);
+
+      // Tap Title to make it descending
+      final titleChipFinder = find.widgetWithText(ChoiceChip, 'Title');
+      await tester.ensureVisible(titleChipFinder);
+      await tester.tap(titleChipFinder);
+      await tester.pumpAndSettle();
+      expect(getTitlesInOrder(), ['Cherry Task', 'Banana Task', 'Apple Task']);
+
+      // 2. Next Start sorting (Banana=8:00, Apple=10:00, Cherry=12:00)
+      // Tap Next Start chip (first time: Next Start ascending)
+      final nextStartChipFinder = find.widgetWithText(ChoiceChip, 'Next Start');
+      await tester.ensureVisible(nextStartChipFinder);
+      await tester.tap(nextStartChipFinder);
+      await tester.pumpAndSettle();
+      expect(getTitlesInOrder(), ['Banana Task', 'Apple Task', 'Cherry Task']);
+
+      // Tap Next Start chip again (Next Start descending)
+      await tester.ensureVisible(nextStartChipFinder);
+      await tester.tap(nextStartChipFinder);
+      await tester.pumpAndSettle();
+      expect(getTitlesInOrder(), ['Cherry Task', 'Apple Task', 'Banana Task']);
+
+      // 3. Next Due sorting (Cherry=15:00, Apple=18:00, Banana=20:00)
+      // Tap Next Due chip (first time: Next Due ascending)
+      final nextDueChipFinder = find.widgetWithText(ChoiceChip, 'Next Due');
+      await tester.ensureVisible(nextDueChipFinder);
+      await tester.tap(nextDueChipFinder);
+      await tester.pumpAndSettle();
+      expect(getTitlesInOrder(), ['Cherry Task', 'Apple Task', 'Banana Task']);
+
+      // Tap Next Due chip again (Next Due descending)
+      await tester.ensureVisible(nextDueChipFinder);
+      await tester.tap(nextDueChipFinder);
+      await tester.pumpAndSettle();
+      expect(getTitlesInOrder(), ['Banana Task', 'Apple Task', 'Cherry Task']);
+
+      // 4. Priority sorting (Low=0, Medium=1, High=2)
+      // Tap Priority chip (first time: Priority ascending)
+      final priorityChipFinder = find.widgetWithText(ChoiceChip, 'Priority');
+      await tester.ensureVisible(priorityChipFinder);
+      await tester.tap(priorityChipFinder);
+      await tester.pumpAndSettle();
+      expect(getTitlesInOrder(), ['Cherry Task', 'Apple Task', 'Banana Task']);
+
+      // Tap Priority chip again (Priority descending)
+      await tester.ensureVisible(priorityChipFinder);
+      await tester.tap(priorityChipFinder);
+      await tester.pumpAndSettle();
+      expect(getTitlesInOrder(), ['Banana Task', 'Apple Task', 'Cherry Task']);
+    },
+  );
+
+  testWidgets('TaskScheduleScreen maintains stable multi-key sorting history', (
+    WidgetTester tester,
+  ) async {
+    final startDate = const CivilDay(year: 2024, month: 1, day: 1);
+    final relTime = const RelativeTime(
+      dayOffset: 0,
+      time: TimeOfDay(hour: 9, minute: 0),
+    );
+    final defaultSchedule = [
+      DailySchedule(
+        startDate: startDate,
+        interval: 1,
+        startRelativeTime: relTime,
+        dueRelativeTime: relTime,
+      ),
+    ];
+
+    final task1 = TaskSchedule(
+      id: '1',
+      title: 'Banana',
+      description: '',
+      priority: TaskPriority.medium,
+      schedules: defaultSchedule,
+    );
+    final task2 = TaskSchedule(
+      id: '2',
+      title: 'Apple',
+      description: '',
+      priority: TaskPriority.high,
+      schedules: defaultSchedule,
+    );
+    final task3 = TaskSchedule(
+      id: '3',
+      title: 'Cherry',
+      description: '',
+      priority: TaskPriority.medium,
+      schedules: defaultSchedule,
+    );
+    final task4 = TaskSchedule(
+      id: '4',
+      title: 'Date',
+      description: '',
+      priority: TaskPriority.high,
+      schedules: defaultSchedule,
+    );
+
+    // Add them in mixed order to verify the stable sorting functions correctly.
+    tasksSubject.add([task3, task1, task4, task2]);
+
+    await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle();
+
+    List<String> getTitlesInOrder() {
+      final List<({String title, double y})> items = [];
+      for (final title in ['Apple', 'Banana', 'Cherry', 'Date']) {
+        final finder = find.text(title);
+        if (finder.evaluate().isNotEmpty) {
+          items.add((title: title, y: tester.getTopLeft(finder).dy));
+        }
+      }
+      items.sort((a, b) => a.y.compareTo(b.y));
+      return items.map((e) => e.title).toList();
+    }
+
+    // 1. Initially sorted by Title ascending (default configuration)
+    expect(getTitlesInOrder(), ['Apple', 'Banana', 'Cherry', 'Date']);
+
+    // 2. Toggle Title to descending -> Title descending
+    final titleChipFinder = find.widgetWithText(ChoiceChip, 'Title');
+    await tester.ensureVisible(titleChipFinder);
+    await tester.tap(titleChipFinder);
+    await tester.pumpAndSettle();
+    expect(getTitlesInOrder(), ['Date', 'Cherry', 'Banana', 'Apple']);
+
+    // 3. Tap Priority (first time: ascending).
+    // History queue: Priority (ascending), Title (descending).
+    // Priorities order: medium, then high.
+    // Within medium (Banana, Cherry) sorted by Title descending -> Cherry, Banana.
+    // Within high (Apple, Date) sorted by Title descending -> Date, Apple.
+    // Final order: Cherry, Banana, Date, Apple.
+    final priorityChipFinder = find.widgetWithText(ChoiceChip, 'Priority');
+    await tester.ensureVisible(priorityChipFinder);
+    await tester.tap(priorityChipFinder);
+    await tester.pumpAndSettle();
+    expect(getTitlesInOrder(), ['Cherry', 'Banana', 'Date', 'Apple']);
+
+    // 4. Tap Priority again (descending).
+    // History queue: Priority (descending), Title (descending).
+    // Priorities: high, then medium.
+    // Within high (Apple, Date) sorted by Title descending -> Date, Apple.
+    // Within medium (Banana, Cherry) sorted by Title descending -> Cherry, Banana.
+    // Final expected order: Date, Apple, Cherry, Banana.
+    await tester.ensureVisible(priorityChipFinder);
+    await tester.tap(priorityChipFinder);
+    await tester.pumpAndSettle();
+    expect(getTitlesInOrder(), ['Date', 'Apple', 'Cherry', 'Banana']);
+
+    // 5. Tap Title (ascending).
+    // Since Title is now requested as ascending, and was already in history,
+    // it gets promoted to the front with ascending: true.
+    // History queue: Title (ascending), Priority (descending).
+    // Since all titles are unique, it resolves purely by Title ascending.
+    // Final expected order: Apple, Banana, Cherry, Date.
+    await tester.ensureVisible(titleChipFinder);
+    await tester.tap(titleChipFinder);
+    await tester.pumpAndSettle();
+    expect(getTitlesInOrder(), ['Apple', 'Banana', 'Cherry', 'Date']);
+  });
 }
