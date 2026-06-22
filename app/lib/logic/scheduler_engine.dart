@@ -188,6 +188,14 @@ class SchedulerEngine {
           }
         }
 
+        if (daysChecked > 0) {
+          final lastChecked = checkDate.addDays(-1);
+          if (newLastSpawnedDate == null ||
+              newLastSpawnedDate.isBefore(lastChecked)) {
+            newLastSpawnedDate = lastChecked;
+          }
+        }
+
         final existingForSchedule = schedInstances.toList();
         final allInstances = <TaskInstance>[
           ...existingForSchedule,

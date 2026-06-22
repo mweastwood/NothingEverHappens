@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import 'app_clock.dart';
@@ -9,13 +11,68 @@ import 'notification_service.dart';
 import 'auth_repository.dart';
 import 'scheduler_engine.dart';
 
+class _AppLifecycleObserver extends WidgetsBindingObserver {
+  final VoidCallback onResume;
+
+  _AppLifecycleObserver({required this.onResume});
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      onResume();
+    }
+  }
+}
+
 final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
   final user = ref.watch(authStateProvider).value;
   if (user == null) return null;
-  return TaskRepository(
+  final repo = TaskRepository(
     userId: user.uid,
     notificationService: ref.watch(notificationServiceProvider),
   );
+
+  // Re-evaluate schedules when the mock clock advances in dev/test
+  void clockListener() {
+    repo.triggerMissedPolicyProcessing();
+  }
+
+  AppClock.timeNotifier.addListener(clockListener);
+
+  // Monitor app lifecycle changes to trigger sync on resume
+  _AppLifecycleObserver? lifecycleObserver;
+  try {
+    lifecycleObserver = _AppLifecycleObserver(
+      onResume: () {
+        repo.triggerMissedPolicyProcessing();
+      },
+    );
+    WidgetsBinding.instance.addObserver(lifecycleObserver);
+  } catch (_) {
+    lifecycleObserver = null;
+  }
+
+  // Monitor calendar day transitions to trigger missed policy processing at midnight
+  var lastCheckedDay = CivilDay.fromDateTime(AppClock.now);
+  final dayChangeTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+    final currentDay = CivilDay.fromDateTime(AppClock.now);
+    if (currentDay != lastCheckedDay) {
+      lastCheckedDay = currentDay;
+      repo.triggerMissedPolicyProcessing();
+    }
+  });
+
+  ref.onDispose(() {
+    AppClock.timeNotifier.removeListener(clockListener);
+    if (lifecycleObserver != null) {
+      try {
+        WidgetsBinding.instance.removeObserver(lifecycleObserver);
+      } catch (_) {}
+    }
+    dayChangeTimer.cancel();
+  });
+
+  return repo;
 });
 
 final taskSchedulesProvider = StreamProvider<List<TaskSchedule>>((ref) {
@@ -35,6 +92,8 @@ class TaskRepository {
   final String _userId;
   final NotificationService? _notificationService;
   bool _isProcessingMissedPolicies = false;
+  bool _needsProcessingAgain = false;
+  List<TaskSchedule>? _nextTasksToProcess;
 
   String get userId => _userId;
 
@@ -305,8 +364,13 @@ class TaskRepository {
   }
 
   void _checkAndProcessMissedPolicies(List<TaskSchedule> tasks) async {
-    if (_isProcessingMissedPolicies) return;
+    if (_isProcessingMissedPolicies) {
+      _needsProcessingAgain = true;
+      _nextTasksToProcess = tasks;
+      return;
+    }
     _isProcessingMissedPolicies = true;
+    _needsProcessingAgain = false;
 
     try {
       final now = AppClock.now;
@@ -368,6 +432,40 @@ class TaskRepository {
       print('Error in auto-processing missed policies: $e');
     } finally {
       _isProcessingMissedPolicies = false;
+      if (_needsProcessingAgain && _nextTasksToProcess != null) {
+        final next = _nextTasksToProcess!;
+        _nextTasksToProcess = null;
+        _checkAndProcessMissedPolicies(next);
+      }
+    }
+  }
+
+  Future<void> triggerMissedPolicyProcessing() async {
+    try {
+      final familyId = await _getFamilyId();
+      final personalTasksSnap = await _tasksRef.get();
+      final List<TaskSchedule> allTasks = personalTasksSnap.docs
+          .map((d) => d.data())
+          .toList();
+
+      if (familyId != null && familyId.isNotEmpty) {
+        final familyTasksRef = _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .withConverter<TaskSchedule>(
+              fromFirestore: (snapshot, _) =>
+                  TaskSchedule.fromFirestore(snapshot),
+              toFirestore: (task, _) => task.toFirestore(),
+            );
+        final familyTasksSnap = await familyTasksRef.get();
+        allTasks.addAll(familyTasksSnap.docs.map((d) => d.data()));
+      }
+
+      _checkAndProcessMissedPolicies(allTasks);
+    } catch (e) {
+      // ignore: avoid_print
+      print('Error in triggering missed policy processing: $e');
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
@@ -16,6 +17,23 @@ class TaskListScreen extends ConsumerStatefulWidget {
 
 class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   final Key _taskListKey = const ValueKey('taskList');
+  Timer? _rebuildTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _rebuildTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _rebuildTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

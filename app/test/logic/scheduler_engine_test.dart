@@ -382,5 +382,110 @@ void main() {
         },
       );
     });
+
+    group('30-Day Window Progress / Sticking Bugs', () {
+      test('advances lastSpawnedDate through gaps of 30+ days without occurrences', () {
+        // Today is June 19, 2026.
+        // Start date is May 1, 2026 (49 days ago).
+        // The task is bi-monthly (every 2 months), occurring on the 1st of the month.
+        // Occurrences: May 1, July 1, etc.
+        // The first evaluation (normally run on May 1) spawned the May 1 instance and set lastSpawnedDate to May 1.
+        final startDate = CivilDay(year: 2026, month: 5, day: 1);
+        final task = TaskSchedule(
+          id: 'bimonthly-task',
+          title: 'Bi-monthly Task',
+          description: 'Every 2 months',
+          lastSpawnedDate: startDate, // Set to May 1
+          schedules: [
+            MonthlySchedule(startDate: startDate, interval: 2, dayOfMonth: 1),
+          ],
+        );
+
+        // Evaluation today (June 19):
+        // It should check from May 2 to June 19.
+        // Since there are no occurrences in this range (next is July 1), datesToSpawn is empty.
+        // If it works correctly, it should advance lastSpawnedDate to June 19 (or up to June 19)
+        // so it doesn't get stuck checking the same range forever.
+        final action = SchedulerEngine.evaluate(task, [], now);
+
+        expect(action.instancesToSpawn, isEmpty);
+        expect(action.updatedSchedule, isNotNull);
+        // It should have advanced lastSpawnedDate past May 1 (since it checked 30 days from May 2 to May 31).
+        expect(action.updatedSchedule!.lastSpawnedDate, isNotNull);
+        expect(
+          action.updatedSchedule!.lastSpawnedDate!.isBefore(startDate),
+          isFalse,
+        );
+        expect(
+          action.updatedSchedule!.lastSpawnedDate!,
+          equals(CivilDay(year: 2026, month: 5, day: 31)),
+        );
+      });
+
+      test(
+        'regression: monthly task starting > 30 days ago gets evaluated up to today and spawns task',
+        () {
+          // Today is June 19, 2026.
+          // Start date is May 1, 2026 (49 days ago).
+          // The task is monthly (every 1 month), occurring on the 15th of the month.
+          // Occurrences: May 15, June 15.
+          // The task is brand new (lastSpawnedDate is null).
+          // In the first evaluation (up to 30 days from May 1):
+          // It checks May 1 to May 30. It finds May 15, spawns it, updates lastSpawnedDate to May 15.
+          // In the second evaluation (from May 16 to June 19):
+          // It checks May 16 to June 14 (30 days). No occurrence?
+          // Wait, June 15 is on day 31, so it is NOT checked in the first 30 days after May 15!
+          // So the second evaluation checks May 16 to June 14.
+          // Since no occurrence is in that range, datesToSpawn is empty.
+          // If it gets stuck, lastSpawnedDate stays May 15.
+          // So it never checks June 15, and the June 15 task is never spawned!
+          final startDate = CivilDay(year: 2026, month: 5, day: 1);
+          final task = TaskSchedule(
+            id: 'monthly-stuck-task',
+            title: 'Monthly Stuck Task',
+            description: 'Occurs on 15th',
+            lastSpawnedDate: null,
+            schedules: [
+              MonthlySchedule(
+                startDate: startDate,
+                interval: 1,
+                dayOfMonth: 15,
+              ),
+            ],
+          );
+
+          // First evaluate from null.
+          // It starts checking at May 1, and runs for 30 days up to May 30.
+          // It finds the May 15 occurrence and spawns it, and advances lastSpawnedDate to May 30 (the last checked date).
+          final action1 = SchedulerEngine.evaluate(task, [], now);
+          expect(action1.instancesToSpawn, hasLength(1));
+          expect(
+            action1.instancesToSpawn.first.scheduledDate,
+            equals(CivilDay(year: 2026, month: 5, day: 15)),
+          );
+          expect(
+            action1.updatedSchedule!.lastSpawnedDate,
+            equals(CivilDay(year: 2026, month: 5, day: 30)),
+          );
+
+          // Second evaluate with the updated task from action1.
+          // It starts checking at May 31 and runs up to today (June 19) - a span of 20 days.
+          // It finds the June 15 occurrence and spawns it, and advances lastSpawnedDate to June 19 (today).
+          final updatedTask1 = action1.updatedSchedule!;
+          final action2 = SchedulerEngine.evaluate(updatedTask1, [], now);
+
+          expect(action2.instancesToSpawn, hasLength(1));
+          expect(
+            action2.instancesToSpawn.first.scheduledDate,
+            equals(CivilDay(year: 2026, month: 6, day: 15)),
+          );
+          expect(action2.updatedSchedule, isNotNull);
+          expect(
+            action2.updatedSchedule!.lastSpawnedDate,
+            equals(CivilDay(year: 2026, month: 6, day: 19)),
+          );
+        },
+      );
+    });
   });
 }
