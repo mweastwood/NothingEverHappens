@@ -480,7 +480,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
               left: 12.0,
               right: 4.0,
               top: 8.0,
-              bottom: 4.0,
+              bottom: 0.0,
             ),
             child: Row(
               children: [
@@ -497,7 +497,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                 Expanded(
                   child: Text(
                     task.title,
-                    style: theme.textTheme.titleSmall?.copyWith(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -547,8 +547,8 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                     color: theme.colorScheme.onSurfaceVariant.withValues(
                       alpha: 0.8,
                     ),
-                    fontSize: 11.0,
                   ),
+                  pPadding: EdgeInsets.zero,
                 ),
               ),
             ),
@@ -582,7 +582,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                             _getRecurrenceRuleTypeName(context, rule),
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w600,
-                              fontSize: 13.0,
                             ),
                           ),
                         ),
@@ -595,16 +594,13 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                             children: [
                               Text(
                                 parts.interval,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontSize: 13.0,
-                                ),
+                                style: theme.textTheme.bodyMedium,
                               ),
                               if (parts.days.isNotEmpty)
                                 Text(
                                   parts.days,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
-                                    fontSize: 11.0,
                                   ),
                                 ),
                               if (parts.start.isNotEmpty)
@@ -613,7 +609,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant
                                         .withValues(alpha: 0.8),
-                                    fontSize: 11.0,
                                   ),
                                 ),
                               if (isNarrow) ...[
@@ -622,7 +617,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                   children: [
                                     Icon(
                                       Icons.access_time,
-                                      size: 11,
+                                      size: 14,
                                       color: theme.colorScheme.onSurfaceVariant
                                           .withValues(alpha: 0.8),
                                     ),
@@ -636,7 +631,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                                 .onSurfaceVariant
                                                 .withValues(alpha: 0.8),
                                             fontWeight: FontWeight.w500,
-                                            fontSize: 11.0,
                                           ),
                                     ),
                                   ],
@@ -654,7 +648,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                               _getRecurrenceRuleTimeWindowString(rule),
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
-                                fontSize: 13.0,
                               ),
                             ),
                           ),
