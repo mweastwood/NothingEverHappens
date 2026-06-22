@@ -480,7 +480,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
               left: 12.0,
               right: 4.0,
               top: 8.0,
-              bottom: 4.0,
+              bottom: 0.0,
             ),
             child: Row(
               children: [
@@ -548,6 +548,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                       alpha: 0.8,
                     ),
                   ),
+                  pPadding: EdgeInsets.zero,
                 ),
               ),
             ),
