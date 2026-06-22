@@ -487,10 +487,9 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          notificationRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 45),
-          ),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 45)),
+          ],
         ),
       ],
     );
@@ -506,8 +505,9 @@ void main() {
             .scheduledTasks[notifTask.id]!
             .schedules
             .first
-            .notificationRelativeTime
-            ?.time,
+            .notificationRelativeTimes
+            .first
+            .time,
         equals(const TimeOfDay(hour: 8, minute: 45)),
       );
     });
@@ -531,10 +531,9 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            notificationRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 30),
-            ),
+            notificationRelativeTimes: const [
+              RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 30)),
+            ],
           ),
         ],
       );
@@ -556,8 +555,9 @@ void main() {
             .scheduledTasks[notifTask.id]!
             .schedules
             .first
-            .notificationRelativeTime
-            ?.time,
+            .notificationRelativeTimes
+            .first
+            .time,
         equals(const TimeOfDay(hour: 8, minute: 30)),
       );
     });

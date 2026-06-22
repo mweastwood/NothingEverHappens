@@ -12,7 +12,7 @@ class TaskInstance {
   final CivilDay scheduledDate;
   final RelativeTime startRelativeTime;
   final RelativeTime dueRelativeTime;
-  final RelativeTime? notificationRelativeTime;
+  final List<RelativeTime> notificationRelativeTimes;
   final bool isFamily;
   final TaskPriority priority;
   final String? cycleId;
@@ -29,7 +29,7 @@ class TaskInstance {
     required this.scheduledDate,
     required this.startRelativeTime,
     required this.dueRelativeTime,
-    this.notificationRelativeTime,
+    List<RelativeTime>? notificationRelativeTimes,
     this.isFamily = false,
     this.priority = TaskPriority.medium,
     this.cycleId,
@@ -37,7 +37,7 @@ class TaskInstance {
     this.completedByUserId,
     this.completedAt,
     this.status = 'pending',
-  });
+  }) : notificationRelativeTimes = notificationRelativeTimes ?? const [];
 
   factory TaskInstance.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot, [
@@ -71,11 +71,16 @@ class TaskInstance {
             time: TimeOfDay(hour: 17, minute: 0),
           );
 
-    final notificationRelativeTimeRaw =
-        data['notificationRelativeTime'] as Map<String, dynamic>?;
-    final notificationRelativeTime = notificationRelativeTimeRaw != null
-        ? RelativeTime.fromJson(notificationRelativeTimeRaw)
-        : null;
+    List<RelativeTime> notificationRelativeTimes = [];
+    if (data['notificationRelativeTimes'] != null) {
+      final list = data['notificationRelativeTimes'] as List;
+      notificationRelativeTimes = list
+          .map((item) => RelativeTime.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } else if (data['notificationRelativeTime'] != null) {
+      final notifRaw = data['notificationRelativeTime'] as Map<String, dynamic>;
+      notificationRelativeTimes = [RelativeTime.fromJson(notifRaw)];
+    }
 
     final isFamily = data['isFamily'] as bool? ?? false;
 
@@ -111,7 +116,7 @@ class TaskInstance {
       scheduledDate: scheduledDate,
       startRelativeTime: startRelativeTime,
       dueRelativeTime: dueRelativeTime,
-      notificationRelativeTime: notificationRelativeTime,
+      notificationRelativeTimes: notificationRelativeTimes,
       isFamily: isFamily,
       priority: priority,
       cycleId: cycleId,
@@ -130,8 +135,10 @@ class TaskInstance {
       'scheduledDate': scheduledDate.toJson(),
       'startRelativeTime': startRelativeTime.toJson(),
       'dueRelativeTime': dueRelativeTime.toJson(),
-      if (notificationRelativeTime != null)
-        'notificationRelativeTime': notificationRelativeTime!.toJson(),
+      if (notificationRelativeTimes.isNotEmpty)
+        'notificationRelativeTimes': notificationRelativeTimes
+            .map((t) => t.toJson())
+            .toList(),
       'isFamily': isFamily,
       'priority': priority.name,
       if (cycleId != null) 'cycleId': cycleId,
@@ -148,8 +155,8 @@ class TaskInstance {
     CivilDay? scheduledDate,
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
-    RelativeTime? notificationRelativeTime,
-    bool clearNotificationRelativeTime = false,
+    List<RelativeTime>? notificationRelativeTimes,
+    bool clearNotificationRelativeTimes = false,
     bool? isFamily,
     TaskPriority? priority,
     String? cycleId,
@@ -170,9 +177,9 @@ class TaskInstance {
       scheduledDate: scheduledDate ?? this.scheduledDate,
       startRelativeTime: startRelativeTime ?? this.startRelativeTime,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
-      notificationRelativeTime: clearNotificationRelativeTime
-          ? null
-          : (notificationRelativeTime ?? this.notificationRelativeTime),
+      notificationRelativeTimes: clearNotificationRelativeTimes
+          ? const []
+          : (notificationRelativeTimes ?? this.notificationRelativeTimes),
       isFamily: isFamily ?? this.isFamily,
       priority: priority ?? this.priority,
       cycleId: clearCycleId ? null : (cycleId ?? this.cycleId),

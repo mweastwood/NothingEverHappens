@@ -418,7 +418,8 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
             date: widget.instance.scheduledDate,
             startRelativeTime: widget.instance.startRelativeTime,
             dueRelativeTime: widget.instance.dueRelativeTime,
-            notificationRelativeTime: widget.instance.notificationRelativeTime,
+            notificationRelativeTimes:
+                widget.instance.notificationRelativeTimes,
           );
 
     return Stack(

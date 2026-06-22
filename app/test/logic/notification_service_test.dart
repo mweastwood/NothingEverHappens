@@ -120,10 +120,9 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          notificationRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 30),
-          ),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 30)),
+          ],
         ),
       ],
     );
@@ -146,12 +145,73 @@ void main() {
     );
 
     test(
+      'scheduleNotifications schedules multiple exact zoned notifications via plugin with unique IDs',
+      () async {
+        final multiNotifTask = TaskSchedule(
+          id: 'task-notif-multi-test',
+          title: 'Multi Notif Task',
+          description: 'Testing multiple reminders',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2024, month: 1, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+              notificationRelativeTimes: const [
+                RelativeTime(
+                  dayOffset: -1,
+                  time: TimeOfDay(hour: 18, minute: 0),
+                ),
+                RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 8, minute: 30),
+                ),
+                RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 12, minute: 0),
+                ),
+              ],
+            ),
+          ],
+        );
+
+        await notificationService.scheduleNotifications(multiNotifTask);
+
+        // Should schedule exactly 3 notifications
+        expect(mockPlugin.scheduled.length, 3);
+
+        // Check each has a unique ID
+        final ids = mockPlugin.scheduled.map((n) => n['id'] as int).toList();
+        expect(ids.toSet().length, 3);
+
+        // Verify the expected notification relative times mapped to TZDateTimes
+        final scheduledDates = mockPlugin.scheduled
+            .map(
+              (n) => DateTime.fromMillisecondsSinceEpoch(
+                (n['scheduledDate'] as tz.TZDateTime).millisecondsSinceEpoch,
+              ),
+            )
+            .toList();
+        expect(scheduledDates[0].hour, 18);
+        expect(scheduledDates[1].hour, 8);
+        expect(scheduledDates[1].minute, 30);
+        expect(scheduledDates[2].hour, 12);
+      },
+    );
+
+    test(
       'cancelNotifications cancels scheduled notifications via plugin',
       () async {
         await notificationService.cancelNotifications(testTask.id);
 
-        // Should attempt to cancel all associated slot IDs (0 through 9)
-        expect(mockPlugin.cancelled.length, 10);
+        // Should attempt to cancel all associated slot IDs (10 rules * 5 notification slots each)
+        expect(mockPlugin.cancelled.length, 50);
       },
     );
 

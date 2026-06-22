@@ -43,7 +43,7 @@ class SchedulerEngine {
                 scheduledDate: s.scheduledDate,
                 startRelativeTime: s.startRelativeTime,
                 dueRelativeTime: s.dueRelativeTime,
-                notificationRelativeTime: s.notificationRelativeTime,
+                notificationRelativeTimes: s.notificationRelativeTimes,
                 isFamily: task.isFamily,
                 priority: task.priority,
                 cycleId: task.cycleId,
@@ -110,7 +110,7 @@ class SchedulerEngine {
                 policy,
                 dateToSpawn,
               );
-              final notifRelative = _getCompletionRelativeNotification(
+              final notifRelative = _getCompletionRelativeNotifications(
                 s,
                 policy,
                 dateToSpawn,
@@ -125,7 +125,7 @@ class SchedulerEngine {
                   scheduledDate: dateToSpawn,
                   startRelativeTime: startRelative,
                   dueRelativeTime: dueRelative,
-                  notificationRelativeTime: notifRelative,
+                  notificationRelativeTimes: notifRelative,
                   isFamily: task.isFamily,
                   priority: task.priority,
                   cycleId: task.cycleId,
@@ -170,7 +170,7 @@ class SchedulerEngine {
                   scheduledDate: date,
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
-                  notificationRelativeTime: s.notificationRelativeTime,
+                  notificationRelativeTimes: s.notificationRelativeTimes,
                   isFamily: task.isFamily,
                   priority: task.priority,
                   cycleId: task.cycleId,
@@ -304,36 +304,35 @@ class SchedulerEngine {
     );
   }
 
-  static RelativeTime? _getCompletionRelativeNotification(
+  static List<RelativeTime> _getCompletionRelativeNotifications(
     TaskScheduleRule rule,
     CompletionRelativePolicy policy,
     CivilDay newScheduledDate,
   ) {
-    if (rule.notificationRelativeTime == null) return null;
-    final originalStartRef = rule.startRelativeTime.referenceTo(
-      rule.scheduledDate,
-    );
-    final originalNotifRef = rule.notificationRelativeTime!.referenceTo(
-      rule.scheduledDate,
-    );
-    final duration = originalNotifRef.difference(originalStartRef);
+    return rule.notificationRelativeTimes.map((notifRel) {
+      final originalStartRef = rule.startRelativeTime.referenceTo(
+        rule.scheduledDate,
+      );
+      final originalNotifRef = notifRel.referenceTo(rule.scheduledDate);
+      final duration = originalNotifRef.difference(originalStartRef);
 
-    final newStartRef = DateTime(
-      newScheduledDate.year,
-      newScheduledDate.month,
-      newScheduledDate.day,
-      policy.targetTime.hour,
-      policy.targetTime.minute,
-    );
-    final newNotifRef = newStartRef.add(duration);
-    final notifDay = CivilDay.fromDateTime(newNotifRef);
-    return RelativeTime(
-      dayOffset: notifDay
-          .toDateTime()
-          .difference(newScheduledDate.toDateTime())
-          .inDays,
-      time: TimeOfDay.fromDateTime(newNotifRef),
-    );
+      final newStartRef = DateTime(
+        newScheduledDate.year,
+        newScheduledDate.month,
+        newScheduledDate.day,
+        policy.targetTime.hour,
+        policy.targetTime.minute,
+      );
+      final newNotifRef = newStartRef.add(duration);
+      final notifDay = CivilDay.fromDateTime(newNotifRef);
+      return RelativeTime(
+        dayOffset: notifDay
+            .toDateTime()
+            .difference(newScheduledDate.toDateTime())
+            .inDays,
+        time: TimeOfDay.fromDateTime(newNotifRef),
+      );
+    }).toList();
   }
 
   static TaskInstance? getNextOccurrenceToSpawn(
@@ -352,7 +351,7 @@ class SchedulerEngine {
 
       final startRelative = RelativeTime(dayOffset: 0, time: policy.targetTime);
       final dueRelative = _getCompletionRelativeDue(rule, policy, nextDate);
-      final notifRelative = _getCompletionRelativeNotification(
+      final notifRelative = _getCompletionRelativeNotifications(
         rule,
         policy,
         nextDate,
@@ -366,7 +365,7 @@ class SchedulerEngine {
         scheduledDate: nextDate,
         startRelativeTime: startRelative,
         dueRelativeTime: dueRelative,
-        notificationRelativeTime: notifRelative,
+        notificationRelativeTimes: notifRelative,
         isFamily: task.isFamily,
         priority: task.priority,
         cycleId: task.cycleId,
@@ -399,7 +398,7 @@ class SchedulerEngine {
           scheduledDate: nextDate,
           startRelativeTime: rule.startRelativeTime,
           dueRelativeTime: rule.dueRelativeTime,
-          notificationRelativeTime: rule.notificationRelativeTime,
+          notificationRelativeTimes: rule.notificationRelativeTimes,
           isFamily: task.isFamily,
           priority: task.priority,
           cycleId: task.cycleId,

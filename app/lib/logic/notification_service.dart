@@ -8,6 +8,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'task_schedule.dart';
 import 'civil_day.dart';
+import 'relative_time.dart';
 import 'notification_helper.dart';
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {
@@ -93,59 +94,48 @@ class PlatformNotificationService implements NotificationService {
 
     for (var i = 0; i < task.schedules.length; i++) {
       final s = task.schedules[i];
-      if (s.notificationRelativeTime == null) continue;
+      if (s.notificationRelativeTimes.isEmpty) continue;
 
-      if (kIsWeb) {
-        final scheduledDate = _calculateNextNotificationDateTime(task, s);
-        final delay = scheduledDate.difference(DateTime.now());
-        if (delay.isNegative) continue;
-
-        debugPrint(
-          '  - [Web] Scheduling timer in ${delay.inMinutes} minutes at $scheduledDate',
-        );
-        final timer = Timer(delay, () {
-          if (_isDisposed || _runId != _currentRunId) return;
-          showWebNotification(
-            task.title,
-            task.description.isNotEmpty
-                ? task.description
-                : 'Reminder for your task',
+      for (var j = 0; j < s.notificationRelativeTimes.length; j++) {
+        final notifRel = s.notificationRelativeTimes[j];
+        if (kIsWeb) {
+          final scheduledDate = _calculateNextNotificationDateTimeForNotif(
+            task,
+            s,
+            notifRel,
           );
-          // Reschedule for the next occurrence once it fires
-          if (_isDisposed || _runId != _currentRunId) return;
-          scheduleNotifications(task);
-        });
+          final delay = scheduledDate.difference(DateTime.now());
+          if (delay.isNegative) continue;
 
-        _webTimers.putIfAbsent(task.id, () => []).add(timer);
-      } else {
-        final scheduledDate = _calculateNextNotificationDateTime(task, s);
-        final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
-        final notifId = (task.id.hashCode + i) & 0x7FFFFFFF;
-
-        debugPrint(
-          '  - [Android] Scheduling exact notification at $tzDate (ID: $notifId)',
-        );
-        try {
-          await _plugin.zonedSchedule(
-            id: notifId,
-            title: task.title,
-            body: task.description.isNotEmpty
-                ? task.description
-                : 'Reminder for your task',
-            scheduledDate: tzDate,
-            notificationDetails: const NotificationDetails(
-              android: AndroidNotificationDetails(
-                'task_reminders_channel',
-                'TaskSchedule Reminders',
-                channelDescription:
-                    'Notifications for task occurrences and schedules',
-                importance: Importance.max,
-                priority: Priority.high,
-              ),
-            ),
-            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          debugPrint(
+            '  - [Web] Scheduling timer in ${delay.inMinutes} minutes at $scheduledDate',
           );
-        } catch (e) {
+          final timer = Timer(delay, () {
+            if (_isDisposed || _runId != _currentRunId) return;
+            showWebNotification(
+              task.title,
+              task.description.isNotEmpty
+                  ? task.description
+                  : 'Reminder for your task',
+            );
+            // Reschedule for the next occurrence once it fires
+            if (_isDisposed || _runId != _currentRunId) return;
+            scheduleNotifications(task);
+          });
+
+          _webTimers.putIfAbsent(task.id, () => []).add(timer);
+        } else {
+          final scheduledDate = _calculateNextNotificationDateTimeForNotif(
+            task,
+            s,
+            notifRel,
+          );
+          final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
+          final notifId = (task.id.hashCode + i * 100 + j) & 0x7FFFFFFF;
+
+          debugPrint(
+            '  - [Android] Scheduling exact notification at $tzDate (ID: $notifId)',
+          );
           try {
             await _plugin.zonedSchedule(
               id: notifId,
@@ -164,10 +154,32 @@ class PlatformNotificationService implements NotificationService {
                   priority: Priority.high,
                 ),
               ),
-              androidScheduleMode: AndroidScheduleMode.inexact,
+              androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
             );
-          } catch (ex) {
-            debugPrint('Failed to schedule Android notification: $ex');
+          } catch (e) {
+            try {
+              await _plugin.zonedSchedule(
+                id: notifId,
+                title: task.title,
+                body: task.description.isNotEmpty
+                    ? task.description
+                    : 'Reminder for your task',
+                scheduledDate: tzDate,
+                notificationDetails: const NotificationDetails(
+                  android: AndroidNotificationDetails(
+                    'task_reminders_channel',
+                    'TaskSchedule Reminders',
+                    channelDescription:
+                        'Notifications for task occurrences and schedules',
+                    importance: Importance.max,
+                    priority: Priority.high,
+                  ),
+                ),
+                androidScheduleMode: AndroidScheduleMode.inexact,
+              );
+            } catch (ex) {
+              debugPrint('Failed to schedule Android notification: $ex');
+            }
           }
         }
       }
@@ -192,21 +204,24 @@ class PlatformNotificationService implements NotificationService {
     } else {
       // Cancel slots on Android. We can cancel by ID
       // To cancel safely, we cancel all notification IDs associated with the task
-      // ID calculation is (task.id.hashCode + i) & 0x7FFFFFFF.
+      // ID calculation is (taskId.hashCode + i * 100 + j) & 0x7FFFFFFF.
       for (var i = 0; i < 10; i++) {
-        final notifId = (taskId.hashCode + i) & 0x7FFFFFFF;
-        try {
-          await _plugin.cancel(id: notifId);
-        } catch (e) {
-          // Ignore
+        for (var j = 0; j < 5; j++) {
+          final notifId = (taskId.hashCode + i * 100 + j) & 0x7FFFFFFF;
+          try {
+            await _plugin.cancel(id: notifId);
+          } catch (e) {
+            // Ignore
+          }
         }
       }
     }
   }
 
-  DateTime _calculateNextNotificationDateTime(
+  DateTime _calculateNextNotificationDateTimeForNotif(
     TaskSchedule task,
     TaskScheduleRule s,
+    RelativeTime notifRel,
   ) {
     final now = DateTime.now();
     var checkDate = DateTime(now.year, now.month, now.day);
@@ -219,13 +234,10 @@ class PlatformNotificationService implements NotificationService {
       );
 
       if (s.occursOn(civilDay)) {
-        final notifRel = s.notificationRelativeTime;
-        if (notifRel != null) {
-          final occurrenceDateTime = notifRel.referenceTo(civilDay);
+        final occurrenceDateTime = notifRel.referenceTo(civilDay);
 
-          if (occurrenceDateTime.isAfter(now)) {
-            return occurrenceDateTime;
-          }
+        if (occurrenceDateTime.isAfter(now)) {
+          return occurrenceDateTime;
         }
       }
       checkDate = checkDate.add(const Duration(days: 1));
@@ -266,11 +278,13 @@ class LoggingNotificationService implements NotificationService {
     );
     for (var i = 0; i < task.schedules.length; i++) {
       final s = task.schedules[i];
-      if (s.notificationRelativeTime != null) {
-        final notif = s.notificationRelativeTime!;
-        debugPrint(
-          '  - Scheduled occurrence reminder #$i at offset ${notif.dayOffset} time ${notif.time.hour.toString().padLeft(2, '0')}:${notif.time.minute.toString().padLeft(2, '0')}',
-        );
+      if (s.notificationRelativeTimes.isNotEmpty) {
+        for (var j = 0; j < s.notificationRelativeTimes.length; j++) {
+          final notif = s.notificationRelativeTimes[j];
+          debugPrint(
+            '  - Scheduled occurrence reminder #$i at offset ${notif.dayOffset} time ${notif.time.hour.toString().padLeft(2, '0')}:${notif.time.minute.toString().padLeft(2, '0')}',
+          );
+        }
       } else {
         debugPrint('  - Occurrence #$i: No custom notification configured');
       }
