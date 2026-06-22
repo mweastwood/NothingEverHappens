@@ -1372,6 +1372,8 @@ void main() {
       surfaceSize: const Size(400, 800),
     );
 
+    await tester.pumpAndSettle();
+
     await screenMatchesGolden(tester, 'task_list_screen_pending_tasks');
 
     AppClock.reset();

@@ -861,6 +861,8 @@ void main() {
       surfaceSize: const Size(400, 800),
     );
 
+    await tester.pumpAndSettle();
+
     await screenMatchesGolden(tester, 'task_schedule_screen_last_spawned_date');
   });
 }
