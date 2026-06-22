@@ -169,7 +169,7 @@ void main() {
     testGoldens('WeeklyFixedSchedulingWidget renders correctly', (
       tester,
     ) async {
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.8)
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.5)
         ..addScenario(
           'WeeklyFixed Default',
           Material(
@@ -198,7 +198,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(500, 850),
+        surfaceSize: const Size(500, 1100),
       );
       await screenMatchesGolden(
         tester,

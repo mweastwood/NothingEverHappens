@@ -128,9 +128,8 @@ void main() {
         AppClock.reset();
       },
     );
-
     test(
-      'complete of stack recurring task advances relative to s.scheduledDate instead of today',
+      'complete of stack recurring task advances relative to today instead of s.scheduledDate',
       () {
         // Wednesday, June 3, 2026
         AppClock.setMockTime(DateTime(2026, 6, 3, 9, 0));
@@ -158,10 +157,10 @@ void main() {
         final updatedTask = nextState.activeTasks.first;
         final newSchedule = updatedTask.schedules.first as DailySchedule;
 
-        // Since it is stack policy, completing it on June 3 reschedules it relative to Monday June 1 -> Tuesday June 2.
+        // Reschedules relative to today (June 3) -> Thursday June 4
         expect(
           newSchedule.startDate,
-          const CivilDay(year: 2026, month: 6, day: 2),
+          const CivilDay(year: 2026, month: 6, day: 4),
         );
 
         AppClock.reset();

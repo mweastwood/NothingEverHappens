@@ -32,7 +32,7 @@ class _MissedPoliciesPlaygroundTabState
   @override
   void initState() {
     super.initState();
-    _selectedPolicy = MissedPolicy.rollover;
+    _selectedPolicy = MissedPolicy.stack;
     _fakeRepository = FakeTaskRepository(
       onComplete: _handleCompleteTask,
       onDelete: _handleDeleteTask,
@@ -57,19 +57,24 @@ class _MissedPoliciesPlaygroundTabState
 
   String _getPolicyLabel(MissedPolicy policy) {
     switch (policy) {
-      case MissedPolicy.rollover:
-        return "Rollover";
-      case MissedPolicy.skip:
-        return "Skip";
-      case MissedPolicy.shift:
-        return "Shift";
+      case MissedPolicy.preferNewer:
+        return "Prefer Newer";
+      case MissedPolicy.preferOlder:
+        return "Prefer Older";
       case MissedPolicy.stack:
         return "Stack";
+      case MissedPolicy.autoDismiss:
+        return "Auto-Dismiss";
+      case MissedPolicy.rollover:
+      case MissedPolicy.skip:
+      case MissedPolicy.shift:
+        return "Legacy";
     }
   }
 
   void _initializeTasksForCurrentPolicy() {
-    if (_selectedPolicy == MissedPolicy.stack) {
+    if (_selectedPolicy == MissedPolicy.stack ||
+        _selectedPolicy == MissedPolicy.autoDismiss) {
       _simulatedTasks.add(
         _createSpawnedTask(const CivilDay(year: 2026, month: 6, day: 1)),
       );
@@ -136,28 +141,28 @@ class _MissedPoliciesPlaygroundTabState
       final todayStr = _formatDate(_simulatedToday);
 
       switch (_selectedPolicy) {
-        case MissedPolicy.rollover:
+        case MissedPolicy.preferOlder:
           bool hasOverdue = _simulatedTasks.any((t) {
             final scheduledDate = t.schedules.first.scheduledDate;
             return scheduledDate.isBefore(_simulatedToday) &&
                 !_completedDays.contains(scheduledDate);
           });
           if (hasOverdue) {
-            _missedDays.add(prevDay);
+            _skippedDays.add(_simulatedToday);
             _historyLog.add(
-              "$todayStr: TaskSchedule for $prevDayStr went overdue. Rolls forward (Rollover).",
+              "$todayStr: Missed task scheduled for $prevDayStr. Bypassed today's task to keep older active (Prefer Older).",
             );
+          } else {
+            _simulatedTasks = [_createSpawnedTask(_simulatedToday)];
           }
           break;
 
-        case MissedPolicy.skip:
+        case MissedPolicy.preferNewer:
           final List<TaskSchedule> toSkip = [];
-          final List<TaskSchedule> remaining = [];
           for (final t in _simulatedTasks) {
-            if (t.schedules.first.scheduledDate.isBefore(_simulatedToday)) {
+            final scheduledDate = t.schedules.first.scheduledDate;
+            if (scheduledDate.isBefore(_simulatedToday)) {
               toSkip.add(t);
-            } else {
-              remaining.add(t);
             }
           }
 
@@ -166,50 +171,18 @@ class _MissedPoliciesPlaygroundTabState
               final scheduledDate = t.schedules.first.scheduledDate;
               _skippedDays.add(scheduledDate);
               _historyLog.add(
-                "$todayStr: TaskSchedule scheduled for ${_formatDate(scheduledDate)} auto-skipped (Skip).",
+                "$todayStr: Task scheduled for ${_formatDate(scheduledDate)} was skipped in favor of the newer occurrence (Prefer Newer).",
               );
-
-              final rescheduledTask = TaskSchedule(
-                id: t.id,
-                title: t.title,
-                description: t.description,
-                schedules: [
-                  DailySchedule(
-                    startDate: _simulatedToday,
-                    interval: 1,
-                    startRelativeTime: t.schedules.first.startRelativeTime,
-                    dueRelativeTime: t.schedules.first.dueRelativeTime,
-                  ),
-                ],
-                activeOccurrenceIndex: 0,
-                missedPolicy: MissedPolicy.skip,
-                isMaster: false,
-              );
-              remaining.add(rescheduledTask);
             }
-            _simulatedTasks = remaining;
           }
-          break;
-
-        case MissedPolicy.shift:
-          bool hasOverdue = _simulatedTasks.any((t) {
-            final scheduledDate = t.schedules.first.scheduledDate;
-            return scheduledDate.isBefore(_simulatedToday) &&
-                !_completedDays.contains(scheduledDate);
-          });
-          if (hasOverdue) {
-            _missedDays.add(prevDay);
-            _historyLog.add(
-              "$todayStr: TaskSchedule for $prevDayStr went overdue (Shift).",
-            );
-          }
+          _simulatedTasks = [_createSpawnedTask(_simulatedToday)];
           break;
 
         case MissedPolicy.stack:
           if (!_completedDays.contains(prevDay)) {
             _missedDays.add(prevDay);
             _historyLog.add(
-              "$todayStr: TaskSchedule for $prevDayStr was missed. New instance spawned (Stack).",
+              "$todayStr: Task scheduled for $prevDayStr was missed. New instance spawned (Stack).",
             );
           } else {
             _historyLog.add(
@@ -223,6 +196,35 @@ class _MissedPoliciesPlaygroundTabState
           if (!alreadyExists) {
             _simulatedTasks.add(_createSpawnedTask(_simulatedToday));
           }
+          break;
+
+        case MissedPolicy.autoDismiss:
+          if (!_completedDays.contains(prevDay)) {
+            _skippedDays.add(prevDay);
+            _historyLog.add(
+              "$todayStr: Task scheduled for $prevDayStr expired and was auto-dismissed (Auto-dismiss).",
+            );
+          } else {
+            _historyLog.add(
+              "$todayStr: New instance spawned for today (Auto-dismiss).",
+            );
+          }
+
+          _simulatedTasks.removeWhere(
+            (t) => t.schedules.first.scheduledDate.isBefore(_simulatedToday),
+          );
+
+          final alreadyExists = _simulatedTasks.any(
+            (t) => t.schedules.first.scheduledDate == _simulatedToday,
+          );
+          if (!alreadyExists) {
+            _simulatedTasks.add(_createSpawnedTask(_simulatedToday));
+          }
+          break;
+
+        case MissedPolicy.rollover:
+        case MissedPolicy.skip:
+        case MissedPolicy.shift:
           break;
       }
     });
@@ -241,28 +243,16 @@ class _MissedPoliciesPlaygroundTabState
 
       _completedDays.add(scheduledDate);
 
-      if (_selectedPolicy == MissedPolicy.stack) {
+      if (_selectedPolicy == MissedPolicy.stack ||
+          _selectedPolicy == MissedPolicy.autoDismiss) {
         _simulatedTasks.removeAt(taskIndex);
         _historyLog.add(
           "$todayStr: Completed task instance scheduled for $scheduledStr.",
         );
       } else {
-        final CivilDay nextDate;
-        String logMsg = "";
-
-        if (_selectedPolicy == MissedPolicy.rollover) {
-          nextDate = scheduledDate.addDays(1);
-          logMsg =
-              "$todayStr: Completed task (scheduled for $scheduledStr). Rescheduled to next sequence: ${_formatDate(nextDate)}.";
-        } else if (_selectedPolicy == MissedPolicy.shift) {
-          nextDate = _simulatedToday.addDays(1);
-          logMsg =
-              "$todayStr: Completed task (scheduled for $scheduledStr). Rescheduled relative to today -> ${_formatDate(nextDate)} (Shifted).";
-        } else {
-          nextDate = _simulatedToday.addDays(1);
-          logMsg =
-              "$todayStr: Completed task. Rescheduled to ${_formatDate(nextDate)}.";
-        }
+        final CivilDay nextDate = _simulatedToday.addDays(1);
+        final logMsg =
+            "$todayStr: Completed task (scheduled for $scheduledStr). Rescheduled relative to today -> ${_formatDate(nextDate)}.";
 
         final rescheduledTask = TaskSchedule(
           id: task.id,
@@ -298,19 +288,14 @@ class _MissedPoliciesPlaygroundTabState
       final todayStr = _formatDate(_simulatedToday);
       final scheduledStr = _formatDate(scheduledDate);
 
-      if (_selectedPolicy == MissedPolicy.stack) {
+      if (_selectedPolicy == MissedPolicy.stack ||
+          _selectedPolicy == MissedPolicy.autoDismiss) {
         _simulatedTasks.removeAt(taskIndex);
         _historyLog.add(
           "$todayStr: Dismissed task instance scheduled for $scheduledStr.",
         );
       } else {
-        final CivilDay nextDate;
-        if (_selectedPolicy == MissedPolicy.rollover) {
-          nextDate = scheduledDate.addDays(1);
-        } else {
-          nextDate = _simulatedToday.addDays(1);
-        }
-
+        final CivilDay nextDate = _simulatedToday.addDays(1);
         final oldSchedule = task.schedules.first;
         final rescheduledTask = TaskSchedule(
           id: task.id,
@@ -357,16 +342,46 @@ class _MissedPoliciesPlaygroundTabState
   }
 
   String _getTipText() {
-    final l10n = context.l10n;
     switch (_selectedPolicy) {
-      case MissedPolicy.rollover:
-        return l10n.rolloverSimTip;
-      case MissedPolicy.skip:
-        return l10n.skipSimTip;
-      case MissedPolicy.shift:
-        return l10n.shiftSimTip;
+      case MissedPolicy.preferNewer:
+        return """### Prefer Newer Policy
+
+**Behavior:** Only the newest task remains pending; older unresolved instances are skipped.
+
+**Try this:**
+1. Tap **Advance 1 Day** once or twice to let the task go overdue.
+2. Notice that the older task is automatically marked as skipped in history, and only the newest day's task remains active.""";
+      case MissedPolicy.preferOlder:
+        return """### Prefer Older Policy
+
+**Behavior:** Only the oldest unresolved instance remains pending; newer instances are skipped until it is resolved.
+
+**Try this:**
+1. Tap **Advance 1 Day** once or twice.
+2. Notice that the task for the first day remains pending, while the newer days are automatically skipped in history.
+3. Tap the checkbox to complete it.
+4. Notice the next scheduled occurrence starts after today, with zero catch-up required.""";
       case MissedPolicy.stack:
-        return l10n.stackSimTip;
+        return """### Stack Policy
+
+**Behavior:** Missed occurrences remain active and spawn a separate task instance for each day, letting multiple instances stack up.
+
+**Try this:**
+1. Tap **Advance 1 Day** 3 times.
+2. Notice that 3 separate tasks appear on your list (one for each missed day).
+3. Complete or dismiss them individually to clear the backlog.""";
+      case MissedPolicy.autoDismiss:
+        return """### Auto-Dismiss Policy
+
+**Behavior:** Missed occurrences stack, but each instance automatically expires and is skipped after a configurable grace period (e.g., 24 hours).
+
+**Try this:**
+1. Tap **Advance 1 Day**.
+2. Notice the previous day's task automatically expires and is marked as skipped in history, keeping your active list clean.""";
+      case MissedPolicy.rollover:
+      case MissedPolicy.skip:
+      case MissedPolicy.shift:
+        return "";
     }
   }
 
@@ -375,7 +390,6 @@ class _MissedPoliciesPlaygroundTabState
     final theme = Theme.of(context);
     final l10n = context.l10n;
 
-    // We build the scheduled days which is simply every day of the month
     final Set<CivilDay> scheduledDays = {};
     for (int d = 1; d <= 30; d++) {
       scheduledDays.add(
@@ -395,7 +409,6 @@ class _MissedPoliciesPlaygroundTabState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Dynamic Explanation Card
               SizedBox(
                 width: double.infinity,
                 child: Card(
@@ -414,7 +427,6 @@ class _MissedPoliciesPlaygroundTabState
               ),
               const SizedBox(height: 20),
 
-              // Policy Selector Title
               Text(
                 l10n.missedPolicyHeader,
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -423,26 +435,25 @@ class _MissedPoliciesPlaygroundTabState
               ),
               const SizedBox(height: 8),
 
-              // SegmentedButton for policy selection
               SizedBox(
                 width: double.infinity,
                 child: SegmentedButton<MissedPolicy>(
-                  segments: [
+                  segments: const [
                     ButtonSegment(
-                      value: MissedPolicy.rollover,
-                      label: Text(l10n.rolloverLabel.split(' (').first),
+                      value: MissedPolicy.preferNewer,
+                      label: Text("Prefer Newer"),
                     ),
                     ButtonSegment(
-                      value: MissedPolicy.skip,
-                      label: Text(l10n.skipLabel.split(' (').first),
-                    ),
-                    ButtonSegment(
-                      value: MissedPolicy.shift,
-                      label: Text(l10n.shiftLabel.split(' (').first),
+                      value: MissedPolicy.preferOlder,
+                      label: Text("Prefer Older"),
                     ),
                     ButtonSegment(
                       value: MissedPolicy.stack,
-                      label: Text(l10n.stackLabel.split(' (').first),
+                      label: Text("Stack"),
+                    ),
+                    ButtonSegment(
+                      value: MissedPolicy.autoDismiss,
+                      label: Text("Auto-Dismiss"),
                     ),
                   ],
                   selected: {_selectedPolicy},

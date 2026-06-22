@@ -8,186 +8,159 @@ import 'package:flutter/material.dart';
 
 void main() {
   group('MissedOccurrencePolicy Tests', () {
-    group('keepAround', () {
-      test('constructors and legacyPolicy defaults', () {
-        const policy1 = MissedOccurrencePolicy.keepAround();
-        const policy2 = MissedOccurrencePolicy.keepAround(
-          legacyPolicy: MissedPolicy.shift,
-        );
-
-        expect(policy1.type, MissedOccurrenceType.keepAround);
-        expect(policy1.legacyPolicy, MissedPolicy.rollover);
-        expect(policy1.gracePeriod, isNull);
-
-        expect(policy2.type, MissedOccurrenceType.keepAround);
-        expect(policy2.legacyPolicy, MissedPolicy.shift);
-        expect(policy2.gracePeriod, isNull);
-      });
-
-      test('equality and hashCode', () {
-        const policy1 = MissedOccurrencePolicy.keepAround(
-          legacyPolicy: MissedPolicy.shift,
-        );
-        const policy2 = MissedOccurrencePolicy.keepAround(
-          legacyPolicy: MissedPolicy.shift,
-        );
-        const policy3 = MissedOccurrencePolicy.keepAround(
-          legacyPolicy: MissedPolicy.stack,
-        );
-
-        expect(policy1, equals(policy2));
-        expect(policy1.hashCode, equals(policy2.hashCode));
-        expect(policy1, isNot(equals(policy3)));
-      });
-
-      test('toJson and fromJson serialization', () {
-        const policy = MissedOccurrencePolicy.keepAround(
-          legacyPolicy: MissedPolicy.stack,
-        );
-        final json = policy.toJson();
-
-        expect(json['type'], 'keepAround');
-        expect(json['legacyPolicy'], 'stack');
-        expect(json['graceMinutes'], isNull);
-
-        final deserialized = MissedOccurrencePolicy.fromJson(json);
-        expect(deserialized.type, MissedOccurrenceType.keepAround);
-        expect(deserialized.legacyPolicy, MissedPolicy.stack);
-      });
-
-      test('toString matches expected output', () {
-        const policy = MissedOccurrencePolicy.keepAround(
-          legacyPolicy: MissedPolicy.rollover,
-        );
-        expect(
-          policy.toString(),
-          'MissedOccurrencePolicy(type: MissedOccurrenceType.keepAround, gracePeriod: null, legacyPolicy: MissedPolicy.rollover)',
-        );
-      });
-    });
-
-    group('autoDismiss', () {
-      test('constructors and properties', () {
-        const policy = MissedOccurrencePolicy.autoDismiss(
+    group('Constructors and Defaults', () {
+      test('Default constructor and custom policies', () {
+        const policy1 = MissedOccurrencePolicy();
+        const policy2 = MissedOccurrencePolicy.preferNewer();
+        const policy3 = MissedOccurrencePolicy.preferOlder();
+        const policy4 = MissedOccurrencePolicy.stack();
+        const policy5 = MissedOccurrencePolicy.autoDismiss(
           gracePeriod: Duration(hours: 3),
         );
 
-        expect(policy.type, MissedOccurrenceType.autoDismiss);
-        expect(policy.legacyPolicy, MissedPolicy.skip);
-        expect(policy.gracePeriod, const Duration(hours: 3));
+        expect(policy1.policy, MissedPolicy.stack);
+        expect(policy2.policy, MissedPolicy.preferNewer);
+        expect(policy3.policy, MissedPolicy.preferOlder);
+        expect(policy4.policy, MissedPolicy.stack);
+        expect(policy5.policy, MissedPolicy.autoDismiss);
+        expect(policy5.gracePeriod, const Duration(hours: 3));
       });
-
-      test('equality and hashCode', () {
-        const policy1 = MissedOccurrencePolicy.autoDismiss(
-          gracePeriod: Duration(minutes: 30),
-        );
-        const policy2 = MissedOccurrencePolicy.autoDismiss(
-          gracePeriod: Duration(minutes: 30),
-        );
-        const policy3 = MissedOccurrencePolicy.autoDismiss(
-          gracePeriod: Duration(minutes: 60),
-        );
-
-        expect(policy1, equals(policy2));
-        expect(policy1.hashCode, equals(policy2.hashCode));
-        expect(policy1, isNot(equals(policy3)));
-      });
-
-      test('toJson and fromJson serialization', () {
-        const policy = MissedOccurrencePolicy.autoDismiss(
-          gracePeriod: Duration(hours: 5),
-        );
-        final json = policy.toJson();
-
-        expect(json['type'], 'autoDismiss');
-        expect(json['legacyPolicy'], 'skip');
-        expect(json['graceMinutes'], 300);
-
-        final deserialized = MissedOccurrencePolicy.fromJson(json);
-        expect(deserialized.type, MissedOccurrenceType.autoDismiss);
-        expect(deserialized.legacyPolicy, MissedPolicy.skip);
-        expect(deserialized.gracePeriod, const Duration(hours: 5));
-      });
-
-      test('toString matches expected output', () {
-        const policy = MissedOccurrencePolicy.autoDismiss(
-          gracePeriod: Duration(minutes: 45),
-        );
-        expect(
-          policy.toString(),
-          'MissedOccurrencePolicy(type: MissedOccurrenceType.autoDismiss, gracePeriod: 0:45:00.000000, legacyPolicy: MissedPolicy.skip)',
-        );
-      });
-    });
-
-    group('calculateExpiration and isExpired helper methods', () {
-      final baseTime = DateTime(2026, 6, 1, 12, 0);
 
       test(
-        'keepAround policy calculates null expiration and is never expired',
+        'Legacy constructor mapping preserves legacyPolicy and correct gracePeriod',
         () {
-          const policy = MissedOccurrencePolicy.keepAround();
-          expect(policy.calculateExpiration(baseTime), isNull);
-          expect(
-            policy.isExpired(baseTime, baseTime.add(const Duration(days: 100))),
-            isFalse,
+          const policyRollover = MissedOccurrencePolicy(
+            policy: MissedPolicy.rollover,
           );
+          const policyShift = MissedOccurrencePolicy(
+            policy: MissedPolicy.shift,
+          );
+          const policySkip = MissedOccurrencePolicy(policy: MissedPolicy.skip);
+
+          expect(policyRollover.policy, MissedPolicy.stack);
+          expect(policyRollover.legacyPolicy, MissedPolicy.rollover);
+
+          expect(policyShift.policy, MissedPolicy.stack);
+          expect(policyShift.legacyPolicy, MissedPolicy.shift);
+
+          expect(policySkip.policy, MissedPolicy.autoDismiss);
+          expect(policySkip.legacyPolicy, MissedPolicy.skip);
+          expect(policySkip.gracePeriod, Duration.zero);
         },
       );
 
-      test('autoDismiss policy calculates correct expiration time', () {
-        const policy = MissedOccurrencePolicy.autoDismiss(
-          gracePeriod: Duration(hours: 3),
+      test('Legacy keepAround constructor mapping', () {
+        const policyRollover = MissedOccurrencePolicy.keepAround(
+          legacyPolicy: MissedPolicy.rollover,
         );
+        const policySkip = MissedOccurrencePolicy.keepAround(
+          legacyPolicy: MissedPolicy.skip,
+        );
+
+        expect(policyRollover.policy, MissedPolicy.stack);
+        expect(policyRollover.legacyPolicy, MissedPolicy.rollover);
+
+        expect(policySkip.policy, MissedPolicy.autoDismiss);
+        expect(policySkip.legacyPolicy, MissedPolicy.skip);
+        expect(policySkip.gracePeriod, Duration.zero);
+      });
+
+      test('Equality and hashCode', () {
+        const p1 = MissedOccurrencePolicy.preferOlder();
+        const p2 = MissedOccurrencePolicy.preferOlder();
+        const p3 = MissedOccurrencePolicy.preferNewer();
+
+        expect(p1, equals(p2));
+        expect(p1.hashCode, equals(p2.hashCode));
+        expect(p1, isNot(equals(p3)));
+      });
+
+      test('Serialization (toJson / fromJson)', () {
+        const policy = MissedOccurrencePolicy.autoDismiss(
+          gracePeriod: Duration(hours: 2),
+        );
+        final json = policy.toJson();
+
+        expect(json['policy'], 'autoDismiss');
+        expect(json['graceMinutes'], 120);
+
+        final deserialized = MissedOccurrencePolicy.fromJson(json);
+        expect(deserialized.policy, MissedPolicy.autoDismiss);
+        expect(deserialized.gracePeriod, const Duration(hours: 2));
+      });
+
+      test(
+        'Serialization preserves legacyPolicy and gracePeriod for mapped skip',
+        () {
+          const policy = MissedOccurrencePolicy(policy: MissedPolicy.skip);
+          final json = policy.toJson();
+
+          expect(json['policy'], 'autoDismiss');
+          expect(json['legacyPolicy'], 'skip');
+          expect(json['graceMinutes'], 0);
+
+          final deserialized = MissedOccurrencePolicy.fromJson(json);
+          expect(deserialized.policy, MissedPolicy.autoDismiss);
+          expect(deserialized.legacyPolicy, MissedPolicy.skip);
+          expect(deserialized.gracePeriod, Duration.zero);
+        },
+      );
+
+      test('Legacy deserialization resets to stack', () {
+        // A legacy JSON without 'policy' key or with old enums
+        final legacyJson1 = {'type': 'keepAround', 'legacyPolicy': 'rollover'};
+        final legacyJson2 = {'type': 'keepAround', 'legacyPolicy': 'shift'};
+
+        final p1 = MissedOccurrencePolicy.fromJson(legacyJson1);
+        final p2 = MissedOccurrencePolicy.fromJson(legacyJson2);
+
+        expect(p1.policy, MissedPolicy.stack);
+        expect(p2.policy, MissedPolicy.stack);
+      });
+    });
+
+    group('Expiration Logic', () {
+      final baseTime = DateTime(2026, 6, 1, 12, 0);
+
+      test('Non-autoDismiss policies never expire', () {
+        const policy = MissedOccurrencePolicy.preferNewer();
+        expect(policy.calculateExpiration(baseTime), isNull);
         expect(
-          policy.calculateExpiration(baseTime),
-          baseTime.add(const Duration(hours: 3)),
+          policy.isExpired(baseTime, baseTime.add(const Duration(days: 10))),
+          isFalse,
         );
       });
 
-      test('autoDismiss policy properly evaluates isExpired', () {
+      test('Auto-dismiss calculates correct expiration', () {
         const policy = MissedOccurrencePolicy.autoDismiss(
-          gracePeriod: Duration(hours: 3),
+          gracePeriod: Duration(hours: 4),
         );
-        // Exactly at due time: not expired
-        expect(policy.isExpired(baseTime, baseTime), isFalse);
-        // Within grace period (2 hours past due): not expired
+        expect(
+          policy.calculateExpiration(baseTime),
+          baseTime.add(const Duration(hours: 4)),
+        );
+      });
+
+      test('Auto-dismiss properly evaluates isExpired', () {
+        const policy = MissedOccurrencePolicy.autoDismiss(
+          gracePeriod: Duration(hours: 2),
+        );
+        expect(
+          policy.isExpired(baseTime, baseTime.add(const Duration(hours: 1))),
+          isFalse,
+        );
         expect(
           policy.isExpired(baseTime, baseTime.add(const Duration(hours: 2))),
           isFalse,
         );
-        // Exactly at grace period expiration: not expired (needs to be strictly after)
-        expect(
-          policy.isExpired(baseTime, baseTime.add(const Duration(hours: 3))),
-          isFalse,
-        );
-        // After grace period expiration (3 hours and 1 second past due): expired
         expect(
           policy.isExpired(
             baseTime,
-            baseTime.add(const Duration(hours: 3, seconds: 1)),
+            baseTime.add(const Duration(hours: 2, seconds: 1)),
           ),
           isTrue,
         );
       });
-
-      test(
-        'legacy skip policy acts like autoDismiss with zero grace period',
-        () {
-          const policy = MissedOccurrencePolicy.keepAround(
-            legacyPolicy: MissedPolicy.skip,
-          );
-          expect(policy.calculateExpiration(baseTime), baseTime);
-          expect(
-            policy.isExpired(
-              baseTime,
-              baseTime.add(const Duration(seconds: 1)),
-            ),
-            isTrue,
-          );
-          expect(policy.isExpired(baseTime, baseTime), isFalse);
-        },
-      );
 
       test('isInstanceExpired correctly checks a TaskInstance', () {
         const policy = MissedOccurrencePolicy.autoDismiss(
@@ -209,8 +182,6 @@ void main() {
           ),
         );
 
-        // Instance is due at 2026-06-19 12:00:00.
-        // Expiration is due + 2 hours = 14:00:00.
         final dueTime = DateTime(2026, 6, 19, 12, 0);
         final expiredTime = DateTime(2026, 6, 19, 14, 0, 1);
 

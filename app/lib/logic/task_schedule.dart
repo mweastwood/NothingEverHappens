@@ -63,15 +63,17 @@ class TaskSchedule {
 
   /// Legacy getter/setter for missedPolicy
   MissedPolicy get missedPolicy {
-    if (schedules.isEmpty) return MissedPolicy.rollover;
-    return schedules.first.missedOccurrencePolicy.legacyPolicy;
+    if (schedules.isEmpty) return MissedPolicy.stack;
+    return schedules.first.missedOccurrencePolicy.policy;
   }
 
   set missedPolicy(MissedPolicy policy) {
     if (schedules.isEmpty) return;
-    final newPolicy = policy == MissedPolicy.skip
-        ? const MissedOccurrencePolicy.autoDismiss(gracePeriod: Duration.zero)
-        : MissedOccurrencePolicy.keepAround(legacyPolicy: policy);
+    final newPolicy = policy == MissedPolicy.autoDismiss
+        ? const MissedOccurrencePolicy.autoDismiss(
+            gracePeriod: Duration(days: 1),
+          )
+        : MissedOccurrencePolicy(policy: policy);
     schedules = schedules
         .map((s) => s.copyWithTiming(missedOccurrencePolicy: newPolicy))
         .toList();
@@ -129,15 +131,13 @@ class TaskSchedule {
          final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
          final mPolicy =
              missedOccurrencePolicy ??
-             (missedPolicy == MissedPolicy.skip
-                 ? const MissedOccurrencePolicy.autoDismiss(
-                     gracePeriod: Duration.zero,
-                   )
-                 : (missedPolicy != null
-                       ? MissedOccurrencePolicy.keepAround(
-                           legacyPolicy: missedPolicy,
+             (missedPolicy != null
+                 ? (missedPolicy == MissedPolicy.autoDismiss
+                       ? const MissedOccurrencePolicy.autoDismiss(
+                           gracePeriod: Duration(days: 1),
                          )
-                       : s.missedOccurrencePolicy));
+                       : MissedOccurrencePolicy(policy: missedPolicy))
+                 : s.missedOccurrencePolicy);
          return s.copyWithTiming(
            schedulingPolicy: sPolicy,
            missedOccurrencePolicy: mPolicy,
@@ -252,25 +252,24 @@ class TaskSchedule {
       if (newMissedOccurrencePolicy != null) {
         mPolicy = newMissedOccurrencePolicy;
       } else {
+        final resolvedNewPolicy =
+            (newMissedPolicy == MissedPolicy.rollover ||
+                newMissedPolicy == MissedPolicy.shift)
+            ? MissedPolicy.stack
+            : (newMissedPolicy == MissedPolicy.skip
+                  ? MissedPolicy.autoDismiss
+                  : newMissedPolicy);
         final legacyMatchesNew =
-            (newMissedPolicy == MissedPolicy.skip &&
-                s.missedOccurrencePolicy.type ==
-                    MissedOccurrenceType.autoDismiss) ||
-            (newMissedPolicy != MissedPolicy.skip &&
-                s.missedOccurrencePolicy.type ==
-                    MissedOccurrenceType.keepAround &&
-                s.missedOccurrencePolicy.legacyPolicy == newMissedPolicy);
+            s.missedOccurrencePolicy.policy == resolvedNewPolicy;
 
         if (legacyMatchesNew) {
           mPolicy = s.missedOccurrencePolicy;
         } else {
-          mPolicy = newMissedPolicy == MissedPolicy.skip
+          mPolicy = newMissedPolicy == MissedPolicy.autoDismiss
               ? const MissedOccurrencePolicy.autoDismiss(
-                  gracePeriod: Duration.zero,
+                  gracePeriod: Duration(days: 1),
                 )
-              : MissedOccurrencePolicy.keepAround(
-                  legacyPolicy: newMissedPolicy,
-                );
+              : MissedOccurrencePolicy(policy: newMissedPolicy);
         }
       }
       return s.copyWithTiming(
@@ -319,7 +318,7 @@ class TaskSchedule {
             .missedOccurrencePolicy
             .toJson();
         changes['missedPolicy'] =
-            resolvedSchedules.first.missedOccurrencePolicy.legacyPolicy.name;
+            resolvedSchedules.first.missedOccurrencePolicy.policy.name;
       }
     }
 
@@ -521,13 +520,11 @@ class TaskSchedule {
       final mPolicy =
           missedOccurrencePolicy ??
           (missedPolicy != null
-              ? (missedPolicy == MissedPolicy.skip
+              ? (missedPolicy == MissedPolicy.autoDismiss
                     ? const MissedOccurrencePolicy.autoDismiss(
-                        gracePeriod: Duration.zero,
+                        gracePeriod: Duration(days: 1),
                       )
-                    : MissedOccurrencePolicy.keepAround(
-                        legacyPolicy: missedPolicy,
-                      ))
+                    : MissedOccurrencePolicy(policy: missedPolicy))
               : s.missedOccurrencePolicy);
       return s.copyWithTiming(
         schedulingPolicy: sPolicy,

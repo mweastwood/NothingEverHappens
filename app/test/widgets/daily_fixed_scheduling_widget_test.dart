@@ -147,7 +147,7 @@ void main() {
     });
 
     testGoldens('DailyFixedSchedulingWidget renders correctly', (tester) async {
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1.1)
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.5)
         ..addScenario(
           'DailyFixed Default',
           Material(
@@ -174,7 +174,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(500, 750),
+        surfaceSize: const Size(500, 1100),
       );
       await screenMatchesGolden(tester, 'daily_fixed_scheduling_widget_golden');
     });

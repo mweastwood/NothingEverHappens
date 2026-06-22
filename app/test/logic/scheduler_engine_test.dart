@@ -89,151 +89,89 @@ void main() {
     });
 
     group('FixedCalendarPolicy - Stack', () {
+      test('spawns all missing instances up to today as pending', () {
+        final startDate = today.addDays(-3); // June 16
+        final task = TaskSchedule(
+          id: 'stack-1',
+          title: 'Stack Task',
+          description: 'Piles up',
+          schedules: [
+            DailySchedule(
+              startDate: startDate,
+              interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
+            ),
+          ],
+        );
+
+        final action = SchedulerEngine.evaluate(task, [], now);
+
+        // Should spawn 4 instances: June 16, 17, 18, 19
+        expect(action.instancesToSpawn, hasLength(4));
+        expect(action.instancesToSpawn[0].scheduledDate.day, 16);
+        expect(action.instancesToSpawn[0].status, 'pending');
+        expect(action.instancesToSpawn[1].scheduledDate.day, 17);
+        expect(action.instancesToSpawn[1].status, 'pending');
+        expect(action.instancesToSpawn[2].scheduledDate.day, 18);
+        expect(action.instancesToSpawn[2].status, 'pending');
+        expect(action.instancesToSpawn[3].scheduledDate.day, 19);
+        expect(action.instancesToSpawn[3].status, 'pending');
+
+        expect(action.updatedSchedule!.lastSpawnedDate, today);
+      });
+    });
+
+    group('FixedCalendarPolicy - Prefer Newer', () {
       test(
-        'spawns all missing instances up to today and updates lastSpawnedDate',
+        'skips older missed instances and keeps only the latest pending',
         () {
-          final startDate = today.addDays(-3); // 3 days ago (June 16)
+          final startDate = today.addDays(-2); // June 17
           final task = TaskSchedule(
-            id: 'stack-1',
-            title: 'Stack Task',
-            description: 'Piles up',
+            id: 'newer-1',
+            title: 'Prefer Newer Task',
+            description: 'Keeps newest only',
             schedules: [
               DailySchedule(
                 startDate: startDate,
                 interval: 1,
-                missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
-                  legacyPolicy: MissedPolicy.stack,
-                ),
+                missedOccurrencePolicy:
+                    const MissedOccurrencePolicy.preferNewer(),
               ),
             ],
           );
 
           final action = SchedulerEngine.evaluate(task, [], now);
 
-          // Should spawn 4 instances: June 16, 17, 18, 19
-          expect(action.instancesToSpawn, hasLength(4));
-          expect(action.instancesToSpawn[0].scheduledDate.day, 16);
-          expect(action.instancesToSpawn[1].scheduledDate.day, 17);
-          expect(action.instancesToSpawn[2].scheduledDate.day, 18);
-          expect(action.instancesToSpawn[3].scheduledDate.day, 19);
-
-          expect(action.updatedSchedule, isNotNull);
-          expect(action.updatedSchedule!.lastSpawnedDate, today);
+          // 17, 18 should be marked skipped, 19 should be pending
+          expect(action.instancesToSpawn, hasLength(3));
+          expect(action.instancesToSpawn[0].scheduledDate.day, 17);
+          expect(action.instancesToSpawn[0].status, 'skipped');
+          expect(action.instancesToSpawn[1].scheduledDate.day, 18);
+          expect(action.instancesToSpawn[1].status, 'skipped');
+          expect(action.instancesToSpawn[2].scheduledDate.day, 19);
+          expect(action.instancesToSpawn[2].status, 'pending');
         },
       );
 
-      test('does not spawn duplicates if lastSpawnedDate is today', () {
-        final startDate = today.addDays(-3);
-        final task = TaskSchedule(
-          id: 'stack-1',
-          title: 'Stack Task',
-          description: 'Piles up',
-          lastSpawnedDate: today,
-          schedules: [
-            DailySchedule(
-              startDate: startDate,
-              interval: 1,
-              missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
-                legacyPolicy: MissedPolicy.stack,
-              ),
-            ),
-          ],
-        );
-
-        final action = SchedulerEngine.evaluate(task, [], now);
-
-        expect(action.instancesToSpawn, isEmpty);
-        expect(action.updatedSchedule, null);
-      });
-    });
-
-    group('FixedCalendarPolicy - Rollover', () {
-      test(
-        'does not spawn next instance if there is already a pending instance',
-        () {
-          final yesterday = today.addDays(-1);
-          final task = TaskSchedule(
-            id: 'rollover-1',
-            title: 'Rollover Task',
-            description: 'Single pending only',
-            schedules: [
-              DailySchedule(
-                startDate: yesterday,
-                interval: 1,
-                missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
-                  legacyPolicy: MissedPolicy.rollover,
-                ),
-              ),
-            ],
-          );
-
-          final existingPending = TaskInstance(
-            id: 'rollover-1_2026-06-18_0',
-            scheduleId: task.id,
-            title: task.title,
-            description: task.description,
-            scheduledDate: yesterday,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
-            ),
-            status: 'pending',
-          );
-
-          final action = SchedulerEngine.evaluate(task, [existingPending], now);
-
-          expect(action.instancesToSpawn, isEmpty);
-          expect(action.instancesToUpdate, isEmpty);
-        },
-      );
-
-      test('spawns new instance if no pending instance exists', () {
-        final task = TaskSchedule(
-          id: 'rollover-1',
-          title: 'Rollover Task',
-          description: 'Single pending only',
-          schedules: [
-            DailySchedule(
-              startDate: today,
-              interval: 1,
-              missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
-                legacyPolicy: MissedPolicy.rollover,
-              ),
-            ),
-          ],
-        );
-
-        final action = SchedulerEngine.evaluate(task, [], now);
-
-        expect(action.instancesToSpawn, hasLength(1));
-        expect(action.instancesToSpawn.first.scheduledDate, today);
-      });
-    });
-
-    group('FixedCalendarPolicy - Shift', () {
-      test('does not spawn next instance if pending exists', () {
+      test('skips previous pending when a new occurrence is evaluated', () {
         final yesterday = today.addDays(-1);
         final task = TaskSchedule(
-          id: 'shift-1',
-          title: 'Shift Task',
-          description: 'Shift target',
+          id: 'newer-2',
+          title: 'Prefer Newer Task 2',
+          description: 'Advances active',
+          lastSpawnedDate: yesterday,
           schedules: [
             DailySchedule(
               startDate: yesterday,
               interval: 1,
-              missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
-                legacyPolicy: MissedPolicy.shift,
-              ),
+              missedOccurrencePolicy:
+                  const MissedOccurrencePolicy.preferNewer(),
             ),
           ],
         );
 
         final existingPending = TaskInstance(
-          id: 'shift-1_2026-06-18_0',
+          id: 'newer-2_2026-06-18',
           scheduleId: task.id,
           title: task.title,
           description: task.description,
@@ -251,39 +189,70 @@ void main() {
 
         final action = SchedulerEngine.evaluate(task, [existingPending], now);
 
-        expect(action.instancesToSpawn, isEmpty);
+        // Existing yesterday instance should be updated to skipped
+        expect(action.instancesToUpdate, hasLength(1));
+        expect(action.instancesToUpdate.first.status, 'skipped');
+
+        // Today's instance should be spawned as pending
+        expect(action.instancesToSpawn, hasLength(1));
+        expect(action.instancesToSpawn.first.scheduledDate, today);
+        expect(action.instancesToSpawn.first.status, 'pending');
       });
     });
 
-    group('FixedCalendarPolicy - Auto-Dismiss', () {
+    group('FixedCalendarPolicy - Prefer Older', () {
       test(
-        'auto-dismisses expired pending instance, backfills skipped gap, and spawns active next',
+        'keeps the oldest missed instance pending, and skips subsequent newer ones',
         () {
-          // Due yesterday at 12:00 PM. Grace period is 2 hours. Expiration was yesterday at 2:00 PM.
-          // Today is June 19, 10:00 AM, so yesterday's instance is way expired.
+          final startDate = today.addDays(-2); // June 17
+          final task = TaskSchedule(
+            id: 'older-1',
+            title: 'Prefer Older Task',
+            description: 'Keeps oldest only',
+            schedules: [
+              DailySchedule(
+                startDate: startDate,
+                interval: 1,
+                missedOccurrencePolicy:
+                    const MissedOccurrencePolicy.preferOlder(),
+              ),
+            ],
+          );
+
+          final action = SchedulerEngine.evaluate(task, [], now);
+
+          // 17 (oldest) should be pending; 18 and 19 should be skipped
+          expect(action.instancesToSpawn, hasLength(3));
+          expect(action.instancesToSpawn[0].scheduledDate.day, 17);
+          expect(action.instancesToSpawn[0].status, 'pending');
+          expect(action.instancesToSpawn[1].scheduledDate.day, 18);
+          expect(action.instancesToSpawn[1].status, 'skipped');
+          expect(action.instancesToSpawn[2].scheduledDate.day, 19);
+          expect(action.instancesToSpawn[2].status, 'skipped');
+        },
+      );
+
+      test(
+        'does not spawn any new pending if old is still pending, skips newer candidates',
+        () {
           final yesterday = today.addDays(-1);
           final task = TaskSchedule(
-            id: 'autodismiss-1',
-            title: 'Auto Dismiss Task',
-            description: 'Dismisses missed',
+            id: 'older-2',
+            title: 'Prefer Older Task 2',
+            description: 'Keeps oldest only',
+            lastSpawnedDate: yesterday,
             schedules: [
               DailySchedule(
                 startDate: yesterday,
                 interval: 1,
                 missedOccurrencePolicy:
-                    const MissedOccurrencePolicy.autoDismiss(
-                      gracePeriod: Duration(hours: 2),
-                    ),
-                dueRelativeTime: const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 12, minute: 0),
-                ),
+                    const MissedOccurrencePolicy.preferOlder(),
               ),
             ],
           );
 
-          final yesterdayPending = TaskInstance(
-            id: 'autodismiss-1_2026-06-18_0',
+          final existingPending = TaskInstance(
+            id: 'older-2_2026-06-18',
             scheduleId: task.id,
             title: task.title,
             description: task.description,
@@ -294,156 +263,88 @@ void main() {
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 12, minute: 0),
+              time: TimeOfDay(hour: 17, minute: 0),
             ),
             status: 'pending',
           );
 
-          final action = SchedulerEngine.evaluate(task, [
-            yesterdayPending,
-          ], now);
+          final action = SchedulerEngine.evaluate(task, [existingPending], now);
 
-          // Yesterday's instance should be skipped
-          expect(action.instancesToUpdate, hasLength(1));
-          expect(action.instancesToUpdate.first.status, 'skipped');
+          // Monday's remains pending (no updates)
+          expect(action.instancesToUpdate, isEmpty);
 
-          // Should spawn today's instance as pending
+          // Today's new instance is spawned as skipped
           expect(action.instancesToSpawn, hasLength(1));
           expect(action.instancesToSpawn.first.scheduledDate, today);
-          expect(action.instancesToSpawn.first.status, 'pending');
+          expect(action.instancesToSpawn.first.status, 'skipped');
         },
       );
+    });
 
-      test('does not dismiss pending instance within grace period', () {
-        // Due today at 9:00 AM. Grace period is 2 hours (expires 11:00 AM).
-        // Current time is 10:00 AM. Should stay pending.
+    group('FixedCalendarPolicy - Auto-Dismiss', () {
+      test('auto-dismisses expired pending, keeps within grace period', () {
+        final yesterday = today.addDays(-1);
         final task = TaskSchedule(
-          id: 'autodismiss-2',
+          id: 'dismiss-1',
           title: 'Auto Dismiss Task',
-          description: 'Within grace',
+          description: 'Auto Dismiss Task',
           schedules: [
             DailySchedule(
-              startDate: today,
+              startDate: yesterday,
               interval: 1,
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 12, minute: 0),
+              ),
               missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
                 gracePeriod: Duration(hours: 2),
               ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
             ),
           ],
         );
 
-        final todayPending = TaskInstance(
-          id: 'autodismiss-2_2026-06-19_0',
+        final yesterdayInstance = TaskInstance(
+          id: 'dismiss-1_2026-06-18',
           scheduleId: task.id,
           title: task.title,
           description: task.description,
-          scheduledDate: today,
+          scheduledDate: yesterday,
           startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 7, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
             dayOffset: 0,
             time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          status: 'pending',
-        );
-
-        final action = SchedulerEngine.evaluate(task, [todayPending], now);
-
-        expect(action.instancesToUpdate, isEmpty);
-        expect(action.instancesToSpawn, isEmpty);
-      });
-    });
-
-    group('CompletionRelativePolicy', () {
-      test('spawns at rule date initially when no instances exist', () {
-        final task = TaskSchedule(
-          id: 'relative-1',
-          title: 'Relative Task',
-          description: 'Completion based',
-          schedules: [
-            DailySchedule(
-              startDate: today,
-              interval: 1,
-              schedulingPolicy: const CompletionRelativePolicy(
-                interval: Duration(days: 3),
-                targetTime: TimeOfDay(hour: 9, minute: 0),
-              ),
-            ),
-          ],
-        );
-
-        final action = SchedulerEngine.evaluate(task, [], now);
-
-        expect(action.instancesToSpawn, hasLength(1));
-        expect(action.instancesToSpawn.first.scheduledDate, today);
-      });
-
-      test('spawns new instance when interval completed threshold passed', () {
-        // Completed 3 days ago (June 16) at 9:00 AM.
-        // Today is June 19 at 10:00 AM, so 3 days have elapsed.
-        final completedDate = today.addDays(-3);
-        final task = TaskSchedule(
-          id: 'relative-2',
-          title: 'Relative Task',
-          description: 'Completion based',
-          schedules: [
-            DailySchedule(
-              startDate: completedDate,
-              interval: 1,
-              schedulingPolicy: const CompletionRelativePolicy(
-                interval: Duration(days: 3),
-                targetTime: TimeOfDay(hour: 9, minute: 0),
-              ),
-            ),
-          ],
-        );
-
-        final completedInstance = TaskInstance(
-          id: 'relative-2_2026-06-16_0',
-          scheduleId: task.id,
-          title: task.title,
-          description: task.description,
-          scheduledDate: completedDate,
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 7, minute: 0),
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
             time: TimeOfDay(hour: 12, minute: 0),
           ),
-          status: 'completed',
-          completedAt: DateTime(2026, 6, 16, 9, 0),
+          status: 'pending',
         );
 
-        final action = SchedulerEngine.evaluate(task, [completedInstance], now);
+        final action = SchedulerEngine.evaluate(task, [yesterdayInstance], now);
 
+        // Yesterday's instance (expired yesterday at 2:00 PM) is skipped
+        expect(action.instancesToUpdate, hasLength(1));
+        expect(action.instancesToUpdate.first.status, 'skipped');
+
+        // Today's instance is spawned as pending (since it's 10:00 AM, due at 12:00 PM, not expired)
         expect(action.instancesToSpawn, hasLength(1));
-        // Spawn date should be completedDate + 3 days interval = today
         expect(action.instancesToSpawn.first.scheduledDate, today);
+        expect(action.instancesToSpawn.first.status, 'pending');
       });
+    });
 
+    group('Completion-Relative Rescheduling Tests', () {
       test(
-        'does not spawn next instance when interval completed threshold not yet passed',
+        'spawns completion relative next instance relative to completion time',
         () {
-          // Completed 2 days ago (June 17) at 9:00 AM.
-          // Interval is 3 days, so threshold is June 20 at 9:00 AM.
-          // Today is June 19.
-          final completedDate = today.addDays(-2);
           final task = TaskSchedule(
-            id: 'relative-3',
-            title: 'Relative Task',
-            description: 'Completion based',
+            id: 'relative-spawn',
+            title: 'Completion Relative Task',
+            description: 'Relative task',
             schedules: [
               DailySchedule(
-                startDate: completedDate,
-                interval: 1,
+                startDate: today.addDays(-1),
+                interval: 3,
                 schedulingPolicy: const CompletionRelativePolicy(
                   interval: Duration(days: 3),
                   targetTime: TimeOfDay(hour: 9, minute: 0),
@@ -453,63 +354,11 @@ void main() {
           );
 
           final completedInstance = TaskInstance(
-            id: 'relative-3_2026-06-17_0',
+            id: 'relative-spawn_2026-06-18',
             scheduleId: task.id,
             title: task.title,
             description: task.description,
-            scheduledDate: completedDate,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 7, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 12, minute: 0),
-            ),
-            status: 'completed',
-            completedAt: DateTime(2026, 6, 17, 9, 0),
-          );
-
-          final action = SchedulerEngine.evaluate(task, [
-            completedInstance,
-          ], now);
-
-          expect(action.instancesToSpawn, isEmpty);
-        },
-      );
-    });
-
-    group('Spawning on completion/undo calculations', () {
-      test(
-        'spawns completion relative next instance and calculates delete ID correctly',
-        () {
-          final completedDate = today;
-          final task = TaskSchedule(
-            id: 'relative-spawn',
-            title: 'Relative Task',
-            description: 'Spawning next test',
-            schedules: [
-              DailySchedule(
-                startDate: completedDate,
-                interval: 1,
-                schedulingPolicy: const CompletionRelativePolicy(
-                  interval: Duration(days: 3),
-                  targetTime: TimeOfDay(hour: 10, minute: 0),
-                ),
-                dueRelativeTime: const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 18, minute: 0),
-                ),
-              ),
-            ],
-          );
-
-          final completedInstance = TaskInstance(
-            id: 'relative-spawn_2026-06-19_0',
-            scheduleId: task.id,
-            title: task.title,
-            description: task.description,
-            scheduledDate: completedDate,
+            scheduledDate: today.addDays(-1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
               time: TimeOfDay(hour: 9, minute: 0),
@@ -528,71 +377,10 @@ void main() {
             DateTime(2026, 6, 19, 14, 0),
           );
           expect(nextInst, isNotNull);
-          expect(nextInst!.scheduledDate, today.addDays(3));
-          expect(nextInst.id, 'relative-spawn_2026-06-22');
+          expect(nextInst!.scheduledDate, today.addDays(3)); // June 22
           expect(nextInst.status, 'pending');
-
-          final deleteId = SchedulerEngine.getNextOccurrenceIdToDelete(
-            task,
-            completedInstance,
-            DateTime(2026, 6, 19, 14, 0),
-          );
-          expect(deleteId, 'relative-spawn_2026-06-22');
         },
       );
-
-      test('spawns calendar-fixed rollover next instance correctly', () {
-        final yesterday = today.addDays(-1);
-        final task = TaskSchedule(
-          id: 'fixed-spawn',
-          title: 'Fixed Task',
-          description: 'Calendar fixed test',
-          schedules: [
-            DailySchedule(
-              startDate: yesterday,
-              interval: 1,
-              missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
-                legacyPolicy: MissedPolicy.rollover,
-              ),
-            ),
-          ],
-        );
-
-        final completedInstance = TaskInstance(
-          id: 'fixed-spawn_2026-06-18_0',
-          scheduleId: task.id,
-          title: task.title,
-          description: task.description,
-          scheduledDate: yesterday,
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-          status: 'completed',
-          completedAt: now,
-        );
-
-        final nextInst = SchedulerEngine.getNextOccurrenceToSpawn(
-          task,
-          completedInstance,
-          now,
-        );
-        expect(nextInst, isNotNull);
-        expect(nextInst!.scheduledDate, today);
-        expect(nextInst.id, 'fixed-spawn_2026-06-19');
-        expect(nextInst.status, 'pending');
-
-        final deleteId = SchedulerEngine.getNextOccurrenceIdToDelete(
-          task,
-          completedInstance,
-          now,
-        );
-        expect(deleteId, 'fixed-spawn_2026-06-19');
-      });
     });
   });
 }

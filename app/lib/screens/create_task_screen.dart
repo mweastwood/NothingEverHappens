@@ -171,8 +171,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             _schedules.where((s) => s is! OneOffSchedule).firstOrNull ??
             (_schedules.isNotEmpty ? _schedules.first : null);
         final firstLegacyPolicy =
-            firstRepeating?.missedOccurrencePolicy.legacyPolicy ??
-            MissedPolicy.rollover;
+            firstRepeating?.missedOccurrencePolicy.policy ?? MissedPolicy.stack;
 
         final newTask = TaskSchedule(
           id: AppClock.now.millisecondsSinceEpoch.toString(),
@@ -180,12 +179,15 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           description: _descriptionController.text,
           schedules: _schedules,
           estimatedDuration: estimatedDuration,
-          missedPolicy: hasRepeating
-              ? firstLegacyPolicy
-              : MissedPolicy.rollover,
-          isMaster: hasRepeating && firstLegacyPolicy == MissedPolicy.stack,
+          missedPolicy: hasRepeating ? firstLegacyPolicy : MissedPolicy.stack,
+          isMaster:
+              hasRepeating &&
+              (firstLegacyPolicy == MissedPolicy.stack ||
+                  firstLegacyPolicy == MissedPolicy.autoDismiss),
           lastSpawnedDate:
-              hasRepeating && firstLegacyPolicy == MissedPolicy.stack
+              hasRepeating &&
+                  (firstLegacyPolicy == MissedPolicy.stack ||
+                      firstLegacyPolicy == MissedPolicy.autoDismiss)
               ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
               : null,
           isFamily: _isFamily,
@@ -206,12 +208,16 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               newEstimatedDuration: estimatedDuration,
               newMissedPolicy: hasRepeating
                   ? firstLegacyPolicy
-                  : MissedPolicy.rollover,
+                  : MissedPolicy.stack,
               newIsMaster:
-                  hasRepeating && firstLegacyPolicy == MissedPolicy.stack,
+                  hasRepeating &&
+                  (firstLegacyPolicy == MissedPolicy.stack ||
+                      firstLegacyPolicy == MissedPolicy.autoDismiss),
               newLastSpawnedDate:
                   widget.taskToEdit!.lastSpawnedDate ??
-                  (hasRepeating && firstLegacyPolicy == MissedPolicy.stack
+                  (hasRepeating &&
+                          (firstLegacyPolicy == MissedPolicy.stack ||
+                              firstLegacyPolicy == MissedPolicy.autoDismiss)
                       ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
                       : null),
               newIsFamily: _isFamily,
