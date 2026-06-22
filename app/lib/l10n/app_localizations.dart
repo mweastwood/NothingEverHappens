@@ -1687,6 +1687,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'years'**
   String get presetYearPlural;
+
+  /// No description provided for @scheduleSortByLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by'**
+  String get scheduleSortByLabel;
+
+  /// No description provided for @scheduleGridTypeHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get scheduleGridTypeHeader;
+
+  /// No description provided for @scheduleSortNextStartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Start'**
+  String get scheduleSortNextStartLabel;
+
+  /// No description provided for @scheduleSortNextDueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Due'**
+  String get scheduleSortNextDueLabel;
+
+  /// No description provided for @scheduleGridTimeWindowHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Time Window'**
+  String get scheduleGridTimeWindowHeader;
+
+  /// No description provided for @scheduleGridActionsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get scheduleGridActionsHeader;
+
+  /// No description provided for @searchSchedulesPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search schedules...'**
+  String get searchSchedulesPlaceholder;
+
+  /// No description provided for @noSchedulesMatching.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching schedules found for \"{query}\"'**
+  String noSchedulesMatching(String query);
 }
 
 class _AppLocalizationsDelegate

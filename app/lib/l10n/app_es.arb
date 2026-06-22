@@ -396,5 +396,20 @@
   "presetMonthSingular": "mes",
   "presetMonthPlural": "meses",
   "presetYearSingular": "año",
-  "presetYearPlural": "años"
+  "presetYearPlural": "años",
+  "scheduleSortByLabel": "Ordenar por",
+  "scheduleGridTypeHeader": "Tipo",
+  "scheduleSortNextStartLabel": "Próximo Inicio",
+  "scheduleSortNextDueLabel": "Próximo Vencimiento",
+  "scheduleGridTimeWindowHeader": "Horario",
+  "scheduleGridActionsHeader": "Acciones",
+  "searchSchedulesPlaceholder": "Buscar horarios...",
+  "noSchedulesMatching": "No se encontraron horarios coincidentes para \"{query}\"",
+  "@noSchedulesMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  }
 }
