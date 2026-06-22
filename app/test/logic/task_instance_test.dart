@@ -139,6 +139,44 @@ void main() {
       expect(instance.status, 'completed');
     });
 
+    test(
+      'fromFirestore deserializes multiple notifications list correctly',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final ref = firestore.collection('instances').doc('instance-multi');
+        final notif1 = const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 8, minute: 0),
+        );
+        final notif2 = const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 12, minute: 0),
+        );
+
+        await ref.set({
+          'scheduleId': 'schedule-456',
+          'title': 'Task Occurrence',
+          'description': 'Do the laundry',
+          'scheduledDate': testDate.toJson(),
+          'startRelativeTime': testStart.toJson(),
+          'dueRelativeTime': testDue.toJson(),
+          'notificationRelativeTimes': [notif1.toJson(), notif2.toJson()],
+          'isFamily': true,
+          'priority': 'high',
+          'cycleId': 'cycle-789',
+          'assignedUserId': 'user-abc',
+          'status': 'pending',
+        });
+
+        final snapshot = await ref.get();
+        final instance = TaskInstance.fromFirestore(snapshot);
+
+        expect(instance.notificationRelativeTimes.length, 2);
+        expect(instance.notificationRelativeTimes[0], notif1);
+        expect(instance.notificationRelativeTimes[1], notif2);
+      },
+    );
+
     test('deserializes completedAt from various formats', () async {
       final firestore = FakeFirebaseFirestore();
       final ref1 = firestore.collection('instances').doc('inst-string');
