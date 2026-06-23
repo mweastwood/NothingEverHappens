@@ -1660,9 +1660,8 @@ void main() {
                 startDate: const CivilDay(year: 2026, month: 6, day: 1),
                 interval: 1,
                 schedulingPolicy: const FixedCalendarPolicy(),
-                missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
-                  legacyPolicy: MissedPolicy.stack,
-                ),
+                missedOccurrencePolicy:
+                    const MissedOccurrencePolicy.keepAround(),
               ),
               WeeklySchedule(
                 startDate: const CivilDay(year: 2026, month: 6, day: 1),
@@ -1689,10 +1688,6 @@ void main() {
           expect(
             task.schedules[0].missedOccurrencePolicy.type,
             MissedOccurrenceType.keepAround,
-          );
-          expect(
-            task.schedules[0].missedOccurrencePolicy.legacyPolicy,
-            MissedPolicy.stack,
           );
 
           expect(
@@ -1721,10 +1716,6 @@ void main() {
           expect(rulesList[0]['type'], 'daily');
           expect(rulesList[0]['schedulingPolicy']['type'], 'fixedCalendar');
           expect(rulesList[0]['missedOccurrencePolicy']['type'], 'keepAround');
-          expect(
-            rulesList[0]['missedOccurrencePolicy']['legacyPolicy'],
-            'stack',
-          );
 
           // Rule 1 checks
           expect(rulesList[1]['type'], 'weekly');
@@ -1797,9 +1788,8 @@ void main() {
                 startDate: const CivilDay(year: 2026, month: 6, day: 1),
                 interval: 1,
                 schedulingPolicy: const FixedCalendarPolicy(),
-                missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
-                  legacyPolicy: MissedPolicy.stack,
-                ),
+                missedOccurrencePolicy:
+                    const MissedOccurrencePolicy.keepAround(),
               ),
             ],
           );

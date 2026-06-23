@@ -50,21 +50,17 @@ void main() {
         expect(deserialized.gracePeriod, const Duration(hours: 2));
       });
 
-      test(
-        'Serialization preserves legacyPolicy and gracePeriod for mapped skip',
-        () {
-          final json = {
-            'policy': 'autoDismiss',
-            'legacyPolicy': 'skip',
-            'graceMinutes': 0,
-          };
+      test('Serialization parses gracePeriod for mapped skip', () {
+        final json = {
+          'policy': 'autoDismiss',
+          'legacyPolicy': 'skip',
+          'graceMinutes': 0,
+        };
 
-          final deserialized = MissedOccurrencePolicy.fromJson(json);
-          expect(deserialized.policy, MissedPolicy.autoDismiss);
-          expect(deserialized.legacyPolicy, MissedPolicy.autoDismiss);
-          expect(deserialized.gracePeriod, Duration.zero);
-        },
-      );
+        final deserialized = MissedOccurrencePolicy.fromJson(json);
+        expect(deserialized.policy, MissedPolicy.autoDismiss);
+        expect(deserialized.gracePeriod, Duration.zero);
+      });
 
       test('Legacy deserialization resets to stack', () {
         // A legacy JSON without 'policy' key or with old enums
@@ -75,9 +71,7 @@ void main() {
         final p2 = MissedOccurrencePolicy.fromJson(legacyJson2);
 
         expect(p1.policy, MissedPolicy.stack);
-        expect(p1.legacyPolicy, MissedPolicy.stack);
         expect(p2.policy, MissedPolicy.stack);
-        expect(p2.legacyPolicy, MissedPolicy.stack);
       });
     });
 
