@@ -43,10 +43,6 @@ class MissedOccurrencePolicy {
         gracePeriod: const Duration(days: 1),
       );
 
-  const MissedOccurrencePolicy.keepAround({
-    MissedPolicy policy = MissedPolicy.stack,
-  }) : this._internal(policy: policy, gracePeriod: const Duration(days: 1));
-
   const MissedOccurrencePolicy.autoDismiss({required Duration gracePeriod})
     : this._internal(
         policy: MissedPolicy.autoDismiss,

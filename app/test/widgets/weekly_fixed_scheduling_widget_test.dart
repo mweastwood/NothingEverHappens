@@ -23,7 +23,7 @@ void main() {
       dayOffset: 0,
       time: TimeOfDay(hour: 17, minute: 0),
     );
-    const missed = MissedOccurrencePolicy.keepAround();
+    const missed = MissedOccurrencePolicy.stack();
     final selectedWeekdays = {1, 3, 5}; // Mon, Wed, Fri
 
     testWidgets('renders all fields when fully configured', (tester) async {

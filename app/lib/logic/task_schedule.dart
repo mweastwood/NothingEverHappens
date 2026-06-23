@@ -50,7 +50,7 @@ class TaskSchedule {
 
   /// Legacy getter/setter for missedOccurrencePolicy
   MissedOccurrencePolicy get missedOccurrencePolicy {
-    if (schedules.isEmpty) return const MissedOccurrencePolicy.keepAround();
+    if (schedules.isEmpty) return const MissedOccurrencePolicy.stack();
     return schedules.first.missedOccurrencePolicy;
   }
 

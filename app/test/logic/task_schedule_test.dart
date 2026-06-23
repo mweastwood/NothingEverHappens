@@ -1660,8 +1660,7 @@ void main() {
                 startDate: const CivilDay(year: 2026, month: 6, day: 1),
                 interval: 1,
                 schedulingPolicy: const FixedCalendarPolicy(),
-                missedOccurrencePolicy:
-                    const MissedOccurrencePolicy.keepAround(),
+                missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
               ),
               WeeklySchedule(
                 startDate: const CivilDay(year: 2026, month: 6, day: 1),
@@ -1788,8 +1787,7 @@ void main() {
                 startDate: const CivilDay(year: 2026, month: 6, day: 1),
                 interval: 1,
                 schedulingPolicy: const FixedCalendarPolicy(),
-                missedOccurrencePolicy:
-                    const MissedOccurrencePolicy.keepAround(),
+                missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
               ),
             ],
           );
@@ -1872,7 +1870,7 @@ void main() {
                 interval: Duration(days: 3),
                 targetTime: TimeOfDay(hour: 10, minute: 0),
               ),
-              missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(),
+              missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
             ),
           ],
         );

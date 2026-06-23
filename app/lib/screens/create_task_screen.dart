@@ -179,7 +179,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           description: _descriptionController.text,
           schedules: _schedules,
           estimatedDuration: estimatedDuration,
-          missedPolicy: hasRepeating ? firstLegacyPolicy : MissedPolicy.stack,
           isMaster:
               hasRepeating &&
               (firstLegacyPolicy == MissedPolicy.stack ||

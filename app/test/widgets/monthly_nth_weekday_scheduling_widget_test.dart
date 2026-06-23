@@ -23,7 +23,7 @@ void main() {
       dayOffset: 0,
       time: TimeOfDay(hour: 17, minute: 0),
     );
-    const missed = MissedOccurrencePolicy.keepAround();
+    const missed = MissedOccurrencePolicy.stack();
 
     testWidgets('renders all fields when fully configured', (tester) async {
       await tester.pumpWidget(
