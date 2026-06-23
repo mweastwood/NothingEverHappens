@@ -2,7 +2,7 @@
 ///
 /// This class represents a specific date (Year, Month, Day) in the civil calendar,
 /// independent of any time zone or time of day. It is immutable.
-class CivilDay {
+class CivilDay implements Comparable<CivilDay> {
   final int year;
   final int month;
   final int day;
@@ -59,6 +59,19 @@ class CivilDay {
     if (year != other.year) return year < other.year;
     if (month != other.month) return month < other.month;
     return day < other.day;
+  }
+
+  bool isAfter(CivilDay other) {
+    if (year != other.year) return year > other.year;
+    if (month != other.month) return month > other.month;
+    return day > other.day;
+  }
+
+  @override
+  int compareTo(CivilDay other) {
+    if (year != other.year) return year.compareTo(other.year);
+    if (month != other.month) return month.compareTo(other.month);
+    return day.compareTo(other.day);
   }
 
   CivilDay addDays(int days) {
