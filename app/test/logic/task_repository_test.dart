@@ -1446,5 +1446,101 @@ void main() {
         AppClock.reset();
       },
     );
+
+    test(
+      'unit: legacy future pending tasks cleanup correctly deletes future pending instances and reverts lastSpawnedDate',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0)); // Monday June 22
+
+        final task = TaskSchedule(
+          id: 'legacy-cleanup-task',
+          title: 'Legacy Task',
+          description: 'Weekly task description',
+          // Set to a future date as if it was pre-spawned
+          lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 25),
+          schedules: [
+            WeeklySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 22),
+              interval: 1,
+              daysOfWeek: const {4}, // Thursday June 25
+            ),
+          ],
+        );
+
+        await repository.addTaskSchedule(task);
+
+        // Pre-create the future pending instance in Firestore
+        final futureInstanceId = '${task.id}_2026-06-25';
+        final futureInstance = TaskInstance(
+          id: futureInstanceId,
+          scheduleId: task.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 6, day: 25),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: 'pending',
+        );
+        await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(futureInstanceId)
+            .set(futureInstance.toFirestore());
+
+        final subscription = repository.getTasks().listen((_) {});
+
+        // Trigger missed policy processing on June 22.
+        // It should detect the future pending instance on June 25, delete it, and revert lastSpawnedDate.
+        await repository.triggerMissedPolicyProcessing();
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Verify the June 25 instance is deleted
+        final snapJune25Before = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(futureInstanceId)
+            .get();
+        expect(snapJune25Before.exists, isFalse);
+
+        // Verify the schedule's lastSpawnedDate is reverted to June 24 (the day before the deleted future instance)
+        final updatedDoc = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .doc(task.id)
+            .get();
+        final updatedTask = TaskSchedule.fromFirestore(updatedDoc);
+        expect(
+          updatedTask.lastSpawnedDate,
+          equals(const CivilDay(year: 2026, month: 6, day: 24)),
+        );
+
+        // Fast-forward to Thursday June 25
+        AppClock.setMockTime(DateTime(2026, 6, 25, 12, 0));
+        await repository.triggerMissedPolicyProcessing();
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Verify the June 25 instance is now spawned just-in-time
+        final snapJune25After = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(futureInstanceId)
+            .get();
+        expect(snapJune25After.exists, isTrue);
+        expect(snapJune25After.data()!['status'], 'pending');
+
+        await subscription.cancel();
+        AppClock.reset();
+      },
+    );
   });
 }

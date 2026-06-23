@@ -398,12 +398,64 @@ class TaskRepository {
       final batch = _firestore.batch();
       bool hasChanges = false;
 
+      final today = CivilDay.fromDateTime(now);
+
       for (final task in tasks) {
+        var currentTask = task;
         final taskInstances = allInstances
             .where((inst) => inst.scheduleId == task.id)
             .toList();
 
-        final action = SchedulerEngine.evaluate(task, taskInstances, now);
+        // Clean up legacy future pending instances spawned before switching to JIT spawning.
+        final futurePending = taskInstances
+            .where(
+              (inst) =>
+                  inst.status == 'pending' && inst.scheduledDate.isAfter(today),
+            )
+            .toList();
+
+        if (futurePending.isNotEmpty) {
+          for (final inst in futurePending) {
+            batch.delete(_instanceRefFor(inst, familyId));
+            hasChanges = true;
+          }
+
+          taskInstances.removeWhere(
+            (inst) =>
+                inst.status == 'pending' && inst.scheduledDate.isAfter(today),
+          );
+
+          CivilDay? maxRemainingDate;
+          for (final inst in taskInstances) {
+            if (maxRemainingDate == null ||
+                inst.scheduledDate.isAfter(maxRemainingDate)) {
+              maxRemainingDate = inst.scheduledDate;
+            }
+          }
+
+          CivilDay fallbackDate = today.addDays(-1);
+          if (futurePending.isNotEmpty) {
+            futurePending.sort(
+              (a, b) => a.scheduledDate.compareTo(b.scheduledDate),
+            );
+            fallbackDate = futurePending.first.scheduledDate.addDays(-1);
+          }
+
+          final targetLastSpawned = maxRemainingDate ?? fallbackDate;
+
+          if (task.lastSpawnedDate == null ||
+              task.lastSpawnedDate!.isAfter(targetLastSpawned)) {
+            currentTask = task.copyWith(lastSpawnedDate: targetLastSpawned);
+            batch.set(_taskRefFor(currentTask, familyId), currentTask);
+            hasChanges = true;
+          }
+        }
+
+        final action = SchedulerEngine.evaluate(
+          currentTask,
+          taskInstances,
+          now,
+        );
 
         for (final inst in action.instancesToUpdate) {
           batch.set(_instanceRefFor(inst, familyId), inst);
