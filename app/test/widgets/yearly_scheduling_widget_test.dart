@@ -25,7 +25,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       );
-      const missed = MissedOccurrencePolicy.keepAround();
+      const missed = MissedOccurrencePolicy.stack();
 
       await tester.pumpWidget(
         buildTestableWidget(
@@ -206,7 +206,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       );
-      const missed = MissedOccurrencePolicy.keepAround();
+      const missed = MissedOccurrencePolicy.stack();
 
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.5)
         ..addScenario(

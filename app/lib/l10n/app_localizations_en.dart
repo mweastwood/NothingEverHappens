@@ -260,27 +260,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Define what happens if a recurring task is not completed by its due time.';
 
   @override
-  String get rolloverLabel => 'Rollover (Push to Next Day)';
-
-  @override
-  String get rolloverDescription =>
-      'Overdue task rolls forward to today and remains overdue until completed.';
-
-  @override
-  String get skipLabel => 'Skip (Drop Occurrence)';
-
-  @override
-  String get skipDescription =>
-      'Overdue task is automatically skipped, logged in history, and rescheduled.';
-
-  @override
-  String get shiftLabel => 'Shift Schedule (Push Out Future Dates)';
-
-  @override
-  String get shiftDescription =>
-      'Next occurrence is calculated relative to when the task was completed late.';
-
-  @override
   String get stackLabel => 'Stack/Overlap (Allow Concurrency)';
 
   @override
@@ -800,18 +779,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get missedPoliciesIntro =>
       '### Missed Occurrence Policies\n\nWhen a recurring task is not completed by its due time, the app applies a **Missed Occurrence Policy** to handle the overdue instance.\n\nUse the simulator below to see how each policy handles overdue tasks over time.';
-
-  @override
-  String get rolloverSimTip =>
-      '### Rollover Policy\n\n**Behavior:** The task remains active and rolls forward to today, staying overdue. If completed late, it reschedules to the next occurrence day *based on the original schedule date* (not today).\n\n**Try this:**\n1. Tap **Advance 1 Day** once or twice to let the task go overdue.\n2. Tap the checkbox to complete it.\n3. Notice that it reschedules to the next consecutive day (which may still be overdue if you are multiple days behind!).';
-
-  @override
-  String get skipSimTip =>
-      '### Skip Policy\n\n**Behavior:** Overdue tasks are automatically dropped/skipped. You don\'t need to complete or dismiss them manually. The system records a \'skipped\' entry in history and moves the schedule to the next upcoming occurrence.\n\n**Try this:**\n1. Tap **Advance 1 Day**.\n2. Look at the history logs below — the task was automatically skipped, and the schedule advanced. You never see overdue tasks piling up!';
-
-  @override
-  String get shiftSimTip =>
-      '### Shift Policy\n\n**Behavior:** Next occurrence is calculated relative to when you *actually completed* the task late, pushing out future dates. Unlike Rollover, it does not make you \'catch up\' on missed days.\n\n**Try this:**\n1. Tap **Advance 1 Day** twice so the task is overdue.\n2. Tap the checkbox to complete the active task.\n3. Notice the next scheduled occurrence shifts forward relative to today, rather than sticking to the original sequence.';
 
   @override
   String get stackSimTip =>

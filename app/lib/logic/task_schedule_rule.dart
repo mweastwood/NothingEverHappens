@@ -47,7 +47,7 @@ abstract class TaskScheduleRule {
        notificationRelativeTimes = notificationRelativeTimes ?? const [],
        schedulingPolicy = schedulingPolicy ?? const FixedCalendarPolicy(),
        missedOccurrencePolicy =
-           missedOccurrencePolicy ?? const MissedOccurrencePolicy.keepAround();
+           missedOccurrencePolicy ?? const MissedOccurrencePolicy.stack();
 
   /// The scheduled date of this occurrence.
   CivilDay get scheduledDate;
@@ -137,7 +137,7 @@ class OneOffSchedule extends TaskScheduleRule {
         ? MissedOccurrencePolicy.fromJson(
             json['missedOccurrencePolicy'] as Map<String, dynamic>,
           )
-        : const MissedOccurrencePolicy.keepAround();
+        : const MissedOccurrencePolicy.stack();
 
     return OneOffSchedule(
       date: CivilDay.fromJson(json['date'] as Map<String, dynamic>),
@@ -258,7 +258,7 @@ class DailySchedule extends TaskScheduleRule {
         ? MissedOccurrencePolicy.fromJson(
             json['missedOccurrencePolicy'] as Map<String, dynamic>,
           )
-        : const MissedOccurrencePolicy.keepAround();
+        : const MissedOccurrencePolicy.stack();
 
     return DailySchedule(
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
@@ -408,7 +408,7 @@ class WeeklySchedule extends TaskScheduleRule {
         ? MissedOccurrencePolicy.fromJson(
             json['missedOccurrencePolicy'] as Map<String, dynamic>,
           )
-        : const MissedOccurrencePolicy.keepAround();
+        : const MissedOccurrencePolicy.stack();
 
     return WeeklySchedule(
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
@@ -596,7 +596,7 @@ class MonthlySchedule extends TaskScheduleRule {
         ? MissedOccurrencePolicy.fromJson(
             json['missedOccurrencePolicy'] as Map<String, dynamic>,
           )
-        : const MissedOccurrencePolicy.keepAround();
+        : const MissedOccurrencePolicy.stack();
 
     return MonthlySchedule(
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
@@ -792,7 +792,7 @@ class YearlySchedule extends TaskScheduleRule {
         ? MissedOccurrencePolicy.fromJson(
             json['missedOccurrencePolicy'] as Map<String, dynamic>,
           )
-        : const MissedOccurrencePolicy.keepAround();
+        : const MissedOccurrencePolicy.stack();
 
     return YearlySchedule(
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),

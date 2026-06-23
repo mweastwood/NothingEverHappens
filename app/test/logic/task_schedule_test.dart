@@ -142,10 +142,7 @@ void main() {
             deserialized.schedulingPolicy as CompletionRelativePolicy;
         expect(policy.interval, const Duration(days: 7));
         expect(policy.targetTime, const TimeOfDay(hour: 9, minute: 30));
-        expect(
-          deserialized.missedOccurrencePolicy.type,
-          MissedOccurrenceType.autoDismiss,
-        );
+        expect(deserialized.missedOccurrencePolicy.isAutoDismiss, isTrue);
         expect(
           deserialized.missedOccurrencePolicy.gracePeriod,
           const Duration(hours: 4),
@@ -316,7 +313,7 @@ void main() {
             ),
           ],
           newEstimatedDuration: null, // cleared
-          newMissedPolicy: MissedPolicy.rollover,
+          newMissedPolicy: MissedPolicy.stack,
           newIsMaster: false,
           newLastSpawnedDate: null,
           newIsFamily: true,
@@ -451,98 +448,6 @@ void main() {
   });
   group('Missed Occurrence Policies Strategy Unit Tests', () {
     test(
-      '1. Rollover (Push to Next Day): Overdue Monday task completed on Tuesday reschedules to Wednesday',
-      () {
-        // Create a daily task scheduled for Monday
-        final monday = const CivilDay(year: 2026, month: 5, day: 25);
-        final task = TaskSchedule(
-          id: 'rollover-task',
-          title: 'Water Plants',
-          description: 'Every day',
-          schedules: [
-            DailySchedule(
-              startDate: monday,
-              interval: 1,
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
-            ),
-          ],
-          missedPolicy: MissedPolicy.rollover,
-        );
-
-        // Verify that on Tuesday, it is overdue
-        final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
-        expect(task.isOverdue(tuesdayDateTime), isTrue);
-
-        // Simulate completion on Tuesday
-        AppClock.setMockTime(tuesdayDateTime);
-        final state = TaskList([task]).complete('rollover-task');
-        AppClock.reset();
-
-        // The next occurrence should continue relative to original path -> Wednesday
-        final completedTask = state.activeTasks.firstWhere(
-          (t) => t.id == 'rollover-task',
-        );
-        expect(
-          completedTask.schedules.first.scheduledDate,
-          const CivilDay(year: 2026, month: 5, day: 27),
-        );
-      },
-    );
-
-    test(
-      '2. Shift Schedule (Push Out Future Dates): Bi-daily Monday task completed late on Wednesday shifts next date to Friday (Wednesday + 2 days)',
-      () {
-        // Create a bi-daily task scheduled for Monday
-        final monday = const CivilDay(year: 2026, month: 5, day: 25);
-        final task = TaskSchedule(
-          id: 'shift-task',
-          title: 'Mow the Lawn',
-          description: 'Every 2 days',
-          schedules: [
-            DailySchedule(
-              startDate: monday,
-              interval: 2,
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
-            ),
-          ],
-          missedPolicy: MissedPolicy.shift,
-        );
-
-        // Verify that on Wednesday, it is overdue
-        final wednesdayDateTime = DateTime(2026, 5, 27, 10, 0);
-        expect(task.isOverdue(wednesdayDateTime), isTrue);
-
-        // Simulate completion on Wednesday
-        AppClock.setMockTime(wednesdayDateTime);
-        final state = TaskList([task]).complete('shift-task');
-        AppClock.reset();
-
-        // The next occurrence should shift relative to completion date (strictly after Wednesday -> Friday)
-        final completedTask = state.activeTasks.firstWhere(
-          (t) => t.id == 'shift-task',
-        );
-        expect(
-          completedTask.schedules.first.scheduledDate,
-          const CivilDay(year: 2026, month: 5, day: 29),
-        );
-      },
-    );
-
-    test(
       '3. Skip (Drop Occurrence): Overdue Monday task is automatically skipped/expired and rescheduled to next calendar occurrence',
       () async {
         final firestore = FakeFirebaseFirestore();
@@ -561,6 +466,9 @@ void main() {
             DailySchedule(
               startDate: monday,
               interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
                 time: TimeOfDay(hour: 9, minute: 0),
@@ -571,7 +479,6 @@ void main() {
               ),
             ),
           ],
-          missedPolicy: MissedPolicy.skip,
         );
 
         // Set mock clock to Monday
@@ -616,216 +523,238 @@ void main() {
       },
     );
 
-    test('Skip policy on mixed task drops passed one-off schedules', () async {
-      final firestore = FakeFirebaseFirestore();
-      final repository = TaskRepository(firestore: firestore, userId: 'user-1');
+    test(
+      'Auto-dismiss with zero grace period on mixed task drops passed one-off schedules',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(
+          firestore: firestore,
+          userId: 'user-1',
+        );
 
-      final monday = const CivilDay(year: 2026, month: 5, day: 25);
+        final monday = const CivilDay(year: 2026, month: 5, day: 25);
 
-      final mixedTask = TaskSchedule(
-        id: 'mixed-skip-task',
-        title: 'Mixed skip task',
-        description: 'Testing skip policy on mixed task',
-        schedules: [
-          OneOffSchedule(
-            date: monday,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+        final mixedTask = TaskSchedule(
+          id: 'mixed-skip-task',
+          title: 'Mixed skip task',
+          description: 'Testing skip policy on mixed task',
+          schedules: [
+            OneOffSchedule(
+              date: monday,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
             ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+            DailySchedule(
+              startDate: monday,
+              interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
             ),
-          ),
-          DailySchedule(
-            startDate: monday,
-            interval: 1,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+          ],
+        );
+
+        // Set mock clock to Monday
+        final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
+        AppClock.setMockTime(mondayDateTime);
+
+        await repository.addTaskSchedule(mixedTask);
+        await Future.delayed(Duration.zero);
+
+        final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
+        AppClock.setMockTime(tuesdayDateTime);
+
+        await repository.getTasks().first;
+        await Future.delayed(Duration.zero);
+
+        final mondayOneOffSnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('mixed-skip-task_2026-05-25_0')
+            .get();
+        expect(mondayOneOffSnap.exists, isTrue);
+        expect(mondayOneOffSnap.data()!['status'], 'skipped');
+
+        final mondayDailySnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('mixed-skip-task_2026-05-25_1')
+            .get();
+        expect(mondayDailySnap.exists, isTrue);
+        expect(mondayDailySnap.data()!['status'], 'skipped');
+
+        final tuesdayDailySnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('mixed-skip-task_2026-05-26_1')
+            .get();
+        expect(tuesdayDailySnap.exists, isTrue);
+        expect(tuesdayDailySnap.data()!['status'], 'pending');
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      'Auto-dismiss with zero grace period with daily cross-midnight due time does not skip early',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(
+          firestore: firestore,
+          userId: 'user-1',
+        );
+
+        // Daily same day 5am to same day 11am (Schedule 0)
+        // Daily same day 8pm to 1 day after 2am (Schedule 1)
+        final task = TaskSchedule(
+          id: 'cross-midnight-task',
+          title: 'Cross Midnight Task',
+          description: 'Testing skip policy cross midnight',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 18),
+              interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 5, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 11, minute: 0),
+              ),
             ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 18),
+              interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 20, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 1,
+                time: TimeOfDay(hour: 2, minute: 0),
+              ),
             ),
-          ),
-        ],
-        missedPolicy: MissedPolicy.skip,
-      );
+          ],
+        );
 
-      // Set mock clock to Monday
-      final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
-      AppClock.setMockTime(mondayDateTime);
+        // Set mock clock to Thursday June 18th 10:00 PM
+        final thurs10pm = DateTime(2026, 6, 18, 22, 0);
+        AppClock.setMockTime(thurs10pm);
 
-      await repository.addTaskSchedule(mixedTask);
-      await Future.delayed(Duration.zero);
+        await repository.addTaskSchedule(task);
+        await Future.delayed(
+          const Duration(milliseconds: 10),
+        ); // Let the first pass of addTaskSchedule finish
+        await repository
+            .getTasks()
+            .first; // Trigger missed policies check to process Schedule 0
+        await Future.delayed(const Duration(milliseconds: 10));
 
-      final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
-      AppClock.setMockTime(tuesdayDateTime);
+        // Fetch task instances and verify:
+        // Schedule 0 was scheduled for June 18th 5am-11am. Since we are at 10pm, it is past due and thus skipped.
+        // Schedule 1 was scheduled for June 18th 8pm-June 19th 2am. Since we are at 10pm, it is currently pending.
+        final sched0Snap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-18_0')
+            .get();
+        expect(sched0Snap.exists, isTrue);
+        expect(sched0Snap.data()!['status'], 'skipped');
 
-      await repository.getTasks().first;
-      await Future.delayed(Duration.zero);
+        final sched1Snap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-18_1')
+            .get();
+        expect(sched1Snap.exists, isTrue);
+        expect(sched1Snap.data()!['status'], 'pending');
 
-      final mondayOneOffSnap = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('mixed-skip-task_2026-05-25_0')
-          .get();
-      expect(mondayOneOffSnap.exists, isTrue);
-      expect(mondayOneOffSnap.data()!['status'], 'skipped');
+        // Move to Friday June 19th 12:05 AM (past midnight, but BEFORE due time 2:00 AM)
+        final fri1205am = DateTime(2026, 6, 19, 0, 5);
+        AppClock.setMockTime(fri1205am);
 
-      final mondayDailySnap = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('mixed-skip-task_2026-05-25_1')
-          .get();
-      expect(mondayDailySnap.exists, isTrue);
-      expect(mondayDailySnap.data()!['status'], 'skipped');
+        // Trigger missed policies check
+        await repository.getTasks().first;
+        await Future.delayed(const Duration(milliseconds: 10));
 
-      final tuesdayDailySnap = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('mixed-skip-task_2026-05-26_1')
-          .get();
-      expect(tuesdayDailySnap.exists, isTrue);
-      expect(tuesdayDailySnap.data()!['status'], 'pending');
+        // Verify that the June 18th Schedule 1 instance is STILL pending (not skipped early)
+        final sched1SnapMidnight = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-18_1')
+            .get();
+        expect(sched1SnapMidnight.data()!['status'], 'pending');
 
-      AppClock.reset();
-    });
+        // Verify that the next day's instance for Schedule 1 has been spawned as pending (since Friday has arrived)
+        final sched1SnapNextDay = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-19_1')
+            .get();
+        expect(sched1SnapNextDay.exists, isTrue);
+        expect(sched1SnapNextDay.data()!['status'], 'pending');
 
-    test('Skip policy with daily cross-midnight due time does not skip early', () async {
-      final firestore = FakeFirebaseFirestore();
-      final repository = TaskRepository(firestore: firestore, userId: 'user-1');
+        // Move to Friday June 19th 2:05 AM (AFTER due time 2:00 AM)
+        final fri205am = DateTime(2026, 6, 19, 2, 5);
+        AppClock.setMockTime(fri205am);
 
-      // Daily same day 5am to same day 11am (Schedule 0)
-      // Daily same day 8pm to 1 day after 2am (Schedule 1)
-      final task = TaskSchedule(
-        id: 'cross-midnight-task',
-        title: 'Cross Midnight Task',
-        description: 'Testing skip policy cross midnight',
-        schedules: [
-          DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 6, day: 18),
-            interval: 1,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 5, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 11, minute: 0),
-            ),
-          ),
-          DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 6, day: 18),
-            interval: 1,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 20, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 1,
-              time: TimeOfDay(hour: 2, minute: 0),
-            ),
-          ),
-        ],
-        missedPolicy: MissedPolicy.skip,
-      );
+        // Trigger missed policies check
+        await repository.getTasks().first;
+        await Future.delayed(const Duration(milliseconds: 10));
 
-      // Set mock clock to Thursday June 18th 10:00 PM
-      final thurs10pm = DateTime(2026, 6, 18, 22, 0);
-      AppClock.setMockTime(thurs10pm);
+        // Verify that the June 18th Schedule 1 instance is now skipped
+        final sched1SnapAfterDue = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-18_1')
+            .get();
+        expect(sched1SnapAfterDue.data()!['status'], 'skipped');
 
-      await repository.addTaskSchedule(task);
-      await Future.delayed(
-        const Duration(milliseconds: 10),
-      ); // Let the first pass of addTaskSchedule finish
-      await repository
-          .getTasks()
-          .first; // Trigger missed policies check to process Schedule 0
-      await Future.delayed(const Duration(milliseconds: 10));
+        // Verify that the next day's instance for Schedule 1 is now spawned and pending
+        final sched1SnapNextDaySpawned = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-19_1')
+            .get();
+        expect(sched1SnapNextDaySpawned.exists, isTrue);
+        expect(sched1SnapNextDaySpawned.data()!['status'], 'pending');
 
-      // Fetch task instances and verify:
-      // Schedule 0 was scheduled for June 18th 5am-11am. Since we are at 10pm, it is past due and thus skipped.
-      // Schedule 1 was scheduled for June 18th 8pm-June 19th 2am. Since we are at 10pm, it is currently pending.
-      final sched0Snap = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-18_0')
-          .get();
-      expect(sched0Snap.exists, isTrue);
-      expect(sched0Snap.data()!['status'], 'skipped');
-
-      final sched1Snap = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-18_1')
-          .get();
-      expect(sched1Snap.exists, isTrue);
-      expect(sched1Snap.data()!['status'], 'pending');
-
-      // Move to Friday June 19th 12:05 AM (past midnight, but BEFORE due time 2:00 AM)
-      final fri1205am = DateTime(2026, 6, 19, 0, 5);
-      AppClock.setMockTime(fri1205am);
-
-      // Trigger missed policies check
-      await repository.getTasks().first;
-      await Future.delayed(const Duration(milliseconds: 10));
-
-      // Verify that the June 18th Schedule 1 instance is STILL pending (not skipped early)
-      final sched1SnapMidnight = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-18_1')
-          .get();
-      expect(sched1SnapMidnight.data()!['status'], 'pending');
-
-      // Verify that the next day's instance for Schedule 1 has been spawned as pending (since Friday has arrived)
-      final sched1SnapNextDay = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-19_1')
-          .get();
-      expect(sched1SnapNextDay.exists, isTrue);
-      expect(sched1SnapNextDay.data()!['status'], 'pending');
-
-      // Move to Friday June 19th 2:05 AM (AFTER due time 2:00 AM)
-      final fri205am = DateTime(2026, 6, 19, 2, 5);
-      AppClock.setMockTime(fri205am);
-
-      // Trigger missed policies check
-      await repository.getTasks().first;
-      await Future.delayed(const Duration(milliseconds: 10));
-
-      // Verify that the June 18th Schedule 1 instance is now skipped
-      final sched1SnapAfterDue = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-18_1')
-          .get();
-      expect(sched1SnapAfterDue.data()!['status'], 'skipped');
-
-      // Verify that the next day's instance for Schedule 1 is now spawned and pending
-      final sched1SnapNextDaySpawned = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-19_1')
-          .get();
-      expect(sched1SnapNextDaySpawned.exists, isTrue);
-      expect(sched1SnapNextDaySpawned.data()!['status'], 'pending');
-
-      AppClock.reset();
-    });
+        AppClock.reset();
+      },
+    );
 
     test(
       'Auto-Dismiss missed policy respects custom grace period and auto-dismisses after grace period passes',
@@ -1042,7 +971,7 @@ void main() {
           title: 'Daily + Weekly Task',
           description: 'Test',
           schedules: schedules,
-          missedPolicy: MissedPolicy.rollover,
+          missedPolicy: MissedPolicy.stack,
         );
 
         final taskList = TaskList([task]);
@@ -1099,7 +1028,7 @@ void main() {
     );
 
     test(
-      '2. TaskList.complete on mixed Daily (interval 3) and Monthly (dayOfMonth 15) under Shift policy',
+      '2. TaskList.complete on mixed Daily (interval 3) and Monthly (dayOfMonth 15) under Stack policy',
       () {
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final schedules = [
@@ -1131,18 +1060,18 @@ void main() {
         ];
 
         final task = TaskSchedule(
-          id: 'mixed-daily-monthly-shift',
-          title: 'Daily + Monthly Shift',
+          id: 'mixed-daily-monthly-stack',
+          title: 'Daily + Monthly Stack',
           description: 'Test',
           schedules: schedules,
-          missedPolicy: MissedPolicy.shift,
+          missedPolicy: MissedPolicy.stack,
         );
 
         final taskList = TaskList([task]);
 
         // Overdue complete on Tuesday, June 9 (Daily was due June 1, 4, 7. Monthly is due June 15)
         AppClock.setMockTime(DateTime(2026, 6, 9, 12, 0));
-        final state = taskList.complete('mixed-daily-monthly-shift');
+        final state = taskList.complete('mixed-daily-monthly-stack');
         final updated = state.activeTasks.first;
 
         // Daily should shift to next occurrence after June 9: June 10 (since 1 + 3*3 = 10)
@@ -1161,7 +1090,7 @@ void main() {
     );
 
     test(
-      '3. TaskList.complete on mixed Weekly (Fri) and Yearly (Dec 25) under Rollover policy',
+      '3. TaskList.complete on mixed Weekly (Fri) and Yearly (Dec 25) under Stack policy',
       () {
         final start = const CivilDay(year: 2026, month: 12, day: 21);
         final schedules = [
@@ -1174,11 +1103,11 @@ void main() {
         ];
 
         final task = TaskSchedule(
-          id: 'mixed-weekly-yearly-rollover',
-          title: 'Weekly + Yearly Rollover',
+          id: 'mixed-weekly-yearly-stack',
+          title: 'Weekly + Yearly Stack',
           description: 'Test',
           schedules: schedules,
-          missedPolicy: MissedPolicy.rollover,
+          missedPolicy: MissedPolicy.stack,
         );
 
         final taskList = TaskList([task]);
@@ -1186,7 +1115,7 @@ void main() {
         // Complete on Friday, Dec 25, 2026 (Both Weekly and Yearly occur!)
         // Dec 25, 2026 is indeed a Friday.
         AppClock.setMockTime(DateTime(2026, 12, 25, 12, 0));
-        final state = taskList.complete('mixed-weekly-yearly-rollover');
+        final state = taskList.complete('mixed-weekly-yearly-stack');
         final updated = state.activeTasks.first;
 
         // Weekly advances to Jan 1, 2027 (Next Friday after completion date Dec 25)
@@ -1205,7 +1134,7 @@ void main() {
     );
 
     test(
-      '4. TaskList.complete on all 5 schedule types mixed under Rollover policy',
+      '4. TaskList.complete on all 5 schedule types mixed under Stack policy',
       () {
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final schedules = [
@@ -1225,7 +1154,7 @@ void main() {
           title: 'Five Rules mixed',
           description: 'Test',
           schedules: schedules,
-          missedPolicy: MissedPolicy.rollover,
+          missedPolicy: MissedPolicy.stack,
         );
 
         final taskList = TaskList([task]);
@@ -1325,15 +1254,15 @@ void main() {
     );
 
     test(
-      '6. TaskRepository missed policies: Rollover policy on mixed Daily (interval 2) and Weekly (Wed, Fri) schedules',
+      '6. TaskRepository missed policies: Stack policy on mixed Daily (interval 2) and Weekly (Wed, Fri) schedules',
       () async {
         final firestore = FakeFirebaseFirestore();
         final repository = TaskRepository(firestore: firestore, userId: userId);
 
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final task = TaskSchedule(
-          id: 'repo-rollover-mixed',
-          title: 'Mixed Rollover Repo',
+          id: 'repo-stack-mixed',
+          title: 'Mixed Stack Repo',
           description: 'Test',
           schedules: [
             DailySchedule(startDate: start, interval: 2),
@@ -1343,7 +1272,7 @@ void main() {
               daysOfWeek: const {3, 5},
             ),
           ],
-          missedPolicy: MissedPolicy.rollover,
+          missedPolicy: MissedPolicy.stack,
         );
 
         // Add task on Mon June 1
@@ -1361,15 +1290,11 @@ void main() {
         // Weekly schedule should NOT have instance for June 3 yet (since it's in the future).
         expect(instsBefore.docs.length, 1);
         expect(
-          instsBefore.docs.any(
-            (d) => d.id == 'repo-rollover-mixed_2026-06-01_0',
-          ),
+          instsBefore.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-01_0'),
           isTrue,
         );
         expect(
-          instsBefore.docs.any(
-            (d) => d.id == 'repo-rollover-mixed_2026-06-03_1',
-          ),
+          instsBefore.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-03_1'),
           isFalse,
         );
 
@@ -1378,25 +1303,34 @@ void main() {
     );
 
     test(
-      '7. TaskRepository missed policies: Skip policy on mixed Weekly (Mon) and Monthly (dayOfMonth 1) schedules',
+      '7. TaskRepository missed policies: Auto-dismiss with zero grace period on mixed Weekly (Mon) and Monthly (dayOfMonth 1) schedules',
       () async {
         final firestore = FakeFirebaseFirestore();
         final repository = TaskRepository(firestore: firestore, userId: userId);
 
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final task = TaskSchedule(
-          id: 'repo-skip-mixed',
-          title: 'Mixed Skip Repo',
+          id: 'repo-autodismiss-mixed',
+          title: 'Mixed Auto-dismiss Repo',
           description: 'Test',
           schedules: [
             WeeklySchedule(
               startDate: start,
               interval: 1,
               daysOfWeek: const {1},
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
             ),
-            MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 1),
+            MonthlySchedule(
+              startDate: start,
+              interval: 1,
+              dayOfMonth: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+            ),
           ],
-          missedPolicy: MissedPolicy.skip,
         );
 
         // Add task on Mon June 1
@@ -1414,13 +1348,13 @@ void main() {
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-skip-mixed_2026-06-01_0')
+            .doc('repo-autodismiss-mixed_2026-06-01_0')
             .get();
         final monthlyJune1 = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-skip-mixed_2026-06-01_1')
+            .doc('repo-autodismiss-mixed_2026-06-01_1')
             .get();
 
         expect(weeklyJune1.data()?['status'], 'skipped');
@@ -1431,7 +1365,7 @@ void main() {
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-skip-mixed_2026-06-08_0')
+            .doc('repo-autodismiss-mixed_2026-06-08_0')
             .get();
         expect(weeklyJune8.exists, isTrue);
         expect(weeklyJune8.data()?['status'], 'skipped');
@@ -1443,13 +1377,13 @@ void main() {
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-skip-mixed_2026-06-15_0')
+            .doc('repo-autodismiss-mixed_2026-06-15_0')
             .get();
         final monthlyJuly1 = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-skip-mixed_2026-07-01_1')
+            .doc('repo-autodismiss-mixed_2026-07-01_1')
             .get();
         expect(weeklyJune15.exists, isFalse);
         expect(monthlyJuly1.exists, isFalse);
@@ -1459,18 +1393,25 @@ void main() {
     );
 
     test(
-      '7b. TaskRepository missed policies: Skip policy backfill cap at 30 days',
+      '7b. TaskRepository missed policies: Auto-dismiss backfill cap at 30 days',
       () async {
         final firestore = FakeFirebaseFirestore();
         final repository = TaskRepository(firestore: firestore, userId: userId);
 
         final start = const CivilDay(year: 2026, month: 6, day: 1);
         final task = TaskSchedule(
-          id: 'repo-skip-cap',
-          title: 'Skip Cap Repo',
+          id: 'repo-autodismiss-cap',
+          title: 'Auto-dismiss Cap Repo',
           description: 'Test',
-          schedules: [DailySchedule(startDate: start, interval: 1)],
-          missedPolicy: MissedPolicy.skip,
+          schedules: [
+            DailySchedule(
+              startDate: start,
+              interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+            ),
+          ],
         );
 
         // Add task on June 1
@@ -1572,49 +1513,6 @@ void main() {
     );
 
     test(
-      '9. TaskRepository missed policies: Shift policy behavior on Daily (interval 2) and Weekly (Mon) schedules',
-      () async {
-        final firestore = FakeFirebaseFirestore();
-        final repository = TaskRepository(firestore: firestore, userId: userId);
-
-        final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
-        final task = TaskSchedule(
-          id: 'repo-shift-mixed',
-          title: 'Mixed Shift Repo',
-          description: 'Test',
-          schedules: [
-            DailySchedule(startDate: start, interval: 2),
-            WeeklySchedule(
-              startDate: start,
-              interval: 1,
-              daysOfWeek: const {1},
-            ),
-          ],
-          missedPolicy: MissedPolicy.shift,
-        );
-
-        // Add task on Mon June 1.
-        AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
-        await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
-
-        // Verify that under shift policy, _checkAndProcessMissedPolicies spawns the initial instances
-        final insts = await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .get();
-        expect(insts.docs.length, 2);
-        expect(
-          insts.docs.any((d) => d.id.startsWith('repo-shift-mixed_2026-06-01')),
-          isTrue,
-        );
-
-        AppClock.reset();
-      },
-    );
-
-    test(
       '10. TaskRepository missed policies: OneOff + Daily + Weekly + Monthly + Yearly under Stack policy',
       () async {
         final firestore = FakeFirebaseFirestore();
@@ -1686,15 +1584,15 @@ void main() {
     );
 
     test(
-      '11. TaskRepository completion: Rollover policy completion spawns correct next occurrences in mixed schedules',
+      '11. TaskRepository completion: Stack policy completion spawns correct next occurrences in mixed schedules',
       () async {
         final firestore = FakeFirebaseFirestore();
         final repository = TaskRepository(firestore: firestore, userId: userId);
 
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final task = TaskSchedule(
-          id: 'repo-rollover-complete',
-          title: 'Mixed Rollover Complete',
+          id: 'repo-stack-complete',
+          title: 'Mixed Stack Complete',
           description: 'Test',
           schedules: [
             DailySchedule(startDate: start, interval: 2),
@@ -1704,7 +1602,7 @@ void main() {
               daysOfWeek: const {1, 3},
             ),
           ],
-          missedPolicy: MissedPolicy.rollover,
+          missedPolicy: MissedPolicy.stack,
         );
 
         // Add task on Mon June 1
@@ -1714,7 +1612,7 @@ void main() {
 
         // Complete Daily instance on June 1
         await repository.completeTaskInstance(
-          'repo-rollover-complete_2026-06-01_0',
+          'repo-stack-complete_2026-06-01_0',
         );
         await Future.delayed(Duration.zero);
 
@@ -1736,7 +1634,7 @@ void main() {
         expect(
           insts.docs.any(
             (d) =>
-                d.id == 'repo-rollover-complete_2026-06-03_0' &&
+                d.id == 'repo-stack-complete_2026-06-03_0' &&
                 d.data()['status'] == 'pending',
           ),
           isTrue,
@@ -1759,9 +1657,7 @@ void main() {
                 startDate: const CivilDay(year: 2026, month: 6, day: 1),
                 interval: 1,
                 schedulingPolicy: const FixedCalendarPolicy(),
-                missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
-                  legacyPolicy: MissedPolicy.rollover,
-                ),
+                missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
               ),
               WeeklySchedule(
                 startDate: const CivilDay(year: 2026, month: 6, day: 1),
@@ -1785,14 +1681,7 @@ void main() {
             task.schedules[0].schedulingPolicy,
             isA<FixedCalendarPolicy>(),
           );
-          expect(
-            task.schedules[0].missedOccurrencePolicy.type,
-            MissedOccurrenceType.keepAround,
-          );
-          expect(
-            task.schedules[0].missedOccurrencePolicy.legacyPolicy,
-            MissedPolicy.rollover,
-          );
+          expect(task.schedules[0].missedOccurrencePolicy.isKeepAround, isTrue);
 
           expect(
             task.schedules[1].schedulingPolicy,
@@ -1803,8 +1692,8 @@ void main() {
           expect(relPolicy.interval, const Duration(days: 3));
           expect(relPolicy.targetTime, const TimeOfDay(hour: 15, minute: 0));
           expect(
-            task.schedules[1].missedOccurrencePolicy.type,
-            MissedOccurrenceType.autoDismiss,
+            task.schedules[1].missedOccurrencePolicy.isAutoDismiss,
+            isTrue,
           );
           expect(
             task.schedules[1].missedOccurrencePolicy.gracePeriod,
@@ -1820,10 +1709,6 @@ void main() {
           expect(rulesList[0]['type'], 'daily');
           expect(rulesList[0]['schedulingPolicy']['type'], 'fixedCalendar');
           expect(rulesList[0]['missedOccurrencePolicy']['type'], 'keepAround');
-          expect(
-            rulesList[0]['missedOccurrencePolicy']['legacyPolicy'],
-            'rollover',
-          );
 
           // Rule 1 checks
           expect(rulesList[1]['type'], 'weekly');
@@ -1861,8 +1746,8 @@ void main() {
             isA<FixedCalendarPolicy>(),
           );
           expect(
-            deserialized.schedules[0].missedOccurrencePolicy.type,
-            MissedOccurrenceType.keepAround,
+            deserialized.schedules[0].missedOccurrencePolicy.isKeepAround,
+            isTrue,
           );
 
           expect(
@@ -1874,8 +1759,8 @@ void main() {
                   as CompletionRelativePolicy;
           expect(desRelPolicy.interval, const Duration(days: 3));
           expect(
-            deserialized.schedules[1].missedOccurrencePolicy.type,
-            MissedOccurrenceType.autoDismiss,
+            deserialized.schedules[1].missedOccurrencePolicy.isAutoDismiss,
+            isTrue,
           );
           expect(
             deserialized.schedules[1].missedOccurrencePolicy.gracePeriod,
@@ -1896,9 +1781,7 @@ void main() {
                 startDate: const CivilDay(year: 2026, month: 6, day: 1),
                 interval: 1,
                 schedulingPolicy: const FixedCalendarPolicy(),
-                missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(
-                  legacyPolicy: MissedPolicy.rollover,
-                ),
+                missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
               ),
             ],
           );
@@ -1922,7 +1805,7 @@ void main() {
               ),
             ],
             newEstimatedDuration: null,
-            newMissedPolicy: MissedPolicy.skip,
+            newMissedPolicy: MissedPolicy.autoDismiss,
             newIsMaster: false,
             newLastSpawnedDate: null,
             newIsFamily: false,
@@ -1938,8 +1821,8 @@ void main() {
             isA<CompletionRelativePolicy>(),
           );
           expect(
-            updatedTask.schedules.first.missedOccurrencePolicy.type,
-            MissedOccurrenceType.autoDismiss,
+            updatedTask.schedules.first.missedOccurrencePolicy.isAutoDismiss,
+            isTrue,
           );
 
           // Verify updates are recorded in changes map
@@ -1981,7 +1864,7 @@ void main() {
                 interval: Duration(days: 3),
                 targetTime: TimeOfDay(hour: 10, minute: 0),
               ),
-              missedOccurrencePolicy: const MissedOccurrencePolicy.keepAround(),
+              missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
             ),
           ],
         );

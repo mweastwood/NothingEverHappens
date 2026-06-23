@@ -139,7 +139,6 @@ class TaskList {
       schedules: newSchedules,
       activeOccurrenceIndex: newActiveOccurrenceIndex,
       estimatedDuration: task.estimatedDuration,
-      missedPolicy: task.missedPolicy,
       isMaster: task.isMaster,
       lastSpawnedDate: task.lastSpawnedDate,
       parentTaskId: task.parentTaskId,

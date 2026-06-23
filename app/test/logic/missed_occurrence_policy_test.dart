@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
-import 'package:nothing_ever_happens/logic/missed_policy.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
@@ -24,45 +23,6 @@ void main() {
         expect(policy4.policy, MissedPolicy.stack);
         expect(policy5.policy, MissedPolicy.autoDismiss);
         expect(policy5.gracePeriod, const Duration(hours: 3));
-      });
-
-      test(
-        'Legacy constructor mapping preserves legacyPolicy and correct gracePeriod',
-        () {
-          const policyRollover = MissedOccurrencePolicy(
-            policy: MissedPolicy.rollover,
-          );
-          const policyShift = MissedOccurrencePolicy(
-            policy: MissedPolicy.shift,
-          );
-          const policySkip = MissedOccurrencePolicy(policy: MissedPolicy.skip);
-
-          expect(policyRollover.policy, MissedPolicy.stack);
-          expect(policyRollover.legacyPolicy, MissedPolicy.rollover);
-
-          expect(policyShift.policy, MissedPolicy.stack);
-          expect(policyShift.legacyPolicy, MissedPolicy.shift);
-
-          expect(policySkip.policy, MissedPolicy.autoDismiss);
-          expect(policySkip.legacyPolicy, MissedPolicy.skip);
-          expect(policySkip.gracePeriod, Duration.zero);
-        },
-      );
-
-      test('Legacy keepAround constructor mapping', () {
-        const policyRollover = MissedOccurrencePolicy.keepAround(
-          legacyPolicy: MissedPolicy.rollover,
-        );
-        const policySkip = MissedOccurrencePolicy.keepAround(
-          legacyPolicy: MissedPolicy.skip,
-        );
-
-        expect(policyRollover.policy, MissedPolicy.stack);
-        expect(policyRollover.legacyPolicy, MissedPolicy.rollover);
-
-        expect(policySkip.policy, MissedPolicy.autoDismiss);
-        expect(policySkip.legacyPolicy, MissedPolicy.skip);
-        expect(policySkip.gracePeriod, Duration.zero);
       });
 
       test('Equality and hashCode', () {
@@ -89,22 +49,17 @@ void main() {
         expect(deserialized.gracePeriod, const Duration(hours: 2));
       });
 
-      test(
-        'Serialization preserves legacyPolicy and gracePeriod for mapped skip',
-        () {
-          const policy = MissedOccurrencePolicy(policy: MissedPolicy.skip);
-          final json = policy.toJson();
+      test('Serialization parses gracePeriod for mapped skip', () {
+        final json = {
+          'policy': 'autoDismiss',
+          'legacyPolicy': 'skip',
+          'graceMinutes': 0,
+        };
 
-          expect(json['policy'], 'autoDismiss');
-          expect(json['legacyPolicy'], 'skip');
-          expect(json['graceMinutes'], 0);
-
-          final deserialized = MissedOccurrencePolicy.fromJson(json);
-          expect(deserialized.policy, MissedPolicy.autoDismiss);
-          expect(deserialized.legacyPolicy, MissedPolicy.skip);
-          expect(deserialized.gracePeriod, Duration.zero);
-        },
-      );
+        final deserialized = MissedOccurrencePolicy.fromJson(json);
+        expect(deserialized.policy, MissedPolicy.autoDismiss);
+        expect(deserialized.gracePeriod, Duration.zero);
+      });
 
       test('Legacy deserialization resets to stack', () {
         // A legacy JSON without 'policy' key or with old enums

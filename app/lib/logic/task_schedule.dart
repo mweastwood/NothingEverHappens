@@ -2,13 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
-import 'missed_policy.dart';
 import 'task_priority.dart';
 import 'task_schedule_rule.dart';
 import 'scheduling_policy.dart';
 import 'missed_occurrence_policy.dart';
 
-export 'missed_policy.dart';
 export 'task_priority.dart';
 export 'daily_occurrence_time.dart';
 export 'task_schedule_rule.dart';
@@ -50,7 +48,7 @@ class TaskSchedule {
 
   /// Legacy getter/setter for missedOccurrencePolicy
   MissedOccurrencePolicy get missedOccurrencePolicy {
-    if (schedules.isEmpty) return const MissedOccurrencePolicy.keepAround();
+    if (schedules.isEmpty) return const MissedOccurrencePolicy.stack();
     return schedules.first.missedOccurrencePolicy;
   }
 
@@ -252,13 +250,7 @@ class TaskSchedule {
       if (newMissedOccurrencePolicy != null) {
         mPolicy = newMissedOccurrencePolicy;
       } else {
-        final resolvedNewPolicy =
-            (newMissedPolicy == MissedPolicy.rollover ||
-                newMissedPolicy == MissedPolicy.shift)
-            ? MissedPolicy.stack
-            : (newMissedPolicy == MissedPolicy.skip
-                  ? MissedPolicy.autoDismiss
-                  : newMissedPolicy);
+        final resolvedNewPolicy = newMissedPolicy;
         final legacyMatchesNew =
             s.missedOccurrencePolicy.policy == resolvedNewPolicy;
 

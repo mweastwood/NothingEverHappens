@@ -1,21 +1,17 @@
-import 'missed_policy.dart';
 import 'task_instance.dart';
 
-enum MissedOccurrenceType { keepAround, autoDismiss }
+enum MissedPolicy { preferNewer, preferOlder, stack, autoDismiss }
 
 class MissedOccurrencePolicy {
   final MissedPolicy policy;
-  final MissedPolicy legacyPolicy;
   final Duration gracePeriod;
 
-  // Legacy compatibility getters
-  MissedOccurrenceType get type => policy == MissedPolicy.autoDismiss
-      ? MissedOccurrenceType.autoDismiss
-      : MissedOccurrenceType.keepAround;
+  // Legacy compatibility getters/helpers
+  bool get isKeepAround => policy != MissedPolicy.autoDismiss;
+  bool get isAutoDismiss => policy == MissedPolicy.autoDismiss;
 
   const MissedOccurrencePolicy._internal({
     required this.policy,
-    required this.legacyPolicy,
     required this.gracePeriod,
   });
 
@@ -23,61 +19,31 @@ class MissedOccurrencePolicy {
     MissedPolicy policy = MissedPolicy.stack,
     Duration? gracePeriod,
   }) : this._internal(
-         legacyPolicy: policy,
-         policy:
-             (policy == MissedPolicy.rollover || policy == MissedPolicy.shift)
-             ? MissedPolicy.stack
-             : (policy == MissedPolicy.skip
-                   ? MissedPolicy.autoDismiss
-                   : policy),
-         gracePeriod:
-             gracePeriod ??
-             (policy == MissedPolicy.skip
-                 ? Duration.zero
-                 : const Duration(days: 1)),
+         policy: policy,
+         gracePeriod: gracePeriod ?? const Duration(days: 1),
        );
 
   const MissedOccurrencePolicy.preferNewer()
     : this._internal(
         policy: MissedPolicy.preferNewer,
-        legacyPolicy: MissedPolicy.preferNewer,
         gracePeriod: const Duration(days: 1),
       );
 
   const MissedOccurrencePolicy.preferOlder()
     : this._internal(
         policy: MissedPolicy.preferOlder,
-        legacyPolicy: MissedPolicy.preferOlder,
         gracePeriod: const Duration(days: 1),
       );
 
   const MissedOccurrencePolicy.stack()
     : this._internal(
         policy: MissedPolicy.stack,
-        legacyPolicy: MissedPolicy.stack,
         gracePeriod: const Duration(days: 1),
       );
-
-  const MissedOccurrencePolicy.keepAround({
-    MissedPolicy legacyPolicy = MissedPolicy.stack,
-  }) : this._internal(
-         legacyPolicy: legacyPolicy,
-         policy:
-             (legacyPolicy == MissedPolicy.rollover ||
-                 legacyPolicy == MissedPolicy.shift)
-             ? MissedPolicy.stack
-             : (legacyPolicy == MissedPolicy.skip
-                   ? MissedPolicy.autoDismiss
-                   : legacyPolicy),
-         gracePeriod: legacyPolicy == MissedPolicy.skip
-             ? Duration.zero
-             : const Duration(days: 1),
-       );
 
   const MissedOccurrencePolicy.autoDismiss({required Duration gracePeriod})
     : this._internal(
         policy: MissedPolicy.autoDismiss,
-        legacyPolicy: MissedPolicy.autoDismiss,
         gracePeriod: gracePeriod,
       );
 
@@ -97,26 +63,15 @@ class MissedOccurrencePolicy {
       orElse: () => MissedPolicy.stack,
     );
 
-    final parsedLegacyPolicy = MissedPolicy.values.firstWhere(
-      (e) => e.name == (legacyPolicyStr ?? parsedPolicy.name),
-      orElse: () => parsedPolicy,
-    );
+    final isLegacySkip = policyStr == 'skip' || legacyPolicyStr == 'skip';
 
-    final policy =
-        (parsedPolicy == MissedPolicy.rollover ||
-            parsedPolicy == MissedPolicy.shift)
-        ? MissedPolicy.stack
-        : (parsedPolicy == MissedPolicy.skip
-              ? MissedPolicy.autoDismiss
-              : parsedPolicy);
+    final policy = isLegacySkip ? MissedPolicy.autoDismiss : parsedPolicy;
 
     final graceMinutes =
-        json['graceMinutes'] as int? ??
-        (parsedLegacyPolicy == MissedPolicy.skip ? 0 : 24 * 60);
+        json['graceMinutes'] as int? ?? (isLegacySkip ? 0 : 24 * 60);
 
     return MissedOccurrencePolicy._internal(
       policy: policy,
-      legacyPolicy: parsedLegacyPolicy,
       gracePeriod: Duration(minutes: graceMinutes),
     );
   }
@@ -124,8 +79,7 @@ class MissedOccurrencePolicy {
   Map<String, dynamic> toJson() {
     return {
       'policy': policy.name,
-      'type': type.name,
-      'legacyPolicy': legacyPolicy.name,
+      'type': policy == MissedPolicy.autoDismiss ? 'autoDismiss' : 'keepAround',
       if (policy == MissedPolicy.autoDismiss)
         'graceMinutes': gracePeriod.inMinutes,
     };

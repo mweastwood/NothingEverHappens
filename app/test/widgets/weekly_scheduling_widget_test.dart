@@ -28,7 +28,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       );
-      const missed = MissedOccurrencePolicy.keepAround();
+      const missed = MissedOccurrencePolicy.stack();
       final selectedWeekdays = {1, 3, 5}; // Mon, Wed, Fri
 
       await tester.pumpWidget(
@@ -226,7 +226,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       );
-      const missed = MissedOccurrencePolicy.keepAround();
+      const missed = MissedOccurrencePolicy.stack();
       final selectedWeekdays = {1, 3, 5};
 
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.6)
