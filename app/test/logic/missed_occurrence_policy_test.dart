@@ -29,19 +29,7 @@ void main() {
       test(
         'Legacy constructor mapping preserves legacyPolicy and correct gracePeriod',
         () {
-          const policyRollover = MissedOccurrencePolicy(
-            policy: MissedPolicy.rollover,
-          );
-          const policyShift = MissedOccurrencePolicy(
-            policy: MissedPolicy.shift,
-          );
           const policySkip = MissedOccurrencePolicy(policy: MissedPolicy.skip);
-
-          expect(policyRollover.policy, MissedPolicy.stack);
-          expect(policyRollover.legacyPolicy, MissedPolicy.rollover);
-
-          expect(policyShift.policy, MissedPolicy.stack);
-          expect(policyShift.legacyPolicy, MissedPolicy.shift);
 
           expect(policySkip.policy, MissedPolicy.autoDismiss);
           expect(policySkip.legacyPolicy, MissedPolicy.skip);
@@ -50,15 +38,9 @@ void main() {
       );
 
       test('Legacy keepAround constructor mapping', () {
-        const policyRollover = MissedOccurrencePolicy.keepAround(
-          legacyPolicy: MissedPolicy.rollover,
-        );
         const policySkip = MissedOccurrencePolicy.keepAround(
           legacyPolicy: MissedPolicy.skip,
         );
-
-        expect(policyRollover.policy, MissedPolicy.stack);
-        expect(policyRollover.legacyPolicy, MissedPolicy.rollover);
 
         expect(policySkip.policy, MissedPolicy.autoDismiss);
         expect(policySkip.legacyPolicy, MissedPolicy.skip);
@@ -115,7 +97,9 @@ void main() {
         final p2 = MissedOccurrencePolicy.fromJson(legacyJson2);
 
         expect(p1.policy, MissedPolicy.stack);
+        expect(p1.legacyPolicy, MissedPolicy.stack);
         expect(p2.policy, MissedPolicy.stack);
+        expect(p2.legacyPolicy, MissedPolicy.stack);
       });
     });
 

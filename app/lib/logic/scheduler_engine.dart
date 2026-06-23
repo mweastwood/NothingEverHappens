@@ -343,6 +343,20 @@ class SchedulerEngine {
     }).toList();
   }
 
+  static CivilDay _getNextOccurrenceRefDate(
+    TaskSchedule task,
+    TaskInstance completedInstance,
+    DateTime now,
+  ) {
+    CivilDay startCheck = completedInstance.scheduledDate.addDays(1);
+    final lastSpawned = task.lastSpawnedDate;
+    if (lastSpawned != null &&
+        lastSpawned.isAfter(completedInstance.scheduledDate)) {
+      startCheck = lastSpawned.addDays(1);
+    }
+    return startCheck;
+  }
+
   static TaskInstance? getNextOccurrenceToSpawn(
     TaskSchedule task,
     TaskInstance completedInstance,
@@ -381,10 +395,7 @@ class SchedulerEngine {
         status: 'pending',
       );
     } else {
-      final today = CivilDay.fromDateTime(now);
-      final refDate = today.isBefore(completedInstance.scheduledDate)
-          ? completedInstance.scheduledDate.addDays(1)
-          : today.addDays(1);
+      final refDate = _getNextOccurrenceRefDate(task, completedInstance, now);
 
       CivilDay? nextDate;
       if (rule.occursOn(refDate)) {
@@ -432,10 +443,7 @@ class SchedulerEngine {
       final nextDate = CivilDay.fromDateTime(now.add(policy.interval));
       return _instanceIdFor(task, nextDate, ruleIndex);
     } else {
-      final today = CivilDay.fromDateTime(now);
-      final refDate = today.isBefore(completedInstance.scheduledDate)
-          ? completedInstance.scheduledDate.addDays(1)
-          : today.addDays(1);
+      final refDate = _getNextOccurrenceRefDate(task, completedInstance, now);
 
       CivilDay? nextDate;
       if (rule.occursOn(refDate)) {

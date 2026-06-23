@@ -490,7 +490,7 @@ void main() {
       id: 'b2',
       title: 'Family Daily TaskSchedule with Assignee',
       description:
-          'Family task with daily schedule, medium priority, rollover policy, and assignee.',
+          'Family task with daily schedule, medium priority, stack policy, and assignee.',
       isFamily: true,
       priority: TaskPriority.medium,
       assignedUserId: 'user_1',
@@ -506,11 +506,11 @@ void main() {
 
     final task3 = TaskSchedule(
       id: 'b3',
-      title: 'Low Priority Weekly TaskSchedule with Shift Policy',
+      title: 'Low Priority Weekly TaskSchedule with Prefer Older Policy',
       description:
-          'Personal task with low priority, weekly schedule, and shift policy.',
+          'Personal task with low priority, weekly schedule, and prefer older policy.',
       priority: TaskPriority.low,
-      missedPolicy: MissedPolicy.shift,
+      missedPolicy: MissedPolicy.preferOlder,
       schedules: [
         WeeklySchedule(
           startDate: const CivilDay(year: 2024, month: 1, day: 1),

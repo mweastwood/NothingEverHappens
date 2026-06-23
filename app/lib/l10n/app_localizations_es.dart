@@ -260,25 +260,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Define qué pasa si una tarea recurrente no se completa a su hora de vencimiento.';
 
   @override
-  String get rolloverLabel => 'Reasignar (Pasar al día siguiente)';
-
-  @override
-  String get rolloverDescription =>
-      'La tarea atrasada se pasa a hoy y sigue atrasada hasta que se complete.';
-
-  @override
   String get skipLabel => 'Omitir (Descartar ocurrencia)';
 
   @override
   String get skipDescription =>
       'La tarea atrasada se omite automáticamente, se registra en el historial y se reprograma.';
-
-  @override
-  String get shiftLabel => 'Cambiar calendario (Retrasar fechas futuras)';
-
-  @override
-  String get shiftDescription =>
-      'La siguiente ocurrencia se calcula en relación a cuándo se completó tarde la tarea.';
 
   @override
   String get stackLabel => 'Acumular (Permitir concurrencia)';
@@ -804,16 +790,8 @@ class AppLocalizationsEs extends AppLocalizations {
       '### Políticas de Ocurrencias Perdidas\n\nCuando una tarea recurrente no se completa a su hora de vencimiento, la aplicación aplica una **Política de Ocurrencias Perdidas** para manejar la instancia vencida.\n\nUsa el simulador de abajo para ver cómo cada política maneja las tareas vencidas a lo largo del tiempo.';
 
   @override
-  String get rolloverSimTip =>
-      '### Política de Rollover\n\n**Comportamiento:** La tarea permanece activa y se desplaza al día de hoy, manteniéndose vencida. Si se completa tarde, se vuelve a programar para el siguiente día de ocurrencia *basado en la fecha original de programación* (no hoy).\n\n**Prueba esto:**\n1. Toca **Avanzar 1 Día** una o dos veces para dejar que la tarea se venza.\n2. Toca la casilla para completarla.\n3. Observa que se reprograma para el siguiente día consecutivo (¡que aún puede estar vencido si tienes varios días de retraso!).';
-
-  @override
   String get skipSimTip =>
       '### Política de Skip (Omitir)\n\n**Comportamiento:** Las tareas vencidas se descartan/omiten automáticamente. No necesitas completarlas ni descartarlas manualmente. El sistema registra una entrada \'omitida\' en el historial y avanza al siguiente vencimiento.\n\n**Prueba esto:**\n1. Toca **Avanzar 1 Día**.\n2. Revisa los registros del historial a continuación: la tarea se omitió automáticamente y el calendario avanzó. ¡Nunca verás acumularse tareas vencidas!';
-
-  @override
-  String get shiftSimTip =>
-      '### Política de Shift (Desplazar)\n\n**Comportamiento:** La siguiente ocurrencia se calcula en relación con el momento en que *realmente completaste* la tarea tarde, desplazando las fechas futuras. A diferencia del Rollover, no te obliga a \'ponerte al día\' con los días perdidos.\n\n**Prueba esto:**\n1. Toca **Avanzar 1 Día** dos veces para que la tarea esté vencida.\n2. Toca la casilla para completar la tarea activa.\n3. Observa que la siguiente ocurrencia programada se desplaza hacia adelante en relación con hoy, en lugar de apegarse a la secuencia original.';
 
   @override
   String get stackSimTip =>

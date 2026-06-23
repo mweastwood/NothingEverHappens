@@ -24,12 +24,9 @@ class MissedOccurrencePolicy {
     Duration? gracePeriod,
   }) : this._internal(
          legacyPolicy: policy,
-         policy:
-             (policy == MissedPolicy.rollover || policy == MissedPolicy.shift)
-             ? MissedPolicy.stack
-             : (policy == MissedPolicy.skip
-                   ? MissedPolicy.autoDismiss
-                   : policy),
+         policy: policy == MissedPolicy.skip
+             ? MissedPolicy.autoDismiss
+             : policy,
          gracePeriod:
              gracePeriod ??
              (policy == MissedPolicy.skip
@@ -62,13 +59,9 @@ class MissedOccurrencePolicy {
     MissedPolicy legacyPolicy = MissedPolicy.stack,
   }) : this._internal(
          legacyPolicy: legacyPolicy,
-         policy:
-             (legacyPolicy == MissedPolicy.rollover ||
-                 legacyPolicy == MissedPolicy.shift)
-             ? MissedPolicy.stack
-             : (legacyPolicy == MissedPolicy.skip
-                   ? MissedPolicy.autoDismiss
-                   : legacyPolicy),
+         policy: legacyPolicy == MissedPolicy.skip
+             ? MissedPolicy.autoDismiss
+             : legacyPolicy,
          gracePeriod: legacyPolicy == MissedPolicy.skip
              ? Duration.zero
              : const Duration(days: 1),
@@ -102,13 +95,9 @@ class MissedOccurrencePolicy {
       orElse: () => parsedPolicy,
     );
 
-    final policy =
-        (parsedPolicy == MissedPolicy.rollover ||
-            parsedPolicy == MissedPolicy.shift)
-        ? MissedPolicy.stack
-        : (parsedPolicy == MissedPolicy.skip
-              ? MissedPolicy.autoDismiss
-              : parsedPolicy);
+    final policy = parsedPolicy == MissedPolicy.skip
+        ? MissedPolicy.autoDismiss
+        : parsedPolicy;
 
     final graceMinutes =
         json['graceMinutes'] as int? ??

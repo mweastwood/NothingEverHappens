@@ -99,7 +99,7 @@ void main() {
         title: 'Mixed schedule complete',
         description: 'Complete test',
         schedules: schedules,
-        missedPolicy: MissedPolicy.rollover,
+        missedPolicy: MissedPolicy.stack,
       );
 
       final taskList = TaskList([task]);
@@ -175,7 +175,7 @@ void main() {
           title: 'Mixed one-off complete',
           description: 'Complete test',
           schedules: schedules,
-          missedPolicy: MissedPolicy.rollover,
+          missedPolicy: MissedPolicy.stack,
         );
 
         final taskList = TaskList([task]);
