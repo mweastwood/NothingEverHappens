@@ -163,7 +163,6 @@ class _MissedOccurrencePolicySelectorState
           ],
         );
       case MissedPolicy.autoDismiss:
-      default:
         return (
           'Auto-Dismiss',
           'Occurrences accumulate but are automatically dismissed/skipped after a configurable grace period.',

@@ -469,6 +469,9 @@ void main() {
             DailySchedule(
               startDate: monday,
               interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
                 time: TimeOfDay(hour: 9, minute: 0),
@@ -479,7 +482,6 @@ void main() {
               ),
             ),
           ],
-          missedPolicy: MissedPolicy.skip,
         );
 
         // Set mock clock to Monday
@@ -524,216 +526,238 @@ void main() {
       },
     );
 
-    test('Skip policy on mixed task drops passed one-off schedules', () async {
-      final firestore = FakeFirebaseFirestore();
-      final repository = TaskRepository(firestore: firestore, userId: 'user-1');
+    test(
+      'Auto-dismiss with zero grace period on mixed task drops passed one-off schedules',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(
+          firestore: firestore,
+          userId: 'user-1',
+        );
 
-      final monday = const CivilDay(year: 2026, month: 5, day: 25);
+        final monday = const CivilDay(year: 2026, month: 5, day: 25);
 
-      final mixedTask = TaskSchedule(
-        id: 'mixed-skip-task',
-        title: 'Mixed skip task',
-        description: 'Testing skip policy on mixed task',
-        schedules: [
-          OneOffSchedule(
-            date: monday,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+        final mixedTask = TaskSchedule(
+          id: 'mixed-skip-task',
+          title: 'Mixed skip task',
+          description: 'Testing skip policy on mixed task',
+          schedules: [
+            OneOffSchedule(
+              date: monday,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
             ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+            DailySchedule(
+              startDate: monday,
+              interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
             ),
-          ),
-          DailySchedule(
-            startDate: monday,
-            interval: 1,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+          ],
+        );
+
+        // Set mock clock to Monday
+        final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
+        AppClock.setMockTime(mondayDateTime);
+
+        await repository.addTaskSchedule(mixedTask);
+        await Future.delayed(Duration.zero);
+
+        final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
+        AppClock.setMockTime(tuesdayDateTime);
+
+        await repository.getTasks().first;
+        await Future.delayed(Duration.zero);
+
+        final mondayOneOffSnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('mixed-skip-task_2026-05-25_0')
+            .get();
+        expect(mondayOneOffSnap.exists, isTrue);
+        expect(mondayOneOffSnap.data()!['status'], 'skipped');
+
+        final mondayDailySnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('mixed-skip-task_2026-05-25_1')
+            .get();
+        expect(mondayDailySnap.exists, isTrue);
+        expect(mondayDailySnap.data()!['status'], 'skipped');
+
+        final tuesdayDailySnap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('mixed-skip-task_2026-05-26_1')
+            .get();
+        expect(tuesdayDailySnap.exists, isTrue);
+        expect(tuesdayDailySnap.data()!['status'], 'pending');
+
+        AppClock.reset();
+      },
+    );
+
+    test(
+      'Auto-dismiss with zero grace period with daily cross-midnight due time does not skip early',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(
+          firestore: firestore,
+          userId: 'user-1',
+        );
+
+        // Daily same day 5am to same day 11am (Schedule 0)
+        // Daily same day 8pm to 1 day after 2am (Schedule 1)
+        final task = TaskSchedule(
+          id: 'cross-midnight-task',
+          title: 'Cross Midnight Task',
+          description: 'Testing skip policy cross midnight',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 18),
+              interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 5, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 11, minute: 0),
+              ),
             ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 18),
+              interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 20, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 1,
+                time: TimeOfDay(hour: 2, minute: 0),
+              ),
             ),
-          ),
-        ],
-        missedPolicy: MissedPolicy.skip,
-      );
+          ],
+        );
 
-      // Set mock clock to Monday
-      final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
-      AppClock.setMockTime(mondayDateTime);
+        // Set mock clock to Thursday June 18th 10:00 PM
+        final thurs10pm = DateTime(2026, 6, 18, 22, 0);
+        AppClock.setMockTime(thurs10pm);
 
-      await repository.addTaskSchedule(mixedTask);
-      await Future.delayed(Duration.zero);
+        await repository.addTaskSchedule(task);
+        await Future.delayed(
+          const Duration(milliseconds: 10),
+        ); // Let the first pass of addTaskSchedule finish
+        await repository
+            .getTasks()
+            .first; // Trigger missed policies check to process Schedule 0
+        await Future.delayed(const Duration(milliseconds: 10));
 
-      final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
-      AppClock.setMockTime(tuesdayDateTime);
+        // Fetch task instances and verify:
+        // Schedule 0 was scheduled for June 18th 5am-11am. Since we are at 10pm, it is past due and thus skipped.
+        // Schedule 1 was scheduled for June 18th 8pm-June 19th 2am. Since we are at 10pm, it is currently pending.
+        final sched0Snap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-18_0')
+            .get();
+        expect(sched0Snap.exists, isTrue);
+        expect(sched0Snap.data()!['status'], 'skipped');
 
-      await repository.getTasks().first;
-      await Future.delayed(Duration.zero);
+        final sched1Snap = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-18_1')
+            .get();
+        expect(sched1Snap.exists, isTrue);
+        expect(sched1Snap.data()!['status'], 'pending');
 
-      final mondayOneOffSnap = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('mixed-skip-task_2026-05-25_0')
-          .get();
-      expect(mondayOneOffSnap.exists, isTrue);
-      expect(mondayOneOffSnap.data()!['status'], 'skipped');
+        // Move to Friday June 19th 12:05 AM (past midnight, but BEFORE due time 2:00 AM)
+        final fri1205am = DateTime(2026, 6, 19, 0, 5);
+        AppClock.setMockTime(fri1205am);
 
-      final mondayDailySnap = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('mixed-skip-task_2026-05-25_1')
-          .get();
-      expect(mondayDailySnap.exists, isTrue);
-      expect(mondayDailySnap.data()!['status'], 'skipped');
+        // Trigger missed policies check
+        await repository.getTasks().first;
+        await Future.delayed(const Duration(milliseconds: 10));
 
-      final tuesdayDailySnap = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('mixed-skip-task_2026-05-26_1')
-          .get();
-      expect(tuesdayDailySnap.exists, isTrue);
-      expect(tuesdayDailySnap.data()!['status'], 'pending');
+        // Verify that the June 18th Schedule 1 instance is STILL pending (not skipped early)
+        final sched1SnapMidnight = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-18_1')
+            .get();
+        expect(sched1SnapMidnight.data()!['status'], 'pending');
 
-      AppClock.reset();
-    });
+        // Verify that the next day's instance for Schedule 1 has been spawned as pending (since Friday has arrived)
+        final sched1SnapNextDay = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-19_1')
+            .get();
+        expect(sched1SnapNextDay.exists, isTrue);
+        expect(sched1SnapNextDay.data()!['status'], 'pending');
 
-    test('Skip policy with daily cross-midnight due time does not skip early', () async {
-      final firestore = FakeFirebaseFirestore();
-      final repository = TaskRepository(firestore: firestore, userId: 'user-1');
+        // Move to Friday June 19th 2:05 AM (AFTER due time 2:00 AM)
+        final fri205am = DateTime(2026, 6, 19, 2, 5);
+        AppClock.setMockTime(fri205am);
 
-      // Daily same day 5am to same day 11am (Schedule 0)
-      // Daily same day 8pm to 1 day after 2am (Schedule 1)
-      final task = TaskSchedule(
-        id: 'cross-midnight-task',
-        title: 'Cross Midnight Task',
-        description: 'Testing skip policy cross midnight',
-        schedules: [
-          DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 6, day: 18),
-            interval: 1,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 5, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 11, minute: 0),
-            ),
-          ),
-          DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 6, day: 18),
-            interval: 1,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 20, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 1,
-              time: TimeOfDay(hour: 2, minute: 0),
-            ),
-          ),
-        ],
-        missedPolicy: MissedPolicy.skip,
-      );
+        // Trigger missed policies check
+        await repository.getTasks().first;
+        await Future.delayed(const Duration(milliseconds: 10));
 
-      // Set mock clock to Thursday June 18th 10:00 PM
-      final thurs10pm = DateTime(2026, 6, 18, 22, 0);
-      AppClock.setMockTime(thurs10pm);
+        // Verify that the June 18th Schedule 1 instance is now skipped
+        final sched1SnapAfterDue = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-18_1')
+            .get();
+        expect(sched1SnapAfterDue.data()!['status'], 'skipped');
 
-      await repository.addTaskSchedule(task);
-      await Future.delayed(
-        const Duration(milliseconds: 10),
-      ); // Let the first pass of addTaskSchedule finish
-      await repository
-          .getTasks()
-          .first; // Trigger missed policies check to process Schedule 0
-      await Future.delayed(const Duration(milliseconds: 10));
+        // Verify that the next day's instance for Schedule 1 is now spawned and pending
+        final sched1SnapNextDaySpawned = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .doc('cross-midnight-task_2026-06-19_1')
+            .get();
+        expect(sched1SnapNextDaySpawned.exists, isTrue);
+        expect(sched1SnapNextDaySpawned.data()!['status'], 'pending');
 
-      // Fetch task instances and verify:
-      // Schedule 0 was scheduled for June 18th 5am-11am. Since we are at 10pm, it is past due and thus skipped.
-      // Schedule 1 was scheduled for June 18th 8pm-June 19th 2am. Since we are at 10pm, it is currently pending.
-      final sched0Snap = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-18_0')
-          .get();
-      expect(sched0Snap.exists, isTrue);
-      expect(sched0Snap.data()!['status'], 'skipped');
-
-      final sched1Snap = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-18_1')
-          .get();
-      expect(sched1Snap.exists, isTrue);
-      expect(sched1Snap.data()!['status'], 'pending');
-
-      // Move to Friday June 19th 12:05 AM (past midnight, but BEFORE due time 2:00 AM)
-      final fri1205am = DateTime(2026, 6, 19, 0, 5);
-      AppClock.setMockTime(fri1205am);
-
-      // Trigger missed policies check
-      await repository.getTasks().first;
-      await Future.delayed(const Duration(milliseconds: 10));
-
-      // Verify that the June 18th Schedule 1 instance is STILL pending (not skipped early)
-      final sched1SnapMidnight = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-18_1')
-          .get();
-      expect(sched1SnapMidnight.data()!['status'], 'pending');
-
-      // Verify that the next day's instance for Schedule 1 has been spawned as pending (since Friday has arrived)
-      final sched1SnapNextDay = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-19_1')
-          .get();
-      expect(sched1SnapNextDay.exists, isTrue);
-      expect(sched1SnapNextDay.data()!['status'], 'pending');
-
-      // Move to Friday June 19th 2:05 AM (AFTER due time 2:00 AM)
-      final fri205am = DateTime(2026, 6, 19, 2, 5);
-      AppClock.setMockTime(fri205am);
-
-      // Trigger missed policies check
-      await repository.getTasks().first;
-      await Future.delayed(const Duration(milliseconds: 10));
-
-      // Verify that the June 18th Schedule 1 instance is now skipped
-      final sched1SnapAfterDue = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-18_1')
-          .get();
-      expect(sched1SnapAfterDue.data()!['status'], 'skipped');
-
-      // Verify that the next day's instance for Schedule 1 is now spawned and pending
-      final sched1SnapNextDaySpawned = await firestore
-          .collection('users')
-          .doc('user-1')
-          .collection('instances')
-          .doc('cross-midnight-task_2026-06-19_1')
-          .get();
-      expect(sched1SnapNextDaySpawned.exists, isTrue);
-      expect(sched1SnapNextDaySpawned.data()!['status'], 'pending');
-
-      AppClock.reset();
-    });
+        AppClock.reset();
+      },
+    );
 
     test(
       'Auto-Dismiss missed policy respects custom grace period and auto-dismisses after grace period passes',
@@ -1282,25 +1306,34 @@ void main() {
     );
 
     test(
-      '7. TaskRepository missed policies: Skip policy on mixed Weekly (Mon) and Monthly (dayOfMonth 1) schedules',
+      '7. TaskRepository missed policies: Auto-dismiss with zero grace period on mixed Weekly (Mon) and Monthly (dayOfMonth 1) schedules',
       () async {
         final firestore = FakeFirebaseFirestore();
         final repository = TaskRepository(firestore: firestore, userId: userId);
 
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final task = TaskSchedule(
-          id: 'repo-skip-mixed',
-          title: 'Mixed Skip Repo',
+          id: 'repo-autodismiss-mixed',
+          title: 'Mixed Auto-dismiss Repo',
           description: 'Test',
           schedules: [
             WeeklySchedule(
               startDate: start,
               interval: 1,
               daysOfWeek: const {1},
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
             ),
-            MonthlySchedule(startDate: start, interval: 1, dayOfMonth: 1),
+            MonthlySchedule(
+              startDate: start,
+              interval: 1,
+              dayOfMonth: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+            ),
           ],
-          missedPolicy: MissedPolicy.skip,
         );
 
         // Add task on Mon June 1
@@ -1318,13 +1351,13 @@ void main() {
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-skip-mixed_2026-06-01_0')
+            .doc('repo-autodismiss-mixed_2026-06-01_0')
             .get();
         final monthlyJune1 = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-skip-mixed_2026-06-01_1')
+            .doc('repo-autodismiss-mixed_2026-06-01_1')
             .get();
 
         expect(weeklyJune1.data()?['status'], 'skipped');
@@ -1335,7 +1368,7 @@ void main() {
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-skip-mixed_2026-06-08_0')
+            .doc('repo-autodismiss-mixed_2026-06-08_0')
             .get();
         expect(weeklyJune8.exists, isTrue);
         expect(weeklyJune8.data()?['status'], 'skipped');
@@ -1347,13 +1380,13 @@ void main() {
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-skip-mixed_2026-06-15_0')
+            .doc('repo-autodismiss-mixed_2026-06-15_0')
             .get();
         final monthlyJuly1 = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-skip-mixed_2026-07-01_1')
+            .doc('repo-autodismiss-mixed_2026-07-01_1')
             .get();
         expect(weeklyJune15.exists, isFalse);
         expect(monthlyJuly1.exists, isFalse);
@@ -1363,18 +1396,25 @@ void main() {
     );
 
     test(
-      '7b. TaskRepository missed policies: Skip policy backfill cap at 30 days',
+      '7b. TaskRepository missed policies: Auto-dismiss backfill cap at 30 days',
       () async {
         final firestore = FakeFirebaseFirestore();
         final repository = TaskRepository(firestore: firestore, userId: userId);
 
         final start = const CivilDay(year: 2026, month: 6, day: 1);
         final task = TaskSchedule(
-          id: 'repo-skip-cap',
-          title: 'Skip Cap Repo',
+          id: 'repo-autodismiss-cap',
+          title: 'Auto-dismiss Cap Repo',
           description: 'Test',
-          schedules: [DailySchedule(startDate: start, interval: 1)],
-          missedPolicy: MissedPolicy.skip,
+          schedules: [
+            DailySchedule(
+              startDate: start,
+              interval: 1,
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration.zero,
+              ),
+            ),
+          ],
         );
 
         // Add task on June 1
@@ -1783,7 +1823,7 @@ void main() {
               ),
             ],
             newEstimatedDuration: null,
-            newMissedPolicy: MissedPolicy.skip,
+            newMissedPolicy: MissedPolicy.autoDismiss,
             newIsMaster: false,
             newLastSpawnedDate: null,
             newIsFamily: false,

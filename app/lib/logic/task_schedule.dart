@@ -252,9 +252,7 @@ class TaskSchedule {
       if (newMissedOccurrencePolicy != null) {
         mPolicy = newMissedOccurrencePolicy;
       } else {
-        final resolvedNewPolicy = newMissedPolicy == MissedPolicy.skip
-            ? MissedPolicy.autoDismiss
-            : newMissedPolicy;
+        final resolvedNewPolicy = newMissedPolicy;
         final legacyMatchesNew =
             s.missedOccurrencePolicy.policy == resolvedNewPolicy;
 

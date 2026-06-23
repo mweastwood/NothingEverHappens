@@ -24,14 +24,8 @@ class MissedOccurrencePolicy {
     Duration? gracePeriod,
   }) : this._internal(
          legacyPolicy: policy,
-         policy: policy == MissedPolicy.skip
-             ? MissedPolicy.autoDismiss
-             : policy,
-         gracePeriod:
-             gracePeriod ??
-             (policy == MissedPolicy.skip
-                 ? Duration.zero
-                 : const Duration(days: 1)),
+         policy: policy,
+         gracePeriod: gracePeriod ?? const Duration(days: 1),
        );
 
   const MissedOccurrencePolicy.preferNewer()
@@ -59,12 +53,8 @@ class MissedOccurrencePolicy {
     MissedPolicy legacyPolicy = MissedPolicy.stack,
   }) : this._internal(
          legacyPolicy: legacyPolicy,
-         policy: legacyPolicy == MissedPolicy.skip
-             ? MissedPolicy.autoDismiss
-             : legacyPolicy,
-         gracePeriod: legacyPolicy == MissedPolicy.skip
-             ? Duration.zero
-             : const Duration(days: 1),
+         policy: legacyPolicy,
+         gracePeriod: const Duration(days: 1),
        );
 
   const MissedOccurrencePolicy.autoDismiss({required Duration gracePeriod})
@@ -95,17 +85,18 @@ class MissedOccurrencePolicy {
       orElse: () => parsedPolicy,
     );
 
-    final policy = parsedPolicy == MissedPolicy.skip
-        ? MissedPolicy.autoDismiss
-        : parsedPolicy;
+    final isLegacySkip = policyStr == 'skip' || legacyPolicyStr == 'skip';
+
+    final policy = isLegacySkip ? MissedPolicy.autoDismiss : parsedPolicy;
 
     final graceMinutes =
-        json['graceMinutes'] as int? ??
-        (parsedLegacyPolicy == MissedPolicy.skip ? 0 : 24 * 60);
+        json['graceMinutes'] as int? ?? (isLegacySkip ? 0 : 24 * 60);
 
     return MissedOccurrencePolicy._internal(
       policy: policy,
-      legacyPolicy: parsedLegacyPolicy,
+      legacyPolicy: isLegacySkip
+          ? MissedPolicy.autoDismiss
+          : parsedLegacyPolicy,
       gracePeriod: Duration(minutes: graceMinutes),
     );
   }

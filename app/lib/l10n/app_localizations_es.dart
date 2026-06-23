@@ -260,13 +260,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Define qué pasa si una tarea recurrente no se completa a su hora de vencimiento.';
 
   @override
-  String get skipLabel => 'Omitir (Descartar ocurrencia)';
-
-  @override
-  String get skipDescription =>
-      'La tarea atrasada se omite automáticamente, se registra en el historial y se reprograma.';
-
-  @override
   String get stackLabel => 'Acumular (Permitir concurrencia)';
 
   @override
@@ -788,10 +781,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get missedPoliciesIntro =>
       '### Políticas de Ocurrencias Perdidas\n\nCuando una tarea recurrente no se completa a su hora de vencimiento, la aplicación aplica una **Política de Ocurrencias Perdidas** para manejar la instancia vencida.\n\nUsa el simulador de abajo para ver cómo cada política maneja las tareas vencidas a lo largo del tiempo.';
-
-  @override
-  String get skipSimTip =>
-      '### Política de Skip (Omitir)\n\n**Comportamiento:** Las tareas vencidas se descartan/omiten automáticamente. No necesitas completarlas ni descartarlas manualmente. El sistema registra una entrada \'omitida\' en el historial y avanza al siguiente vencimiento.\n\n**Prueba esto:**\n1. Toca **Avanzar 1 Día**.\n2. Revisa los registros del historial a continuación: la tarea se omitió automáticamente y el calendario avanzó. ¡Nunca verás acumularse tareas vencidas!';
 
   @override
   String get stackSimTip =>

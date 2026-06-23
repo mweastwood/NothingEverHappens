@@ -145,8 +145,7 @@
   },
   "missedPolicyHeader": "Missed Occurrence Policy",
   "missedPolicyHelper": "Define what happens if a recurring task is not completed by its due time.",
-  "skipLabel": "Skip (Drop Occurrence)",
-  "skipDescription": "Overdue task is automatically skipped, logged in history, and rescheduled.",
+
   "stackLabel": "Stack/Overlap (Allow Concurrency)",
   "stackDescription": "Missed occurrences remain active, letting multiple instances stack up.",
   "monthlyLabel": "Monthly",
@@ -434,7 +433,7 @@
   "monthDecember": "December",
   "helpTabMissedPolicies": "Missed Policies",
   "missedPoliciesIntro": "### Missed Occurrence Policies\n\nWhen a recurring task is not completed by its due time, the app applies a **Missed Occurrence Policy** to handle the overdue instance.\n\nUse the simulator below to see how each policy handles overdue tasks over time.",
-  "skipSimTip": "### Skip Policy\n\n**Behavior:** Overdue tasks are automatically dropped/skipped. You don't need to complete or dismiss them manually. The system records a 'skipped' entry in history and moves the schedule to the next upcoming occurrence.\n\n**Try this:**\n1. Tap **Advance 1 Day**.\n2. Look at the history logs below — the task was automatically skipped, and the schedule advanced. You never see overdue tasks piling up!",
+
   "stackSimTip": "### Stack Policy\n\n**Behavior:** Missed occurrences remain active and spawn a separate task instance for each day, letting multiple instances stack up. They all appear on your task list concurrently until completed or dismissed.\n\n**Try this:**\n1. Tap **Advance 1 Day** 3 times.\n2. Notice that 3 separate tasks appear on your list (one for each missed day).\n3. Complete or dismiss them individually to clear the backlog.",
   "advanceDayButton": "Advance 1 Day",
   "resetSimButton": "Reset Simulation",

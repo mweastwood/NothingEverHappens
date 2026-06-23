@@ -541,10 +541,10 @@ void main() {
 
     final task5 = TaskSchedule(
       id: 'b5',
-      title: 'Yearly TaskSchedule with Skip Policy',
-      description: 'Yearly schedule with skip policy.',
+      title: 'Yearly TaskSchedule with Auto-Dismiss Policy',
+      description: 'Yearly schedule with auto-dismiss policy.',
       priority: TaskPriority.medium,
-      missedPolicy: MissedPolicy.skip,
+      missedPolicy: MissedPolicy.autoDismiss,
       schedules: [
         YearlySchedule(
           startDate: const CivilDay(year: 2024, month: 1, day: 1),

@@ -26,27 +26,6 @@ void main() {
         expect(policy5.gracePeriod, const Duration(hours: 3));
       });
 
-      test(
-        'Legacy constructor mapping preserves legacyPolicy and correct gracePeriod',
-        () {
-          const policySkip = MissedOccurrencePolicy(policy: MissedPolicy.skip);
-
-          expect(policySkip.policy, MissedPolicy.autoDismiss);
-          expect(policySkip.legacyPolicy, MissedPolicy.skip);
-          expect(policySkip.gracePeriod, Duration.zero);
-        },
-      );
-
-      test('Legacy keepAround constructor mapping', () {
-        const policySkip = MissedOccurrencePolicy.keepAround(
-          legacyPolicy: MissedPolicy.skip,
-        );
-
-        expect(policySkip.policy, MissedPolicy.autoDismiss);
-        expect(policySkip.legacyPolicy, MissedPolicy.skip);
-        expect(policySkip.gracePeriod, Duration.zero);
-      });
-
       test('Equality and hashCode', () {
         const p1 = MissedOccurrencePolicy.preferOlder();
         const p2 = MissedOccurrencePolicy.preferOlder();
@@ -74,16 +53,15 @@ void main() {
       test(
         'Serialization preserves legacyPolicy and gracePeriod for mapped skip',
         () {
-          const policy = MissedOccurrencePolicy(policy: MissedPolicy.skip);
-          final json = policy.toJson();
-
-          expect(json['policy'], 'autoDismiss');
-          expect(json['legacyPolicy'], 'skip');
-          expect(json['graceMinutes'], 0);
+          final json = {
+            'policy': 'autoDismiss',
+            'legacyPolicy': 'skip',
+            'graceMinutes': 0,
+          };
 
           final deserialized = MissedOccurrencePolicy.fromJson(json);
           expect(deserialized.policy, MissedPolicy.autoDismiss);
-          expect(deserialized.legacyPolicy, MissedPolicy.skip);
+          expect(deserialized.legacyPolicy, MissedPolicy.autoDismiss);
           expect(deserialized.gracePeriod, Duration.zero);
         },
       );

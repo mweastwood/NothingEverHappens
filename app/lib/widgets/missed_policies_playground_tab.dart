@@ -65,8 +65,6 @@ class _MissedPoliciesPlaygroundTabState
         return "Stack";
       case MissedPolicy.autoDismiss:
         return "Auto-Dismiss";
-      case MissedPolicy.skip:
-        return "Legacy";
     }
   }
 
@@ -218,9 +216,6 @@ class _MissedPoliciesPlaygroundTabState
           if (!alreadyExists) {
             _simulatedTasks.add(_createSpawnedTask(_simulatedToday));
           }
-          break;
-
-        case MissedPolicy.skip:
           break;
       }
     });
@@ -374,8 +369,6 @@ class _MissedPoliciesPlaygroundTabState
 **Try this:**
 1. Tap **Advance 1 Day**.
 2. Notice the previous day's task automatically expires and is marked as skipped in history, keeping your active list clean.""";
-      case MissedPolicy.skip:
-        return "";
     }
   }
 

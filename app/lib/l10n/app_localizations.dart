@@ -548,18 +548,6 @@ abstract class AppLocalizations {
   /// **'Define what happens if a recurring task is not completed by its due time.'**
   String get missedPolicyHelper;
 
-  /// No description provided for @skipLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Skip (Drop Occurrence)'**
-  String get skipLabel;
-
-  /// No description provided for @skipDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Overdue task is automatically skipped, logged in history, and rescheduled.'**
-  String get skipDescription;
-
   /// No description provided for @stackLabel.
   ///
   /// In en, this message translates to:
@@ -1471,12 +1459,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'### Missed Occurrence Policies\n\nWhen a recurring task is not completed by its due time, the app applies a **Missed Occurrence Policy** to handle the overdue instance.\n\nUse the simulator below to see how each policy handles overdue tasks over time.'**
   String get missedPoliciesIntro;
-
-  /// No description provided for @skipSimTip.
-  ///
-  /// In en, this message translates to:
-  /// **'### Skip Policy\n\n**Behavior:** Overdue tasks are automatically dropped/skipped. You don\'t need to complete or dismiss them manually. The system records a \'skipped\' entry in history and moves the schedule to the next upcoming occurrence.\n\n**Try this:**\n1. Tap **Advance 1 Day**.\n2. Look at the history logs below — the task was automatically skipped, and the schedule advanced. You never see overdue tasks piling up!'**
-  String get skipSimTip;
 
   /// No description provided for @stackSimTip.
   ///
