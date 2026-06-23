@@ -890,6 +890,18 @@ abstract class AppLocalizations {
   /// **'Show tasks on the main list whose start time is in the future.'**
   String get showPendingTasksHelper;
 
+  /// No description provided for @showRecentlyResolvedTasksLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Completed/Dismissed Tasks'**
+  String get showRecentlyResolvedTasksLabel;
+
+  /// No description provided for @showRecentlyResolvedTasksHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Show tasks that were completed or dismissed today on the main task list.'**
+  String get showRecentlyResolvedTasksHelper;
+
   /// No description provided for @showLastSpawnedDateLabel.
   ///
   /// In en, this message translates to:

@@ -52,6 +52,8 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
   @override
   void initState() {
     super.initState();
+    _isChecking = widget.instance.status == 'completed';
+    _isDeleting = widget.instance.status == 'dismissed';
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -137,6 +139,13 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     super.didUpdateWidget(oldWidget);
     if (widget.instance.assignedUserId != oldWidget.instance.assignedUserId) {
       _loadAssigneeName();
+    }
+    if (widget.instance.status != oldWidget.instance.status) {
+      setState(() {
+        _isChecking = widget.instance.status == 'completed';
+        _isDeleting = widget.instance.status == 'dismissed';
+      });
+      _controller.reset();
     }
   }
 
@@ -456,8 +465,8 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
             ),
           ),
         Dismissible(
-          key: ValueKey(widget.instance.id),
-          direction: _isMouse
+          key: ValueKey('${widget.instance.id}_${widget.instance.status}'),
+          direction: (_isMouse || widget.instance.status != 'pending')
               ? DismissDirection.none
               : DismissDirection.horizontal,
           onUpdate: (details) {
@@ -569,9 +578,14 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                       },
                 leading: FunCheckButton(
                   value: _isChecking,
-                  onChanged: (value) {
+                  onChanged: (value) async {
                     if (value && !_isChecking) {
                       _handleCompletion();
+                    } else if (!value && _isChecking) {
+                      if (widget.instance.status == 'completed') {
+                        final repo = ref.read(taskRepositoryProvider)!;
+                        await repo.undoResolveTaskInstance(widget.instance);
+                      }
                     }
                   },
                 ),
@@ -580,11 +594,41 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                   child: _isMouse
                       ? SelectableText(
                           widget.instance.title,
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                decoration:
+                                    (widget.instance.status == 'completed' ||
+                                        widget.instance.status == 'dismissed')
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                                color:
+                                    (widget.instance.status == 'completed' ||
+                                        widget.instance.status == 'dismissed')
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                          .withValues(alpha: 0.6)
+                                    : null,
+                              ),
                         )
                       : Text(
                           widget.instance.title,
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                decoration:
+                                    (widget.instance.status == 'completed' ||
+                                        widget.instance.status == 'dismissed')
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                                color:
+                                    (widget.instance.status == 'completed' ||
+                                        widget.instance.status == 'dismissed')
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                          .withValues(alpha: 0.6)
+                                    : null,
+                              ),
                         ),
                 ),
                 subtitle: Column(
@@ -595,6 +639,24 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                       MarkdownBody(
                         data: widget.instance.description,
                         selectable: _isMouse,
+                        styleSheet:
+                            MarkdownStyleSheet.fromTheme(
+                              Theme.of(context),
+                            ).copyWith(
+                              p: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color:
+                                        (widget.instance.status ==
+                                                'completed' ||
+                                            widget.instance.status ==
+                                                'dismissed')
+                                        ? Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant
+                                              .withValues(alpha: 0.6)
+                                        : null,
+                                  ),
+                            ),
                       ),
                     ],
                     const SizedBox(height: 8),

@@ -465,6 +465,13 @@ class AppLocalizationsEs extends AppLocalizations {
       'Mostrar tareas en la lista principal cuya hora de inicio sea en el futuro.';
 
   @override
+  String get showRecentlyResolvedTasksLabel => 'Show Completed/Dismissed Tasks';
+
+  @override
+  String get showRecentlyResolvedTasksHelper =>
+      'Show tasks that were completed or dismissed today on the main task list.';
+
+  @override
   String get showLastSpawnedDateLabel => 'Mostrar fecha de último spawn';
 
   @override

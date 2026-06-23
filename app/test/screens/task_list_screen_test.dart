@@ -1378,4 +1378,129 @@ void main() {
     await settingsSubject.close();
     AppClock.reset();
   });
+
+  testGoldens(
+    'TaskListScreen displays completed and dismissed tasks from today when setting is enabled',
+    (tester) async {
+      final nowTime = DateTime(2026, 6, 22, 12, 0); // Monday
+      AppClock.setMockTime(nowTime);
+
+      final today = CivilDay.fromDateTime(nowTime);
+
+      final task1 = TaskSchedule(
+        id: 'task-comp-1',
+        title: 'Completed Task Today',
+        description: 'Done',
+        schedules: [
+          OneOffSchedule(
+            date: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final task2 = TaskSchedule(
+        id: 'task-dism-1',
+        title: 'Dismissed Task Today',
+        description: 'Dismissed desc',
+        schedules: [
+          OneOffSchedule(
+            date: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final compInstance = TaskInstance(
+        id: 'inst-comp-1',
+        scheduleId: task1.id,
+        title: task1.title,
+        description: task1.description,
+        scheduledDate: today,
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: 'completed',
+        completedAt: nowTime.subtract(const Duration(hours: 1)),
+        completedByUserId: 'test-user',
+      );
+
+      final dismInstance = TaskInstance(
+        id: 'inst-dism-1',
+        scheduleId: task2.id,
+        title: task2.title,
+        description: task2.description,
+        scheduledDate: today,
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: 'dismissed',
+        completedAt: nowTime.subtract(const Duration(minutes: 30)),
+        completedByUserId: 'test-user',
+      );
+
+      final settingsSubject = BehaviorSubject<UserSettings>.seeded(
+        const UserSettings(
+          hoursAvailable: 8.0,
+          showRecentlyResolvedTasks: true,
+        ),
+      );
+
+      when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+      when(
+        mockTaskRepository.getTasks(),
+      ).thenAnswer((_) => Stream.value([task1, task2]));
+      when(
+        mockTaskRepository.getInstances(),
+      ).thenAnswer((_) => Stream.value([compInstance, dismInstance]));
+
+      await tester.pumpWidgetBuilder(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
+          ],
+          child: const HomeScreen(),
+        ),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(400, 800),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify both completed and dismissed tasks are visible in the list
+      expect(find.text('Completed Task Today'), findsOneWidget);
+      expect(find.text('Dismissed Task Today'), findsOneWidget);
+
+      await screenMatchesGolden(tester, 'task_list_screen_recently_resolved');
+
+      await settingsSubject.close();
+      AppClock.reset();
+    },
+  );
 }

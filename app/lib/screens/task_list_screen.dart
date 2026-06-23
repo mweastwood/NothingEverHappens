@@ -5,6 +5,7 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../widgets/task_widget.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/civil_day.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
 
@@ -83,7 +84,15 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             final isPending =
                 inst.status == 'pending' &&
                 (!isFuture || settings.showPendingTasks);
-            if (!isPending) return false;
+
+            final isResolvedToday =
+                (inst.status == 'completed' || inst.status == 'dismissed') &&
+                inst.completedAt != null &&
+                CivilDay.fromDateTime(inst.completedAt!) ==
+                    CivilDay.fromDateTime(AppClock.now) &&
+                settings.showRecentlyResolvedTasks;
+
+            if (!isPending && !isResolvedToday) return false;
             if (searchQuery.isEmpty) return true;
 
             final queryWords = searchQuery

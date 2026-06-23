@@ -244,6 +244,8 @@
   "settingsSavedSuccessfully": "Settings saved successfully",
   "showPendingTasksLabel": "Show Pending Tasks",
   "showPendingTasksHelper": "Show tasks on the main list whose start time is in the future.",
+  "showRecentlyResolvedTasksLabel": "Show Completed/Dismissed Tasks",
+  "showRecentlyResolvedTasksHelper": "Show tasks that were completed or dismissed today on the main task list.",
   "showLastSpawnedDateLabel": "Show Last Spawned Date",
   "showLastSpawnedDateHelper": "Display the last spawned date on each task schedule card for debugging.",
   "pendingBadge": "Pending",

@@ -19,6 +19,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isInitialized = false;
   bool _showPendingTasks = false;
   bool _showLastSpawnedDate = false;
+  bool _showRecentlyResolvedTasks = false;
 
   @override
   void dispose() {
@@ -41,6 +42,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           hoursAvailable: hours,
           showPendingTasks: _showPendingTasks,
           showLastSpawnedDate: _showLastSpawnedDate,
+          showRecentlyResolvedTasks: _showRecentlyResolvedTasks,
         );
 
         await repository
@@ -104,6 +106,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _hoursController.text = settings.hoursAvailable.toString();
             _showPendingTasks = settings.showPendingTasks;
             _showLastSpawnedDate = settings.showLastSpawnedDate;
+            _showRecentlyResolvedTasks = settings.showRecentlyResolvedTasks;
             _isInitialized = true;
           }
 
@@ -174,6 +177,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Icons.playlist_add_check_outlined,
                       size: 28,
                     ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: SwitchListTile(
+                    key: const Key('show_recently_resolved_tasks_switch'),
+                    title: Text(context.l10n.showRecentlyResolvedTasksLabel),
+                    subtitle: Text(
+                      context.l10n.showRecentlyResolvedTasksHelper,
+                    ),
+                    value: _showRecentlyResolvedTasks,
+                    onChanged: (val) {
+                      setState(() {
+                        _showRecentlyResolvedTasks = val;
+                      });
+                    },
+                    secondary: const Icon(Icons.task_alt_outlined, size: 28),
                   ),
                 ),
                 const SizedBox(height: 16),

@@ -133,6 +133,7 @@ void main() {
         hoursAvailable: 8.0,
         showPendingTasks: true,
         showLastSpawnedDate: true,
+        showRecentlyResolvedTasks: true,
       ),
     );
 
@@ -171,6 +172,43 @@ void main() {
       verify(
         mockRepository.updateSettings(
           const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
+        ),
+      ).called(1);
+    },
+  );
+
+  testWidgets(
+    'SettingsScreen updates and saves showRecentlyResolvedTasks switch correctly',
+    (WidgetTester tester) async {
+      when(mockRepository.updateSettings(any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      final switchFinder = find.byKey(
+        const Key('show_recently_resolved_tasks_switch'),
+      );
+      expect(switchFinder, findsOneWidget);
+
+      final SwitchListTile switchListTile = tester.widget(switchFinder);
+      expect(switchListTile.value, isFalse);
+
+      await tester.tap(switchFinder);
+      await tester.pumpAndSettle();
+
+      final SwitchListTile updatedSwitch = tester.widget(switchFinder);
+      expect(updatedSwitch.value, isTrue);
+
+      final saveButtonFinder = find.byKey(const Key('save_settings_button'));
+      await tester.tap(saveButtonFinder);
+      await tester.pumpAndSettle();
+
+      verify(
+        mockRepository.updateSettings(
+          const UserSettings(
+            hoursAvailable: 8.0,
+            showRecentlyResolvedTasks: true,
+          ),
         ),
       ).called(1);
     },
