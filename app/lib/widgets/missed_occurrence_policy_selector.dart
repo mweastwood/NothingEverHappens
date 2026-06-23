@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../logic/missed_occurrence_policy.dart';
-import '../logic/missed_policy.dart';
 
 class MissedOccurrencePolicySelector extends StatefulWidget {
   final MissedOccurrencePolicy policy;

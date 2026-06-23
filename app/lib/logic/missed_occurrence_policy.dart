@@ -1,16 +1,14 @@
-import 'missed_policy.dart';
 import 'task_instance.dart';
 
-enum MissedOccurrenceType { keepAround, autoDismiss }
+enum MissedPolicy { preferNewer, preferOlder, stack, autoDismiss }
 
 class MissedOccurrencePolicy {
   final MissedPolicy policy;
   final Duration gracePeriod;
 
-  // Legacy compatibility getters
-  MissedOccurrenceType get type => policy == MissedPolicy.autoDismiss
-      ? MissedOccurrenceType.autoDismiss
-      : MissedOccurrenceType.keepAround;
+  // Legacy compatibility getters/helpers
+  bool get isKeepAround => policy != MissedPolicy.autoDismiss;
+  bool get isAutoDismiss => policy == MissedPolicy.autoDismiss;
 
   const MissedOccurrencePolicy._internal({
     required this.policy,
@@ -81,7 +79,7 @@ class MissedOccurrencePolicy {
   Map<String, dynamic> toJson() {
     return {
       'policy': policy.name,
-      'type': type.name,
+      'type': policy == MissedPolicy.autoDismiss ? 'autoDismiss' : 'keepAround',
       if (policy == MissedPolicy.autoDismiss)
         'graceMinutes': gracePeriod.inMinutes,
     };

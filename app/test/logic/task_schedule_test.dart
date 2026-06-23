@@ -142,10 +142,7 @@ void main() {
             deserialized.schedulingPolicy as CompletionRelativePolicy;
         expect(policy.interval, const Duration(days: 7));
         expect(policy.targetTime, const TimeOfDay(hour: 9, minute: 30));
-        expect(
-          deserialized.missedOccurrencePolicy.type,
-          MissedOccurrenceType.autoDismiss,
-        );
+        expect(deserialized.missedOccurrencePolicy.isAutoDismiss, isTrue);
         expect(
           deserialized.missedOccurrencePolicy.gracePeriod,
           const Duration(hours: 4),
@@ -1684,10 +1681,7 @@ void main() {
             task.schedules[0].schedulingPolicy,
             isA<FixedCalendarPolicy>(),
           );
-          expect(
-            task.schedules[0].missedOccurrencePolicy.type,
-            MissedOccurrenceType.keepAround,
-          );
+          expect(task.schedules[0].missedOccurrencePolicy.isKeepAround, isTrue);
 
           expect(
             task.schedules[1].schedulingPolicy,
@@ -1698,8 +1692,8 @@ void main() {
           expect(relPolicy.interval, const Duration(days: 3));
           expect(relPolicy.targetTime, const TimeOfDay(hour: 15, minute: 0));
           expect(
-            task.schedules[1].missedOccurrencePolicy.type,
-            MissedOccurrenceType.autoDismiss,
+            task.schedules[1].missedOccurrencePolicy.isAutoDismiss,
+            isTrue,
           );
           expect(
             task.schedules[1].missedOccurrencePolicy.gracePeriod,
@@ -1752,8 +1746,8 @@ void main() {
             isA<FixedCalendarPolicy>(),
           );
           expect(
-            deserialized.schedules[0].missedOccurrencePolicy.type,
-            MissedOccurrenceType.keepAround,
+            deserialized.schedules[0].missedOccurrencePolicy.isKeepAround,
+            isTrue,
           );
 
           expect(
@@ -1765,8 +1759,8 @@ void main() {
                   as CompletionRelativePolicy;
           expect(desRelPolicy.interval, const Duration(days: 3));
           expect(
-            deserialized.schedules[1].missedOccurrencePolicy.type,
-            MissedOccurrenceType.autoDismiss,
+            deserialized.schedules[1].missedOccurrencePolicy.isAutoDismiss,
+            isTrue,
           );
           expect(
             deserialized.schedules[1].missedOccurrencePolicy.gracePeriod,
@@ -1827,8 +1821,8 @@ void main() {
             isA<CompletionRelativePolicy>(),
           );
           expect(
-            updatedTask.schedules.first.missedOccurrencePolicy.type,
-            MissedOccurrenceType.autoDismiss,
+            updatedTask.schedules.first.missedOccurrencePolicy.isAutoDismiss,
+            isTrue,
           );
 
           // Verify updates are recorded in changes map

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
-import 'package:nothing_ever_happens/logic/missed_policy.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
