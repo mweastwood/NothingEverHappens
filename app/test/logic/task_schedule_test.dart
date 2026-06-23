@@ -1718,6 +1718,11 @@ void main() {
         );
         await Future.delayed(Duration.zero);
 
+        // Fast-forward to June 3
+        AppClock.setMockTime(DateTime(2026, 6, 3, 10, 0));
+        await repository.triggerMissedPolicyProcessing();
+        await Future.delayed(Duration.zero);
+
         final insts = await firestore
             .collection('users')
             .doc(userId)
@@ -2048,6 +2053,19 @@ void main() {
           // Next scheduledDate is completionTime + 3 days = Saturday May 30
           final nextInstId = 'comp-relative-complete_2026-05-30';
 
+          final nextSnapBefore = await firestore
+              .collection('users')
+              .doc('user-1')
+              .collection('instances')
+              .doc(nextInstId)
+              .get();
+          expect(nextSnapBefore.exists, isFalse);
+
+          // Fast forward to Saturday May 30 at 2:00 PM (14:00) when it is due
+          AppClock.setMockTime(DateTime(2026, 5, 30, 14, 0));
+          await repository.triggerMissedPolicyProcessing();
+          await Future.delayed(Duration.zero);
+
           final nextSnap = await firestore
               .collection('users')
               .doc('user-1')
@@ -2168,8 +2186,14 @@ void main() {
           );
           await Future.delayed(Duration.zero);
 
-          // A new pending instance for May 28 should have been spawned immediately
           final nextInstId = 'comp-relative-bg-spawn_2026-05-28';
+
+          // Fast forward to May 28 at 12:00 PM (noon) when it is due
+          AppClock.setMockTime(DateTime(2026, 5, 28, 12, 0));
+          await repository.triggerMissedPolicyProcessing();
+          await Future.delayed(Duration.zero);
+
+          // A new pending instance for May 28 should now be spawned
           final nextSnap = await firestore
               .collection('users')
               .doc('user-1')

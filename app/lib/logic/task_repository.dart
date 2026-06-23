@@ -745,6 +745,10 @@ class TaskRepository {
         batch.delete(
           _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
         );
+        final updatedTask = task.copyWith(
+          lastSpawnedDate: resolvedInstance.scheduledDate,
+        );
+        batch.set(_taskRefFor(updatedTask, familyId), updatedTask);
       }
     }
 
@@ -763,8 +767,26 @@ class TaskRepository {
       completedInstance,
       now,
     );
-    if (nextInst != null) {
+    final today = CivilDay.fromDateTime(now);
+
+    if (nextInst != null &&
+        (nextInst.scheduledDate.isBefore(today) ||
+            nextInst.scheduledDate == today)) {
       batch.set(_instanceRefFor(nextInst, familyId), nextInst);
+      final updatedTask = task.copyWith(
+        lastSpawnedDate: nextInst.scheduledDate,
+      );
+      batch.set(_taskRefFor(updatedTask, familyId), updatedTask);
+    } else {
+      final newLastSpawnedDate = nextInst != null
+          ? nextInst.scheduledDate.addDays(-1)
+          : completedInstance.scheduledDate;
+
+      if (task.lastSpawnedDate == null ||
+          task.lastSpawnedDate!.isBefore(newLastSpawnedDate)) {
+        final updatedTask = task.copyWith(lastSpawnedDate: newLastSpawnedDate);
+        batch.set(_taskRefFor(updatedTask, familyId), updatedTask);
+      }
     }
   }
 
