@@ -13,6 +13,8 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 
@@ -157,7 +159,14 @@ void main() {
           authRepositoryProvider.overrideWithValue(mockAuthRepository),
           taskRepositoryProvider.overrideWithValue(mockTaskRepository),
         ],
-        child: const Scaffold(body: TaskScheduleScreen()),
+        child: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.zero,
+            viewPadding: EdgeInsets.zero,
+            viewInsets: EdgeInsets.zero,
+          ),
+          child: const Scaffold(body: TaskScheduleScreen()),
+        ),
       ),
       wrapper: l10nMaterialAppWrapper(),
       surfaceSize: const Size(400, 800),
@@ -221,7 +230,14 @@ void main() {
           authRepositoryProvider.overrideWithValue(mockAuthRepository),
           taskRepositoryProvider.overrideWithValue(mockTaskRepository),
         ],
-        child: const Scaffold(body: TaskScheduleScreen()),
+        child: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.zero,
+            viewPadding: EdgeInsets.zero,
+            viewInsets: EdgeInsets.zero,
+          ),
+          child: const Scaffold(body: TaskScheduleScreen()),
+        ),
       ),
       wrapper: l10nMaterialAppWrapper(),
       surfaceSize: const Size(400, 800),
@@ -679,5 +695,198 @@ void main() {
     await tester.tap(titleChipFinder);
     await tester.pumpAndSettle();
     expect(getTitlesInOrder(), ['Apple', 'Banana', 'Cherry', 'Date']);
+  });
+
+  testWidgets(
+    'TaskScheduleScreen displays lastSpawnedDate when showLastSpawnedDate setting is enabled',
+    (WidgetTester tester) async {
+      final dailyTask = TaskSchedule(
+        id: '1',
+        title: 'Daily Exercises',
+        description: 'Run 5km and do pushups',
+        lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 22),
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 7, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 30),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([dailyTask]);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userSettingsProvider.overrideWith(
+              (ref) => Stream.value(
+                const UserSettings(
+                  hoursAvailable: 8.0,
+                  showLastSpawnedDate: true,
+                ),
+              ),
+            ),
+          ],
+          child: buildTestableWidget(
+            child: const Scaffold(body: TaskScheduleScreen()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('lastSpawnedDate: 2026-06-22'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'TaskScheduleScreen does not display lastSpawnedDate when showLastSpawnedDate setting is disabled',
+    (WidgetTester tester) async {
+      final dailyTask = TaskSchedule(
+        id: '1',
+        title: 'Daily Exercises',
+        description: 'Run 5km and do pushups',
+        lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 22),
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 7, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 30),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([dailyTask]);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userSettingsProvider.overrideWith(
+              (ref) => Stream.value(
+                const UserSettings(
+                  hoursAvailable: 8.0,
+                  showLastSpawnedDate: false,
+                ),
+              ),
+            ),
+          ],
+          child: buildTestableWidget(
+            child: const Scaffold(body: TaskScheduleScreen()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('lastSpawnedDate:'), findsNothing);
+    },
+  );
+
+  testGoldens('TaskScheduleScreen populated with lastSpawnedDate golden', (
+    tester,
+  ) async {
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    final dailyTask = TaskSchedule(
+      id: '1',
+      title: 'Daily Exercises',
+      description: 'Run 5km and do pushups',
+      lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 22),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 7, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 8, minute: 30),
+          ),
+        ),
+      ],
+    );
+
+    final weeklyTask = TaskSchedule(
+      id: '2',
+      title: 'Weekly Cleaning',
+      description: 'Vacuum the house and dust the shelves',
+      lastSpawnedDate: null,
+      schedules: [
+        WeeklySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          daysOfWeek: const {6, 7},
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 12, minute: 0),
+          ),
+        ),
+      ],
+    );
+
+    final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+      dailyTask,
+      weeklyTask,
+    ], sync: true);
+    final settingsSubject = BehaviorSubject<UserSettings>.seeded(
+      const UserSettings(hoursAvailable: 8.0, showLastSpawnedDate: true),
+      sync: true,
+    );
+
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubject.stream);
+
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+          userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
+        ],
+        child: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.zero,
+            viewPadding: EdgeInsets.zero,
+            viewInsets: EdgeInsets.zero,
+          ),
+          child: const Scaffold(body: TaskScheduleScreen()),
+        ),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'task_schedule_screen_last_spawned_date');
+
+    await tasksSubject.close();
+    await settingsSubject.close();
   });
 }

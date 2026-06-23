@@ -126,4 +126,87 @@ void main() {
 
     await screenMatchesGolden(tester, 'settings_screen_validation_error');
   });
+
+  testGoldens('SettingsScreen with all options enabled golden', (tester) async {
+    settingsSubject.add(
+      const UserSettings(
+        hoursAvailable: 8.0,
+        showPendingTasks: true,
+        showLastSpawnedDate: true,
+      ),
+    );
+
+    await tester.pumpWidgetBuilder(
+      buildTestWidget(),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+    await screenMatchesGolden(tester, 'settings_screen_all_enabled');
+  });
+
+  testWidgets(
+    'SettingsScreen updates and saves showPendingTasks switch correctly',
+    (WidgetTester tester) async {
+      when(mockRepository.updateSettings(any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      final switchFinder = find.byKey(const Key('show_pending_tasks_switch'));
+      expect(switchFinder, findsOneWidget);
+
+      final SwitchListTile switchListTile = tester.widget(switchFinder);
+      expect(switchListTile.value, isFalse);
+
+      await tester.tap(switchFinder);
+      await tester.pumpAndSettle();
+
+      final SwitchListTile updatedSwitch = tester.widget(switchFinder);
+      expect(updatedSwitch.value, isTrue);
+
+      final saveButtonFinder = find.byKey(const Key('save_settings_button'));
+      await tester.tap(saveButtonFinder);
+      await tester.pumpAndSettle();
+
+      verify(
+        mockRepository.updateSettings(
+          const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
+        ),
+      ).called(1);
+    },
+  );
+
+  testWidgets(
+    'SettingsScreen updates and saves showLastSpawnedDate switch correctly',
+    (WidgetTester tester) async {
+      when(mockRepository.updateSettings(any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      final switchFinder = find.byKey(
+        const Key('show_last_spawned_date_switch'),
+      );
+      expect(switchFinder, findsOneWidget);
+
+      final SwitchListTile switchListTile = tester.widget(switchFinder);
+      expect(switchListTile.value, isFalse);
+
+      await tester.tap(switchFinder);
+      await tester.pumpAndSettle();
+
+      final SwitchListTile updatedSwitch = tester.widget(switchFinder);
+      expect(updatedSwitch.value, isTrue);
+
+      final saveButtonFinder = find.byKey(const Key('save_settings_button'));
+      await tester.tap(saveButtonFinder);
+      await tester.pumpAndSettle();
+
+      verify(
+        mockRepository.updateSettings(
+          const UserSettings(hoursAvailable: 8.0, showLastSpawnedDate: true),
+        ),
+      ).called(1);
+    },
+  );
 }

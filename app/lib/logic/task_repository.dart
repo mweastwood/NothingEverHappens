@@ -485,10 +485,16 @@ class TaskRepository {
     final familyId = await _getFamilyId();
     final batch = _firestore.batch();
 
-    final newTask = modification.newTask;
+    var newTask = modification.newTask;
     final changes = modification.changes;
 
     final isFamilyChanged = changes.containsKey('isFamily');
+    final schedulesChanged = changes.containsKey('schedules');
+
+    if (schedulesChanged) {
+      final yesterday = CivilDay.fromDateTime(AppClock.now).addDays(-1);
+      newTask = newTask.copyWith(lastSpawnedDate: yesterday);
+    }
 
     if (isFamilyChanged) {
       if (newTask.isFamily) {
@@ -512,8 +518,6 @@ class TaskRepository {
     } else {
       batch.set(_taskRefFor(newTask, familyId), newTask);
     }
-
-    final schedulesChanged = changes.containsKey('schedules');
 
     final List<DocumentSnapshot<TaskInstance>> personalPending = [];
     final List<DocumentSnapshot<TaskInstance>> familyPending = [];

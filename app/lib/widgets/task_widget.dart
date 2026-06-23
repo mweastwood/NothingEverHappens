@@ -422,6 +422,11 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                 widget.instance.notificationRelativeTimes,
           );
 
+    final startDateTime = widget.instance.startRelativeTime.referenceTo(
+      widget.instance.scheduledDate,
+    );
+    final isFuturePending = AppClock.now.isBefore(startDateTime);
+
     return Stack(
       children: [
         if (_swipeProgress > 0.0 && _swipeDirection != null)
@@ -599,6 +604,14 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                       children: [
                         // Due Date Badge
                         _buildDueDateBadge(context),
+                        // Pending Badge
+                        if (isFuturePending)
+                          _buildBadge(
+                            context,
+                            icon: Icons.hourglass_empty_outlined,
+                            label: context.l10n.pendingBadge,
+                            color: Colors.blue,
+                          ),
                         // Scope (Family only)
                         if (widget.instance.isFamily)
                           _buildBadge(

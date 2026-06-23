@@ -9,6 +9,7 @@ import 'create_task_screen.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/undo_notifier.dart';
 import '../widgets/undo_snackbar.dart';
+import '../logic/user_settings_repository.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -277,6 +278,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
   Widget build(BuildContext context) {
     final taskRepository = ref.watch(taskRepositoryProvider);
     final schedulesVal = ref.watch(taskSchedulesProvider);
+    final settingsVal = ref.watch(userSettingsProvider);
     final searchQuery = ref
         .watch(scheduleSearchQueryProvider)
         .trim()
@@ -294,91 +296,100 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
           ), // Avoid overlap with dev clock banner
           child: taskRepository == null
               ? const Center(child: CircularProgressIndicator())
-              : schedulesVal.when(
+              : settingsVal.when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
                   error: (err, stack) => Center(
                     child: Text('${context.l10n.errorOccurred}: $err'),
                   ),
-                  data: (allTasks) {
-                    final recurringTasks = allTasks
-                        .where(
-                          (task) =>
-                              task.schedules.any((s) => s is! OneOffSchedule),
-                        )
-                        .toList();
+                  data: (settings) => schedulesVal.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (err, stack) => Center(
+                      child: Text('${context.l10n.errorOccurred}: $err'),
+                    ),
+                    data: (allTasks) {
+                      final showLastSpawnedDate = settings.showLastSpawnedDate;
+                      final recurringTasks = allTasks
+                          .where(
+                            (task) =>
+                                task.schedules.any((s) => s is! OneOffSchedule),
+                          )
+                          .toList();
 
-                    // Filter based on search query
-                    final filteredTasks = recurringTasks.where((task) {
-                      if (searchQuery.isEmpty) return true;
-                      final queryWords = searchQuery
-                          .split(RegExp(r'\s+'))
-                          .where((word) => word.isNotEmpty);
-                      if (queryWords.isEmpty) return true;
+                      // Filter based on search query
+                      final filteredTasks = recurringTasks.where((task) {
+                        if (searchQuery.isEmpty) return true;
+                        final queryWords = searchQuery
+                            .split(RegExp(r'\s+'))
+                            .where((word) => word.isNotEmpty);
+                        if (queryWords.isEmpty) return true;
 
-                      return queryWords.every((word) {
-                        final matchesTitle = task.title.toLowerCase().contains(
-                          word,
-                        );
-                        final matchesDesc = task.description
-                            .toLowerCase()
-                            .contains(word);
-                        return matchesTitle || matchesDesc;
-                      });
-                    }).toList();
+                        return queryWords.every((word) {
+                          final matchesTitle = task.title
+                              .toLowerCase()
+                              .contains(word);
+                          final matchesDesc = task.description
+                              .toLowerCase()
+                              .contains(word);
+                          return matchesTitle || matchesDesc;
+                        });
+                      }).toList();
 
-                    if (recurringTasks.isEmpty) {
-                      return _buildEmptyState(context);
-                    }
-
-                    if (filteredTasks.isEmpty && searchQuery.isNotEmpty) {
-                      return _buildNoMatchesState(context);
-                    }
-
-                    // Sort filtered tasks using sort history (stable multi-key sort)
-                    final originalIndices = {
-                      for (int i = 0; i < filteredTasks.length; i++)
-                        filteredTasks[i].id: i,
-                    };
-                    filteredTasks.sort((a, b) {
-                      for (final sort in _sortHistory) {
-                        final result = _compareTasks(
-                          a,
-                          b,
-                          sort.column,
-                          sort.ascending,
-                        );
-                        if (result != 0) return result;
+                      if (recurringTasks.isEmpty) {
+                        return _buildEmptyState(context);
                       }
-                      final indexA = originalIndices[a.id] ?? 0;
-                      final indexB = originalIndices[b.id] ?? 0;
-                      return indexA.compareTo(indexB);
-                    });
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Sort bar at the top
-                        _buildSortBar(context, theme),
-                        const Divider(height: 1, thickness: 0.5),
-                        // Scrollable list of task cards
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: filteredTasks.length,
-                            itemBuilder: (context, index) {
-                              final task = filteredTasks[index];
-                              return _buildTaskCard(
-                                context,
-                                task,
-                                theme,
-                                taskRepository,
-                              );
-                            },
+                      if (filteredTasks.isEmpty && searchQuery.isNotEmpty) {
+                        return _buildNoMatchesState(context);
+                      }
+
+                      // Sort filtered tasks using sort history (stable multi-key sort)
+                      final originalIndices = {
+                        for (int i = 0; i < filteredTasks.length; i++)
+                          filteredTasks[i].id: i,
+                      };
+                      filteredTasks.sort((a, b) {
+                        for (final sort in _sortHistory) {
+                          final result = _compareTasks(
+                            a,
+                            b,
+                            sort.column,
+                            sort.ascending,
+                          );
+                          if (result != 0) return result;
+                        }
+                        final indexA = originalIndices[a.id] ?? 0;
+                        final indexB = originalIndices[b.id] ?? 0;
+                        return indexA.compareTo(indexB);
+                      });
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Sort bar at the top
+                          _buildSortBar(context, theme),
+                          const Divider(height: 1, thickness: 0.5),
+                          // Scrollable list of task cards
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: filteredTasks.length,
+                              itemBuilder: (context, index) {
+                                final task = filteredTasks[index];
+                                return _buildTaskCard(
+                                  context,
+                                  task,
+                                  theme,
+                                  taskRepository,
+                                  showLastSpawnedDate,
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    );
-                  },
+                        ],
+                      );
+                    },
+                  ),
                 ),
         );
       },
@@ -386,71 +397,82 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
   }
 
   Widget _buildSortBar(BuildContext context, ThemeData theme) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Row(
-        children: [
-          Text(
-            context.l10n.scheduleSortByLabel,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurfaceVariant,
+    return SizedBox(
+      height: 48.0,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+        child: Row(
+          children: [
+            Text(
+              context.l10n.scheduleSortByLabel,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          ChoiceChip(
-            label: Text(context.l10n.titleFieldLabel),
-            selected: _sortColumn == 'title',
-            showCheckmark: false,
-            avatar: _sortColumn == 'title'
-                ? Icon(
-                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14,
-                  )
-                : null,
-            onSelected: (_) => _onSort('title'),
-          ),
-          const SizedBox(width: 8),
-          ChoiceChip(
-            label: Text(context.l10n.scheduleSortNextStartLabel),
-            selected: _sortColumn == 'next_start',
-            showCheckmark: false,
-            avatar: _sortColumn == 'next_start'
-                ? Icon(
-                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14,
-                  )
-                : null,
-            onSelected: (_) => _onSort('next_start'),
-          ),
-          const SizedBox(width: 8),
-          ChoiceChip(
-            label: Text(context.l10n.scheduleSortNextDueLabel),
-            selected: _sortColumn == 'next_due',
-            showCheckmark: false,
-            avatar: _sortColumn == 'next_due'
-                ? Icon(
-                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14,
-                  )
-                : null,
-            onSelected: (_) => _onSort('next_due'),
-          ),
-          const SizedBox(width: 8),
-          ChoiceChip(
-            label: Text(context.l10n.taskPriorityLabel),
-            selected: _sortColumn == 'priority',
-            showCheckmark: false,
-            avatar: _sortColumn == 'priority'
-                ? Icon(
-                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14,
-                  )
-                : null,
-            onSelected: (_) => _onSort('priority'),
-          ),
-        ],
+            const SizedBox(width: 12),
+            ChoiceChip(
+              label: Text(context.l10n.titleFieldLabel),
+              selected: _sortColumn == 'title',
+              showCheckmark: false,
+              avatar: _sortColumn == 'title'
+                  ? Icon(
+                      _sortAscending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 14,
+                    )
+                  : null,
+              onSelected: (_) => _onSort('title'),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: Text(context.l10n.scheduleSortNextStartLabel),
+              selected: _sortColumn == 'next_start',
+              showCheckmark: false,
+              avatar: _sortColumn == 'next_start'
+                  ? Icon(
+                      _sortAscending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 14,
+                    )
+                  : null,
+              onSelected: (_) => _onSort('next_start'),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: Text(context.l10n.scheduleSortNextDueLabel),
+              selected: _sortColumn == 'next_due',
+              showCheckmark: false,
+              avatar: _sortColumn == 'next_due'
+                  ? Icon(
+                      _sortAscending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 14,
+                    )
+                  : null,
+              onSelected: (_) => _onSort('next_due'),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: Text(context.l10n.taskPriorityLabel),
+              selected: _sortColumn == 'priority',
+              showCheckmark: false,
+              avatar: _sortColumn == 'priority'
+                  ? Icon(
+                      _sortAscending
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 14,
+                    )
+                  : null,
+              onSelected: (_) => _onSort('priority'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -460,6 +482,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     TaskSchedule task,
     ThemeData theme,
     TaskRepository repository,
+    bool showLastSpawnedDate,
   ) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
@@ -553,6 +576,24 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
               ),
             ),
           ],
+          if (showLastSpawnedDate)
+            Padding(
+              padding: const EdgeInsets.only(
+                left: 28.0,
+                right: 12.0,
+                bottom: 8.0,
+              ),
+              child: Text(
+                'lastSpawnedDate: ${task.lastSpawnedDate?.toString() ?? "null"}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 11.0,
+                  height: 1.2,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.6,
+                  ),
+                ),
+              ),
+            ),
           const Divider(height: 1, thickness: 0.5),
           // Rule list inside task card (high density)
           ListView.separated(

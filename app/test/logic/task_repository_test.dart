@@ -940,5 +940,156 @@ void main() {
         await subscription.cancel();
       },
     );
+
+    test(
+      'regression: new repeating task with start time in future spawns instance immediately',
+      () async {
+        final mockTime = DateTime(2026, 6, 22, 10, 0, 0);
+        AppClock.setMockTime(mockTime);
+
+        final task = TaskSchedule(
+          id: 'future-repeating-task',
+          title: 'Future Repeating Task',
+          description: 'Desc',
+          lastSpawnedDate: CivilDay(year: 2026, month: 6, day: 21), // yesterday
+          schedules: [
+            DailySchedule(
+              startDate: CivilDay(year: 2026, month: 6, day: 22), // today
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 10, minute: 1), // 1 minute in future
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 11, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        final subscription = repository.getTasks().listen((_) {});
+
+        await repository.addTaskSchedule(task);
+
+        // Wait a moment for background processing
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        final instanceSnapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc('${task.id}_2026-06-22')
+            .get();
+
+        expect(instanceSnapshot.exists, isTrue);
+        expect(instanceSnapshot.data()!['status'], equals('pending'));
+
+        await subscription.cancel();
+        AppClock.reset();
+      },
+    );
+
+    test(
+      'regression: editing a repeating task schedule deletes and spawns the instance for today',
+      () async {
+        final mockTime = DateTime(2026, 6, 22, 10, 0, 0);
+        AppClock.setMockTime(mockTime);
+
+        final task = TaskSchedule(
+          id: 'edit-repeating-task',
+          title: 'Edit Repeating Task',
+          description: 'Desc',
+          lastSpawnedDate: CivilDay(year: 2026, month: 6, day: 21), // yesterday
+          schedules: [
+            DailySchedule(
+              startDate: CivilDay(year: 2026, month: 6, day: 22), // today
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 10, minute: 1),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 11, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        final subscription = repository.getTasks().listen((_) {});
+
+        await repository.addTaskSchedule(task);
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        // Verify instance is spawned for today
+        var snapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc('${task.id}_2026-06-22')
+            .get();
+        expect(snapshot.exists, isTrue);
+
+        // Fetch task from Firestore to get updated lastSpawnedDate
+        final updatedTaskDoc = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .doc(task.id)
+            .get();
+        final updatedTask = TaskSchedule.fromFirestore(updatedTaskDoc);
+        expect(
+          updatedTask.lastSpawnedDate,
+          equals(CivilDay(year: 2026, month: 6, day: 22)),
+        );
+
+        // Edit schedule
+        final modification = updatedTask.edit(
+          newTitle: 'Edit Repeating Task',
+          newDescription: 'Desc',
+          newSchedules: [
+            DailySchedule(
+              startDate: CivilDay(year: 2026, month: 6, day: 22),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 10, minute: 5), // Changed start time
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 11, minute: 0),
+              ),
+            ),
+          ],
+          newEstimatedDuration: null,
+          newMissedPolicy: MissedPolicy.stack,
+          newIsMaster: true,
+          newLastSpawnedDate: updatedTask.lastSpawnedDate,
+          newIsFamily: false,
+          newPriority: TaskPriority.medium,
+        );
+
+        await repository.updateTaskSchedule(modification);
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        // Verify if instance is spawned for today
+        snapshot = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc('${task.id}_2026-06-22')
+            .get();
+
+        expect(
+          snapshot.exists,
+          isTrue,
+          reason: 'Today\'s instance should be re-spawned after editing',
+        );
+
+        await subscription.cancel();
+        AppClock.reset();
+      },
+    );
   });
 }

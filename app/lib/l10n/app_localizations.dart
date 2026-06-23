@@ -878,6 +878,36 @@ abstract class AppLocalizations {
   /// **'Settings saved successfully'**
   String get settingsSavedSuccessfully;
 
+  /// No description provided for @showPendingTasksLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Pending Tasks'**
+  String get showPendingTasksLabel;
+
+  /// No description provided for @showPendingTasksHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Show tasks on the main list whose start time is in the future.'**
+  String get showPendingTasksHelper;
+
+  /// No description provided for @showLastSpawnedDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Last Spawned Date'**
+  String get showLastSpawnedDateLabel;
+
+  /// No description provided for @showLastSpawnedDateHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Display the last spawned date on each task schedule card for debugging.'**
+  String get showLastSpawnedDateHelper;
+
+  /// No description provided for @pendingBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pendingBadge;
+
   /// No description provided for @familyTab.
   ///
   /// In en, this message translates to:

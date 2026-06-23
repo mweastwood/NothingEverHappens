@@ -17,6 +17,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _hoursController = TextEditingController();
   bool _isSaving = false;
   bool _isInitialized = false;
+  bool _showPendingTasks = false;
+  bool _showLastSpawnedDate = false;
 
   @override
   void dispose() {
@@ -35,7 +37,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
       try {
         final hours = double.parse(_hoursController.text.trim());
-        final updatedSettings = currentSettings.copyWith(hoursAvailable: hours);
+        final updatedSettings = currentSettings.copyWith(
+          hoursAvailable: hours,
+          showPendingTasks: _showPendingTasks,
+          showLastSpawnedDate: _showLastSpawnedDate,
+        );
 
         await repository
             .updateSettings(updatedSettings)
@@ -96,6 +102,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           final settings = snapshot.data!;
           if (!_isInitialized) {
             _hoursController.text = settings.hoursAvailable.toString();
+            _showPendingTasks = settings.showPendingTasks;
+            _showLastSpawnedDate = settings.showLastSpawnedDate;
             _isInitialized = true;
           }
 
@@ -148,6 +156,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ],
                     ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: SwitchListTile(
+                    key: const Key('show_pending_tasks_switch'),
+                    title: Text(context.l10n.showPendingTasksLabel),
+                    subtitle: Text(context.l10n.showPendingTasksHelper),
+                    value: _showPendingTasks,
+                    onChanged: (val) {
+                      setState(() {
+                        _showPendingTasks = val;
+                      });
+                    },
+                    secondary: const Icon(
+                      Icons.playlist_add_check_outlined,
+                      size: 28,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: SwitchListTile(
+                    key: const Key('show_last_spawned_date_switch'),
+                    title: Text(context.l10n.showLastSpawnedDateLabel),
+                    subtitle: Text(context.l10n.showLastSpawnedDateHelper),
+                    value: _showLastSpawnedDate,
+                    onChanged: (val) {
+                      setState(() {
+                        _showLastSpawnedDate = val;
+                      });
+                    },
+                    secondary: const Icon(Icons.bug_report_outlined, size: 28),
                   ),
                 ),
                 const SizedBox(height: 24),
