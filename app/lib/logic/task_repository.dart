@@ -10,6 +10,8 @@ import 'task_instance.dart';
 import 'notification_service.dart';
 import 'auth_repository.dart';
 import 'scheduler_engine.dart';
+import 'user_settings.dart';
+import 'user_settings_repository.dart';
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
   final VoidCallback onResume;
@@ -24,10 +26,15 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
   }
 }
 
+final firestoreProvider = Provider<FirebaseFirestore>(
+  (ref) => FirebaseFirestore.instance,
+);
+
 final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
   final user = ref.watch(authStateProvider).value;
   if (user == null) return null;
   final repo = TaskRepository(
+    firestore: ref.watch(firestoreProvider),
     userId: user.uid,
     notificationService: ref.watch(notificationServiceProvider),
   );
@@ -72,6 +79,16 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
     dayChangeTimer.cancel();
   });
 
+  ref.listen<AsyncValue<UserSettings>>(userSettingsProvider, (previous, next) {
+    final prevVal = previous?.value;
+    final nextVal = next.value;
+    if (prevVal != null && nextVal != null) {
+      if (prevVal.futureInstancesCount != nextVal.futureInstancesCount) {
+        repo.triggerMissedPolicyProcessing();
+      }
+    }
+  });
+
   return repo;
 });
 
@@ -94,6 +111,8 @@ class TaskRepository {
   bool _isProcessingMissedPolicies = false;
   bool _needsProcessingAgain = false;
   List<TaskSchedule>? _nextTasksToProcess;
+  Timer? _triggerTimer;
+  DateTime? _scheduledTriggerTime;
 
   String get userId => _userId;
 
@@ -241,13 +260,6 @@ class TaskRepository {
     return null;
   }
 
-  String instanceIdFor(TaskSchedule task, CivilDay date, int ruleIndex) {
-    final dateStr = date.toString();
-    return task.schedules.length == 1
-        ? '${task.id}_$dateStr'
-        : '${task.id}_${dateStr}_$ruleIndex';
-  }
-
   (CivilDay, TaskScheduleRule, int)? nextOccurrenceRuleOfScheduleOnOrAfter(
     TaskSchedule task,
     CivilDay ref,
@@ -376,6 +388,16 @@ class TaskRepository {
       final now = AppClock.now;
       final familyId = await _getFamilyId();
 
+      // Fetch UserSettings for futureInstancesCount
+      final settingsSnapshot = await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('settings')
+          .doc('agile')
+          .get();
+      final userSettings = UserSettings.fromJson(settingsSnapshot.data() ?? {});
+      final futureInstancesCount = userSettings.futureInstancesCount;
+
       // Fetch all instances
       final personalInstances = await _instancesRef.get();
       final List<TaskInstance> allInstances = personalInstances.docs
@@ -397,64 +419,18 @@ class TaskRepository {
 
       final batch = _firestore.batch();
       bool hasChanges = false;
-
-      final today = CivilDay.fromDateTime(now);
+      final List<DateTime> allTriggerTimes = [];
 
       for (final task in tasks) {
-        var currentTask = task;
         final taskInstances = allInstances
             .where((inst) => inst.scheduleId == task.id)
             .toList();
 
-        // Clean up legacy future pending instances spawned before switching to JIT spawning.
-        final futurePending = taskInstances
-            .where(
-              (inst) =>
-                  inst.status == 'pending' && inst.scheduledDate.isAfter(today),
-            )
-            .toList();
-
-        if (futurePending.isNotEmpty) {
-          for (final inst in futurePending) {
-            batch.delete(_instanceRefFor(inst, familyId));
-            hasChanges = true;
-          }
-
-          taskInstances.removeWhere(
-            (inst) =>
-                inst.status == 'pending' && inst.scheduledDate.isAfter(today),
-          );
-
-          CivilDay? maxRemainingDate;
-          for (final inst in taskInstances) {
-            if (maxRemainingDate == null ||
-                inst.scheduledDate.isAfter(maxRemainingDate)) {
-              maxRemainingDate = inst.scheduledDate;
-            }
-          }
-
-          CivilDay fallbackDate = today.addDays(-1);
-          if (futurePending.isNotEmpty) {
-            futurePending.sort(
-              (a, b) => a.scheduledDate.compareTo(b.scheduledDate),
-            );
-            fallbackDate = futurePending.first.scheduledDate.addDays(-1);
-          }
-
-          final targetLastSpawned = maxRemainingDate ?? fallbackDate;
-
-          if (task.lastSpawnedDate == null ||
-              task.lastSpawnedDate!.isAfter(targetLastSpawned)) {
-            currentTask = task.copyWith(lastSpawnedDate: targetLastSpawned);
-            batch.set(_taskRefFor(currentTask, familyId), currentTask);
-            hasChanges = true;
-          }
-        }
-
         final action = SchedulerEngine.evaluate(
-          currentTask,
+          task,
           taskInstances,
           now,
+          futureInstancesCount: futureInstancesCount,
         );
 
         for (final inst in action.instancesToUpdate) {
@@ -467,6 +443,12 @@ class TaskRepository {
           hasChanges = true;
         }
 
+        for (final instId in action.instancesToDelete) {
+          final isFamily = task.isFamily;
+          batch.delete(_instanceRefForId(instId, isFamily, familyId));
+          hasChanges = true;
+        }
+
         if (action.updatedSchedule != null) {
           batch.set(
             _taskRefFor(action.updatedSchedule!, familyId),
@@ -474,10 +456,22 @@ class TaskRepository {
           );
           hasChanges = true;
         }
+
+        allTriggerTimes.addAll(action.triggerTimes);
       }
 
       if (hasChanges) {
         await batch.commit();
+      }
+
+      // Schedule dynamic timer for next critical time
+      allTriggerTimes.sort();
+      final nextTrigger = allTriggerTimes.firstWhere(
+        (t) => t.isAfter(now),
+        orElse: () => DateTime.fromMillisecondsSinceEpoch(0),
+      );
+      if (nextTrigger.millisecondsSinceEpoch > 0) {
+        _scheduleTriggerTimer(nextTrigger);
       }
     } catch (e) {
       // ignore: avoid_print
@@ -490,6 +484,20 @@ class TaskRepository {
         _checkAndProcessMissedPolicies(next);
       }
     }
+  }
+
+  void _scheduleTriggerTimer(DateTime triggerTime) {
+    if (_scheduledTriggerTime != null &&
+        !_scheduledTriggerTime!.isAfter(triggerTime)) {
+      return;
+    }
+    _triggerTimer?.cancel();
+    _scheduledTriggerTime = triggerTime;
+    final delay = triggerTime.difference(AppClock.now);
+    _triggerTimer = Timer(delay, () {
+      _scheduledTriggerTime = null;
+      triggerMissedPolicyProcessing();
+    });
   }
 
   Future<void> triggerMissedPolicyProcessing() async {
@@ -740,7 +748,11 @@ class TaskRepository {
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
-      _spawnNextOccurrence(task, instance, now, batch, familyId);
+      final allInstances = await _instancesRef
+          .where('scheduleId', isEqualTo: task.id)
+          .get()
+          .then((snap) => snap.docs.map((d) => d.data()).toList());
+      _spawnNextOccurrence(task, instance, now, batch, familyId, allInstances);
     }
 
     await batch.commit();
@@ -768,7 +780,11 @@ class TaskRepository {
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
-      _spawnNextOccurrence(task, instance, now, batch, familyId);
+      final allInstances = await _instancesRef
+          .where('scheduleId', isEqualTo: task.id)
+          .get()
+          .then((snap) => snap.docs.map((d) => d.data()).toList());
+      _spawnNextOccurrence(task, instance, now, batch, familyId, allInstances);
     }
 
     await batch.commit();
@@ -792,15 +808,20 @@ class TaskRepository {
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
       final now = resolvedInstance.completedAt ?? AppClock.now;
-      final nextId = _nextOccurrenceId(task, resolvedInstance, now);
+      final allInstances = await _instancesRef
+          .where('scheduleId', isEqualTo: task.id)
+          .get()
+          .then((snap) => snap.docs.map((d) => d.data()).toList());
+      final nextId = _nextOccurrenceId(
+        task,
+        resolvedInstance,
+        now,
+        allInstances,
+      );
       if (nextId != null) {
         batch.delete(
           _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
         );
-        final updatedTask = task.copyWith(
-          lastSpawnedDate: resolvedInstance.scheduledDate,
-        );
-        batch.set(_taskRefFor(updatedTask, familyId), updatedTask);
       }
     }
 
@@ -813,32 +834,16 @@ class TaskRepository {
     DateTime now,
     WriteBatch batch,
     String? familyId,
+    List<TaskInstance> taskInstances,
   ) {
     final nextInst = SchedulerEngine.getNextOccurrenceToSpawn(
       task,
       completedInstance,
       now,
+      taskInstances,
     );
-    final today = CivilDay.fromDateTime(now);
-
-    if (nextInst != null &&
-        (nextInst.scheduledDate.isBefore(today) ||
-            nextInst.scheduledDate == today)) {
+    if (nextInst != null) {
       batch.set(_instanceRefFor(nextInst, familyId), nextInst);
-      final updatedTask = task.copyWith(
-        lastSpawnedDate: nextInst.scheduledDate,
-      );
-      batch.set(_taskRefFor(updatedTask, familyId), updatedTask);
-    } else {
-      final newLastSpawnedDate = nextInst != null
-          ? nextInst.scheduledDate.addDays(-1)
-          : completedInstance.scheduledDate;
-
-      if (task.lastSpawnedDate == null ||
-          task.lastSpawnedDate!.isBefore(newLastSpawnedDate)) {
-        final updatedTask = task.copyWith(lastSpawnedDate: newLastSpawnedDate);
-        batch.set(_taskRefFor(updatedTask, familyId), updatedTask);
-      }
     }
   }
 
@@ -846,11 +851,13 @@ class TaskRepository {
     TaskSchedule task,
     TaskInstance completedInstance,
     DateTime now,
+    List<TaskInstance> taskInstances,
   ) {
     return SchedulerEngine.getNextOccurrenceIdToDelete(
       task,
       completedInstance,
       now,
+      taskInstances,
     );
   }
 }

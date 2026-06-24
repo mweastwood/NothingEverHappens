@@ -4,11 +4,38 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'firebase_options_dev.dart' as dev;
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'logic/auth_repository.dart';
+import 'logic/task_repository.dart';
+import 'logic/notification_service.dart';
 import 'l10n/app_localizations.dart';
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    WidgetsFlutterBinding.ensureInitialized();
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: dev.DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+
+    final currentUser = fb_auth.FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      final repo = TaskRepository(
+        userId: currentUser.uid,
+        notificationService: PlatformNotificationService(),
+      );
+      await repo.triggerMissedPolicyProcessing();
+    }
+
+    return true;
+  });
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +49,14 @@ Future<void> main() async {
   if (kIsWeb) {
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
+    );
+  } else {
+    await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+    await Workmanager().registerPeriodicTask(
+      "scheduler-periodic-task",
+      "periodicEvaluationTask",
+      frequency: const Duration(minutes: 15),
+      existingWorkPolicy: ExistingWorkPolicy.keep,
     );
   }
 

@@ -40,6 +40,7 @@ void main() {
         'hoursAvailable': 6.0,
         'showPendingTasks': true,
         'showLastSpawnedDate': true,
+        'futureInstancesCount': 1,
       });
     });
 
@@ -149,6 +150,7 @@ void main() {
         'hoursAvailable': 15.0,
         'showPendingTasks': true,
         'showLastSpawnedDate': true,
+        'futureInstancesCount': 1,
       });
 
       final settingsFromRepository = await repository.getSettings().first;

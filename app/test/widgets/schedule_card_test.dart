@@ -10,11 +10,13 @@ import '../test_helper.dart';
 void main() {
   group('ScheduleCard', () {
     final dailyTask = TaskSchedule(
-      id: '1',
+      id: 'S-1',
       title: 'Daily TaskSchedule Title',
       description: 'Daily TaskSchedule Desc',
       schedules: [
         DailySchedule(
+          id: 'R-1',
+          scheduleId: 'S-1',
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
           interval: 2,
           startRelativeTime: const RelativeTime(
@@ -30,11 +32,13 @@ void main() {
     );
 
     final weeklyTask = TaskSchedule(
-      id: '2',
+      id: 'S-2',
       title: 'Weekly TaskSchedule Title',
       description: 'Weekly TaskSchedule Desc',
       schedules: [
         WeeklySchedule(
+          id: 'R-2',
+          scheduleId: 'S-2',
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
           interval: 1,
           daysOfWeek: {1, 3},
@@ -78,11 +82,11 @@ void main() {
       expect(find.text('9:00 AM - 5:00 PM'), findsOneWidget);
 
       // Tap edit
-      await tester.tap(find.byKey(const Key('edit_schedule_button_1')));
+      await tester.tap(find.byKey(const Key('edit_schedule_button_S-1')));
       expect(editTapped, isTrue);
 
       // Tap delete
-      await tester.tap(find.byKey(const Key('delete_schedule_button_1')));
+      await tester.tap(find.byKey(const Key('delete_schedule_button_S-1')));
       expect(deleteTapped, isTrue);
     });
 

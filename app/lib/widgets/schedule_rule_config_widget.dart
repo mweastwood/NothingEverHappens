@@ -155,6 +155,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
 
       widget.onChanged(
         OneOffSchedule(
+          id: s.id,
+          scheduleId: s.scheduleId,
           date: newDate,
           startRelativeTime: newStartRel,
           dueRelativeTime: newDueRel,
@@ -309,6 +311,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onIntervalChanged: (val) {
               widget.onChanged(
                 DailySchedule(
+                  id: s.id,
+                  scheduleId: s.scheduleId,
                   startDate: s.startDate,
                   interval: val,
                   startRelativeTime: s.startRelativeTime,
@@ -354,6 +358,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onIntervalChanged: (val) {
               widget.onChanged(
                 WeeklySchedule(
+                  id: s.id,
+                  scheduleId: s.scheduleId,
                   startDate: s.startDate,
                   interval: val,
                   daysOfWeek: s.daysOfWeek,
@@ -373,6 +379,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onWeekdaysChanged: (days) {
               widget.onChanged(
                 WeeklySchedule(
+                  id: s.id,
+                  scheduleId: s.scheduleId,
                   startDate: s.startDate,
                   interval: s.interval,
                   daysOfWeek: days,
@@ -415,6 +423,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onIntervalChanged: (val) {
               widget.onChanged(
                 MonthlySchedule(
+                  id: s.id,
+                  scheduleId: s.scheduleId,
                   startDate: s.startDate,
                   interval: val,
                   dayOfMonth: s.dayOfMonth,
@@ -437,6 +447,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
               if (type == 'dayOfMonth') {
                 widget.onChanged(
                   MonthlySchedule(
+                    id: s.id,
+                    scheduleId: s.scheduleId,
                     startDate: s.startDate,
                     interval: s.interval,
                     dayOfMonth: s.startDate.day <= 28 ? s.startDate.day : 28,
@@ -450,6 +462,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
               } else {
                 widget.onChanged(
                   MonthlySchedule(
+                    id: s.id,
+                    scheduleId: s.scheduleId,
                     startDate: s.startDate,
                     interval: s.interval,
                     dayOfWeek: s.startDate.toUtcDateTime().weekday,
@@ -467,6 +481,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onDayOfMonthChanged: (val) {
               widget.onChanged(
                 MonthlySchedule(
+                  id: s.id,
+                  scheduleId: s.scheduleId,
                   startDate: s.startDate,
                   interval: s.interval,
                   dayOfMonth: val,
@@ -482,6 +498,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onOccurrenceChanged: (val) {
               widget.onChanged(
                 MonthlySchedule(
+                  id: s.id,
+                  scheduleId: s.scheduleId,
                   startDate: s.startDate,
                   interval: s.interval,
                   dayOfWeek: s.dayOfWeek,
@@ -498,6 +516,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onDayOfWeekChanged: (val) {
               widget.onChanged(
                 MonthlySchedule(
+                  id: s.id,
+                  scheduleId: s.scheduleId,
                   startDate: s.startDate,
                   interval: s.interval,
                   dayOfWeek: val,
@@ -542,6 +562,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onIntervalChanged: (val) {
               widget.onChanged(
                 YearlySchedule(
+                  id: s.id,
+                  scheduleId: s.scheduleId,
                   startDate: s.startDate,
                   interval: val,
                   month: s.month,
@@ -562,6 +584,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onMonthChanged: (val) {
               widget.onChanged(
                 YearlySchedule(
+                  id: s.id,
+                  scheduleId: s.scheduleId,
                   startDate: s.startDate,
                   interval: s.interval,
                   month: val,
@@ -578,6 +602,8 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             onDayChanged: (val) {
               widget.onChanged(
                 YearlySchedule(
+                  id: s.id,
+                  scheduleId: s.scheduleId,
                   startDate: s.startDate,
                   interval: s.interval,
                   month: s.month,

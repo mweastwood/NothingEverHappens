@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:uuid/uuid.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
 import 'task_priority.dart';
@@ -21,94 +22,70 @@ typedef TaskModification = ({
 
 /// Represents a single task in the todo list.
 class TaskSchedule {
+  static String generateId() => 'S-${const Uuid().v4()}';
+
   /// Unique identifier for the task.
-  String id;
+  final String id;
 
   /// The title of the task.
-  String title;
+  final String title;
 
   /// Detailed description of the task.
-  String description;
+  final String description;
 
   /// The schedule rules associated with this task.
-  List<TaskScheduleRule> schedules;
+  final List<TaskScheduleRule> schedules;
 
-  /// Legacy getter/setter for schedulingPolicy
+  /// Legacy getter for schedulingPolicy
   SchedulingPolicy get schedulingPolicy {
     if (schedules.isEmpty) return const FixedCalendarPolicy();
     return schedules.first.schedulingPolicy;
   }
 
-  set schedulingPolicy(SchedulingPolicy policy) {
-    if (schedules.isEmpty) return;
-    schedules = schedules
-        .map((s) => s.copyWithTiming(schedulingPolicy: policy))
-        .toList();
-  }
-
-  /// Legacy getter/setter for missedOccurrencePolicy
+  /// Legacy getter for missedOccurrencePolicy
   MissedOccurrencePolicy get missedOccurrencePolicy {
     if (schedules.isEmpty) return const MissedOccurrencePolicy.stack();
     return schedules.first.missedOccurrencePolicy;
   }
 
-  set missedOccurrencePolicy(MissedOccurrencePolicy policy) {
-    if (schedules.isEmpty) return;
-    schedules = schedules
-        .map((s) => s.copyWithTiming(missedOccurrencePolicy: policy))
-        .toList();
-  }
-
-  /// Legacy getter/setter for missedPolicy
+  /// Legacy getter for missedPolicy
   MissedPolicy get missedPolicy {
     if (schedules.isEmpty) return MissedPolicy.stack;
     return schedules.first.missedOccurrencePolicy.policy;
   }
 
-  set missedPolicy(MissedPolicy policy) {
-    if (schedules.isEmpty) return;
-    final newPolicy = policy == MissedPolicy.autoDismiss
-        ? const MissedOccurrencePolicy.autoDismiss(
-            gracePeriod: Duration(days: 1),
-          )
-        : MissedOccurrencePolicy(policy: policy);
-    schedules = schedules
-        .map((s) => s.copyWithTiming(missedOccurrencePolicy: newPolicy))
-        .toList();
-  }
-
   /// The index of the currently active occurrence time in [dailyTimes].
-  int activeOccurrenceIndex;
+  final int activeOccurrenceIndex;
 
   /// The estimated effort for the task (optional).
-  Duration? estimatedDuration;
+  final Duration? estimatedDuration;
 
   /// Whether this task represents a master/template recurring schedule.
-  bool isMaster;
+  final bool isMaster;
 
   /// The date up to which stack occurrences have been spawned.
-  CivilDay? lastSpawnedDate;
+  final CivilDay? lastSpawnedDate;
 
   /// If this task is a spawned occurrence of a master task, this is the parent task's ID.
-  String? parentTaskId;
+  final String? parentTaskId;
 
   /// Whether this task is shared with the family.
-  bool isFamily;
+  final bool isFamily;
 
   /// The priority of the task.
-  TaskPriority priority;
+  final TaskPriority priority;
 
   /// The cycle this task is scheduled for (null if in backlog).
-  String? cycleId;
+  final String? cycleId;
 
   /// Map of user IDs to starring preference (true if starred).
-  Map<String, bool> preferredBy;
+  final Map<String, bool> preferredBy;
 
   /// The ID of the user assigned to this task (null if unassigned).
-  String? assignedUserId;
+  final String? assignedUserId;
 
   TaskSchedule({
-    required this.id,
+    required String id,
     required this.title,
     required this.description,
     List<TaskScheduleRule>? schedules,
@@ -125,7 +102,8 @@ class TaskSchedule {
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
     MissedPolicy? missedPolicy,
-  }) : schedules = (schedules ?? []).map((s) {
+  }) : id = id.startsWith('S-') ? id : 'S-$id',
+       schedules = (schedules ?? []).map((s) {
          final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
          final mPolicy =
              missedOccurrencePolicy ??
@@ -136,7 +114,10 @@ class TaskSchedule {
                          )
                        : MissedOccurrencePolicy(policy: missedPolicy))
                  : s.missedOccurrencePolicy);
+         final resolvedId = id.startsWith('S-') ? id : 'S-$id';
          return s.copyWithTiming(
+           id: s.id.startsWith('R-') ? s.id : TaskScheduleRule.generateId(),
+           scheduleId: resolvedId,
            schedulingPolicy: sPolicy,
            missedOccurrencePolicy: mPolicy,
          );
@@ -265,6 +246,8 @@ class TaskSchedule {
         }
       }
       return s.copyWithTiming(
+        id: s.id.startsWith('R-') ? s.id : TaskScheduleRule.generateId(),
+        scheduleId: id,
         schedulingPolicy: sPolicy,
         missedOccurrencePolicy: mPolicy,
       );
@@ -519,6 +502,8 @@ class TaskSchedule {
                     : MissedOccurrencePolicy(policy: missedPolicy))
               : s.missedOccurrencePolicy);
       return s.copyWithTiming(
+        id: s.id.startsWith('R-') ? s.id : TaskScheduleRule.generateId(),
+        scheduleId: id,
         schedulingPolicy: sPolicy,
         missedOccurrencePolicy: mPolicy,
       );

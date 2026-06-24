@@ -209,4 +209,41 @@ void main() {
       ).called(1);
     },
   );
+
+  testWidgets(
+    'SettingsScreen updates and saves futureInstancesCount correctly',
+    (WidgetTester tester) async {
+      when(mockRepository.updateSettings(any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      final addButtonFinder = find.byKey(
+        const Key('add_future_instances_button'),
+      );
+      expect(addButtonFinder, findsOneWidget);
+
+      // Verify initial count is 1 (default)
+      expect(find.text('1'), findsOneWidget);
+
+      // Increment to 3
+      await tester.tap(addButtonFinder);
+      await tester.pumpAndSettle();
+      expect(find.text('2'), findsOneWidget);
+
+      await tester.tap(addButtonFinder);
+      await tester.pumpAndSettle();
+      expect(find.text('3'), findsOneWidget);
+
+      final saveButtonFinder = find.byKey(const Key('save_settings_button'));
+      await tester.tap(saveButtonFinder);
+      await tester.pumpAndSettle();
+
+      verify(
+        mockRepository.updateSettings(
+          const UserSettings(hoursAvailable: 8.0, futureInstancesCount: 3),
+        ),
+      ).called(1);
+    },
+  );
 }

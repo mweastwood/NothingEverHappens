@@ -32,6 +32,7 @@ void main() {
         instance: TaskInstance(
           id: 'inst-1',
           scheduleId: 'task-1',
+          ruleId: 'rule-1',
           title: 'Test Instance',
           description: 'Desc',
           scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),
@@ -57,6 +58,7 @@ void main() {
         instance: TaskInstance(
           id: 'inst-1',
           scheduleId: 'task-1',
+          ruleId: 'rule-1',
           title: 'Test Instance',
           description: 'Desc',
           scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),
@@ -81,6 +83,7 @@ void main() {
       final instance = TaskInstance(
         id: 'inst-1',
         scheduleId: 'task-1',
+        ruleId: 'rule-1',
         title: 'Test Instance',
         description: 'Desc',
         scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),
@@ -124,6 +127,7 @@ void main() {
         final instance = TaskInstance(
           id: 'inst-1',
           scheduleId: 'task-1',
+          ruleId: 'rule-1',
           title: 'Test Instance',
           description: 'Desc',
           scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),

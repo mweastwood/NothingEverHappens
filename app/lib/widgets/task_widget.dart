@@ -415,6 +415,8 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         widget.schedule != null && ruleIdx < widget.schedule!.schedules.length
         ? widget.schedule!.schedules[ruleIdx]
         : OneOffSchedule(
+            id: widget.instance.ruleId,
+            scheduleId: widget.instance.scheduleId,
             date: widget.instance.scheduledDate,
             startRelativeTime: widget.instance.startRelativeTime,
             dueRelativeTime: widget.instance.dueRelativeTime,

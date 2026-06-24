@@ -19,6 +19,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isInitialized = false;
   bool _showPendingTasks = false;
   bool _showLastSpawnedDate = false;
+  int _futureInstancesCount = 1;
 
   @override
   void dispose() {
@@ -41,6 +42,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           hoursAvailable: hours,
           showPendingTasks: _showPendingTasks,
           showLastSpawnedDate: _showLastSpawnedDate,
+          futureInstancesCount: _futureInstancesCount,
         );
 
         await repository
@@ -104,6 +106,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _hoursController.text = settings.hoursAvailable.toString();
             _showPendingTasks = settings.showPendingTasks;
             _showLastSpawnedDate = settings.showLastSpawnedDate;
+            _futureInstancesCount = settings.futureInstancesCount;
             _isInitialized = true;
           }
 
@@ -189,6 +192,74 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       });
                     },
                     secondary: const Icon(Icons.bug_report_outlined, size: 28),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 8.0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.history_toggle_off_outlined,
+                                size: 28,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Future Occurrences',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    ),
+                                    Text(
+                                      'Pre-created future tasks (1-10)',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              key: const Key('remove_future_instances_button'),
+                              icon: const Icon(Icons.remove),
+                              onPressed: _futureInstancesCount > 1
+                                  ? () =>
+                                        setState(() => _futureInstancesCount--)
+                                  : null,
+                            ),
+                            Text(
+                              '$_futureInstancesCount',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            IconButton(
+                              key: const Key('add_future_instances_button'),
+                              icon: const Icon(Icons.add),
+                              onPressed: _futureInstancesCount < 10
+                                  ? () =>
+                                        setState(() => _futureInstancesCount++)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

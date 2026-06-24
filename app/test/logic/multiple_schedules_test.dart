@@ -107,10 +107,10 @@ void main() {
       // Complete on Monday, June 1
       final monday = DateTime(2026, 6, 1, 12, 0);
       AppClock.setMockTime(monday);
-      final nextState = taskList.complete('complete-task');
+      final nextState = taskList.complete(task.id);
 
       final updatedTask = nextState.activeTasks.firstWhere(
-        (t) => t.id == 'complete-task',
+        (t) => t.id == task.id,
       );
       expect(updatedTask.schedules.length, 2);
 
@@ -182,10 +182,10 @@ void main() {
 
         final monday = DateTime(2026, 6, 1, 12, 0);
         AppClock.setMockTime(monday);
-        final nextState = taskList.complete('mixed-oneoff-task');
+        final nextState = taskList.complete(task.id);
 
         final updatedTask = nextState.activeTasks.firstWhere(
-          (t) => t.id == 'mixed-oneoff-task',
+          (t) => t.id == task.id,
         );
 
         // The completed one-off schedule (June 1) should be removed.
@@ -249,7 +249,7 @@ void main() {
         AppClock.setMockTime(monday);
 
         // Complete first slot
-        var state = taskList.complete('multi-oneoff-slots');
+        var state = taskList.complete(task.id);
         expect(state.activeTasks.length, 1);
         expect(state.activeTasks.first.activeOccurrenceIndex, 1);
         expect(
@@ -258,7 +258,7 @@ void main() {
         ); // schedules list is unchanged during slot advance
 
         // Complete second (last) slot
-        state = state.complete('multi-oneoff-slots');
+        state = state.complete(task.id);
         expect(
           state.activeTasks.length,
           0,
@@ -308,7 +308,7 @@ void main() {
         // Complete on Monday, June 1
         final monday = DateTime(2026, 6, 1, 12, 0);
         AppClock.setMockTime(monday);
-        var state = taskList.complete('multi-oneoff-dates');
+        var state = taskList.complete(task.id);
         expect(state.activeTasks.length, 1);
 
         final updatedTask = state.activeTasks.first;
@@ -321,7 +321,7 @@ void main() {
         // Complete on Wednesday, June 3
         final wednesday = DateTime(2026, 6, 3, 16, 0);
         AppClock.setMockTime(wednesday);
-        state = state.complete('multi-oneoff-dates');
+        state = state.complete(task.id);
         expect(
           state.activeTasks.length,
           0,

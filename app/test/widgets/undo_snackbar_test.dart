@@ -51,8 +51,9 @@ void main() {
       'UndoSnackBar shows with premium style and action triggers undo',
       (WidgetTester tester) async {
         final instance = TaskInstance(
-          id: 'inst-1',
-          scheduleId: 'task-1',
+          id: 'I-inst-1',
+          scheduleId: 'S-task-1',
+          ruleId: 'R-rule-1',
           title: 'Test Instance',
           description: 'Desc',
           scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),
@@ -157,8 +158,9 @@ void main() {
 
     testGoldens('UndoSnackBar renders correctly', (tester) async {
       final instance = TaskInstance(
-        id: 'inst-1',
-        scheduleId: 'task-1',
+        id: 'I-inst-1',
+        scheduleId: 'S-task-1',
+        ruleId: 'R-rule-1',
         title: 'Test Instance',
         description: 'Desc',
         scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),
@@ -200,8 +202,9 @@ void main() {
 
     testGoldens('UndoSnackBar shows undone message correctly', (tester) async {
       final instance = TaskInstance(
-        id: 'inst-1',
-        scheduleId: 'task-1',
+        id: 'I-inst-1',
+        scheduleId: 'S-task-1',
+        ruleId: 'R-rule-1',
         title: 'Test Instance',
         description: 'Desc',
         scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),

@@ -126,17 +126,11 @@ void main() {
         );
 
         final firestore = FakeFirebaseFirestore();
-        await firestore
-            .collection('tasks')
-            .doc('task-completion-relative-test')
-            .set(map);
-        final snapshot = await firestore
-            .collection('tasks')
-            .doc('task-completion-relative-test')
-            .get();
+        await firestore.collection('tasks').doc(task.id).set(map);
+        final snapshot = await firestore.collection('tasks').doc(task.id).get();
         final deserialized = TaskSchedule.fromFirestore(snapshot);
 
-        expect(deserialized.id, 'task-completion-relative-test');
+        expect(deserialized.id, task.id);
         expect(deserialized.schedulingPolicy, isA<CompletionRelativePolicy>());
         final policy =
             deserialized.schedulingPolicy as CompletionRelativePolicy;
@@ -175,14 +169,11 @@ void main() {
       expect(map['estimatedDuration'], 45);
 
       final firestore = FakeFirebaseFirestore();
-      await firestore.collection('tasks').doc('task-duration-test').set(map);
-      final snapshot = await firestore
-          .collection('tasks')
-          .doc('task-duration-test')
-          .get();
+      await firestore.collection('tasks').doc(task.id).set(map);
+      final snapshot = await firestore.collection('tasks').doc(task.id).get();
       final deserialized = TaskSchedule.fromFirestore(snapshot);
 
-      expect(deserialized.id, 'task-duration-test');
+      expect(deserialized.id, task.id);
       expect(deserialized.estimatedDuration, const Duration(minutes: 45));
     });
 
@@ -255,14 +246,11 @@ void main() {
       expect(map['assignedUserId'], 'user-1');
 
       final firestore = FakeFirebaseFirestore();
-      await firestore.collection('tasks').doc('task-agile-test').set(map);
-      final snapshot = await firestore
-          .collection('tasks')
-          .doc('task-agile-test')
-          .get();
+      await firestore.collection('tasks').doc(task.id).set(map);
+      final snapshot = await firestore.collection('tasks').doc(task.id).get();
       final deserialized = TaskSchedule.fromFirestore(snapshot);
 
-      expect(deserialized.id, 'task-agile-test');
+      expect(deserialized.id, task.id);
       expect(deserialized.isFamily, true);
       expect(deserialized.priority, TaskPriority.high);
       expect(deserialized.cycleId, '2026-W23');
@@ -324,7 +312,7 @@ void main() {
         final changes = result.changes;
 
         // 1. Verify updated TaskSchedule properties
-        expect(newTask.id, 'edit-test-task');
+        expect(newTask.id, task.id);
         expect(newTask.title, 'Updated Title');
         expect(newTask.description, 'Initial Desc');
         expect(newTask.schedules.first.startRelativeTime.dayOffset, -1);
@@ -499,25 +487,28 @@ void main() {
         // Let's yield to background tasks so Firestore batch completes
         await Future.delayed(Duration.zero);
 
-        // Fetch the Monday instance
-        final mondayInstSnap = await firestore
+        // Fetch all instances
+        final insts = await firestore
             .collection('users')
             .doc('user-1')
             .collection('instances')
-            .doc('skip-task_2026-05-25')
             .get();
-        expect(mondayInstSnap.exists, isTrue);
-        expect(mondayInstSnap.data()!['status'], 'skipped');
 
-        // Fetch the Tuesday instance
-        final tuesdayInstSnap = await firestore
-            .collection('users')
-            .doc('user-1')
-            .collection('instances')
-            .doc('skip-task_2026-05-26')
-            .get();
-        expect(tuesdayInstSnap.exists, isTrue);
-        expect(tuesdayInstSnap.data()!['status'], 'pending');
+        final mondayInst = insts.docs.firstWhere(
+          (d) =>
+              d.data()['scheduledDate']['year'] == 2026 &&
+              d.data()['scheduledDate']['month'] == 5 &&
+              d.data()['scheduledDate']['day'] == 25,
+        );
+        expect(mondayInst.data()['status'], 'skipped');
+
+        final tuesdayInst = insts.docs.firstWhere(
+          (d) =>
+              d.data()['scheduledDate']['year'] == 2026 &&
+              d.data()['scheduledDate']['month'] == 5 &&
+              d.data()['scheduledDate']['day'] == 26,
+        );
+        expect(tuesdayInst.data()['status'], 'pending');
 
         AppClock.reset();
       },
@@ -584,32 +575,32 @@ void main() {
         await repository.getTasks().first;
         await Future.delayed(Duration.zero);
 
-        final mondayOneOffSnap = await firestore
+        final insts = await firestore
             .collection('users')
             .doc('user-1')
             .collection('instances')
-            .doc('mixed-skip-task_2026-05-25_0')
             .get();
-        expect(mondayOneOffSnap.exists, isTrue);
-        expect(mondayOneOffSnap.data()!['status'], 'skipped');
 
-        final mondayDailySnap = await firestore
-            .collection('users')
-            .doc('user-1')
-            .collection('instances')
-            .doc('mixed-skip-task_2026-05-25_1')
-            .get();
-        expect(mondayDailySnap.exists, isTrue);
-        expect(mondayDailySnap.data()!['status'], 'skipped');
+        final mondayOneOff = insts.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == mixedTask.schedules[0].id &&
+              d.data()['scheduledDate']['day'] == 25,
+        );
+        expect(mondayOneOff.data()['status'], 'skipped');
 
-        final tuesdayDailySnap = await firestore
-            .collection('users')
-            .doc('user-1')
-            .collection('instances')
-            .doc('mixed-skip-task_2026-05-26_1')
-            .get();
-        expect(tuesdayDailySnap.exists, isTrue);
-        expect(tuesdayDailySnap.data()!['status'], 'pending');
+        final mondayDaily = insts.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == mixedTask.schedules[1].id &&
+              d.data()['scheduledDate']['day'] == 25,
+        );
+        expect(mondayDaily.data()['status'], 'skipped');
+
+        final tuesdayDaily = insts.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == mixedTask.schedules[1].id &&
+              d.data()['scheduledDate']['day'] == 26,
+        );
+        expect(tuesdayDaily.data()['status'], 'pending');
 
         AppClock.reset();
       },
@@ -677,26 +668,25 @@ void main() {
             .first; // Trigger missed policies check to process Schedule 0
         await Future.delayed(const Duration(milliseconds: 10));
 
-        // Fetch task instances and verify:
-        // Schedule 0 was scheduled for June 18th 5am-11am. Since we are at 10pm, it is past due and thus skipped.
-        // Schedule 1 was scheduled for June 18th 8pm-June 19th 2am. Since we are at 10pm, it is currently pending.
-        final sched0Snap = await firestore
+        final insts1 = await firestore
             .collection('users')
             .doc('user-1')
             .collection('instances')
-            .doc('cross-midnight-task_2026-06-18_0')
             .get();
-        expect(sched0Snap.exists, isTrue);
-        expect(sched0Snap.data()!['status'], 'skipped');
 
-        final sched1Snap = await firestore
-            .collection('users')
-            .doc('user-1')
-            .collection('instances')
-            .doc('cross-midnight-task_2026-06-18_1')
-            .get();
-        expect(sched1Snap.exists, isTrue);
-        expect(sched1Snap.data()!['status'], 'pending');
+        final sched0 = insts1.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == task.schedules[0].id &&
+              d.data()['scheduledDate']['day'] == 18,
+        );
+        expect(sched0.data()['status'], 'skipped');
+
+        final sched1 = insts1.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == task.schedules[1].id &&
+              d.data()['scheduledDate']['day'] == 18,
+        );
+        expect(sched1.data()['status'], 'pending');
 
         // Move to Friday June 19th 12:05 AM (past midnight, but BEFORE due time 2:00 AM)
         final fri1205am = DateTime(2026, 6, 19, 0, 5);
@@ -707,23 +697,26 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 10));
 
         // Verify that the June 18th Schedule 1 instance is STILL pending (not skipped early)
-        final sched1SnapMidnight = await firestore
+        final insts2 = await firestore
             .collection('users')
             .doc('user-1')
             .collection('instances')
-            .doc('cross-midnight-task_2026-06-18_1')
             .get();
-        expect(sched1SnapMidnight.data()!['status'], 'pending');
+
+        final sched1Midnight = insts2.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == task.schedules[1].id &&
+              d.data()['scheduledDate']['day'] == 18,
+        );
+        expect(sched1Midnight.data()['status'], 'pending');
 
         // Verify that the next day's instance for Schedule 1 has been spawned as pending (since Friday has arrived)
-        final sched1SnapNextDay = await firestore
-            .collection('users')
-            .doc('user-1')
-            .collection('instances')
-            .doc('cross-midnight-task_2026-06-19_1')
-            .get();
-        expect(sched1SnapNextDay.exists, isTrue);
-        expect(sched1SnapNextDay.data()!['status'], 'pending');
+        final sched1NextDay = insts2.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == task.schedules[1].id &&
+              d.data()['scheduledDate']['day'] == 19,
+        );
+        expect(sched1NextDay.data()['status'], 'pending');
 
         // Move to Friday June 19th 2:05 AM (AFTER due time 2:00 AM)
         final fri205am = DateTime(2026, 6, 19, 2, 5);
@@ -734,23 +727,26 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 10));
 
         // Verify that the June 18th Schedule 1 instance is now skipped
-        final sched1SnapAfterDue = await firestore
+        final insts3 = await firestore
             .collection('users')
             .doc('user-1')
             .collection('instances')
-            .doc('cross-midnight-task_2026-06-18_1')
             .get();
-        expect(sched1SnapAfterDue.data()!['status'], 'skipped');
+
+        final sched1AfterDue = insts3.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == task.schedules[1].id &&
+              d.data()['scheduledDate']['day'] == 18,
+        );
+        expect(sched1AfterDue.data()['status'], 'skipped');
 
         // Verify that the next day's instance for Schedule 1 is now spawned and pending
-        final sched1SnapNextDaySpawned = await firestore
-            .collection('users')
-            .doc('user-1')
-            .collection('instances')
-            .doc('cross-midnight-task_2026-06-19_1')
-            .get();
-        expect(sched1SnapNextDaySpawned.exists, isTrue);
-        expect(sched1SnapNextDaySpawned.data()!['status'], 'pending');
+        final sched1NextDaySpawned = insts3.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == task.schedules[1].id &&
+              d.data()['scheduledDate']['day'] == 19,
+        );
+        expect(sched1NextDaySpawned.data()['status'], 'pending');
 
         AppClock.reset();
       },
@@ -796,15 +792,17 @@ void main() {
         await Future.delayed(Duration.zero);
 
         // Verify task instance exists and is pending
-        final instId = 'grace-skip-task_2026-05-25';
-        final instSnap = await firestore
+        final insts1 = await firestore
             .collection('users')
             .doc('user-1')
             .collection('instances')
-            .doc(instId)
             .get();
-        expect(instSnap.exists, isTrue);
-        expect(instSnap.data()!['status'], 'pending');
+        final inst1 = insts1.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == task.schedules[0].id &&
+              d.data()['scheduledDate']['day'] == 25,
+        );
+        expect(inst1.data()['status'], 'pending');
 
         // Move time to 6:00 PM (past due time of 5:00 PM, but within 3-hour grace period)
         AppClock.setMockTime(DateTime(2026, 5, 25, 18, 0));
@@ -812,13 +810,17 @@ void main() {
         await Future.delayed(Duration.zero);
 
         // Verify task instance is STILL pending
-        final instSnapGrace = await firestore
+        final insts2 = await firestore
             .collection('users')
             .doc('user-1')
             .collection('instances')
-            .doc(instId)
             .get();
-        expect(instSnapGrace.data()!['status'], 'pending');
+        final instGrace = insts2.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == task.schedules[0].id &&
+              d.data()['scheduledDate']['day'] == 25,
+        );
+        expect(instGrace.data()['status'], 'pending');
 
         // Move time to 8:05 PM (past 3-hour grace period)
         AppClock.setMockTime(DateTime(2026, 5, 25, 20, 5));
@@ -826,13 +828,17 @@ void main() {
         await Future.delayed(Duration.zero);
 
         // Verify task instance is now SKIPPED
-        final instSnapExpired = await firestore
+        final insts3 = await firestore
             .collection('users')
             .doc('user-1')
             .collection('instances')
-            .doc(instId)
             .get();
-        expect(instSnapExpired.data()!['status'], 'skipped');
+        final instExpired = insts3.docs.firstWhere(
+          (d) =>
+              d.data()['ruleId'] == task.schedules[0].id &&
+              d.data()['scheduledDate']['day'] == 25,
+        );
+        expect(instExpired.data()['status'], 'skipped');
 
         AppClock.reset();
       },
@@ -897,28 +903,19 @@ void main() {
             .map((doc) => TaskInstance.fromFirestore(doc))
             .toList();
 
-        // We should have 3 spawned active instances (Monday, Tuesday, Wednesday)
-        expect(allInstances.length, 3);
+        // We should have 3 spawned active instances (Monday, Tuesday, Wednesday) plus 1 future instance
+        expect(allInstances.length, 4);
 
-        expect(
-          allInstances.any((t) => t.id == 'stack-task_2026-05-25'),
-          isTrue,
-        );
-        expect(
-          allInstances.any((t) => t.id == 'stack-task_2026-05-26'),
-          isTrue,
-        );
-        expect(
-          allInstances.any((t) => t.id == 'stack-task_2026-05-27'),
-          isTrue,
-        );
+        expect(allInstances.any((t) => t.scheduledDate.day == 25), isTrue);
+        expect(allInstances.any((t) => t.scheduledDate.day == 26), isTrue);
+        expect(allInstances.any((t) => t.scheduledDate.day == 27), isTrue);
 
         // Verify master task lastSpawnedDate is updated to Wednesday
         final masterTaskDoc = await firestore
             .collection('users')
             .doc('user-1')
             .collection('tasks')
-            .doc('stack-task')
+            .doc('S-stack-task')
             .get();
         final updatedMaster = TaskSchedule.fromFirestore(masterTaskDoc);
         expect(
@@ -933,6 +930,16 @@ void main() {
 
   group('Exhaustive Task Scheduling Combinations & Missed Policies Thorough Tests', () {
     const userId = 'user-1';
+
+    bool matchInst(dynamic doc, String ruleId, CivilDay date) {
+      final data = doc.data();
+      if (data == null) return false;
+      final dDate = data['scheduledDate'];
+      return data['ruleId'] == ruleId &&
+          dDate['year'] == date.year &&
+          dDate['month'] == date.month &&
+          dDate['day'] == date.day;
+    }
 
     test(
       '1. TaskList.complete on mixed Daily (interval 2) and Weekly (Mon, Wed) schedules',
@@ -978,7 +985,7 @@ void main() {
 
         // Complete on Monday, June 1 (Both Daily and Weekly occur)
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
-        var state = taskList.complete('mixed-daily-weekly');
+        var state = taskList.complete(task.id);
         var updated = state.activeTasks.first;
 
         // Daily advances to Wednesday, June 3
@@ -994,7 +1001,7 @@ void main() {
 
         // Complete on Tuesday, June 2 (Neither occurs)
         AppClock.setMockTime(DateTime(2026, 6, 2, 12, 0));
-        state = state.complete('mixed-daily-weekly');
+        state = state.complete(task.id);
         updated = state.activeTasks.first;
 
         // No changes since neither was scheduled for June 2 (or before)
@@ -1009,7 +1016,7 @@ void main() {
 
         // Complete on Wednesday, June 3 (Both occur)
         AppClock.setMockTime(DateTime(2026, 6, 3, 12, 0));
-        state = state.complete('mixed-daily-weekly');
+        state = state.complete(task.id);
         updated = state.activeTasks.first;
 
         // Daily advances to Friday, June 5
@@ -1071,7 +1078,7 @@ void main() {
 
         // Overdue complete on Tuesday, June 9 (Daily was due June 1, 4, 7. Monthly is due June 15)
         AppClock.setMockTime(DateTime(2026, 6, 9, 12, 0));
-        final state = taskList.complete('mixed-daily-monthly-stack');
+        final state = taskList.complete(task.id);
         final updated = state.activeTasks.first;
 
         // Daily should shift to next occurrence after June 9: June 10 (since 1 + 3*3 = 10)
@@ -1115,7 +1122,7 @@ void main() {
         // Complete on Friday, Dec 25, 2026 (Both Weekly and Yearly occur!)
         // Dec 25, 2026 is indeed a Friday.
         AppClock.setMockTime(DateTime(2026, 12, 25, 12, 0));
-        final state = taskList.complete('mixed-weekly-yearly-stack');
+        final state = taskList.complete(task.id);
         final updated = state.activeTasks.first;
 
         // Weekly advances to Jan 1, 2027 (Next Friday after completion date Dec 25)
@@ -1161,7 +1168,7 @@ void main() {
 
         // Complete on June 1, 2026
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
-        final state = taskList.complete('mixed-five-rules');
+        final state = taskList.complete(task.id);
         final updated = state.activeTasks.first;
 
         // OneOff should be removed, leaving 4 schedules
@@ -1220,7 +1227,7 @@ void main() {
 
         // Complete first slot on Monday, June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
-        var state = taskList.complete('slot-weekly');
+        var state = taskList.complete(task.id);
         var updated = state.activeTasks.first;
 
         // Active index should advance to 1, scheduled dates unchanged
@@ -1235,7 +1242,7 @@ void main() {
         );
 
         // Complete second slot on Monday, June 1
-        state = state.complete('slot-weekly');
+        state = state.complete(task.id);
         updated = state.activeTasks.first;
 
         // Active index resets to 0, scheduled dates advance to next occurrence (Wed June 3)
@@ -1286,16 +1293,40 @@ void main() {
             .doc(userId)
             .collection('instances')
             .get();
-        // Daily schedule should have instance for June 1 (since it starts June 1).
-        // Weekly schedule should NOT have instance for June 3 yet (since it's in the future).
-        expect(instsBefore.docs.length, 1);
+
+        final dailyRule = task.schedules[0];
+        final weeklyRule = task.schedules[1];
+
+        expect(instsBefore.docs.length, 3);
         expect(
-          instsBefore.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-01_0'),
+          instsBefore.docs.any(
+            (d) => matchInst(
+              d,
+              dailyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 1),
+            ),
+          ),
           isTrue,
         );
         expect(
-          instsBefore.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-03_1'),
-          isFalse,
+          instsBefore.docs.any(
+            (d) => matchInst(
+              d,
+              dailyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 3),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          instsBefore.docs.any(
+            (d) => matchInst(
+              d,
+              weeklyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 3),
+            ),
+          ),
+          isTrue,
         );
 
         AppClock.reset();
@@ -1343,50 +1374,63 @@ void main() {
         await repository.getTasks().first;
         await Future.delayed(Duration.zero);
 
-        // Verify missed instances are marked skipped
-        final weeklyJune1 = await firestore
+        final weeklyRule = task.schedules[0];
+        final monthlyRule = task.schedules[1];
+
+        final insts = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('repo-autodismiss-mixed_2026-06-01_0')
-            .get();
-        final monthlyJune1 = await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc('repo-autodismiss-mixed_2026-06-01_1')
             .get();
 
-        expect(weeklyJune1.data()?['status'], 'skipped');
-        expect(monthlyJune1.data()?['status'], 'skipped');
+        // Verify missed instances are marked skipped
+        final weeklyJune1 = insts.docs.firstWhere(
+          (d) => matchInst(
+            d,
+            weeklyRule.id,
+            const CivilDay(year: 2026, month: 6, day: 1),
+          ),
+        );
+        final monthlyJune1 = insts.docs.firstWhere(
+          (d) => matchInst(
+            d,
+            monthlyRule.id,
+            const CivilDay(year: 2026, month: 6, day: 1),
+          ),
+        );
+
+        expect(weeklyJune1.data()['status'], 'skipped');
+        expect(monthlyJune1.data()['status'], 'skipped');
 
         // Weekly June 8 is backfilled and marked skipped
-        final weeklyJune8 = await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc('repo-autodismiss-mixed_2026-06-08_0')
-            .get();
-        expect(weeklyJune8.exists, isTrue);
-        expect(weeklyJune8.data()?['status'], 'skipped');
+        final weeklyJune8 = insts.docs.firstWhere(
+          (d) => matchInst(
+            d,
+            weeklyRule.id,
+            const CivilDay(year: 2026, month: 6, day: 8),
+          ),
+        );
+        expect(weeklyJune8.data()['status'], 'skipped');
 
         // Next instances should be spawned:
         // Weekly next after June 9: Mon June 15
         // Monthly next after June 9: July 1
-        final weeklyJune15 = await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc('repo-autodismiss-mixed_2026-06-15_0')
-            .get();
-        final monthlyJuly1 = await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc('repo-autodismiss-mixed_2026-07-01_1')
-            .get();
-        expect(weeklyJune15.exists, isFalse);
-        expect(monthlyJuly1.exists, isFalse);
+        final weeklyJune15 = insts.docs.firstWhere(
+          (d) => matchInst(
+            d,
+            weeklyRule.id,
+            const CivilDay(year: 2026, month: 6, day: 15),
+          ),
+        );
+        final monthlyJuly1 = insts.docs.firstWhere(
+          (d) => matchInst(
+            d,
+            monthlyRule.id,
+            const CivilDay(year: 2026, month: 7, day: 1),
+          ),
+        );
+        expect(weeklyJune15.data()['status'], 'pending');
+        expect(monthlyJuly1.data()['status'], 'pending');
 
         AppClock.reset();
       },
@@ -1489,22 +1533,70 @@ void main() {
             .doc(userId)
             .collection('instances')
             .get();
-        // Expect 4 instances: Daily (June 1, 2, 3) + Weekly (June 3)
-        expect(insts.docs.length, 4);
+
+        final dailyRule = task.schedules[0];
+        final weeklyRule = task.schedules[1];
+
+        // Expect 6 instances: Daily (June 1, 2, 3, 4) + Weekly (June 3, 10)
+        expect(insts.docs.length, 6);
         expect(
-          insts.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-01_0'),
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              dailyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 1),
+            ),
+          ),
           isTrue,
         );
         expect(
-          insts.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-02_0'),
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              dailyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 2),
+            ),
+          ),
           isTrue,
         );
         expect(
-          insts.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-03_0'),
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              dailyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 3),
+            ),
+          ),
           isTrue,
         );
         expect(
-          insts.docs.any((d) => d.id == 'repo-stack-mixed_2026-06-03_1'),
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              dailyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 4),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              weeklyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 3),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              weeklyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 10),
+            ),
+          ),
           isTrue,
         );
 
@@ -1555,29 +1647,106 @@ void main() {
             .doc(userId)
             .collection('instances')
             .get();
-        // Total: 1 (OneOff) + 3 (Daily) + 1 (Weekly) = 5 instances.
-        expect(insts.docs.length, 5);
+
+        final oneOffRule = task.schedules[0];
+        final dailyRule = task.schedules[1];
+        final weeklyRule = task.schedules[2];
+        final monthlyRule = task.schedules[3];
+        final yearlyRule = task.schedules[4];
+
+        // Total: 1 (OneOff: June 1) + 4 (Daily: June 1, 2, 3, 4) + 2 (Weekly: June 3, 10) + 1 (Monthly: June 15) + 1 (Yearly: Dec 25) = 9 instances.
+        expect(insts.docs.length, 9);
 
         expect(
-          insts.docs.any((d) => d.id == 'repo-five-stack_2026-06-01_0'),
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              oneOffRule.id,
+              const CivilDay(year: 2026, month: 6, day: 1),
+            ),
+          ),
           isTrue,
-        ); // OneOff
+        );
         expect(
-          insts.docs.any((d) => d.id == 'repo-five-stack_2026-06-01_1'),
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              dailyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 1),
+            ),
+          ),
           isTrue,
-        ); // Daily June 1
+        );
         expect(
-          insts.docs.any((d) => d.id == 'repo-five-stack_2026-06-02_1'),
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              dailyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 2),
+            ),
+          ),
           isTrue,
-        ); // Daily June 2
+        );
         expect(
-          insts.docs.any((d) => d.id == 'repo-five-stack_2026-06-03_1'),
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              dailyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 3),
+            ),
+          ),
           isTrue,
-        ); // Daily June 3
+        );
         expect(
-          insts.docs.any((d) => d.id == 'repo-five-stack_2026-06-03_2'),
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              dailyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 4),
+            ),
+          ),
           isTrue,
-        ); // Weekly June 3
+        );
+        expect(
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              weeklyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 3),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              weeklyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 10),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              monthlyRule.id,
+              const CivilDay(year: 2026, month: 6, day: 15),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          insts.docs.any(
+            (d) => matchInst(
+              d,
+              yearlyRule.id,
+              const CivilDay(year: 2026, month: 12, day: 25),
+            ),
+          ),
+          isTrue,
+        );
 
         AppClock.reset();
       },
@@ -1610,10 +1779,24 @@ void main() {
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
-        // Complete Daily instance on June 1
-        await repository.completeTaskInstance(
-          'repo-stack-complete_2026-06-01_0',
+        final dailyRule = task.schedules[0];
+
+        final instsBefore = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+
+        final dailyJune1 = instsBefore.docs.firstWhere(
+          (d) => matchInst(
+            d,
+            dailyRule.id,
+            const CivilDay(year: 2026, month: 6, day: 1),
+          ),
         );
+
+        // Complete Daily instance on June 1
+        await repository.completeTaskInstance(dailyJune1.id);
         await Future.delayed(Duration.zero);
 
         // Fast-forward to June 3
@@ -1630,11 +1813,15 @@ void main() {
         // Completing the Daily instance (June 1) should spawn the next occurrence after June 1.
         // Daily next after June 1 is June 3.
         // Weekly next after June 1 is June 3.
-        // Let's verify that a new pending Daily instance for June 3 is created (ends in _0).
+        // Let's verify that a new pending Daily instance for June 3 is created.
         expect(
           insts.docs.any(
             (d) =>
-                d.id == 'repo-stack-complete_2026-06-03_0' &&
+                matchInst(
+                  d,
+                  dailyRule.id,
+                  const CivilDay(year: 2026, month: 6, day: 3),
+                ) &&
                 d.data()['status'] == 'pending',
           ),
           isTrue,
@@ -1873,15 +2060,17 @@ void main() {
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
-        final instId = 'comp-relative-spawn_2026-05-25';
-        final instSnap = await firestore
+        final insts = await firestore
             .collection('users')
             .doc('user-1')
             .collection('instances')
-            .doc(instId)
             .get();
-        expect(instSnap.exists, isTrue);
-        expect(instSnap.data()!['status'], 'pending');
+        expect(insts.docs.length, 1);
+        final instSnap = insts.docs.first;
+        expect(instSnap.data()['status'], 'pending');
+        expect(instSnap.data()['scheduledDate']['year'], 2026);
+        expect(instSnap.data()['scheduledDate']['month'], 5);
+        expect(instSnap.data()['scheduledDate']['day'], 25);
 
         AppClock.reset();
       });
@@ -1925,49 +2114,58 @@ void main() {
           await repository.addTaskSchedule(task);
           await Future.delayed(Duration.zero);
 
+          final insts = await firestore
+              .collection('users')
+              .doc('user-1')
+              .collection('instances')
+              .get();
+          final firstInst = insts.docs.firstWhere(
+            (d) => d.data()['scheduledDate']['day'] == 25,
+          );
+
           // User completes it on Wednesday May 27 at 2:00 PM
           final completionTime = DateTime(2026, 5, 27, 14, 0);
           AppClock.setMockTime(completionTime);
 
-          final instId = 'comp-relative-complete_2026-05-25';
-          await repository.completeTaskInstance(instId);
+          await repository.completeTaskInstance(firstInst.id);
           await Future.delayed(Duration.zero);
 
           // Next scheduledDate is completionTime + 3 days = Saturday May 30
-          final nextInstId = 'comp-relative-complete_2026-05-30';
-
-          final nextSnapBefore = await firestore
+          final nextInstsBefore = await firestore
               .collection('users')
               .doc('user-1')
               .collection('instances')
-              .doc(nextInstId)
               .get();
-          expect(nextSnapBefore.exists, isFalse);
+          final nextExistsBefore = nextInstsBefore.docs.any(
+            (d) => d.data()['scheduledDate']['day'] == 30,
+          );
+          expect(nextExistsBefore, isTrue);
 
           // Fast forward to Saturday May 30 at 2:00 PM (14:00) when it is due
           AppClock.setMockTime(DateTime(2026, 5, 30, 14, 0));
           await repository.triggerMissedPolicyProcessing();
           await Future.delayed(Duration.zero);
 
-          final nextSnap = await firestore
+          final nextInstsAfter = await firestore
               .collection('users')
               .doc('user-1')
               .collection('instances')
-              .doc(nextInstId)
               .get();
-          expect(nextSnap.exists, isTrue);
-          expect(nextSnap.data()!['status'], 'pending');
-          expect(nextSnap.data()!['scheduledDate']['year'], 2026);
-          expect(nextSnap.data()!['scheduledDate']['month'], 5);
-          expect(nextSnap.data()!['scheduledDate']['day'], 30);
+          final nextSnap = nextInstsAfter.docs.firstWhere(
+            (d) => d.data()['scheduledDate']['day'] == 30,
+          );
+          expect(nextSnap.data()['status'], 'pending');
+          expect(nextSnap.data()['scheduledDate']['year'], 2026);
+          expect(nextSnap.data()['scheduledDate']['month'], 5);
+          expect(nextSnap.data()['scheduledDate']['day'], 30);
 
           // Verify startRelativeTime is targetTime (10:00 AM)
-          expect(nextSnap.data()!['startRelativeTime']['hour'], 10);
-          expect(nextSnap.data()!['startRelativeTime']['minute'], 0);
+          expect(nextSnap.data()['startRelativeTime']['hour'], 10);
+          expect(nextSnap.data()['startRelativeTime']['minute'], 0);
 
           // Verify dueRelativeTime maintains original duration of 8 hours (10:00 AM -> 6:00 PM)
-          expect(nextSnap.data()!['dueRelativeTime']['hour'], 18);
-          expect(nextSnap.data()!['dueRelativeTime']['minute'], 0);
+          expect(nextSnap.data()['dueRelativeTime']['hour'], 18);
+          expect(nextSnap.data()['dueRelativeTime']['minute'], 0);
 
           AppClock.reset();
         },
@@ -2012,7 +2210,12 @@ void main() {
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
-        final instId = 'comp-relative-ignore-dismiss_2026-05-25';
+        final insts = await firestore
+            .collection('users')
+            .doc('user-1')
+            .collection('instances')
+            .get();
+        final firstInst = insts.docs.first;
 
         // Fast forward past due time (5:00 PM) and grace period (1 hour) to 7:00 PM
         AppClock.setMockTime(DateTime(2026, 5, 25, 19, 0));
@@ -2024,7 +2227,7 @@ void main() {
             .collection('users')
             .doc('user-1')
             .collection('instances')
-            .doc(instId)
+            .doc(firstInst.id)
             .get();
         expect(instSnap.data()!['status'], 'pending');
 
@@ -2061,15 +2264,20 @@ void main() {
           await repository.addTaskSchedule(task);
           await Future.delayed(Duration.zero);
 
+          final insts = await firestore
+              .collection('users')
+              .doc('user-1')
+              .collection('instances')
+              .get();
+          final firstInst = insts.docs.firstWhere(
+            (d) => d.data()['scheduledDate']['day'] == 25,
+          );
+
           // Complete the first instance
           final completionTime = DateTime(2026, 5, 25, 11, 0);
           AppClock.setMockTime(completionTime);
-          await repository.completeTaskInstance(
-            'comp-relative-bg-spawn_2026-05-25',
-          );
+          await repository.completeTaskInstance(firstInst.id);
           await Future.delayed(Duration.zero);
-
-          final nextInstId = 'comp-relative-bg-spawn_2026-05-28';
 
           // Fast forward to May 28 at 12:00 PM (noon) when it is due
           AppClock.setMockTime(DateTime(2026, 5, 28, 12, 0));
@@ -2077,20 +2285,23 @@ void main() {
           await Future.delayed(Duration.zero);
 
           // A new pending instance for May 28 should now be spawned
-          final nextSnap = await firestore
+          final nextInsts = await firestore
               .collection('users')
               .doc('user-1')
               .collection('instances')
-              .doc(nextInstId)
               .get();
-          expect(nextSnap.exists, isTrue);
+          final nextInst = nextInsts.docs.firstWhere(
+            (d) =>
+                d.data()['scheduledDate']['day'] == 28 &&
+                d.data()['status'] == 'pending',
+          );
 
           // Delete that pending instance to simulate it missing
           await firestore
               .collection('users')
               .doc('user-1')
               .collection('instances')
-              .doc(nextInstId)
+              .doc(nextInst.id)
               .delete();
 
           // 1. Time is before completionTime + 3 days (e.g. May 27)
@@ -2099,13 +2310,17 @@ void main() {
           await Future.delayed(Duration.zero);
 
           // Verify still no pending instance exists
-          final checkSnapBefore = await firestore
+          final instsAfterDelete1 = await firestore
               .collection('users')
               .doc('user-1')
               .collection('instances')
-              .doc(nextInstId)
               .get();
-          expect(checkSnapBefore.exists, isFalse);
+          final existsOn28Day27 = instsAfterDelete1.docs.any(
+            (d) =>
+                d.data()['scheduledDate']['day'] == 28 &&
+                d.data()['status'] == 'pending',
+          );
+          expect(existsOn28Day27, isFalse);
 
           // 2. Time is on or after completionTime + 3 days (e.g. May 28, 12:00 PM)
           AppClock.setMockTime(DateTime(2026, 5, 28, 12, 0));
@@ -2113,14 +2328,17 @@ void main() {
           await Future.delayed(Duration.zero);
 
           // Verify that the background scheduler has spawned the next instance
-          final checkSnapAfter = await firestore
+          final instsAfterDelete2 = await firestore
               .collection('users')
               .doc('user-1')
               .collection('instances')
-              .doc(nextInstId)
               .get();
-          expect(checkSnapAfter.exists, isTrue);
-          expect(checkSnapAfter.data()!['status'], 'pending');
+          final existsOn28Day28 = instsAfterDelete2.docs.any(
+            (d) =>
+                d.data()['scheduledDate']['day'] == 28 &&
+                d.data()['status'] == 'pending',
+          );
+          expect(existsOn28Day28, isTrue);
 
           AppClock.reset();
         },

@@ -124,6 +124,7 @@ void main() {
         final instance = TaskInstance(
           id: 'test-inst',
           scheduleId: 'test-sched',
+          ruleId: 'rule-test',
           title: 'Test',
           description: '',
           scheduledDate: CivilDay(year: 2026, month: 6, day: 19),

@@ -31,6 +31,8 @@ class ScheduleCard extends StatelessWidget {
               ? task.activeOccurrenceIndex
               : 0]
         : OneOffSchedule(
+            id: 'R-fallback-${task.id}',
+            scheduleId: task.id,
             date: CivilDay.fromDateTime(DateTime.now()),
             startRelativeTime: RelativeTime(
               dayOffset: 0,
