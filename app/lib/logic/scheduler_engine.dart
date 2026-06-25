@@ -440,7 +440,8 @@ class SchedulerEngine {
     );
   }
 
-  static RelativeTime _getCompletionRelativeDue(
+  static RelativeTime _shiftRelativeToStart(
+    RelativeTime targetRel,
     TaskScheduleRule rule,
     CompletionRelativePolicy policy,
     CivilDay newScheduledDate,
@@ -448,8 +449,8 @@ class SchedulerEngine {
     final originalStartRef = rule.startRelativeTime.referenceTo(
       rule.scheduledDate,
     );
-    final originalDueRef = rule.dueRelativeTime.referenceTo(rule.scheduledDate);
-    final duration = originalDueRef.difference(originalStartRef);
+    final originalTargetRef = targetRel.referenceTo(rule.scheduledDate);
+    final duration = originalTargetRef.difference(originalStartRef);
 
     final newStartRef = DateTime(
       newScheduledDate.year,
@@ -458,14 +459,27 @@ class SchedulerEngine {
       policy.targetTime.hour,
       policy.targetTime.minute,
     );
-    final newDueRef = newStartRef.add(duration);
-    final dueDay = CivilDay.fromDateTime(newDueRef);
+    final newTargetRef = newStartRef.add(duration);
+    final targetDay = CivilDay.fromDateTime(newTargetRef);
     return RelativeTime(
-      dayOffset: dueDay
+      dayOffset: targetDay
           .toDateTime()
           .difference(newScheduledDate.toDateTime())
           .inDays,
-      time: TimeOfDay.fromDateTime(newDueRef),
+      time: TimeOfDay.fromDateTime(newTargetRef),
+    );
+  }
+
+  static RelativeTime _getCompletionRelativeDue(
+    TaskScheduleRule rule,
+    CompletionRelativePolicy policy,
+    CivilDay newScheduledDate,
+  ) {
+    return _shiftRelativeToStart(
+      rule.dueRelativeTime,
+      rule,
+      policy,
+      newScheduledDate,
     );
   }
 
@@ -474,30 +488,12 @@ class SchedulerEngine {
     CompletionRelativePolicy policy,
     CivilDay newScheduledDate,
   ) {
-    return rule.notificationRelativeTimes.map((notifRel) {
-      final originalStartRef = rule.startRelativeTime.referenceTo(
-        rule.scheduledDate,
-      );
-      final originalNotifRef = notifRel.referenceTo(rule.scheduledDate);
-      final duration = originalNotifRef.difference(originalStartRef);
-
-      final newStartRef = DateTime(
-        newScheduledDate.year,
-        newScheduledDate.month,
-        newScheduledDate.day,
-        policy.targetTime.hour,
-        policy.targetTime.minute,
-      );
-      final newNotifRef = newStartRef.add(duration);
-      final notifDay = CivilDay.fromDateTime(newNotifRef);
-      return RelativeTime(
-        dayOffset: notifDay
-            .toDateTime()
-            .difference(newScheduledDate.toDateTime())
-            .inDays,
-        time: TimeOfDay.fromDateTime(newNotifRef),
-      );
-    }).toList();
+    return rule.notificationRelativeTimes
+        .map(
+          (notifRel) =>
+              _shiftRelativeToStart(notifRel, rule, policy, newScheduledDate),
+        )
+        .toList();
   }
 
   static TaskInstance? getNextOccurrenceToSpawn(

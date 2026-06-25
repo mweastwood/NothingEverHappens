@@ -307,7 +307,3 @@ class LoggingNotificationService implements NotificationService {
     clear();
   }
 }
-
-void showWebNotification(String title, String body) {
-  debugPrint('[WEB NOTIFICATION] $title: $body');
-}

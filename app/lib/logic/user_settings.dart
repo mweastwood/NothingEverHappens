@@ -54,9 +54,10 @@ class UserSettings {
           futureInstancesCount == other.futureInstancesCount;
 
   @override
-  int get hashCode =>
-      hoursAvailable.hashCode ^
-      showPendingTasks.hashCode ^
-      showLastSpawnedDate.hashCode ^
-      futureInstancesCount.hashCode;
+  int get hashCode => Object.hash(
+    hoursAvailable,
+    showPendingTasks,
+    showLastSpawnedDate,
+    futureInstancesCount,
+  );
 }
