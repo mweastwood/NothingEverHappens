@@ -13,6 +13,7 @@ import 'package:nothing_ever_happens/widgets/yearly_scheduling_widget.dart';
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:nothing_ever_happens/logic/civil_day.dart';
 import '../test_helper.dart';
 
 void main() {
@@ -652,18 +653,32 @@ void main() {
       // Check intro text
       expect(find.textContaining('Missed Occurrence Policies'), findsOneWidget);
 
-      // Check policy options
-      expect(find.text('Prefer Newer'), findsOneWidget);
-      expect(find.text('Prefer Older'), findsOneWidget);
-      expect(find.text('Stack'), findsWidgets);
-      expect(find.text('Auto-Dismiss'), findsOneWidget);
+      // Check policy option text is visible in dialog when tapped
+      await tester.tap(find.text('Stack').first);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Prefer Newer'), findsWidgets);
+      expect(find.textContaining('Prefer Older'), findsWidgets);
+      expect(find.textContaining('Stack'), findsWidgets);
+      expect(find.textContaining('Auto-Dismiss'), findsWidgets);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
 
-      // Check Simulated Today starts at June 1
-      expect(find.text('Simulated Today: June 1'), findsOneWidget);
+      // Check Simulated Time starts at June 1
+      expect(find.textContaining('Simulated Time: June 1'), findsOneWidget);
 
-      // Verify the task card is rendered
-      expect(find.text('Water the Houseplants'), findsOneWidget);
-      expect(find.text('Scheduled: June 1'), findsOneWidget);
+      // Verify the task cards are rendered (June 1 and June 2)
+      expect(find.text('Feed the Pets'), findsNWidgets(2));
+      final taskWidgets = tester
+          .widgetList<TaskWidget>(find.byType(TaskWidget))
+          .toList();
+      expect(
+        taskWidgets[0].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 1)),
+      );
+      expect(
+        taskWidgets[1].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 2)),
+      );
     });
 
     testWidgets('prefer older policy: advance and complete shifts correctly', (
@@ -675,16 +690,25 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Switch to Prefer Older
-      await tester.tap(find.text('Prefer Older'));
+      // Switch to Prefer Older via policy selector card
+      await tester.tap(find.text('Stack').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Prefer Older').last);
       await tester.pumpAndSettle();
 
-      // Advance 1 day (should make June 1 task overdue on June 2, skipping June 2)
-      await tester.tap(find.text('Advance 1 Day'));
+      // Advance 24 Hours (should make June 1 task overdue on June 2, skipping June 2)
+      await tester.tap(find.text('24 Hours'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Simulated Today: June 2'), findsOneWidget);
-      expect(find.text('Scheduled: June 1 (Overdue)'), findsOneWidget);
+      expect(find.textContaining('Simulated Time: June 2'), findsOneWidget);
+      var taskWidgets = tester
+          .widgetList<TaskWidget>(find.byType(TaskWidget))
+          .toList();
+      expect(taskWidgets.length, equals(1));
+      expect(
+        taskWidgets.first.instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 1)),
+      );
 
       // Complete the task by tapping the check button
       await tester.ensureVisible(find.byType(FunCheckButton).first);
@@ -693,8 +717,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
       await tester.pumpAndSettle();
 
-      // Reschedules to June 3
-      expect(find.text('Scheduled: June 3'), findsOneWidget);
+      // Reschedules to June 2
+      taskWidgets = tester
+          .widgetList<TaskWidget>(find.byType(TaskWidget))
+          .toList();
+      expect(taskWidgets.length, equals(1));
+      expect(
+        taskWidgets.first.instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 2)),
+      );
     });
 
     testWidgets('prefer newer policy: auto-skips overdue tasks', (
@@ -707,18 +738,31 @@ void main() {
       await tester.pumpAndSettle();
 
       // Switch to Prefer Newer
-      await tester.tap(find.text('Prefer Newer'));
+      await tester.tap(find.text('Stack').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Prefer Newer').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Simulated Today: June 1'), findsOneWidget);
+      expect(find.textContaining('Simulated Time: June 1'), findsOneWidget);
 
-      // Advance 1 Day
-      await tester.tap(find.text('Advance 1 Day'));
+      // Advance 24 Hours
+      await tester.tap(find.text('24 Hours'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Simulated Today: June 2'), findsOneWidget);
-      // Under Prefer Newer, the June 1 task is auto-skipped, so the only active task should be scheduled for June 2 (active)
-      expect(find.text('Scheduled: June 2'), findsOneWidget);
+      expect(find.textContaining('Simulated Time: June 2'), findsOneWidget);
+      // Under Prefer Newer, the June 1 task is auto-skipped, so active tasks should be June 2 and June 3 (lookahead)
+      final taskWidgets = tester
+          .widgetList<TaskWidget>(find.byType(TaskWidget))
+          .toList();
+      expect(taskWidgets.length, equals(2));
+      expect(
+        taskWidgets[0].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 2)),
+      );
+      expect(
+        taskWidgets[1].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 3)),
+      );
       expect(find.textContaining('(Overdue)'), findsNothing);
     });
 
@@ -732,15 +776,34 @@ void main() {
       await tester.pumpAndSettle();
 
       // Switch to Auto-Dismiss
-      await tester.tap(find.text('Auto-Dismiss'));
+      await tester.tap(find.text('Stack').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Auto-Dismiss').last);
       await tester.pumpAndSettle();
 
-      // Advance 1 day (June 2) - June 1 expires (grace period of 1 day) and is skipped
-      await tester.tap(find.text('Advance 1 Day'));
+      // Switch grace period to "12 Hours"
+      await tester.tap(find.text('24 Hours (1 Day)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('12 Hours').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Simulated Today: June 2'), findsOneWidget);
-      expect(find.text('Scheduled: June 2'), findsOneWidget);
+      // Advance 24 Hours
+      await tester.tap(find.text('24 Hours'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Simulated Time: June 2'), findsOneWidget);
+      final taskWidgets = tester
+          .widgetList<TaskWidget>(find.byType(TaskWidget))
+          .toList();
+      expect(taskWidgets.length, equals(2));
+      expect(
+        taskWidgets[0].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 2)),
+      );
+      expect(
+        taskWidgets[1].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 3)),
+      );
       expect(find.textContaining('(Overdue)'), findsNothing);
     });
 
@@ -754,16 +817,32 @@ void main() {
       await tester.pumpAndSettle();
 
       // Switch to Stack
-      await tester.tap(find.text('Stack'));
+      await tester.tap(find.text('Stack').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Stack').last);
       await tester.pumpAndSettle();
 
-      // Advance 1 day (June 2) -> should spawn a task for June 2, keeping June 1 overdue
-      await tester.tap(find.text('Advance 1 Day'));
+      // Advance 24 Hours
+      await tester.tap(find.text('24 Hours'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Simulated Today: June 2'), findsOneWidget);
-      expect(find.text('Scheduled: June 1 (Overdue)'), findsOneWidget);
-      expect(find.text('Scheduled: June 2'), findsOneWidget);
+      expect(find.textContaining('Simulated Time: June 2'), findsOneWidget);
+      var taskWidgets = tester
+          .widgetList<TaskWidget>(find.byType(TaskWidget))
+          .toList();
+      expect(taskWidgets.length, equals(3));
+      expect(
+        taskWidgets[0].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 1)),
+      );
+      expect(
+        taskWidgets[1].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 2)),
+      );
+      expect(
+        taskWidgets[2].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 3)),
+      );
 
       // Complete the June 1 task
       await tester.ensureVisible(find.byType(FunCheckButton).first);
@@ -772,9 +851,19 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
       await tester.pumpAndSettle();
 
-      // Verify June 1 task is removed, leaving only June 2
-      expect(find.text('Scheduled: June 1 (Overdue)'), findsNothing);
-      expect(find.text('Scheduled: June 2'), findsOneWidget);
+      // Verify June 1 task is removed, leaving June 2 and June 3
+      taskWidgets = tester
+          .widgetList<TaskWidget>(find.byType(TaskWidget))
+          .toList();
+      expect(taskWidgets.length, equals(2));
+      expect(
+        taskWidgets[0].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 2)),
+      );
+      expect(
+        taskWidgets[1].instance.scheduledDate,
+        equals(const CivilDay(year: 2026, month: 6, day: 3)),
+      );
     });
 
     testGoldens('MissedPoliciesPlaygroundTab renders correctly', (
