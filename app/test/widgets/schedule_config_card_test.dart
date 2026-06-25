@@ -260,7 +260,7 @@ void main() {
         ),
       );
 
-      final dayField = find.widgetWithText(TextFormField, 'Day');
+      final dayField = find.byKey(const Key('yearly_day_field'));
       expect(dayField, findsOneWidget);
 
       // Enter invalid day (30 for February)
