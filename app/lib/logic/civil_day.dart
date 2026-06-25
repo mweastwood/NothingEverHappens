@@ -55,17 +55,9 @@ class CivilDay implements Comparable<CivilDay> {
   @override
   int get hashCode => Object.hash(year, month, day);
 
-  bool isBefore(CivilDay other) {
-    if (year != other.year) return year < other.year;
-    if (month != other.month) return month < other.month;
-    return day < other.day;
-  }
+  bool isBefore(CivilDay other) => compareTo(other) < 0;
 
-  bool isAfter(CivilDay other) {
-    if (year != other.year) return year > other.year;
-    if (month != other.month) return month > other.month;
-    return day > other.day;
-  }
+  bool isAfter(CivilDay other) => compareTo(other) > 0;
 
   @override
   int compareTo(CivilDay other) {
