@@ -28,7 +28,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _addNewTask() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const CreateTaskScreen()),
+      MaterialPageRoute(
+        builder: (context) =>
+            CreateTaskScreen(defaultToRepeating: _currentIndex == 1),
+      ),
     );
   }
 
