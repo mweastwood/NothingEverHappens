@@ -19,6 +19,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'create_task_screen_test.mocks.dart';
 import '../test_helper.dart';
+import 'package:nothing_ever_happens/screens/help_screen.dart';
 
 Widget buildTestProviderScope({
   required Widget child,
@@ -128,6 +129,42 @@ void main() {
       // Verify One-off schedule summary text is shown (since mock time is 2026-03-08, tomorrow is 2026-03-09)
       expect(find.text('One-off on 2026-03-09'), findsOneWidget);
       expect(find.text('Daily, every 1 day(s)'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'CreateTaskScreen shows help button and navigates to HelpScreen (Scheduling tab)',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: buildTestProviderScope(child: const CreateTaskScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify help button exists in AppBar
+      final helpIconFinder = find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byIcon(Icons.help_outline),
+      );
+      expect(helpIconFinder, findsOneWidget);
+
+      // Tap help button
+      await tester.tap(helpIconFinder);
+      await tester.pumpAndSettle();
+
+      // Verify HelpScreen is pushed
+      final helpScreenFinder = find.byType(HelpScreen);
+      expect(helpScreenFinder, findsOneWidget);
+
+      // Verify HelpScreen has initialIndex = 1 (Scheduling tab)
+      final HelpScreen helpScreen = tester.widget(helpScreenFinder);
+      expect(helpScreen.initialIndex, 1);
     },
   );
 
