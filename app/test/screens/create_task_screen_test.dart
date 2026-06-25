@@ -83,6 +83,54 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets(
+    'CreateTaskScreen defaults to repeating Daily schedule when defaultToRepeating is true',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: buildTestProviderScope(
+            child: const CreateTaskScreen(defaultToRepeating: true),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('New Task'), findsOneWidget);
+      // Verify Daily schedule summary text is shown
+      expect(find.text('Daily, every 1 day(s)'), findsOneWidget);
+      expect(find.textContaining('One-off on'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'CreateTaskScreen defaults to one-off schedule when defaultToRepeating is false',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: buildTestProviderScope(
+            child: const CreateTaskScreen(defaultToRepeating: false),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('New Task'), findsOneWidget);
+      // Verify One-off schedule summary text is shown (since mock time is 2026-03-08, tomorrow is 2026-03-09)
+      expect(find.text('One-off on 2026-03-09'), findsOneWidget);
+      expect(find.text('Daily, every 1 day(s)'), findsNothing);
+    },
+  );
+
   testWidgets('CreateTaskScreen validates title', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(
       1000,

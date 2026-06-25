@@ -22,8 +22,13 @@ class CreateTaskScreen extends ConsumerStatefulWidget {
   static bool debugDisableAnimations = false;
 
   final TaskSchedule? taskToEdit;
+  final bool defaultToRepeating;
 
-  const CreateTaskScreen({super.key, this.taskToEdit});
+  const CreateTaskScreen({
+    super.key,
+    this.taskToEdit,
+    this.defaultToRepeating = false,
+  });
 
   @override
   ConsumerState<CreateTaskScreen> createState() => _CreateTaskScreenState();
@@ -97,21 +102,41 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       );
       final diff = startMidnight.difference(dueMidnight).inDays;
 
-      _schedules = [
-        OneOffSchedule(
-          id: TaskScheduleRule.generateId(),
-          scheduleId: _taskScheduleId,
-          date: civilTomorrow,
-          startRelativeTime: RelativeTime(
-            dayOffset: diff,
-            time: TimeOfDay.fromDateTime(now),
+      if (widget.defaultToRepeating) {
+        _schedules = [
+          DailySchedule(
+            id: TaskScheduleRule.generateId(),
+            scheduleId: _taskScheduleId,
+            startDate: civilTomorrow,
+            interval: 1,
+            startRelativeTime: RelativeTime(
+              dayOffset: diff,
+              time: TimeOfDay.fromDateTime(now),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            schedulingPolicy: const FixedCalendarPolicy(),
           ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+        ];
+      } else {
+        _schedules = [
+          OneOffSchedule(
+            id: TaskScheduleRule.generateId(),
+            scheduleId: _taskScheduleId,
+            date: civilTomorrow,
+            startRelativeTime: RelativeTime(
+              dayOffset: diff,
+              time: TimeOfDay.fromDateTime(now),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
           ),
-        ),
-      ];
+        ];
+      }
       _expandedScheduleIndex = 0;
     }
   }

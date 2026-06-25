@@ -21,6 +21,9 @@ import 'package:nothing_ever_happens/screens/help_screen.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:nothing_ever_happens/main.dart';
+import 'package:nothing_ever_happens/screens/create_task_screen.dart';
 
 @GenerateNiceMocks([
   MockSpec<AuthRepository>(),
@@ -238,4 +241,50 @@ void main() {
 
     await screenMatchesGolden(tester, 'home_screen_tasks_tab_with_help');
   });
+
+  testWidgets(
+    'HomeScreen FAB on Tasks tab navigates to CreateTaskScreen defaulting to one-off',
+    (WidgetTester tester) async {
+      AppConfig.environment = AppEnvironment.prod;
+      AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      // Verify FAB exists and tap it
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+
+      // Verify we navigated to CreateTaskScreen
+      expect(find.byType(CreateTaskScreen), findsOneWidget);
+      // Verify it defaulted to one-off schedule (tomorrow is 2026-03-09)
+      expect(find.text('One-off on 2026-03-09'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'HomeScreen FAB on Schedule tab navigates to CreateTaskScreen defaulting to repeating',
+    (WidgetTester tester) async {
+      AppConfig.environment = AppEnvironment.prod;
+      AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      // Switch to Schedule tab
+      await tester.tap(find.text('Schedule'));
+      await tester.pumpAndSettle();
+
+      // Verify FAB exists and tap it
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+
+      // Verify we navigated to CreateTaskScreen
+      expect(find.byType(CreateTaskScreen), findsOneWidget);
+      // Verify it defaulted to repeating daily schedule
+      expect(find.text('Daily, every 1 day(s)'), findsOneWidget);
+    },
+  );
 }
