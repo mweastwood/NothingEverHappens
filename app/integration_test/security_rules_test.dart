@@ -51,6 +51,7 @@ void main() {
     await clearFirestoreEmulator(projectId);
     await clearAuthEmulator(projectId);
     await FirebaseAuth.instance.signOut();
+    await Future.delayed(const Duration(milliseconds: 200));
   });
 
   Future<User> registerAndSignIn(String email, String password) async {
@@ -60,6 +61,8 @@ void main() {
         email: email,
         password: password,
       );
+      // Wait for auth token to propagate to Firestore client
+      await Future.delayed(const Duration(milliseconds: 500));
       return creds.user!;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
@@ -67,6 +70,8 @@ void main() {
           email: email,
           password: password,
         );
+        // Wait for auth token to propagate to Firestore client
+        await Future.delayed(const Duration(milliseconds: 500));
         return creds.user!;
       } else {
         rethrow;
