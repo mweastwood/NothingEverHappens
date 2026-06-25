@@ -188,10 +188,13 @@ void main() {
 
           final action = SchedulerEngine.evaluate(task, [], now);
 
-          // Under N=1, only June 20 is pending
-          expect(action.instancesToSpawn, hasLength(1));
-          expect(action.instancesToSpawn[0].scheduledDate.day, 20);
+          // Under N=1, today (June 19) and tomorrow (June 20) are pending.
+          // Older dates (June 17, 18) are skipped and not spawned.
+          expect(action.instancesToSpawn, hasLength(2));
+          expect(action.instancesToSpawn[0].scheduledDate.day, 19);
           expect(action.instancesToSpawn[0].status, 'pending');
+          expect(action.instancesToSpawn[1].scheduledDate.day, 20);
+          expect(action.instancesToSpawn[1].status, 'pending');
         },
       );
 
@@ -236,11 +239,62 @@ void main() {
         expect(action.instancesToUpdate, hasLength(1));
         expect(action.instancesToUpdate.first.status, 'skipped');
 
-        // June 20 (the newest target date under N=1 queue) should be spawned as pending
-        expect(action.instancesToSpawn, hasLength(1));
-        expect(action.instancesToSpawn.first.scheduledDate, today.addDays(1));
-        expect(action.instancesToSpawn.first.status, 'pending');
+        // Today (June 19) and tomorrow (June 20) should be spawned as pending
+        expect(action.instancesToSpawn, hasLength(2));
+        expect(action.instancesToSpawn[0].scheduledDate.day, 19);
+        expect(action.instancesToSpawn[0].status, 'pending');
+        expect(action.instancesToSpawn[1].scheduledDate.day, 20);
+        expect(action.instancesToSpawn[1].status, 'pending');
       });
+
+      test(
+        'keeps today\'s instance as pending and does not skip it in favor of a future lookahead instance',
+        () {
+          final task = TaskSchedule(
+            id: 'newer-3',
+            title: 'Prefer Newer Task 3',
+            description: 'Today is active, tomorrow is future',
+            lastSpawnedDate: today,
+            schedules: [
+              DailySchedule(
+                startDate: today,
+                interval: 1,
+                missedOccurrencePolicy:
+                    const MissedOccurrencePolicy.preferNewer(),
+              ),
+            ],
+          );
+
+          // Simulate where today's instance is already spawned as pending in DB
+          final todayInstance = TaskInstance(
+            id: 'newer-3_2026-06-19',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+
+          final action = SchedulerEngine.evaluate(task, [todayInstance], now);
+
+          // Today's instance should remain pending, meaning it is NOT updated to skipped!
+          expect(action.instancesToUpdate, isEmpty);
+
+          // Tomorrow's lookahead instance (June 20) should be spawned as pending
+          expect(action.instancesToSpawn, hasLength(1));
+          expect(action.instancesToSpawn[0].scheduledDate, today.addDays(1));
+          expect(action.instancesToSpawn[0].status, 'pending');
+        },
+      );
     });
 
     group('FixedCalendarPolicy - Prefer Older', () {

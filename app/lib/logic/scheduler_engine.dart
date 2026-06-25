@@ -281,13 +281,23 @@ class SchedulerEngine {
               }
             }
           } else if (policy == MissedPolicy.preferNewer) {
-            final latestScheduledDate = targetDates.reduce(
-              (a, b) => a.isBefore(b) ? b : a,
-            );
+            final pastOrPresentDates = targetDates
+                .where((d) => !d.isAfter(today))
+                .toList();
+            final CivilDay? latestPastOrPresentDate = pastOrPresentDates.isEmpty
+                ? null
+                : pastOrPresentDates.reduce((a, b) => a.isAfter(b) ? a : b);
+
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
-              final isLatest = date == latestScheduledDate;
-              final nextStatus = isLatest ? 'pending' : 'skipped';
+              final String nextStatus;
+              if (date.isAfter(today)) {
+                nextStatus = 'pending';
+              } else {
+                nextStatus = date == latestPastOrPresentDate
+                    ? 'pending'
+                    : 'skipped';
+              }
               if (inst.status != nextStatus) {
                 workingInstances[date] = inst.copyWith(status: nextStatus);
                 if (nextStatus == 'skipped') {
