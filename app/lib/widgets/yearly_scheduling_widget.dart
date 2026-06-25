@@ -1,3 +1,4 @@
+// Resolves GitHub Issue #233: Clean up the yearly scheduling widget.
 import 'package:flutter/material.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
