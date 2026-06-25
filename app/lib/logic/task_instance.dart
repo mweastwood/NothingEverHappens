@@ -1,12 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
 import 'task_priority.dart';
 
 class TaskInstance {
+  static String generateId() => 'I-${const Uuid().v4()}';
+
   final String id;
   final String scheduleId;
+  final String ruleId;
   final String title;
   final String description;
   final CivilDay scheduledDate;
@@ -22,8 +26,9 @@ class TaskInstance {
   final String status;
 
   TaskInstance({
-    required this.id,
+    String? id,
     required this.scheduleId,
+    required this.ruleId,
     required this.title,
     required this.description,
     required this.scheduledDate,
@@ -37,7 +42,8 @@ class TaskInstance {
     this.completedByUserId,
     this.completedAt,
     this.status = 'pending',
-  }) : notificationRelativeTimes = notificationRelativeTimes ?? const [];
+  }) : id = id ?? TaskInstance.generateId(),
+       notificationRelativeTimes = notificationRelativeTimes ?? const [];
 
   factory TaskInstance.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot, [
@@ -49,6 +55,7 @@ class TaskInstance {
     }
 
     final scheduleId = data['scheduleId'] as String? ?? '';
+    final ruleId = data['ruleId'] as String? ?? '';
     final title = data['title'] as String? ?? 'Untitled';
     final description = data['description'] as String? ?? '';
 
@@ -111,6 +118,7 @@ class TaskInstance {
     return TaskInstance(
       id: snapshot.id,
       scheduleId: scheduleId,
+      ruleId: ruleId,
       title: title,
       description: description,
       scheduledDate: scheduledDate,
@@ -130,6 +138,7 @@ class TaskInstance {
   Map<String, dynamic> toFirestore() {
     return {
       'scheduleId': scheduleId,
+      'ruleId': ruleId,
       'title': title,
       'description': description,
       'scheduledDate': scheduledDate.toJson(),
@@ -172,6 +181,7 @@ class TaskInstance {
     return TaskInstance(
       id: id,
       scheduleId: scheduleId,
+      ruleId: ruleId,
       title: title ?? this.title,
       description: description ?? this.description,
       scheduledDate: scheduledDate ?? this.scheduledDate,

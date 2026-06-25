@@ -68,11 +68,13 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
         final tomorrow = AppClock.now.add(const Duration(days: 1));
         final tomorrowDay = CivilDay.fromDateTime(tomorrow);
         return TaskSchedule(
-          id: 'practice-task-$index',
+          id: 'S-practice-task-$index',
           title: title,
           description: desc,
           schedules: [
             OneOffSchedule(
+              id: 'R-practice-rule-$index',
+              scheduleId: 'S-practice-task-$index',
               date: tomorrowDay,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
@@ -91,8 +93,9 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
         final task = _tasks[index];
         final s = task.schedules.first;
         return TaskInstance(
-          id: 'practice-instance-$index',
+          id: 'I-practice-instance-$index',
           scheduleId: task.id,
+          ruleId: s.id,
           title: task.title,
           description: task.description,
           scheduledDate: s.scheduledDate,

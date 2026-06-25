@@ -33,6 +33,8 @@ void main() {
 
     testWidgets('renders occurrences for One-Off task', (tester) async {
       final schedule = OneOffSchedule(
+        id: 'R-mock-1',
+        scheduleId: 'S-mock-1',
         date: const CivilDay(year: 2026, month: 6, day: 8),
       );
 
@@ -63,6 +65,8 @@ void main() {
 
     testWidgets('renders 10 occurrences for Daily task', (tester) async {
       final schedule = DailySchedule(
+        id: 'R-mock-2',
+        scheduleId: 'S-mock-2',
         startDate: const CivilDay(year: 2026, month: 6, day: 8),
         interval: 2,
       );
@@ -97,6 +101,8 @@ void main() {
       'gracefully handles invalid/non-existent dates for Yearly tasks',
       (tester) async {
         final schedule = YearlySchedule(
+          id: 'R-mock-3',
+          scheduleId: 'S-mock-3',
           startDate: const CivilDay(year: 2026, month: 6, day: 30),
           interval: 1,
           month: 6,
@@ -123,9 +129,13 @@ void main() {
 
     testGoldens('UpcomingOccurrencesPreview renders correctly', (tester) async {
       final oneOffSchedule = OneOffSchedule(
+        id: 'R-mock-4',
+        scheduleId: 'S-mock-4',
         date: const CivilDay(year: 2026, month: 6, day: 8),
       );
       final dailySchedule = DailySchedule(
+        id: 'R-mock-5',
+        scheduleId: 'S-mock-5',
         startDate: const CivilDay(year: 2026, month: 6, day: 8),
         interval: 1,
       );

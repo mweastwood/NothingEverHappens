@@ -78,8 +78,8 @@ void main() {
       // 4. Verify streams contain both tasks
       final tasksList = await repository.getTasks().first;
       expect(tasksList.length, 2);
-      expect(tasksList.any((t) => t.id == 't-personal'), isTrue);
-      expect(tasksList.any((t) => t.id == 't-family'), isTrue);
+      expect(tasksList.any((t) => t.id == 'S-t-personal'), isTrue);
+      expect(tasksList.any((t) => t.id == 'S-t-family'), isTrue);
     },
   );
 
@@ -114,18 +114,20 @@ void main() {
         .collection('users')
         .doc(userId)
         .collection('tasks')
-        .doc('t-migrate')
+        .doc(task.id)
         .get();
     expect(personalDoc.exists, isTrue);
 
     // Verify it exists in personal instances
-    final personalInstDoc = await firestore
+    final personalInstances = await firestore
         .collection('users')
         .doc(userId)
         .collection('instances')
-        .doc('t-migrate_2026-06-01')
         .get();
-    expect(personalInstDoc.exists, isTrue);
+    expect(
+      personalInstances.docs.any((d) => d.data()['scheduleId'] == task.id),
+      isTrue,
+    );
 
     // 2. Toggle to Family and save
     final familyTask = TaskSchedule(
@@ -145,36 +147,40 @@ void main() {
         .collection('users')
         .doc(userId)
         .collection('tasks')
-        .doc('t-migrate')
+        .doc(task.id)
         .get();
     expect(personalDocPost.exists, isFalse);
 
     // Verify it was DELETED from personal instances
-    final personalInstDocPost = await firestore
+    final personalInstancesPost = await firestore
         .collection('users')
         .doc(userId)
         .collection('instances')
-        .doc('t-migrate_2026-06-01')
         .get();
-    expect(personalInstDocPost.exists, isFalse);
+    expect(
+      personalInstancesPost.docs.any((d) => d.data()['scheduleId'] == task.id),
+      isFalse,
+    );
 
     // Verify it was CREATED in family tasks
     final familyDocPost = await firestore
         .collection('families')
         .doc(familyId)
         .collection('tasks')
-        .doc('t-migrate')
+        .doc(task.id)
         .get();
     expect(familyDocPost.exists, isTrue);
 
     // Verify it was CREATED in family instances
-    final familyInstDocPost = await firestore
+    final familyInstancesPost = await firestore
         .collection('families')
         .doc(familyId)
         .collection('instances')
-        .doc('t-migrate_2026-06-01')
         .get();
-    expect(familyInstDocPost.exists, isTrue);
+    expect(
+      familyInstancesPost.docs.any((d) => d.data()['scheduleId'] == task.id),
+      isTrue,
+    );
   });
 
   test('atomic scope migration: Family -> Personal', () async {
@@ -208,18 +214,20 @@ void main() {
         .collection('families')
         .doc(familyId)
         .collection('tasks')
-        .doc('t-migrate')
+        .doc(task.id)
         .get();
     expect(familyDoc.exists, isTrue);
 
     // Verify it exists in family instances
-    final familyInstDoc = await firestore
+    final familyInstances = await firestore
         .collection('families')
         .doc(familyId)
         .collection('instances')
-        .doc('t-migrate_2026-06-01')
         .get();
-    expect(familyInstDoc.exists, isTrue);
+    expect(
+      familyInstances.docs.any((d) => d.data()['scheduleId'] == task.id),
+      isTrue,
+    );
 
     // 2. Toggle to Personal and save
     final personalTask = TaskSchedule(
@@ -239,35 +247,39 @@ void main() {
         .collection('families')
         .doc(familyId)
         .collection('tasks')
-        .doc('t-migrate')
+        .doc(task.id)
         .get();
     expect(familyDocPost.exists, isFalse);
 
     // Verify it was DELETED from family instances
-    final familyInstDocPost = await firestore
+    final familyInstancesPost = await firestore
         .collection('families')
         .doc(familyId)
         .collection('instances')
-        .doc('t-migrate_2026-06-01')
         .get();
-    expect(familyInstDocPost.exists, isFalse);
+    expect(
+      familyInstancesPost.docs.any((d) => d.data()['scheduleId'] == task.id),
+      isFalse,
+    );
 
     // Verify it was CREATED in personal tasks
     final personalDocPost = await firestore
         .collection('users')
         .doc(userId)
         .collection('tasks')
-        .doc('t-migrate')
+        .doc(task.id)
         .get();
     expect(personalDocPost.exists, isTrue);
 
     // Verify it was CREATED in personal instances
-    final personalInstDocPost = await firestore
+    final personalInstancesPost = await firestore
         .collection('users')
         .doc(userId)
         .collection('instances')
-        .doc('t-migrate_2026-06-01')
         .get();
-    expect(personalInstDocPost.exists, isTrue);
+    expect(
+      personalInstancesPost.docs.any((d) => d.data()['scheduleId'] == task.id),
+      isTrue,
+    );
   });
 }

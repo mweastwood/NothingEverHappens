@@ -77,11 +77,13 @@ class _MissedPoliciesPlaygroundTabState
     } else {
       _simulatedTasks.add(
         TaskSchedule(
-          id: 'simulated-task-recurring',
+          id: 'S-simulated-task-recurring',
           title: 'Water the Houseplants',
           description: 'Give them just enough water.',
           schedules: [
             DailySchedule(
+              id: 'R-simulated-rule-recurring',
+              scheduleId: 'S-simulated-task-recurring',
               startDate: const CivilDay(year: 2026, month: 6, day: 1),
               interval: 1,
               startRelativeTime: const RelativeTime(
@@ -106,11 +108,13 @@ class _MissedPoliciesPlaygroundTabState
     final dateStr =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     return TaskSchedule(
-      id: 'simulated-task-spawned-$dateStr',
+      id: 'S-simulated-task-spawned-$dateStr',
       title: 'Water the Houseplants',
       description: 'Give them just enough water.',
       schedules: [
         OneOffSchedule(
+          id: 'R-simulated-rule-spawned-$dateStr',
+          scheduleId: 'S-simulated-task-spawned-$dateStr',
           date: date,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
@@ -221,8 +225,11 @@ class _MissedPoliciesPlaygroundTabState
     });
   }
 
-  Future<void> _handleCompleteTask(String id) async {
+  Future<void> _handleCompleteTask(String instanceId) async {
     if (!mounted) return;
+    final id = instanceId.startsWith('I-')
+        ? instanceId.substring(2)
+        : instanceId;
     setState(() {
       final taskIndex = _simulatedTasks.indexWhere((t) => t.id == id);
       if (taskIndex == -1) return;
@@ -251,6 +258,8 @@ class _MissedPoliciesPlaygroundTabState
           description: task.description,
           schedules: [
             DailySchedule(
+              id: task.schedules.first.id,
+              scheduleId: task.id,
               startDate: nextDate,
               interval: 1,
               startRelativeTime: task.schedules.first.startRelativeTime,
@@ -268,8 +277,11 @@ class _MissedPoliciesPlaygroundTabState
     });
   }
 
-  Future<void> _handleDeleteTask(String id) async {
+  Future<void> _handleDeleteTask(String instanceId) async {
     if (!mounted) return;
+    final id = instanceId.startsWith('I-')
+        ? instanceId.substring(2)
+        : instanceId;
     setState(() {
       final taskIndex = _simulatedTasks.indexWhere((t) => t.id == id);
       if (taskIndex == -1) return;
@@ -294,6 +306,8 @@ class _MissedPoliciesPlaygroundTabState
           description: task.description,
           schedules: [
             DailySchedule(
+              id: oldSchedule.id,
+              scheduleId: task.id,
               startDate: nextDate,
               interval: 1,
               startRelativeTime: oldSchedule.startRelativeTime,
@@ -588,8 +602,9 @@ class _MissedPoliciesPlaygroundTabState
                                   ),
                                   TaskWidget(
                                     instance: TaskInstance(
-                                      id: task.id,
+                                      id: 'I-${task.id}',
                                       scheduleId: task.id,
+                                      ruleId: task.schedules.first.id,
                                       title: task.title,
                                       description: task.description,
                                       scheduledDate:

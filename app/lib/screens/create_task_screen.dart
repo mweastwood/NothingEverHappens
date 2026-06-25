@@ -50,6 +50,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   List<TaskScheduleRule> _schedules = [];
   int? _expandedScheduleIndex;
+  late final String _taskScheduleId;
 
   bool _isSaving = false;
 
@@ -66,6 +67,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     _scrollController.addListener(_onScroll);
     if (widget.taskToEdit != null) {
       final task = widget.taskToEdit!;
+      _taskScheduleId = task.id;
       _titleController.text = task.title;
       _descriptionController.text = task.description;
       _isFamily = task.isFamily;
@@ -82,6 +84,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         _expandedScheduleIndex = 0;
       }
     } else {
+      _taskScheduleId = TaskSchedule.generateId();
       final now = AppClock.now;
       final tomorrow = now.add(const Duration(days: 1));
       final civilTomorrow = CivilDay.fromDateTime(tomorrow);
@@ -96,6 +99,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
       _schedules = [
         OneOffSchedule(
+          id: TaskScheduleRule.generateId(),
+          scheduleId: _taskScheduleId,
           date: civilTomorrow,
           startRelativeTime: RelativeTime(
             dayOffset: diff,
@@ -174,7 +179,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             firstRepeating?.missedOccurrencePolicy.policy ?? MissedPolicy.stack;
 
         final newTask = TaskSchedule(
-          id: AppClock.now.millisecondsSinceEpoch.toString(),
+          id: _taskScheduleId,
           title: _titleController.text,
           description: _descriptionController.text,
           schedules: _schedules,
@@ -577,6 +582,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
                         _schedules.add(
                           OneOffSchedule(
+                            id: TaskScheduleRule.generateId(),
+                            scheduleId: _taskScheduleId,
                             date: civilTomorrow,
                             startRelativeTime: RelativeTime(
                               dayOffset: diff,

@@ -72,6 +72,8 @@ void main() {
       TaskScheduleRule? updatedSchedule;
 
       final schedule = OneOffSchedule(
+        id: 'R-mock',
+        scheduleId: 'S-mock',
         date: const CivilDay(year: 2026, month: 6, day: 15),
       );
 
@@ -109,6 +111,8 @@ void main() {
     testWidgets('validates DailySchedule interval input', (tester) async {
       TaskScheduleRule? updatedSchedule;
       final schedule = DailySchedule(
+        id: 'R-mock',
+        scheduleId: 'S-mock',
         startDate: const CivilDay(year: 2026, month: 6, day: 15),
         interval: 2,
       );
@@ -158,6 +162,8 @@ void main() {
     ) async {
       TaskScheduleRule? updatedSchedule;
       final schedule = WeeklySchedule(
+        id: 'R-mock',
+        scheduleId: 'S-mock',
         startDate: const CivilDay(year: 2026, month: 6, day: 15),
         interval: 1,
         daysOfWeek: {1}, // Monday
@@ -189,6 +195,8 @@ void main() {
     testWidgets('MonthlySchedule validates day of month', (tester) async {
       TaskScheduleRule? updatedSchedule;
       final schedule = MonthlySchedule(
+        id: 'R-mock',
+        scheduleId: 'S-mock',
         startDate: const CivilDay(year: 2026, month: 6, day: 15),
         interval: 1,
         dayOfMonth: 15,
@@ -231,6 +239,8 @@ void main() {
     ) async {
       TaskScheduleRule? updatedSchedule;
       final schedule = YearlySchedule(
+        id: 'R-mock',
+        scheduleId: 'S-mock',
         startDate: const CivilDay(year: 2026, month: 6, day: 15),
         interval: 1,
         month: 2, // February
@@ -279,6 +289,8 @@ void main() {
           Material(
             child: ScheduleConfigCard(
               schedule: OneOffSchedule(
+                id: 'R-mock',
+                scheduleId: 'S-mock',
                 date: const CivilDay(year: 2026, month: 6, day: 15),
               ),
               onChanged: (_) {},
@@ -292,6 +304,8 @@ void main() {
           Material(
             child: ScheduleConfigCard(
               schedule: DailySchedule(
+                id: 'R-mock',
+                scheduleId: 'S-mock',
                 startDate: const CivilDay(year: 2026, month: 6, day: 15),
                 interval: 2,
               ),
@@ -306,6 +320,8 @@ void main() {
           Material(
             child: ScheduleConfigCard(
               schedule: WeeklySchedule(
+                id: 'R-mock',
+                scheduleId: 'S-mock',
                 startDate: const CivilDay(year: 2026, month: 6, day: 15),
                 interval: 1,
                 daysOfWeek: {1, 3, 5},
@@ -321,6 +337,8 @@ void main() {
           Material(
             child: ScheduleConfigCard(
               schedule: MonthlySchedule(
+                id: 'R-mock',
+                scheduleId: 'S-mock',
                 startDate: const CivilDay(year: 2026, month: 6, day: 15),
                 interval: 1,
                 dayOfMonth: 15,
@@ -336,6 +354,8 @@ void main() {
           Material(
             child: ScheduleConfigCard(
               schedule: YearlySchedule(
+                id: 'R-mock',
+                scheduleId: 'S-mock',
                 startDate: const CivilDay(year: 2026, month: 6, day: 15),
                 interval: 1,
                 month: 6,

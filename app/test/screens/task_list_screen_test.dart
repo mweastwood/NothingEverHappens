@@ -41,6 +41,9 @@ void main() {
     final today = CivilDay.fromDateTime(todayDate);
     final List<TaskInstance> list = [];
     for (final task in schedules) {
+      final baseTaskId = task.id.startsWith('S-')
+          ? task.id.substring(2)
+          : task.id;
       for (int i = 0; i < task.schedules.length; i++) {
         final s = task.schedules[i];
         if (s is OneOffSchedule) {
@@ -49,9 +52,10 @@ void main() {
             list.add(
               TaskInstance(
                 id: task.schedules.length <= 1
-                    ? '${task.id}_${s.date}'
-                    : '${task.id}_${s.date}_$i',
+                    ? 'I-${baseTaskId}_${s.date}'
+                    : 'I-${baseTaskId}_${s.date}_$i',
                 scheduleId: task.id,
+                ruleId: s.id,
                 title: task.title,
                 description: task.description,
                 scheduledDate: s.date,
@@ -70,9 +74,10 @@ void main() {
             list.add(
               TaskInstance(
                 id: task.schedules.length <= 1
-                    ? '${task.id}_$today'
-                    : '${task.id}_${today}_$i',
+                    ? 'I-${baseTaskId}_$today'
+                    : 'I-${baseTaskId}_${today}_$i',
                 scheduleId: task.id,
+                ruleId: s.id,
                 title: task.title,
                 description: task.description,
                 scheduledDate: today,
@@ -286,12 +291,12 @@ void main() {
     await robot.tapCheckbox();
 
     // Verify completeTask was NOT called immediately
-    verifyNever(mockTaskRepository.completeTaskInstance('1_2024-01-01'));
+    verifyNever(mockTaskRepository.completeTaskInstance('I-1_2024-01-01'));
 
     await robot.waitForCompletion();
 
     // Verify completeTask was called
-    verify(mockTaskRepository.completeTaskInstance('1_2024-01-01')).called(1);
+    verify(mockTaskRepository.completeTaskInstance('I-1_2024-01-01')).called(1);
   });
 
   testWidgets(
@@ -322,7 +327,7 @@ void main() {
       tasksSubject.add([recurringTask]);
 
       when(
-        mockTaskRepository.completeTaskInstance('recur-1_2026-03-08'),
+        mockTaskRepository.completeTaskInstance('I-recur-1_2026-03-08'),
       ).thenAnswer((_) async {
         final advancedTask = TaskSchedule(
           id: 'recur-1',
@@ -581,9 +586,9 @@ void main() {
       tasksSubject.add([task1, task2]);
 
       // Simulate deletion when completeTask is called
-      when(mockTaskRepository.completeTaskInstance('1_2024-01-01')).thenAnswer((
-        _,
-      ) async {
+      when(
+        mockTaskRepository.completeTaskInstance('I-1_2024-01-01'),
+      ).thenAnswer((_) async {
         tasksSubject.add([task2]); // Remove task 1
         return null;
       });
@@ -607,7 +612,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify completeTask was called
-      verify(mockTaskRepository.completeTaskInstance('1_2024-01-01')).called(1);
+      verify(
+        mockTaskRepository.completeTaskInstance('I-1_2024-01-01'),
+      ).called(1);
 
       // Verify TaskSchedule 1 is gone (due to stream update)
       robot1.expectGone();
@@ -681,8 +688,9 @@ void main() {
     );
 
     final instance = TaskInstance(
-      id: '1_2026-06-19',
+      id: 'I-1_2026-06-19',
       scheduleId: '1',
+      ruleId: task.schedules.first.id,
       title: 'Water the Houseplants',
       description: 'Give them water',
       scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
@@ -767,8 +775,9 @@ void main() {
     );
 
     final instance = TaskInstance(
-      id: '1_2026-06-19',
+      id: 'I-1_2026-06-19',
       scheduleId: '1',
+      ruleId: task.schedules.first.id,
       title: 'Water the Houseplants',
       description: 'Give them water',
       scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
@@ -903,8 +912,9 @@ void main() {
     );
 
     final inst1 = TaskInstance(
-      id: '1_2026-06-19',
+      id: 'I-1_2026-06-19',
       scheduleId: '1',
+      ruleId: task1.schedules.first.id,
       title: 'Water the Houseplants',
       description: 'Use warm water',
       scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
@@ -920,8 +930,9 @@ void main() {
     );
 
     final inst2 = TaskInstance(
-      id: '2_2026-06-19',
+      id: 'I-2_2026-06-19',
       scheduleId: '2',
+      ruleId: task2.schedules.first.id,
       title: 'Buy Groceries',
       description: 'Get some fresh bread',
       scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
@@ -1178,8 +1189,9 @@ void main() {
       ]);
       // Create the instance representing the task.
       final futureInstance = TaskInstance(
-        id: 'future-task-1_inst',
+        id: 'I-future-task-1_inst',
         scheduleId: futureTask.id,
+        ruleId: futureTask.schedules.first.id,
         title: futureTask.title,
         description: futureTask.description,
         scheduledDate: taskDate,
@@ -1260,8 +1272,9 @@ void main() {
         futureTask,
       ]);
       final futureInstance = TaskInstance(
-        id: 'future-task-1_inst',
+        id: 'I-future-task-1_inst',
         scheduleId: futureTask.id,
+        ruleId: futureTask.schedules.first.id,
         title: futureTask.title,
         description: futureTask.description,
         scheduledDate: taskDate,
@@ -1340,8 +1353,9 @@ void main() {
     );
 
     final futureInstance = TaskInstance(
-      id: 'future-task-1_inst',
+      id: 'I-future-task-1_inst',
       scheduleId: futureTask.id,
+      ruleId: futureTask.schedules.first.id,
       title: futureTask.title,
       description: futureTask.description,
       scheduledDate: taskDate,

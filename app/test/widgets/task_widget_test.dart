@@ -26,11 +26,13 @@ void main() {
   late MockTaskRepository mockTaskRepository;
 
   final testTask = TaskSchedule(
-    id: '1',
+    id: 'S-1',
     title: 'Test TaskSchedule',
     description: 'This is a test description',
     schedules: [
       OneOffSchedule(
+        id: 'R-test-1',
+        scheduleId: 'S-1',
         date: const CivilDay(year: 2024, month: 1, day: 1),
         startRelativeTime: const RelativeTime(
           dayOffset: 0,
@@ -48,10 +50,9 @@ void main() {
     final s = task.schedules.first;
     final date = s.scheduledDate;
     return TaskInstance(
-      id: task.schedules.length <= 1
-          ? '${task.id}_$date'
-          : '${task.id}_${date}_0',
+      id: 'I-${task.id}_$date',
       scheduleId: task.id,
+      ruleId: s.id,
       title: task.title,
       description: task.description,
       scheduledDate: date,
@@ -124,11 +125,13 @@ void main() {
 
   testWidgets('TaskWidget renders markdown in description', (tester) async {
     final markdownTask = TaskSchedule(
-      id: '2',
+      id: 'S-2',
       title: 'Markdown TaskSchedule',
       description: 'This is **bold** text',
       schedules: [
         OneOffSchedule(
+          id: 'R-test-2',
+          scheduleId: 'S-2',
           date: const CivilDay(year: 2024, month: 1, day: 1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
@@ -164,17 +167,19 @@ void main() {
     await tester.pump(); // Ensure listener executes
 
     verify(
-      mockTaskRepository.completeTaskInstance('${testTask.id}_2024-01-01'),
+      mockTaskRepository.completeTaskInstance('I-${testTask.id}_2024-01-01'),
     ).called(1);
   });
 
   testGoldens('TaskWidget animation frames', (tester) async {
     final markdownTask = TaskSchedule(
-      id: '2',
+      id: 'S-2',
       title: 'Markdown TaskSchedule',
       description: 'Check me off!',
       schedules: [
         OneOffSchedule(
+          id: 'R-test-2',
+          scheduleId: 'S-2',
           date: const CivilDay(year: 2024, month: 1, day: 1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
@@ -310,11 +315,13 @@ void main() {
     tester,
   ) async {
     final recurringTask = TaskSchedule(
-      id: '2',
+      id: 'S-2',
       title: 'Recurring TaskSchedule',
       description: 'This is a recurring task description',
       schedules: [
         DailySchedule(
+          id: 'R-recurring-2',
+          scheduleId: 'S-2',
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
           interval: 1,
           startRelativeTime: const RelativeTime(
@@ -390,7 +397,9 @@ void main() {
     await tester.pump(); // Allow completion listener to run
 
     // Verify repository dismissTaskInstance is called
-    verify(mockTaskRepository.dismissTaskInstance('1_2024-01-01')).called(1);
+    verify(
+      mockTaskRepository.dismissTaskInstance('I-S-1_2024-01-01'),
+    ).called(1);
   });
 
   testGoldens('TaskWidget focused state golden', (tester) async {
@@ -419,11 +428,13 @@ void main() {
 
   testGoldens('TaskWidget recurring state golden (no pencil)', (tester) async {
     final recurringTask = TaskSchedule(
-      id: '2',
+      id: 'S-2',
       title: 'Recurring TaskSchedule',
       description: 'This is a recurring task description',
       schedules: [
         DailySchedule(
+          id: 'R-recurring-2',
+          scheduleId: 'S-2',
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
           interval: 1,
           startRelativeTime: const RelativeTime(
@@ -472,13 +483,15 @@ void main() {
     );
 
     final task1 = TaskSchedule(
-      id: 'b1',
+      id: 'S-b1',
       title: 'High Priority TaskSchedule with Duration',
       description: 'Personal task with high priority and 1.5h duration.',
       priority: TaskPriority.high,
       estimatedDuration: const Duration(hours: 1, minutes: 30),
       schedules: [
         OneOffSchedule(
+          id: 'R-b1',
+          scheduleId: 'S-b1',
           date: const CivilDay(year: 2024, month: 1, day: 1),
           startRelativeTime: defaultStartTime,
           dueRelativeTime: defaultEndTime,
@@ -487,7 +500,7 @@ void main() {
     );
 
     final task2 = TaskSchedule(
-      id: 'b2',
+      id: 'S-b2',
       title: 'Family Daily TaskSchedule with Assignee',
       description:
           'Family task with daily schedule, medium priority, stack policy, and assignee.',
@@ -496,6 +509,8 @@ void main() {
       assignedUserId: 'user_1',
       schedules: [
         DailySchedule(
+          id: 'R-b2',
+          scheduleId: 'S-b2',
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
           interval: 1,
           startRelativeTime: defaultStartTime,
@@ -505,7 +520,7 @@ void main() {
     );
 
     final task3 = TaskSchedule(
-      id: 'b3',
+      id: 'S-b3',
       title: 'Low Priority Weekly TaskSchedule with Prefer Older Policy',
       description:
           'Personal task with low priority, weekly schedule, and prefer older policy.',
@@ -513,6 +528,8 @@ void main() {
       missedPolicy: MissedPolicy.preferOlder,
       schedules: [
         WeeklySchedule(
+          id: 'R-b3',
+          scheduleId: 'S-b3',
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
           interval: 1,
           daysOfWeek: {1},
@@ -523,13 +540,15 @@ void main() {
     );
 
     final task4 = TaskSchedule(
-      id: 'b4',
+      id: 'S-b4',
       title: 'Monthly TaskSchedule with Stack Policy',
       description: 'Monthly schedule with stack policy.',
       priority: TaskPriority.medium,
       missedPolicy: MissedPolicy.stack,
       schedules: [
         MonthlySchedule(
+          id: 'R-b4',
+          scheduleId: 'S-b4',
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
           interval: 1,
           dayOfMonth: 1,
@@ -540,13 +559,15 @@ void main() {
     );
 
     final task5 = TaskSchedule(
-      id: 'b5',
+      id: 'S-b5',
       title: 'Yearly TaskSchedule with Auto-Dismiss Policy',
       description: 'Yearly schedule with auto-dismiss policy.',
       priority: TaskPriority.medium,
       missedPolicy: MissedPolicy.autoDismiss,
       schedules: [
         YearlySchedule(
+          id: 'R-b5',
+          scheduleId: 'S-b5',
           startDate: const CivilDay(year: 2024, month: 1, day: 1),
           interval: 1,
           month: 1,
@@ -605,7 +626,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      mockTaskRepository.completeTaskInstance('${testTask.id}_2024-01-01'),
+      mockTaskRepository.completeTaskInstance('I-${testTask.id}_2024-01-01'),
     ).called(1);
   });
 
@@ -626,7 +647,9 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
 
     // Verify dismissTaskInstance is called immediately
-    verify(mockTaskRepository.dismissTaskInstance('1_2024-01-01')).called(1);
+    verify(
+      mockTaskRepository.dismissTaskInstance('I-S-1_2024-01-01'),
+    ).called(1);
 
     // Verify SnackBar with undo option is shown
     expect(find.byType(SnackBar), findsOneWidget);
@@ -647,7 +670,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify dismissTaskInstance called
-      verify(mockTaskRepository.dismissTaskInstance('1_2024-01-01')).called(1);
+      verify(
+        mockTaskRepository.dismissTaskInstance('I-S-1_2024-01-01'),
+      ).called(1);
 
       // Tap Undo button on SnackBar
       await tester.tap(find.text('Undo'));
@@ -839,7 +864,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verify(
-        mockTaskRepository.completeTaskInstance('${testTask.id}_2024-01-01'),
+        mockTaskRepository.completeTaskInstance('I-${testTask.id}_2024-01-01'),
       ).called(1);
     },
   );
@@ -1110,11 +1135,13 @@ void main() {
       AppClock.setMockTime(now);
 
       final overdueTask = TaskSchedule(
-        id: 'overdue_1',
+        id: 'S-overdue_1',
         title: 'Overdue Task',
         description: 'Due yesterday',
         schedules: [
           OneOffSchedule(
+            id: 'R-overdue_1',
+            scheduleId: 'S-overdue_1',
             date: const CivilDay(year: 2026, month: 6, day: 18),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -1125,11 +1152,13 @@ void main() {
       );
 
       final dueTodayTask = TaskSchedule(
-        id: 'today_1',
+        id: 'S-today_1',
         title: 'Due Today Task',
         description: 'Due today at 5:00 PM',
         schedules: [
           OneOffSchedule(
+            id: 'R-today_1',
+            scheduleId: 'S-today_1',
             date: const CivilDay(year: 2026, month: 6, day: 19),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -1140,11 +1169,13 @@ void main() {
       );
 
       final dueTomorrowTask = TaskSchedule(
-        id: 'tomorrow_1',
+        id: 'S-tomorrow_1',
         title: 'Due Tomorrow Task',
         description: 'Due tomorrow at 5:00 PM',
         schedules: [
           OneOffSchedule(
+            id: 'R-tomorrow_1',
+            scheduleId: 'S-tomorrow_1',
             date: const CivilDay(year: 2026, month: 6, day: 20),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,

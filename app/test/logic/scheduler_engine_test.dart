@@ -36,7 +36,7 @@ void main() {
 
         expect(action.instancesToSpawn, hasLength(1));
         final spawned = action.instancesToSpawn.first;
-        expect(spawned.id, 'oneoff-1_2026-06-19');
+        expect(spawned.id.startsWith('I-'), isTrue);
         expect(spawned.scheduledDate, today);
         expect(spawned.status, 'pending');
         expect(action.instancesToUpdate, isEmpty);
@@ -66,6 +66,7 @@ void main() {
         final existingInstance = TaskInstance(
           id: 'oneoff-1_2026-06-19',
           scheduleId: task.id,
+          ruleId: task.schedules.first.id,
           title: task.title,
           description: task.description,
           scheduledDate: today,
@@ -88,6 +89,49 @@ void main() {
       });
     });
 
+    group('Mixed Schedule Resurrection Bug', () {
+      test(
+        'does not resurrect resolved one-off instance when task is recurring due to daily rule',
+        () {
+          final oneOffRule = OneOffSchedule(
+            date: today.addDays(-2),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+              gracePeriod: Duration.zero,
+            ),
+          );
+          final dailyRule = DailySchedule(
+            startDate: today.addDays(-1),
+            interval: 1,
+          );
+          final task = TaskSchedule(
+            id: 'mixed-1',
+            title: 'Mixed Task',
+            description: 'Daily + One-off',
+            schedules: [oneOffRule, dailyRule],
+          );
+
+          final resolvedOneOff = TaskInstance(
+            id: 'I-oneoff',
+            scheduleId: task.id,
+            ruleId: oneOffRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(-2),
+            startRelativeTime: oneOffRule.startRelativeTime,
+            dueRelativeTime: oneOffRule.dueRelativeTime,
+            status: 'completed',
+            completedAt: now.subtract(const Duration(days: 2)),
+          );
+
+          final action = SchedulerEngine.evaluate(task, [resolvedOneOff], now);
+
+          // Verify that resolvedOneOff is not modified / rescheduled / marked as skipped
+          final changedIds = action.instancesToUpdate.map((i) => i.id).toList();
+          expect(changedIds, isNot(contains(resolvedOneOff.id)));
+        },
+      );
+    });
+
     group('FixedCalendarPolicy - Stack', () {
       test('spawns all missing instances up to today as pending', () {
         final startDate = today.addDays(-3); // June 16
@@ -106,8 +150,8 @@ void main() {
 
         final action = SchedulerEngine.evaluate(task, [], now);
 
-        // Should spawn 4 instances: June 16, 17, 18, 19
-        expect(action.instancesToSpawn, hasLength(4));
+        // Should spawn 5 instances under N=1: June 16, 17, 18, 19, and future 20
+        expect(action.instancesToSpawn, hasLength(5));
         expect(action.instancesToSpawn[0].scheduledDate.day, 16);
         expect(action.instancesToSpawn[0].status, 'pending');
         expect(action.instancesToSpawn[1].scheduledDate.day, 17);
@@ -116,6 +160,8 @@ void main() {
         expect(action.instancesToSpawn[2].status, 'pending');
         expect(action.instancesToSpawn[3].scheduledDate.day, 19);
         expect(action.instancesToSpawn[3].status, 'pending');
+        expect(action.instancesToSpawn[4].scheduledDate.day, 20);
+        expect(action.instancesToSpawn[4].status, 'pending');
 
         expect(action.updatedSchedule!.lastSpawnedDate, today);
       });
@@ -142,14 +188,10 @@ void main() {
 
           final action = SchedulerEngine.evaluate(task, [], now);
 
-          // 17, 18 should be marked skipped, 19 should be pending
-          expect(action.instancesToSpawn, hasLength(3));
-          expect(action.instancesToSpawn[0].scheduledDate.day, 17);
-          expect(action.instancesToSpawn[0].status, 'skipped');
-          expect(action.instancesToSpawn[1].scheduledDate.day, 18);
-          expect(action.instancesToSpawn[1].status, 'skipped');
-          expect(action.instancesToSpawn[2].scheduledDate.day, 19);
-          expect(action.instancesToSpawn[2].status, 'pending');
+          // Under N=1, only June 20 is pending
+          expect(action.instancesToSpawn, hasLength(1));
+          expect(action.instancesToSpawn[0].scheduledDate.day, 20);
+          expect(action.instancesToSpawn[0].status, 'pending');
         },
       );
 
@@ -173,6 +215,7 @@ void main() {
         final existingPending = TaskInstance(
           id: 'newer-2_2026-06-18',
           scheduleId: task.id,
+          ruleId: task.schedules.first.id,
           title: task.title,
           description: task.description,
           scheduledDate: yesterday,
@@ -193,9 +236,9 @@ void main() {
         expect(action.instancesToUpdate, hasLength(1));
         expect(action.instancesToUpdate.first.status, 'skipped');
 
-        // Today's instance should be spawned as pending
+        // June 20 (the newest target date under N=1 queue) should be spawned as pending
         expect(action.instancesToSpawn, hasLength(1));
-        expect(action.instancesToSpawn.first.scheduledDate, today);
+        expect(action.instancesToSpawn.first.scheduledDate, today.addDays(1));
         expect(action.instancesToSpawn.first.status, 'pending');
       });
     });
@@ -221,14 +264,10 @@ void main() {
 
           final action = SchedulerEngine.evaluate(task, [], now);
 
-          // 17 (oldest) should be pending; 18 and 19 should be skipped
-          expect(action.instancesToSpawn, hasLength(3));
+          // 17 (oldest) should be pending; others (18, 19, 20) are skipped and not spawned
+          expect(action.instancesToSpawn, hasLength(1));
           expect(action.instancesToSpawn[0].scheduledDate.day, 17);
           expect(action.instancesToSpawn[0].status, 'pending');
-          expect(action.instancesToSpawn[1].scheduledDate.day, 18);
-          expect(action.instancesToSpawn[1].status, 'skipped');
-          expect(action.instancesToSpawn[2].scheduledDate.day, 19);
-          expect(action.instancesToSpawn[2].status, 'skipped');
         },
       );
 
@@ -254,6 +293,7 @@ void main() {
           final existingPending = TaskInstance(
             id: 'older-2_2026-06-18',
             scheduleId: task.id,
+            ruleId: task.schedules.first.id,
             title: task.title,
             description: task.description,
             scheduledDate: yesterday,
@@ -273,10 +313,8 @@ void main() {
           // Monday's remains pending (no updates)
           expect(action.instancesToUpdate, isEmpty);
 
-          // Today's new instance is spawned as skipped
-          expect(action.instancesToSpawn, hasLength(1));
-          expect(action.instancesToSpawn.first.scheduledDate, today);
-          expect(action.instancesToSpawn.first.status, 'skipped');
+          // Today's new instances (June 19, 20) are skipped and not spawned
+          expect(action.instancesToSpawn, isEmpty);
         },
       );
     });
@@ -306,6 +344,7 @@ void main() {
         final yesterdayInstance = TaskInstance(
           id: 'dismiss-1_2026-06-18',
           scheduleId: task.id,
+          ruleId: task.schedules.first.id,
           title: task.title,
           description: task.description,
           scheduledDate: yesterday,
@@ -326,10 +365,12 @@ void main() {
         expect(action.instancesToUpdate, hasLength(1));
         expect(action.instancesToUpdate.first.status, 'skipped');
 
-        // Today's instance is spawned as pending (since it's 10:00 AM, due at 12:00 PM, not expired)
-        expect(action.instancesToSpawn, hasLength(1));
-        expect(action.instancesToSpawn.first.scheduledDate, today);
-        expect(action.instancesToSpawn.first.status, 'pending');
+        // June 19 (pending) and June 20 (pending N=1 future) should be spawned
+        expect(action.instancesToSpawn, hasLength(2));
+        expect(action.instancesToSpawn[0].scheduledDate, today);
+        expect(action.instancesToSpawn[0].status, 'pending');
+        expect(action.instancesToSpawn[1].scheduledDate, today.addDays(1));
+        expect(action.instancesToSpawn[1].status, 'pending');
       });
     });
 
@@ -356,6 +397,7 @@ void main() {
           final completedInstance = TaskInstance(
             id: 'relative-spawn_2026-06-18',
             scheduleId: task.id,
+            ruleId: task.schedules.first.id,
             title: task.title,
             description: task.description,
             scheduledDate: today.addDays(-1),
@@ -375,6 +417,7 @@ void main() {
             task,
             completedInstance,
             DateTime(2026, 6, 19, 14, 0),
+            [completedInstance],
           );
           expect(nextInst, isNotNull);
           expect(nextInst!.scheduledDate, today.addDays(3)); // June 22
@@ -384,12 +427,7 @@ void main() {
     });
 
     group('30-Day Window Progress / Sticking Bugs', () {
-      test('advances lastSpawnedDate through gaps of 30+ days without occurrences', () {
-        // Today is June 19, 2026.
-        // Start date is May 1, 2026 (49 days ago).
-        // The task is bi-monthly (every 2 months), occurring on the 1st of the month.
-        // Occurrences: May 1, July 1, etc.
-        // The first evaluation (normally run on May 1) spawned the May 1 instance and set lastSpawnedDate to May 1.
+      test('spawns future occurrences through gaps without occurrences', () {
         final startDate = CivilDay(year: 2026, month: 5, day: 1);
         final task = TaskSchedule(
           id: 'bimonthly-task',
@@ -401,44 +439,33 @@ void main() {
           ],
         );
 
-        // Evaluation today (June 19):
-        // It should check from May 2 to June 19.
-        // Since there are no occurrences in this range (next is July 1), datesToSpawn is empty.
-        // If it works correctly, it should advance lastSpawnedDate to June 19 (or up to June 19)
-        // so it doesn't get stuck checking the same range forever.
-        final action = SchedulerEngine.evaluate(task, [], now);
+        // Pre-create the resolved May 1 instance to move the queue base date forward to July 1
+        final resolvedMay1 = TaskInstance(
+          id: 'I-bimonthly-may1',
+          scheduleId: task.id,
+          ruleId: task.schedules.first.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: startDate,
+          startRelativeTime: task.schedules.first.startRelativeTime,
+          dueRelativeTime: task.schedules.first.dueRelativeTime,
+          status: 'completed',
+        );
 
-        expect(action.instancesToSpawn, isEmpty);
-        expect(action.updatedSchedule, isNotNull);
-        // It should have advanced lastSpawnedDate past May 1 (since it checked 30 days from May 2 to May 31).
-        expect(action.updatedSchedule!.lastSpawnedDate, isNotNull);
+        final action = SchedulerEngine.evaluate(task, [resolvedMay1], now);
+
+        // Under N=1 model, the future July 1 occurrence is spawned immediately
+        expect(action.instancesToSpawn, hasLength(1));
         expect(
-          action.updatedSchedule!.lastSpawnedDate!.isBefore(startDate),
-          isFalse,
+          action.instancesToSpawn.first.scheduledDate,
+          equals(CivilDay(year: 2026, month: 7, day: 1)),
         );
-        expect(
-          action.updatedSchedule!.lastSpawnedDate!,
-          equals(CivilDay(year: 2026, month: 5, day: 31)),
-        );
+        expect(action.updatedSchedule, isNull);
       });
 
       test(
         'regression: monthly task starting > 30 days ago gets evaluated up to today and spawns task',
         () {
-          // Today is June 19, 2026.
-          // Start date is May 1, 2026 (49 days ago).
-          // The task is monthly (every 1 month), occurring on the 15th of the month.
-          // Occurrences: May 15, June 15.
-          // The task is brand new (lastSpawnedDate is null).
-          // In the first evaluation (up to 30 days from May 1):
-          // It checks May 1 to May 30. It finds May 15, spawns it, updates lastSpawnedDate to May 15.
-          // In the second evaluation (from May 16 to June 19):
-          // It checks May 16 to June 14 (30 days). No occurrence?
-          // Wait, June 15 is on day 31, so it is NOT checked in the first 30 days after May 15!
-          // So the second evaluation checks May 16 to June 14.
-          // Since no occurrence is in that range, datesToSpawn is empty.
-          // If it gets stuck, lastSpawnedDate stays May 15.
-          // So it never checks June 15, and the June 15 task is never spawned!
           final startDate = CivilDay(year: 2026, month: 5, day: 1);
           final task = TaskSchedule(
             id: 'monthly-stuck-task',
@@ -454,9 +481,7 @@ void main() {
             ],
           );
 
-          // First evaluate from null.
-          // It starts checking at May 1, and runs for 30 days up to May 30.
-          // It finds the May 15 occurrence and spawns it, and advances lastSpawnedDate to May 30 (the last checked date).
+          // First evaluate from null. Capped at 30 days from May 1 -> May 31. Spawns May 15.
           final action1 = SchedulerEngine.evaluate(task, [], now);
           expect(action1.instancesToSpawn, hasLength(1));
           expect(
@@ -465,25 +490,140 @@ void main() {
           );
           expect(
             action1.updatedSchedule!.lastSpawnedDate,
-            equals(CivilDay(year: 2026, month: 5, day: 30)),
+            equals(CivilDay(year: 2026, month: 5, day: 15)),
           );
 
-          // Second evaluate with the updated task from action1.
-          // It starts checking at May 31 and runs up to today (June 19) - a span of 20 days.
-          // It finds the June 15 occurrence and spawns it, and advances lastSpawnedDate to June 19 (today).
+          // Complete the May 15 instance, and evaluate again. Capped at 30 days from June 15 -> July 15.
+          final spawnedMay15 = action1.instancesToSpawn.first.copyWith(
+            status: 'completed',
+            completedAt: now,
+          );
           final updatedTask1 = action1.updatedSchedule!;
-          final action2 = SchedulerEngine.evaluate(updatedTask1, [], now);
+          final action2 = SchedulerEngine.evaluate(updatedTask1, [
+            spawnedMay15,
+          ], now);
 
-          expect(action2.instancesToSpawn, hasLength(1));
+          expect(action2.instancesToSpawn, hasLength(2));
           expect(
-            action2.instancesToSpawn.first.scheduledDate,
-            equals(CivilDay(year: 2026, month: 6, day: 15)),
+            action2.instancesToSpawn.map((i) => i.scheduledDate).toList(),
+            containsAll([
+              CivilDay(year: 2026, month: 6, day: 15),
+              CivilDay(year: 2026, month: 7, day: 15),
+            ]),
           );
-          expect(action2.updatedSchedule, isNotNull);
           expect(
             action2.updatedSchedule!.lastSpawnedDate,
-            equals(CivilDay(year: 2026, month: 6, day: 19)),
+            equals(CivilDay(year: 2026, month: 6, day: 15)),
           );
+        },
+      );
+    });
+
+    group('Pruning/Decreasing future instances', () {
+      test(
+        'correctly deletes extra future pending instances when futureInstancesCount decreases',
+        () {
+          final dailyRule = DailySchedule(
+            startDate: today.addDays(1),
+            interval: 1,
+          );
+          final task = TaskSchedule(
+            id: 'prune-task',
+            title: 'Daily Task',
+            description: 'Desc',
+            schedules: [dailyRule],
+          );
+
+          // We have 4 existing pending instances in the DB
+          final inst20 = TaskInstance(
+            id: 'inst-1',
+            scheduleId: task.id,
+            ruleId: dailyRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(1), // June 20
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+          final inst21 = TaskInstance(
+            id: 'inst-2',
+            scheduleId: task.id,
+            ruleId: dailyRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(2), // June 21
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+          final inst22 = TaskInstance(
+            id: 'inst-3',
+            scheduleId: task.id,
+            ruleId: dailyRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(3), // June 22
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+          final inst23 = TaskInstance(
+            id: 'inst-4',
+            scheduleId: task.id,
+            ruleId: dailyRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(4), // June 23
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+
+          final List<TaskInstance> existingInstances = [
+            inst20,
+            inst21,
+            inst22,
+            inst23,
+          ];
+
+          // Run evaluate with futureInstancesCount = 2
+          final action = SchedulerEngine.evaluate(
+            task,
+            existingInstances,
+            now,
+            futureInstancesCount: 2,
+          );
+
+          // It should keep the first 2 (June 20, 21) and delete the last 2 (June 22, 23)
+          expect(action.instancesToDelete, containsAll(['inst-3', 'inst-4']));
+          expect(action.instancesToDelete, hasLength(2));
+          expect(action.instancesToSpawn, isEmpty);
+          expect(action.instancesToUpdate, isEmpty);
         },
       );
     });

@@ -110,11 +110,13 @@ void main() {
 
       // Add 1 personal active task (30m)
       final personalTask = TaskSchedule(
-        id: 't-personal',
+        id: 'S-t-personal',
         title: 'Personal Chore',
         description: 'Clean room',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-personal',
+            scheduleId: 'S-t-personal',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -134,11 +136,13 @@ void main() {
 
       // Add 1 family active task (45m) assigned to user-1
       final familyTaskActive = TaskSchedule(
-        id: 't-family-active',
+        id: 'S-t-family-active',
         title: 'Family Dishwashing',
         description: 'Wash plates',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-family-active',
+            scheduleId: 'S-t-family-active',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -159,11 +163,13 @@ void main() {
 
       // Add 1 backlog task (60m)
       final backlogTask = TaskSchedule(
-        id: 't-backlog',
+        id: 'S-t-backlog',
         title: 'Backlog Chore',
         description: 'Clean attic',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-backlog',
+            scheduleId: 'S-t-backlog',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -203,11 +209,13 @@ void main() {
 
       // Add 1 personal active task (30m)
       final personalTask = TaskSchedule(
-        id: 't-personal',
+        id: 'S-t-personal',
         title: 'Personal Chore',
         description: 'Clean room',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-personal',
+            scheduleId: 'S-t-personal',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -231,7 +239,7 @@ void main() {
       expect(find.text('Personal Chore'), findsOneWidget);
 
       // Tap remove from cycle button
-      await tester.tap(find.byKey(const Key('remove_btn_t-personal')));
+      await tester.tap(find.byKey(const Key('remove_btn_S-t-personal')));
       await tester.pumpAndSettle();
 
       // Check active list is empty
@@ -246,7 +254,7 @@ void main() {
       expect(find.text('Personal Chore'), findsOneWidget);
 
       // Tap add to cycle button
-      await tester.tap(find.byKey(const Key('add_btn_t-personal')));
+      await tester.tap(find.byKey(const Key('add_btn_S-t-personal')));
       await tester.pumpAndSettle();
 
       expect(find.text('No tasks in the backlog.'), findsOneWidget);
@@ -261,11 +269,13 @@ void main() {
       });
 
       final familyTask = TaskSchedule(
-        id: 't-family',
+        id: 'S-t-family',
         title: 'Family Chore',
         description: 'Mow lawn',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-family',
+            scheduleId: 'S-t-family',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -290,7 +300,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Star is unselected initially
-      final starBtn = find.byKey(const Key('star_btn_t-family'));
+      final starBtn = find.byKey(const Key('star_btn_S-t-family'));
       expect(starBtn, findsOneWidget);
 
       // Tap star
@@ -302,7 +312,7 @@ void main() {
           .collection('families')
           .doc(familyId)
           .collection('tasks')
-          .doc('t-family')
+          .doc('S-t-family')
           .get();
       final updated = TaskSchedule.fromFirestore(doc);
       expect(updated.preferredBy[userId], isTrue);
@@ -338,11 +348,13 @@ void main() {
 
       // 3. Add family tasks in active cycle
       final task1 = TaskSchedule(
-        id: 't1',
+        id: 'S-t1',
         title: 'TaskSchedule 1',
         description: '',
         schedules: [
           OneOffSchedule(
+            id: 'R-t1',
+            scheduleId: 'S-t1',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -375,7 +387,7 @@ void main() {
           .collection('families')
           .doc(familyId)
           .collection('tasks')
-          .doc('t1')
+          .doc('S-t1')
           .get();
       final allocatedTask = TaskSchedule.fromFirestore(doc);
       expect(allocatedTask.assignedUserId, isNotNull);
@@ -430,11 +442,13 @@ void main() {
 
       // 4. Setup some personal tasks for Bob
       final bobTask = TaskSchedule(
-        id: 't-bob-personal',
+        id: 'S-t-bob-personal',
         title: 'Bob Personal TaskSchedule',
         description: '',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-bob-personal',
+            scheduleId: 'S-t-bob-personal',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -454,16 +468,18 @@ void main() {
           .collection('users')
           .doc('user-2')
           .collection('tasks')
-          .doc('t-bob-personal')
+          .doc('S-t-bob-personal')
           .set(bobTask.toFirestore());
 
       // 5. Setup family task assigned to Bob
       final familyTask = TaskSchedule(
-        id: 't-fam-assigned',
+        id: 'S-t-fam-assigned',
         title: 'Shared TaskSchedule',
         description: '',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-fam-assigned',
+            scheduleId: 'S-t-fam-assigned',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -531,11 +547,13 @@ void main() {
       });
 
       final personalTask = TaskSchedule(
-        id: 't-personal',
+        id: 'S-t-personal',
         title: 'Personal Chore',
         description: 'Clean room',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-personal',
+            scheduleId: 'S-t-personal',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -554,11 +572,13 @@ void main() {
       await taskRepo.addTaskSchedule(personalTask);
 
       final familyTask = TaskSchedule(
-        id: 't-family',
+        id: 'S-t-family',
         title: 'Family Dishwashing',
         description: 'Wash plates',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-family',
+            scheduleId: 'S-t-family',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -635,11 +655,13 @@ void main() {
 
       // 4. Setup some personal tasks for Bob
       final bobTask = TaskSchedule(
-        id: 't-bob-personal',
+        id: 'S-t-bob-personal',
         title: 'Bob Personal TaskSchedule',
         description: '',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-bob-personal',
+            scheduleId: 'S-t-bob-personal',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -659,16 +681,18 @@ void main() {
           .collection('users')
           .doc('user-2')
           .collection('tasks')
-          .doc('t-bob-personal')
+          .doc('S-t-bob-personal')
           .set(bobTask.toFirestore());
 
       // 5. Setup family task assigned to Bob
       final familyTask = TaskSchedule(
-        id: 't-fam-assigned',
+        id: 'S-t-fam-assigned',
         title: 'Shared TaskSchedule',
         description: '',
         schedules: [
           OneOffSchedule(
+            id: 'R-t-fam-assigned',
+            scheduleId: 'S-t-fam-assigned',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,

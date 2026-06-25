@@ -28,6 +28,7 @@ void main() {
       final instance = TaskInstance(
         id: 'instance-123',
         scheduleId: 'schedule-456',
+        ruleId: 'rule-456',
         title: 'Task Occurrence',
         description: 'Do the laundry',
         scheduledDate: testDate,
@@ -65,6 +66,7 @@ void main() {
       final instance = TaskInstance(
         id: 'instance-123',
         scheduleId: 'schedule-456',
+        ruleId: 'rule-456',
         title: 'Task Occurrence',
         description: 'Do the laundry',
         scheduledDate: testDate,
@@ -82,6 +84,7 @@ void main() {
 
       final map = instance.toFirestore();
       expect(map['scheduleId'], 'schedule-456');
+      expect(map['ruleId'], 'rule-456');
       expect(map['title'], 'Task Occurrence');
       expect(map['description'], 'Do the laundry');
       expect(map['scheduledDate'], testDate.toJson());
@@ -104,6 +107,7 @@ void main() {
 
       await ref.set({
         'scheduleId': 'schedule-456',
+        'ruleId': 'rule-456',
         'title': 'Task Occurrence',
         'description': 'Do the laundry',
         'scheduledDate': testDate.toJson(),
@@ -124,6 +128,7 @@ void main() {
 
       expect(instance.id, 'instance-123');
       expect(instance.scheduleId, 'schedule-456');
+      expect(instance.ruleId, 'rule-456');
       expect(instance.title, 'Task Occurrence');
       expect(instance.description, 'Do the laundry');
       expect(instance.scheduledDate, testDate);
@@ -155,6 +160,7 @@ void main() {
 
         await ref.set({
           'scheduleId': 'schedule-456',
+          'ruleId': 'rule-456',
           'title': 'Task Occurrence',
           'description': 'Do the laundry',
           'scheduledDate': testDate.toJson(),
@@ -201,6 +207,7 @@ void main() {
       final instance = TaskInstance(
         id: 'instance-123',
         scheduleId: 'schedule-456',
+        ruleId: 'rule-456',
         title: 'Original Title',
         description: 'Original Desc',
         scheduledDate: testDate,
@@ -240,6 +247,7 @@ void main() {
 
       expect(updated.id, 'instance-123');
       expect(updated.scheduleId, 'schedule-456');
+      expect(updated.ruleId, 'rule-456');
       expect(updated.title, 'New Title');
       expect(updated.description, 'New Desc');
       expect(

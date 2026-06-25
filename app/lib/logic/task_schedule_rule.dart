@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
 import 'scheduling_policy.dart';
@@ -20,6 +21,10 @@ List<RelativeTime> _parseNotificationRelativeTimes(Map<String, dynamic> json) {
 }
 
 abstract class TaskScheduleRule {
+  static String generateId() => 'R-${const Uuid().v4()}';
+
+  final String id;
+  final String scheduleId;
   final RelativeTime startRelativeTime;
   final RelativeTime dueRelativeTime;
   final List<RelativeTime> notificationRelativeTimes;
@@ -27,6 +32,8 @@ abstract class TaskScheduleRule {
   final MissedOccurrencePolicy missedOccurrencePolicy;
 
   const TaskScheduleRule({
+    required this.id,
+    required this.scheduleId,
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
     List<RelativeTime>? notificationRelativeTimes,
@@ -63,6 +70,8 @@ abstract class TaskScheduleRule {
 
   /// Creates a copy of this schedule with updated timing parameters.
   TaskScheduleRule copyWithTiming({
+    String? id,
+    String? scheduleId,
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
     List<RelativeTime>? notificationRelativeTimes,
@@ -100,18 +109,25 @@ class OneOffSchedule extends TaskScheduleRule {
   CivilDay date;
 
   OneOffSchedule({
+    String? id,
+    String? scheduleId,
     required this.date,
     super.startRelativeTime,
     super.dueRelativeTime,
     super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
-  });
+  }) : super(
+         id: id ?? TaskScheduleRule.generateId(),
+         scheduleId: scheduleId ?? '',
+       );
 
   @override
   CivilDay get scheduledDate => date;
 
   factory OneOffSchedule.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as String? ?? TaskScheduleRule.generateId();
+    final scheduleId = json['scheduleId'] as String? ?? '';
     final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
     final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
     final start = startJson != null
@@ -140,6 +156,8 @@ class OneOffSchedule extends TaskScheduleRule {
         : const MissedOccurrencePolicy.stack();
 
     return OneOffSchedule(
+      id: id,
+      scheduleId: scheduleId,
       date: CivilDay.fromJson(json['date'] as Map<String, dynamic>),
       startRelativeTime: start,
       dueRelativeTime: due,
@@ -165,6 +183,8 @@ class OneOffSchedule extends TaskScheduleRule {
   @override
   TaskScheduleRule copyWithStartDate(CivilDay newStartDate) {
     return OneOffSchedule(
+      id: id,
+      scheduleId: scheduleId,
       date: newStartDate,
       startRelativeTime: startRelativeTime,
       dueRelativeTime: dueRelativeTime,
@@ -176,6 +196,8 @@ class OneOffSchedule extends TaskScheduleRule {
 
   @override
   TaskScheduleRule copyWithTiming({
+    String? id,
+    String? scheduleId,
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
     List<RelativeTime>? notificationRelativeTimes,
@@ -183,6 +205,8 @@ class OneOffSchedule extends TaskScheduleRule {
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
     return OneOffSchedule(
+      id: id ?? this.id,
+      scheduleId: scheduleId ?? this.scheduleId,
       date: date,
       startRelativeTime: startRelativeTime ?? this.startRelativeTime,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
@@ -197,6 +221,8 @@ class OneOffSchedule extends TaskScheduleRule {
   @override
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
+      'scheduleId': scheduleId,
       'type': 'oneOff',
       'date': date.toJson(),
       'startRelativeTime': startRelativeTime.toJson(),
@@ -220,6 +246,8 @@ class DailySchedule extends TaskScheduleRule {
   int interval;
 
   DailySchedule({
+    String? id,
+    String? scheduleId,
     required this.startDate,
     required this.interval,
     super.startRelativeTime,
@@ -227,12 +255,17 @@ class DailySchedule extends TaskScheduleRule {
     super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
-  });
+  }) : super(
+         id: id ?? TaskScheduleRule.generateId(),
+         scheduleId: scheduleId ?? '',
+       );
 
   @override
   CivilDay get scheduledDate => startDate;
 
   factory DailySchedule.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as String? ?? TaskScheduleRule.generateId();
+    final scheduleId = json['scheduleId'] as String? ?? '';
     final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
     final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
     final start = startJson != null
@@ -261,6 +294,8 @@ class DailySchedule extends TaskScheduleRule {
         : const MissedOccurrencePolicy.stack();
 
     return DailySchedule(
+      id: id,
+      scheduleId: scheduleId,
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
       interval: json['interval'] as int,
       startRelativeTime: start,
@@ -308,6 +343,8 @@ class DailySchedule extends TaskScheduleRule {
   @override
   TaskScheduleRule copyWithStartDate(CivilDay newStartDate) {
     return DailySchedule(
+      id: id,
+      scheduleId: scheduleId,
       startDate: newStartDate,
       interval: interval,
       startRelativeTime: startRelativeTime,
@@ -320,6 +357,8 @@ class DailySchedule extends TaskScheduleRule {
 
   @override
   TaskScheduleRule copyWithTiming({
+    String? id,
+    String? scheduleId,
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
     List<RelativeTime>? notificationRelativeTimes,
@@ -327,6 +366,8 @@ class DailySchedule extends TaskScheduleRule {
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
     return DailySchedule(
+      id: id ?? this.id,
+      scheduleId: scheduleId ?? this.scheduleId,
       startDate: startDate,
       interval: interval,
       startRelativeTime: startRelativeTime ?? this.startRelativeTime,
@@ -342,6 +383,8 @@ class DailySchedule extends TaskScheduleRule {
   @override
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
+      'scheduleId': scheduleId,
       'type': 'daily',
       'startDate': startDate.toJson(),
       'interval': interval,
@@ -369,6 +412,8 @@ class WeeklySchedule extends TaskScheduleRule {
   Set<int> daysOfWeek;
 
   WeeklySchedule({
+    String? id,
+    String? scheduleId,
     required this.startDate,
     required this.interval,
     required this.daysOfWeek,
@@ -377,12 +422,17 @@ class WeeklySchedule extends TaskScheduleRule {
     super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
-  });
+  }) : super(
+         id: id ?? TaskScheduleRule.generateId(),
+         scheduleId: scheduleId ?? '',
+       );
 
   @override
   CivilDay get scheduledDate => startDate;
 
   factory WeeklySchedule.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as String? ?? TaskScheduleRule.generateId();
+    final scheduleId = json['scheduleId'] as String? ?? '';
     final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
     final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
     final start = startJson != null
@@ -411,6 +461,8 @@ class WeeklySchedule extends TaskScheduleRule {
         : const MissedOccurrencePolicy.stack();
 
     return WeeklySchedule(
+      id: id,
+      scheduleId: scheduleId,
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
       interval: json['interval'] as int,
       daysOfWeek: (json['daysOfWeek'] as List<dynamic>).cast<int>().toSet(),
@@ -475,6 +527,8 @@ class WeeklySchedule extends TaskScheduleRule {
   @override
   TaskScheduleRule copyWithStartDate(CivilDay newStartDate) {
     return WeeklySchedule(
+      id: id,
+      scheduleId: scheduleId,
       startDate: newStartDate,
       interval: interval,
       daysOfWeek: daysOfWeek,
@@ -488,6 +542,8 @@ class WeeklySchedule extends TaskScheduleRule {
 
   @override
   TaskScheduleRule copyWithTiming({
+    String? id,
+    String? scheduleId,
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
     List<RelativeTime>? notificationRelativeTimes,
@@ -495,6 +551,8 @@ class WeeklySchedule extends TaskScheduleRule {
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
     return WeeklySchedule(
+      id: id ?? this.id,
+      scheduleId: scheduleId ?? this.scheduleId,
       startDate: startDate,
       interval: interval,
       daysOfWeek: daysOfWeek,
@@ -511,6 +569,8 @@ class WeeklySchedule extends TaskScheduleRule {
   @override
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
+      'scheduleId': scheduleId,
       'type': 'weekly',
       'startDate': startDate.toJson(),
       'interval': interval,
@@ -547,6 +607,8 @@ class MonthlySchedule extends TaskScheduleRule {
   final int? occurrence;
 
   MonthlySchedule({
+    String? id,
+    String? scheduleId,
     required this.startDate,
     required this.interval,
     this.dayOfMonth,
@@ -565,12 +627,18 @@ class MonthlySchedule extends TaskScheduleRule {
          dayOfMonth == null ||
              (dayOfMonth >= 1 && dayOfMonth <= 28) ||
              (dayOfMonth >= -28 && dayOfMonth <= -1),
+       ),
+       super(
+         id: id ?? TaskScheduleRule.generateId(),
+         scheduleId: scheduleId ?? '',
        );
 
   @override
   CivilDay get scheduledDate => startDate;
 
   factory MonthlySchedule.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as String? ?? TaskScheduleRule.generateId();
+    final scheduleId = json['scheduleId'] as String? ?? '';
     final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
     final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
     final start = startJson != null
@@ -599,6 +667,8 @@ class MonthlySchedule extends TaskScheduleRule {
         : const MissedOccurrencePolicy.stack();
 
     return MonthlySchedule(
+      id: id,
+      scheduleId: scheduleId,
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
       interval: json['interval'] as int,
       dayOfMonth: json['dayOfMonth'] as int?,
@@ -679,6 +749,8 @@ class MonthlySchedule extends TaskScheduleRule {
   @override
   TaskScheduleRule copyWithStartDate(CivilDay newStartDate) {
     return MonthlySchedule(
+      id: id,
+      scheduleId: scheduleId,
       startDate: newStartDate,
       interval: interval,
       dayOfMonth: dayOfMonth,
@@ -694,6 +766,8 @@ class MonthlySchedule extends TaskScheduleRule {
 
   @override
   TaskScheduleRule copyWithTiming({
+    String? id,
+    String? scheduleId,
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
     List<RelativeTime>? notificationRelativeTimes,
@@ -701,6 +775,8 @@ class MonthlySchedule extends TaskScheduleRule {
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
     return MonthlySchedule(
+      id: id ?? this.id,
+      scheduleId: scheduleId ?? this.scheduleId,
       startDate: startDate,
       interval: interval,
       dayOfMonth: dayOfMonth,
@@ -719,6 +795,8 @@ class MonthlySchedule extends TaskScheduleRule {
   @override
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
+      'scheduleId': scheduleId,
       'type': 'monthly',
       'startDate': startDate.toJson(),
       'interval': interval,
@@ -752,6 +830,8 @@ class YearlySchedule extends TaskScheduleRule {
   final int day;
 
   YearlySchedule({
+    String? id,
+    String? scheduleId,
     required this.startDate,
     required this.interval,
     required this.month,
@@ -761,12 +841,17 @@ class YearlySchedule extends TaskScheduleRule {
     super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
-  });
+  }) : super(
+         id: id ?? TaskScheduleRule.generateId(),
+         scheduleId: scheduleId ?? '',
+       );
 
   @override
   CivilDay get scheduledDate => startDate;
 
   factory YearlySchedule.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as String? ?? TaskScheduleRule.generateId();
+    final scheduleId = json['scheduleId'] as String? ?? '';
     final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
     final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
     final start = startJson != null
@@ -795,6 +880,8 @@ class YearlySchedule extends TaskScheduleRule {
         : const MissedOccurrencePolicy.stack();
 
     return YearlySchedule(
+      id: id,
+      scheduleId: scheduleId,
       startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
       interval: json['interval'] as int,
       month: json['month'] as int,
@@ -846,6 +933,8 @@ class YearlySchedule extends TaskScheduleRule {
   @override
   TaskScheduleRule copyWithStartDate(CivilDay newStartDate) {
     return YearlySchedule(
+      id: id,
+      scheduleId: scheduleId,
       startDate: newStartDate,
       interval: interval,
       month: month,
@@ -860,6 +949,8 @@ class YearlySchedule extends TaskScheduleRule {
 
   @override
   TaskScheduleRule copyWithTiming({
+    String? id,
+    String? scheduleId,
     RelativeTime? startRelativeTime,
     RelativeTime? dueRelativeTime,
     List<RelativeTime>? notificationRelativeTimes,
@@ -867,6 +958,8 @@ class YearlySchedule extends TaskScheduleRule {
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
     return YearlySchedule(
+      id: id ?? this.id,
+      scheduleId: scheduleId ?? this.scheduleId,
       startDate: startDate,
       interval: interval,
       month: month,
@@ -884,6 +977,8 @@ class YearlySchedule extends TaskScheduleRule {
   @override
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
+      'scheduleId': scheduleId,
       'type': 'yearly',
       'startDate': startDate.toJson(),
       'interval': interval,
@@ -950,6 +1045,8 @@ TaskScheduleRule convertRuleToKind(
   TaskScheduleRule existingRule,
   HierarchicalRecurrenceKind kind,
 ) {
+  final id = existingRule.id;
+  final scheduleId = existingRule.scheduleId;
   final scheduledDate = existingRule.scheduledDate;
   final startRelativeTime = existingRule.startRelativeTime;
   final dueRelativeTime = existingRule.dueRelativeTime;
@@ -972,6 +1069,8 @@ TaskScheduleRule convertRuleToKind(
   switch (kind) {
     case HierarchicalRecurrenceKind.oneOff:
       return OneOffSchedule(
+        id: id,
+        scheduleId: scheduleId,
         date: scheduledDate,
         startRelativeTime: startRelativeTime,
         dueRelativeTime: dueRelativeTime,
@@ -981,6 +1080,8 @@ TaskScheduleRule convertRuleToKind(
 
     case HierarchicalRecurrenceKind.dailyFixed:
       return DailySchedule(
+        id: id,
+        scheduleId: scheduleId,
         startDate: scheduledDate,
         interval: interval,
         startRelativeTime: startRelativeTime,
@@ -992,6 +1093,8 @@ TaskScheduleRule convertRuleToKind(
 
     case HierarchicalRecurrenceKind.dailyCompletionRelative:
       return DailySchedule(
+        id: id,
+        scheduleId: scheduleId,
         startDate: scheduledDate,
         interval: interval,
         startRelativeTime: startRelativeTime,
@@ -1006,6 +1109,8 @@ TaskScheduleRule convertRuleToKind(
 
     case HierarchicalRecurrenceKind.weeklyFixed:
       return WeeklySchedule(
+        id: id,
+        scheduleId: scheduleId,
         startDate: scheduledDate,
         interval: interval,
         daysOfWeek: {scheduledDate.toUtcDateTime().weekday},
@@ -1018,6 +1123,8 @@ TaskScheduleRule convertRuleToKind(
 
     case HierarchicalRecurrenceKind.weeklyCompletionRelative:
       return WeeklySchedule(
+        id: id,
+        scheduleId: scheduleId,
         startDate: scheduledDate,
         interval: interval,
         daysOfWeek: {scheduledDate.toUtcDateTime().weekday},
@@ -1033,6 +1140,8 @@ TaskScheduleRule convertRuleToKind(
 
     case HierarchicalRecurrenceKind.monthlyFixedDay:
       return MonthlySchedule(
+        id: id,
+        scheduleId: scheduleId,
         startDate: scheduledDate,
         interval: interval,
         dayOfMonth: scheduledDate.day <= 28 ? scheduledDate.day : 28,
@@ -1047,6 +1156,8 @@ TaskScheduleRule convertRuleToKind(
       final weekday = scheduledDate.toUtcDateTime().weekday;
       final occurrence = (scheduledDate.day - 1) ~/ 7 + 1;
       return MonthlySchedule(
+        id: id,
+        scheduleId: scheduleId,
         startDate: scheduledDate,
         interval: interval,
         dayOfWeek: weekday,
@@ -1060,6 +1171,8 @@ TaskScheduleRule convertRuleToKind(
 
     case HierarchicalRecurrenceKind.monthlyCompletionRelative:
       return MonthlySchedule(
+        id: id,
+        scheduleId: scheduleId,
         startDate: scheduledDate,
         interval: interval,
         dayOfMonth: scheduledDate.day <= 28 ? scheduledDate.day : 28,
@@ -1075,6 +1188,8 @@ TaskScheduleRule convertRuleToKind(
 
     case HierarchicalRecurrenceKind.yearlyFixed:
       return YearlySchedule(
+        id: id,
+        scheduleId: scheduleId,
         startDate: scheduledDate,
         interval: interval,
         month: scheduledDate.month,
@@ -1088,6 +1203,8 @@ TaskScheduleRule convertRuleToKind(
 
     case HierarchicalRecurrenceKind.yearlyCompletionRelative:
       return YearlySchedule(
+        id: id,
+        scheduleId: scheduleId,
         startDate: scheduledDate,
         interval: interval,
         month: scheduledDate.month,

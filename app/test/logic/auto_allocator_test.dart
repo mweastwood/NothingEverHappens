@@ -11,11 +11,13 @@ void main() {
       'allocates tasks respecting capacity limits and prioritizing high priority',
       () {
         final task1 = TaskSchedule(
-          id: 't1',
+          id: 'S-t1',
           title: 'TaskSchedule 1',
           description: '',
           schedules: [
             OneOffSchedule(
+              id: 'R-t1',
+              scheduleId: 'S-t1',
               date: const CivilDay(year: 2026, month: 6, day: 1),
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
@@ -32,11 +34,13 @@ void main() {
         );
 
         final task2 = TaskSchedule(
-          id: 't2',
+          id: 'S-t2',
           title: 'TaskSchedule 2',
           description: '',
           schedules: [
             OneOffSchedule(
+              id: 'R-t2',
+              scheduleId: 'S-t2',
               date: const CivilDay(year: 2026, month: 6, day: 1),
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
@@ -63,21 +67,23 @@ void main() {
         );
 
         // task1 (high priority, 60m) should go to alice because bob (30m) doesn't have capacity.
-        expect(assignments['t1'], 'alice');
+        expect(assignments['S-t1'], 'alice');
         // task2 (low priority, 60m) should not be allocated to bob (30m cap) either.
         // Can it be allocated to alice? Alice has 90m capacity, task1 took 60m, leaving 30m.
         // task2 requires 60m, so it cannot be allocated to alice either.
-        expect(assignments.containsKey('t2'), isFalse);
+        expect(assignments.containsKey('S-t2'), isFalse);
       },
     );
 
     test('prefers users who starred the task', () {
       final task = TaskSchedule(
-        id: 't1',
+        id: 'S-t1',
         title: 'Clean living room',
         description: '',
         schedules: [
           OneOffSchedule(
+            id: 'R-t1',
+            scheduleId: 'S-t1',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -102,16 +108,18 @@ void main() {
       );
 
       // Should be assigned to bob since he starred it, even though Alice and Bob have equal capacity.
-      expect(assignments['t1'], 'bob');
+      expect(assignments['S-t1'], 'bob');
     });
 
     test('subtracts personal task efforts from user capacities', () {
       final task = TaskSchedule(
-        id: 't1',
+        id: 'S-t1',
         title: 'Chore',
         description: '',
         schedules: [
           OneOffSchedule(
+            id: 'R-t1',
+            scheduleId: 'S-t1',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -140,16 +148,18 @@ void main() {
       );
 
       // The task requires 60 mins. Alice only has 40 mins left, so it must go to Bob.
-      expect(assignments['t1'], 'bob');
+      expect(assignments['S-t1'], 'bob');
     });
 
     test('balances workload by capacity when no one starred', () {
       final task = TaskSchedule(
-        id: 't1',
+        id: 'S-t1',
         title: 'Chore',
         description: '',
         schedules: [
           OneOffSchedule(
+            id: 'R-t1',
+            scheduleId: 'S-t1',
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -175,7 +185,7 @@ void main() {
         familyTasks: [task],
       );
 
-      expect(assignments['t1'], 'alice');
+      expect(assignments['S-t1'], 'alice');
     });
   });
 }

@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -8,6 +11,35 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
+import 'package:nothing_ever_happens/logic/auth_repository.dart';
+import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
+
+Future<String> _findInstanceId(
+  FakeFirebaseFirestore firestore,
+  String userId,
+  String taskId,
+  CivilDay date,
+) async {
+  final snap = await firestore
+      .collection('users')
+      .doc(userId)
+      .collection('instances')
+      .get();
+  final doc = snap.docs.firstWhere(
+    (d) {
+      final data = d.data();
+      final sDate = data['scheduledDate'];
+      return data['scheduleId'] == taskId &&
+          sDate['year'] == date.year &&
+          sDate['month'] == date.month &&
+          sDate['day'] == date.day;
+    },
+    orElse: () =>
+        throw StateError('No instance found for task $taskId on $date'),
+  );
+  return doc.id;
+}
 
 void main() {
   group('TaskRepository', () {
@@ -19,6 +51,9 @@ void main() {
       firestore = FakeFirebaseFirestore();
       repository = TaskRepository(firestore: firestore, userId: userId);
     });
+
+    Future<String> findInstanceId(String taskId, CivilDay date) =>
+        _findInstanceId(firestore, userId, taskId, date);
 
     final testTask = TaskSchedule(
       id: 'task-1',
@@ -93,7 +128,10 @@ void main() {
         await repository.addTaskSchedule(testTask);
         await Future.delayed(Duration.zero);
 
-        final instanceId = '${testTask.id}_2024-01-01';
+        final instanceId = await findInstanceId(
+          testTask.id,
+          const CivilDay(year: 2024, month: 1, day: 1),
+        );
 
         // Verify task and instance exist
         final initialTask = await firestore
@@ -166,7 +204,10 @@ void main() {
       await repository.addTaskSchedule(testTask);
       await Future.delayed(Duration.zero);
 
-      final instanceId = '${testTask.id}_2024-01-01';
+      final instanceId = await findInstanceId(
+        testTask.id,
+        const CivilDay(year: 2024, month: 1, day: 1),
+      );
       await repository.completeTaskInstance(instanceId);
 
       final instanceSnapshot = await firestore
@@ -184,7 +225,10 @@ void main() {
       await repository.addTaskSchedule(testTask);
       await Future.delayed(Duration.zero);
 
-      final instanceId = '${testTask.id}_2024-01-01';
+      final instanceId = await findInstanceId(
+        testTask.id,
+        const CivilDay(year: 2024, month: 1, day: 1),
+      );
       await repository.dismissTaskInstance(instanceId);
 
       final instanceSnapshot = await firestore
@@ -219,20 +263,26 @@ void main() {
         await repository.addTaskSchedule(recurringTask);
         await Future.delayed(Duration.zero);
 
-        final instanceId = '${recurringTask.id}_2026-06-01';
-        final nextInstanceId = '${recurringTask.id}_2026-06-02';
+        final instanceId = await findInstanceId(
+          recurringTask.id,
+          const CivilDay(year: 2026, month: 6, day: 1),
+        );
+        final nextInstanceId = await findInstanceId(
+          recurringTask.id,
+          const CivilDay(year: 2026, month: 6, day: 2),
+        );
 
         // 1. Complete the June 1 instance on June 1
         await repository.completeTaskInstance(instanceId);
 
-        // Verify next spawned does not exist under JIT spawning
+        // Verify next spawned exists under N=1 spawning
         final nextSnapshot = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
             .doc(nextInstanceId)
             .get();
-        expect(nextSnapshot.exists, isFalse);
+        expect(nextSnapshot.exists, isTrue);
 
         // Fetch the completed instance
         final completedSnapshot = await firestore
@@ -257,14 +307,25 @@ void main() {
         expect(undoneSnapshot.data()!['completedByUserId'], isNull);
         expect(undoneSnapshot.data()!['completedAt'], isNull);
 
-        // Verify next spawned still does not exist
+        // Verify next spawned still exists under N=1 spawning
         final nextSnapshotPost = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
             .doc(nextInstanceId)
             .get();
-        expect(nextSnapshotPost.exists, isFalse);
+        expect(nextSnapshotPost.exists, isTrue);
+
+        // Verify June 3 was deleted as part of the undo
+        final instsPostUndo = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+        final hasJune3 = instsPostUndo.docs.any(
+          (d) => d.data()['scheduledDate']['day'] == 3,
+        );
+        expect(hasJune3, isFalse);
 
         AppClock.reset();
       },
@@ -276,7 +337,10 @@ void main() {
         await repository.addTaskSchedule(testTask);
         await Future.delayed(Duration.zero);
 
-        final instanceId = '${testTask.id}_2024-01-01';
+        final instanceId = await findInstanceId(
+          testTask.id,
+          const CivilDay(year: 2024, month: 1, day: 1),
+        );
 
         // 1. Dismiss it
         await repository.dismissTaskInstance(instanceId);
@@ -333,7 +397,10 @@ void main() {
         await repository.addTaskSchedule(dailyTask);
         await Future.delayed(Duration.zero);
 
-        final instanceId = '${dailyTask.id}_2026-06-01';
+        final instanceId = await findInstanceId(
+          dailyTask.id,
+          const CivilDay(year: 2026, month: 6, day: 1),
+        );
 
         // completeTaskInstance must return the resolved instance
         final resolved = await repository.completeTaskInstance(instanceId);
@@ -360,7 +427,10 @@ void main() {
         await repository.addTaskSchedule(dailyTask2);
         await Future.delayed(Duration.zero);
 
-        final instanceId2 = '${dailyTask2.id}_2026-06-01';
+        final instanceId2 = await findInstanceId(
+          dailyTask2.id,
+          const CivilDay(year: 2026, month: 6, day: 1),
+        );
         final resolvedDismissed = await repository.dismissTaskInstance(
           instanceId2,
         );
@@ -438,7 +508,7 @@ void main() {
 
         // Expect exactly 1 task
         expect(tasksSnap.docs.length, 1);
-        expect(tasksSnap.docs.first.id, 'task-weekly');
+        expect(tasksSnap.docs.first.id, weeklyTask.id);
 
         final instancesSnap = await firestore
             .collection('users')
@@ -446,10 +516,44 @@ void main() {
             .collection('instances')
             .get();
 
-        expect(instancesSnap.docs.length, 2);
-        final instanceIds = instancesSnap.docs.map((doc) => doc.id).toList();
-        expect(instanceIds, contains('task-weekly_2026-06-15_0'));
-        expect(instanceIds, contains('task-weekly_2026-06-15_1'));
+        expect(instancesSnap.docs.length, 4);
+
+        final weeklyRule = modification.newTask.schedules[0];
+        final monthlyRule = modification.newTask.schedules[1];
+
+        expect(
+          instancesSnap.docs.any(
+            (d) =>
+                d.data()['ruleId'] == weeklyRule.id &&
+                d.data()['scheduledDate']['day'] == 15,
+          ),
+          isTrue,
+        );
+        expect(
+          instancesSnap.docs.any(
+            (d) =>
+                d.data()['ruleId'] == weeklyRule.id &&
+                d.data()['scheduledDate']['day'] == 22,
+          ),
+          isTrue,
+        );
+        expect(
+          instancesSnap.docs.any(
+            (d) =>
+                d.data()['ruleId'] == monthlyRule.id &&
+                d.data()['scheduledDate']['day'] == 15,
+          ),
+          isTrue,
+        );
+        expect(
+          instancesSnap.docs.any(
+            (d) =>
+                d.data()['ruleId'] == monthlyRule.id &&
+                d.data()['scheduledDate']['month'] == 7 &&
+                d.data()['scheduledDate']['day'] == 15,
+          ),
+          isTrue,
+        );
       },
     );
   });
@@ -469,6 +573,9 @@ void main() {
         notificationService: notificationService,
       );
     });
+
+    Future<String> findInstanceId(String taskId, CivilDay date) =>
+        _findInstanceId(firestore, userId, taskId, date);
 
     final notifTask = TaskSchedule(
       id: 'notif-task-1',
@@ -576,13 +683,20 @@ void main() {
     });
 
     test('completeTask schedules next occurrence if recurring', () async {
+      AppClock.setMockTime(DateTime(2024, 1, 1, 12, 0));
+      addTearDown(AppClock.reset);
+
       await repository.addTaskSchedule(notifTask);
+      await Future.delayed(Duration.zero);
       expect(
         notificationService.scheduledTasks.containsKey(notifTask.id),
         isTrue,
       );
 
-      final instanceId = '${notifTask.id}_2024-01-01';
+      final instanceId = await findInstanceId(
+        notifTask.id,
+        const CivilDay(year: 2024, month: 1, day: 1),
+      );
       await repository.completeTaskInstance(instanceId);
       // Still scheduled because it's recurring and advances to the next occurrence
       expect(
@@ -614,8 +728,11 @@ void main() {
         await repository.addTaskSchedule(stackTask);
         await Future.delayed(Duration.zero);
 
-        // Spawns instance for June 1
-        final instanceId = '${stackTask.id}_2026-06-01';
+        // Spawns instance for June 1 (startDate) and June 2 (since N=1)
+        final instanceId = await findInstanceId(
+          stackTask.id,
+          const CivilDay(year: 2026, month: 6, day: 1),
+        );
         final initialSnapshot = await firestore
             .collection('users')
             .doc(userId)
@@ -623,6 +740,19 @@ void main() {
             .doc(instanceId)
             .get();
         expect(initialSnapshot.exists, isTrue);
+
+        final nextInstanceId = await findInstanceId(
+          stackTask.id,
+          const CivilDay(year: 2026, month: 6, day: 2),
+        );
+        final nextSnapshotBefore = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(nextInstanceId)
+            .get();
+        expect(nextSnapshotBefore.exists, isTrue);
+        expect(nextSnapshotBefore.data()!['status'], 'pending');
 
         // Complete June 1 instance on June 1
         await repository.completeTaskInstance(instanceId);
@@ -636,30 +766,24 @@ void main() {
             .get();
         expect(completedSnapshot.data()!['status'], 'completed');
 
-        // Stack policy reschedules relative to scheduledDate (June 1) -> June 2.
-        // Under just-in-time spawning, the June 2 instance is not spawned immediately on June 1.
-        final nextInstanceId = '${stackTask.id}_2026-06-02';
-        final nextSnapshotBefore = await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc(nextInstanceId)
-            .get();
-        expect(nextSnapshotBefore.exists, isFalse);
-
         // Fast-forward to June 2
         AppClock.setMockTime(DateTime(2026, 6, 2, 12, 0));
         await repository.triggerMissedPolicyProcessing();
         await Future.delayed(const Duration(milliseconds: 100));
 
-        final nextSnapshotAfter = await firestore
+        // Under queue model, now that June 1 is completed and June 2 is the next/current, June 3 should be spawned.
+        final june3InstanceId = await findInstanceId(
+          stackTask.id,
+          const CivilDay(year: 2026, month: 6, day: 3),
+        );
+        final june3Snapshot = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc(nextInstanceId)
+            .doc(june3InstanceId)
             .get();
-        expect(nextSnapshotAfter.exists, isTrue);
-        expect(nextSnapshotAfter.data()!['status'], 'pending');
+        expect(june3Snapshot.exists, isTrue);
+        expect(june3Snapshot.data()!['status'], 'pending');
 
         AppClock.reset();
       },
@@ -692,29 +816,11 @@ void main() {
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
-        final instanceId = '${task.id}_2026-06-03';
-        final initialInstance = TaskInstance(
-          id: instanceId,
-          scheduleId: task.id,
-          title: task.title,
-          description: task.description,
-          scheduledDate: const CivilDay(year: 2026, month: 6, day: 3),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-          status: 'pending',
+        // Under N=1 queue, June 3 instance is spawned immediately on June 1 as a future occurrence.
+        final instanceId = await findInstanceId(
+          task.id,
+          const CivilDay(year: 2026, month: 6, day: 3),
         );
-        await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc(instanceId)
-            .set(initialInstance.toFirestore());
 
         // Verify June 3 instance exists and is pending
         final initialSnapshot = await firestore
@@ -738,29 +844,19 @@ void main() {
             .get();
         expect(completedSnapshot.data()!['status'], 'completed');
 
-        // Verify the next occurrence (June 10) is not spawned immediately on June 1.
-        final nextInstanceId = '${task.id}_2026-06-10';
+        // Under N=1 queue model, completing June 3 immediately spawns the next occurrence (June 10)
+        final nextInstanceId = await findInstanceId(
+          task.id,
+          const CivilDay(year: 2026, month: 6, day: 10),
+        );
         final nextSnapshotBefore = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
             .doc(nextInstanceId)
             .get();
-        expect(nextSnapshotBefore.exists, isFalse);
-
-        // Fast-forward to June 10
-        AppClock.setMockTime(DateTime(2026, 6, 10, 12, 0));
-        await repository.triggerMissedPolicyProcessing();
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        final nextSnapshotAfter = await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc(nextInstanceId)
-            .get();
-        expect(nextSnapshotAfter.exists, isTrue);
-        expect(nextSnapshotAfter.data()!['status'], 'pending');
+        expect(nextSnapshotBefore.exists, isTrue);
+        expect(nextSnapshotBefore.data()!['status'], 'pending');
 
         AppClock.reset();
       },
@@ -824,10 +920,18 @@ void main() {
             .collection('instances')
             .get();
 
-        final spawnedIds = instancesSnapshot.docs.map((d) => d.id).toList();
+        final spawnedInstances = instancesSnapshot.docs
+            .map((d) => TaskInstance.fromFirestore(d))
+            .toList();
 
-        expect(spawnedIds.any((id) => id.contains('task-a')), isTrue);
-        expect(spawnedIds.any((id) => id.contains('task-b')), isTrue);
+        expect(
+          spawnedInstances.any((inst) => inst.scheduleId == taskA.id),
+          isTrue,
+        );
+        expect(
+          spawnedInstances.any((inst) => inst.scheduleId == taskB.id),
+          isTrue,
+        );
 
         await subscription.cancel();
       },
@@ -867,11 +971,15 @@ void main() {
         // Wait a moment for background processing
         await Future.delayed(const Duration(milliseconds: 200));
 
+        final instanceId = await findInstanceId(
+          task.id,
+          const CivilDay(year: 2026, month: 6, day: 22),
+        );
         final instanceSnapshot = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('${task.id}_2026-06-22')
+            .doc(instanceId)
             .get();
 
         expect(instanceSnapshot.exists, isTrue);
@@ -915,11 +1023,15 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 200));
 
         // Verify instance is spawned for today
+        final instanceId = await findInstanceId(
+          task.id,
+          const CivilDay(year: 2026, month: 6, day: 22),
+        );
         var snapshot = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('${task.id}_2026-06-22')
+            .doc(instanceId)
             .get();
         expect(snapshot.exists, isTrue);
 
@@ -965,12 +1077,16 @@ void main() {
         await repository.updateTaskSchedule(modification);
         await Future.delayed(const Duration(milliseconds: 200));
 
-        // Verify if instance is spawned for today
+        // Verify if new instance is spawned for today (with new UUID since it was recreated)
+        final newInstanceId = await findInstanceId(
+          task.id,
+          const CivilDay(year: 2026, month: 6, day: 22),
+        );
         snapshot = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('${task.id}_2026-06-22')
+            .doc(newInstanceId)
             .get();
 
         expect(
@@ -1005,10 +1121,12 @@ void main() {
 
         await repository.addTaskSchedule(task);
 
-        final instanceId = '${task.id}_2026-06-22';
+        // Pre-create the June 22 instance in Firestore (which is a manually added occurrence)
+        final instanceId = 'I-manual-june22';
         final instance = TaskInstance(
           id: instanceId,
           scheduleId: task.id,
+          ruleId: task.schedules.first.id,
           title: task.title,
           description: task.description,
           scheduledDate: const CivilDay(year: 2026, month: 6, day: 22),
@@ -1042,38 +1160,31 @@ void main() {
             .get();
         final updatedTask = TaskSchedule.fromFirestore(updatedDoc);
 
-        // Under just-in-time spawning, lastSpawnedDate is advanced to the day before the next occurrence (June 24)
+        // Under queue model, completing June 22 does not change the lastSpawnedDate yet, as June 25 is in the future
         expect(
           updatedTask.lastSpawnedDate,
-          equals(const CivilDay(year: 2026, month: 6, day: 24)),
+          equals(const CivilDay(year: 2026, month: 6, day: 22)),
         );
 
-        // Verify the 6/25 instance does not exist yet
-        final nextInstanceId = '${task.id}_2026-06-25';
+        // Verify the 6/25 instance is already spawned under queue model (N=1)
+        final nextInstanceId = await findInstanceId(
+          task.id,
+          const CivilDay(year: 2026, month: 6, day: 25),
+        );
         final nextSnapshotBefore = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
             .doc(nextInstanceId)
             .get();
-        expect(nextSnapshotBefore.exists, isFalse);
+        expect(nextSnapshotBefore.exists, isTrue);
 
         // Fast-forward to Thursday 6/25
         AppClock.setMockTime(DateTime(2026, 6, 25, 10, 0));
         await repository.triggerMissedPolicyProcessing();
         await Future.delayed(const Duration(milliseconds: 100));
 
-        // Now, the 6/25 instance should be spawned
-        final nextSnapshotAfter = await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc(nextInstanceId)
-            .get();
-        expect(nextSnapshotAfter.exists, isTrue);
-        expect(nextSnapshotAfter.data()!['status'], 'pending');
-
-        // And the task's lastSpawnedDate should be advanced to 6/25
+        // Now, the task's lastSpawnedDate should be advanced to 6/25 since June 25 is now in the past/today
         final finalDoc = await firestore
             .collection('users')
             .doc(userId)
@@ -1092,7 +1203,7 @@ void main() {
     );
 
     test(
-      'regression: undoing a recurring task resolution reverts lastSpawnedDate to the completed instance date',
+      'regression: undoing a recurring task resolution does not revert lastSpawnedDate under queue model',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 22, 10, 0));
 
@@ -1112,10 +1223,11 @@ void main() {
 
         await repository.addTaskSchedule(task);
 
-        final instanceId = '${task.id}_2026-06-22';
+        final instanceId = 'I-completed-june22';
         final instance = TaskInstance(
           id: instanceId,
           scheduleId: task.id,
+          ruleId: task.schedules.first.id,
           title: task.title,
           description: task.description,
           scheduledDate: const CivilDay(year: 2026, month: 6, day: 22),
@@ -1138,10 +1250,12 @@ void main() {
             .doc(instanceId)
             .set(instance.toFirestore());
 
-        final nextInstanceId = '${task.id}_2026-06-25';
+        // Pre-create the June 25 instance
+        final nextInstanceId = 'I-pending-june25';
         final nextInstance = TaskInstance(
           id: nextInstanceId,
           scheduleId: task.id,
+          ruleId: task.schedules.first.id,
           title: task.title,
           description: task.description,
           scheduledDate: const CivilDay(year: 2026, month: 6, day: 25),
@@ -1175,9 +1289,10 @@ void main() {
             .get();
         final updatedTask = TaskSchedule.fromFirestore(updatedDoc);
 
+        // Under queue model, lastSpawnedDate is not reverted to June 22 because June 25 is still spawned
         expect(
           updatedTask.lastSpawnedDate,
-          equals(const CivilDay(year: 2026, month: 6, day: 22)),
+          equals(const CivilDay(year: 2026, month: 6, day: 25)),
         );
 
         await subscription.cancel();
@@ -1186,16 +1301,15 @@ void main() {
     );
 
     test(
-      'unit: JIT spawning logic correctly separates future and current occurrences',
+      'unit: queue-based spawning logic maintains N future instances',
       () async {
-        AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0)); // Monday
+        AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0)); // Monday June 22
 
         // Task with daily schedule (every day)
         final dailyTask = TaskSchedule(
-          id: 'jit-test-daily',
-          title: 'Daily JIT Task',
+          id: 'queue-test-daily',
+          title: 'Daily Queue Task',
           description: 'Desc',
-          lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 22),
           schedules: [
             DailySchedule(
               startDate: const CivilDay(year: 2026, month: 6, day: 22),
@@ -1205,97 +1319,69 @@ void main() {
         );
 
         await repository.addTaskSchedule(dailyTask);
+        await Future.delayed(const Duration(milliseconds: 100));
 
-        final instanceId = '${dailyTask.id}_2026-06-22';
-        final instance = TaskInstance(
-          id: instanceId,
-          scheduleId: dailyTask.id,
-          title: dailyTask.title,
-          description: dailyTask.description,
-          scheduledDate: const CivilDay(year: 2026, month: 6, day: 22),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-          status: 'pending',
+        // Under N=1 model, both June 22 and June 23 are spawned immediately
+        final june22Id = await findInstanceId(
+          dailyTask.id,
+          const CivilDay(year: 2026, month: 6, day: 22),
         );
-        await firestore
+        final june23Id = await findInstanceId(
+          dailyTask.id,
+          const CivilDay(year: 2026, month: 6, day: 23),
+        );
+
+        final snapJune22 = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc(instanceId)
-            .set(instance.toFirestore());
-
-        final subscription = repository.getTasks().listen((_) {});
-
-        // 1. Complete June 22 on June 22.
-        // The next occurrence is June 23 (future). It should NOT be spawned.
-        await repository.completeTaskInstance(instanceId);
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        final nextSnapshotFuture = await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc('${dailyTask.id}_2026-06-23')
+            .doc(june22Id)
             .get();
-        expect(nextSnapshotFuture.exists, isFalse);
+        expect(snapJune22.exists, isTrue);
+        expect(snapJune22.data()!['status'], 'pending');
 
-        // 2. Now let's test that the JIT scheduler spawns the June 23 (missed) and June 24 (due) instances when the clock reaches June 24, while June 25 is still not spawned.
-        // We set the clock to June 24.
-        AppClock.setMockTime(DateTime(2026, 6, 24, 12, 0));
-        await repository.triggerMissedPolicyProcessing();
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        // The June 23 instance is spawned (by JIT processing as missed from June 23)
         final snapJune23 = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('${dailyTask.id}_2026-06-23')
+            .doc(june23Id)
             .get();
         expect(snapJune23.exists, isTrue);
         expect(snapJune23.data()!['status'], 'pending');
 
-        // The June 24 instance is spawned (due today)
+        // Complete June 22
+        await repository.completeTaskInstance(june22Id);
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Completing June 22 advances the latest uncompleted to June 23.
+        // The queue (N=1) now needs June 24 to be spawned.
+        final june24Id = await findInstanceId(
+          dailyTask.id,
+          const CivilDay(year: 2026, month: 6, day: 24),
+        );
         final snapJune24 = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc('${dailyTask.id}_2026-06-24')
+            .doc(june24Id)
             .get();
         expect(snapJune24.exists, isTrue);
         expect(snapJune24.data()!['status'], 'pending');
 
-        // The June 25 instance is not spawned (future)
-        final snapJune25 = await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc('${dailyTask.id}_2026-06-25')
-            .get();
-        expect(snapJune25.exists, isFalse);
-
-        await subscription.cancel();
         AppClock.reset();
       },
     );
 
     test(
-      'unit: legacy future pending tasks cleanup correctly deletes future pending instances and reverts lastSpawnedDate',
+      'unit: editing a schedule deletes old future instances and recreates them',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0)); // Monday June 22
 
         final task = TaskSchedule(
-          id: 'legacy-cleanup-task',
+          id: 'edit-cleanup-task',
           title: 'Legacy Task',
           description: 'Weekly task description',
-          // Set to a future date as if it was pre-spawned
-          lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 25),
+          lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 22),
           schedules: [
             WeeklySchedule(
               startDate: const CivilDay(year: 2026, month: 6, day: 22),
@@ -1306,49 +1392,22 @@ void main() {
         );
 
         await repository.addTaskSchedule(task);
-
-        // Pre-create the future pending instance in Firestore
-        final futureInstanceId = '${task.id}_2026-06-25';
-        final futureInstance = TaskInstance(
-          id: futureInstanceId,
-          scheduleId: task.id,
-          title: task.title,
-          description: task.description,
-          scheduledDate: const CivilDay(year: 2026, month: 6, day: 25),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-          status: 'pending',
-        );
-        await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('instances')
-            .doc(futureInstanceId)
-            .set(futureInstance.toFirestore());
-
-        final subscription = repository.getTasks().listen((_) {});
-
-        // Trigger missed policy processing on June 22.
-        // It should detect the future pending instance on June 25, delete it, and revert lastSpawnedDate.
-        await repository.triggerMissedPolicyProcessing();
         await Future.delayed(const Duration(milliseconds: 100));
 
-        // Verify the June 25 instance is deleted
-        final snapJune25Before = await firestore
+        // The June 25 instance is spawned immediately (since N=1 and Thursday June 25 is the next occurrence)
+        final oldFutureId = await findInstanceId(
+          task.id,
+          const CivilDay(year: 2026, month: 6, day: 25),
+        );
+        final snapOldFuture = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc(futureInstanceId)
+            .doc(oldFutureId)
             .get();
-        expect(snapJune25Before.exists, isFalse);
+        expect(snapOldFuture.exists, isTrue);
 
-        // Verify the schedule's lastSpawnedDate is reverted to June 24 (the day before the deleted future instance)
+        // Fetch task from Firestore to get updated lastSpawnedDate
         final updatedDoc = await firestore
             .collection('users')
             .doc(userId)
@@ -1356,27 +1415,52 @@ void main() {
             .doc(task.id)
             .get();
         final updatedTask = TaskSchedule.fromFirestore(updatedDoc);
-        expect(
-          updatedTask.lastSpawnedDate,
-          equals(const CivilDay(year: 2026, month: 6, day: 24)),
+
+        // Edit schedule to occur on Wednesdays (June 24) instead of Thursdays
+        final modification = updatedTask.edit(
+          newTitle: 'Legacy Task',
+          newDescription: 'Weekly task description',
+          newSchedules: [
+            WeeklySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 22),
+              interval: 1,
+              daysOfWeek: const {3}, // Wednesday June 24
+            ),
+          ],
+          newEstimatedDuration: null,
+          newMissedPolicy: MissedPolicy.stack,
+          newIsMaster: true,
+          newLastSpawnedDate: updatedTask.lastSpawnedDate,
+          newIsFamily: false,
+          newPriority: TaskPriority.medium,
         );
 
-        // Fast-forward to Thursday June 25
-        AppClock.setMockTime(DateTime(2026, 6, 25, 12, 0));
-        await repository.triggerMissedPolicyProcessing();
-        await Future.delayed(const Duration(milliseconds: 100));
+        await repository.updateTaskSchedule(modification);
+        await Future.delayed(const Duration(milliseconds: 200));
 
-        // Verify the June 25 instance is now spawned just-in-time
-        final snapJune25After = await firestore
+        // Verify the old June 25 instance is deleted
+        final snapOldDeleted = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc(futureInstanceId)
+            .doc(oldFutureId)
             .get();
-        expect(snapJune25After.exists, isTrue);
-        expect(snapJune25After.data()!['status'], 'pending');
+        expect(snapOldDeleted.exists, isFalse);
 
-        await subscription.cancel();
+        // Verify the new June 24 instance is spawned
+        final newFutureId = await findInstanceId(
+          task.id,
+          const CivilDay(year: 2026, month: 6, day: 24),
+        );
+        final snapNewFuture = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc(newFutureId)
+            .get();
+        expect(snapNewFuture.exists, isTrue);
+        expect(snapNewFuture.data()!['status'], 'pending');
+
         AppClock.reset();
       },
     );
@@ -1420,6 +1504,7 @@ void main() {
         final instance22 = TaskInstance(
           id: instanceId22,
           scheduleId: task.id,
+          ruleId: task.schedules.first.id,
           title: task.title,
           description: task.description,
           scheduledDate: const CivilDay(year: 2026, month: 6, day: 22),
@@ -1453,16 +1538,21 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 100));
 
         // Verify that today's instance (June 23) was spawned
-        final instanceId23 = '${task.id}_2026-06-23';
-        final instance23Snapshot = await firestore
+        final instsAfter = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
-            .doc(instanceId23)
             .get();
+        final hasJune23 = instsAfter.docs.any(
+          (d) =>
+              d.data()['ruleId'] == task.schedules.first.id &&
+              d.data()['scheduledDate']['year'] == 2026 &&
+              d.data()['scheduledDate']['month'] == 6 &&
+              d.data()['scheduledDate']['day'] == 23,
+        );
 
         expect(
-          instance23Snapshot.exists,
+          hasJune23,
           isTrue,
           reason:
               'Today\'s instance (June 23) should be spawned even after completing yesterday\'s instance today',
@@ -1472,5 +1562,157 @@ void main() {
         AppClock.reset();
       },
     );
+
+    test(
+      'taskRepositoryProvider reacts to futureInstancesCount change and triggers missed policy processing',
+      () async {
+        final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
+        AppClock.setMockTime(mockTime);
+
+        final firestore = FakeFirebaseFirestore();
+        final settingsController = StreamController<UserSettings>(sync: true);
+
+        // Add a daily task schedule to firestore
+        final task = TaskSchedule(
+          id: 'settings-reactive-task',
+          title: 'Daily Task',
+          description: 'Desc',
+          lastSpawnedDate: null,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 24),
+              interval: 1,
+            ),
+          ],
+        );
+
+        await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .doc(task.id)
+            .set(task.toFirestore());
+
+        final container = ProviderContainer(
+          overrides: [
+            authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
+            firestoreProvider.overrideWithValue(firestore),
+            userSettingsProvider.overrideWith(
+              (ref) => settingsController.stream,
+            ),
+            notificationServiceProvider.overrideWithValue(
+              LoggingNotificationService(),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        // First, write settings to Firestore and emit them on the stream
+        final settings1 = const UserSettings(
+          hoursAvailable: 8.0,
+          futureInstancesCount: 1,
+        );
+        await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('settings')
+            .doc('agile')
+            .set(settings1.toJson());
+        settingsController.add(settings1);
+
+        // Await the auth state stream to emit the fake user
+        await container.read(authStateProvider.future);
+
+        // Read taskRepositoryProvider to initialize the repository and the listener
+        final repository = container.read(taskRepositoryProvider);
+        expect(repository, isNotNull);
+
+        // Listen to tasks stream to trigger the initial missed policies processing
+        final subscription = repository!.getTasks().listen((_) {});
+        addTearDown(subscription.cancel);
+
+        // Let the stream listener trigger the initial pass
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Verify that 1 future instance has been created (for June 24)
+        final instsAfter1 = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+
+        final j24Count = instsAfter1.docs
+            .where(
+              (d) =>
+                  d.data()['scheduleId'] == task.id &&
+                  d.data()['scheduledDate']['year'] == 2026 &&
+                  d.data()['scheduledDate']['month'] == 6 &&
+                  d.data()['scheduledDate']['day'] == 24,
+            )
+            .length;
+        expect(j24Count, 1);
+
+        final totalCount1 = instsAfter1.docs.length;
+        expect(totalCount1, 1);
+
+        // Now, change futureInstancesCount to 3, write to Firestore, and emit on the stream
+        final settings3 = const UserSettings(
+          hoursAvailable: 8.0,
+          futureInstancesCount: 3,
+        );
+        await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('settings')
+            .doc('agile')
+            .set(settings3.toJson());
+        settingsController.add(settings3);
+
+        // Wait for the listener to process and spawn
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Verify that 3 future instances have been created (for June 24, 25, 26)
+        final instsAfter3 = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+
+        final hasJune24 = instsAfter3.docs.any(
+          (d) =>
+              d.data()['scheduleId'] == task.id &&
+              d.data()['scheduledDate']['year'] == 2026 &&
+              d.data()['scheduledDate']['month'] == 6 &&
+              d.data()['scheduledDate']['day'] == 24,
+        );
+        final hasJune25 = instsAfter3.docs.any(
+          (d) =>
+              d.data()['scheduleId'] == task.id &&
+              d.data()['scheduledDate']['year'] == 2026 &&
+              d.data()['scheduledDate']['month'] == 6 &&
+              d.data()['scheduledDate']['day'] == 25,
+        );
+        final hasJune26 = instsAfter3.docs.any(
+          (d) =>
+              d.data()['scheduleId'] == task.id &&
+              d.data()['scheduledDate']['year'] == 2026 &&
+              d.data()['scheduledDate']['month'] == 6 &&
+              d.data()['scheduledDate']['day'] == 26,
+        );
+
+        expect(hasJune24, isTrue);
+        expect(hasJune25, isTrue);
+        expect(hasJune26, isTrue);
+        expect(instsAfter3.docs.length, 3);
+
+        await settingsController.close();
+        AppClock.reset();
+      },
+    );
   });
+}
+
+class FakeUser extends Fake implements User {
+  @override
+  String get uid => 'test-user-id';
 }

@@ -34,13 +34,13 @@ void main() {
     });
 
     test('delete removes task', () {
-      final nextState = TaskList([testTask]).delete('task-1');
+      final nextState = TaskList([testTask]).delete('S-task-1');
 
       expect(nextState.activeTasks, isEmpty);
     });
 
     test('complete removes task', () {
-      final nextState = TaskList([testTask]).complete('task-1');
+      final nextState = TaskList([testTask]).complete('S-task-1');
 
       expect(nextState.activeTasks, isEmpty);
     });
@@ -69,12 +69,12 @@ void main() {
           ],
         );
 
-        final nextState = TaskList([recurringTask]).complete('task-recur');
+        final nextState = TaskList([recurringTask]).complete('S-task-recur');
 
         // It should NOT be removed!
         expect(nextState.activeTasks.length, 1);
         final updatedTask = nextState.activeTasks.first;
-        expect(updatedTask.id, 'task-recur');
+        expect(updatedTask.id, 'S-task-recur');
 
         // The new start date of the schedule should be advanced to the next occurrence
         final newSchedule = updatedTask.schedules.first as DailySchedule;
@@ -114,7 +114,7 @@ void main() {
           ],
         );
 
-        final nextState = TaskList([weeklyTask]).complete('task-weekly');
+        final nextState = TaskList([weeklyTask]).complete('S-task-weekly');
 
         // It should NOT be advanced because Wednesday (March 4) has not occurred yet.
         expect(nextState.activeTasks.length, 1);
@@ -151,7 +151,7 @@ void main() {
           ],
         );
 
-        final nextState = TaskList([stackTask]).complete('task-stack');
+        final nextState = TaskList([stackTask]).complete('S-task-stack');
 
         expect(nextState.activeTasks.length, 1);
         final updatedTask = nextState.activeTasks.first;

@@ -272,7 +272,7 @@ void main() {
       tasksSubject.add([dailyTask]);
 
       when(
-        mockTaskRepository.deleteTaskSchedule('delete-recurring-task-1'),
+        mockTaskRepository.deleteTaskSchedule('S-delete-recurring-task-1'),
       ).thenAnswer(
         (_) async => (task: dailyTask, pendingInstances: <TaskInstance>[]),
       );
@@ -282,7 +282,7 @@ void main() {
 
       // Verify Delete Schedule Button is rendered
       final deleteButtonKey = const Key(
-        'delete_schedule_button_delete-recurring-task-1',
+        'delete_schedule_button_S-delete-recurring-task-1',
       );
       expect(find.byKey(deleteButtonKey), findsOneWidget);
 
@@ -301,14 +301,14 @@ void main() {
 
       // Tap confirm delete button in dialog
       final confirmDeleteKey = const Key(
-        'confirm_delete_schedule_button_delete-recurring-task-1',
+        'confirm_delete_schedule_button_S-delete-recurring-task-1',
       );
       await tester.tap(find.byKey(confirmDeleteKey));
       await tester.pumpAndSettle();
 
       // Verify repository delete method was called with correct ID
       verify(
-        mockTaskRepository.deleteTaskSchedule('delete-recurring-task-1'),
+        mockTaskRepository.deleteTaskSchedule('S-delete-recurring-task-1'),
       ).called(1);
     },
   );
@@ -339,7 +339,7 @@ void main() {
       tasksSubject.add([dailyTask]);
 
       when(
-        mockTaskRepository.deleteTaskSchedule('delete-recurring-task-1'),
+        mockTaskRepository.deleteTaskSchedule('S-delete-recurring-task-1'),
       ).thenAnswer(
         (_) async => (task: dailyTask, pendingInstances: <TaskInstance>[]),
       );
@@ -351,19 +351,19 @@ void main() {
       await tester.pumpAndSettle();
 
       final deleteButtonKey = const Key(
-        'delete_schedule_button_delete-recurring-task-1',
+        'delete_schedule_button_S-delete-recurring-task-1',
       );
       await tester.tap(find.byKey(deleteButtonKey));
       await tester.pumpAndSettle();
 
       final confirmDeleteKey = const Key(
-        'confirm_delete_schedule_button_delete-recurring-task-1',
+        'confirm_delete_schedule_button_S-delete-recurring-task-1',
       );
       await tester.tap(find.byKey(confirmDeleteKey));
       await tester.pumpAndSettle();
 
       verify(
-        mockTaskRepository.deleteTaskSchedule('delete-recurring-task-1'),
+        mockTaskRepository.deleteTaskSchedule('S-delete-recurring-task-1'),
       ).called(1);
 
       // Verify SnackBar is shown

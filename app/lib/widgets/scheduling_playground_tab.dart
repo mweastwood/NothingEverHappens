@@ -39,6 +39,8 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
     final civilToday = CivilDay.fromDateTime(_startDate);
 
     _schedule = OneOffSchedule(
+      id: TaskScheduleRule.generateId(),
+      scheduleId: 'S-playground-task',
       date: civilToday,
       startRelativeTime: const RelativeTime(
         dayOffset: 0,
