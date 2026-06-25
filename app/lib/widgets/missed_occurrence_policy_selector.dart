@@ -188,13 +188,6 @@ class _MissedOccurrencePolicySelectorState
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          "In the examples shown below, assume we have a daily task that we didn't complete, check-off, or dismiss the task in any way on Monday or Tuesday. It is now Wednesday, so what should be done with the older tasks?",
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
-        ),
         const SizedBox(height: 8),
         _buildSelectedPolicyCard(theme, selectedPolicy),
         if (selectedPolicy == MissedPolicy.autoDismiss) ...[

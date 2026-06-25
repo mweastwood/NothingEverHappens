@@ -29,6 +29,17 @@ void main() {
         find.text(
           "In the examples shown below, assume we have a daily task that we didn't complete, check-off, or dismiss the task in any way on Monday or Tuesday. It is now Wednesday, so what should be done with the older tasks?",
         ),
+        findsNothing,
+      );
+
+      // Open the selection dialog
+      await tester.tap(find.text('Stack').first);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          "In the examples shown below, assume we have a daily task that we didn't complete, check-off, or dismiss the task in any way on Monday or Tuesday. It is now Wednesday, so what should be done with the older tasks?",
+        ),
         findsOneWidget,
       );
     });
