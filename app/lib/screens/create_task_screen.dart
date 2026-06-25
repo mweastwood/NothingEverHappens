@@ -16,6 +16,7 @@ import '../widgets/undo_snackbar.dart';
 import '../widgets/upcoming_occurrences_preview.dart';
 import '../widgets/standard_choice_chip.dart';
 import '../widgets/schedule_config_card.dart';
+import 'help_screen.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
   static Duration saveTimeout = const Duration(seconds: 10);
@@ -732,6 +733,21 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     );
                   },
                 ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.help_outline),
+                    tooltip: context.l10n.helpTooltip,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const HelpScreen(initialIndex: 1),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
               body: LayoutBuilder(
                 builder: (context, constraints) {
