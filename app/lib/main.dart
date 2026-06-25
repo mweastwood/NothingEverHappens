@@ -51,12 +51,12 @@ Future<void> main() async {
       persistenceEnabled: true,
     );
   } else {
-    await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+    await Workmanager().initialize(callbackDispatcher);
     await Workmanager().registerPeriodicTask(
       "scheduler-periodic-task",
       "periodicEvaluationTask",
       frequency: const Duration(minutes: 15),
-      existingWorkPolicy: ExistingWorkPolicy.keep,
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
     );
   }
 
