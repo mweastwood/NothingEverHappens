@@ -106,25 +106,6 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
           as _i3.Stream<List<_i8.TaskInstance>>);
 
   @override
-  String instanceIdFor(
-    _i7.TaskSchedule? task,
-    _i9.CivilDay? date,
-    int? ruleIndex,
-  ) =>
-      (super.noSuchMethod(
-            Invocation.method(#instanceIdFor, [task, date, ruleIndex]),
-            returnValue: _i6.dummyValue<String>(
-              this,
-              Invocation.method(#instanceIdFor, [task, date, ruleIndex]),
-            ),
-            returnValueForMissingStub: _i6.dummyValue<String>(
-              this,
-              Invocation.method(#instanceIdFor, [task, date, ruleIndex]),
-            ),
-          )
-          as String);
-
-  @override
   (_i9.CivilDay, _i7.TaskScheduleRule, int)?
   nextOccurrenceRuleOfScheduleOnOrAfter(
     _i7.TaskSchedule? task,
@@ -158,6 +139,15 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
                 _i3.Stream<List<_i8.TaskInstance>>.empty(),
           )
           as _i3.Stream<List<_i8.TaskInstance>>);
+
+  @override
+  _i3.Future<void> triggerMissedPolicyProcessing() =>
+      (super.noSuchMethod(
+            Invocation.method(#triggerMissedPolicyProcessing, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 
   @override
   _i3.Future<void> addTaskSchedule(_i7.TaskSchedule? task) =>
