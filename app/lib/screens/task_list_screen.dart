@@ -7,6 +7,9 @@ import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
+import '../logic/task_instance.dart';
+import '../logic/sort_helper.dart';
+import '../widgets/sort_bar.dart';
 
 final taskSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -20,6 +23,41 @@ class TaskListScreen extends ConsumerStatefulWidget {
 class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   final Key _taskListKey = const ValueKey('taskList');
   Timer? _rebuildTimer;
+  List<({String column, bool ascending})> _sortHistory = [
+    (column: 'title', ascending: true),
+  ];
+
+  String get _sortColumn =>
+      _sortHistory.isNotEmpty ? _sortHistory.first.column : 'title';
+  bool get _sortAscending =>
+      _sortHistory.isNotEmpty ? _sortHistory.first.ascending : true;
+
+  void _onSort(String column) {
+    setState(() {
+      _sortHistory = updateSortHistory(_sortHistory, column);
+    });
+  }
+
+  int _compareInstances(
+    TaskInstance a,
+    TaskInstance b,
+    String column,
+    bool ascending,
+  ) {
+    if (column == 'next_due') {
+      final aDue = a.dueRelativeTime.referenceTo(a.scheduledDate);
+      final bDue = b.dueRelativeTime.referenceTo(b.scheduledDate);
+      return compareDateTimes(aDue, bDue, ascending);
+    }
+
+    int result = 0;
+    if (column == 'title') {
+      result = a.title.toLowerCase().compareTo(b.title.toLowerCase());
+    } else if (column == 'priority') {
+      result = a.priority.index.compareTo(b.priority.index);
+    }
+    return ascending ? result : -result;
+  }
 
   @override
   void initState() {
@@ -98,6 +136,26 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             });
           }).toList();
 
+          // Sort filtered instances using sort history (stable multi-key sort)
+          final originalIndices = {
+            for (int i = 0; i < filteredInstances.length; i++)
+              filteredInstances[i].id: i,
+          };
+          filteredInstances.sort((a, b) {
+            for (final sort in _sortHistory) {
+              final result = _compareInstances(
+                a,
+                b,
+                sort.column,
+                sort.ascending,
+              );
+              if (result != 0) return result;
+            }
+            final indexA = originalIndices[a.id] ?? 0;
+            final indexB = originalIndices[b.id] ?? 0;
+            return indexA.compareTo(indexB);
+          });
+
           if (filteredInstances.isEmpty) {
             if (searchQuery.isNotEmpty) {
               bodySliver = SliverToBoxAdapter(
@@ -161,18 +219,51 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           }
         }
 
+        final showSortBar =
+            instancesVal.hasValue && (instancesVal.value ?? []).isNotEmpty;
+
         return Padding(
           padding: EdgeInsets.only(
             bottom: isMocked ? 60.0 : 0.0,
           ), // Avoid overlap with dev clock banner
-          child: CustomScrollView(
-            key: const PageStorageKey('tasksView'),
-            center: _taskListKey,
-            slivers: [
-              SliverPadding(
-                key: _taskListKey,
-                padding: EdgeInsets.zero,
-                sliver: bodySliver,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showSortBar) ...[
+                SortBar(
+                  title: context.l10n.scheduleSortByLabel,
+                  sortColumn: _sortColumn,
+                  sortAscending: _sortAscending,
+                  options: [
+                    SortOption(
+                      key: 'title',
+                      label: context.l10n.titleFieldLabel,
+                    ),
+                    SortOption(
+                      key: 'next_due',
+                      label: context.l10n.scheduleSortNextDueLabel,
+                    ),
+                    SortOption(
+                      key: 'priority',
+                      label: context.l10n.taskPriorityLabel,
+                    ),
+                  ],
+                  onSort: _onSort,
+                ),
+                const Divider(height: 1, thickness: 0.5),
+              ],
+              Expanded(
+                child: CustomScrollView(
+                  key: const PageStorageKey('tasksView'),
+                  center: _taskListKey,
+                  slivers: [
+                    SliverPadding(
+                      key: _taskListKey,
+                      padding: EdgeInsets.zero,
+                      sliver: bodySliver,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
