@@ -107,74 +107,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       path = path.substring(0, path.length - 1);
     }
 
-    final page = uri.queryParameters['page']?.toLowerCase();
+    final routes = <String, VoidCallback>{
+      'tasks': () {
+        setState(() {
+          _currentIndex = 0;
+        });
+        _updateUrlPath(0);
+      },
+      'schedules': () {
+        setState(() {
+          _currentIndex = 1;
+        });
+        _updateUrlPath(1);
+      },
+      'family': () {
+        setState(() {
+          _currentIndex = 2;
+        });
+        _updateUrlPath(2);
+      },
+      'settings': () {
+        setState(() {
+          _currentIndex = 0;
+        });
+        _updateUrlPath(0);
+        SystemNavigator.routeInformationUpdated(uri: Uri.parse('/settings'));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SettingsScreen()),
+        ).then((_) {
+          _updateUrlPath(_currentIndex);
+        });
+      },
+      'new': () {
+        final repeatingParam = uri.queryParameters['repeating'];
+        final defaultToRepeating = repeatingParam == 'true';
+        SystemNavigator.routeInformationUpdated(uri: Uri.parse('/new'));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                CreateTaskScreen(defaultToRepeating: defaultToRepeating),
+          ),
+        ).then((_) {
+          _updateUrlPath(_currentIndex);
+        });
+      },
+    };
 
-    if (path == 'tasks' || page == 'tasks' || page == 'task') {
-      setState(() {
-        _currentIndex = 0;
-      });
-      _updateUrlPath(0);
-    } else if (path == 'schedules' ||
-        path == 'schedule' ||
-        page == 'schedule' ||
-        page == 'schedules') {
-      setState(() {
-        _currentIndex = 1;
-      });
-      _updateUrlPath(1);
-    } else if (path == 'family' || page == 'family') {
-      setState(() {
-        _currentIndex = 2;
-      });
-      _updateUrlPath(2);
-    } else if (path == 'settings' || page == 'settings') {
-      setState(() {
-        _currentIndex = 0;
-      });
-      _updateUrlPath(0);
-      SystemNavigator.routeInformationUpdated(uri: Uri.parse('/settings'));
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SettingsScreen()),
-      ).then((_) {
-        _updateUrlPath(_currentIndex);
-      });
+    final handler = routes[path];
+    if (handler != null) {
+      handler();
     } else if (path.startsWith('edit/')) {
       final scheduleId = path.substring('edit/'.length);
       _openEditScreen(scheduleId);
-    } else if (page == 'help') {
-      final tabParam = uri.queryParameters['tab'];
-      int initialIndex = 0;
-      if (tabParam != null) {
-        if (tabParam.toLowerCase() == 'scheduling' ||
-            tabParam.toLowerCase() == 'schedules' ||
-            tabParam == '1') {
-          initialIndex = 1;
-        } else if (tabParam.toLowerCase() == 'policies' ||
-            tabParam.toLowerCase() == 'missed' ||
-            tabParam == '2') {
-          initialIndex = 2;
-        }
-      }
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HelpScreen(initialIndex: initialIndex),
-        ),
-      );
-    } else if (path == 'new' || page == 'create_task' || page == 'add_task') {
-      final repeatingParam = uri.queryParameters['repeating'];
-      final defaultToRepeating = repeatingParam == 'true';
-      SystemNavigator.routeInformationUpdated(uri: Uri.parse('/new'));
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              CreateTaskScreen(defaultToRepeating: defaultToRepeating),
-        ),
-      ).then((_) {
-        _updateUrlPath(_currentIndex);
-      });
     } else if (path.isEmpty) {
       setState(() {
         _currentIndex = 0;
