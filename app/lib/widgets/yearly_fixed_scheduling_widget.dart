@@ -254,72 +254,95 @@ class _YearlyFixedSchedulingWidgetState
         const SizedBox(height: 8),
 
         // Month and Day selection row
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 2,
-              child: DropdownButtonFormField<int>(
-                key: const Key('yearly_month_dropdown'),
-                initialValue: widget.month,
-                decoration: InputDecoration(
-                  labelText: l10n.monthLabel,
-                  border: const OutlineInputBorder(),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 1,
+                child: DropdownButtonFormField<int>(
+                  key: const Key('yearly_month_dropdown'),
+                  initialValue: widget.month,
+                  decoration: InputDecoration(
+                    labelText: l10n.monthLabel,
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                  items: [
+                    DropdownMenuItem(value: 1, child: Text(l10n.monthJanuary)),
+                    DropdownMenuItem(value: 2, child: Text(l10n.monthFebruary)),
+                    DropdownMenuItem(value: 3, child: Text(l10n.monthMarch)),
+                    DropdownMenuItem(value: 4, child: Text(l10n.monthApril)),
+                    DropdownMenuItem(value: 5, child: Text(l10n.monthMay)),
+                    DropdownMenuItem(value: 6, child: Text(l10n.monthJune)),
+                    DropdownMenuItem(value: 7, child: Text(l10n.monthJuly)),
+                    DropdownMenuItem(value: 8, child: Text(l10n.monthAugust)),
+                    DropdownMenuItem(
+                      value: 9,
+                      child: Text(l10n.monthSeptember),
+                    ),
+                    DropdownMenuItem(value: 10, child: Text(l10n.monthOctober)),
+                    DropdownMenuItem(
+                      value: 11,
+                      child: Text(l10n.monthNovember),
+                    ),
+                    DropdownMenuItem(
+                      value: 12,
+                      child: Text(l10n.monthDecember),
+                    ),
+                  ],
+                  onChanged: widget.readOnly
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            widget.onMonthChanged(value);
+                            final maxDays = _maxDaysInMonth(value);
+                            if (widget.day > maxDays) {
+                              widget.onDayChanged(maxDays);
+                            }
+                          }
+                        },
                 ),
-                items: [
-                  DropdownMenuItem(value: 1, child: Text(l10n.monthJanuary)),
-                  DropdownMenuItem(value: 2, child: Text(l10n.monthFebruary)),
-                  DropdownMenuItem(value: 3, child: Text(l10n.monthMarch)),
-                  DropdownMenuItem(value: 4, child: Text(l10n.monthApril)),
-                  DropdownMenuItem(value: 5, child: Text(l10n.monthMay)),
-                  DropdownMenuItem(value: 6, child: Text(l10n.monthJune)),
-                  DropdownMenuItem(value: 7, child: Text(l10n.monthJuly)),
-                  DropdownMenuItem(value: 8, child: Text(l10n.monthAugust)),
-                  DropdownMenuItem(value: 9, child: Text(l10n.monthSeptember)),
-                  DropdownMenuItem(value: 10, child: Text(l10n.monthOctober)),
-                  DropdownMenuItem(value: 11, child: Text(l10n.monthNovember)),
-                  DropdownMenuItem(value: 12, child: Text(l10n.monthDecember)),
-                ],
-                onChanged: widget.readOnly
-                    ? null
-                    : (value) {
-                        if (value != null) {
-                          widget.onMonthChanged(value);
-                        }
-                      },
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 1,
-              child: TextFormField(
-                key: const Key('yearly_day_field'),
-                controller: _dayController,
-                enabled: !widget.readOnly,
-                decoration: InputDecoration(
-                  labelText: l10n.dayLabel,
-                  border: const OutlineInputBorder(),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 1,
+                child: _DayStepper(
+                  key: const Key('yearly_day_stepper'),
+                  day: widget.day,
+                  maxDays: _maxDaysInMonth(widget.month),
+                  onDayChanged: widget.onDayChanged,
+                  label: l10n.dayLabel,
+                  readOnly: widget.readOnly,
+                  controller: _dayController,
                 ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Required';
-                  }
-                  final dayVal = int.tryParse(value.trim());
-                  final maxDays = _maxDaysInMonth(widget.month);
-                  if (dayVal == null || dayVal < 1 || dayVal > maxDays) {
-                    return '1-$maxDays';
-                  }
-                  return null;
-                },
-                onChanged: (val) {
-                  final dayVal = int.tryParse(val.trim());
-                  final maxDays = _maxDaysInMonth(widget.month);
-                  if (dayVal != null && dayVal >= 1 && dayVal <= maxDays) {
-                    widget.onDayChanged(dayVal);
-                  }
-                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline,
+              size: 14,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                l10n.yearlyOn(
+                  _getMonthName(context, widget.month),
+                  widget.day.toString(),
+                ),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
           ],
@@ -456,6 +479,257 @@ class _YearlyFixedSchedulingWidgetState
             onChanged: widget.onMissedOccurrencePolicyChanged!,
           ),
         ],
+      ],
+    );
+  }
+}
+
+String _getMonthName(BuildContext context, int month) {
+  final l10n = context.l10n;
+  switch (month) {
+    case 1:
+      return l10n.monthJanuary;
+    case 2:
+      return l10n.monthFebruary;
+    case 3:
+      return l10n.monthMarch;
+    case 4:
+      return l10n.monthApril;
+    case 5:
+      return l10n.monthMay;
+    case 6:
+      return l10n.monthJune;
+    case 7:
+      return l10n.monthJuly;
+    case 8:
+      return l10n.monthAugust;
+    case 9:
+      return l10n.monthSeptember;
+    case 10:
+      return l10n.monthOctober;
+    case 11:
+      return l10n.monthNovember;
+    case 12:
+      return l10n.monthDecember;
+    default:
+      return '';
+  }
+}
+
+class _DayStepper extends StatefulWidget {
+  final int day;
+  final int maxDays;
+  final ValueChanged<int> onDayChanged;
+  final String label;
+  final bool readOnly;
+  final TextEditingController? controller;
+
+  const _DayStepper({
+    super.key,
+    required this.day,
+    required this.maxDays,
+    required this.onDayChanged,
+    required this.label,
+    this.readOnly = false,
+    this.controller,
+  });
+
+  @override
+  State<_DayStepper> createState() => _DayStepperState();
+}
+
+class _DayStepperState extends State<_DayStepper> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  double _getFieldWidth() {
+    final textLength = _controller.text.isEmpty ? 1 : _controller.text.length;
+    return textLength * 11.0;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final initialText = widget.day.toString();
+    _controller = widget.controller ?? TextEditingController(text: initialText);
+    if (widget.controller == null) {
+      _controller.text = initialText;
+    } else {
+      final cleanText = _controller.text.replaceAll(RegExp(r'\D'), '');
+      if (_controller.text != cleanText) {
+        _controller.text = cleanText;
+      }
+    }
+
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      final parsed = int.tryParse(_controller.text) ?? widget.day;
+      if (parsed < 1) {
+        _controller.text = '1';
+        widget.onDayChanged(1);
+      } else if (parsed > widget.maxDays) {
+        _controller.text = widget.maxDays.toString();
+        widget.onDayChanged(widget.maxDays);
+      } else {
+        _controller.text = parsed.toString();
+        if (parsed != widget.day) {
+          widget.onDayChanged(parsed);
+        }
+      }
+      setState(() {});
+    }
+  }
+
+  @override
+  void didUpdateWidget(_DayStepper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.day != widget.day || oldWidget.maxDays != widget.maxDays) {
+      final expectedText = widget.day.toString();
+      if (_controller.text != expectedText) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _controller.text != expectedText) {
+            _controller.text = expectedText;
+            setState(() {});
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Padding(
+            padding: EdgeInsets.zero,
+            child: Row(
+              children: [
+                IconButton(
+                  key: const Key('day_decrement_button'),
+                  icon: const Icon(Icons.remove),
+                  onPressed: widget.readOnly || widget.day <= 1
+                      ? null
+                      : () {
+                          final newVal = widget.day - 1;
+                          _controller.text = newVal.toString();
+                          widget.onDayChanged(newVal);
+                          setState(() {});
+                        },
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  constraints: const BoxConstraints(),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.label,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: _getFieldWidth(),
+                              child: TextFormField(
+                                key: const Key('yearly_day_field'),
+                                controller: _controller,
+                                focusNode: _focusNode,
+                                enabled: !widget.readOnly,
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.2,
+                                ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                validator: (val) {
+                                  if (val == null || val.trim().isEmpty) {
+                                    return 'Required';
+                                  }
+                                  final parsed = int.tryParse(val.trim());
+                                  if (parsed == null ||
+                                      parsed < 1 ||
+                                      parsed > widget.maxDays) {
+                                    return '1-${widget.maxDays}';
+                                  }
+                                  return null;
+                                },
+                                onChanged: (val) {
+                                  final parsed = int.tryParse(val.trim());
+                                  if (parsed != null &&
+                                      parsed >= 1 &&
+                                      parsed <= widget.maxDays) {
+                                    widget.onDayChanged(parsed);
+                                  }
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                IconButton(
+                  key: const Key('day_increment_button'),
+                  icon: const Icon(Icons.add),
+                  onPressed: widget.readOnly || widget.day >= widget.maxDays
+                      ? null
+                      : () {
+                          final newVal = widget.day + 1;
+                          _controller.text = newVal.toString();
+                          widget.onDayChanged(newVal);
+                          setState(() {});
+                        },
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

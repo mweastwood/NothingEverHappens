@@ -51,32 +51,62 @@ void main() {
     await clearFirestoreEmulator(projectId);
     await clearAuthEmulator(projectId);
     await FirebaseAuth.instance.signOut();
+    // Wait for FirebaseAuth to settle the sign-out
+    await FirebaseAuth.instance.authStateChanges().firstWhere(
+      (user) => user == null,
+    );
     await Future.delayed(const Duration(milliseconds: 200));
   });
 
   Future<User> registerAndSignIn(String email, String password) async {
     final auth = FirebaseAuth.instance;
+    UserCredential creds;
     try {
-      final creds = await auth.createUserWithEmailAndPassword(
+      creds = await auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      // Wait for auth token to propagate to Firestore client
-      await Future.delayed(const Duration(milliseconds: 500));
-      return creds.user!;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
-        final creds = await auth.signInWithEmailAndPassword(
+        creds = await auth.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
-        // Wait for auth token to propagate to Firestore client
-        await Future.delayed(const Duration(milliseconds: 500));
-        return creds.user!;
       } else {
         rethrow;
       }
     }
+
+    // Wait for auth state changes to propagate in FirebaseAuth
+    await auth.authStateChanges().firstWhere(
+      (user) => user?.uid == creds.user?.uid,
+    );
+
+    // Wait for Firestore to synchronize with the new credentials
+    final db = FirebaseFirestore.instance;
+    int attempts = 0;
+    while (attempts < 20) {
+      try {
+        await db.collection('users').doc(creds.user!.uid).get();
+        break; // Success! Firestore auth is synchronized.
+      } on FirebaseException catch (e) {
+        if (e.code == 'permission-denied') {
+          attempts++;
+          await Future.delayed(const Duration(milliseconds: 100));
+        } else {
+          rethrow;
+        }
+      } catch (e) {
+        rethrow;
+      }
+    }
+    if (attempts >= 20) {
+      throw Exception(
+        'Firestore auth failed to sync for UID: ${creds.user!.uid}',
+      );
+    }
+
+    return creds.user!;
   }
 
   Future<void> expectPermissionDenied(Future<dynamic> functionCall) async {

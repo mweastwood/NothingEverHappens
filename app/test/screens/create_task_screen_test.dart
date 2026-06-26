@@ -599,7 +599,7 @@ void main() {
       await tester.enterText(find.byKey(const Key('interval_text_field')), '2');
 
       // Day
-      await tester.enterText(find.widgetWithText(TextFormField, 'Day'), '24');
+      await tester.enterText(find.byKey(const Key('yearly_day_field')), '24');
       await tester.pump();
 
       await tester.tap(find.text('Save'));
