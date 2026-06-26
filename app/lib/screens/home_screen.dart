@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/auth_repository.dart';
 import '../widgets/dev_clock_widget.dart';
@@ -11,9 +12,12 @@ import 'family_screen.dart';
 import 'sprint_dashboard_screen.dart';
 import 'help_screen.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/task_schedule.dart';
+import '../logic/task_repository.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  final Uri? mockUri;
+  const HomeScreen({super.key, this.mockUri});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -25,7 +29,162 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleUrlParameters();
+    });
+  }
+
+  void _updateUrlPath(int index) {
+    if (!kIsWeb) return;
+    String path;
+    switch (index) {
+      case 0:
+        path = '/tasks';
+        break;
+      case 1:
+        path = '/schedules';
+        break;
+      case 2:
+        path = '/family';
+        break;
+      default:
+        return;
+    }
+    SystemNavigator.routeInformationUpdated(
+      uri: Uri.parse(path),
+      replace: true,
+    );
+  }
+
+  void _openEditScreen(String scheduleId) {
+    setState(() {
+      _currentIndex = 1;
+    });
+    _updateUrlPath(1);
+
+    final taskRepo = ref.read(taskRepositoryProvider);
+    if (taskRepo == null) return;
+
+    taskRepo
+        .getTasks()
+        .first
+        .then((tasks) {
+          if (!mounted) return;
+          final task = tasks.cast<TaskSchedule?>().firstWhere(
+            (t) => t?.id == scheduleId,
+            orElse: () => null,
+          );
+
+          if (task != null) {
+            SystemNavigator.routeInformationUpdated(
+              uri: Uri.parse('/edit/$scheduleId'),
+            );
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CreateTaskScreen(taskToEdit: task),
+              ),
+            ).then((_) {
+              _updateUrlPath(_currentIndex);
+            });
+          }
+        })
+        .catchError((_) {});
+  }
+
+  void _handleUrlParameters() {
+    if (!mounted) return;
+    final uri = widget.mockUri ?? Uri.base;
+
+    String path = uri.path;
+    if (path.startsWith('/')) {
+      path = path.substring(1);
+    }
+    if (path.endsWith('/')) {
+      path = path.substring(0, path.length - 1);
+    }
+
+    final page = uri.queryParameters['page']?.toLowerCase();
+
+    if (path == 'tasks' || page == 'tasks' || page == 'task') {
+      setState(() {
+        _currentIndex = 0;
+      });
+      _updateUrlPath(0);
+    } else if (path == 'schedules' ||
+        path == 'schedule' ||
+        page == 'schedule' ||
+        page == 'schedules') {
+      setState(() {
+        _currentIndex = 1;
+      });
+      _updateUrlPath(1);
+    } else if (path == 'family' || page == 'family') {
+      setState(() {
+        _currentIndex = 2;
+      });
+      _updateUrlPath(2);
+    } else if (path == 'settings' || page == 'settings') {
+      setState(() {
+        _currentIndex = 0;
+      });
+      _updateUrlPath(0);
+      SystemNavigator.routeInformationUpdated(uri: Uri.parse('/settings'));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SettingsScreen()),
+      ).then((_) {
+        _updateUrlPath(_currentIndex);
+      });
+    } else if (path.startsWith('edit/')) {
+      final scheduleId = path.substring('edit/'.length);
+      _openEditScreen(scheduleId);
+    } else if (page == 'help') {
+      final tabParam = uri.queryParameters['tab'];
+      int initialIndex = 0;
+      if (tabParam != null) {
+        if (tabParam.toLowerCase() == 'scheduling' ||
+            tabParam.toLowerCase() == 'schedules' ||
+            tabParam == '1') {
+          initialIndex = 1;
+        } else if (tabParam.toLowerCase() == 'policies' ||
+            tabParam.toLowerCase() == 'missed' ||
+            tabParam == '2') {
+          initialIndex = 2;
+        }
+      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HelpScreen(initialIndex: initialIndex),
+        ),
+      );
+    } else if (path == 'new' || page == 'create_task' || page == 'add_task') {
+      final repeatingParam = uri.queryParameters['repeating'];
+      final defaultToRepeating = repeatingParam == 'true';
+      SystemNavigator.routeInformationUpdated(uri: Uri.parse('/new'));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              CreateTaskScreen(defaultToRepeating: defaultToRepeating),
+        ),
+      ).then((_) {
+        _updateUrlPath(_currentIndex);
+      });
+    } else if (path.isEmpty) {
+      setState(() {
+        _currentIndex = 0;
+      });
+      _updateUrlPath(0);
+    }
+  }
+
   Future<void> _addNewTask() async {
+    SystemNavigator.routeInformationUpdated(uri: Uri.parse('/new'));
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -33,6 +192,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             CreateTaskScreen(defaultToRepeating: _currentIndex == 1),
       ),
     );
+    _updateUrlPath(_currentIndex);
   }
 
   @override
@@ -176,6 +336,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ref.read(scheduleSearchQueryProvider.notifier).state = '';
               }
             });
+            _updateUrlPath(index);
           },
           destinations: [
             NavigationDestination(

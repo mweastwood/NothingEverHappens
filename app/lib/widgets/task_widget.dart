@@ -685,6 +685,9 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                         icon: const Icon(Icons.edit, size: 20),
                         tooltip: context.l10n.editScheduleTooltip,
                         onPressed: () {
+                          SystemNavigator.routeInformationUpdated(
+                            uri: Uri.parse('/edit/${widget.schedule!.id}'),
+                          );
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -692,7 +695,11 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                                 taskToEdit: widget.schedule!,
                               ),
                             ),
-                          );
+                          ).then((_) {
+                            SystemNavigator.routeInformationUpdated(
+                              uri: Uri.parse('/tasks'),
+                            );
+                          });
                         },
                       ),
                       const SizedBox(width: 8),
