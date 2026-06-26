@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'l10n_extension.dart';
 
@@ -22,17 +24,65 @@ class ErrorHandler {
 
   List<ErrorReport> get history => List.unmodifiable(_history);
 
-  String _generateErrorCode() {
+  String _generateErrorCode(dynamic error) {
+    String prefix = 'ERR';
+    String? detail;
+
+    if (error is FirebaseException) {
+      prefix = 'FIREBASE';
+      detail = error.code.toUpperCase().replaceAll('-', '_');
+    } else if (error is PlatformException) {
+      prefix = 'PLATFORM';
+      detail = error.code.toUpperCase().replaceAll('-', '_');
+    } else if (error != null) {
+      final typeStr = error.runtimeType.toString();
+      if (typeStr.endsWith('Exception')) {
+        prefix = typeStr
+            .substring(0, typeStr.length - 'Exception'.length)
+            .toUpperCase();
+      } else if (typeStr.endsWith('Error')) {
+        prefix = typeStr
+            .substring(0, typeStr.length - 'Error'.length)
+            .toUpperCase();
+      } else {
+        prefix = typeStr.toUpperCase();
+      }
+    }
+
+    // Sanitize prefix (alphanumeric and underscores only)
+    prefix = prefix.replaceAll(RegExp(r'[^A-Z0-9_]'), '');
+    prefix = prefix.replaceAll(RegExp(r'^_+|_+$'), '');
+    if (prefix.length > 12) {
+      prefix = prefix.substring(0, 12);
+    }
+    if (prefix.isEmpty) {
+      prefix = 'ERR';
+    }
+
+    // Sanitize detail
+    if (detail != null) {
+      detail = detail.replaceAll(RegExp(r'[^A-Z0-9_]'), '');
+      if (detail.length > 24) {
+        detail = detail.substring(0, 24);
+      }
+    }
+
+    // Unique random suffix
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final random = Random();
-    return List.generate(
-      6,
+    final suffix = List.generate(
+      4,
       (index) => chars[random.nextInt(chars.length)],
     ).join();
+
+    if (detail != null && detail.isNotEmpty) {
+      return '${prefix}_${detail}_$suffix';
+    }
+    return '${prefix}_$suffix';
   }
 
   ErrorReport report(dynamic error, {StackTrace? stackTrace}) {
-    final code = _generateErrorCode();
+    final code = _generateErrorCode(error);
     final report = ErrorReport(
       code: code,
       error: error,
@@ -98,9 +148,23 @@ class ErrorHandler {
             const SizedBox(height: 4),
             Flexible(
               child: SingleChildScrollView(
-                child: Text(
-                  report.error.toString(),
-                  style: Theme.of(context).textTheme.bodySmall,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SelectableText(
+                      report.error.toString(),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    if (report.stackTrace != null) ...[
+                      const SizedBox(height: 8),
+                      SelectableText(
+                        report.stackTrace.toString(),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
