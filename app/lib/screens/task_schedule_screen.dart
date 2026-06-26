@@ -11,6 +11,8 @@ import '../logic/l10n_extension.dart';
 import '../logic/undo_notifier.dart';
 import '../widgets/undo_snackbar.dart';
 import '../logic/user_settings_repository.dart';
+import '../logic/sort_helper.dart';
+import '../widgets/sort_bar.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -22,7 +24,7 @@ class TaskScheduleScreen extends ConsumerStatefulWidget {
 }
 
 class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
-  final List<({String column, bool ascending})> _sortHistory = [
+  List<({String column, bool ascending})> _sortHistory = [
     (column: 'title', ascending: true),
   ];
 
@@ -33,19 +35,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
 
   void _onSort(String column) {
     setState(() {
-      bool ascending = true;
-      if (_sortHistory.isNotEmpty && _sortHistory.first.column == column) {
-        ascending = !_sortHistory.first.ascending;
-        _sortHistory.removeAt(0);
-      } else {
-        _sortHistory.removeWhere((element) => element.column == column);
-      }
-
-      _sortHistory.insert(0, (column: column, ascending: ascending));
-
-      if (_sortHistory.length > 3) {
-        _sortHistory.removeLast();
-      }
+      _sortHistory = updateSortHistory(_sortHistory, column);
     });
   }
 
@@ -93,14 +83,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     return earliest;
   }
 
-  int _compareDateTimes(DateTime? a, DateTime? b, bool ascending) {
-    if (a == null && b == null) return 0;
-    if (a == null) return 1; // Put nulls at the end
-    if (b == null) return -1; // Put nulls at the end
-    final comp = a.compareTo(b);
-    return ascending ? comp : -comp;
-  }
-
   int _compareTasks(
     TaskSchedule a,
     TaskSchedule b,
@@ -108,13 +90,13 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     bool ascending,
   ) {
     if (column == 'next_start') {
-      return _compareDateTimes(
+      return compareDateTimes(
         _getNextStartTime(a),
         _getNextStartTime(b),
         ascending,
       );
     } else if (column == 'next_due') {
-      return _compareDateTimes(
+      return compareDateTimes(
         _getNextDueTime(a),
         _getNextDueTime(b),
         ascending,
@@ -369,7 +351,30 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // Sort bar at the top
-                          _buildSortBar(context, theme),
+                          SortBar(
+                            title: context.l10n.scheduleSortByLabel,
+                            sortColumn: _sortColumn,
+                            sortAscending: _sortAscending,
+                            options: [
+                              SortOption(
+                                key: 'title',
+                                label: context.l10n.titleFieldLabel,
+                              ),
+                              SortOption(
+                                key: 'next_start',
+                                label: context.l10n.scheduleSortNextStartLabel,
+                              ),
+                              SortOption(
+                                key: 'next_due',
+                                label: context.l10n.scheduleSortNextDueLabel,
+                              ),
+                              SortOption(
+                                key: 'priority',
+                                label: context.l10n.taskPriorityLabel,
+                              ),
+                            ],
+                            onSort: _onSort,
+                          ),
                           const Divider(height: 1, thickness: 0.5),
                           // Scrollable list of task cards
                           Expanded(
@@ -394,87 +399,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                 ),
         );
       },
-    );
-  }
-
-  Widget _buildSortBar(BuildContext context, ThemeData theme) {
-    return SizedBox(
-      height: 48.0,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-        child: Row(
-          children: [
-            Text(
-              context.l10n.scheduleSortByLabel,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: 12),
-            ChoiceChip(
-              label: Text(context.l10n.titleFieldLabel),
-              selected: _sortColumn == 'title',
-              showCheckmark: false,
-              avatar: _sortColumn == 'title'
-                  ? Icon(
-                      _sortAscending
-                          ? Icons.arrow_upward
-                          : Icons.arrow_downward,
-                      size: 14,
-                    )
-                  : null,
-              onSelected: (_) => _onSort('title'),
-            ),
-            const SizedBox(width: 8),
-            ChoiceChip(
-              label: Text(context.l10n.scheduleSortNextStartLabel),
-              selected: _sortColumn == 'next_start',
-              showCheckmark: false,
-              avatar: _sortColumn == 'next_start'
-                  ? Icon(
-                      _sortAscending
-                          ? Icons.arrow_upward
-                          : Icons.arrow_downward,
-                      size: 14,
-                    )
-                  : null,
-              onSelected: (_) => _onSort('next_start'),
-            ),
-            const SizedBox(width: 8),
-            ChoiceChip(
-              label: Text(context.l10n.scheduleSortNextDueLabel),
-              selected: _sortColumn == 'next_due',
-              showCheckmark: false,
-              avatar: _sortColumn == 'next_due'
-                  ? Icon(
-                      _sortAscending
-                          ? Icons.arrow_upward
-                          : Icons.arrow_downward,
-                      size: 14,
-                    )
-                  : null,
-              onSelected: (_) => _onSort('next_due'),
-            ),
-            const SizedBox(width: 8),
-            ChoiceChip(
-              label: Text(context.l10n.taskPriorityLabel),
-              selected: _sortColumn == 'priority',
-              showCheckmark: false,
-              avatar: _sortColumn == 'priority'
-                  ? Icon(
-                      _sortAscending
-                          ? Icons.arrow_upward
-                          : Icons.arrow_downward,
-                      size: 14,
-                    )
-                  : null,
-              onSelected: (_) => _onSort('priority'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

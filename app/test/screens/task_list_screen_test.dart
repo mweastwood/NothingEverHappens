@@ -21,6 +21,7 @@ import 'package:nothing_ever_happens/main.dart';
 import 'package:nothing_ever_happens/widgets/dev_clock_widget.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
+import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import '../widgets/task_widget_robot.dart';
 
 @GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<TaskRepository>()])
@@ -1390,6 +1391,201 @@ void main() {
     await screenMatchesGolden(tester, 'task_list_screen_pending_tasks');
 
     await settingsSubject.close();
+    AppClock.reset();
+  });
+
+  testWidgets('TaskListScreen sorts tasks correctly by name, due time, priority', (
+    WidgetTester tester,
+  ) async {
+    final mockAuthRepository = MockAuthRepository();
+    final mockTaskRepository = MockTaskRepository();
+
+    final now = DateTime(2026, 6, 22, 8, 0);
+    AppClock.setMockTime(now);
+    final taskDate = CivilDay.fromDateTime(now);
+
+    // B: Title Apple, Priority low, Start offset 1 hour, Due offset 2 hours
+    final taskB = TaskSchedule(
+      id: 'task-b',
+      title: 'Apple',
+      description: 'Test B',
+      schedules: [
+        OneOffSchedule(
+          date: taskDate,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 0),
+          ),
+        ),
+      ],
+      priority: TaskPriority.low,
+    );
+
+    // A: Title Banana, Priority high, Start offset 2 hours, Due offset 3 hours
+    final taskA = TaskSchedule(
+      id: 'task-a',
+      title: 'Banana',
+      description: 'Test A',
+      schedules: [
+        OneOffSchedule(
+          date: taskDate,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 11, minute: 0),
+          ),
+        ),
+      ],
+      priority: TaskPriority.high,
+    );
+
+    // C: Title Cherry, Priority medium, Start offset 3 hours, Due offset 1 hour
+    final taskC = TaskSchedule(
+      id: 'task-c',
+      title: 'Cherry',
+      description: 'Test C',
+      schedules: [
+        OneOffSchedule(
+          date: taskDate,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 11, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 8, minute: 30),
+          ),
+        ),
+      ],
+      priority: TaskPriority.medium,
+    );
+
+    final instB = TaskInstance(
+      id: 'inst-b',
+      scheduleId: taskB.id,
+      ruleId: taskB.schedules.first.id,
+      title: taskB.title,
+      description: taskB.description,
+      scheduledDate: taskDate,
+      startRelativeTime: taskB.schedules.first.startRelativeTime,
+      dueRelativeTime: taskB.schedules.first.dueRelativeTime,
+      priority: taskB.priority,
+    );
+
+    final instA = TaskInstance(
+      id: 'inst-a',
+      scheduleId: taskA.id,
+      ruleId: taskA.schedules.first.id,
+      title: taskA.title,
+      description: taskA.description,
+      scheduledDate: taskDate,
+      startRelativeTime: taskA.schedules.first.startRelativeTime,
+      dueRelativeTime: taskA.schedules.first.dueRelativeTime,
+      priority: taskA.priority,
+    );
+
+    final instC = TaskInstance(
+      id: 'inst-c',
+      scheduleId: taskC.id,
+      ruleId: taskC.schedules.first.id,
+      title: taskC.title,
+      description: taskC.description,
+      scheduledDate: taskDate,
+      startRelativeTime: taskC.schedules.first.startRelativeTime,
+      dueRelativeTime: taskC.schedules.first.dueRelativeTime,
+      priority: taskC.priority,
+    );
+
+    when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+    when(
+      mockTaskRepository.getTasks(),
+    ).thenAnswer((_) => Stream.value([taskB, taskA, taskC]));
+    when(
+      mockTaskRepository.getInstances(),
+    ).thenAnswer((_) => Stream.value([instB, instA, instC]));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+          userSettingsProvider.overrideWith(
+            (ref) => Stream.value(
+              const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
+            ),
+          ),
+        ],
+        child: buildTestableWidget(child: const HomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify default sort by Name/Title (Apple, Banana, Cherry)
+    var textFinder = find.byType(TaskWidget);
+    expect(textFinder, findsNWidgets(3));
+
+    // Check titles of the rendered widgets in sequence
+    expect(tester.widget<TaskWidget>(textFinder.at(0)).instance.title, 'Apple');
+    expect(
+      tester.widget<TaskWidget>(textFinder.at(1)).instance.title,
+      'Banana',
+    );
+    expect(
+      tester.widget<TaskWidget>(textFinder.at(2)).instance.title,
+      'Cherry',
+    );
+
+    // Tap on Priority sorting chip (find ChoiceChip with label 'Priority')
+    await tester.ensureVisible(find.text('Priority'));
+    await tester.tap(find.text('Priority'));
+    await tester.pumpAndSettle();
+
+    // Verify sort by Priority ascending (low to high: low, medium, high) -> Apple, Cherry, Banana
+    expect(tester.widget<TaskWidget>(textFinder.at(0)).instance.title, 'Apple');
+    expect(
+      tester.widget<TaskWidget>(textFinder.at(1)).instance.title,
+      'Cherry',
+    );
+    expect(
+      tester.widget<TaskWidget>(textFinder.at(2)).instance.title,
+      'Banana',
+    );
+
+    // Tap Priority again to toggle descending -> Banana, Cherry, Apple
+    await tester.ensureVisible(find.text('Priority'));
+    await tester.tap(find.text('Priority'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TaskWidget>(textFinder.at(0)).instance.title,
+      'Banana',
+    );
+    expect(
+      tester.widget<TaskWidget>(textFinder.at(1)).instance.title,
+      'Cherry',
+    );
+    expect(tester.widget<TaskWidget>(textFinder.at(2)).instance.title, 'Apple');
+
+    // Tap on Next Due sorting chip -> Cherry (8:30), Apple (10:00), Banana (11:00)
+    await tester.ensureVisible(find.text('Next Due'));
+    await tester.tap(find.text('Next Due'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TaskWidget>(textFinder.at(0)).instance.title,
+      'Cherry',
+    );
+    expect(tester.widget<TaskWidget>(textFinder.at(1)).instance.title, 'Apple');
+    expect(
+      tester.widget<TaskWidget>(textFinder.at(2)).instance.title,
+      'Banana',
+    );
+
     AppClock.reset();
   });
 }

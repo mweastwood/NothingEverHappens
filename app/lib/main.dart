@@ -93,6 +93,7 @@ class MyApp extends ConsumerWidget {
         }
 
         return MaterialApp(
+          key: ValueKey(user == null),
           title: 'Nothing Ever Happens',
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
