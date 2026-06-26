@@ -44,11 +44,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     String column,
     bool ascending,
   ) {
-    if (column == 'next_start') {
-      final aStart = a.startRelativeTime.referenceTo(a.scheduledDate);
-      final bStart = b.startRelativeTime.referenceTo(b.scheduledDate);
-      return compareDateTimes(aStart, bStart, ascending);
-    } else if (column == 'next_due') {
+    if (column == 'next_due') {
       final aDue = a.dueRelativeTime.referenceTo(a.scheduledDate);
       final bDue = b.dueRelativeTime.referenceTo(b.scheduledDate);
       return compareDateTimes(aDue, bDue, ascending);
@@ -242,10 +238,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                     SortOption(
                       key: 'title',
                       label: context.l10n.titleFieldLabel,
-                    ),
-                    SortOption(
-                      key: 'next_start',
-                      label: context.l10n.scheduleSortNextStartLabel,
                     ),
                     SortOption(
                       key: 'next_due',
