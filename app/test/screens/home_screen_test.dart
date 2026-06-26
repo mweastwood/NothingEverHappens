@@ -67,7 +67,7 @@ void main() {
     settingsSubject.close();
   });
 
-  Widget createScreen() {
+  Widget createScreen({Uri? mockUri}) {
     final firestore = FakeFirebaseFirestore();
     final familyRepo = FamilyRepository(
       firestore: firestore,
@@ -85,7 +85,7 @@ void main() {
         ),
         familyRepositoryProvider.overrideWithValue(familyRepo),
       ],
-      child: buildTestableWidget(child: const HomeScreen()),
+      child: buildTestableWidget(child: HomeScreen(mockUri: mockUri)),
     );
   }
 
@@ -287,4 +287,105 @@ void main() {
       expect(find.text('Daily, every 1 day(s)'), findsOneWidget);
     },
   );
+
+  group('URL path and params routing tests', () {
+    testWidgets('routes to /tasks when path is /tasks', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        createScreen(mockUri: Uri.parse('https://example.com/tasks')),
+      );
+      await tester.pumpAndSettle();
+
+      final NavigationBar navBar = tester.widget(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 0);
+      expect(find.byType(TaskListScreen), findsOneWidget);
+    });
+
+    testWidgets('routes to /schedules when path is /schedules', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        createScreen(mockUri: Uri.parse('https://example.com/schedules')),
+      );
+      await tester.pumpAndSettle();
+
+      final NavigationBar navBar = tester.widget(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 1);
+      expect(find.byType(TaskScheduleScreen), findsOneWidget);
+    });
+
+    testWidgets('routes to /family when path is /family', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        createScreen(mockUri: Uri.parse('https://example.com/family')),
+      );
+      await tester.pumpAndSettle();
+
+      final NavigationBar navBar = tester.widget(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 2);
+      expect(find.byType(FamilyScreen), findsOneWidget);
+    });
+
+    testWidgets('pushes SettingsScreen when path is /settings', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        createScreen(mockUri: Uri.parse('https://example.com/settings')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SettingsScreen), findsOneWidget);
+    });
+
+    testWidgets(
+      'routes to /edit/<id> and pushes CreateTaskScreen with target task',
+      (WidgetTester tester) async {
+        final task = TaskSchedule(
+          id: 'S-target-task-id',
+          title: 'Target Task',
+          description: 'Test target task',
+        );
+        tasksSubject.add([task]);
+
+        await tester.pumpWidget(
+          createScreen(
+            mockUri: Uri.parse('https://example.com/edit/S-target-task-id'),
+          ),
+        );
+        await tester.pump();
+        await tester.runAsync(() async {
+          await Future.delayed(const Duration(milliseconds: 100));
+        });
+        await tester.pumpAndSettle();
+
+        expect(find.byType(CreateTaskScreen), findsOneWidget);
+        expect(find.text('Target Task'), findsOneWidget);
+      },
+    );
+
+    testWidgets('routes to /new and pushes CreateTaskScreen', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        createScreen(mockUri: Uri.parse('https://example.com/new')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CreateTaskScreen), findsOneWidget);
+    });
+
+    testWidgets('routes to /tasks when path is empty /', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        createScreen(mockUri: Uri.parse('https://example.com/')),
+      );
+      await tester.pumpAndSettle();
+
+      final NavigationBar navBar = tester.widget(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 0);
+    });
+  });
 }

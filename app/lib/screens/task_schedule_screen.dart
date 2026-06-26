@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
@@ -531,13 +532,20 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                   visualDensity: VisualDensity.compact,
                   tooltip: context.l10n.editScheduleTooltip,
                   onPressed: () {
+                    SystemNavigator.routeInformationUpdated(
+                      uri: Uri.parse('/edit/${task.id}'),
+                    );
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
                             CreateTaskScreen(taskToEdit: task),
                       ),
-                    );
+                    ).then((_) {
+                      SystemNavigator.routeInformationUpdated(
+                        uri: Uri.parse('/schedules'),
+                      );
+                    });
                   },
                 ),
                 IconButton(

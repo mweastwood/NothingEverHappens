@@ -99,7 +99,13 @@ class MyApp extends ConsumerWidget {
           theme: ThemeData(colorScheme: lightScheme, useMaterial3: true),
           darkTheme: ThemeData(colorScheme: darkScheme, useMaterial3: true),
           themeMode: ThemeMode.system,
-          home: user == null ? const LoginScreen() : const HomeScreen(),
+          onGenerateRoute: (settings) {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (context) =>
+                  user == null ? const LoginScreen() : const HomeScreen(),
+            );
+          },
         );
       },
     );
