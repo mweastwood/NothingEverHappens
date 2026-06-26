@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../logic/scheduling_policy.dart';
+import '../logic/l10n_extension.dart';
 
 class ScheduleTypeSelector extends StatelessWidget {
   final SchedulingType selectedType;
@@ -16,16 +17,16 @@ class ScheduleTypeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SegmentedButton<SchedulingType>(
-      segments: const [
+      segments: [
         ButtonSegment<SchedulingType>(
           value: SchedulingType.fixedCalendar,
-          icon: Icon(Icons.calendar_today),
-          label: Text('Fixed Calendar'),
+          icon: const Icon(Icons.calendar_today),
+          label: Text(context.l10n.fixedCalendarLabel),
         ),
         ButtonSegment<SchedulingType>(
           value: SchedulingType.completionRelative,
-          icon: Icon(Icons.replay),
-          label: Text('Completion-Relative'),
+          icon: const Icon(Icons.replay),
+          label: Text(context.l10n.completionRelativeLabel),
         ),
       ],
       selected: {selectedType},

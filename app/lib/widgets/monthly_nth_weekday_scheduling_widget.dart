@@ -155,7 +155,7 @@ class _MonthlyNthWeekdaySchedulingWidgetState
                 key: const Key('monthly_nth_weekday_interval_stepper'),
                 interval: widget.interval,
                 onIntervalChanged: widget.onIntervalChanged,
-                label: 'Interval',
+                label: l10n.intervalLabel,
                 unitSingular: l10n.presetMonthSingular,
                 unitPlural: l10n.presetMonthPlural,
                 readOnly: widget.readOnly,
@@ -178,7 +178,7 @@ class _MonthlyNthWeekdaySchedulingWidgetState
                           ),
                         );
                       },
-                label: 'Start Date',
+                label: l10n.startDateLabel,
               ),
             ),
           ],
@@ -196,9 +196,10 @@ class _MonthlyNthWeekdaySchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                widget.interval == 1
-                    ? 'Repeats every month starting ${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}.'
-                    : 'Repeats every ${widget.interval} months starting ${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}.',
+                l10n.repeatsEveryMonthHelp(
+                  widget.interval,
+                  '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
+                ),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -276,7 +277,7 @@ class _MonthlyNthWeekdaySchedulingWidgetState
 
         // Start
         Text(
-          'Start',
+          l10n.startLabel,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -300,7 +301,7 @@ class _MonthlyNthWeekdaySchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'When does the task appear in your list of tasks?',
+                l10n.taskAppearanceHelpText,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -313,7 +314,7 @@ class _MonthlyNthWeekdaySchedulingWidgetState
 
         // Due
         Text(
-          'Due',
+          l10n.dueWithoutColon,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -354,7 +355,7 @@ class _MonthlyNthWeekdaySchedulingWidgetState
           CheckboxListTile(
             key: const Key('monthly_fixed_notification_checkbox'),
             title: Text(
-              'Enable notification reminder',
+              l10n.enableNotificationReminderLabel,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -376,7 +377,7 @@ class _MonthlyNthWeekdaySchedulingWidgetState
           ),
           if (notificationEnabled) ...[
             Text(
-              'Notification window',
+              l10n.notificationWindowLabel,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,

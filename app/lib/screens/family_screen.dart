@@ -38,7 +38,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Please enter a family name'; // fallback string
+                return context.l10n.familyNameRequiredError;
               }
               return null;
             },
@@ -109,11 +109,11 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter an email address';
+                      return context.l10n.emailRequiredError;
                     }
                     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
                     if (!emailRegex.hasMatch(value.trim())) {
-                      return 'Please enter a valid email address';
+                      return context.l10n.emailInvalidError;
                     }
                     return null;
                   },
@@ -550,7 +550,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${family.members.length} members',
+                        context.l10n.familyMembersCount(family.members.length),
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
                               color: Theme.of(
@@ -567,11 +567,13 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  context.l10n.membersHeader,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    context.l10n.membersHeader,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
                 if (isParent)
                   TextButton.icon(

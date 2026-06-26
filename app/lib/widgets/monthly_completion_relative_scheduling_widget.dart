@@ -123,7 +123,7 @@ class _MonthlyCompletionRelativeSchedulingWidgetState
           key: const Key('monthly_completion_interval_stepper'),
           interval: widget.interval,
           onIntervalChanged: widget.onIntervalChanged,
-          label: 'Interval',
+          label: l10n.intervalLabel,
           unitSingular: l10n.presetMonthSingular,
           unitPlural: l10n.presetMonthPlural,
           readOnly: widget.readOnly,
@@ -141,9 +141,7 @@ class _MonthlyCompletionRelativeSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                widget.interval == 1
-                    ? '1 month after the task was last completed.'
-                    : '${widget.interval} months after the task was last completed.',
+                l10n.completionRelativeHelpMonthly(widget.interval),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -156,7 +154,7 @@ class _MonthlyCompletionRelativeSchedulingWidgetState
 
         // 2. Start
         Text(
-          'Start',
+          l10n.startLabel,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -180,7 +178,7 @@ class _MonthlyCompletionRelativeSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'When does the task appear in your list of tasks?',
+                l10n.taskAppearanceHelpText,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -193,7 +191,7 @@ class _MonthlyCompletionRelativeSchedulingWidgetState
 
         // 3. Due
         Text(
-          'Due',
+          l10n.dueWithoutColon,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -234,7 +232,7 @@ class _MonthlyCompletionRelativeSchedulingWidgetState
           CheckboxListTile(
             key: const Key('monthly_completion_notification_checkbox'),
             title: Text(
-              'Enable notification reminder',
+              l10n.enableNotificationReminderLabel,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -256,7 +254,7 @@ class _MonthlyCompletionRelativeSchedulingWidgetState
           ),
           if (notificationEnabled) ...[
             Text(
-              'Notification window',
+              l10n.notificationWindowLabel,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,

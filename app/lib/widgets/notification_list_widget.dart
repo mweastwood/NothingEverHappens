@@ -3,6 +3,7 @@ import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import 'relative_time_widget.dart';
 import 'absolute_time_widget.dart';
+import '../logic/l10n_extension.dart';
 
 /// A widget that displays and manages a list of multiple task notifications.
 ///
@@ -118,7 +119,7 @@ class _NotificationListWidgetState extends State<NotificationListWidget> {
           OutlinedButton.icon(
             key: const Key('add_notification_button'),
             icon: const Icon(Icons.add_alarm, size: 18),
-            label: const Text('Add notification'),
+            label: Text(context.l10n.addNotificationButton),
             onPressed: _addNotification,
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(40),

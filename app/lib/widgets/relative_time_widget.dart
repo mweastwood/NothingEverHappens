@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../logic/relative_time.dart';
+import '../logic/l10n_extension.dart';
 
 /// Constraints for the relative time widget.
 enum RelativeTimeConstraint {
@@ -179,16 +180,20 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
 
   String _getOffsetDisplayString(int days, bool isForward) {
     if (days == 0) {
-      return 'Day of';
+      return context.l10n.dayOfLabel;
     }
     final absDays = days.abs();
     final positive = widget.constraint == RelativeTimeConstraint.unconstrained
         ? days >= 0
         : isForward;
     if (absDays == 1) {
-      return positive ? '1 day after' : '1 day before';
+      return positive
+          ? context.l10n.oneDayAfterLabel
+          : context.l10n.oneDayBeforeLabel;
     }
-    return positive ? '$absDays days later' : '$absDays days before';
+    return positive
+        ? context.l10n.nDaysLaterLabel(absDays)
+        : context.l10n.nDaysBeforeLabel(absDays);
   }
 
   Future<void> _showOffsetDialog(BuildContext context, bool isForward) async {
@@ -246,7 +251,7 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'Time',
+                                  context.l10n.timeLabel,
                                   style: Theme.of(context).textTheme.labelSmall
                                       ?.copyWith(
                                         color: Theme.of(
@@ -314,7 +319,7 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      'Day',
+                                      context.l10n.dayLabel,
                                       style: Theme.of(context)
                                           .textTheme
                                           .labelSmall
@@ -385,13 +390,17 @@ class _DayOffsetPickerDialogState extends State<_DayOffsetPickerDialog> {
   }
 
   String _getOffsetLabel(int offset) {
-    if (offset == 0) return 'Day of';
+    if (offset == 0) return context.l10n.dayOfLabel;
     final absOffset = offset.abs();
     final isPositive = offset > 0;
     if (absOffset == 1) {
-      return isPositive ? '1 day after' : '1 day before';
+      return isPositive
+          ? context.l10n.oneDayAfterLabel
+          : context.l10n.oneDayBeforeLabel;
     }
-    return isPositive ? '$absOffset days later' : '$absOffset days before';
+    return isPositive
+        ? context.l10n.nDaysLaterLabel(absOffset)
+        : context.l10n.nDaysBeforeLabel(absOffset);
   }
 
   @override
@@ -415,14 +424,14 @@ class _DayOffsetPickerDialogState extends State<_DayOffsetPickerDialog> {
     }
 
     return AlertDialog(
-      title: const Text('Select Day'),
+      title: Text(context.l10n.selectDayTitle),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Presets',
+              context.l10n.presetsLabel,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
@@ -456,7 +465,7 @@ class _DayOffsetPickerDialogState extends State<_DayOffsetPickerDialog> {
             const Divider(),
             const SizedBox(height: 16),
             Text(
-              'Adjust Offset',
+              context.l10n.adjustOffsetLabel,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
@@ -508,11 +517,11 @@ class _DayOffsetPickerDialogState extends State<_DayOffsetPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.cancelButton),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(_currentOffset),
-          child: const Text('OK'),
+          child: Text(context.l10n.okButton),
         ),
       ],
     );

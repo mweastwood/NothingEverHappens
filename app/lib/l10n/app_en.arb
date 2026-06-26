@@ -258,6 +258,14 @@
   "declineInviteButton": "Decline",
   "leaveFamilyButton": "Leave Family",
   "membersHeader": "Family Members",
+  "familyMembersCount": "{count, plural, =1{1 member} other{{count} members}}",
+  "@familyMembersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "notInFamilyBody": "You are not currently in a family unit. You can create a new family or accept a pending invitation below.",
   "noPendingInvites": "No pending invitations",
   "inviteSentSuccess": "Invitation sent successfully",
@@ -593,5 +601,335 @@
         "type": "String"
       }
     }
-  }
+  },
+  "scheduleRequiredError": "At least one schedule is required.",
+  "familyTaskToggleLabel": "Family Task",
+  "personalTaskToggleLabel": "Personal Task",
+  "effortAndPriorityLabel": "Effort and Priority",
+  "addScheduleButton": "Add Schedule",
+  "saveTimeoutError": "Save operation timed out. Please check your connection.",
+  "hoursSuffix": "hours",
+  "futureOccurrencesLabel": "Future Occurrences",
+  "preCreatedFutureTasksHelper": "Pre-created future tasks (1-10)",
+  "resetPracticeButton": "Reset Practice",
+  "practiceTasksRemaining": "{count, plural, =1{Practice Tasks (1 remaining)} other{Practice Tasks ({count} remaining)}}",
+  "@practiceTasksRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "practiceTasksCompleted": "All tasks completed or dismissed!",
+  "practiceTasksResetPrompt": "Tap \"Reset Practice\" to try again.",
+  "unitLabel": "Unit",
+  "unitHours": "Hour(s)",
+  "unitDays": "Day(s)",
+  "unitWeeks": "Week(s)",
+  "unitMinutes": "Minute(s)",
+  "targetStartTimeLabel": "Target Start Time",
+  "oneOffLabel": "One-off",
+  "repeatingLabel": "Repeating",
+  "selectMissedPolicyTitle": "Select Missed Occurrence Policy",
+  "immediatelyPolicy": "Immediately",
+  "oneHourPolicy": "1 Hour",
+  "sixHoursPolicy": "6 Hours",
+  "twelveHoursPolicy": "12 Hours",
+  "twentyFourHoursPolicy": "24 Hours (1 Day)",
+  "customDurationPolicy": "Custom Duration...",
+  "addNotificationButton": "Add notification",
+  "selectDayTitle": "Select Day",
+  "okButton": "OK",
+  "fixedCalendarLabel": "Fixed Calendar",
+  "completionRelativeLabel": "Completion-Relative",
+  "taskTypeLabel": "Task Type",
+  "simulationPresetDaily": "Daily Preset (Feed Pets)",
+  "simulationPresetWeekly": "Weekly Preset (Mow Lawn)",
+  "simulatedTimeLabel": "Simulated Time: {time}",
+  "@simulatedTimeLabel": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "simulationOneHour": "1 Hour",
+  "simulationSixHours": "6 Hours",
+  "simulationTwentyFourHours": "24 Hours",
+  "noActivePlaygroundTasks": "No active tasks.",
+  "autoDismissPolicyHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@autoDismissPolicyHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "missedPolicyDialogIntro": "In the examples shown below, assume we have a daily task that we didn't complete, check-off, or dismiss the task in any way on Monday or Tuesday. It is now Wednesday, so what should be done with the older tasks?",
+  "dismissAfterLabel": "Dismiss After",
+  "durationLabel": "Duration",
+  "presetsLabel": "Presets",
+  "presetDaySingular": "day",
+  "presetDayPlural": "days",
+  "presetWeekSingular": "week",
+  "presetWeekPlural": "weeks",
+  "taskAppearanceHelpText": "When does the task appear in your list of tasks?",
+  "enableNotificationReminderLabel": "Enable notification reminder",
+  "notificationWindowLabel": "Notification window",
+  "repeatIntervalLabel": "Repeat Interval",
+  "completionRelativeSummary": "Completion-relative: every {val} {unit} @ {time}",
+  "@completionRelativeSummary": {
+    "placeholders": {
+      "val": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "oneOffSummary": "One-off on {date}",
+  "@oneOffSummary": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "dailySummary": "Daily, every {count} day(s)",
+  "@dailySummary": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "weeklySummary": "Weekly, every {count} week(s) on {days}",
+  "@weeklySummary": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "monthlySummaryDay": "Monthly, every {count} month(s) on day {day}",
+  "@monthlySummaryDay": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "monthlySummaryNth": "Monthly, every {count} month(s) on {occurrence} {weekday}",
+  "@monthlySummaryNth": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "occurrence": {
+        "type": "String"
+      },
+      "weekday": {
+        "type": "String"
+      }
+    }
+  },
+  "yearlySummary": "Yearly, every {count} year(s) on {month} {day}",
+  "@yearlySummary": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "customScheduleSummary": "Custom schedule",
+  "deleteScheduleTooltip": "Delete Schedule",
+  "weekdayShortMonday": "Mon",
+  "weekdayShortTuesday": "Tue",
+  "weekdayShortWednesday": "Wed",
+  "weekdayShortThursday": "Thu",
+  "weekdayShortFriday": "Fri",
+  "weekdayShortSaturday": "Sat",
+  "weekdayShortSunday": "Sun",
+  "monthShortJanuary": "Jan",
+  "monthShortFebruary": "Feb",
+  "monthShortMarch": "Mar",
+  "monthShortApril": "Apr",
+  "monthShortMay": "May",
+  "monthShortJune": "Jun",
+  "monthShortJuly": "Jul",
+  "monthShortAugust": "Aug",
+  "monthShortSeptember": "Sep",
+  "monthShortOctober": "Oct",
+  "monthShortNovember": "Nov",
+  "monthShortDecember": "Dec",
+  "completionRelativeHelpDaily": "{count, plural, =1{1 day after the task was last completed.} other{{count} days after the task was last completed.}}",
+  "@completionRelativeHelpDaily": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionRelativeHelpWeekly": "{count, plural, =1{1 week after the task was last completed.} other{{count} weeks after the task was last completed.}}",
+  "@completionRelativeHelpWeekly": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionRelativeHelpMonthly": "{count, plural, =1{1 month after the task was last completed.} other{{count} months after the task was last completed.}}",
+  "@completionRelativeHelpMonthly": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "completionRelativeHelpYearly": "{count, plural, =1{1 year after the task was last completed.} other{{count} years after the task was last completed.}}",
+  "@completionRelativeHelpYearly": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "repeatsEveryDayHelp": "{count, plural, =1{Repeats every day starting {date}.} other{Repeats every {count} days starting {date}.}}",
+  "@repeatsEveryDayHelp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "repeatsEveryWeekHelp": "{count, plural, =1{Repeats every week starting {date}.} other{Repeats every {count} weeks starting {date}.}}",
+  "@repeatsEveryWeekHelp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "repeatsEveryMonthHelp": "{count, plural, =1{Repeats every month starting {date}.} other{Repeats every {count} months starting {date}.}}",
+  "@repeatsEveryMonthHelp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "repeatsEveryYearHelp": "{count, plural, =1{Repeats every year starting {date}.} other{Repeats every {count} years starting {date}.}}",
+  "@repeatsEveryYearHelp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "recurrenceTypeHeader": "RECURRENCE TYPE",
+  "dailyFixedTitle": "On a fixed schedule",
+  "dailyFixedSubtitle": "Repeats every N days since last scheduled (e.g. every 3 days)",
+  "dailyCompletionRelativeTitle": "Based on when last completed",
+  "dailyCompletionRelativeSubtitle": "Repeats N days after you finish it (e.g. 3 days after completed)",
+  "weeklyFixedTitle": "On fixed days of the week",
+  "weeklyFixedSubtitle": "Repeats on specific weekdays (e.g. every Monday & Friday)",
+  "weeklyCompletionRelativeTitle": "Based on when last completed",
+  "weeklyCompletionRelativeSubtitle": "Repeats N weeks after you finish it (e.g. 2 weeks after completed)",
+  "monthlyFixedDayTitle": "On a fixed day of the month",
+  "monthlyFixedDaySubtitle": "Repeats on a specific calendar day (e.g. on the 15th of the month)",
+  "monthlyNthWeekdayTitle": "On a specific weekday of the month",
+  "monthlyNthWeekdaySubtitle": "Repeats on a relative weekday (e.g. on the second Tuesday)",
+  "monthlyCompletionRelativeTitle": "Based on when last completed",
+  "monthlyCompletionRelativeSubtitle": "Repeats N months after you finish it (e.g. 1 month after completed)",
+  "yearlyFixedTitle": "On a fixed date of the year",
+  "yearlyFixedSubtitle": "Repeats on a specific calendar date (e.g. every October 12th)",
+  "yearlyCompletionRelativeTitle": "Based on when last completed",
+  "yearlyCompletionRelativeSubtitle": "Repeats N years after you finish it (e.g. 1 year after completed)",
+  "dayOfLabel": "Day of",
+  "dayLabel": "Day",
+  "timeLabel": "Time",
+  "adjustOffsetLabel": "Adjust Offset",
+  "oneDayAfterLabel": "1 day after",
+  "oneDayBeforeLabel": "1 day before",
+  "nDaysLaterLabel": "{count} days later",
+  "@nDaysLaterLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nDaysBeforeLabel": "{count} days before",
+  "@nDaysBeforeLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "familyNameRequiredError": "Please enter a family name",
+  "emailRequiredError": "Please enter an email address",
+  "emailInvalidError": "Please enter a valid email address",
+  "practiceTaskTitle0": "Water the Houseplants",
+  "practiceTaskDesc0": "Give them just enough water.",
+  "practiceTaskTitle1": "Take out the Trash",
+  "practiceTaskDesc1": "Don't forget the recycling.",
+  "practiceTaskTitle2": "Wash the Dishes",
+  "practiceTaskDesc2": "Clean the pots and pans first.",
+  "practiceTaskTitle3": "Mow the Lawn",
+  "practiceTaskDesc3": "Trim the edges too.",
+  "practiceTaskTitle4": "Feed the Dog",
+  "practiceTaskDesc4": "Make sure he has fresh water.",
+  "practiceTaskTitle5": "Vacuum the Living Room",
+  "practiceTaskDesc5": "Get under the couch.",
+  "practiceTaskTitle6": "Clean the Attic",
+  "practiceTaskDesc6": "Sort the old boxes.",
+  "practiceTaskTitle7": "Fold the Laundry",
+  "practiceTaskDesc7": "Fold them neatly and put them away.",
+  "practiceTaskTitle8": "Dust the Shelves",
+  "practiceTaskDesc8": "Use a microfiber cloth.",
+  "practiceTaskTitle9": "Buy Groceries",
+  "practiceTaskDesc9": "Milk, eggs, and bread.",
+  "preferNewerTitle": "Prefer Newer",
+  "preferNewerDesc": "Only the latest occurrence remains active. Older missed occurrences are automatically skipped so you can start fresh.",
+  "preferOlderTitle": "Prefer Older",
+  "preferOlderDesc": "Only the oldest unresolved occurrence remains active. Subsequent occurrences are skipped until it is completed.",
+  "stackPolicyTitle": "Stack",
+  "stackPolicyDesc": "Keep all occurrences active. Missed occurrences accumulate in a backlog and must be completed individually.",
+  "autoDismissPolicyTitle": "Auto-Dismiss",
+  "autoDismissPolicyDesc": "Occurrences accumulate but are automatically dismissed/skipped after a configurable grace period.",
+  "monShort": "Mon",
+  "tueShort": "Tue",
+  "wedTodayShort": "Wed (Today)",
+  "activeLabel": "Active",
+  "expiredLabel": "Expired",
+  "skippedLabel": "Skipped"
 }

@@ -502,6 +502,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get membersHeader => 'Family Members';
 
   @override
+  String familyMembersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count members',
+      one: '1 member',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get notInFamilyBody =>
       'You are not currently in a family unit. You can create a new family or accept a pending invitation below.';
 
@@ -938,4 +949,573 @@ class AppLocalizationsEn extends AppLocalizations {
   String noSchedulesMatching(String query) {
     return 'No matching schedules found for \"$query\"';
   }
+
+  @override
+  String get scheduleRequiredError => 'At least one schedule is required.';
+
+  @override
+  String get familyTaskToggleLabel => 'Family Task';
+
+  @override
+  String get personalTaskToggleLabel => 'Personal Task';
+
+  @override
+  String get effortAndPriorityLabel => 'Effort and Priority';
+
+  @override
+  String get addScheduleButton => 'Add Schedule';
+
+  @override
+  String get saveTimeoutError =>
+      'Save operation timed out. Please check your connection.';
+
+  @override
+  String get hoursSuffix => 'hours';
+
+  @override
+  String get futureOccurrencesLabel => 'Future Occurrences';
+
+  @override
+  String get preCreatedFutureTasksHelper => 'Pre-created future tasks (1-10)';
+
+  @override
+  String get resetPracticeButton => 'Reset Practice';
+
+  @override
+  String practiceTasksRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Practice Tasks ($count remaining)',
+      one: 'Practice Tasks (1 remaining)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get practiceTasksCompleted => 'All tasks completed or dismissed!';
+
+  @override
+  String get practiceTasksResetPrompt => 'Tap \"Reset Practice\" to try again.';
+
+  @override
+  String get unitLabel => 'Unit';
+
+  @override
+  String get unitHours => 'Hour(s)';
+
+  @override
+  String get unitDays => 'Day(s)';
+
+  @override
+  String get unitWeeks => 'Week(s)';
+
+  @override
+  String get unitMinutes => 'Minute(s)';
+
+  @override
+  String get targetStartTimeLabel => 'Target Start Time';
+
+  @override
+  String get selectMissedPolicyTitle => 'Select Missed Occurrence Policy';
+
+  @override
+  String get immediatelyPolicy => 'Immediately';
+
+  @override
+  String get oneHourPolicy => '1 Hour';
+
+  @override
+  String get sixHoursPolicy => '6 Hours';
+
+  @override
+  String get twelveHoursPolicy => '12 Hours';
+
+  @override
+  String get twentyFourHoursPolicy => '24 Hours (1 Day)';
+
+  @override
+  String get customDurationPolicy => 'Custom Duration...';
+
+  @override
+  String get addNotificationButton => 'Add notification';
+
+  @override
+  String get selectDayTitle => 'Select Day';
+
+  @override
+  String get okButton => 'OK';
+
+  @override
+  String get fixedCalendarLabel => 'Fixed Calendar';
+
+  @override
+  String get completionRelativeLabel => 'Completion-Relative';
+
+  @override
+  String get taskTypeLabel => 'Task Type';
+
+  @override
+  String get simulationPresetDaily => 'Daily Preset (Feed Pets)';
+
+  @override
+  String get simulationPresetWeekly => 'Weekly Preset (Mow Lawn)';
+
+  @override
+  String simulatedTimeLabel(String time) {
+    return 'Simulated Time: $time';
+  }
+
+  @override
+  String get simulationOneHour => '1 Hour';
+
+  @override
+  String get simulationSixHours => '6 Hours';
+
+  @override
+  String get simulationTwentyFourHours => '24 Hours';
+
+  @override
+  String get noActivePlaygroundTasks => 'No active tasks.';
+
+  @override
+  String autoDismissPolicyHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours',
+      one: '1 hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get missedPolicyDialogIntro =>
+      'In the examples shown below, assume we have a daily task that we didn\'t complete, check-off, or dismiss the task in any way on Monday or Tuesday. It is now Wednesday, so what should be done with the older tasks?';
+
+  @override
+  String get dismissAfterLabel => 'Dismiss After';
+
+  @override
+  String get durationLabel => 'Duration';
+
+  @override
+  String get presetsLabel => 'Presets';
+
+  @override
+  String get presetDaySingular => 'day';
+
+  @override
+  String get presetDayPlural => 'days';
+
+  @override
+  String get presetWeekSingular => 'week';
+
+  @override
+  String get presetWeekPlural => 'weeks';
+
+  @override
+  String get taskAppearanceHelpText =>
+      'When does the task appear in your list of tasks?';
+
+  @override
+  String get enableNotificationReminderLabel => 'Enable notification reminder';
+
+  @override
+  String get notificationWindowLabel => 'Notification window';
+
+  @override
+  String get repeatIntervalLabel => 'Repeat Interval';
+
+  @override
+  String completionRelativeSummary(String val, String unit, String time) {
+    return 'Completion-relative: every $val $unit @ $time';
+  }
+
+  @override
+  String oneOffSummary(String date) {
+    return 'One-off on $date';
+  }
+
+  @override
+  String dailySummary(String count) {
+    return 'Daily, every $count day(s)';
+  }
+
+  @override
+  String weeklySummary(String count, String days) {
+    return 'Weekly, every $count week(s) on $days';
+  }
+
+  @override
+  String monthlySummaryDay(String count, String day) {
+    return 'Monthly, every $count month(s) on day $day';
+  }
+
+  @override
+  String monthlySummaryNth(String count, String occurrence, String weekday) {
+    return 'Monthly, every $count month(s) on $occurrence $weekday';
+  }
+
+  @override
+  String yearlySummary(String count, String month, String day) {
+    return 'Yearly, every $count year(s) on $month $day';
+  }
+
+  @override
+  String get customScheduleSummary => 'Custom schedule';
+
+  @override
+  String get deleteScheduleTooltip => 'Delete Schedule';
+
+  @override
+  String get weekdayShortMonday => 'Mon';
+
+  @override
+  String get weekdayShortTuesday => 'Tue';
+
+  @override
+  String get weekdayShortWednesday => 'Wed';
+
+  @override
+  String get weekdayShortThursday => 'Thu';
+
+  @override
+  String get weekdayShortFriday => 'Fri';
+
+  @override
+  String get weekdayShortSaturday => 'Sat';
+
+  @override
+  String get weekdayShortSunday => 'Sun';
+
+  @override
+  String get monthShortJanuary => 'Jan';
+
+  @override
+  String get monthShortFebruary => 'Feb';
+
+  @override
+  String get monthShortMarch => 'Mar';
+
+  @override
+  String get monthShortApril => 'Apr';
+
+  @override
+  String get monthShortMay => 'May';
+
+  @override
+  String get monthShortJune => 'Jun';
+
+  @override
+  String get monthShortJuly => 'Jul';
+
+  @override
+  String get monthShortAugust => 'Aug';
+
+  @override
+  String get monthShortSeptember => 'Sep';
+
+  @override
+  String get monthShortOctober => 'Oct';
+
+  @override
+  String get monthShortNovember => 'Nov';
+
+  @override
+  String get monthShortDecember => 'Dec';
+
+  @override
+  String completionRelativeHelpDaily(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days after the task was last completed.',
+      one: '1 day after the task was last completed.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String completionRelativeHelpWeekly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count weeks after the task was last completed.',
+      one: '1 week after the task was last completed.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String completionRelativeHelpMonthly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count months after the task was last completed.',
+      one: '1 month after the task was last completed.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String completionRelativeHelpYearly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count years after the task was last completed.',
+      one: '1 year after the task was last completed.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatsEveryDayHelp(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Repeats every $count days starting $date.',
+      one: 'Repeats every day starting $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatsEveryWeekHelp(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Repeats every $count weeks starting $date.',
+      one: 'Repeats every week starting $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatsEveryMonthHelp(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Repeats every $count months starting $date.',
+      one: 'Repeats every month starting $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatsEveryYearHelp(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Repeats every $count years starting $date.',
+      one: 'Repeats every year starting $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recurrenceTypeHeader => 'RECURRENCE TYPE';
+
+  @override
+  String get dailyFixedTitle => 'On a fixed schedule';
+
+  @override
+  String get dailyFixedSubtitle =>
+      'Repeats every N days since last scheduled (e.g. every 3 days)';
+
+  @override
+  String get dailyCompletionRelativeTitle => 'Based on when last completed';
+
+  @override
+  String get dailyCompletionRelativeSubtitle =>
+      'Repeats N days after you finish it (e.g. 3 days after completed)';
+
+  @override
+  String get weeklyFixedTitle => 'On fixed days of the week';
+
+  @override
+  String get weeklyFixedSubtitle =>
+      'Repeats on specific weekdays (e.g. every Monday & Friday)';
+
+  @override
+  String get weeklyCompletionRelativeTitle => 'Based on when last completed';
+
+  @override
+  String get weeklyCompletionRelativeSubtitle =>
+      'Repeats N weeks after you finish it (e.g. 2 weeks after completed)';
+
+  @override
+  String get monthlyFixedDayTitle => 'On a fixed day of the month';
+
+  @override
+  String get monthlyFixedDaySubtitle =>
+      'Repeats on a specific calendar day (e.g. on the 15th of the month)';
+
+  @override
+  String get monthlyNthWeekdayTitle => 'On a specific weekday of the month';
+
+  @override
+  String get monthlyNthWeekdaySubtitle =>
+      'Repeats on a relative weekday (e.g. on the second Tuesday)';
+
+  @override
+  String get monthlyCompletionRelativeTitle => 'Based on when last completed';
+
+  @override
+  String get monthlyCompletionRelativeSubtitle =>
+      'Repeats N months after you finish it (e.g. 1 month after completed)';
+
+  @override
+  String get yearlyFixedTitle => 'On a fixed date of the year';
+
+  @override
+  String get yearlyFixedSubtitle =>
+      'Repeats on a specific calendar date (e.g. every October 12th)';
+
+  @override
+  String get yearlyCompletionRelativeTitle => 'Based on when last completed';
+
+  @override
+  String get yearlyCompletionRelativeSubtitle =>
+      'Repeats N years after you finish it (e.g. 1 year after completed)';
+
+  @override
+  String get dayOfLabel => 'Day of';
+
+  @override
+  String get timeLabel => 'Time';
+
+  @override
+  String get adjustOffsetLabel => 'Adjust Offset';
+
+  @override
+  String get oneDayAfterLabel => '1 day after';
+
+  @override
+  String get oneDayBeforeLabel => '1 day before';
+
+  @override
+  String nDaysLaterLabel(int count) {
+    return '$count days later';
+  }
+
+  @override
+  String nDaysBeforeLabel(int count) {
+    return '$count days before';
+  }
+
+  @override
+  String get familyNameRequiredError => 'Please enter a family name';
+
+  @override
+  String get emailRequiredError => 'Please enter an email address';
+
+  @override
+  String get emailInvalidError => 'Please enter a valid email address';
+
+  @override
+  String get practiceTaskTitle0 => 'Water the Houseplants';
+
+  @override
+  String get practiceTaskDesc0 => 'Give them just enough water.';
+
+  @override
+  String get practiceTaskTitle1 => 'Take out the Trash';
+
+  @override
+  String get practiceTaskDesc1 => 'Don\'t forget the recycling.';
+
+  @override
+  String get practiceTaskTitle2 => 'Wash the Dishes';
+
+  @override
+  String get practiceTaskDesc2 => 'Clean the pots and pans first.';
+
+  @override
+  String get practiceTaskTitle3 => 'Mow the Lawn';
+
+  @override
+  String get practiceTaskDesc3 => 'Trim the edges too.';
+
+  @override
+  String get practiceTaskTitle4 => 'Feed the Dog';
+
+  @override
+  String get practiceTaskDesc4 => 'Make sure he has fresh water.';
+
+  @override
+  String get practiceTaskTitle5 => 'Vacuum the Living Room';
+
+  @override
+  String get practiceTaskDesc5 => 'Get under the couch.';
+
+  @override
+  String get practiceTaskTitle6 => 'Clean the Attic';
+
+  @override
+  String get practiceTaskDesc6 => 'Sort the old boxes.';
+
+  @override
+  String get practiceTaskTitle7 => 'Fold the Laundry';
+
+  @override
+  String get practiceTaskDesc7 => 'Fold them neatly and put them away.';
+
+  @override
+  String get practiceTaskTitle8 => 'Dust the Shelves';
+
+  @override
+  String get practiceTaskDesc8 => 'Use a microfiber cloth.';
+
+  @override
+  String get practiceTaskTitle9 => 'Buy Groceries';
+
+  @override
+  String get practiceTaskDesc9 => 'Milk, eggs, and bread.';
+
+  @override
+  String get preferNewerTitle => 'Prefer Newer';
+
+  @override
+  String get preferNewerDesc =>
+      'Only the latest occurrence remains active. Older missed occurrences are automatically skipped so you can start fresh.';
+
+  @override
+  String get preferOlderTitle => 'Prefer Older';
+
+  @override
+  String get preferOlderDesc =>
+      'Only the oldest unresolved occurrence remains active. Subsequent occurrences are skipped until it is completed.';
+
+  @override
+  String get stackPolicyTitle => 'Stack';
+
+  @override
+  String get stackPolicyDesc =>
+      'Keep all occurrences active. Missed occurrences accumulate in a backlog and must be completed individually.';
+
+  @override
+  String get autoDismissPolicyTitle => 'Auto-Dismiss';
+
+  @override
+  String get autoDismissPolicyDesc =>
+      'Occurrences accumulate but are automatically dismissed/skipped after a configurable grace period.';
+
+  @override
+  String get monShort => 'Mon';
+
+  @override
+  String get tueShort => 'Tue';
+
+  @override
+  String get wedTodayShort => 'Wed (Today)';
+
+  @override
+  String get activeLabel => 'Active';
+
+  @override
+  String get expiredLabel => 'Expired';
+
+  @override
+  String get skippedLabel => 'Skipped';
 }

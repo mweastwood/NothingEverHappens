@@ -123,7 +123,9 @@ class _DailyCompletionRelativeSchedulingWidgetState
           key: const Key('daily_completion_interval_stepper'),
           interval: widget.interval,
           onIntervalChanged: widget.onIntervalChanged,
-          label: 'Interval',
+          label: l10n.intervalLabel,
+          unitSingular: l10n.presetDaySingular,
+          unitPlural: l10n.presetDayPlural,
           readOnly: widget.readOnly,
           intervalController: widget.intervalController,
         ),
@@ -139,9 +141,7 @@ class _DailyCompletionRelativeSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                widget.interval == 1
-                    ? '1 day after the task was last completed.'
-                    : '${widget.interval} days after the task was last completed.',
+                l10n.completionRelativeHelpDaily(widget.interval),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -154,7 +154,7 @@ class _DailyCompletionRelativeSchedulingWidgetState
 
         // 2. Start
         Text(
-          'Start',
+          l10n.startLabel,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -178,7 +178,7 @@ class _DailyCompletionRelativeSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'When does the task appear in your list of tasks?',
+                l10n.taskAppearanceHelpText,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -191,7 +191,7 @@ class _DailyCompletionRelativeSchedulingWidgetState
 
         // 3. Due
         Text(
-          'Due',
+          l10n.dueWithoutColon,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -232,7 +232,7 @@ class _DailyCompletionRelativeSchedulingWidgetState
           CheckboxListTile(
             key: const Key('daily_completion_notification_checkbox'),
             title: Text(
-              'Enable notification reminder',
+              l10n.enableNotificationReminderLabel,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -254,7 +254,7 @@ class _DailyCompletionRelativeSchedulingWidgetState
           ),
           if (notificationEnabled) ...[
             Text(
-              'Notification window',
+              l10n.notificationWindowLabel,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,

@@ -124,13 +124,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     return context.l10n.oneOffLabel;
   }
 
-  String _formatTimeOfDay(TimeOfDay time) {
-    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute $period';
-  }
-
   ({String interval, String days, String start}) _getRecurrenceRuleDetails(
     BuildContext context,
     TaskScheduleRule? schedule,
@@ -164,13 +157,13 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
       startStr = context.l10n.startingDate(dateStr);
 
       final dayNames = {
-        1: 'Mon',
-        2: 'Tue',
-        3: 'Wed',
-        4: 'Thu',
-        5: 'Fri',
-        6: 'Sat',
-        7: 'Sun',
+        1: context.l10n.weekdayShortMonday,
+        2: context.l10n.weekdayShortTuesday,
+        3: context.l10n.weekdayShortWednesday,
+        4: context.l10n.weekdayShortThursday,
+        5: context.l10n.weekdayShortFriday,
+        6: context.l10n.weekdayShortSaturday,
+        7: context.l10n.weekdayShortSunday,
       };
       final selectedDays = ws.daysOfWeek.toList()..sort();
       final joinedDays = selectedDays.map((d) => dayNames[d] ?? '').join(', ');
@@ -199,13 +192,13 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
           -1: context.l10n.lastOccurrence,
         };
         final dayOfWeekNames = {
-          1: 'Monday',
-          2: 'Tuesday',
-          3: 'Wednesday',
-          4: 'Thursday',
-          5: 'Friday',
-          6: 'Saturday',
-          7: 'Sunday',
+          1: context.l10n.weekdayMonday,
+          2: context.l10n.weekdayTuesday,
+          3: context.l10n.weekdayWednesday,
+          4: context.l10n.weekdayThursday,
+          5: context.l10n.weekdayFriday,
+          6: context.l10n.weekdaySaturday,
+          7: context.l10n.weekdaySunday,
         };
         final occStr = occurrenceNames[ms.occurrence] ?? '';
         final dowStr = dayOfWeekNames[ms.dayOfWeek] ?? '';
@@ -221,18 +214,18 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
       startStr = context.l10n.startingDate(dateStr);
 
       final monthNames = {
-        1: 'January',
-        2: 'February',
-        3: 'March',
-        4: 'April',
-        5: 'May',
-        6: 'June',
-        7: 'July',
-        8: 'August',
-        9: 'September',
-        10: 'October',
-        11: 'November',
-        12: 'December',
+        1: context.l10n.monthJanuary,
+        2: context.l10n.monthFebruary,
+        3: context.l10n.monthMarch,
+        4: context.l10n.monthApril,
+        5: context.l10n.monthMay,
+        6: context.l10n.monthJune,
+        7: context.l10n.monthJuly,
+        8: context.l10n.monthAugust,
+        9: context.l10n.monthSeptember,
+        10: context.l10n.monthOctober,
+        11: context.l10n.monthNovember,
+        12: context.l10n.monthDecember,
       };
       final mStr = monthNames[ys.month] ?? '';
       daysStr = context.l10n.yearlyOn(mStr, ys.day);
@@ -241,9 +234,12 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     return (interval: intervalStr, days: daysStr, start: startStr);
   }
 
-  String _getRecurrenceRuleTimeWindowString(TaskScheduleRule? schedule) {
+  String _getRecurrenceRuleTimeWindowString(
+    BuildContext context,
+    TaskScheduleRule? schedule,
+  ) {
     if (schedule == null) return '';
-    return '${_formatTimeOfDay(schedule.startRelativeTime.time)} - ${_formatTimeOfDay(schedule.dueRelativeTime.time)}';
+    return '${schedule.startRelativeTime.time.format(context)} - ${schedule.dueRelativeTime.time.format(context)}';
   }
 
   Color _getPriorityColor(TaskPriority priority) {
@@ -596,7 +592,10 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      _getRecurrenceRuleTimeWindowString(rule),
+                                      _getRecurrenceRuleTimeWindowString(
+                                        context,
+                                        rule,
+                                      ),
                                       style: theme.textTheme.bodySmall
                                           ?.copyWith(
                                             color: theme
@@ -618,7 +617,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                           Expanded(
                             flex: 3,
                             child: Text(
-                              _getRecurrenceRuleTimeWindowString(rule),
+                              _getRecurrenceRuleTimeWindowString(context, rule),
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),

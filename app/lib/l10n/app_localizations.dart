@@ -968,6 +968,12 @@ abstract class AppLocalizations {
   /// **'Family Members'**
   String get membersHeader;
 
+  /// No description provided for @familyMembersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 member} other{{count} members}}'**
+  String familyMembersCount(int count);
+
   /// No description provided for @notInFamilyBody.
   ///
   /// In en, this message translates to:
@@ -1711,6 +1717,912 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No matching schedules found for \"{query}\"'**
   String noSchedulesMatching(String query);
+
+  /// No description provided for @scheduleRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'At least one schedule is required.'**
+  String get scheduleRequiredError;
+
+  /// No description provided for @familyTaskToggleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Family Task'**
+  String get familyTaskToggleLabel;
+
+  /// No description provided for @personalTaskToggleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal Task'**
+  String get personalTaskToggleLabel;
+
+  /// No description provided for @effortAndPriorityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Effort and Priority'**
+  String get effortAndPriorityLabel;
+
+  /// No description provided for @addScheduleButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Schedule'**
+  String get addScheduleButton;
+
+  /// No description provided for @saveTimeoutError.
+  ///
+  /// In en, this message translates to:
+  /// **'Save operation timed out. Please check your connection.'**
+  String get saveTimeoutError;
+
+  /// No description provided for @hoursSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'hours'**
+  String get hoursSuffix;
+
+  /// No description provided for @futureOccurrencesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Future Occurrences'**
+  String get futureOccurrencesLabel;
+
+  /// No description provided for @preCreatedFutureTasksHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-created future tasks (1-10)'**
+  String get preCreatedFutureTasksHelper;
+
+  /// No description provided for @resetPracticeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Practice'**
+  String get resetPracticeButton;
+
+  /// No description provided for @practiceTasksRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Practice Tasks (1 remaining)} other{Practice Tasks ({count} remaining)}}'**
+  String practiceTasksRemaining(int count);
+
+  /// No description provided for @practiceTasksCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'All tasks completed or dismissed!'**
+  String get practiceTasksCompleted;
+
+  /// No description provided for @practiceTasksResetPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap \"Reset Practice\" to try again.'**
+  String get practiceTasksResetPrompt;
+
+  /// No description provided for @unitLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get unitLabel;
+
+  /// No description provided for @unitHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Hour(s)'**
+  String get unitHours;
+
+  /// No description provided for @unitDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Day(s)'**
+  String get unitDays;
+
+  /// No description provided for @unitWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Week(s)'**
+  String get unitWeeks;
+
+  /// No description provided for @unitMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Minute(s)'**
+  String get unitMinutes;
+
+  /// No description provided for @targetStartTimeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target Start Time'**
+  String get targetStartTimeLabel;
+
+  /// No description provided for @selectMissedPolicyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Missed Occurrence Policy'**
+  String get selectMissedPolicyTitle;
+
+  /// No description provided for @immediatelyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediately'**
+  String get immediatelyPolicy;
+
+  /// No description provided for @oneHourPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'1 Hour'**
+  String get oneHourPolicy;
+
+  /// No description provided for @sixHoursPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'6 Hours'**
+  String get sixHoursPolicy;
+
+  /// No description provided for @twelveHoursPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'12 Hours'**
+  String get twelveHoursPolicy;
+
+  /// No description provided for @twentyFourHoursPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'24 Hours (1 Day)'**
+  String get twentyFourHoursPolicy;
+
+  /// No description provided for @customDurationPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Duration...'**
+  String get customDurationPolicy;
+
+  /// No description provided for @addNotificationButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add notification'**
+  String get addNotificationButton;
+
+  /// No description provided for @selectDayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Day'**
+  String get selectDayTitle;
+
+  /// No description provided for @okButton.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get okButton;
+
+  /// No description provided for @fixedCalendarLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed Calendar'**
+  String get fixedCalendarLabel;
+
+  /// No description provided for @completionRelativeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Completion-Relative'**
+  String get completionRelativeLabel;
+
+  /// No description provided for @taskTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Task Type'**
+  String get taskTypeLabel;
+
+  /// No description provided for @simulationPresetDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Preset (Feed Pets)'**
+  String get simulationPresetDaily;
+
+  /// No description provided for @simulationPresetWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly Preset (Mow Lawn)'**
+  String get simulationPresetWeekly;
+
+  /// No description provided for @simulatedTimeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulated Time: {time}'**
+  String simulatedTimeLabel(String time);
+
+  /// No description provided for @simulationOneHour.
+  ///
+  /// In en, this message translates to:
+  /// **'1 Hour'**
+  String get simulationOneHour;
+
+  /// No description provided for @simulationSixHours.
+  ///
+  /// In en, this message translates to:
+  /// **'6 Hours'**
+  String get simulationSixHours;
+
+  /// No description provided for @simulationTwentyFourHours.
+  ///
+  /// In en, this message translates to:
+  /// **'24 Hours'**
+  String get simulationTwentyFourHours;
+
+  /// No description provided for @noActivePlaygroundTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No active tasks.'**
+  String get noActivePlaygroundTasks;
+
+  /// No description provided for @autoDismissPolicyHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour} other{{count} hours}}'**
+  String autoDismissPolicyHours(int count);
+
+  /// No description provided for @missedPolicyDialogIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'In the examples shown below, assume we have a daily task that we didn\'t complete, check-off, or dismiss the task in any way on Monday or Tuesday. It is now Wednesday, so what should be done with the older tasks?'**
+  String get missedPolicyDialogIntro;
+
+  /// No description provided for @dismissAfterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss After'**
+  String get dismissAfterLabel;
+
+  /// No description provided for @durationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get durationLabel;
+
+  /// No description provided for @presetsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get presetsLabel;
+
+  /// No description provided for @presetDaySingular.
+  ///
+  /// In en, this message translates to:
+  /// **'day'**
+  String get presetDaySingular;
+
+  /// No description provided for @presetDayPlural.
+  ///
+  /// In en, this message translates to:
+  /// **'days'**
+  String get presetDayPlural;
+
+  /// No description provided for @presetWeekSingular.
+  ///
+  /// In en, this message translates to:
+  /// **'week'**
+  String get presetWeekSingular;
+
+  /// No description provided for @presetWeekPlural.
+  ///
+  /// In en, this message translates to:
+  /// **'weeks'**
+  String get presetWeekPlural;
+
+  /// No description provided for @taskAppearanceHelpText.
+  ///
+  /// In en, this message translates to:
+  /// **'When does the task appear in your list of tasks?'**
+  String get taskAppearanceHelpText;
+
+  /// No description provided for @enableNotificationReminderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable notification reminder'**
+  String get enableNotificationReminderLabel;
+
+  /// No description provided for @notificationWindowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification window'**
+  String get notificationWindowLabel;
+
+  /// No description provided for @repeatIntervalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat Interval'**
+  String get repeatIntervalLabel;
+
+  /// No description provided for @completionRelativeSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Completion-relative: every {val} {unit} @ {time}'**
+  String completionRelativeSummary(String val, String unit, String time);
+
+  /// No description provided for @oneOffSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'One-off on {date}'**
+  String oneOffSummary(String date);
+
+  /// No description provided for @dailySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily, every {count} day(s)'**
+  String dailySummary(String count);
+
+  /// No description provided for @weeklySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly, every {count} week(s) on {days}'**
+  String weeklySummary(String count, String days);
+
+  /// No description provided for @monthlySummaryDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly, every {count} month(s) on day {day}'**
+  String monthlySummaryDay(String count, String day);
+
+  /// No description provided for @monthlySummaryNth.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly, every {count} month(s) on {occurrence} {weekday}'**
+  String monthlySummaryNth(String count, String occurrence, String weekday);
+
+  /// No description provided for @yearlySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly, every {count} year(s) on {month} {day}'**
+  String yearlySummary(String count, String month, String day);
+
+  /// No description provided for @customScheduleSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom schedule'**
+  String get customScheduleSummary;
+
+  /// No description provided for @deleteScheduleTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Schedule'**
+  String get deleteScheduleTooltip;
+
+  /// No description provided for @weekdayShortMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'Mon'**
+  String get weekdayShortMonday;
+
+  /// No description provided for @weekdayShortTuesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Tue'**
+  String get weekdayShortTuesday;
+
+  /// No description provided for @weekdayShortWednesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Wed'**
+  String get weekdayShortWednesday;
+
+  /// No description provided for @weekdayShortThursday.
+  ///
+  /// In en, this message translates to:
+  /// **'Thu'**
+  String get weekdayShortThursday;
+
+  /// No description provided for @weekdayShortFriday.
+  ///
+  /// In en, this message translates to:
+  /// **'Fri'**
+  String get weekdayShortFriday;
+
+  /// No description provided for @weekdayShortSaturday.
+  ///
+  /// In en, this message translates to:
+  /// **'Sat'**
+  String get weekdayShortSaturday;
+
+  /// No description provided for @weekdayShortSunday.
+  ///
+  /// In en, this message translates to:
+  /// **'Sun'**
+  String get weekdayShortSunday;
+
+  /// No description provided for @monthShortJanuary.
+  ///
+  /// In en, this message translates to:
+  /// **'Jan'**
+  String get monthShortJanuary;
+
+  /// No description provided for @monthShortFebruary.
+  ///
+  /// In en, this message translates to:
+  /// **'Feb'**
+  String get monthShortFebruary;
+
+  /// No description provided for @monthShortMarch.
+  ///
+  /// In en, this message translates to:
+  /// **'Mar'**
+  String get monthShortMarch;
+
+  /// No description provided for @monthShortApril.
+  ///
+  /// In en, this message translates to:
+  /// **'Apr'**
+  String get monthShortApril;
+
+  /// No description provided for @monthShortMay.
+  ///
+  /// In en, this message translates to:
+  /// **'May'**
+  String get monthShortMay;
+
+  /// No description provided for @monthShortJune.
+  ///
+  /// In en, this message translates to:
+  /// **'Jun'**
+  String get monthShortJune;
+
+  /// No description provided for @monthShortJuly.
+  ///
+  /// In en, this message translates to:
+  /// **'Jul'**
+  String get monthShortJuly;
+
+  /// No description provided for @monthShortAugust.
+  ///
+  /// In en, this message translates to:
+  /// **'Aug'**
+  String get monthShortAugust;
+
+  /// No description provided for @monthShortSeptember.
+  ///
+  /// In en, this message translates to:
+  /// **'Sep'**
+  String get monthShortSeptember;
+
+  /// No description provided for @monthShortOctober.
+  ///
+  /// In en, this message translates to:
+  /// **'Oct'**
+  String get monthShortOctober;
+
+  /// No description provided for @monthShortNovember.
+  ///
+  /// In en, this message translates to:
+  /// **'Nov'**
+  String get monthShortNovember;
+
+  /// No description provided for @monthShortDecember.
+  ///
+  /// In en, this message translates to:
+  /// **'Dec'**
+  String get monthShortDecember;
+
+  /// No description provided for @completionRelativeHelpDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day after the task was last completed.} other{{count} days after the task was last completed.}}'**
+  String completionRelativeHelpDaily(int count);
+
+  /// No description provided for @completionRelativeHelpWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 week after the task was last completed.} other{{count} weeks after the task was last completed.}}'**
+  String completionRelativeHelpWeekly(int count);
+
+  /// No description provided for @completionRelativeHelpMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 month after the task was last completed.} other{{count} months after the task was last completed.}}'**
+  String completionRelativeHelpMonthly(int count);
+
+  /// No description provided for @completionRelativeHelpYearly.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 year after the task was last completed.} other{{count} years after the task was last completed.}}'**
+  String completionRelativeHelpYearly(int count);
+
+  /// No description provided for @repeatsEveryDayHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Repeats every day starting {date}.} other{Repeats every {count} days starting {date}.}}'**
+  String repeatsEveryDayHelp(int count, String date);
+
+  /// No description provided for @repeatsEveryWeekHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Repeats every week starting {date}.} other{Repeats every {count} weeks starting {date}.}}'**
+  String repeatsEveryWeekHelp(int count, String date);
+
+  /// No description provided for @repeatsEveryMonthHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Repeats every month starting {date}.} other{Repeats every {count} months starting {date}.}}'**
+  String repeatsEveryMonthHelp(int count, String date);
+
+  /// No description provided for @repeatsEveryYearHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Repeats every year starting {date}.} other{Repeats every {count} years starting {date}.}}'**
+  String repeatsEveryYearHelp(int count, String date);
+
+  /// No description provided for @recurrenceTypeHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'RECURRENCE TYPE'**
+  String get recurrenceTypeHeader;
+
+  /// No description provided for @dailyFixedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On a fixed schedule'**
+  String get dailyFixedTitle;
+
+  /// No description provided for @dailyFixedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats every N days since last scheduled (e.g. every 3 days)'**
+  String get dailyFixedSubtitle;
+
+  /// No description provided for @dailyCompletionRelativeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Based on when last completed'**
+  String get dailyCompletionRelativeTitle;
+
+  /// No description provided for @dailyCompletionRelativeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats N days after you finish it (e.g. 3 days after completed)'**
+  String get dailyCompletionRelativeSubtitle;
+
+  /// No description provided for @weeklyFixedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On fixed days of the week'**
+  String get weeklyFixedTitle;
+
+  /// No description provided for @weeklyFixedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats on specific weekdays (e.g. every Monday & Friday)'**
+  String get weeklyFixedSubtitle;
+
+  /// No description provided for @weeklyCompletionRelativeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Based on when last completed'**
+  String get weeklyCompletionRelativeTitle;
+
+  /// No description provided for @weeklyCompletionRelativeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats N weeks after you finish it (e.g. 2 weeks after completed)'**
+  String get weeklyCompletionRelativeSubtitle;
+
+  /// No description provided for @monthlyFixedDayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On a fixed day of the month'**
+  String get monthlyFixedDayTitle;
+
+  /// No description provided for @monthlyFixedDaySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats on a specific calendar day (e.g. on the 15th of the month)'**
+  String get monthlyFixedDaySubtitle;
+
+  /// No description provided for @monthlyNthWeekdayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On a specific weekday of the month'**
+  String get monthlyNthWeekdayTitle;
+
+  /// No description provided for @monthlyNthWeekdaySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats on a relative weekday (e.g. on the second Tuesday)'**
+  String get monthlyNthWeekdaySubtitle;
+
+  /// No description provided for @monthlyCompletionRelativeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Based on when last completed'**
+  String get monthlyCompletionRelativeTitle;
+
+  /// No description provided for @monthlyCompletionRelativeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats N months after you finish it (e.g. 1 month after completed)'**
+  String get monthlyCompletionRelativeSubtitle;
+
+  /// No description provided for @yearlyFixedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On a fixed date of the year'**
+  String get yearlyFixedTitle;
+
+  /// No description provided for @yearlyFixedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats on a specific calendar date (e.g. every October 12th)'**
+  String get yearlyFixedSubtitle;
+
+  /// No description provided for @yearlyCompletionRelativeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Based on when last completed'**
+  String get yearlyCompletionRelativeTitle;
+
+  /// No description provided for @yearlyCompletionRelativeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats N years after you finish it (e.g. 1 year after completed)'**
+  String get yearlyCompletionRelativeSubtitle;
+
+  /// No description provided for @dayOfLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Day of'**
+  String get dayOfLabel;
+
+  /// No description provided for @timeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get timeLabel;
+
+  /// No description provided for @adjustOffsetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust Offset'**
+  String get adjustOffsetLabel;
+
+  /// No description provided for @oneDayAfterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'1 day after'**
+  String get oneDayAfterLabel;
+
+  /// No description provided for @oneDayBeforeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'1 day before'**
+  String get oneDayBeforeLabel;
+
+  /// No description provided for @nDaysLaterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days later'**
+  String nDaysLaterLabel(int count);
+
+  /// No description provided for @nDaysBeforeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days before'**
+  String nDaysBeforeLabel(int count);
+
+  /// No description provided for @familyNameRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a family name'**
+  String get familyNameRequiredError;
+
+  /// No description provided for @emailRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter an email address'**
+  String get emailRequiredError;
+
+  /// No description provided for @emailInvalidError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid email address'**
+  String get emailInvalidError;
+
+  /// No description provided for @practiceTaskTitle0.
+  ///
+  /// In en, this message translates to:
+  /// **'Water the Houseplants'**
+  String get practiceTaskTitle0;
+
+  /// No description provided for @practiceTaskDesc0.
+  ///
+  /// In en, this message translates to:
+  /// **'Give them just enough water.'**
+  String get practiceTaskDesc0;
+
+  /// No description provided for @practiceTaskTitle1.
+  ///
+  /// In en, this message translates to:
+  /// **'Take out the Trash'**
+  String get practiceTaskTitle1;
+
+  /// No description provided for @practiceTaskDesc1.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t forget the recycling.'**
+  String get practiceTaskDesc1;
+
+  /// No description provided for @practiceTaskTitle2.
+  ///
+  /// In en, this message translates to:
+  /// **'Wash the Dishes'**
+  String get practiceTaskTitle2;
+
+  /// No description provided for @practiceTaskDesc2.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean the pots and pans first.'**
+  String get practiceTaskDesc2;
+
+  /// No description provided for @practiceTaskTitle3.
+  ///
+  /// In en, this message translates to:
+  /// **'Mow the Lawn'**
+  String get practiceTaskTitle3;
+
+  /// No description provided for @practiceTaskDesc3.
+  ///
+  /// In en, this message translates to:
+  /// **'Trim the edges too.'**
+  String get practiceTaskDesc3;
+
+  /// No description provided for @practiceTaskTitle4.
+  ///
+  /// In en, this message translates to:
+  /// **'Feed the Dog'**
+  String get practiceTaskTitle4;
+
+  /// No description provided for @practiceTaskDesc4.
+  ///
+  /// In en, this message translates to:
+  /// **'Make sure he has fresh water.'**
+  String get practiceTaskDesc4;
+
+  /// No description provided for @practiceTaskTitle5.
+  ///
+  /// In en, this message translates to:
+  /// **'Vacuum the Living Room'**
+  String get practiceTaskTitle5;
+
+  /// No description provided for @practiceTaskDesc5.
+  ///
+  /// In en, this message translates to:
+  /// **'Get under the couch.'**
+  String get practiceTaskDesc5;
+
+  /// No description provided for @practiceTaskTitle6.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean the Attic'**
+  String get practiceTaskTitle6;
+
+  /// No description provided for @practiceTaskDesc6.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort the old boxes.'**
+  String get practiceTaskDesc6;
+
+  /// No description provided for @practiceTaskTitle7.
+  ///
+  /// In en, this message translates to:
+  /// **'Fold the Laundry'**
+  String get practiceTaskTitle7;
+
+  /// No description provided for @practiceTaskDesc7.
+  ///
+  /// In en, this message translates to:
+  /// **'Fold them neatly and put them away.'**
+  String get practiceTaskDesc7;
+
+  /// No description provided for @practiceTaskTitle8.
+  ///
+  /// In en, this message translates to:
+  /// **'Dust the Shelves'**
+  String get practiceTaskTitle8;
+
+  /// No description provided for @practiceTaskDesc8.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a microfiber cloth.'**
+  String get practiceTaskDesc8;
+
+  /// No description provided for @practiceTaskTitle9.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy Groceries'**
+  String get practiceTaskTitle9;
+
+  /// No description provided for @practiceTaskDesc9.
+  ///
+  /// In en, this message translates to:
+  /// **'Milk, eggs, and bread.'**
+  String get practiceTaskDesc9;
+
+  /// No description provided for @preferNewerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer Newer'**
+  String get preferNewerTitle;
+
+  /// No description provided for @preferNewerDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the latest occurrence remains active. Older missed occurrences are automatically skipped so you can start fresh.'**
+  String get preferNewerDesc;
+
+  /// No description provided for @preferOlderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer Older'**
+  String get preferOlderTitle;
+
+  /// No description provided for @preferOlderDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the oldest unresolved occurrence remains active. Subsequent occurrences are skipped until it is completed.'**
+  String get preferOlderDesc;
+
+  /// No description provided for @stackPolicyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stack'**
+  String get stackPolicyTitle;
+
+  /// No description provided for @stackPolicyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep all occurrences active. Missed occurrences accumulate in a backlog and must be completed individually.'**
+  String get stackPolicyDesc;
+
+  /// No description provided for @autoDismissPolicyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-Dismiss'**
+  String get autoDismissPolicyTitle;
+
+  /// No description provided for @autoDismissPolicyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Occurrences accumulate but are automatically dismissed/skipped after a configurable grace period.'**
+  String get autoDismissPolicyDesc;
+
+  /// No description provided for @monShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Mon'**
+  String get monShort;
+
+  /// No description provided for @tueShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Tue'**
+  String get tueShort;
+
+  /// No description provided for @wedTodayShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Wed (Today)'**
+  String get wedTodayShort;
+
+  /// No description provided for @activeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get activeLabel;
+
+  /// No description provided for @expiredLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get expiredLabel;
+
+  /// No description provided for @skippedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get skippedLabel;
 }
 
 class _AppLocalizationsDelegate

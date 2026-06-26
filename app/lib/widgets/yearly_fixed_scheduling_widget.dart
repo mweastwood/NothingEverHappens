@@ -189,7 +189,7 @@ class _YearlyFixedSchedulingWidgetState
                 key: const Key('yearly_fixed_interval_stepper'),
                 interval: widget.interval,
                 onIntervalChanged: widget.onIntervalChanged,
-                label: 'Interval',
+                label: l10n.intervalLabel,
                 unitSingular: l10n.presetYearSingular,
                 unitPlural: l10n.presetYearPlural,
                 readOnly: widget.readOnly,
@@ -212,7 +212,7 @@ class _YearlyFixedSchedulingWidgetState
                           ),
                         );
                       },
-                label: 'Start Date',
+                label: l10n.startDateLabel,
               ),
             ),
           ],
@@ -230,9 +230,10 @@ class _YearlyFixedSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                widget.interval == 1
-                    ? 'Repeats every year starting ${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}.'
-                    : 'Repeats every ${widget.interval} years starting ${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}.',
+                l10n.repeatsEveryYearHelp(
+                  widget.interval,
+                  '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
+                ),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -351,7 +352,7 @@ class _YearlyFixedSchedulingWidgetState
 
         // Start
         Text(
-          'Start',
+          l10n.startLabel,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -375,7 +376,7 @@ class _YearlyFixedSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'When does the task appear in your list of tasks?',
+                l10n.taskAppearanceHelpText,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -388,7 +389,7 @@ class _YearlyFixedSchedulingWidgetState
 
         // Due
         Text(
-          'Due',
+          l10n.dueWithoutColon,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -429,7 +430,7 @@ class _YearlyFixedSchedulingWidgetState
           CheckboxListTile(
             key: const Key('yearly_fixed_notification_checkbox'),
             title: Text(
-              'Enable notification reminder',
+              l10n.enableNotificationReminderLabel,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -451,7 +452,7 @@ class _YearlyFixedSchedulingWidgetState
           ),
           if (notificationEnabled) ...[
             Text(
-              'Notification window',
+              l10n.notificationWindowLabel,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,

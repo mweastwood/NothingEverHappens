@@ -349,8 +349,8 @@ class _MissedPoliciesPlaygroundTabState
 3. Complete or dismiss them individually to clear the backlog.""";
       case MissedPolicy.autoDismiss:
         final durationStr = _preset == SimulationPreset.daily
-            ? "2 hours"
-            : "9 hours";
+            ? context.l10n.autoDismissPolicyHours(2)
+            : context.l10n.autoDismissPolicyHours(9);
         return """### Auto-Dismiss Policy
 
 **Behavior:** Missed occurrences stack, but each instance automatically expires and is skipped after a configurable grace period (e.g., $durationStr).
@@ -415,7 +415,7 @@ class _MissedPoliciesPlaygroundTabState
 
               // 4. Task type selector (use chips instead of a segmented button)
               Text(
-                "Task Type",
+                l10n.taskTypeLabel,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -425,7 +425,7 @@ class _MissedPoliciesPlaygroundTabState
                 spacing: 8,
                 children: [
                   ChoiceChip(
-                    label: const Text("Daily Preset (Feed Pets)"),
+                    label: Text(l10n.simulationPresetDaily),
                     selected: _preset == SimulationPreset.daily,
                     onSelected: (selected) {
                       if (selected) {
@@ -437,7 +437,7 @@ class _MissedPoliciesPlaygroundTabState
                     },
                   ),
                   ChoiceChip(
-                    label: const Text("Weekly Preset (Mow Lawn)"),
+                    label: Text(l10n.simulationPresetWeekly),
                     selected: _preset == SimulationPreset.weekly,
                     onSelected: (selected) {
                       if (selected) {
@@ -466,7 +466,9 @@ class _MissedPoliciesPlaygroundTabState
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Simulated Time: ${_formatDateTimeLabel(_simulatedNow)}",
+                          l10n.simulatedTimeLabel(
+                            _formatDateTimeLabel(_simulatedNow),
+                          ),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -491,7 +493,7 @@ class _MissedPoliciesPlaygroundTabState
                               onPressed: () =>
                                   _advanceTime(const Duration(hours: 1)),
                               icon: const Icon(Icons.fast_forward, size: 16),
-                              label: const Text("1 Hour"),
+                              label: Text(l10n.simulationOneHour),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor:
                                     theme.colorScheme.primaryContainer,
@@ -513,7 +515,7 @@ class _MissedPoliciesPlaygroundTabState
                               onPressed: () =>
                                   _advanceTime(const Duration(hours: 6)),
                               icon: const Icon(Icons.fast_forward, size: 16),
-                              label: const Text("6 Hours"),
+                              label: Text(l10n.simulationSixHours),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor:
                                     theme.colorScheme.primaryContainer,
@@ -535,7 +537,7 @@ class _MissedPoliciesPlaygroundTabState
                               onPressed: () =>
                                   _advanceTime(const Duration(hours: 24)),
                               icon: const Icon(Icons.fast_forward, size: 16),
-                              label: const Text("24 Hours"),
+                              label: Text(l10n.simulationTwentyFourHours),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor:
                                     theme.colorScheme.primaryContainer,
@@ -573,7 +575,7 @@ class _MissedPoliciesPlaygroundTabState
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 32.0),
                     child: Text(
-                      'No active tasks.',
+                      l10n.noActivePlaygroundTasks,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontStyle: FontStyle.italic,

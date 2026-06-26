@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../logic/task_schedule_rule.dart';
 import '../logic/scheduling_policy.dart';
+import '../logic/l10n_extension.dart';
 import 'schedule_rule_config_widget.dart';
 
 class ScheduleConfigCard extends StatefulWidget {
@@ -24,65 +25,128 @@ class ScheduleConfigCard extends StatefulWidget {
 }
 
 class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
-  (int, String) _getCompletionRelativeValueAndUnit(Duration duration) {
-    if (duration.inMinutes == 0) return (0, 'day(s)');
+  (int, String) _getCompletionRelativeValueAndUnit(
+    BuildContext context,
+    Duration duration,
+  ) {
+    final l10n = context.l10n;
+    if (duration.inMinutes == 0) return (0, l10n.unitDays);
     if (duration.inMinutes % (7 * 24 * 60) == 0) {
-      return (duration.inDays ~/ 7, 'week(s)');
+      return (duration.inDays ~/ 7, l10n.unitWeeks);
     }
     if (duration.inMinutes % (24 * 60) == 0) {
-      return (duration.inDays, 'day(s)');
+      return (duration.inDays, l10n.unitDays);
     }
-    return (duration.inHours, 'hour(s)');
+    return (duration.inHours, l10n.unitHours);
+  }
+
+  String _getShortWeekdayName(BuildContext context, int day) {
+    final l10n = context.l10n;
+    switch (day) {
+      case 1:
+        return l10n.weekdayShortMonday;
+      case 2:
+        return l10n.weekdayShortTuesday;
+      case 3:
+        return l10n.weekdayShortWednesday;
+      case 4:
+        return l10n.weekdayShortThursday;
+      case 5:
+        return l10n.weekdayShortFriday;
+      case 6:
+        return l10n.weekdayShortSaturday;
+      case 7:
+        return l10n.weekdayShortSunday;
+      default:
+        return '';
+    }
+  }
+
+  String _getShortMonthName(BuildContext context, int month) {
+    final l10n = context.l10n;
+    switch (month) {
+      case 1:
+        return l10n.monthShortJanuary;
+      case 2:
+        return l10n.monthShortFebruary;
+      case 3:
+        return l10n.monthShortMarch;
+      case 4:
+        return l10n.monthShortApril;
+      case 5:
+        return l10n.monthShortMay;
+      case 6:
+        return l10n.monthShortJune;
+      case 7:
+        return l10n.monthShortJuly;
+      case 8:
+        return l10n.monthShortAugust;
+      case 9:
+        return l10n.monthShortSeptember;
+      case 10:
+        return l10n.monthShortOctober;
+      case 11:
+        return l10n.monthShortNovember;
+      case 12:
+        return l10n.monthShortDecember;
+      default:
+        return '';
+    }
   }
 
   String _getSummaryText(TaskScheduleRule schedule) {
+    final l10n = context.l10n;
     if (schedule.schedulingPolicy is CompletionRelativePolicy) {
       final policy = schedule.schedulingPolicy as CompletionRelativePolicy;
-      final (val, unit) = _getCompletionRelativeValueAndUnit(policy.interval);
+      final (val, unit) = _getCompletionRelativeValueAndUnit(
+        context,
+        policy.interval,
+      );
       final timeStr = policy.targetTime.format(context);
-      return 'Completion-relative: every $val $unit @ $timeStr';
+      return l10n.completionRelativeSummary(val.toString(), unit, timeStr);
     }
     if (schedule is OneOffSchedule) {
-      return 'One-off on ${schedule.date.year}-${schedule.date.month.toString().padLeft(2, '0')}-${schedule.date.day.toString().padLeft(2, '0')}';
+      final dateStr =
+          '${schedule.date.year}-${schedule.date.month.toString().padLeft(2, '0')}-${schedule.date.day.toString().padLeft(2, '0')}';
+      return l10n.oneOffSummary(dateStr);
     } else if (schedule is DailySchedule) {
-      return 'Daily, every ${schedule.interval} day(s)';
+      return l10n.dailySummary(schedule.interval.toString());
     } else if (schedule is WeeklySchedule) {
       final days = schedule.daysOfWeek
-          .map((d) {
-            final labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            return labels[d - 1];
-          })
+          .map((d) => _getShortWeekdayName(context, d))
           .join(', ');
-      return 'Weekly, every ${schedule.interval} week(s) on $days';
+      return l10n.weeklySummary(schedule.interval.toString(), days);
     } else if (schedule is MonthlySchedule) {
       if (schedule.dayOfMonth != null) {
-        return 'Monthly, every ${schedule.interval} month(s) on day ${schedule.dayOfMonth}';
+        return l10n.monthlySummaryDay(
+          schedule.interval.toString(),
+          schedule.dayOfMonth.toString(),
+        );
       } else {
-        final occurrenceLabel = schedule.occurrence == -1
-            ? 'last'
-            : 'nth ${schedule.occurrence}';
-        final labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        final weekdayLabel = labels[schedule.dayOfWeek! - 1];
-        return 'Monthly, every ${schedule.interval} month(s) on $occurrenceLabel $weekdayLabel';
+        final occurrenceNames = {
+          1: l10n.firstOccurrence,
+          2: l10n.secondOccurrence,
+          3: l10n.thirdOccurrence,
+          4: l10n.fourthOccurrence,
+          -1: l10n.lastOccurrence,
+        };
+        final occurrenceLabel = occurrenceNames[schedule.occurrence] ?? '';
+        final weekdayLabel = _getShortWeekdayName(context, schedule.dayOfWeek!);
+        return l10n.monthlySummaryNth(
+          schedule.interval.toString(),
+          occurrenceLabel,
+          weekdayLabel,
+        );
       }
     } else if (schedule is YearlySchedule) {
-      final monthLabels = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-      return 'Yearly, every ${schedule.interval} year(s) on ${monthLabels[schedule.month - 1]} ${schedule.day}';
+      final monthLabel = _getShortMonthName(context, schedule.month);
+      return l10n.yearlySummary(
+        schedule.interval.toString(),
+        monthLabel,
+        schedule.day.toString(),
+      );
     }
-    return 'Custom schedule';
+    return l10n.customScheduleSummary;
   }
 
   IconData _getIcon(TaskScheduleRule schedule) {
@@ -134,7 +198,7 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
                       size: 20,
                     ),
                     onPressed: widget.onDelete,
-                    tooltip: 'Delete Schedule',
+                    tooltip: context.l10n.deleteScheduleTooltip,
                   ),
                 IconButton(
                   icon: Icon(
