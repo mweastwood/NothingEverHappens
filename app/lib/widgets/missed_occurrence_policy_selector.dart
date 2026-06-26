@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../logic/missed_occurrence_policy.dart';
+import '../logic/l10n_extension.dart';
 
 class MissedOccurrencePolicySelector extends StatefulWidget {
   final MissedOccurrencePolicy policy;
@@ -128,13 +129,14 @@ class _MissedOccurrencePolicySelectorState
   }
 
   (String, String, List<_TimelineDayState>) _getPolicyInfo(
+    BuildContext context,
     MissedPolicy policy,
   ) {
     switch (policy) {
       case MissedPolicy.preferNewer:
         return (
-          'Prefer Newer',
-          'Only the latest occurrence remains active. Older missed occurrences are automatically skipped so you can start fresh.',
+          context.l10n.preferNewerTitle,
+          context.l10n.preferNewerDesc,
           [
             _TimelineDayState.skipped,
             _TimelineDayState.skipped,
@@ -143,8 +145,8 @@ class _MissedOccurrencePolicySelectorState
         );
       case MissedPolicy.preferOlder:
         return (
-          'Prefer Older',
-          'Only the oldest unfinished occurrence stays active. Subsequent occurrences are skipped until it is completed.',
+          context.l10n.preferOlderTitle,
+          context.l10n.preferOlderDesc,
           [
             _TimelineDayState.active,
             _TimelineDayState.skipped,
@@ -153,8 +155,8 @@ class _MissedOccurrencePolicySelectorState
         );
       case MissedPolicy.stack:
         return (
-          'Stack',
-          'Keep all occurrences active. Missed occurrences accumulate in a backlog and must be completed individually.',
+          context.l10n.stackPolicyTitle,
+          context.l10n.stackPolicyDesc,
           [
             _TimelineDayState.active,
             _TimelineDayState.active,
@@ -163,8 +165,8 @@ class _MissedOccurrencePolicySelectorState
         );
       case MissedPolicy.autoDismiss:
         return (
-          'Auto-Dismiss',
-          'Occurrences accumulate but are automatically dismissed/skipped after a configurable grace period.',
+          context.l10n.autoDismissPolicyTitle,
+          context.l10n.autoDismissPolicyDesc,
           [
             _TimelineDayState.skipped,
             _TimelineDayState.skipped,
@@ -183,7 +185,7 @@ class _MissedOccurrencePolicySelectorState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Missed Occurrence Policy',
+          context.l10n.missedPolicyHeader,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -199,7 +201,7 @@ class _MissedOccurrencePolicySelectorState
   }
 
   Widget _buildSelectedPolicyCard(ThemeData theme, MissedPolicy policy) {
-    final (title, description, states) = _getPolicyInfo(policy);
+    final (title, description, states) = _getPolicyInfo(context, policy);
     final isAutoDismiss = policy == MissedPolicy.autoDismiss;
 
     return Container(
@@ -261,7 +263,7 @@ class _MissedOccurrencePolicySelectorState
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Select Missed Occurrence Policy'),
+          title: Text(context.l10n.selectMissedPolicyTitle),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
@@ -270,7 +272,7 @@ class _MissedOccurrencePolicySelectorState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "In the examples shown below, assume we have a daily task that we didn't complete, check-off, or dismiss the task in any way on Monday or Tuesday. It is now Wednesday, so what should be done with the older tasks?",
+                    context.l10n.missedPolicyDialogIntro,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(
                         context,
@@ -298,7 +300,7 @@ class _MissedOccurrencePolicySelectorState
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.cancelButton),
             ),
           ],
         );
@@ -313,7 +315,7 @@ class _MissedOccurrencePolicySelectorState
     final theme = Theme.of(context);
     final selectedPolicy = widget.policy.policy;
     final selected = selectedPolicy == policy;
-    final (title, description, states) = _getPolicyInfo(policy);
+    final (title, description, states) = _getPolicyInfo(context, policy);
     final isAutoDismiss = policy == MissedPolicy.autoDismiss;
 
     return Container(
@@ -427,7 +429,11 @@ class _MissedOccurrencePolicySelectorState
     List<_TimelineDayState> states, {
     required bool isAutoDismiss,
   }) {
-    final days = ['Mon', 'Tue', 'Wed (Today)'];
+    final days = [
+      context.l10n.monShort,
+      context.l10n.tueShort,
+      context.l10n.wedTodayShort,
+    ];
     return Row(
       children: [
         for (int i = 0; i < 3; i++) ...[
@@ -524,8 +530,10 @@ class _MissedOccurrencePolicySelectorState
         const SizedBox(height: 4),
         Text(
           state == _TimelineDayState.active
-              ? 'Active'
-              : (isExpired ? 'Expired' : 'Skipped'),
+              ? context.l10n.activeLabel
+              : (isExpired
+                    ? context.l10n.expiredLabel
+                    : context.l10n.skippedLabel),
           style: theme.textTheme.bodySmall?.copyWith(
             fontSize: 9,
             fontWeight: state == _TimelineDayState.active
@@ -558,19 +566,34 @@ class _MissedOccurrencePolicySelectorState
         DropdownButtonFormField<String>(
           initialValue: _preset,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Dismiss After',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: context.l10n.dismissAfterLabel,
+            border: const OutlineInputBorder(),
           ),
-          items: const [
-            DropdownMenuItem(value: 'immediate', child: Text('Immediately')),
-            DropdownMenuItem(value: '1h', child: Text('1 Hour')),
-            DropdownMenuItem(value: '6h', child: Text('6 Hours')),
-            DropdownMenuItem(value: '12h', child: Text('12 Hours')),
-            DropdownMenuItem(value: '24h', child: Text('24 Hours (1 Day)')),
+          items: [
+            DropdownMenuItem(
+              value: 'immediate',
+              child: Text(context.l10n.immediatelyPolicy),
+            ),
+            DropdownMenuItem(
+              value: '1h',
+              child: Text(context.l10n.oneHourPolicy),
+            ),
+            DropdownMenuItem(
+              value: '6h',
+              child: Text(context.l10n.sixHoursPolicy),
+            ),
+            DropdownMenuItem(
+              value: '12h',
+              child: Text(context.l10n.twelveHoursPolicy),
+            ),
+            DropdownMenuItem(
+              value: '24h',
+              child: Text(context.l10n.twentyFourHoursPolicy),
+            ),
             DropdownMenuItem(
               value: 'custom',
-              child: Text('Custom Duration...'),
+              child: Text(context.l10n.customDurationPolicy),
             ),
           ],
           onChanged: widget.readOnly
@@ -596,9 +619,9 @@ class _MissedOccurrencePolicySelectorState
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   enabled: !widget.readOnly,
-                  decoration: const InputDecoration(
-                    labelText: 'Duration',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.durationLabel,
+                    border: const OutlineInputBorder(),
                   ),
                   onChanged: (val) {
                     final intVal = int.tryParse(val) ?? 1;
@@ -612,17 +635,23 @@ class _MissedOccurrencePolicySelectorState
                 child: DropdownButtonFormField<String>(
                   initialValue: _customUnit,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Unit',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.unitLabel,
+                    border: const OutlineInputBorder(),
                   ),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'minutes',
-                      child: Text('Minute(s)'),
+                      child: Text(context.l10n.unitMinutes),
                     ),
-                    DropdownMenuItem(value: 'hours', child: Text('Hour(s)')),
-                    DropdownMenuItem(value: 'days', child: Text('Day(s)')),
+                    DropdownMenuItem(
+                      value: 'hours',
+                      child: Text(context.l10n.unitHours),
+                    ),
+                    DropdownMenuItem(
+                      value: 'days',
+                      child: Text(context.l10n.unitDays),
+                    ),
                   ],
                   onChanged: widget.readOnly
                       ? null

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../logic/task_schedule_rule.dart';
+import '../logic/l10n_extension.dart';
 
 class HierarchicalRecurrenceSelector extends StatefulWidget {
   final HierarchicalRecurrenceKind selectedValue;
@@ -63,81 +64,75 @@ class _HierarchicalRecurrenceSelectorState
     }
   }
 
-  List<_SpecializationOption> _getOptions(_Cadence cadence) {
+  List<_SpecializationOption> _getOptions(
+    BuildContext context,
+    _Cadence cadence,
+  ) {
     switch (cadence) {
       case _Cadence.daily:
         return [
-          const _SpecializationOption(
+          _SpecializationOption(
             kind: HierarchicalRecurrenceKind.dailyFixed,
             icon: Icons.calendar_today,
-            title: 'On a fixed schedule',
-            subtitle:
-                'Repeats every N days since last scheduled (e.g. every 3 days)',
+            title: context.l10n.dailyFixedTitle,
+            subtitle: context.l10n.dailyFixedSubtitle,
           ),
-          const _SpecializationOption(
+          _SpecializationOption(
             kind: HierarchicalRecurrenceKind.dailyCompletionRelative,
             icon: Icons.replay,
-            title: 'Based on when last completed',
-            subtitle:
-                'Repeats N days after you finish it (e.g. 3 days after completed)',
+            title: context.l10n.dailyCompletionRelativeTitle,
+            subtitle: context.l10n.dailyCompletionRelativeSubtitle,
           ),
         ];
       case _Cadence.weekly:
         return [
-          const _SpecializationOption(
+          _SpecializationOption(
             kind: HierarchicalRecurrenceKind.weeklyFixed,
             icon: Icons.calendar_view_week,
-            title: 'On fixed days of the week',
-            subtitle:
-                'Repeats on specific weekdays (e.g. every Monday & Friday)',
+            title: context.l10n.weeklyFixedTitle,
+            subtitle: context.l10n.weeklyFixedSubtitle,
           ),
-          const _SpecializationOption(
+          _SpecializationOption(
             kind: HierarchicalRecurrenceKind.weeklyCompletionRelative,
             icon: Icons.replay,
-            title: 'Based on when last completed',
-            subtitle:
-                'Repeats N weeks after you finish it (e.g. 2 weeks after completed)',
+            title: context.l10n.weeklyCompletionRelativeTitle,
+            subtitle: context.l10n.weeklyCompletionRelativeSubtitle,
           ),
         ];
       case _Cadence.monthly:
         return [
-          const _SpecializationOption(
+          _SpecializationOption(
             kind: HierarchicalRecurrenceKind.monthlyFixedDay,
             icon: Icons.calendar_view_month,
-            title: 'On a fixed day of the month',
-            subtitle:
-                'Repeats on a specific calendar day (e.g. on the 15th of the month)',
+            title: context.l10n.monthlyFixedDayTitle,
+            subtitle: context.l10n.monthlyFixedDaySubtitle,
           ),
-          const _SpecializationOption(
+          _SpecializationOption(
             kind: HierarchicalRecurrenceKind.monthlyNthWeekday,
             icon: Icons.format_list_numbered,
-            title: 'On a specific weekday of the month',
-            subtitle:
-                'Repeats on a relative weekday (e.g. on the second Tuesday)',
+            title: context.l10n.monthlyNthWeekdayTitle,
+            subtitle: context.l10n.monthlyNthWeekdaySubtitle,
           ),
-          const _SpecializationOption(
+          _SpecializationOption(
             kind: HierarchicalRecurrenceKind.monthlyCompletionRelative,
             icon: Icons.replay,
-            title: 'Based on when last completed',
-            subtitle:
-                'Repeats N months after you finish it (e.g. 1 month after completed)',
+            title: context.l10n.monthlyCompletionRelativeTitle,
+            subtitle: context.l10n.monthlyCompletionRelativeSubtitle,
           ),
         ];
       case _Cadence.yearly:
         return [
-          const _SpecializationOption(
+          _SpecializationOption(
             kind: HierarchicalRecurrenceKind.yearlyFixed,
             icon: Icons.calendar_today,
-            title: 'On a fixed date of the year',
-            subtitle:
-                'Repeats on a specific calendar date (e.g. every October 12th)',
+            title: context.l10n.yearlyFixedTitle,
+            subtitle: context.l10n.yearlyFixedSubtitle,
           ),
-          const _SpecializationOption(
+          _SpecializationOption(
             kind: HierarchicalRecurrenceKind.yearlyCompletionRelative,
             icon: Icons.replay,
-            title: 'Based on when last completed',
-            subtitle:
-                'Repeats N years after you finish it (e.g. 1 year after completed)',
+            title: context.l10n.yearlyCompletionRelativeTitle,
+            subtitle: context.l10n.yearlyCompletionRelativeSubtitle,
           ),
         ];
     }
@@ -151,7 +146,7 @@ class _HierarchicalRecurrenceSelectorState
         ? _lastRepeatingValue
         : widget.selectedValue;
     final activeCadence = _getCadence(currentRepeatingKind);
-    final options = _getOptions(activeCadence);
+    final options = _getOptions(context, activeCadence);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,16 +154,16 @@ class _HierarchicalRecurrenceSelectorState
       children: [
         // 1. One-off vs Repeating Segmented Button
         SegmentedButton<bool>(
-          segments: const [
+          segments: [
             ButtonSegment<bool>(
               value: true,
-              icon: Icon(Icons.event),
-              label: Text('One-off'),
+              icon: const Icon(Icons.event),
+              label: Text(context.l10n.oneOffLabel),
             ),
             ButtonSegment<bool>(
               value: false,
-              icon: Icon(Icons.replay),
-              label: Text('Repeating'),
+              icon: const Icon(Icons.replay),
+              label: Text(context.l10n.repeatingLabel),
             ),
           ],
           selected: {isOneOff},
@@ -199,16 +194,16 @@ class _HierarchicalRecurrenceSelectorState
               final String label;
               switch (cadence) {
                 case _Cadence.daily:
-                  label = 'Daily';
+                  label = context.l10n.dailyLabel;
                   break;
                 case _Cadence.weekly:
-                  label = 'Weekly';
+                  label = context.l10n.weeklyLabel;
                   break;
                 case _Cadence.monthly:
-                  label = 'Monthly';
+                  label = context.l10n.monthlyLabel;
                   break;
                 case _Cadence.yearly:
-                  label = 'Yearly';
+                  label = context.l10n.yearlyLabel;
                   break;
               }
 
@@ -221,7 +216,7 @@ class _HierarchicalRecurrenceSelectorState
                     : (selected) {
                         if (selected) {
                           // Pick the first specialization of the new cadence as default
-                          final newOptions = _getOptions(cadence);
+                          final newOptions = _getOptions(context, cadence);
                           widget.onSelected(newOptions.first.kind);
                         }
                       },
@@ -270,7 +265,7 @@ class _HierarchicalRecurrenceSelectorState
                     bottom: 4.0,
                   ),
                   child: Text(
-                    'RECURRENCE TYPE',
+                    context.l10n.recurrenceTypeHeader,
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant.withValues(
                         alpha: 0.8,

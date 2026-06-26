@@ -244,9 +244,9 @@ class _WeeklyFixedSchedulingWidgetState
                 key: const Key('weekly_fixed_interval_stepper'),
                 interval: widget.interval,
                 onIntervalChanged: widget.onIntervalChanged,
-                label: 'Interval',
-                unitSingular: 'week',
-                unitPlural: 'weeks',
+                label: l10n.intervalLabel,
+                unitSingular: l10n.presetWeekSingular,
+                unitPlural: l10n.presetWeekPlural,
                 readOnly: widget.readOnly,
                 intervalController: widget.intervalController,
               ),
@@ -267,7 +267,7 @@ class _WeeklyFixedSchedulingWidgetState
                           ),
                         );
                       },
-                label: 'Start Date',
+                label: l10n.startDateLabel,
               ),
             ),
           ],
@@ -285,9 +285,10 @@ class _WeeklyFixedSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                widget.interval == 1
-                    ? 'Repeats every week starting ${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}.'
-                    : 'Repeats every ${widget.interval} weeks starting ${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}.',
+                l10n.repeatsEveryWeekHelp(
+                  widget.interval,
+                  '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
+                ),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -316,7 +317,7 @@ class _WeeklyFixedSchedulingWidgetState
 
         // 3. Start Window & help text
         Text(
-          'Start',
+          l10n.startLabel,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -340,7 +341,7 @@ class _WeeklyFixedSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'When does the task appear in your list of tasks?',
+                l10n.taskAppearanceHelpText,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -353,7 +354,7 @@ class _WeeklyFixedSchedulingWidgetState
 
         // 4. Due Window & help text
         Text(
-          'Due',
+          l10n.dueWithoutColon,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -394,7 +395,7 @@ class _WeeklyFixedSchedulingWidgetState
           CheckboxListTile(
             key: const Key('weekly_fixed_notification_checkbox'),
             title: Text(
-              'Enable notification reminder',
+              l10n.enableNotificationReminderLabel,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -416,7 +417,7 @@ class _WeeklyFixedSchedulingWidgetState
           ),
           if (notificationEnabled) ...[
             Text(
-              'Notification window',
+              l10n.notificationWindowLabel,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
@@ -572,9 +573,9 @@ class _WeeklyCompletionRelativeSchedulingWidgetState
           key: const Key('weekly_completion_interval_stepper'),
           interval: widget.interval,
           onIntervalChanged: widget.onIntervalChanged,
-          label: 'Interval',
-          unitSingular: 'week',
-          unitPlural: 'weeks',
+          label: l10n.intervalLabel,
+          unitSingular: l10n.presetWeekSingular,
+          unitPlural: l10n.presetWeekPlural,
           readOnly: widget.readOnly,
           intervalController: widget.intervalController,
         ),
@@ -590,9 +591,7 @@ class _WeeklyCompletionRelativeSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                widget.interval == 1
-                    ? '1 week after the task was last completed.'
-                    : '${widget.interval} weeks after the task was last completed.',
+                l10n.completionRelativeHelpWeekly(widget.interval),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -605,7 +604,7 @@ class _WeeklyCompletionRelativeSchedulingWidgetState
 
         // 2. Start
         Text(
-          'Start',
+          l10n.startLabel,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -629,7 +628,7 @@ class _WeeklyCompletionRelativeSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'When does the task appear in your list of tasks?',
+                l10n.taskAppearanceHelpText,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -642,7 +641,7 @@ class _WeeklyCompletionRelativeSchedulingWidgetState
 
         // 3. Due
         Text(
-          'Due',
+          l10n.dueWithoutColon,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -683,7 +682,7 @@ class _WeeklyCompletionRelativeSchedulingWidgetState
           CheckboxListTile(
             key: const Key('weekly_completion_notification_checkbox'),
             title: Text(
-              'Enable notification reminder',
+              l10n.enableNotificationReminderLabel,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -705,7 +704,7 @@ class _WeeklyCompletionRelativeSchedulingWidgetState
           ),
           if (notificationEnabled) ...[
             Text(
-              'Notification window',
+              l10n.notificationWindowLabel,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,

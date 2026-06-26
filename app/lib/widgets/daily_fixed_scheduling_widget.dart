@@ -146,7 +146,9 @@ class _DailyFixedSchedulingWidgetState
                 key: const Key('daily_fixed_interval_stepper'),
                 interval: widget.interval,
                 onIntervalChanged: widget.onIntervalChanged,
-                label: 'Interval',
+                label: l10n.intervalLabel,
+                unitSingular: l10n.presetDaySingular,
+                unitPlural: l10n.presetDayPlural,
                 readOnly: widget.readOnly,
                 intervalController: widget.intervalController,
               ),
@@ -167,7 +169,7 @@ class _DailyFixedSchedulingWidgetState
                           ),
                         );
                       },
-                label: 'Start Date',
+                label: l10n.startDateLabel,
               ),
             ),
           ],
@@ -185,9 +187,10 @@ class _DailyFixedSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                widget.interval == 1
-                    ? 'Repeats every day starting ${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}.'
-                    : 'Repeats every ${widget.interval} days starting ${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}.',
+                l10n.repeatsEveryDayHelp(
+                  widget.interval,
+                  '${widget.startDate.year}-${widget.startDate.month.toString().padLeft(2, '0')}-${widget.startDate.day.toString().padLeft(2, '0')}',
+                ),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -200,7 +203,7 @@ class _DailyFixedSchedulingWidgetState
 
         // 3. Start Window & help text
         Text(
-          'Start',
+          l10n.startLabel,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -224,7 +227,7 @@ class _DailyFixedSchedulingWidgetState
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'When does the task appear in your list of tasks?',
+                l10n.taskAppearanceHelpText,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -237,7 +240,7 @@ class _DailyFixedSchedulingWidgetState
 
         // 4. Due Window & help text
         Text(
-          'Due',
+          l10n.dueWithoutColon,
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
@@ -278,7 +281,7 @@ class _DailyFixedSchedulingWidgetState
           CheckboxListTile(
             key: const Key('daily_fixed_notification_checkbox'),
             title: Text(
-              'Enable notification reminder',
+              l10n.enableNotificationReminderLabel,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -300,7 +303,7 @@ class _DailyFixedSchedulingWidgetState
           ),
           if (notificationEnabled) ...[
             Text(
-              'Notification window',
+              l10n.notificationWindowLabel,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,

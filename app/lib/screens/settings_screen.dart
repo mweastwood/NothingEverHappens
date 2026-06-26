@@ -32,6 +32,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     UserSettings currentSettings,
   ) async {
     if (_formKey.currentState!.validate()) {
+      final l10n = context.l10n;
       setState(() {
         _isSaving = true;
       });
@@ -49,9 +50,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             .updateSettings(updatedSettings)
             .timeout(
               const Duration(seconds: 10),
-              onTimeout: () => throw Exception(
-                'Save operation timed out. Please check your connection.',
-              ),
+              onTimeout: () => throw Exception(l10n.saveTimeoutError),
             );
 
         if (mounted) {
@@ -141,7 +140,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             labelText: context.l10n.hoursAvailableLabel,
                             helperText: context.l10n.hoursAvailableHelper,
                             border: const OutlineInputBorder(),
-                            suffixText: 'hours',
+                            suffixText: context.l10n.hoursSuffix,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -217,13 +216,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Future Occurrences',
+                                      context.l10n.futureOccurrencesLabel,
                                       style: Theme.of(
                                         context,
                                       ).textTheme.titleMedium,
                                     ),
                                     Text(
-                                      'Pre-created future tasks (1-10)',
+                                      context.l10n.preCreatedFutureTasksHelper,
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,

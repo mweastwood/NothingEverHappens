@@ -48,15 +48,12 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
 
   String? _lastReportedError;
   bool _hasReportedError = false;
+  bool _didInit = false;
 
   @override
   void initState() {
     super.initState();
-    final intervalText = _getIntervalText(widget.schedule);
-    final initialFormattedText = widget.schedule is DailySchedule
-        ? (intervalText == '1' ? '1 day' : '$intervalText days')
-        : intervalText;
-    _intervalController = TextEditingController(text: initialFormattedText);
+    _intervalController = TextEditingController();
     _monthlyDayOfMonthController = TextEditingController(
       text: _getMonthlyDayOfMonthText(widget.schedule),
     );
@@ -167,6 +164,26 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didInit) {
+      _didInit = true;
+      final l10n = context.l10n;
+      final intervalText = _getIntervalText(widget.schedule);
+      final initialFormattedText = widget.schedule is DailySchedule
+          ? (intervalText == '1'
+                ? '1 ${l10n.presetDaySingular}'
+                : '$intervalText ${l10n.presetDayPlural}')
+          : intervalText;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _intervalController.text = initialFormattedText;
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _intervalController.removeListener(_validateInputs);
     _monthlyDayOfMonthController.removeListener(_validateInputs);
@@ -192,8 +209,11 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     final oldIntervalText = _getIntervalText(oldWidget.schedule);
     final newIntervalText = _getIntervalText(widget.schedule);
     if (typeChanged || oldIntervalText != newIntervalText) {
+      final l10n = context.l10n;
       final formattedText = widget.schedule is DailySchedule
-          ? (newIntervalText == '1' ? '1 day' : '$newIntervalText days')
+          ? (newIntervalText == '1'
+                ? '1 ${l10n.presetDaySingular}'
+                : '$newIntervalText ${l10n.presetDayPlural}')
           : newIntervalText;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {

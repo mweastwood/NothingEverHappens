@@ -11,32 +11,6 @@ import '../logic/l10n_extension.dart';
 import '../logic/app_clock.dart';
 import 'task_widget.dart';
 
-const List<String> _taskTitles = [
-  'Water the Houseplants',
-  'Take out the Trash',
-  'Wash the Dishes',
-  'Mow the Lawn',
-  'Feed the Dog',
-  'Vacuum the Living Room',
-  'Clean the Attic',
-  'Fold the Laundry',
-  'Dust the Shelves',
-  'Buy Groceries',
-];
-
-const List<String> _taskDescriptions = [
-  'Give them just enough water.',
-  'Don\'t forget the recycling.',
-  'Clean the pots and pans first.',
-  'Trim the edges too.',
-  'Make sure he has fresh water.',
-  'Get under the couch.',
-  'Sort the old boxes.',
-  'Fold them neatly and put them away.',
-  'Use a microfiber cloth.',
-  'Milk, eggs, and bread.',
-];
-
 class BasicTaskCompletionTab extends StatefulWidget {
   const BasicTaskCompletionTab({super.key});
 
@@ -48,11 +22,11 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
   late List<TaskSchedule> _tasks;
   late List<TaskInstance> _instances;
   late FakeTaskRepository _fakeRepository;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _reset();
     _fakeRepository = FakeTaskRepository(
       onComplete: _handleComplete,
       onDelete: _handleDelete,
@@ -60,11 +34,46 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
     );
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInitialized) {
+      _reset();
+      _isInitialized = true;
+    }
+  }
+
   void _reset() {
+    final List<String> taskTitles = [
+      context.l10n.practiceTaskTitle0,
+      context.l10n.practiceTaskTitle1,
+      context.l10n.practiceTaskTitle2,
+      context.l10n.practiceTaskTitle3,
+      context.l10n.practiceTaskTitle4,
+      context.l10n.practiceTaskTitle5,
+      context.l10n.practiceTaskTitle6,
+      context.l10n.practiceTaskTitle7,
+      context.l10n.practiceTaskTitle8,
+      context.l10n.practiceTaskTitle9,
+    ];
+
+    final List<String> taskDescriptions = [
+      context.l10n.practiceTaskDesc0,
+      context.l10n.practiceTaskDesc1,
+      context.l10n.practiceTaskDesc2,
+      context.l10n.practiceTaskDesc3,
+      context.l10n.practiceTaskDesc4,
+      context.l10n.practiceTaskDesc5,
+      context.l10n.practiceTaskDesc6,
+      context.l10n.practiceTaskDesc7,
+      context.l10n.practiceTaskDesc8,
+      context.l10n.practiceTaskDesc9,
+    ];
+
     setState(() {
       _tasks = List.generate(10, (index) {
-        final title = _taskTitles[index];
-        final desc = _taskDescriptions[index];
+        final title = taskTitles[index];
+        final desc = taskDescriptions[index];
         final tomorrow = AppClock.now.add(const Duration(days: 1));
         final tomorrowDay = CivilDay.fromDateTime(tomorrow);
         return TaskSchedule(
@@ -166,7 +175,7 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Practice Tasks (${_instances.length} remaining)',
+                    context.l10n.practiceTasksRemaining(_instances.length),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -174,7 +183,7 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
                   TextButton.icon(
                     onPressed: _reset,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Reset Practice'),
+                    label: Text(context.l10n.resetPracticeButton),
                   ),
                 ],
               ),
@@ -193,11 +202,11 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'All tasks completed or dismissed!',
+                          context.l10n.practiceTasksCompleted,
                           style: theme.textTheme.titleMedium,
                         ),
                         Text(
-                          'Tap "Reset Practice" to try again.',
+                          context.l10n.practiceTasksResetPrompt,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

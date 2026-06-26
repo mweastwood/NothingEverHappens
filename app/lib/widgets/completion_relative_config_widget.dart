@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../logic/scheduling_policy.dart';
+import '../logic/l10n_extension.dart';
 
 class CompletionRelativeConfigWidget extends StatefulWidget {
   final CompletionRelativePolicy policy;
@@ -99,9 +100,9 @@ class _CompletionRelativeConfigWidgetState
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 enabled: !widget.readOnly,
-                decoration: const InputDecoration(
-                  labelText: 'Repeat Interval',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: context.l10n.repeatIntervalLabel,
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (val) {
                   final intVal = int.tryParse(val) ?? 1;
@@ -115,14 +116,23 @@ class _CompletionRelativeConfigWidgetState
               child: DropdownButtonFormField<String>(
                 initialValue: _unit,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Unit',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: context.l10n.unitLabel,
+                  border: const OutlineInputBorder(),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'hours', child: Text('Hour(s)')),
-                  DropdownMenuItem(value: 'days', child: Text('Day(s)')),
-                  DropdownMenuItem(value: 'weeks', child: Text('Week(s)')),
+                items: [
+                  DropdownMenuItem(
+                    value: 'hours',
+                    child: Text(context.l10n.unitHours),
+                  ),
+                  DropdownMenuItem(
+                    value: 'days',
+                    child: Text(context.l10n.unitDays),
+                  ),
+                  DropdownMenuItem(
+                    value: 'weeks',
+                    child: Text(context.l10n.unitWeeks),
+                  ),
                 ],
                 onChanged: widget.readOnly
                     ? null
@@ -141,7 +151,7 @@ class _CompletionRelativeConfigWidgetState
         const SizedBox(height: 16),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Target Start Time'),
+          title: Text(context.l10n.targetStartTimeLabel),
           subtitle: Text(widget.policy.targetTime.format(context)),
           trailing: const Icon(Icons.access_time),
           onTap: widget.readOnly

@@ -176,11 +176,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   }
 
   Future<void> _saveTask() async {
+    final l10n = context.l10n;
     if (_formKey.currentState!.validate()) {
       if (_schedules.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('At least one schedule is required.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.scheduleRequiredError)));
         return;
       }
 
@@ -260,21 +261,19 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                 .updateTaskSchedule(modification)
                 .timeout(
                   CreateTaskScreen.saveTimeout,
-                  onTimeout: () => throw Exception(
-                    'Save operation timed out. This may be due to a connectivity issue or a failure to sync with the database.',
-                  ),
+                  onTimeout: () => throw Exception(l10n.saveTimeoutError),
                 );
             if (mounted) {
               UndoSnackBar.show(
                 context: context,
                 ref: ref,
                 action: UndoEditTaskScheduleAction(
-                  message: context.l10n.taskEditsSaved(previousSchedule.title),
+                  message: l10n.taskEditsSaved(previousSchedule.title),
                   previousSchedule: previousSchedule,
                   currentSchedule: modification.newTask,
                 ),
                 repository: repository,
-                undoneLabel: context.l10n.editsReverted(previousSchedule.title),
+                undoneLabel: l10n.editsReverted(previousSchedule.title),
               );
               Navigator.pop(context);
             }
@@ -283,9 +282,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                 .addTaskSchedule(newTask)
                 .timeout(
                   CreateTaskScreen.saveTimeout,
-                  onTimeout: () => throw Exception(
-                    'Save operation timed out. This may be due to a connectivity issue or a failure to sync with the database.',
-                  ),
+                  onTimeout: () => throw Exception(l10n.saveTimeoutError),
                 );
             if (mounted) {
               Navigator.pop(context);
@@ -488,7 +485,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Effort and Priority",
+              context.l10n.effortAndPriorityLabel,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -516,7 +513,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Family",
+              context.l10n.familyTab,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -525,8 +522,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             StandardChoiceChip(
               key: const Key('is_family_toggle'),
               label: _isFamily
-                  ? 'Family TaskSchedule'
-                  : 'Personal TaskSchedule',
+                  ? context.l10n.familyTaskToggleLabel
+                  : context.l10n.personalTaskToggleLabel,
               selected: _isFamily,
               onSelected: readOnly
                   ? null
@@ -625,7 +622,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                       });
                     },
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Schedule'),
+                    label: Text(context.l10n.addScheduleButton),
                   ),
                 ],
               ],

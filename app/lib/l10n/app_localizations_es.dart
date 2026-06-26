@@ -81,7 +81,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get scheduleHeader => 'Calendario';
 
   @override
-  String get oneOffLabel => 'Una vez';
+  String get oneOffLabel => 'Única vez';
 
   @override
   String get dailyLabel => 'Diario';
@@ -500,6 +500,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get membersHeader => 'Miembros de la Familia';
+
+  @override
+  String familyMembersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count miembros',
+      one: '1 miembro',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get notInFamilyBody =>
@@ -940,4 +951,585 @@ class AppLocalizationsEs extends AppLocalizations {
   String noSchedulesMatching(String query) {
     return 'No se encontraron horarios coincidentes para \"$query\"';
   }
+
+  @override
+  String get scheduleRequiredError => 'Se requiere al menos un horario.';
+
+  @override
+  String get familyTaskToggleLabel => 'Tarea Familiar';
+
+  @override
+  String get personalTaskToggleLabel => 'Tarea Personal';
+
+  @override
+  String get effortAndPriorityLabel => 'Esfuerzo y Prioridad';
+
+  @override
+  String get addScheduleButton => 'Agregar Horario';
+
+  @override
+  String get saveTimeoutError =>
+      'La operación de guardado expiró. Por favor, verifique su conexión.';
+
+  @override
+  String get hoursSuffix => 'horas';
+
+  @override
+  String get futureOccurrencesLabel => 'Próximas Ocurrencias';
+
+  @override
+  String get preCreatedFutureTasksHelper =>
+      'Tareas futuras creadas previamente (1-10)';
+
+  @override
+  String get resetPracticeButton => 'Restablecer Práctica';
+
+  @override
+  String practiceTasksRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Tareas de práctica ($count restantes)',
+      one: 'Tareas de práctica (1 restante)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get practiceTasksCompleted =>
+      '¡Todas las tareas han sido completadas o descartadas!';
+
+  @override
+  String get practiceTasksResetPrompt =>
+      'Toque \"Restablecer Práctica\" para intentar de nuevo.';
+
+  @override
+  String get unitLabel => 'Unidad';
+
+  @override
+  String get unitHours => 'Hora(s)';
+
+  @override
+  String get unitDays => 'Día(s)';
+
+  @override
+  String get unitWeeks => 'Semana(s)';
+
+  @override
+  String get unitMinutes => 'Minuto(s)';
+
+  @override
+  String get targetStartTimeLabel => 'Hora de Inicio Objetivo';
+
+  @override
+  String get selectMissedPolicyTitle =>
+      'Seleccione la Política de Ocurrencia Omitida';
+
+  @override
+  String get immediatelyPolicy => 'Inmediatamente';
+
+  @override
+  String get oneHourPolicy => '1 Hora';
+
+  @override
+  String get sixHoursPolicy => '6 Horas';
+
+  @override
+  String get twelveHoursPolicy => '12 Horas';
+
+  @override
+  String get twentyFourHoursPolicy => '24 Horas (1 Día)';
+
+  @override
+  String get customDurationPolicy => 'Duración Personalizada...';
+
+  @override
+  String get addNotificationButton => 'Agregar notificación';
+
+  @override
+  String get selectDayTitle => 'Seleccionar Día';
+
+  @override
+  String get okButton => 'Aceptar';
+
+  @override
+  String get fixedCalendarLabel => 'Calendario Fijo';
+
+  @override
+  String get completionRelativeLabel => 'Relativo al Cumplimiento';
+
+  @override
+  String get taskTypeLabel => 'Tipo de Tarea';
+
+  @override
+  String get simulationPresetDaily =>
+      'Preestablecido Diario (Alimentar Mascotas)';
+
+  @override
+  String get simulationPresetWeekly =>
+      'Preestablecido Semanal (Cortar el Césped)';
+
+  @override
+  String simulatedTimeLabel(String time) {
+    return 'Tiempo Simulado: $time';
+  }
+
+  @override
+  String get simulationOneHour => '1 Hora';
+
+  @override
+  String get simulationSixHours => '6 Horas';
+
+  @override
+  String get simulationTwentyFourHours => '24 Horas';
+
+  @override
+  String get noActivePlaygroundTasks => 'No hay tareas activas.';
+
+  @override
+  String autoDismissPolicyHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count horas',
+      one: '1 hora',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get missedPolicyDialogIntro =>
+      'En los ejemplos que se muestran a continuación, suponga que tenemos una tarea diaria que no completamos, marcamos ni descartamos de ninguna manera el lunes o el martes. Ahora es miércoles, ¿qué se debe hacer con las tareas anteriores?';
+
+  @override
+  String get dismissAfterLabel => 'Descartar Después De';
+
+  @override
+  String get durationLabel => 'Duración';
+
+  @override
+  String get presetsLabel => 'Preestablecidos';
+
+  @override
+  String get presetDaySingular => 'día';
+
+  @override
+  String get presetDayPlural => 'días';
+
+  @override
+  String get presetWeekSingular => 'semana';
+
+  @override
+  String get presetWeekPlural => 'semanas';
+
+  @override
+  String get taskAppearanceHelpText =>
+      '¿Cuándo aparece la tarea en tu lista de tareas?';
+
+  @override
+  String get enableNotificationReminderLabel =>
+      'Activar recordatorio de notificación';
+
+  @override
+  String get notificationWindowLabel => 'Ventana de notificación';
+
+  @override
+  String get repeatIntervalLabel => 'Intervalo de repetición';
+
+  @override
+  String completionRelativeSummary(String val, String unit, String time) {
+    return 'Relativo a la finalización: cada $val $unit @ $time';
+  }
+
+  @override
+  String oneOffSummary(String date) {
+    return 'Única vez el $date';
+  }
+
+  @override
+  String dailySummary(String count) {
+    return 'Diario, cada $count día(s)';
+  }
+
+  @override
+  String weeklySummary(String count, String days) {
+    return 'Semanal, cada $count semana(s) los $days';
+  }
+
+  @override
+  String monthlySummaryDay(String count, String day) {
+    return 'Mensual, cada $count mes(es) el día $day';
+  }
+
+  @override
+  String monthlySummaryNth(String count, String occurrence, String weekday) {
+    return 'Mensual, cada $count mes(es) el $occurrence $weekday';
+  }
+
+  @override
+  String yearlySummary(String count, String month, String day) {
+    return 'Anual, cada $count año(s) el $day de $month';
+  }
+
+  @override
+  String get customScheduleSummary => 'Programación personalizada';
+
+  @override
+  String get deleteScheduleTooltip => 'Eliminar programación';
+
+  @override
+  String get weekdayShortMonday => 'Lun';
+
+  @override
+  String get weekdayShortTuesday => 'Mar';
+
+  @override
+  String get weekdayShortWednesday => 'Mié';
+
+  @override
+  String get weekdayShortThursday => 'Jue';
+
+  @override
+  String get weekdayShortFriday => 'Vie';
+
+  @override
+  String get weekdayShortSaturday => 'Sáb';
+
+  @override
+  String get weekdayShortSunday => 'Dom';
+
+  @override
+  String get monthShortJanuary => 'Ene';
+
+  @override
+  String get monthShortFebruary => 'Feb';
+
+  @override
+  String get monthShortMarch => 'Mar';
+
+  @override
+  String get monthShortApril => 'Abr';
+
+  @override
+  String get monthShortMay => 'May';
+
+  @override
+  String get monthShortJune => 'Jun';
+
+  @override
+  String get monthShortJuly => 'Jul';
+
+  @override
+  String get monthShortAugust => 'Ago';
+
+  @override
+  String get monthShortSeptember => 'Sep';
+
+  @override
+  String get monthShortOctober => 'Oct';
+
+  @override
+  String get monthShortNovember => 'Nov';
+
+  @override
+  String get monthShortDecember => 'Dic';
+
+  @override
+  String completionRelativeHelpDaily(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días después de que la tarea se completó por última vez.',
+      one: '1 día después de que la tarea se completó por última vez.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String completionRelativeHelpWeekly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count semanas después de que la tarea se completó por última vez.',
+      one: '1 semana después de que la tarea se completó por última vez.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String completionRelativeHelpMonthly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count meses después de que la tarea se completó por última vez.',
+      one: '1 mes después de que la tarea se completó por última vez.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String completionRelativeHelpYearly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count años después de que la tarea se completó por última vez.',
+      one: '1 año después de que la tarea se completó por última vez.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatsEveryDayHelp(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se repite cada $count días a partir del $date.',
+      one: 'Se repite cada día a partir del $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatsEveryWeekHelp(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se repite cada $count semanas a partir del $date.',
+      one: 'Se repite cada semana a partir del $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatsEveryMonthHelp(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se repite cada $count meses a partir del $date.',
+      one: 'Se repite cada mes a partir del $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repeatsEveryYearHelp(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Se repite cada $count años a partir del $date.',
+      one: 'Se repite cada año a partir del $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recurrenceTypeHeader => 'TIPO DE RECURRENCIA';
+
+  @override
+  String get dailyFixedTitle => 'En un horario fijo';
+
+  @override
+  String get dailyFixedSubtitle =>
+      'Se repite cada N días desde la última programada (ej. cada 3 días)';
+
+  @override
+  String get dailyCompletionRelativeTitle => 'Basado en el último completado';
+
+  @override
+  String get dailyCompletionRelativeSubtitle =>
+      'Se repite N días después de terminarlo (ej. 3 días después de completarlo)';
+
+  @override
+  String get weeklyFixedTitle => 'En días fijos de la semana';
+
+  @override
+  String get weeklyFixedSubtitle =>
+      'Se repite en días específicos de la semana (ej. todos los lunes y viernes)';
+
+  @override
+  String get weeklyCompletionRelativeTitle => 'Basado en el último completado';
+
+  @override
+  String get weeklyCompletionRelativeSubtitle =>
+      'Se repite N semanas después de terminarlo (ej. 2 semanas después de completarlo)';
+
+  @override
+  String get monthlyFixedDayTitle => 'En un día fijo del mes';
+
+  @override
+  String get monthlyFixedDaySubtitle =>
+      'Se repite en un día calendario específico (ej. el día 15 del mes)';
+
+  @override
+  String get monthlyNthWeekdayTitle =>
+      'En un día de la semana específico del mes';
+
+  @override
+  String get monthlyNthWeekdaySubtitle =>
+      'Se repite en un día de la semana relativo (ej. el segundo martes)';
+
+  @override
+  String get monthlyCompletionRelativeTitle => 'Basado en el último completado';
+
+  @override
+  String get monthlyCompletionRelativeSubtitle =>
+      'Se repite N meses después de terminarlo (ej. 1 mes después de completarlo)';
+
+  @override
+  String get yearlyFixedTitle => 'En una fecha fija del año';
+
+  @override
+  String get yearlyFixedSubtitle =>
+      'Se repite en una fecha calendario específica (ej. cada 12 de octubre)';
+
+  @override
+  String get yearlyCompletionRelativeTitle => 'Basado en el último completado';
+
+  @override
+  String get yearlyCompletionRelativeSubtitle =>
+      'Se repite N años después de terminarlo (ej. 1 año después de completarlo)';
+
+  @override
+  String get dayOfLabel => 'Mismo día';
+
+  @override
+  String get timeLabel => 'Hora';
+
+  @override
+  String get adjustOffsetLabel => 'Ajustar desfase';
+
+  @override
+  String get oneDayAfterLabel => '1 día después';
+
+  @override
+  String get oneDayBeforeLabel => '1 día antes';
+
+  @override
+  String nDaysLaterLabel(int count) {
+    return '$count días después';
+  }
+
+  @override
+  String nDaysBeforeLabel(int count) {
+    return '$count días antes';
+  }
+
+  @override
+  String get familyNameRequiredError =>
+      'Por favor ingresa un nombre de familia';
+
+  @override
+  String get emailRequiredError =>
+      'Por favor ingresa una dirección de correo electrónico';
+
+  @override
+  String get emailInvalidError =>
+      'Por favor ingresa una dirección de correo electrónico válida';
+
+  @override
+  String get practiceTaskTitle0 => 'Regar las plantas de interior';
+
+  @override
+  String get practiceTaskDesc0 => 'Dales la cantidad justa de agua.';
+
+  @override
+  String get practiceTaskTitle1 => 'Sacar la basura';
+
+  @override
+  String get practiceTaskDesc1 => 'No olvides el reciclaje.';
+
+  @override
+  String get practiceTaskTitle2 => 'Lavar los platos';
+
+  @override
+  String get practiceTaskDesc2 => 'Limpia las ollas y sartenes primero.';
+
+  @override
+  String get practiceTaskTitle3 => 'Cortar el césped';
+
+  @override
+  String get practiceTaskDesc3 => 'Recorta los bordes también.';
+
+  @override
+  String get practiceTaskTitle4 => 'Alimentar al perro';
+
+  @override
+  String get practiceTaskDesc4 => 'Asegúrate de que tenga agua fresca.';
+
+  @override
+  String get practiceTaskTitle5 => 'Aspirar la sala';
+
+  @override
+  String get practiceTaskDesc5 => 'Pasa la aspiradora debajo del sofá.';
+
+  @override
+  String get practiceTaskTitle6 => 'Limpiar el ático';
+
+  @override
+  String get practiceTaskDesc6 => 'Ordena las cajas viejas.';
+
+  @override
+  String get practiceTaskTitle7 => 'Doblar la ropa';
+
+  @override
+  String get practiceTaskDesc7 => 'Dóblala cuidadosamente y guárdala.';
+
+  @override
+  String get practiceTaskTitle8 => 'Sacudir los estantes';
+
+  @override
+  String get practiceTaskDesc8 => 'Usa un paño de microfibra.';
+
+  @override
+  String get practiceTaskTitle9 => 'Comprar comida';
+
+  @override
+  String get practiceTaskDesc9 => 'Leche, huevos y pan.';
+
+  @override
+  String get preferNewerTitle => 'Preferir más nueva';
+
+  @override
+  String get preferNewerDesc =>
+      'Solo la última ocurrencia permanece activa. Las ocurrencias omitidas anteriores se saltan automáticamente para que pueda comenzar de nuevo.';
+
+  @override
+  String get preferOlderTitle => 'Preferir más antigua';
+
+  @override
+  String get preferOlderDesc =>
+      'Solo la ocurrencia inacabada más antigua permanece activa. Las ocurrencias posteriores se saltan hasta que se complete.';
+
+  @override
+  String get stackPolicyTitle => 'Acumular';
+
+  @override
+  String get stackPolicyDesc =>
+      'Mantener todas las ocurrencias activas. Las ocurrencias omitidas se acumulan en una lista de espera y deben completarse individualmente.';
+
+  @override
+  String get autoDismissPolicyTitle => 'Descarte automático';
+
+  @override
+  String get autoDismissPolicyDesc =>
+      'Las ocurrencias se acumulan pero se descartan/saltan automáticamente después de un período de gracia configurable.';
+
+  @override
+  String get monShort => 'Lun';
+
+  @override
+  String get tueShort => 'Mar';
+
+  @override
+  String get wedTodayShort => 'Mié (Hoy)';
+
+  @override
+  String get activeLabel => 'Activa';
+
+  @override
+  String get expiredLabel => 'Vencida';
+
+  @override
+  String get skippedLabel => 'Omitida';
 }
