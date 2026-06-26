@@ -337,7 +337,7 @@ class _YearlyFixedSchedulingWidgetState
               child: Text(
                 l10n.yearlyOn(
                   _getMonthName(context, widget.month),
-                  _formatDayText(widget.day),
+                  widget.day.toString(),
                 ),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -484,23 +484,6 @@ class _YearlyFixedSchedulingWidgetState
   }
 }
 
-String _formatDayText(int val) {
-  final absVal = val.abs();
-  if (absVal >= 11 && absVal <= 13) {
-    return '${absVal}th';
-  }
-  switch (absVal % 10) {
-    case 1:
-      return '${absVal}st';
-    case 2:
-      return '${absVal}nd';
-    case 3:
-      return '${absVal}rd';
-    default:
-      return '${absVal}th';
-  }
-}
-
 String _getMonthName(BuildContext context, int month) {
   final l10n = context.l10n;
   switch (month) {
@@ -562,11 +545,6 @@ class _DayStepperState extends State<_DayStepper> {
   double _getFieldWidth() {
     final textLength = _controller.text.isEmpty ? 1 : _controller.text.length;
     return textLength * 11.0;
-  }
-
-  String _getSuffix() {
-    final parsed = int.tryParse(_controller.text);
-    return _getDaySuffix(parsed ?? widget.day);
   }
 
   @override
@@ -727,14 +705,6 @@ class _DayStepperState extends State<_DayStepper> {
                                 },
                               ),
                             ),
-                            Text(
-                              _getSuffix(),
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onSurfaceVariant,
-                                height: 1.2,
-                              ),
-                            ),
                           ],
                         ),
                       ],
@@ -762,22 +732,5 @@ class _DayStepperState extends State<_DayStepper> {
         ),
       ],
     );
-  }
-}
-
-String _getDaySuffix(int val) {
-  final absVal = val.abs();
-  if (absVal >= 11 && absVal <= 13) {
-    return 'th';
-  }
-  switch (absVal % 10) {
-    case 1:
-      return 'st';
-    case 2:
-      return 'nd';
-    case 3:
-      return 'rd';
-    default:
-      return 'th';
   }
 }
