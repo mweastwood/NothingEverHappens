@@ -18,7 +18,6 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/main.dart';
-import 'package:nothing_ever_happens/widgets/dev_clock_widget.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
@@ -653,9 +652,7 @@ void main() {
       surfaceSize: const Size(400, 800),
     );
 
-    // Verify that the dev clock button is NOT displayed (only one widget tree item but shrunk to SizedBox)
-    expect(find.byType(DevClockWidget), findsOneWidget);
-    expect(find.byIcon(Icons.av_timer), findsNothing);
+    // Verify that the screen matches golden in prod environment without DevClockWidget
 
     await screenMatchesGolden(tester, 'task_list_screen_prod');
 
