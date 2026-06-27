@@ -24,10 +24,22 @@ void main() {
         'hoursAvailable': 12.5,
         'showPendingTasks': true,
         'showLastSpawnedDate': true,
+        'taskListSort': [
+          {'column': 'priority', 'ascending': false},
+        ],
+        'scheduleListSort': [
+          {'column': 'next_due', 'ascending': true},
+        ],
       });
       expect(settings.hoursAvailable, 12.5);
       expect(settings.showPendingTasks, isTrue);
       expect(settings.showLastSpawnedDate, isTrue);
+      expect(settings.taskListSort, const [
+        (column: 'priority', ascending: false),
+      ]);
+      expect(settings.scheduleListSort, const [
+        (column: 'next_due', ascending: true),
+      ]);
     });
 
     test('toJson serializes correctly', () {
@@ -35,12 +47,20 @@ void main() {
         hoursAvailable: 6.0,
         showPendingTasks: true,
         showLastSpawnedDate: true,
+        taskListSort: [(column: 'priority', ascending: false)],
+        scheduleListSort: [(column: 'next_due', ascending: true)],
       );
       expect(settings.toJson(), {
         'hoursAvailable': 6.0,
         'showPendingTasks': true,
         'showLastSpawnedDate': true,
         'futureInstancesCount': 1,
+        'taskListSort': [
+          {'column': 'priority', 'ascending': false},
+        ],
+        'scheduleListSort': [
+          {'column': 'next_due', 'ascending': true},
+        ],
       });
     });
 
@@ -54,15 +74,29 @@ void main() {
         hoursAvailable: 4.5,
         showPendingTasks: true,
         showLastSpawnedDate: true,
+        taskListSort: const [(column: 'priority', ascending: false)],
+        scheduleListSort: const [(column: 'next_due', ascending: true)],
       );
       expect(updated.hoursAvailable, 4.5);
       expect(updated.showPendingTasks, isTrue);
       expect(updated.showLastSpawnedDate, isTrue);
+      expect(updated.taskListSort, const [
+        (column: 'priority', ascending: false),
+      ]);
+      expect(updated.scheduleListSort, const [
+        (column: 'next_due', ascending: true),
+      ]);
 
       final copyOfSame = updated.copyWith();
       expect(copyOfSame.hoursAvailable, 4.5);
       expect(copyOfSame.showPendingTasks, isTrue);
       expect(copyOfSame.showLastSpawnedDate, isTrue);
+      expect(copyOfSame.taskListSort, const [
+        (column: 'priority', ascending: false),
+      ]);
+      expect(copyOfSame.scheduleListSort, const [
+        (column: 'next_due', ascending: true),
+      ]);
     });
 
     test('equality and hashCode work as expected', () {
@@ -70,26 +104,37 @@ void main() {
         hoursAvailable: 5.0,
         showPendingTasks: true,
         showLastSpawnedDate: true,
+        taskListSort: [(column: 'priority', ascending: false)],
       );
       const s2 = UserSettings(
         hoursAvailable: 5.0,
         showPendingTasks: true,
         showLastSpawnedDate: true,
+        taskListSort: [(column: 'priority', ascending: false)],
       );
       const s3 = UserSettings(
         hoursAvailable: 6.0,
         showPendingTasks: true,
         showLastSpawnedDate: true,
+        taskListSort: [(column: 'priority', ascending: false)],
       );
       const s4 = UserSettings(
         hoursAvailable: 5.0,
         showPendingTasks: false,
         showLastSpawnedDate: true,
+        taskListSort: [(column: 'priority', ascending: false)],
       );
       const s5 = UserSettings(
         hoursAvailable: 5.0,
         showPendingTasks: true,
         showLastSpawnedDate: false,
+        taskListSort: [(column: 'priority', ascending: false)],
+      );
+      const s6 = UserSettings(
+        hoursAvailable: 5.0,
+        showPendingTasks: true,
+        showLastSpawnedDate: true,
+        taskListSort: [(column: 'title', ascending: true)],
       );
 
       expect(s1, s2);
@@ -97,6 +142,7 @@ void main() {
       expect(s1, isNot(s3));
       expect(s1, isNot(s4));
       expect(s1, isNot(s5));
+      expect(s1, isNot(s6));
     });
   });
 

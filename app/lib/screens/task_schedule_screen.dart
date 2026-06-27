@@ -11,6 +11,7 @@ import '../logic/l10n_extension.dart';
 import '../logic/undo_notifier.dart';
 import '../widgets/undo_snackbar.dart';
 import '../logic/user_settings_repository.dart';
+import '../logic/user_settings.dart';
 import '../logic/sort_helper.dart';
 import '../widgets/sort_bar.dart';
 
@@ -24,19 +25,16 @@ class TaskScheduleScreen extends ConsumerStatefulWidget {
 }
 
 class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
-  List<({String column, bool ascending})> _sortHistory = [
-    (column: 'title', ascending: true),
-  ];
+  List<({String column, bool ascending})>? _localSortHistory;
 
-  String get _sortColumn =>
-      _sortHistory.isNotEmpty ? _sortHistory.first.column : 'title';
-  bool get _sortAscending =>
-      _sortHistory.isNotEmpty ? _sortHistory.first.ascending : true;
-
-  void _onSort(String column) {
-    setState(() {
-      _sortHistory = updateSortHistory(_sortHistory, column);
-    });
+  List<({String column, bool ascending})> _getSortHistory(
+    UserSettings settings,
+  ) {
+    if (_localSortHistory != null) {
+      return _localSortHistory!;
+    }
+    return settings.scheduleListSort ??
+        const [(column: 'title', ascending: true)];
   }
 
   DateTime? _getNextStartTime(TaskSchedule task) {
@@ -258,6 +256,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     final taskRepository = ref.watch(taskRepositoryProvider);
     final schedulesVal = ref.watch(taskSchedulesProvider);
     final settingsVal = ref.watch(userSettingsProvider);
+    final settingsRepository = ref.watch(userSettingsRepositoryProvider);
     final searchQuery = ref
         .watch(scheduleSearchQueryProvider)
         .trim()
@@ -281,117 +280,145 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                   error: (err, stack) => Center(
                     child: Text('${context.l10n.errorOccurred}: $err'),
                   ),
-                  data: (settings) => schedulesVal.when(
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (err, stack) => Center(
-                      child: Text('${context.l10n.errorOccurred}: $err'),
-                    ),
-                    data: (allTasks) {
-                      final showLastSpawnedDate = settings.showLastSpawnedDate;
-                      final recurringTasks = allTasks
-                          .where(
-                            (task) =>
-                                task.schedules.any((s) => s is! OneOffSchedule),
-                          )
-                          .toList();
+                  data: (settings) {
+                    final sortHistory = _getSortHistory(settings);
+                    final sortColumn = sortHistory.isNotEmpty
+                        ? sortHistory.first.column
+                        : 'title';
+                    final sortAscending = sortHistory.isNotEmpty
+                        ? sortHistory.first.ascending
+                        : true;
 
-                      // Filter based on search query
-                      final filteredTasks = recurringTasks.where((task) {
-                        if (searchQuery.isEmpty) return true;
-                        final queryWords = searchQuery
-                            .split(RegExp(r'\s+'))
-                            .where((word) => word.isNotEmpty);
-                        if (queryWords.isEmpty) return true;
-
-                        return queryWords.every((word) {
-                          final matchesTitle = task.title
-                              .toLowerCase()
-                              .contains(word);
-                          final matchesDesc = task.description
-                              .toLowerCase()
-                              .contains(word);
-                          return matchesTitle || matchesDesc;
-                        });
-                      }).toList();
-
-                      if (recurringTasks.isEmpty) {
-                        return _buildEmptyState(context);
-                      }
-
-                      if (filteredTasks.isEmpty && searchQuery.isNotEmpty) {
-                        return _buildNoMatchesState(context);
-                      }
-
-                      // Sort filtered tasks using sort history (stable multi-key sort)
-                      final originalIndices = {
-                        for (int i = 0; i < filteredTasks.length; i++)
-                          filteredTasks[i].id: i,
-                      };
-                      filteredTasks.sort((a, b) {
-                        for (final sort in _sortHistory) {
-                          final result = _compareTasks(
-                            a,
-                            b,
-                            sort.column,
-                            sort.ascending,
-                          );
-                          if (result != 0) return result;
-                        }
-                        final indexA = originalIndices[a.id] ?? 0;
-                        final indexB = originalIndices[b.id] ?? 0;
-                        return indexA.compareTo(indexB);
-                      });
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Sort bar at the top
-                          SortBar(
-                            title: context.l10n.scheduleSortByLabel,
-                            sortColumn: _sortColumn,
-                            sortAscending: _sortAscending,
-                            options: [
-                              SortOption(
-                                key: 'title',
-                                label: context.l10n.titleFieldLabel,
-                              ),
-                              SortOption(
-                                key: 'next_start',
-                                label: context.l10n.scheduleSortNextStartLabel,
-                              ),
-                              SortOption(
-                                key: 'next_due',
-                                label: context.l10n.scheduleSortNextDueLabel,
-                              ),
-                              SortOption(
-                                key: 'priority',
-                                label: context.l10n.taskPriorityLabel,
-                              ),
-                            ],
-                            onSort: _onSort,
-                          ),
-                          const Divider(height: 1, thickness: 0.5),
-                          // Scrollable list of task cards
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: filteredTasks.length,
-                              itemBuilder: (context, index) {
-                                final task = filteredTasks[index];
-                                return _buildTaskCard(
-                                  context,
-                                  task,
-                                  theme,
-                                  taskRepository,
-                                  showLastSpawnedDate,
-                                );
-                              },
-                            ),
-                          ),
-                        ],
+                    void onSort(String column) {
+                      final updatedSort = updateSortHistory(
+                        sortHistory,
+                        column,
                       );
-                    },
-                  ),
+                      setState(() {
+                        _localSortHistory = updatedSort;
+                      });
+                      if (settingsRepository != null) {
+                        settingsRepository.updateSettings(
+                          settings.copyWith(scheduleListSort: updatedSort),
+                        );
+                      }
+                    }
+
+                    return schedulesVal.when(
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (err, stack) => Center(
+                        child: Text('${context.l10n.errorOccurred}: $err'),
+                      ),
+                      data: (allTasks) {
+                        final showLastSpawnedDate =
+                            settings.showLastSpawnedDate;
+                        final recurringTasks = allTasks
+                            .where(
+                              (task) => task.schedules.any(
+                                (s) => s is! OneOffSchedule,
+                              ),
+                            )
+                            .toList();
+
+                        // Filter based on search query
+                        final filteredTasks = recurringTasks.where((task) {
+                          if (searchQuery.isEmpty) return true;
+                          final queryWords = searchQuery
+                              .split(RegExp(r'\s+'))
+                              .where((word) => word.isNotEmpty);
+                          if (queryWords.isEmpty) return true;
+
+                          return queryWords.every((word) {
+                            final matchesTitle = task.title
+                                .toLowerCase()
+                                .contains(word);
+                            final matchesDesc = task.description
+                                .toLowerCase()
+                                .contains(word);
+                            return matchesTitle || matchesDesc;
+                          });
+                        }).toList();
+
+                        if (recurringTasks.isEmpty) {
+                          return _buildEmptyState(context);
+                        }
+
+                        if (filteredTasks.isEmpty && searchQuery.isNotEmpty) {
+                          return _buildNoMatchesState(context);
+                        }
+
+                        // Sort filtered tasks using sort history (stable multi-key sort)
+                        final originalIndices = {
+                          for (int i = 0; i < filteredTasks.length; i++)
+                            filteredTasks[i].id: i,
+                        };
+                        filteredTasks.sort((a, b) {
+                          for (final sort in sortHistory) {
+                            final result = _compareTasks(
+                              a,
+                              b,
+                              sort.column,
+                              sort.ascending,
+                            );
+                            if (result != 0) return result;
+                          }
+                          final indexA = originalIndices[a.id] ?? 0;
+                          final indexB = originalIndices[b.id] ?? 0;
+                          return indexA.compareTo(indexB);
+                        });
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Sort bar at the top
+                            SortBar(
+                              title: context.l10n.scheduleSortByLabel,
+                              sortColumn: sortColumn,
+                              sortAscending: sortAscending,
+                              options: [
+                                SortOption(
+                                  key: 'title',
+                                  label: context.l10n.titleFieldLabel,
+                                ),
+                                SortOption(
+                                  key: 'next_start',
+                                  label:
+                                      context.l10n.scheduleSortNextStartLabel,
+                                ),
+                                SortOption(
+                                  key: 'next_due',
+                                  label: context.l10n.scheduleSortNextDueLabel,
+                                ),
+                                SortOption(
+                                  key: 'priority',
+                                  label: context.l10n.taskPriorityLabel,
+                                ),
+                              ],
+                              onSort: onSort,
+                            ),
+                            const Divider(height: 1, thickness: 0.5),
+                            // Scrollable list of task cards
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: filteredTasks.length,
+                                itemBuilder: (context, index) {
+                                  final task = filteredTasks[index];
+                                  return _buildTaskCard(
+                                    context,
+                                    task,
+                                    theme,
+                                    taskRepository,
+                                    showLastSpawnedDate,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
                 ),
         );
       },
