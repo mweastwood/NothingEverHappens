@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/auth_repository.dart';
-import '../widgets/dev_clock_widget.dart';
 import '../widgets/home_search_and_shortcut_widget.dart';
 import '../logic/app_route_manager.dart';
 import 'create_task_screen.dart';
@@ -106,9 +105,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               : null,
         );
 
-        return Stack(
-          children: [mainContent, const DevClockWidget(bottomOffset: 80.0)],
-        );
+        return mainContent;
       },
     );
   }
