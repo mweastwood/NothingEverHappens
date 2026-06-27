@@ -158,6 +158,7 @@ class _NotificationItemWidget extends StatefulWidget {
 class _NotificationItemWidgetState extends State<_NotificationItemWidget> {
   late ValueNotifier<DateTime> _absoluteController;
   late ValueNotifier<RelativeTime> _relativeController;
+  bool _hasAbsoluteController = false;
   bool _isUpdating = false;
 
   @override
@@ -168,10 +169,12 @@ class _NotificationItemWidgetState extends State<_NotificationItemWidget> {
 
   void _initControllers() {
     if (widget.referenceDate != null) {
+      _hasAbsoluteController = true;
       final absTime = widget.relativeTime.referenceTo(widget.referenceDate!);
       _absoluteController = ValueNotifier(absTime);
       _absoluteController.addListener(_onAbsoluteChanged);
     } else {
+      _hasAbsoluteController = false;
       _relativeController = ValueNotifier(widget.relativeTime);
       _relativeController.addListener(_onRelativeChanged);
     }
@@ -180,8 +183,16 @@ class _NotificationItemWidgetState extends State<_NotificationItemWidget> {
   @override
   void didUpdateWidget(covariant _NotificationItemWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.relativeTime != widget.relativeTime ||
-        oldWidget.referenceDate != widget.referenceDate) {
+    if (widget.referenceDate != oldWidget.referenceDate) {
+      if (oldWidget.referenceDate != null) {
+        _absoluteController.removeListener(_onAbsoluteChanged);
+        _absoluteController.dispose();
+      } else {
+        _relativeController.removeListener(_onRelativeChanged);
+        _relativeController.dispose();
+      }
+      _initControllers();
+    } else if (oldWidget.relativeTime != widget.relativeTime) {
       _isUpdating = true;
       if (widget.referenceDate != null) {
         final absTime = widget.relativeTime.referenceTo(widget.referenceDate!);
@@ -214,7 +225,7 @@ class _NotificationItemWidgetState extends State<_NotificationItemWidget> {
 
   @override
   void dispose() {
-    if (widget.referenceDate != null) {
+    if (_hasAbsoluteController) {
       _absoluteController.removeListener(_onAbsoluteChanged);
       _absoluteController.dispose();
     } else {
