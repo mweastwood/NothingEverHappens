@@ -82,6 +82,37 @@ void main() {
     expect(userDoc.data()?['familyRole'], 'parent');
   });
 
+  testWidgets(
+    'canceling create family dialog does not update Firestore or crash',
+    (WidgetTester tester) async {
+      await firestore.collection('users').doc(userId).set({});
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // Tap create family button
+      await tester.tap(find.byKey(const Key('create_family_button')));
+      await tester.pumpAndSettle();
+
+      // Verify dialog shows up
+      expect(find.text('Create Family'), findsWidgets);
+      await tester.enterText(
+        find.byKey(const Key('family_name_field')),
+        'The Simpsons',
+      );
+      // Tap cancel button
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Verify dialog is gone
+      expect(find.byKey(const Key('family_name_field')), findsNothing);
+
+      // Verify no family document is created
+      final userDoc = await firestore.collection('users').doc(userId).get();
+      expect(userDoc.data()?['familyId'], isNull);
+    },
+  );
+
   testWidgets('renders family details and allows parent to invite and leave', (
     WidgetTester tester,
   ) async {
@@ -135,6 +166,51 @@ void main() {
     final invites = await firestore.collection('invites').get();
     expect(invites.docs.length, 1);
     expect(invites.docs.first.data()['toEmail'], 'new@example.com');
+  });
+
+  testWidgets('canceling invite dialog does not send invite or crash', (
+    WidgetTester tester,
+  ) async {
+    final familyId = 'fam-123';
+    await firestore.collection('users').doc(userId).set({
+      'familyId': familyId,
+      'familyRole': 'parent',
+    });
+
+    await firestore.collection('families').doc(familyId).set({
+      'id': familyId,
+      'name': 'The Simpsons',
+      'members': {
+        userId: {
+          'userId': userId,
+          'displayName': userName,
+          'email': userEmail,
+          'role': 'parent',
+        },
+      },
+    });
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    // Test invite dialog cancel
+    await tester.tap(find.byKey(const Key('invite_member_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Invite Family Member'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('invite_email_field')),
+      'new@example.com',
+    );
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    // Verify dialog is gone
+    expect(find.text('Invite Family Member'), findsNothing);
+
+    // Verify invite NOT created in Firestore
+    final invites = await firestore.collection('invites').get();
+    expect(invites.docs.isEmpty, true);
   });
 
   testGoldens('FamilyScreen not in family golden', (tester) async {

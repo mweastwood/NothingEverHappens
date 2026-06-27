@@ -20,46 +20,9 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   bool _isProcessing = false;
 
   Future<void> _createFamily(FamilyRepository repository) async {
-    final controller = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
     final name = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.createFamilyTitle),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            key: const Key('family_name_field'),
-            controller: controller,
-            decoration: InputDecoration(
-              labelText: context.l10n.familyUnitNameLabel,
-              border: const OutlineInputBorder(),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return context.l10n.familyNameRequiredError;
-              }
-              return null;
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(context.l10n.cancelButton),
-          ),
-          ElevatedButton(
-            key: const Key('confirm_create_family_button'),
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.pop(context, controller.text.trim());
-              }
-            },
-            child: Text(context.l10n.saveButton),
-          ),
-        ],
-      ),
+      builder: (context) => const _CreateFamilyDialog(),
     );
 
     if (name != null && mounted) {
@@ -85,88 +48,9 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   }
 
   Future<void> _inviteMember(FamilyRepository repository, Family family) async {
-    final emailController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    String selectedRole = 'non-parent';
-
     final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setStateDialog) => AlertDialog(
-          title: Text(context.l10n.inviteMemberTitle),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  key: const Key('invite_email_field'),
-                  controller: emailController,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.inviteMemberEmailLabel,
-                    border: const OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return context.l10n.emailRequiredError;
-                    }
-                    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-                    if (!emailRegex.hasMatch(value.trim())) {
-                      return context.l10n.emailInvalidError;
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  key: const Key('invite_role_dropdown'),
-                  initialValue: selectedRole,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.inviteMemberRoleLabel,
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'parent',
-                      child: Text(context.l10n.parentRole),
-                    ),
-                    DropdownMenuItem(
-                      value: 'non-parent',
-                      child: Text(context.l10n.nonParentRole),
-                    ),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) {
-                      setStateDialog(() {
-                        selectedRole = val;
-                      });
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(context.l10n.cancelButton),
-            ),
-            ElevatedButton(
-              key: const Key('confirm_invite_button'),
-              onPressed: () {
-                if (formKey.currentState!.validate()) {
-                  Navigator.pop(context, {
-                    'email': emailController.text.trim(),
-                    'role': selectedRole,
-                  });
-                }
-              },
-              child: Text(context.l10n.saveButton),
-            ),
-          ],
-        ),
-      ),
+      builder: (context) => const _InviteMemberDialog(),
     );
 
     if (result != null && mounted) {
@@ -663,6 +547,172 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+class _CreateFamilyDialog extends StatefulWidget {
+  const _CreateFamilyDialog();
+
+  @override
+  State<_CreateFamilyDialog> createState() => _CreateFamilyDialogState();
+}
+
+class _CreateFamilyDialogState extends State<_CreateFamilyDialog> {
+  late final TextEditingController _controller;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.l10n.createFamilyTitle),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          key: const Key('family_name_field'),
+          controller: _controller,
+          decoration: InputDecoration(
+            labelText: context.l10n.familyUnitNameLabel,
+            border: const OutlineInputBorder(),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return context.l10n.familyNameRequiredError;
+            }
+            return null;
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.cancelButton),
+        ),
+        ElevatedButton(
+          key: const Key('confirm_create_family_button'),
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              Navigator.pop(context, _controller.text.trim());
+            }
+          },
+          child: Text(context.l10n.saveButton),
+        ),
+      ],
+    );
+  }
+}
+
+class _InviteMemberDialog extends StatefulWidget {
+  const _InviteMemberDialog();
+
+  @override
+  State<_InviteMemberDialog> createState() => _InviteMemberDialogState();
+}
+
+class _InviteMemberDialogState extends State<_InviteMemberDialog> {
+  late final TextEditingController _emailController;
+  final _formKey = GlobalKey<FormState>();
+  String _selectedRole = 'non-parent';
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.l10n.inviteMemberTitle),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              key: const Key('invite_email_field'),
+              controller: _emailController,
+              decoration: InputDecoration(
+                labelText: context.l10n.inviteMemberEmailLabel,
+                border: const OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.emailAddress,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return context.l10n.emailRequiredError;
+                }
+                final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                if (!emailRegex.hasMatch(value.trim())) {
+                  return context.l10n.emailInvalidError;
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              key: const Key('invite_role_dropdown'),
+              initialValue: _selectedRole,
+              decoration: InputDecoration(
+                labelText: context.l10n.inviteMemberRoleLabel,
+                border: const OutlineInputBorder(),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: 'parent',
+                  child: Text(context.l10n.parentRole),
+                ),
+                DropdownMenuItem(
+                  value: 'non-parent',
+                  child: Text(context.l10n.nonParentRole),
+                ),
+              ],
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() {
+                    _selectedRole = val;
+                  });
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.cancelButton),
+        ),
+        ElevatedButton(
+          key: const Key('confirm_invite_button'),
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              Navigator.pop(context, {
+                'email': _emailController.text.trim(),
+                'role': _selectedRole,
+              });
+            }
+          },
+          child: Text(context.l10n.saveButton),
+        ),
+      ],
     );
   }
 }
