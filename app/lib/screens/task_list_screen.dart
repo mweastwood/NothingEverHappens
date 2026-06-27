@@ -23,19 +23,15 @@ class TaskListScreen extends ConsumerStatefulWidget {
 class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   final Key _taskListKey = const ValueKey('taskList');
   Timer? _rebuildTimer;
-  List<({String column, bool ascending})> _sortHistory = [
-    (column: 'title', ascending: true),
-  ];
+  List<({String column, bool ascending})>? _localSortHistory;
 
-  String get _sortColumn =>
-      _sortHistory.isNotEmpty ? _sortHistory.first.column : 'title';
-  bool get _sortAscending =>
-      _sortHistory.isNotEmpty ? _sortHistory.first.ascending : true;
-
-  void _onSort(String column) {
-    setState(() {
-      _sortHistory = updateSortHistory(_sortHistory, column);
-    });
+  List<({String column, bool ascending})> _getSortHistory(
+    UserSettings settings,
+  ) {
+    if (_localSortHistory != null) {
+      return _localSortHistory!;
+    }
+    return settings.taskListSort ?? const [(column: 'title', ascending: true)];
   }
 
   int _compareInstances(
@@ -84,6 +80,29 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         final schedulesVal = ref.watch(taskSchedulesProvider);
         final instancesVal = ref.watch(taskInstancesProvider);
         final settingsVal = ref.watch(userSettingsProvider);
+        final settingsRepository = ref.watch(userSettingsRepositoryProvider);
+
+        final settings =
+            settingsVal.value ?? const UserSettings(hoursAvailable: 8.0);
+        final sortHistory = _getSortHistory(settings);
+        final sortColumn = sortHistory.isNotEmpty
+            ? sortHistory.first.column
+            : 'title';
+        final sortAscending = sortHistory.isNotEmpty
+            ? sortHistory.first.ascending
+            : true;
+
+        void onSort(String column) {
+          final updatedSort = updateSortHistory(sortHistory, column);
+          setState(() {
+            _localSortHistory = updatedSort;
+          });
+          if (settingsRepository != null) {
+            settingsRepository.updateSettings(
+              settings.copyWith(taskListSort: updatedSort),
+            );
+          }
+        }
 
         Widget bodySliver;
         if (schedulesVal.isLoading ||
@@ -106,8 +125,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         } else {
           final schedules = schedulesVal.value ?? [];
           final instances = instancesVal.value ?? [];
-          final settings =
-              settingsVal.value ?? const UserSettings(hoursAvailable: 8.0);
           final searchQuery = ref
               .watch(taskSearchQueryProvider)
               .trim()
@@ -142,7 +159,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               filteredInstances[i].id: i,
           };
           filteredInstances.sort((a, b) {
-            for (final sort in _sortHistory) {
+            for (final sort in sortHistory) {
               final result = _compareInstances(
                 a,
                 b,
@@ -232,8 +249,8 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               if (showSortBar) ...[
                 SortBar(
                   title: context.l10n.scheduleSortByLabel,
-                  sortColumn: _sortColumn,
-                  sortAscending: _sortAscending,
+                  sortColumn: sortColumn,
+                  sortAscending: sortAscending,
                   options: [
                     SortOption(
                       key: 'title',
@@ -248,7 +265,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                       label: context.l10n.taskPriorityLabel,
                     ),
                   ],
-                  onSort: _onSort,
+                  onSort: onSort,
                 ),
                 const Divider(height: 1, thickness: 0.5),
               ],
