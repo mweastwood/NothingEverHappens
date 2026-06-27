@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
+import 'relative_time.dart';
 import 'app_clock.dart';
 import 'civil_day.dart';
 import 'task_schedule.dart';
@@ -113,6 +115,9 @@ class TaskRepository {
   List<TaskSchedule>? _nextTasksToProcess;
   Timer? _triggerTimer;
   DateTime? _scheduledTriggerTime;
+  final Map<String, ({DateTime processedAt, String signature})>
+  _lastProcessedTasks = {};
+  final Map<String, DateTime> _spawnedInstancesCache = {};
 
   String get userId => _userId;
 
@@ -386,6 +391,24 @@ class TaskRepository {
 
     try {
       final now = AppClock.now;
+
+      final filteredTasks = tasks.where((task) {
+        final lastProcessed = _lastProcessedTasks[task.id];
+        if (lastProcessed != null) {
+          final signature = _getScheduleSignature(task);
+          if (lastProcessed.signature == signature &&
+              now.difference(lastProcessed.processedAt).abs() <
+                  const Duration(seconds: 2)) {
+            return false;
+          }
+        }
+        return true;
+      }).toList();
+
+      if (filteredTasks.isEmpty) {
+        return;
+      }
+
       final familyId = await _getFamilyId();
 
       // Fetch UserSettings for futureInstancesCount
@@ -421,10 +444,68 @@ class TaskRepository {
       bool hasChanges = false;
       final List<DateTime> allTriggerTimes = [];
 
-      for (final task in tasks) {
+      for (final task in filteredTasks) {
+        _lastProcessedTasks[task.id] = (
+          processedAt: now,
+          signature: _getScheduleSignature(task),
+        );
         final taskInstances = allInstances
             .where((inst) => inst.scheduleId == task.id)
             .toList();
+
+        final keysToRemove = <String>[];
+        for (final entry in _spawnedInstancesCache.entries) {
+          final key = entry.key;
+          final spawnTime = entry.value;
+
+          if (now.difference(spawnTime).abs() >= const Duration(seconds: 2)) {
+            keysToRemove.add(key);
+            continue;
+          }
+
+          final parts = key.split(':');
+          if (parts.length == 3) {
+            final sId = parts[0];
+            final rId = parts[1];
+            if (sId == task.id) {
+              final dateParts = parts[2].split('-');
+              if (dateParts.length == 3) {
+                final date = CivilDay(
+                  year: int.parse(dateParts[0]),
+                  month: int.parse(dateParts[1]),
+                  day: int.parse(dateParts[2]),
+                );
+                final exists = taskInstances.any(
+                  (inst) => inst.ruleId == rId && inst.scheduledDate == date,
+                );
+                if (!exists) {
+                  taskInstances.add(
+                    TaskInstance(
+                      id: 'VIRTUAL-${TaskInstance.generateId()}',
+                      scheduleId: sId,
+                      ruleId: rId,
+                      title: task.title,
+                      description: task.description,
+                      scheduledDate: date,
+                      startRelativeTime: RelativeTime(
+                        dayOffset: 0,
+                        time: const TimeOfDay(hour: 9, minute: 0),
+                      ),
+                      dueRelativeTime: RelativeTime(
+                        dayOffset: 0,
+                        time: const TimeOfDay(hour: 17, minute: 0),
+                      ),
+                      status: 'pending',
+                    ),
+                  );
+                }
+              }
+            }
+          }
+        }
+        for (final k in keysToRemove) {
+          _spawnedInstancesCache.remove(k);
+        }
 
         final action = SchedulerEngine.evaluate(
           task,
@@ -440,10 +521,16 @@ class TaskRepository {
 
         for (final inst in action.instancesToSpawn) {
           batch.set(_instanceRefFor(inst, familyId), inst);
+          _spawnedInstancesCache['${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}'] =
+              now;
           hasChanges = true;
         }
 
         for (final instId in action.instancesToDelete) {
+          final inst = taskInstances.firstWhere((x) => x.id == instId);
+          _spawnedInstancesCache.remove(
+            '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
+          );
           final isFamily = task.isFamily;
           batch.delete(_instanceRefForId(instId, isFamily, familyId));
           hasChanges = true;
@@ -502,6 +589,7 @@ class TaskRepository {
 
   Future<void> triggerMissedPolicyProcessing() async {
     try {
+      _lastProcessedTasks.clear();
       final familyId = await _getFamilyId();
       final personalTasksSnap = await _tasksRef.get();
       final List<TaskSchedule> allTasks = personalTasksSnap.docs
@@ -706,6 +794,7 @@ class TaskRepository {
 
     await batch.commit();
     await _notificationService?.cancelNotifications(id);
+    _spawnedInstancesCache.removeWhere((key, value) => key.startsWith('$id:'));
 
     return (task: task, pendingInstances: pendingInstances);
   }
@@ -745,6 +834,9 @@ class TaskRepository {
       completedAt: now,
     );
     batch.set(_instanceRefFor(completedInstance, familyId), completedInstance);
+    _spawnedInstancesCache.remove(
+      '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
+    );
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
@@ -777,6 +869,9 @@ class TaskRepository {
       completedAt: now,
     );
     batch.set(_instanceRefFor(dismissedInstance, familyId), dismissedInstance);
+    _spawnedInstancesCache.remove(
+      '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
+    );
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
@@ -797,6 +892,7 @@ class TaskRepository {
 
     final familyId = await _getFamilyId();
     final batch = _firestore.batch();
+    final now = resolvedInstance.completedAt ?? AppClock.now;
 
     final pendingInstance = resolvedInstance.copyWith(
       status: 'pending',
@@ -804,10 +900,11 @@ class TaskRepository {
       clearCompletedAt: true,
     );
     batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
+    _spawnedInstancesCache['${resolvedInstance.scheduleId}:${resolvedInstance.ruleId}:${resolvedInstance.scheduledDate}'] =
+        now;
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
-      final now = resolvedInstance.completedAt ?? AppClock.now;
       final allInstances = await _instancesRef
           .where('scheduleId', isEqualTo: task.id)
           .get()
@@ -819,6 +916,10 @@ class TaskRepository {
         allInstances,
       );
       if (nextId != null) {
+        final nextInst = allInstances.firstWhere((x) => x.id == nextId);
+        _spawnedInstancesCache.remove(
+          '${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}',
+        );
         batch.delete(
           _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
         );
@@ -844,6 +945,8 @@ class TaskRepository {
     );
     if (nextInst != null) {
       batch.set(_instanceRefFor(nextInst, familyId), nextInst);
+      _spawnedInstancesCache['${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}'] =
+          now;
     }
   }
 
@@ -859,5 +962,10 @@ class TaskRepository {
       now,
       taskInstances,
     );
+  }
+
+  String _getScheduleSignature(TaskSchedule task) {
+    final rulesJson = task.schedules.map((s) => s.toJson()).toList();
+    return jsonEncode(rulesJson);
   }
 }

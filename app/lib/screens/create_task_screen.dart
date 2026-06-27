@@ -108,10 +108,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           DailySchedule(
             id: TaskScheduleRule.generateId(),
             scheduleId: _taskScheduleId,
-            startDate: civilTomorrow,
+            startDate: CivilDay.fromDateTime(now),
             interval: 1,
             startRelativeTime: RelativeTime(
-              dayOffset: diff,
+              dayOffset: 0,
               time: TimeOfDay.fromDateTime(now),
             ),
             dueRelativeTime: const RelativeTime(

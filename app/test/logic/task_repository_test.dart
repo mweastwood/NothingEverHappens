@@ -1709,6 +1709,167 @@ void main() {
         AppClock.reset();
       },
     );
+
+    group('Thorough Caching & Spawning Tests', () {
+      test(
+        'in-memory write tracker prevents duplicate spawning under database latency',
+        () async {
+          final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
+
+          final dailyTask = TaskSchedule(
+            id: 'tracker-duplicate-test',
+            title: 'Daily Task',
+            description: 'desc',
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 23),
+                interval: 1,
+              ),
+            ],
+          );
+
+          final firestore = FakeFirebaseFirestore();
+          final container = ProviderContainer(
+            overrides: [
+              authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
+              firestoreProvider.overrideWithValue(firestore),
+              notificationServiceProvider.overrideWithValue(
+                LoggingNotificationService(),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          await container.read(authStateProvider.future);
+          final repository = container.read(taskRepositoryProvider)!;
+
+          // Perform two operations rapidly without waiting for Firestore propagation
+          final tasksFuture1 = repository.addTaskSchedule(dailyTask);
+          final tasksFuture2 = repository.addTaskSchedule(dailyTask);
+
+          await Future.wait([tasksFuture1, tasksFuture2]);
+          await Future.delayed(const Duration(milliseconds: 200));
+
+          final insts = await firestore
+              .collection('users')
+              .doc(userId)
+              .collection('instances')
+              .get();
+
+          // Should spawn exactly 2 instances (today + 1 lookahead), no duplicates!
+          expect(insts.docs.length, 2);
+        },
+      );
+
+      test(
+        'write tracker TTL expires and allows re-spawning after 2 seconds when database is deleted directly',
+        () async {
+          final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
+
+          final dailyTask = TaskSchedule(
+            id: 'ttl-test-task',
+            title: 'Daily Task',
+            description: 'desc',
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 23),
+                interval: 1,
+              ),
+            ],
+          );
+
+          final firestore = FakeFirebaseFirestore();
+          final container = ProviderContainer(
+            overrides: [
+              authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
+              firestoreProvider.overrideWithValue(firestore),
+              notificationServiceProvider.overrideWithValue(
+                LoggingNotificationService(),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          await container.read(authStateProvider.future);
+          final repository = container.read(taskRepositoryProvider)!;
+
+          // Trigger evaluation
+          await repository.addTaskSchedule(dailyTask);
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          // Get the spawned instances
+          final userDocRef = firestore.collection('users').doc(userId);
+          final instsSnap1 = await userDocRef.collection('instances').get();
+          expect(instsSnap1.docs.length, 2);
+
+          // Delete one of the instances directly from firestore to simulate a missing/deleted instance
+          final deletedInst = instsSnap1.docs.firstWhere(
+            (d) => d.data()['scheduledDate']['day'] == 24,
+          );
+          final deletedInstId = deletedInst.id;
+          await userDocRef.collection('instances').doc(deletedInstId).delete();
+
+          // 1. If we evaluate immediately (under 2 seconds), write tracker cache is still fresh.
+          // It injects a virtual instance, so the evaluator thinks it still exists and does NOT re-spawn it.
+          await repository.triggerMissedPolicyProcessing();
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          final instsSnap2 = await userDocRef.collection('instances').get();
+          expect(instsSnap2.docs.length, 1); // Still 1 (not re-spawned)
+
+          // 2. Advance the clock past 2 seconds (e.g. 3 seconds)
+          AppClock.setMockTime(mockTime.add(const Duration(seconds: 3)));
+
+          // Evaluate again. The tracker entry has expired, so it is ignored.
+          // The evaluator sees the database is missing the instance, and re-spawns it!
+          await repository.triggerMissedPolicyProcessing();
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          final instsSnap3 = await userDocRef.collection('instances').get();
+          expect(instsSnap3.docs.length, 2); // Re-spawned successfully!
+        },
+      );
+
+      test(
+        'OneOff to Repeating Conversion shifts start date to today if defaulting to tomorrow',
+        () {
+          final now = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(now);
+          addTearDown(AppClock.reset);
+
+          final tomorrow = CivilDay.fromDateTime(
+            now.add(const Duration(days: 1)),
+          );
+
+          // Default one-off rule starts tomorrow with offset -1
+          final oneOffRule = OneOffSchedule(
+            id: 'rule-1',
+            scheduleId: 'task-1',
+            date: tomorrow,
+            startRelativeTime: const RelativeTime(
+              dayOffset: -1,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+          );
+
+          // Convert to daily repeating rule
+          final dailyRule =
+              convertRuleToKind(
+                    oneOffRule,
+                    HierarchicalRecurrenceKind.dailyFixed,
+                  )
+                  as DailySchedule;
+
+          // Should shift scheduledDate to today, and dayOffset to 0
+          expect(dailyRule.startDate, CivilDay.fromDateTime(now));
+          expect(dailyRule.startRelativeTime.dayOffset, 0);
+        },
+      );
+    });
   });
 }
 
