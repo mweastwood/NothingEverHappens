@@ -72,6 +72,7 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
   });
 
   ref.onDispose(() {
+    repo.dispose();
     AppClock.timeNotifier.removeListener(clockListener);
     if (lifecycleObserver != null) {
       try {
@@ -128,6 +129,10 @@ class TaskRepository {
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _userId = userId,
        _notificationService = notificationService;
+
+  void dispose() {
+    _triggerTimer?.cancel();
+  }
 
   CollectionReference<TaskSchedule> _tasksRefForUser(String userId) {
     return _firestore
