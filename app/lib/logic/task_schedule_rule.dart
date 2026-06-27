@@ -4,6 +4,7 @@ import 'civil_day.dart';
 import 'relative_time.dart';
 import 'scheduling_policy.dart';
 import 'missed_occurrence_policy.dart';
+import 'app_clock.dart';
 
 /// Defines how often a task reoccurs.
 List<RelativeTime> _parseNotificationRelativeTimes(Map<String, dynamic> json) {
@@ -1047,11 +1048,25 @@ TaskScheduleRule convertRuleToKind(
 ) {
   final id = existingRule.id;
   final scheduleId = existingRule.scheduleId;
-  final scheduledDate = existingRule.scheduledDate;
-  final startRelativeTime = existingRule.startRelativeTime;
+  var scheduledDate = existingRule.scheduledDate;
+  var startRelativeTime = existingRule.startRelativeTime;
   final dueRelativeTime = existingRule.dueRelativeTime;
   final notificationRelativeTimes = existingRule.notificationRelativeTimes;
   final missedOccurrencePolicy = existingRule.missedOccurrencePolicy;
+
+  if (kind != HierarchicalRecurrenceKind.oneOff) {
+    final now = AppClock.now;
+    final tomorrow = CivilDay.fromDateTime(now.add(const Duration(days: 1)));
+    if (existingRule is OneOffSchedule &&
+        scheduledDate == tomorrow &&
+        startRelativeTime.dayOffset == -1) {
+      scheduledDate = CivilDay.fromDateTime(now);
+      startRelativeTime = RelativeTime(
+        dayOffset: 0,
+        time: startRelativeTime.time,
+      );
+    }
+  }
 
   // Read existing interval if possible, default to 1
   int interval = 1;
