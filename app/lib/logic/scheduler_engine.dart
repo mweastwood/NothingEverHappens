@@ -25,8 +25,10 @@ class SchedulerEngine {
     TaskSchedule task,
     List<TaskInstance> taskInstances,
     DateTime now, {
-    int futureInstancesCount = 1,
+    int? futureInstancesCount,
   }) {
+    final resolvedFutureInstancesCount =
+        futureInstancesCount ?? task.futureInstancesCount;
     final today = CivilDay.fromDateTime(now);
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
 
@@ -219,7 +221,7 @@ class SchedulerEngine {
           }
 
           current = startFuture;
-          for (int j = 0; j < futureInstancesCount; j++) {
+          for (int j = 0; j < resolvedFutureInstancesCount; j++) {
             if (current.compareTo(today) > 0 &&
                 current.compareTo(maxEvaluationDate) <= 0) {
               targetDates.add(current);

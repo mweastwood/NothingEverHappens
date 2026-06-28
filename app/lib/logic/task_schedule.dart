@@ -84,6 +84,9 @@ class TaskSchedule {
   /// The ID of the user assigned to this task (null if unassigned).
   final String? assignedUserId;
 
+  /// The number of future instances to pre-create/spawn.
+  final int futureInstancesCount;
+
   TaskSchedule({
     required String id,
     required this.title,
@@ -99,6 +102,7 @@ class TaskSchedule {
     this.cycleId,
     this.preferredBy = const {},
     this.assignedUserId,
+    this.futureInstancesCount = 1,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
     MissedPolicy? missedPolicy,
@@ -169,6 +173,7 @@ class TaskSchedule {
     final preferredByRaw = data['preferredBy'] as Map<String, dynamic>? ?? {};
     final preferredBy = preferredByRaw.map((k, v) => MapEntry(k, v as bool));
     final assignedUserId = data['assignedUserId'] as String?;
+    final futureInstancesCount = data['futureInstancesCount'] as int? ?? 1;
 
     return TaskSchedule(
       id: snapshot.id,
@@ -187,6 +192,7 @@ class TaskSchedule {
       cycleId: cycleId,
       preferredBy: preferredBy,
       assignedUserId: assignedUserId,
+      futureInstancesCount: futureInstancesCount,
     );
   }
 
@@ -205,10 +211,10 @@ class TaskSchedule {
       if (cycleId != null) 'cycleId': cycleId,
       'preferredBy': preferredBy,
       if (assignedUserId != null) 'assignedUserId': assignedUserId,
+      'futureInstancesCount': futureInstancesCount,
     };
   }
 
-  /// Updates multiple fields of the task and returns the modified task and changes.
   TaskModification edit({
     required String newTitle,
     required String newDescription,
@@ -222,6 +228,7 @@ class TaskSchedule {
     String? newCycleId,
     Map<String, bool>? newPreferredBy,
     String? newAssignedUserId,
+    int? newFutureInstancesCount,
     SchedulingPolicy? newSchedulingPolicy,
     MissedOccurrencePolicy? newMissedOccurrencePolicy,
   }) {
@@ -269,6 +276,7 @@ class TaskSchedule {
       preferredBy: newPreferredBy,
       assignedUserId: newAssignedUserId,
       clearAssignedUserId: newAssignedUserId == null,
+      futureInstancesCount: newFutureInstancesCount,
     );
 
     final changes = <String, dynamic>{};
@@ -329,6 +337,11 @@ class TaskSchedule {
 
     if (assignedUserId != newAssignedUserId) {
       changes['assignedUserId'] = newAssignedUserId;
+    }
+
+    if (newFutureInstancesCount != null &&
+        newFutureInstancesCount != futureInstancesCount) {
+      changes['futureInstancesCount'] = newFutureInstancesCount;
     }
 
     return (newTask: newTask, changes: changes);
@@ -440,6 +453,7 @@ class TaskSchedule {
     Map<String, bool>? preferredBy,
     String? assignedUserId,
     bool clearAssignedUserId = false,
+    int? futureInstancesCount,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
@@ -462,6 +476,7 @@ class TaskSchedule {
       preferredBy: preferredBy,
       assignedUserId: assignedUserId,
       clearAssignedUserId: clearAssignedUserId,
+      futureInstancesCount: futureInstancesCount,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
     );
@@ -486,6 +501,7 @@ class TaskSchedule {
     Map<String, bool>? preferredBy,
     String? assignedUserId,
     bool clearAssignedUserId = false,
+    int? futureInstancesCount,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
@@ -531,6 +547,7 @@ class TaskSchedule {
       assignedUserId: clearAssignedUserId
           ? null
           : (assignedUserId ?? this.assignedUserId),
+      futureInstancesCount: futureInstancesCount ?? this.futureInstancesCount,
     );
   }
 

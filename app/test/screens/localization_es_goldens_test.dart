@@ -54,7 +54,7 @@ void main() {
     tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([]);
     instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([]);
     settingsSubject = BehaviorSubject<UserSettings>.seeded(
-      const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
+      const UserSettings(hoursAvailable: 8.0),
     );
 
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
@@ -173,9 +173,7 @@ void main() {
           ),
           familyRepositoryProvider.overrideWithValue(familyRepo),
           userSettingsProvider.overrideWith(
-            (ref) => Stream.value(
-              const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
-            ),
+            (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
           ),
         ],
         child: const HomeScreen(),
@@ -231,9 +229,7 @@ void main() {
           ),
           familyRepositoryProvider.overrideWithValue(familyRepo),
           userSettingsProvider.overrideWith(
-            (ref) => Stream.value(
-              const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
-            ),
+            (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
           ),
         ],
         child: const HomeScreen(),
@@ -313,9 +309,7 @@ void main() {
           ),
           familyRepositoryProvider.overrideWithValue(familyRepo),
           userSettingsProvider.overrideWith(
-            (ref) => Stream.value(
-              const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
-            ),
+            (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
           ),
         ],
         child: const HomeScreen(),

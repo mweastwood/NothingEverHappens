@@ -13,9 +13,11 @@ import '../logic/family_repository.dart';
 import '../logic/undo_notifier.dart';
 import '../widgets/undo_snackbar.dart';
 
-import '../widgets/upcoming_occurrences_preview.dart';
 import '../widgets/standard_choice_chip.dart';
 import '../widgets/schedule_config_card.dart';
+import '../widgets/future_instances_control.dart';
+import '../widgets/spawned_future_instances_list.dart';
+import '../logic/task_instance.dart';
 import 'help_screen.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
@@ -66,6 +68,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   String? _cycleId;
   Map<String, bool> _preferredBy = const {};
   String? _assignedUserId;
+  int _futureInstancesCount = 1;
 
   @override
   void initState() {
@@ -81,6 +84,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       _cycleId = task.cycleId;
       _preferredBy = Map<String, bool>.from(task.preferredBy);
       _assignedUserId = task.assignedUserId;
+      _futureInstancesCount = task.futureInstancesCount;
       if (task.estimatedDuration != null) {
         _estimatedDurationController.text = task.estimatedDuration!.inMinutes
             .toString();
@@ -91,6 +95,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       }
     } else {
       _taskScheduleId = TaskSchedule.generateId();
+      _futureInstancesCount = 1;
       final now = AppClock.now;
       final tomorrow = now.add(const Duration(days: 1));
       final civilTomorrow = CivilDay.fromDateTime(tomorrow);
@@ -226,6 +231,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           cycleId: _cycleId,
           preferredBy: _preferredBy,
           assignedUserId: _assignedUserId,
+          futureInstancesCount: _futureInstancesCount,
         );
 
         final repository = ref.read(taskRepositoryProvider);
@@ -256,6 +262,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               newCycleId: _cycleId,
               newPreferredBy: _preferredBy,
               newAssignedUserId: _assignedUserId,
+              newFutureInstancesCount: _futureInstancesCount,
             );
             await repository
                 .updateTaskSchedule(modification)
@@ -539,7 +546,11 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     );
   }
 
-  Widget _buildScheduleSection(BuildContext context, bool readOnly) {
+  Widget _buildScheduleSection(
+    BuildContext context,
+    bool readOnly,
+    List<TaskInstance> dbInstances,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -630,11 +641,40 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           ),
         ),
 
-        if (_schedules.any((s) => s is! OneOffSchedule)) ...[
+        if (_schedules.isNotEmpty) ...[
+          if (_schedules.any((s) => s is! OneOffSchedule)) ...[
+            const SizedBox(height: 16),
+            FutureInstancesControl(
+              futureInstancesCount: _futureInstancesCount,
+              onChanged: readOnly
+                  ? null
+                  : (val) {
+                      setState(() {
+                        _futureInstancesCount = val;
+                      });
+                    },
+            ),
+          ],
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
-          UpcomingOccurrencesPreview(schedules: _schedules, maxOccurrences: 10),
+          SpawnedFutureInstancesList(
+            task: TaskSchedule(
+              id: _taskScheduleId,
+              title: _titleController.text.isEmpty
+                  ? 'Untitled'
+                  : _titleController.text,
+              description: _descriptionController.text,
+              schedules: _schedules,
+              isFamily: _isFamily,
+              priority: _priority,
+              cycleId: _cycleId,
+              assignedUserId: _assignedUserId,
+              futureInstancesCount: _futureInstancesCount,
+            ),
+            dbInstances: dbInstances,
+            now: AppClock.now,
+          ),
         ],
       ],
     );
@@ -643,6 +683,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   @override
   Widget build(BuildContext context) {
     final familyRepo = ref.watch(familyRepositoryProvider);
+    final instancesVal = ref.watch(taskInstancesProvider);
+    final dbInstances =
+        instancesVal.value
+            ?.where((inst) => inst.scheduleId == _taskScheduleId)
+            .toList() ??
+        const <TaskInstance>[];
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: familyRepo?.getProfile() ?? const Stream.empty(),
       builder: (context, snapshot) {
@@ -754,6 +800,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                   final scheduleSection = _buildScheduleSection(
                     context,
                     readOnly,
+                    dbInstances,
                   );
                   final effortAndPriorityCard = _buildEffortAndPriorityCard(
                     context,

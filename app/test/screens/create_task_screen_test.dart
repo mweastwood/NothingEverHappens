@@ -17,6 +17,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:nothing_ever_happens/widgets/future_instances_control.dart';
 import 'create_task_screen_test.mocks.dart';
 import '../test_helper.dart';
 import 'package:nothing_ever_happens/screens/help_screen.dart';
@@ -237,6 +238,9 @@ void main() {
     CreateTaskScreen.debugDisableAnimations = true;
     try {
       final mockRepository = MockTaskRepository();
+      when(
+        mockRepository.getInstances(),
+      ).thenAnswer((_) => const Stream.empty());
       final completer = Completer<void>();
       when(
         mockRepository.addTaskSchedule(any),
@@ -337,6 +341,9 @@ void main() {
 
     setUp(() {
       mockRepository = MockTaskRepository();
+      when(
+        mockRepository.getInstances(),
+      ).thenAnswer((_) => const Stream.empty());
     });
 
     Widget createWidgetUnderTest() {
@@ -628,6 +635,9 @@ void main() {
     setUp(() {
       firestore = FakeFirebaseFirestore();
       mockTaskRepository = MockTaskRepository();
+      when(
+        mockTaskRepository.getInstances(),
+      ).thenAnswer((_) => const Stream.empty());
       familyRepository = FamilyRepository(
         firestore: firestore,
         userId: 'test-user-id',
@@ -939,29 +949,65 @@ void main() {
       await tester.pumpWidget(createWidget());
       await tester.pump();
 
-      // Initially one-off, should NOT show occurrences preview
-      expect(find.byKey(const Key('occurrence_card_0')), findsNothing);
-      expect(find.byKey(const Key('occurrence_card_1')), findsNothing);
+      // Initially one-off, starts now, so 0 future occurrences
+      expect(find.byKey(const Key('spawned_occurrence_card_0')), findsNothing);
 
       // Switch to Daily schedule
       await tester.tap(find.text('Repeating'));
       await tester.pumpAndSettle();
 
-      // Should show 10 occurrences by default (maxOccurrences = 10 in CreateTaskScreen)
-      expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
-      expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
-      expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
+      // Should show 1 future occurrences by default (futureInstancesCount = 1)
+      expect(
+        find.byKey(const Key('spawned_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('spawned_occurrence_card_1')), findsNothing);
+
+      // Increment future instances to 3
+      final incrementButton = find.byKey(
+        const Key('add_future_instances_button'),
+      );
+      await tester.ensureVisible(incrementButton);
+      await tester.tap(incrementButton);
+      await tester.pumpAndSettle();
+      await tester.tap(incrementButton);
+      await tester.pumpAndSettle();
+
+      // Should show 3 future occurrences now (March 9, March 10, March 11)
+      expect(
+        find.byKey(const Key('spawned_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('spawned_occurrence_card_1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('spawned_occurrence_card_2')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('spawned_occurrence_card_3')), findsNothing);
 
       // Change interval to 3
       final intervalField = find.byKey(const Key('interval_text_field'));
-      expect(intervalField, findsOneWidget);
+      await tester.ensureVisible(intervalField);
       await tester.enterText(intervalField, '3');
       await tester.pumpAndSettle();
 
-      // Verify occurrences updated (dynamic preview rebuild)
-      expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
-      expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
-      expect(find.byKey(const Key('occurrence_card_10')), findsNothing);
+      // Verify occurrences still has 3 cards (dynamic preview rebuild with new interval: March 11, March 14, March 17)
+      expect(
+        find.byKey(const Key('spawned_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('spawned_occurrence_card_1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('spawned_occurrence_card_2')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('spawned_occurrence_card_3')), findsNothing);
     });
   });
 
@@ -970,6 +1016,9 @@ void main() {
 
     setUp(() {
       mockRepository = MockTaskRepository();
+      when(
+        mockRepository.getInstances(),
+      ).thenAnswer((_) => const Stream.empty());
     });
 
     testWidgets(
@@ -1070,6 +1119,80 @@ void main() {
 
         // Verify updateTaskSchedule was called again to revert
         verify(mockRepository.updateTaskSchedule(any)).called(1);
+      },
+    );
+
+    testWidgets(
+      'CreateTaskScreen shows futureInstancesControl for repeating tasks and saves correct count',
+      (WidgetTester tester) async {
+        final mockRepository = MockTaskRepository();
+        when(
+          mockRepository.getInstances(),
+        ).thenAnswer((_) => const Stream.empty());
+        when(mockRepository.addTaskSchedule(any)).thenAnswer((_) async {});
+
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: const CreateTaskScreen(defaultToRepeating: true),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Title and description
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Title'),
+          'Daily Chores',
+        );
+
+        // Verify future instances control is visible and initially shows 1
+        expect(
+          find.byKey(const Key('add_future_instances_button')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byType(FutureInstancesControl),
+            matching: find.text('1'),
+          ),
+          findsOneWidget,
+        );
+
+        // Tap increment button
+        final incrementButton = find.byKey(
+          const Key('add_future_instances_button'),
+        );
+        await tester.ensureVisible(incrementButton);
+        await tester.tap(incrementButton);
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: find.byType(FutureInstancesControl),
+            matching: find.text('2'),
+          ),
+          findsOneWidget,
+        );
+
+        // Save
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        // Capture verification
+        final verification = verify(mockRepository.addTaskSchedule(captureAny));
+        verification.called(1);
+        final TaskSchedule savedTask = verification.captured.single;
+        expect(savedTask.futureInstancesCount, 2);
       },
     );
   });
