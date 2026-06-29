@@ -41,6 +41,7 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV }}'
           channelId: live
           projectId: nothing-ever-happens-dev
+          firebaseToolsVersion: '15.22.2'
         env:
           FIREBASE_CLI_PREVIEWS: hostingchannels
 
