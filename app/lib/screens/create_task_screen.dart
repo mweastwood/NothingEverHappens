@@ -16,7 +16,7 @@ import '../widgets/undo_snackbar.dart';
 import '../widgets/standard_choice_chip.dart';
 import '../widgets/schedule_config_card.dart';
 import '../widgets/future_instances_control.dart';
-import '../widgets/spawned_future_instances_list.dart';
+import '../widgets/spawned_instances_list.dart';
 import '../logic/task_instance.dart';
 import 'help_screen.dart';
 
@@ -658,7 +658,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
-          SpawnedFutureInstancesList(
+          SpawnedInstancesList(
             task: TaskSchedule(
               id: _taskScheduleId,
               title: _titleController.text.isEmpty

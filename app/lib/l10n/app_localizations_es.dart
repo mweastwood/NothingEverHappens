@@ -693,6 +693,30 @@ class AppLocalizationsEs extends AppLocalizations {
       'No hay ocurrencias programadas. Asegúrate de que todos los datos sean válidos.';
 
   @override
+  String get pastOccurrencesHeader => 'Últimas 10 ocurrencias';
+
+  @override
+  String get noPastOccurrencesPlaceholder => 'No hay ocurrencias pasadas.';
+
+  @override
+  String occurrenceCompleted(String dateTime) {
+    return 'Completada: $dateTime';
+  }
+
+  @override
+  String get occurrenceSkipped => 'Omitida';
+
+  @override
+  String occurrenceMissed(String dateTime) {
+    return 'Perdida (Vence: $dateTime)';
+  }
+
+  @override
+  String occurrenceActive(String dateTime) {
+    return 'Activa (Vence: $dateTime)';
+  }
+
+  @override
   String get visualCalendarGridHeader => 'Cuadrícula de Calendario Visual';
 
   @override
