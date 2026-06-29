@@ -240,6 +240,43 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     return '${schedule.startRelativeTime.time.format(context)} - ${schedule.dueRelativeTime.time.format(context)}';
   }
 
+  String _getMissedPolicyString(BuildContext context, TaskScheduleRule rule) {
+    if (rule is OneOffSchedule) return '';
+    final policy = rule.missedOccurrencePolicy;
+    switch (policy.policy) {
+      case MissedPolicy.preferNewer:
+        return context.l10n.preferNewerTitle;
+      case MissedPolicy.preferOlder:
+        return context.l10n.preferOlderTitle;
+      case MissedPolicy.stack:
+        return context.l10n.stackPolicyTitle;
+      case MissedPolicy.autoDismiss:
+        final minutes = policy.gracePeriod.inMinutes;
+        if (minutes == 0) {
+          return '${context.l10n.autoDismissPolicyTitle} (${context.l10n.immediatelyPolicy})';
+        } else if (minutes == 60) {
+          return '${context.l10n.autoDismissPolicyTitle} (${context.l10n.oneHourPolicy})';
+        } else if (minutes == 6 * 60) {
+          return '${context.l10n.autoDismissPolicyTitle} (${context.l10n.sixHoursPolicy})';
+        } else if (minutes == 12 * 60) {
+          return '${context.l10n.autoDismissPolicyTitle} (${context.l10n.twelveHoursPolicy})';
+        } else if (minutes == 24 * 60) {
+          return '${context.l10n.autoDismissPolicyTitle} (${context.l10n.twentyFourHoursPolicy})';
+        } else if (minutes % (7 * 24 * 60) == 0) {
+          final weeks = minutes ~/ (7 * 24 * 60);
+          return '${context.l10n.autoDismissPolicyTitle} ($weeks ${context.l10n.unitWeeks})';
+        } else if (minutes % (24 * 60) == 0) {
+          final days = minutes ~/ (24 * 60);
+          return '${context.l10n.autoDismissPolicyTitle} ($days ${context.l10n.unitDays})';
+        } else if (minutes % 60 == 0) {
+          final hours = minutes ~/ 60;
+          return '${context.l10n.autoDismissPolicyTitle} ($hours ${context.l10n.unitHours})';
+        } else {
+          return '${context.l10n.autoDismissPolicyTitle} ($minutes ${context.l10n.unitMinutes})';
+        }
+    }
+  }
+
   Color _getPriorityColor(TaskPriority priority) {
     switch (priority) {
       case TaskPriority.high:
@@ -433,15 +470,9 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     bool showLastSpawnedDate,
   ) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-          width: 0.8,
-        ),
-        borderRadius: BorderRadius.circular(8.0),
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      elevation: 2.0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -607,6 +638,33 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                         .withValues(alpha: 0.8),
                                   ),
                                 ),
+                              if (rule is! OneOffSchedule) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      Icons.assignment_late_outlined,
+                                      size: 14,
+                                      color: theme.colorScheme.onSurfaceVariant
+                                          .withValues(alpha: 0.8),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        _getMissedPolicyString(context, rule),
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSurfaceVariant
+                                                  .withValues(alpha: 0.8),
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                               if (isNarrow) ...[
                                 const SizedBox(height: 4),
                                 Row(
