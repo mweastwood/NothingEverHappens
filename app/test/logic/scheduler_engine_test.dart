@@ -680,6 +680,26 @@ void main() {
           expect(action.instancesToUpdate, isEmpty);
         },
       );
+
+      test('uses task.futureInstancesCount if parameter is omitted', () {
+        final dailyRule = DailySchedule(
+          startDate: today.addDays(1),
+          interval: 1,
+        );
+        final task = TaskSchedule(
+          id: 'task-fallback-count',
+          title: 'Daily Task',
+          description: 'Desc',
+          futureInstancesCount: 3,
+          schedules: [dailyRule],
+        );
+
+        // Evaluate without passing futureInstancesCount parameter
+        final action = SchedulerEngine.evaluate(task, const [], now);
+
+        // It should spawn 3 instances (the fallback from task.futureInstancesCount)
+        expect(action.instancesToSpawn, hasLength(3));
+      });
     });
   });
 }

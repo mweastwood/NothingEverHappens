@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -32,6 +34,7 @@ void main() {
   }
 
   setUpAll(() async {
+    print('[setUpAll] Initializing Firebase...');
     if (Firebase.apps.isEmpty) {
       FirebaseOptions options;
       try {
@@ -43,64 +46,101 @@ void main() {
       await Firebase.initializeApp(options: options);
     }
     // Configure client SDKs to use the local emulators
+    print('[setUpAll] Configuring emulators...');
     FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
     await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+    print('[setUpAll] Emulators configured.');
   });
 
   setUp(() async {
+    print('[setUp] Starting setup...');
+    print('[setUp] Clearing Firestore emulator...');
     await clearFirestoreEmulator(projectId);
+    print('[setUp] Clearing Auth emulator...');
     await clearAuthEmulator(projectId);
+    print('[setUp] Signing out current user...');
     await FirebaseAuth.instance.signOut();
-    // Wait for FirebaseAuth to settle the sign-out
+    print(
+      '[setUp] Waiting for authStateChanges stream to emit null (signed out)...',
+    );
     await FirebaseAuth.instance.authStateChanges().firstWhere(
       (user) => user == null,
     );
-    await Future.delayed(const Duration(milliseconds: 200));
+    print('[setUp] authStateChanges emitted null.');
+    await Future.delayed(const Duration(milliseconds: 300));
+    print('[setUp] Setup complete.');
   });
 
   Future<User> registerAndSignIn(String email, String password) async {
+    print('[registerAndSignIn] Starting for email: $email');
     final auth = FirebaseAuth.instance;
     UserCredential creds;
     try {
+      print('[registerAndSignIn] Creating user...');
       creds = await auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      print('[registerAndSignIn] User created: ${creds.user?.uid}');
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
+        print(
+          '[registerAndSignIn] Email already in use. Signing in instead...',
+        );
         creds = await auth.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
+        print('[registerAndSignIn] Signed in user: ${creds.user?.uid}');
       } else {
+        print('[registerAndSignIn] FirebaseAuthException: $e');
         rethrow;
       }
     }
 
     // Wait for auth state changes to propagate in FirebaseAuth
+    print('[registerAndSignIn] Waiting for authStateChanges to propagate...');
     await auth.authStateChanges().firstWhere(
       (user) => user?.uid == creds.user?.uid,
     );
+    print('[registerAndSignIn] authStateChanges propagated.');
 
     // Wait for Firestore to synchronize with the new credentials
     final db = FirebaseFirestore.instance;
     int attempts = 0;
-    while (attempts < 20) {
+    const maxAttempts =
+        100; // Increased to 100 to allow plenty of time for slow virtualized CI environments
+    print('[registerAndSignIn] Starting Firestore synchronization loop...');
+    while (attempts < maxAttempts) {
       try {
-        await db.collection('users').doc(creds.user!.uid).get();
+        print(
+          '[registerAndSignIn] Attempt ${attempts + 1}/$maxAttempts: Reading user document...',
+        );
+        final doc = await db.collection('users').doc(creds.user!.uid).get();
+        print(
+          '[registerAndSignIn] Success! Firestore auth is synchronized (doc exists: ${doc.exists}).',
+        );
         break; // Success! Firestore auth is synchronized.
       } on FirebaseException catch (e) {
         if (e.code == 'permission-denied') {
+          print(
+            '[registerAndSignIn] Attempt ${attempts + 1}/$maxAttempts: Firestore returned permission-denied. Retrying...',
+          );
           attempts++;
-          await Future.delayed(const Duration(milliseconds: 100));
+          await Future.delayed(const Duration(milliseconds: 150));
         } else {
+          print('[registerAndSignIn] Unexpected FirebaseException: $e');
           rethrow;
         }
       } catch (e) {
+        print('[registerAndSignIn] Unexpected exception: $e');
         rethrow;
       }
     }
-    if (attempts >= 20) {
+    if (attempts >= maxAttempts) {
+      print(
+        '[registerAndSignIn] ERROR: Firestore auth failed to synchronize after $maxAttempts attempts.',
+      );
       throw Exception(
         'Firestore auth failed to sync for UID: ${creds.user!.uid}',
       );
@@ -110,12 +150,20 @@ void main() {
   }
 
   Future<void> expectPermissionDenied(Future<dynamic> functionCall) async {
+    print('[expectPermissionDenied] Executing operation...');
     try {
       await functionCall;
+      print(
+        '[expectPermissionDenied] ERROR: Operation succeeded but should have failed.',
+      );
       fail('Expected permission-denied but operation succeeded.');
     } on FirebaseException catch (e) {
+      print(
+        '[expectPermissionDenied] Caught FirebaseException with code: ${e.code}',
+      );
       expect(e.code, 'permission-denied');
     } catch (e) {
+      print('[expectPermissionDenied] ERROR: Caught unexpected exception: $e');
       fail('Expected FirebaseException with permission-denied but got: $e');
     }
   }

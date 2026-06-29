@@ -1564,20 +1564,20 @@ void main() {
     );
 
     test(
-      'taskRepositoryProvider reacts to futureInstancesCount change and triggers missed policy processing',
+      'updateTaskSchedule reacts to futureInstancesCount change and triggers missed policy processing',
       () async {
         final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
         AppClock.setMockTime(mockTime);
 
         final firestore = FakeFirebaseFirestore();
-        final settingsController = StreamController<UserSettings>(sync: true);
 
-        // Add a daily task schedule to firestore
+        // Add a daily task schedule to firestore with futureInstancesCount = 1
         final task = TaskSchedule(
           id: 'settings-reactive-task',
           title: 'Daily Task',
           description: 'Desc',
           lastSpawnedDate: null,
+          futureInstancesCount: 1,
           schedules: [
             DailySchedule(
               startDate: const CivilDay(year: 2026, month: 6, day: 24),
@@ -1598,7 +1598,7 @@ void main() {
             authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
             firestoreProvider.overrideWithValue(firestore),
             userSettingsProvider.overrideWith(
-              (ref) => settingsController.stream,
+              (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
             ),
             notificationServiceProvider.overrideWithValue(
               LoggingNotificationService(),
@@ -1607,23 +1607,10 @@ void main() {
         );
         addTearDown(container.dispose);
 
-        // First, write settings to Firestore and emit them on the stream
-        final settings1 = const UserSettings(
-          hoursAvailable: 8.0,
-          futureInstancesCount: 1,
-        );
-        await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('settings')
-            .doc('agile')
-            .set(settings1.toJson());
-        settingsController.add(settings1);
-
         // Await the auth state stream to emit the fake user
         await container.read(authStateProvider.future);
 
-        // Read taskRepositoryProvider to initialize the repository and the listener
+        // Read taskRepositoryProvider to initialize the repository
         final repository = container.read(taskRepositoryProvider);
         expect(repository, isNotNull);
 
@@ -1651,24 +1638,25 @@ void main() {
             )
             .length;
         expect(j24Count, 1);
+        expect(instsAfter1.docs.length, 1);
 
-        final totalCount1 = instsAfter1.docs.length;
-        expect(totalCount1, 1);
-
-        // Now, change futureInstancesCount to 3, write to Firestore, and emit on the stream
-        final settings3 = const UserSettings(
-          hoursAvailable: 8.0,
-          futureInstancesCount: 3,
+        // Now, update task with futureInstancesCount = 3
+        final modification = task.edit(
+          newTitle: task.title,
+          newDescription: task.description,
+          newSchedules: task.schedules,
+          newEstimatedDuration: task.estimatedDuration,
+          newMissedPolicy: task.missedPolicy,
+          newIsMaster: task.isMaster,
+          newLastSpawnedDate: task.lastSpawnedDate,
+          newIsFamily: task.isFamily,
+          newPriority: task.priority,
+          newFutureInstancesCount: 3,
         );
-        await firestore
-            .collection('users')
-            .doc(userId)
-            .collection('settings')
-            .doc('agile')
-            .set(settings3.toJson());
-        settingsController.add(settings3);
 
-        // Wait for the listener to process and spawn
+        await repository.updateTaskSchedule(modification);
+
+        // Let the repository process and spawn
         await Future.delayed(const Duration(milliseconds: 100));
 
         // Verify that 3 future instances have been created (for June 24, 25, 26)
@@ -1705,7 +1693,6 @@ void main() {
         expect(hasJune26, isTrue);
         expect(instsAfter3.docs.length, 3);
 
-        await settingsController.close();
         AppClock.reset();
       },
     );

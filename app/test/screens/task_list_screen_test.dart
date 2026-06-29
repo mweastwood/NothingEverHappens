@@ -1234,97 +1234,13 @@ void main() {
     },
   );
 
-  testWidgets(
-    'TaskListScreen displays future pending tasks when showPendingTasks is enabled in UserSettings',
-    (WidgetTester tester) async {
-      final mockAuthRepository = MockAuthRepository();
-      final mockTaskRepository = MockTaskRepository();
-
-      final startTime = DateTime.now();
-      final taskDate = CivilDay.fromDateTime(startTime);
-
-      final taskStartLocalTime = startTime.add(const Duration(minutes: 5));
-      final relativeStart = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay.fromDateTime(taskStartLocalTime),
-      );
-      final relativeDue = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay.fromDateTime(startTime.add(const Duration(hours: 1))),
-      );
-
-      final futureTask = TaskSchedule(
-        id: 'future-task-1',
-        title: 'Future Task',
-        description: 'Starts in 5 minutes',
-        schedules: [
-          OneOffSchedule(
-            date: taskDate,
-            startRelativeTime: relativeStart,
-            dueRelativeTime: relativeDue,
-          ),
-        ],
-      );
-
-      final tasksSubj = BehaviorSubject<List<TaskSchedule>>.seeded([
-        futureTask,
-      ]);
-      final futureInstance = TaskInstance(
-        id: 'I-future-task-1_inst',
-        scheduleId: futureTask.id,
-        ruleId: futureTask.schedules.first.id,
-        title: futureTask.title,
-        description: futureTask.description,
-        scheduledDate: taskDate,
-        startRelativeTime: relativeStart,
-        dueRelativeTime: relativeDue,
-        status: 'pending',
-      );
-      final instancesSubj = BehaviorSubject<List<TaskInstance>>.seeded([
-        futureInstance,
-      ]);
-
-      when(mockAuthRepository.signOut()).thenAnswer((_) async {});
-      when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubj.stream);
-      when(
-        mockTaskRepository.getInstances(),
-      ).thenAnswer((_) => instancesSubj.stream);
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            authRepositoryProvider.overrideWithValue(mockAuthRepository),
-            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
-            userSettingsProvider.overrideWith(
-              (ref) => Stream.value(
-                const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
-              ),
-            ),
-          ],
-          child: buildTestableWidget(child: const HomeScreen()),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Future Task'), findsOneWidget);
-      expect(find.text('Pending'), findsOneWidget);
-
-      await tasksSubj.close();
-      await instancesSubj.close();
-    },
-  );
-
-  testGoldens('TaskListScreen - Shows Pending Tasks with Badge', (
-    tester,
+  testWidgets('TaskListScreen does not display future pending tasks', (
+    WidgetTester tester,
   ) async {
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
-    final settingsSubject = BehaviorSubject<UserSettings>.seeded(
-      const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
-    );
 
-    final startTime = DateTime(2026, 6, 22, 12, 0);
-    AppClock.setMockTime(startTime);
+    final startTime = DateTime.now();
     final taskDate = CivilDay.fromDateTime(startTime);
 
     final taskStartLocalTime = startTime.add(const Duration(minutes: 5));
@@ -1339,7 +1255,7 @@ void main() {
 
     final futureTask = TaskSchedule(
       id: 'future-task-1',
-      title: 'Future Pending Task',
+      title: 'Future Task',
       description: 'Starts in 5 minutes',
       schedules: [
         OneOffSchedule(
@@ -1350,6 +1266,7 @@ void main() {
       ],
     );
 
+    final tasksSubj = BehaviorSubject<List<TaskSchedule>>.seeded([futureTask]);
     final futureInstance = TaskInstance(
       id: 'I-future-task-1_inst',
       scheduleId: futureTask.id,
@@ -1361,34 +1278,35 @@ void main() {
       dueRelativeTime: relativeDue,
       status: 'pending',
     );
+    final instancesSubj = BehaviorSubject<List<TaskInstance>>.seeded([
+      futureInstance,
+    ]);
 
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
-    when(
-      mockTaskRepository.getTasks(),
-    ).thenAnswer((_) => Stream.value([futureTask]));
+    when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubj.stream);
     when(
       mockTaskRepository.getInstances(),
-    ).thenAnswer((_) => Stream.value([futureInstance]));
+    ).thenAnswer((_) => instancesSubj.stream);
 
-    await tester.pumpWidgetBuilder(
+    await tester.pumpWidget(
       ProviderScope(
         overrides: [
           authRepositoryProvider.overrideWithValue(mockAuthRepository),
           taskRepositoryProvider.overrideWithValue(mockTaskRepository),
-          userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
+          userSettingsProvider.overrideWith(
+            (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+          ),
         ],
-        child: const HomeScreen(),
+        child: buildTestableWidget(child: const HomeScreen()),
       ),
-      wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(400, 800),
     );
-
     await tester.pumpAndSettle();
 
-    await screenMatchesGolden(tester, 'task_list_screen_pending_tasks');
+    expect(find.text('Future Task'), findsNothing);
+    expect(find.text('Pending'), findsNothing);
 
-    await settingsSubject.close();
-    AppClock.reset();
+    await tasksSubj.close();
+    await instancesSubj.close();
   });
 
   testWidgets('TaskListScreen sorts tasks correctly by name, due time, priority', (
@@ -1397,7 +1315,7 @@ void main() {
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
 
-    final now = DateTime(2026, 6, 22, 8, 0);
+    final now = DateTime(2026, 6, 22, 12, 0);
     AppClock.setMockTime(now);
     final taskDate = CivilDay.fromDateTime(now);
 
@@ -1514,9 +1432,7 @@ void main() {
           authRepositoryProvider.overrideWithValue(mockAuthRepository),
           taskRepositoryProvider.overrideWithValue(mockTaskRepository),
           userSettingsProvider.overrideWith(
-            (ref) => Stream.value(
-              const UserSettings(hoursAvailable: 8.0, showPendingTasks: true),
-            ),
+            (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
           ),
         ],
         child: buildTestableWidget(child: const HomeScreen()),

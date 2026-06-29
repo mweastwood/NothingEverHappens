@@ -12,8 +12,6 @@ import 'task_instance.dart';
 import 'notification_service.dart';
 import 'auth_repository.dart';
 import 'scheduler_engine.dart';
-import 'user_settings.dart';
-import 'user_settings_repository.dart';
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
   final VoidCallback onResume;
@@ -80,16 +78,6 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
       } catch (_) {}
     }
     dayChangeTimer.cancel();
-  });
-
-  ref.listen<AsyncValue<UserSettings>>(userSettingsProvider, (previous, next) {
-    final prevVal = previous?.value;
-    final nextVal = next.value;
-    if (prevVal != null && nextVal != null) {
-      if (prevVal.futureInstancesCount != nextVal.futureInstancesCount) {
-        repo.triggerMissedPolicyProcessing();
-      }
-    }
   });
 
   return repo;
@@ -416,16 +404,6 @@ class TaskRepository {
 
       final familyId = await _getFamilyId();
 
-      // Fetch UserSettings for futureInstancesCount
-      final settingsSnapshot = await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('settings')
-          .doc('agile')
-          .get();
-      final userSettings = UserSettings.fromJson(settingsSnapshot.data() ?? {});
-      final futureInstancesCount = userSettings.futureInstancesCount;
-
       // Fetch all instances
       final personalInstances = await _instancesRef.get();
       final List<TaskInstance> allInstances = personalInstances.docs
@@ -516,7 +494,7 @@ class TaskRepository {
           task,
           taskInstances,
           now,
-          futureInstancesCount: futureInstancesCount,
+          futureInstancesCount: task.futureInstancesCount,
         );
 
         for (final inst in action.instancesToUpdate) {
@@ -750,7 +728,7 @@ class TaskRepository {
     await batch.commit();
     await _notificationService?.scheduleNotifications(newTask);
 
-    if (schedulesChanged) {
+    if (schedulesChanged || changes.containsKey('futureInstancesCount')) {
       _checkAndProcessMissedPolicies([newTask]);
     }
   }
@@ -971,6 +949,9 @@ class TaskRepository {
 
   String _getScheduleSignature(TaskSchedule task) {
     final rulesJson = task.schedules.map((s) => s.toJson()).toList();
-    return jsonEncode(rulesJson);
+    return jsonEncode({
+      'rules': rulesJson,
+      'futureInstancesCount': task.futureInstancesCount,
+    });
   }
 }
