@@ -691,6 +691,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'No future occurrences scheduled. Ensure all inputs are valid.';
 
   @override
+  String get pastOccurrencesHeader => 'Last 10 Occurrences';
+
+  @override
+  String get noPastOccurrencesPlaceholder => 'No past occurrences.';
+
+  @override
+  String occurrenceCompleted(String dateTime) {
+    return 'Completed: $dateTime';
+  }
+
+  @override
+  String get occurrenceSkipped => 'Skipped';
+
+  @override
+  String occurrenceMissed(String dateTime) {
+    return 'Missed (Due: $dateTime)';
+  }
+
+  @override
+  String occurrenceActive(String dateTime) {
+    return 'Active (Due: $dateTime)';
+  }
+
+  @override
   String get visualCalendarGridHeader => 'Visual Calendar Grid';
 
   @override

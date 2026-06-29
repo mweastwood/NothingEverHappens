@@ -395,6 +395,33 @@
   "invalidIntervalError": "Please enter a valid interval greater than 0",
   "occurrencesHeader": "Next 10 Occurrences",
   "noOccurrencesPlaceholder": "No future occurrences scheduled. Ensure all inputs are valid.",
+  "pastOccurrencesHeader": "Last 10 Occurrences",
+  "noPastOccurrencesPlaceholder": "No past occurrences.",
+  "occurrenceCompleted": "Completed: {dateTime}",
+  "@occurrenceCompleted": {
+    "placeholders": {
+      "dateTime": {
+        "type": "String"
+      }
+    }
+  },
+  "occurrenceSkipped": "Skipped",
+  "occurrenceMissed": "Missed (Due: {dateTime})",
+  "@occurrenceMissed": {
+    "placeholders": {
+      "dateTime": {
+        "type": "String"
+      }
+    }
+  },
+  "occurrenceActive": "Active (Due: {dateTime})",
+  "@occurrenceActive": {
+    "placeholders": {
+      "dateTime": {
+        "type": "String"
+      }
+    }
+  },
   "visualCalendarGridHeader": "Visual Calendar Grid",
   "dayIsRequiredError": "Day is required",
   "dayMustBeBetweenError": "Day must be between 1 and {max}",

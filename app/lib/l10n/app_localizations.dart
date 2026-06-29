@@ -1274,6 +1274,42 @@ abstract class AppLocalizations {
   /// **'No future occurrences scheduled. Ensure all inputs are valid.'**
   String get noOccurrencesPlaceholder;
 
+  /// No description provided for @pastOccurrencesHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 10 Occurrences'**
+  String get pastOccurrencesHeader;
+
+  /// No description provided for @noPastOccurrencesPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'No past occurrences.'**
+  String get noPastOccurrencesPlaceholder;
+
+  /// No description provided for @occurrenceCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed: {dateTime}'**
+  String occurrenceCompleted(String dateTime);
+
+  /// No description provided for @occurrenceSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get occurrenceSkipped;
+
+  /// No description provided for @occurrenceMissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed (Due: {dateTime})'**
+  String occurrenceMissed(String dateTime);
+
+  /// No description provided for @occurrenceActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active (Due: {dateTime})'**
+  String occurrenceActive(String dateTime);
+
   /// No description provided for @visualCalendarGridHeader.
   ///
   /// In en, this message translates to:
