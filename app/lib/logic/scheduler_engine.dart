@@ -221,16 +221,23 @@ class SchedulerEngine {
           }
 
           current = startFuture;
-          for (int j = 0; j < resolvedFutureInstancesCount; j++) {
-            if (current.compareTo(today) > 0 &&
-                current.compareTo(maxEvaluationDate) <= 0) {
-              targetDates.add(current);
-              final next = s.nextOccurrenceAfter(current);
-              if (next != null) {
-                current = next;
-              } else {
-                break;
+          int spawnedFutureCount = 0;
+          while (spawnedFutureCount < resolvedFutureInstancesCount) {
+            if (current.compareTo(maxEvaluationDate) > 0) {
+              break;
+            }
+            if (current.compareTo(today) > 0) {
+              final existing = workingInstances[current];
+              final isResolved =
+                  existing != null && existing.status != 'pending';
+              if (!isResolved) {
+                targetDates.add(current);
+                spawnedFutureCount++;
               }
+            }
+            final next = s.nextOccurrenceAfter(current);
+            if (next != null) {
+              current = next;
             } else {
               break;
             }
@@ -265,11 +272,21 @@ class SchedulerEngine {
           if (policy == MissedPolicy.stack) {
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
-              workingInstances[date] = inst.copyWith(status: 'pending');
+              final isOriginalResolved = ruleInstances.any(
+                (x) => x.id == inst.id && x.status != 'pending',
+              );
+              if (!isOriginalResolved) {
+                workingInstances[date] = inst.copyWith(status: 'pending');
+              }
             }
           } else if (policy == MissedPolicy.autoDismiss) {
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
+              final isOriginalResolved = ruleInstances.any(
+                (x) => x.id == inst.id && x.status != 'pending',
+              );
+              if (isOriginalResolved) continue;
+
               final isExpired = s.missedOccurrencePolicy.isInstanceExpired(
                 inst,
                 now,
@@ -292,6 +309,11 @@ class SchedulerEngine {
 
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
+              final isOriginalResolved = ruleInstances.any(
+                (x) => x.id == inst.id && x.status != 'pending',
+              );
+              if (isOriginalResolved) continue;
+
               final String nextStatus;
               if (date.isAfter(today)) {
                 nextStatus = 'pending';
@@ -313,6 +335,11 @@ class SchedulerEngine {
             );
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
+              final isOriginalResolved = ruleInstances.any(
+                (x) => x.id == inst.id && x.status != 'pending',
+              );
+              if (isOriginalResolved) continue;
+
               final isEarliest = date == earliestScheduledDate;
               final nextStatus = isEarliest ? 'pending' : 'skipped';
               if (inst.status != nextStatus) {
