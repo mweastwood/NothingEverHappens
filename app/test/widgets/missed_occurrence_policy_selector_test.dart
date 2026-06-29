@@ -71,6 +71,38 @@ void main() {
       },
     );
 
+    testWidgets('AlertDialog has custom tightened actionsPadding', (
+      tester,
+    ) async {
+      const policy = MissedOccurrencePolicy.stack();
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: MissedOccurrencePolicySelector(
+                policy: policy,
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Open the selection dialog
+      await tester.tap(find.text('Stack').first);
+      await tester.pumpAndSettle();
+
+      final alertDialogFinder = find.byType(AlertDialog);
+      expect(alertDialogFinder, findsOneWidget);
+
+      final alertDialog = tester.widget<AlertDialog>(alertDialogFinder);
+      expect(
+        alertDialog.actionsPadding,
+        const EdgeInsets.only(right: 16, bottom: 8, top: 0),
+      );
+    });
+
     testGoldens('MissedOccurrencePolicySelector renders correctly', (
       tester,
     ) async {

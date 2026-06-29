@@ -263,6 +263,7 @@ class _MissedOccurrencePolicySelectorState
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
+          actionsPadding: const EdgeInsets.only(right: 16, bottom: 8, top: 0),
           title: Text(context.l10n.selectMissedPolicyTitle),
           content: SizedBox(
             width: double.maxFinite,
