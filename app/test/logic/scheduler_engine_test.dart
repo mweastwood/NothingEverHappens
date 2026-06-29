@@ -701,5 +701,136 @@ void main() {
         expect(action.instancesToSpawn, hasLength(3));
       });
     });
+
+    group('Future task limit with resolved tasks', () {
+      final now = DateTime(2026, 6, 1, 10, 0); // Monday
+      final today = CivilDay(year: 2026, month: 6, day: 1);
+
+      test(
+        'resolved future tasks do not count towards futureInstancesCount limit',
+        () {
+          final dailyRule = DailySchedule(
+            startDate: today,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          );
+          final task = TaskSchedule(
+            id: 'task-id',
+            title: 'Daily Task',
+            description: 'Desc',
+            futureInstancesCount: 2,
+            schedules: [dailyRule],
+          );
+
+          // Tuesday is tomorrow. Wednesday and Thursday are subsequent days.
+          // Tuesday's instance is already in the DB and is completed.
+          final completedTomorrow = TaskInstance(
+            id: 'inst-tue',
+            scheduleId: task.id,
+            ruleId: dailyRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(1), // Tuesday
+            startRelativeTime: dailyRule.startRelativeTime,
+            dueRelativeTime: dailyRule.dueRelativeTime,
+            status: 'completed',
+          );
+
+          // Evaluation:
+          // We have a completed future instance on Tuesday.
+          // We want 2 pending future instances (should spawn Wednesday and Thursday).
+          final action = SchedulerEngine.evaluate(task, [
+            completedTomorrow,
+          ], now);
+
+          // Tuesday is completed (resolved), so it shouldn't count.
+          // It should spawn Wednesday and Thursday (2 pending future instances).
+          final spawnedDates = action.instancesToSpawn
+              .map((i) => i.scheduledDate)
+              .toList();
+          expect(
+            spawnedDates,
+            containsAll([
+              today.addDays(2), // Wednesday
+              today.addDays(3), // Thursday
+            ]),
+          );
+          expect(action.instancesToSpawn, hasLength(2));
+
+          // The completed Tuesday instance status must remain completed (no update/delete)
+          expect(action.instancesToUpdate, isEmpty);
+          expect(action.instancesToDelete, isEmpty);
+        },
+      );
+
+      test(
+        'resolved tasks are not modified by missed occurrence policies (stack, autoDismiss, preferNewer, preferOlder)',
+        () {
+          final dailyRule = DailySchedule(
+            startDate: today.addDays(-2), // Started Saturday
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
+          );
+          final task = TaskSchedule(
+            id: 'task-id',
+            title: 'Daily Task',
+            description: 'Desc',
+            futureInstancesCount: 1,
+            schedules: [dailyRule],
+          );
+
+          // Sunday's instance was completed. Saturday's instance is pending (overdue).
+          final satInstance = TaskInstance(
+            id: 'inst-sat',
+            scheduleId: task.id,
+            ruleId: dailyRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(-2), // Saturday
+            startRelativeTime: dailyRule.startRelativeTime,
+            dueRelativeTime: dailyRule.dueRelativeTime,
+            status: 'pending',
+          );
+          final sunInstance = TaskInstance(
+            id: 'inst-sun',
+            scheduleId: task.id,
+            ruleId: dailyRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(-1), // Sunday
+            startRelativeTime: dailyRule.startRelativeTime,
+            dueRelativeTime: dailyRule.dueRelativeTime,
+            status: 'completed', // Resolved
+          );
+
+          // Run evaluate
+          final action = SchedulerEngine.evaluate(task, [
+            satInstance,
+            sunInstance,
+          ], now);
+
+          // The resolved Sunday instance (status: completed) must not be updated or reverted to pending/skipped
+          final updatedCompletedInst = action.instancesToUpdate.any(
+            (i) => i.id == 'inst-sun',
+          );
+          expect(updatedCompletedInst, isFalse);
+        },
+      );
+    });
   });
 }
