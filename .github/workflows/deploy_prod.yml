@@ -184,12 +184,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify Firebase Service Account Secret
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}" ]; then
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Deploy Firestore Rules
         env:
           FIREBASE_SERVICE_ACCOUNT_PROD: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT_PROD" > service-account.json
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
-          npx --yes firebase-tools deploy --only firestore:rules --project nothing-ever-happens-prod
+          npx --yes firebase-tools@15.22.2 deploy --only firestore:rules --project nothing-ever-happens-prod
         working-directory: ./backend
 
