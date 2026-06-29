@@ -11,9 +11,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
-
 jobs:
   deploy_dev_firebase_web:
     runs-on: ubuntu-latest
@@ -51,7 +48,7 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV }}'
           channelId: live
           projectId: nothing-ever-happens-dev
-          firebaseToolsVersion: '15.22.2'
+          firebaseToolsVersion: '15.22.3'
         env:
           FIREBASE_CLI_PREVIEWS: hostingchannels
 
@@ -136,7 +133,7 @@ jobs:
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT_DEV" > service-account.json
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
-          npx --yes firebase-tools@15.22.2 deploy --only firestore:rules --project nothing-ever-happens-dev
+          npx --yes firebase-tools@15.22.3 deploy --only firestore:rules --project nothing-ever-happens-dev
         working-directory: ./backend
 
 

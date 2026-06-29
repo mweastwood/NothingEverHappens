@@ -9,9 +9,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
-
 jobs:
   deploy_prod_firebase_web:
     runs-on: ubuntu-latest
@@ -205,6 +202,6 @@ jobs:
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT_PROD" > service-account.json
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
-          npx --yes firebase-tools@15.22.2 deploy --only firestore:rules --project nothing-ever-happens-prod
+          npx --yes firebase-tools@15.22.3 deploy --only firestore:rules --project nothing-ever-happens-prod
         working-directory: ./backend
 
