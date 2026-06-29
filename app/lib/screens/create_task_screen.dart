@@ -167,14 +167,13 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     if (box == null) return;
 
     final position = box.localToGlobal(Offset.zero);
-    final height = box.size.height;
 
     double appBarHeight = 56.0;
     try {
       appBarHeight = Scaffold.of(this.context).appBarMaxHeight ?? 56.0;
     } catch (_) {}
 
-    final isTitleObscured = (position.dy + height) <= appBarHeight;
+    final isTitleObscured = position.dy <= appBarHeight;
     if (_showTitleInAppBar.value != isTitleObscured) {
       _showTitleInAppBar.value = isTitleObscured;
     }
@@ -833,6 +832,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                       Expanded(
                         child: SingleChildScrollView(
                           controller: _scrollController,
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: const EdgeInsets.all(16.0),
                           child: Form(
                             key: _formKey,

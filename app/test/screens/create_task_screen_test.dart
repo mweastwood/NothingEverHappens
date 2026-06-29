@@ -887,6 +887,106 @@ void main() {
     );
 
     testWidgets(
+      'transitions app bar title earlier (as soon as top of title field goes under app bar)',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(800, 400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final existingTask = TaskSchedule(
+          id: 'existing-id',
+          title: 'Original Title',
+          description: 'Original Desc',
+          schedules: [
+            OneOffSchedule(
+              date: CivilDay(year: 2026, month: 3, day: 8),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(createWidget(taskToEdit: existingTask));
+        await tester.pumpAndSettle();
+
+        // 1. Initially, Title field is visible, so AppBar title should be "Edit Task"
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('Edit Task'),
+          ),
+          findsOneWidget,
+        );
+
+        // 2. Scroll dynamically by exactly enough to push the top of the Title field under the App Bar
+        // but keep the bottom of the Title field below the App Bar.
+        final double appBarHeight = tester.getSize(find.byType(AppBar)).height;
+        final titleFieldFinder = find.widgetWithText(TextFormField, 'Title');
+        final double initialTop = tester.getTopLeft(titleFieldFinder).dy;
+
+        // Calculate the drag amount to put the top of the text field exactly 1 pixel under the AppBar.
+        final double dragAmount = initialTop - appBarHeight + 1.0;
+        await tester.drag(
+          find.byType(SingleChildScrollView),
+          Offset(0, -dragAmount),
+        );
+        await tester.pumpAndSettle();
+
+        // AppBar title should now show the task's title ("Original Title")
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('Original Title'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byType(AppBar),
+            matching: find.text('Edit Task'),
+          ),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      'dismisses keyboard and unfocuses title field when scrolled/dragged',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(800, 400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(createWidget());
+        await tester.pumpAndSettle();
+
+        final titleFinder = find.byType(EditableText).first;
+        final titleElement = tester.element(titleFinder);
+
+        // Verify focus node has focus (autofocus is true)
+        expect(Focus.of(titleElement).hasFocus, isTrue);
+
+        // Drag/scroll the list to dismiss keyboard (onDrag)
+        await tester.drag(
+          find.byType(SingleChildScrollView),
+          const Offset(0, -50),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify that focus is lost
+        expect(Focus.of(titleElement).hasFocus, isFalse);
+      },
+    );
+
+    testWidgets(
       'configures and saves One-off task with custom notification successfully',
       (WidgetTester tester) async {
         tester.view.physicalSize = const Size(1000, 2000);
