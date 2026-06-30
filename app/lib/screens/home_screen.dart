@@ -9,7 +9,6 @@ import 'task_list_screen.dart';
 import 'task_schedule_screen.dart';
 import 'settings_screen.dart';
 import 'family_screen.dart';
-import 'sprint_dashboard_screen.dart';
 import 'help_screen.dart';
 import '../logic/l10n_extension.dart';
 
@@ -125,20 +124,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-          ListTile(
-            key: const Key('drawer_sprint_dashboard_tile'),
-            leading: const Icon(Icons.dashboard_customize),
-            title: Text(context.l10n.sprintDashboardTitle),
-            onTap: () {
-              Navigator.pop(context); // Close drawer
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SprintDashboardScreen(),
-                ),
-              );
-            },
-          ),
+
           ListTile(
             key: const Key('drawer_settings_tile'),
             leading: const Icon(Icons.settings),
