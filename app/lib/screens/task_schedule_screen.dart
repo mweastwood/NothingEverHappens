@@ -617,15 +617,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                               ),
                             ),
                           ],
-                          if (parts.start.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              parts.start,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -635,32 +626,75 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            rule.schedulingPolicy is CompletionRelativePolicy
-                                ? context.l10n.completionRelativeLabel
-                                : context.l10n.fixedCalendarLabel,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Icon(
+                                rule.schedulingPolicy
+                                        is CompletionRelativePolicy
+                                    ? Icons.sync
+                                    : Icons.calendar_today,
+                                size: 14,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  rule.schedulingPolicy
+                                          is CompletionRelativePolicy
+                                      ? context.l10n.completionRelativeLabel
+                                      : context.l10n.fixedCalendarLabel,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           if (rule is! OneOffSchedule &&
                               rule.schedulingPolicy
                                   is! CompletionRelativePolicy) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              _getMissedPolicyString(context, rule),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                            const SizedBox(height: 4),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.assignment_late_outlined,
+                                  size: 14,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    _getMissedPolicyString(context, rule),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                          const SizedBox(height: 2),
-                          Text(
-                            '${_formatRelativeTime(context, rule.startRelativeTime)} -- ${_formatRelativeTime(context, rule.dueRelativeTime)}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                          const SizedBox(height: 4),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 14,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  '${_formatRelativeTime(context, rule.startRelativeTime)} -- ${_formatRelativeTime(context, rule.dueRelativeTime)}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

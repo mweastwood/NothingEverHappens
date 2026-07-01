@@ -140,7 +140,6 @@ void main() {
     expect(find.text('Daily (Every 2 days)'), findsOneWidget);
     expect(find.text('Weekly'), findsOneWidget);
     expect(find.text('On: Mon, Wed'), findsOneWidget);
-    expect(find.text('Starting: 2024-01-01'), findsNWidgets(2));
 
     // Verify times are formatted
     expect(find.text('9:00 AM -- 5:00 PM'), findsOneWidget);
