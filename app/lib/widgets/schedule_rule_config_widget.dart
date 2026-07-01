@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_schedule_rule.dart';
+import '../logic/scheduling_policy.dart';
 import '../logic/app_clock.dart';
 import '../logic/l10n_extension.dart';
 import 'daily_scheduling_widget.dart';
@@ -680,7 +681,9 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             readOnly: widget.readOnly,
           ),
         ],
-        if (widget.showMissedPolicy && s is! OneOffSchedule) ...[
+        if (widget.showMissedPolicy &&
+            s is! OneOffSchedule &&
+            s.schedulingPolicy is! CompletionRelativePolicy) ...[
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
