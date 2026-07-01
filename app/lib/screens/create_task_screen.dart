@@ -145,6 +145,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       }
       _expandedScheduleIndex = 0;
     }
+    _estimatedDurationController.addListener(_onEstimatedDurationChanged);
   }
 
   @override
@@ -155,6 +156,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     _titleController.dispose();
     _titleFocusNode.dispose();
     _descriptionController.dispose();
+    _estimatedDurationController.removeListener(_onEstimatedDurationChanged);
     _estimatedDurationController.dispose();
     super.dispose();
   }
@@ -177,6 +179,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     if (_showTitleInAppBar.value != isTitleObscured) {
       _showTitleInAppBar.value = isTitleObscured;
     }
+  }
+
+  void _onEstimatedDurationChanged() {
+    setState(() {});
   }
 
   Future<void> _saveTask() async {
@@ -372,6 +378,24 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     );
   }
 
+  String _getHumanizedDuration() {
+    final text = _estimatedDurationController.text.trim();
+    if (text.isEmpty) return '';
+    final minutes = int.tryParse(text);
+    if (minutes == null || minutes <= 0) return '';
+
+    final hours = minutes ~/ 60;
+    final remainingMinutes = minutes % 60;
+
+    if (hours > 0) {
+      final hourStr = hours == 1 ? '1 hr' : '$hours hrs';
+      final minStr = remainingMinutes > 0 ? '$remainingMinutes min' : '';
+      return minStr.isEmpty ? '($hourStr)' : '($hourStr $minStr)';
+    } else {
+      return '($minutes min)';
+    }
+  }
+
   Widget _buildEffortAndPriorityCard(
     BuildContext context,
     bool readOnly,
@@ -379,126 +403,236 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   ) {
     final theme = Theme.of(context);
 
-    final metadataWidgets = [
-      Expanded(
-        flex: isWide ? 2 : 0,
-        child: TextFormField(
-          key: const Key('estimated_effort_field'),
-          controller: _estimatedDurationController,
-          enabled: !readOnly,
-          decoration: InputDecoration(
-            labelText: context.l10n.estimatedEffortFieldLabel,
-            helperText: isWide ? null : context.l10n.estimatedEffortHelper,
-            border: const OutlineInputBorder(),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 14,
-            ),
-          ),
-          style: theme.textTheme.bodyMedium,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          validator: (value) {
-            if (value != null && value.isNotEmpty) {
-              final val = int.tryParse(value);
-              if (val == null || val <= 0) {
-                return context.l10n.estimatedEffortValidationError;
-              }
-            }
-            return null;
-          },
-        ),
-      ),
-      if (isWide) const SizedBox(width: 16) else const SizedBox(height: 16),
-      Expanded(
-        flex: isWide ? 3 : 0,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              context.l10n.taskPriorityLabel,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Wrap(
-              key: const Key('task_priority_dropdown'),
-              spacing: 6.0,
-              runSpacing: 6.0,
-              children: TaskPriority.values.map((priority) {
-                final String label;
-                switch (priority) {
-                  case TaskPriority.low:
-                    label = context.l10n.priorityLow;
-                    break;
-                  case TaskPriority.medium:
-                    label = context.l10n.priorityMedium;
-                    break;
-                  case TaskPriority.high:
-                    label = context.l10n.priorityHigh;
-                    break;
-                }
-                return StandardChoiceChip(
-                  key: Key('priority_chip_${priority.name}'),
-                  label: label,
-                  selected: _priority == priority,
-                  onSelected: readOnly
-                      ? null
-                      : (selected) {
-                          if (selected) {
-                            setState(() {
-                              _priority = priority;
-                            });
-                          }
-                        },
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
+    final presets = [
+      (label: '5 min', minutes: 5),
+      (label: '15 min', minutes: 15),
+      (label: '30 min', minutes: 30),
+      (label: '1 hour', minutes: 60),
+      (label: '2 hours', minutes: 120),
     ];
 
-    Widget content;
-    if (isWide) {
-      content = Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: metadataWidgets,
-      );
-    } else {
-      content = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: metadataWidgets.map((w) {
-          if (w is Expanded) return w.child;
-          return w;
-        }).toList(),
-      );
-    }
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
-      color: theme.colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.effortAndPriorityLabel,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+        color: theme.colorScheme.surfaceContainerLow,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.effortAndPriorityLabel,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            content,
-          ],
+              const SizedBox(height: 16),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            key: const Key('estimated_effort_decrement_button'),
+                            icon: const Icon(Icons.remove),
+                            onPressed: readOnly
+                                ? null
+                                : () {
+                                    final current =
+                                        int.tryParse(
+                                          _estimatedDurationController.text
+                                              .trim(),
+                                        ) ??
+                                        0;
+                                    if (current > 1) {
+                                      final val = current - 5;
+                                      final newValue = val < 1 ? 1 : val;
+                                      _estimatedDurationController.text =
+                                          newValue.toString();
+                                    }
+                                  },
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            constraints: const BoxConstraints(),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _getHumanizedDuration().isNotEmpty
+                                        ? '${context.l10n.estimatedEffortFieldLabel} ${_getHumanizedDuration()}'
+                                        : context
+                                              .l10n
+                                              .estimatedEffortFieldLabel,
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      height: 1.1,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  TextFormField(
+                                    key: const Key('estimated_effort_field'),
+                                    controller: _estimatedDurationController,
+                                    enabled: !readOnly,
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      height: 1.2,
+                                    ),
+                                    decoration: const InputDecoration(
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    validator: (value) {
+                                      if (value != null && value.isNotEmpty) {
+                                        final val = int.tryParse(value);
+                                        if (val == null || val <= 0) {
+                                          return context
+                                              .l10n
+                                              .estimatedEffortValidationError;
+                                        }
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            key: const Key('estimated_effort_increment_button'),
+                            icon: const Icon(Icons.add),
+                            onPressed: readOnly
+                                ? null
+                                : () {
+                                    final current =
+                                        int.tryParse(
+                                          _estimatedDurationController.text
+                                              .trim(),
+                                        ) ??
+                                        0;
+                                    final newValue = current == 0
+                                        ? 5
+                                        : current + 5;
+                                    _estimatedDurationController.text = newValue
+                                        .toString();
+                                  },
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: presets.map((preset) {
+                        final isSelected =
+                            _estimatedDurationController.text.trim() ==
+                            preset.minutes.toString();
+                        return StandardChoiceChip(
+                          key: Key('preset_chip_${preset.minutes}'),
+                          label: preset.label,
+                          selected: isSelected,
+                          onSelected: readOnly
+                              ? null
+                              : (selected) {
+                                  if (selected) {
+                                    _estimatedDurationController.text = preset
+                                        .minutes
+                                        .toString();
+                                  } else {
+                                    _estimatedDurationController.clear();
+                                  }
+                                },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      context.l10n.estimatedEffortHelper,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    context.l10n.taskPriorityLabel,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    key: const Key('task_priority_dropdown'),
+                    spacing: 6.0,
+                    runSpacing: 6.0,
+                    children: TaskPriority.values.map((priority) {
+                      final String label;
+                      switch (priority) {
+                        case TaskPriority.low:
+                          label = context.l10n.priorityLow;
+                          break;
+                        case TaskPriority.medium:
+                          label = context.l10n.priorityMedium;
+                          break;
+                        case TaskPriority.high:
+                          label = context.l10n.priorityHigh;
+                          break;
+                      }
+                      return StandardChoiceChip(
+                        key: Key('priority_chip_${priority.name}'),
+                        label: label,
+                        selected: _priority == priority,
+                        onSelected: readOnly
+                            ? null
+                            : (selected) {
+                                if (selected) {
+                                  setState(() {
+                                    _priority = priority;
+                                  });
+                                }
+                              },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
