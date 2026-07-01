@@ -641,7 +641,11 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         ),
 
         if (_schedules.isNotEmpty) ...[
-          if (_schedules.any((s) => s is! OneOffSchedule)) ...[
+          if (_schedules.any(
+            (s) =>
+                s is! OneOffSchedule &&
+                s.schedulingPolicy is! CompletionRelativePolicy,
+          )) ...[
             const SizedBox(height: 16),
             FutureInstancesControl(
               futureInstancesCount: _futureInstancesCount,

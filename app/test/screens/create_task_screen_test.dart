@@ -18,6 +18,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/widgets/future_instances_control.dart';
+import 'package:nothing_ever_happens/widgets/missed_occurrence_policy_selector.dart';
 import 'create_task_screen_test.mocks.dart';
 import '../test_helper.dart';
 import 'package:nothing_ever_happens/screens/help_screen.dart';
@@ -1293,6 +1294,65 @@ void main() {
         verification.called(1);
         final TaskSchedule savedTask = verification.captured.single;
         expect(savedTask.futureInstancesCount, 2);
+      },
+    );
+
+    testWidgets(
+      'CreateTaskScreen hides FutureInstancesControl and MissedOccurrencePolicySelector for completion-relative tasks',
+      (WidgetTester tester) async {
+        final mockRepository = MockTaskRepository();
+        when(
+          mockRepository.getInstances(),
+        ).thenAnswer((_) => const Stream.empty());
+        when(mockRepository.addTaskSchedule(any)).thenAnswer((_) async {});
+
+        final existingTask = TaskSchedule(
+          id: 'existing-id',
+          title: 'Completion Relative Task',
+          description: 'Desc',
+          schedules: [
+            DailySchedule(
+              id: 'daily-rule',
+              scheduleId: 'existing-id',
+              startDate: CivilDay(year: 2026, month: 7, day: 1),
+              interval: 2,
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 2),
+                targetTime: TimeOfDay(hour: 9, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: CreateTaskScreen(taskToEdit: existingTask),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Expands the schedule card to see its contents
+        final expandButton = find.byIcon(Icons.expand_more);
+        if (expandButton.evaluate().isNotEmpty) {
+          await tester.tap(expandButton);
+          await tester.pumpAndSettle();
+        }
+
+        // Verify that FutureInstancesControl is NOT visible
+        expect(find.byType(FutureInstancesControl), findsNothing);
+
+        // Verify that MissedOccurrencePolicySelector is NOT visible
+        expect(find.byType(MissedOccurrencePolicySelector), findsNothing);
       },
     );
   });
