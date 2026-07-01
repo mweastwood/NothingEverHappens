@@ -5,6 +5,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/task_schedule.dart';
 import '../logic/civil_day.dart';
+import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
 import 'create_task_screen.dart';
 import '../logic/l10n_extension.dart';
@@ -122,6 +123,16 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     return context.l10n.oneOffLabel;
   }
 
+  String _formatRelativeTime(BuildContext context, RelativeTime rt) {
+    final formattedTime = rt.time.format(context);
+    if (rt.dayOffset > 0) {
+      return '$formattedTime (+${rt.dayOffset})';
+    } else if (rt.dayOffset < 0) {
+      return '$formattedTime (${rt.dayOffset})';
+    }
+    return formattedTime;
+  }
+
   ({String interval, String days, String start}) _getRecurrenceRuleDetails(
     BuildContext context,
     TaskScheduleRule? schedule,
@@ -232,14 +243,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     return (interval: intervalStr, days: daysStr, start: startStr);
   }
 
-  String _getRecurrenceRuleTimeWindowString(
-    BuildContext context,
-    TaskScheduleRule? schedule,
-  ) {
-    if (schedule == null) return '';
-    return '${schedule.startRelativeTime.time.format(context)} - ${schedule.dueRelativeTime.time.format(context)}';
-  }
-
   String _getMissedPolicyString(BuildContext context, TaskScheduleRule rule) {
     if (rule is OneOffSchedule) return '';
     final policy = rule.missedOccurrencePolicy;
@@ -274,17 +277,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
         } else {
           return '${context.l10n.autoDismissPolicyTitle} ($minutes ${context.l10n.unitMinutes})';
         }
-    }
-  }
-
-  Color _getPriorityColor(TaskPriority priority) {
-    switch (priority) {
-      case TaskPriority.high:
-        return Colors.red;
-      case TaskPriority.medium:
-        return Colors.orange;
-      case TaskPriority.low:
-        return Colors.green;
     }
   }
 
@@ -486,16 +478,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
             ),
             child: Row(
               children: [
-                // Priority bullet dot
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: _getPriorityColor(task.priority),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     task.title,
@@ -591,127 +573,99 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
             itemBuilder: (context, idx) {
               final rule = task.schedules[idx];
               final parts = _getRecurrenceRuleDetails(context, rule);
+
+              String freqText = _getRecurrenceRuleTypeName(context, rule);
+              int interval = 1;
+              if (rule is DailySchedule) {
+                interval = rule.interval;
+              } else if (rule is WeeklySchedule) {
+                interval = rule.interval;
+              } else if (rule is MonthlySchedule) {
+                interval = rule.interval;
+              } else if (rule is YearlySchedule) {
+                interval = rule.interval;
+              }
+              if (interval > 1) {
+                freqText = '$freqText (${parts.interval})';
+              }
+
               return Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12.0,
                   vertical: 8.0,
                 ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 450;
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Recurrence Type
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            _getRecurrenceRuleTypeName(context, rule),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Column 1
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            freqText,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Details
-                        Expanded(
-                          flex: 4,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                parts.interval,
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                              if (parts.days.isNotEmpty)
-                                Text(
-                                  parts.days,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              if (parts.start.isNotEmpty)
-                                Text(
-                                  parts.start,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant
-                                        .withValues(alpha: 0.8),
-                                  ),
-                                ),
-                              if (rule is! OneOffSchedule) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      Icons.assignment_late_outlined,
-                                      size: 14,
-                                      color: theme.colorScheme.onSurfaceVariant
-                                          .withValues(alpha: 0.8),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        _getMissedPolicyString(context, rule),
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: theme
-                                                  .colorScheme
-                                                  .onSurfaceVariant
-                                                  .withValues(alpha: 0.8),
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                              if (isNarrow) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.access_time,
-                                      size: 14,
-                                      color: theme.colorScheme.onSurfaceVariant
-                                          .withValues(alpha: 0.8),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _getRecurrenceRuleTimeWindowString(
-                                        context,
-                                        rule,
-                                      ),
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: theme
-                                                .colorScheme
-                                                .onSurfaceVariant
-                                                .withValues(alpha: 0.8),
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        if (!isNarrow) ...[
-                          const SizedBox(width: 8),
-                          // Time Window
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              _getRecurrenceRuleTimeWindowString(context, rule),
-                              style: theme.textTheme.bodyMedium?.copyWith(
+                          if (parts.days.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              parts.days,
+                              style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
+                          ],
+                          if (parts.start.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              parts.start,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Column 2
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            rule.schedulingPolicy is CompletionRelativePolicy
+                                ? context.l10n.completionRelativeLabel
+                                : context.l10n.fixedCalendarLabel,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (rule is! OneOffSchedule &&
+                              rule.schedulingPolicy
+                                  is! CompletionRelativePolicy) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              _getMissedPolicyString(context, rule),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 2),
+                          Text(
+                            '${_formatRelativeTime(context, rule.startRelativeTime)} -- ${_formatRelativeTime(context, rule.dueRelativeTime)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ],
-                      ],
-                    );
-                  },
+                      ),
+                    ),
+                  ],
                 ),
               );
             },
