@@ -851,5 +851,67 @@ void main() {
         },
       );
     });
+
+    group('Per-rule lookahead limits', () {
+      test('rule-specific futureInstancesCount yields correct values', () {
+        final daily = DailySchedule(startDate: today, interval: 1);
+        final weekly = WeeklySchedule(
+          startDate: today,
+          interval: 1,
+          daysOfWeek: {1},
+        );
+        final monthly = MonthlySchedule(
+          startDate: today,
+          interval: 1,
+          dayOfMonth: 1,
+        );
+        final yearly = YearlySchedule(
+          startDate: today,
+          interval: 1,
+          month: 6,
+          day: 19,
+        );
+        final oneOff = OneOffSchedule(date: today);
+
+        expect(daily.futureInstancesCount, 10);
+        expect(weekly.futureInstancesCount, 5);
+        expect(monthly.futureInstancesCount, 3);
+        expect(yearly.futureInstancesCount, 2);
+        expect(oneOff.futureInstancesCount, 1);
+      });
+
+      test(
+        'spawns occurrences according to each rule limit when rules are mixed',
+        () {
+          final dailyRule = DailySchedule(startDate: today, interval: 1);
+          final weeklyRule = WeeklySchedule(
+            startDate: today,
+            interval: 1,
+            daysOfWeek: const {5}, // Friday (same as today)
+          );
+
+          final task = TaskSchedule(
+            id: 'mixed-rule-limit-task',
+            title: 'Mixed Task',
+            description: 'Desc',
+            schedules: [dailyRule, weeklyRule],
+          );
+
+          final action = SchedulerEngine.evaluate(task, const [], now);
+
+          // Daily rule (limit 10) spawns today + 10 lookahead = 11 daily instances
+          final dailySpawns = action.instancesToSpawn
+              .where((inst) => inst.ruleId == dailyRule.id)
+              .toList();
+          expect(dailySpawns, hasLength(11));
+
+          // Weekly rule (limit 5) spawns today + 4 lookahead = 5 weekly instances
+          final weeklySpawns = action.instancesToSpawn
+              .where((inst) => inst.ruleId == weeklyRule.id)
+              .toList();
+          expect(weeklySpawns, hasLength(5));
+        },
+      );
+    });
   });
 }
