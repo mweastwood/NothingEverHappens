@@ -40,6 +40,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get scheduleTab => 'Calendario';
 
   @override
+  String get dashboardTab => 'Panel';
+
+  @override
+  String get capacityPromptTitle => 'Ajusta tu capacidad semanal';
+
+  @override
+  String get capacityPromptSubtitle =>
+      'Define tus horas disponibles para los próximos días.';
+
+  @override
   String get historyTab => 'Historial';
 
   @override

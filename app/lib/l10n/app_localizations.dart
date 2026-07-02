@@ -158,6 +158,24 @@ abstract class AppLocalizations {
   /// **'Schedule'**
   String get scheduleTab;
 
+  /// No description provided for @dashboardTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get dashboardTab;
+
+  /// No description provided for @capacityPromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust your weekly capacity'**
+  String get capacityPromptTitle;
+
+  /// No description provided for @capacityPromptSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set your available hours for the upcoming days.'**
+  String get capacityPromptSubtitle;
+
   /// No description provided for @historyTab.
   ///
   /// In en, this message translates to:

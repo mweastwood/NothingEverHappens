@@ -17,6 +17,7 @@ import 'package:nothing_ever_happens/screens/settings_screen.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
 import 'package:nothing_ever_happens/screens/family_screen.dart';
+import 'package:nothing_ever_happens/screens/dashboard_screen.dart';
 import 'package:nothing_ever_happens/screens/help_screen.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
@@ -133,18 +134,38 @@ void main() {
     // Verify FAB is still shown on Schedule tab
     expect(find.byType(FloatingActionButton), findsOneWidget);
 
-    // 2. Switch to Family tab
-    await tester.tap(find.text('Family'));
+    // 2. Switch to Dashboard tab
+    await tester.tap(find.text('Dashboard'));
     await tester.pumpAndSettle();
 
     // Verify selected tab is index 2
+    final NavigationBar navBarDashboard = tester.widget(
+      find.byType(NavigationBar),
+    );
+    expect(navBarDashboard.selectedIndex, 2);
+
+    // Verify DashboardScreen is visible, others are not
+    expect(find.byType(DashboardScreen), findsOneWidget);
+    expect(find.byType(TaskListScreen), findsNothing);
+    expect(find.byType(TaskScheduleScreen), findsNothing);
+    expect(find.byType(FamilyScreen), findsNothing);
+
+    // Verify FAB is hidden on Dashboard tab
+    expect(find.byType(FloatingActionButton), findsNothing);
+
+    // 3. Switch to Family tab
+    await tester.tap(find.text('Family'));
+    await tester.pumpAndSettle();
+
+    // Verify selected tab is index 3
     final NavigationBar navBar2 = tester.widget(find.byType(NavigationBar));
-    expect(navBar2.selectedIndex, 2);
+    expect(navBar2.selectedIndex, 3);
 
     // Verify FamilyScreen is visible, others are not
     expect(find.byType(FamilyScreen), findsOneWidget);
     expect(find.byType(TaskListScreen), findsNothing);
     expect(find.byType(TaskScheduleScreen), findsNothing);
+    expect(find.byType(DashboardScreen), findsNothing);
 
     // Verify FAB is hidden on Family tab
     expect(find.byType(FloatingActionButton), findsNothing);
@@ -315,6 +336,19 @@ void main() {
       expect(find.byType(TaskScheduleScreen), findsOneWidget);
     });
 
+    testWidgets('routes to /dashboard when path is /dashboard', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        createScreen(mockUri: Uri.parse('https://example.com/dashboard')),
+      );
+      await tester.pumpAndSettle();
+
+      final NavigationBar navBar = tester.widget(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 2);
+      expect(find.byType(DashboardScreen), findsOneWidget);
+    });
+
     testWidgets('routes to /family when path is /family', (
       WidgetTester tester,
     ) async {
@@ -324,7 +358,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final NavigationBar navBar = tester.widget(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 2);
+      expect(navBar.selectedIndex, 3);
       expect(find.byType(FamilyScreen), findsOneWidget);
     });
 

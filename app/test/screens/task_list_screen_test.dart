@@ -25,6 +25,7 @@ import '../widgets/task_widget_robot.dart';
 
 @GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<TaskRepository>()])
 import 'task_list_screen_test.mocks.dart';
+import 'home_screen_test.mocks.dart' as home_mocks;
 
 void main() {
   late MockAuthRepository mockAuthRepository;
@@ -1501,4 +1502,68 @@ void main() {
 
     AppClock.reset();
   });
+
+  testWidgets(
+    'TaskListScreen shows capacity prompt task card when capacity is not confirmed, and hides it when confirmed',
+    (WidgetTester tester) async {
+      final mockAuthRepository = MockAuthRepository();
+      final mockTaskRepository = MockTaskRepository();
+      final mockUserSettingsRepository =
+          home_mocks.MockUserSettingsRepository();
+
+      AppClock.setMockTime(
+        DateTime(2026, 7, 1, 9, 0),
+      ); // Wednesday (2026-07-01)
+
+      final settingsSubject = BehaviorSubject<UserSettings>.seeded(
+        const UserSettings(
+          hoursAvailable: 8.0,
+          lastCapacityConfirmedWeek: '', // Empty: not confirmed
+        ),
+      );
+
+      when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+      when(mockTaskRepository.getTasks()).thenAnswer((_) => Stream.value([]));
+      when(
+        mockTaskRepository.getInstances(),
+      ).thenAnswer((_) => Stream.value([]));
+      when(
+        mockUserSettingsRepository.getSettings(),
+      ).thenAnswer((_) => settingsSubject.stream);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userSettingsRepositoryProvider.overrideWithValue(
+              mockUserSettingsRepository,
+            ),
+            userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
+          ],
+          child: buildTestableWidget(child: const HomeScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 1. Verify capacity prompt card is visible
+      expect(find.byKey(const Key('capacity_prompt_card')), findsOneWidget);
+      expect(find.text('Adjust your weekly capacity'), findsOneWidget);
+
+      // 2. Mock capacity confirmation
+      settingsSubject.add(
+        const UserSettings(
+          hoursAvailable: 8.0,
+          lastCapacityConfirmedWeek: '2026-06-29', // Confirmed for this week!
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 3. Verify capacity prompt card disappears
+      expect(find.byKey(const Key('capacity_prompt_card')), findsNothing);
+
+      AppClock.reset();
+      settingsSubject.close();
+    },
+  );
 }

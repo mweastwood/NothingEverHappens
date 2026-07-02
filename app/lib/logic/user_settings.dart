@@ -5,13 +5,34 @@ class UserSettings {
   final bool showLastSpawnedDate;
   final List<({String column, bool ascending})>? taskListSort;
   final List<({String column, bool ascending})>? scheduleListSort;
+  final Map<String, double>? defaultDailyCapacity;
+  final Map<String, double>? dailyCapacityOverrides;
+  final String? lastCapacityConfirmedWeek;
 
   const UserSettings({
     required this.hoursAvailable,
     this.showLastSpawnedDate = false,
     this.taskListSort,
     this.scheduleListSort,
+    this.defaultDailyCapacity,
+    this.dailyCapacityOverrides,
+    this.lastCapacityConfirmedWeek,
   });
+
+  double getCapacityForDate(DateTime date) {
+    final dateStr =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    if (dailyCapacityOverrides != null &&
+        dailyCapacityOverrides!.containsKey(dateStr)) {
+      return dailyCapacityOverrides![dateStr]!;
+    }
+    final weekdayStr = date.weekday.toString();
+    if (defaultDailyCapacity != null &&
+        defaultDailyCapacity!.containsKey(weekdayStr)) {
+      return defaultDailyCapacity![weekdayStr]!;
+    }
+    return hoursAvailable;
+  }
 
   factory UserSettings.fromJson(Map<String, dynamic> json) {
     final taskListSortJson = json['taskListSort'] as List<dynamic>?;
@@ -32,11 +53,26 @@ class UserSettings {
       );
     }).toList();
 
+    final defaultDailyCapacityJson =
+        json['defaultDailyCapacity'] as Map<String, dynamic>?;
+    final defaultDailyCapacity = defaultDailyCapacityJson?.map(
+      (k, v) => MapEntry(k, (v as num).toDouble()),
+    );
+
+    final dailyCapacityOverridesJson =
+        json['dailyCapacityOverrides'] as Map<String, dynamic>?;
+    final dailyCapacityOverrides = dailyCapacityOverridesJson?.map(
+      (k, v) => MapEntry(k, (v as num).toDouble()),
+    );
+
     return UserSettings(
       hoursAvailable: (json['hoursAvailable'] as num?)?.toDouble() ?? 8.0,
       showLastSpawnedDate: json['showLastSpawnedDate'] as bool? ?? false,
       taskListSort: taskListSort,
       scheduleListSort: scheduleListSort,
+      defaultDailyCapacity: defaultDailyCapacity,
+      dailyCapacityOverrides: dailyCapacityOverrides,
+      lastCapacityConfirmedWeek: json['lastCapacityConfirmedWeek'] as String?,
     );
   }
 
@@ -52,6 +88,12 @@ class UserSettings {
         'scheduleListSort': scheduleListSort!
             .map((e) => {'column': e.column, 'ascending': e.ascending})
             .toList(),
+      if (defaultDailyCapacity != null)
+        'defaultDailyCapacity': defaultDailyCapacity,
+      if (dailyCapacityOverrides != null)
+        'dailyCapacityOverrides': dailyCapacityOverrides,
+      if (lastCapacityConfirmedWeek != null)
+        'lastCapacityConfirmedWeek': lastCapacityConfirmedWeek,
     };
   }
 
@@ -60,12 +102,20 @@ class UserSettings {
     bool? showLastSpawnedDate,
     List<({String column, bool ascending})>? taskListSort,
     List<({String column, bool ascending})>? scheduleListSort,
+    Map<String, double>? defaultDailyCapacity,
+    Map<String, double>? dailyCapacityOverrides,
+    String? lastCapacityConfirmedWeek,
   }) {
     return UserSettings(
       hoursAvailable: hoursAvailable ?? this.hoursAvailable,
       showLastSpawnedDate: showLastSpawnedDate ?? this.showLastSpawnedDate,
       taskListSort: taskListSort ?? this.taskListSort,
       scheduleListSort: scheduleListSort ?? this.scheduleListSort,
+      defaultDailyCapacity: defaultDailyCapacity ?? this.defaultDailyCapacity,
+      dailyCapacityOverrides:
+          dailyCapacityOverrides ?? this.dailyCapacityOverrides,
+      lastCapacityConfirmedWeek:
+          lastCapacityConfirmedWeek ?? this.lastCapacityConfirmedWeek,
     );
   }
 
@@ -77,7 +127,10 @@ class UserSettings {
     return hoursAvailable == other.hoursAvailable &&
         showLastSpawnedDate == other.showLastSpawnedDate &&
         listEquals(taskListSort, other.taskListSort) &&
-        listEquals(scheduleListSort, other.scheduleListSort);
+        listEquals(scheduleListSort, other.scheduleListSort) &&
+        mapEquals(defaultDailyCapacity, other.defaultDailyCapacity) &&
+        mapEquals(dailyCapacityOverrides, other.dailyCapacityOverrides) &&
+        lastCapacityConfirmedWeek == other.lastCapacityConfirmedWeek;
   }
 
   @override
@@ -86,5 +139,8 @@ class UserSettings {
     showLastSpawnedDate,
     taskListSort != null ? Object.hashAll(taskListSort!) : null,
     scheduleListSort != null ? Object.hashAll(scheduleListSort!) : null,
+    defaultDailyCapacity?.hashCode,
+    dailyCapacityOverrides?.hashCode,
+    lastCapacityConfirmedWeek,
   );
 }

@@ -262,7 +262,42 @@ void main() {
     await screenMatchesGolden(tester, 'create_task_screen_es');
   });
 
-  testGoldens('Spanish Golden - FamilyScreen (HomeScreen Tab 2)', (
+  testGoldens('Spanish Golden - DashboardScreen (HomeScreen Tab 2)', (
+    tester,
+  ) async {
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+          userSettingsRepositoryProvider.overrideWithValue(
+            mockUserSettingsRepository,
+          ),
+          familyRepositoryProvider.overrideWithValue(null),
+          userSettingsProvider.overrideWith(
+            (ref) => Stream.value(
+              const UserSettings(
+                hoursAvailable: 8.0,
+                defaultDailyCapacity: {'1': 2.0, '2': 1.5, '5': 4.0},
+                dailyCapacityOverrides: {'2026-07-06': 0.0},
+                lastCapacityConfirmedWeek: '2026-07-06',
+              ),
+            ),
+          ),
+        ],
+        child: const HomeScreen(),
+      ),
+      wrapper: buildEsWrapper,
+      surfaceSize: const Size(400, 800),
+    );
+
+    await tester.tap(find.byIcon(Icons.dashboard_outlined));
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'dashboard_screen_es');
+  });
+
+  testGoldens('Spanish Golden - FamilyScreen (HomeScreen Tab 3)', (
     tester,
   ) async {
     final firestore = FakeFirebaseFirestore();

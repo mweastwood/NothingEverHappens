@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../widgets/task_widget.dart';
+import 'home_screen.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/user_settings.dart';
@@ -81,6 +82,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         final instancesVal = ref.watch(taskInstancesProvider);
         final settingsVal = ref.watch(userSettingsProvider);
         final settingsRepository = ref.watch(userSettingsRepositoryProvider);
+        final searchQuery = ref
+            .watch(taskSearchQueryProvider)
+            .trim()
+            .toLowerCase();
 
         final settings =
             settingsVal.value ?? const UserSettings(hoursAvailable: 8.0);
@@ -125,10 +130,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         } else {
           final schedules = schedulesVal.value ?? [];
           final instances = instancesVal.value ?? [];
-          final searchQuery = ref
-              .watch(taskSearchQueryProvider)
-              .trim()
-              .toLowerCase();
 
           final filteredInstances = instances.where((inst) {
             final startDateTime = inst.startRelativeTime.referenceTo(
@@ -268,16 +269,89 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 const Divider(height: 1, thickness: 0.5),
               ],
               Expanded(
-                child: CustomScrollView(
-                  key: const PageStorageKey('tasksView'),
-                  center: _taskListKey,
-                  slivers: [
-                    SliverPadding(
-                      key: _taskListKey,
-                      padding: EdgeInsets.zero,
-                      sliver: bodySliver,
-                    ),
-                  ],
+                child: Builder(
+                  builder: (context) {
+                    final theme = Theme.of(context);
+                    String getWeekIdentifier(DateTime date) {
+                      final monday = date.subtract(
+                        Duration(days: date.weekday - 1),
+                      );
+                      return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+                    }
+
+                    final today = AppClock.now;
+                    final currentWeekId = getWeekIdentifier(today);
+                    final isConfirmed =
+                        settings.lastCapacityConfirmedWeek == currentWeekId;
+                    final showCapacityPrompt =
+                        !settingsVal.isLoading &&
+                        !settingsVal.hasError &&
+                        !isConfirmed;
+                    return CustomScrollView(
+                      key: const PageStorageKey('tasksView'),
+                      slivers: [
+                        if (showCapacityPrompt && searchQuery.isEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                              child: Card(
+                                key: const Key('capacity_prompt_card'),
+                                color: theme.colorScheme.primaryContainer,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                  ),
+                                ),
+                                child: ListTile(
+                                  leading: Icon(
+                                    Icons.assignment_late,
+                                    color: theme.colorScheme.onPrimaryContainer,
+                                  ),
+                                  title: Text(
+                                    context.l10n.capacityPromptTitle,
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: theme
+                                              .colorScheme
+                                              .onPrimaryContainer,
+                                        ),
+                                  ),
+                                  subtitle: Text(
+                                    context.l10n.capacityPromptSubtitle,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme
+                                          .colorScheme
+                                          .onPrimaryContainer
+                                          .withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                                  trailing: Icon(
+                                    Icons.chevron_right,
+                                    color: theme.colorScheme.onPrimaryContainer,
+                                  ),
+                                  onTap: () {
+                                    ref
+                                            .read(homeTabIndexProvider.notifier)
+                                            .state =
+                                        2; // Switch to Dashboard Tab
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        SliverPadding(
+                          key: _taskListKey,
+                          padding: EdgeInsets.zero,
+                          sliver: bodySliver,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
