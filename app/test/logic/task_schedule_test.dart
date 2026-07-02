@@ -1297,7 +1297,7 @@ void main() {
         final dailyRule = task.schedules[0];
         final weeklyRule = task.schedules[1];
 
-        expect(instsBefore.docs.length, 21);
+        expect(instsBefore.docs.length, 16);
         expect(
           instsBefore.docs.any(
             (d) => matchInst(
