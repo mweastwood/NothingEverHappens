@@ -7,10 +7,13 @@ import '../logic/app_route_manager.dart';
 import 'create_task_screen.dart';
 import 'task_list_screen.dart';
 import 'task_schedule_screen.dart';
+import 'dashboard_screen.dart';
 import 'settings_screen.dart';
 import 'family_screen.dart';
 import 'help_screen.dart';
 import '../logic/l10n_extension.dart';
+
+final homeTabIndexProvider = StateProvider<int>((ref) => 0);
 
 class HomeScreen extends ConsumerStatefulWidget {
   final Uri? mockUri;
@@ -21,7 +24,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _currentIndex = 0;
   late final AppRouteManager _routeManager;
 
   @override
@@ -33,48 +35,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         context: context,
         ref: ref,
         onIndexChanged: (index) {
-          if (mounted) {
-            setState(() {
-              _currentIndex = index;
-            });
-          }
+          ref.read(homeTabIndexProvider.notifier).state = index;
         },
-        currentIndex: _currentIndex,
+        currentIndex: ref.read(homeTabIndexProvider),
       );
     });
   }
 
   Future<void> _addNewTask() async {
+    final currentIndex = ref.read(homeTabIndexProvider);
     SystemNavigator.routeInformationUpdated(uri: Uri.parse('/new'));
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
-            CreateTaskScreen(defaultToRepeating: _currentIndex == 1),
+            CreateTaskScreen(defaultToRepeating: currentIndex == 1),
       ),
     );
-    _routeManager.updateUrlPath(_currentIndex);
+    _routeManager.updateUrlPath(currentIndex);
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = ref.watch(homeTabIndexProvider);
+
     return HomeSearchAndShortcutWidget(
-      currentIndex: _currentIndex,
+      currentIndex: currentIndex,
       builder: (context, isSearching, appBar) {
         final mainContent = Scaffold(
           appBar: appBar,
           drawer: _buildDrawer(context),
-          body: _currentIndex == 0
+          body: currentIndex == 0
               ? const TaskListScreen()
-              : _currentIndex == 1
+              : currentIndex == 1
               ? const TaskScheduleScreen()
+              : currentIndex == 2
+              ? const DashboardScreen()
               : const FamilyScreen(),
           bottomNavigationBar: NavigationBar(
-            selectedIndex: _currentIndex,
+            selectedIndex: currentIndex,
             onDestinationSelected: (int index) {
-              setState(() {
-                _currentIndex = index;
-              });
+              ref.read(homeTabIndexProvider.notifier).state = index;
               _routeManager.updateUrlPath(index);
             },
             destinations: [
@@ -89,13 +90,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 label: context.l10n.scheduleTab,
               ),
               NavigationDestination(
+                icon: const Icon(Icons.dashboard_outlined),
+                selectedIcon: const Icon(Icons.dashboard),
+                label: context.l10n.dashboardTab,
+              ),
+              NavigationDestination(
                 icon: const Icon(Icons.people_outline),
                 selectedIcon: const Icon(Icons.people),
                 label: context.l10n.familyTab,
               ),
             ],
           ),
-          floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
+          floatingActionButton: (currentIndex == 0 || currentIndex == 1)
               ? FloatingActionButton(
                   onPressed: _addNewTask,
                   tooltip: context.l10n.addTaskTooltip,
@@ -110,6 +116,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildDrawer(BuildContext context) {
+    final currentIndex = ref.read(homeTabIndexProvider);
     return Drawer(
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       child: ListView(
@@ -124,7 +131,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-
           ListTile(
             key: const Key('drawer_settings_tile'),
             leading: const Icon(Icons.settings),
@@ -138,7 +144,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
               ).then((_) {
-                _routeManager.updateUrlPath(_currentIndex);
+                _routeManager.updateUrlPath(currentIndex);
               });
             },
           ),

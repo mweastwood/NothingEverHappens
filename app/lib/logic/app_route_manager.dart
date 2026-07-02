@@ -23,6 +23,9 @@ class AppRouteManager {
         path = '/schedules';
         break;
       case 2:
+        path = '/dashboard';
+        break;
+      case 3:
         path = '/family';
         break;
       default:
@@ -99,9 +102,13 @@ class AppRouteManager {
         onIndexChanged(1);
         updateUrlPath(1);
       },
-      'family': () {
+      'dashboard': () {
         onIndexChanged(2);
         updateUrlPath(2);
+      },
+      'family': () {
+        onIndexChanged(3);
+        updateUrlPath(3);
       },
       'settings': () {
         onIndexChanged(0);

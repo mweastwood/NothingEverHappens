@@ -40,6 +40,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduleTab => 'Schedule';
 
   @override
+  String get dashboardTab => 'Dashboard';
+
+  @override
+  String get capacityPromptTitle => 'Adjust your weekly capacity';
+
+  @override
+  String get capacityPromptSubtitle =>
+      'Set your available hours for the upcoming days.';
+
+  @override
   String get historyTab => 'History';
 
   @override
