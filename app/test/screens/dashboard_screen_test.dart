@@ -10,6 +10,8 @@ import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/screens/dashboard_screen.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:nothing_ever_happens/logic/auth_repository.dart';
 
 void main() {
   late MockUserSettingsRepository mockUserSettingsRepository;
@@ -41,6 +43,9 @@ void main() {
           mockUserSettingsRepository,
         ),
         userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
+        taskSchedulesProvider.overrideWith((ref) => Stream.value([])),
+        taskInstancesProvider.overrideWith((ref) => Stream.value([])),
+        authStateProvider.overrideWith((ref) => Stream.value(null)),
       ],
       child: buildTestableWidget(child: const DashboardScreen()),
     );
