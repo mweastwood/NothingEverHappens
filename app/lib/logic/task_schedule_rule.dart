@@ -32,6 +32,15 @@ abstract class TaskScheduleRule {
   final SchedulingPolicy schedulingPolicy;
   final MissedOccurrencePolicy missedOccurrencePolicy;
 
+  int get futureInstancesCount {
+    final self = this;
+    if (self is DailySchedule) return 10;
+    if (self is WeeklySchedule) return 5;
+    if (self is MonthlySchedule) return 3;
+    if (self is YearlySchedule) return 2;
+    return 1;
+  }
+
   const TaskScheduleRule({
     required this.id,
     required this.scheduleId,

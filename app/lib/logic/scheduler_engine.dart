@@ -27,8 +27,6 @@ class SchedulerEngine {
     DateTime now, {
     int? futureInstancesCount,
   }) {
-    final resolvedFutureInstancesCount =
-        futureInstancesCount ?? task.futureInstancesCount;
     final today = CivilDay.fromDateTime(now);
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
 
@@ -222,7 +220,9 @@ class SchedulerEngine {
 
           current = startFuture;
           int spawnedFutureCount = 0;
-          while (spawnedFutureCount < resolvedFutureInstancesCount) {
+          final ruleFutureInstancesCount =
+              futureInstancesCount ?? s.futureInstancesCount;
+          while (spawnedFutureCount < ruleFutureInstancesCount) {
             if (current.compareTo(maxEvaluationDate) > 0) {
               break;
             }

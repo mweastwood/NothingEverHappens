@@ -107,12 +107,7 @@ class SpawnedInstancesList extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final action = SchedulerEngine.evaluate(
-      task,
-      dbInstances,
-      now,
-      futureInstancesCount: task.futureInstancesCount,
-    );
+    final action = SchedulerEngine.evaluate(task, dbInstances, now);
 
     final Set<String> toDeleteIds = action.instancesToDelete.toSet();
     final Map<String, TaskInstance> toUpdateMap = {

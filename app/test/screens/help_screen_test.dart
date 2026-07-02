@@ -667,7 +667,7 @@ void main() {
       expect(find.textContaining('Simulated Time: June 1'), findsOneWidget);
 
       // Verify the task cards are rendered (June 1 and June 2)
-      expect(find.text('Feed the Pets'), findsNWidgets(2));
+      expect(find.text('Feed the Pets'), findsNWidgets(11));
       final taskWidgets = tester
           .widgetList<TaskWidget>(find.byType(TaskWidget))
           .toList();
@@ -754,7 +754,7 @@ void main() {
       final taskWidgets = tester
           .widgetList<TaskWidget>(find.byType(TaskWidget))
           .toList();
-      expect(taskWidgets.length, equals(2));
+      expect(taskWidgets.length, equals(11));
       expect(
         taskWidgets[0].instance.scheduledDate,
         equals(const CivilDay(year: 2026, month: 6, day: 2)),
@@ -795,7 +795,7 @@ void main() {
       final taskWidgets = tester
           .widgetList<TaskWidget>(find.byType(TaskWidget))
           .toList();
-      expect(taskWidgets.length, equals(2));
+      expect(taskWidgets.length, equals(11));
       expect(
         taskWidgets[0].instance.scheduledDate,
         equals(const CivilDay(year: 2026, month: 6, day: 2)),
@@ -830,7 +830,7 @@ void main() {
       var taskWidgets = tester
           .widgetList<TaskWidget>(find.byType(TaskWidget))
           .toList();
-      expect(taskWidgets.length, equals(3));
+      expect(taskWidgets.length, equals(12));
       expect(
         taskWidgets[0].instance.scheduledDate,
         equals(const CivilDay(year: 2026, month: 6, day: 1)),
@@ -855,7 +855,7 @@ void main() {
       taskWidgets = tester
           .widgetList<TaskWidget>(find.byType(TaskWidget))
           .toList();
-      expect(taskWidgets.length, equals(2));
+      expect(taskWidgets.length, equals(11));
       expect(
         taskWidgets[0].instance.scheduledDate,
         equals(const CivilDay(year: 2026, month: 6, day: 2)),

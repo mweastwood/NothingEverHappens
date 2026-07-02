@@ -17,7 +17,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 
 import 'package:nothing_ever_happens/logic/app_clock.dart';
-import 'package:nothing_ever_happens/widgets/future_instances_control.dart';
+
 import 'package:nothing_ever_happens/widgets/missed_occurrence_policy_selector.dart';
 import 'create_task_screen_test.mocks.dart';
 import '../test_helper.dart';
@@ -1057,37 +1057,11 @@ void main() {
       await tester.tap(find.text('Repeating'));
       await tester.pumpAndSettle();
 
-      // Should show 1 future occurrences by default (futureInstancesCount = 1)
-      expect(
-        find.byKey(const Key('spawned_occurrence_card_0')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('spawned_occurrence_card_1')), findsNothing);
-
-      // Increment future instances to 3
-      final incrementButton = find.byKey(
-        const Key('add_future_instances_button'),
-      );
-      await tester.ensureVisible(incrementButton);
-      await tester.tap(incrementButton);
-      await tester.pumpAndSettle();
-      await tester.tap(incrementButton);
-      await tester.pumpAndSettle();
-
-      // Should show 3 future occurrences now (March 9, March 10, March 11)
-      expect(
-        find.byKey(const Key('spawned_occurrence_card_0')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('spawned_occurrence_card_1')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('spawned_occurrence_card_2')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('spawned_occurrence_card_3')), findsNothing);
+      // Under the new rules, Daily schedule has next 10 instances pre-created
+      for (int i = 0; i < 10; i++) {
+        expect(find.byKey(Key('spawned_occurrence_card_$i')), findsOneWidget);
+      }
+      expect(find.byKey(const Key('spawned_occurrence_card_10')), findsNothing);
 
       // Change interval to 3
       final intervalField = find.byKey(const Key('interval_text_field'));
@@ -1095,20 +1069,11 @@ void main() {
       await tester.enterText(intervalField, '3');
       await tester.pumpAndSettle();
 
-      // Verify occurrences still has 3 cards (dynamic preview rebuild with new interval: March 11, March 14, March 17)
-      expect(
-        find.byKey(const Key('spawned_occurrence_card_0')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('spawned_occurrence_card_1')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('spawned_occurrence_card_2')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('spawned_occurrence_card_3')), findsNothing);
+      // Verify occurrences still has 10 cards (dynamic preview rebuild with new interval)
+      for (int i = 0; i < 10; i++) {
+        expect(find.byKey(Key('spawned_occurrence_card_$i')), findsOneWidget);
+      }
+      expect(find.byKey(const Key('spawned_occurrence_card_10')), findsNothing);
     });
   });
 
@@ -1224,81 +1189,7 @@ void main() {
     );
 
     testWidgets(
-      'CreateTaskScreen shows futureInstancesControl for repeating tasks and saves correct count',
-      (WidgetTester tester) async {
-        final mockRepository = MockTaskRepository();
-        when(
-          mockRepository.getInstances(),
-        ).thenAnswer((_) => const Stream.empty());
-        when(mockRepository.addTaskSchedule(any)).thenAnswer((_) async {});
-
-        tester.view.physicalSize = const Size(1000, 2000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: buildTestProviderScope(
-              overrides: [
-                taskRepositoryProvider.overrideWithValue(mockRepository),
-              ],
-              child: const CreateTaskScreen(defaultToRepeating: true),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        // Title and description
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Title'),
-          'Daily Chores',
-        );
-
-        // Verify future instances control is visible and initially shows 1
-        expect(
-          find.byKey(const Key('add_future_instances_button')),
-          findsOneWidget,
-        );
-        expect(
-          find.descendant(
-            of: find.byType(FutureInstancesControl),
-            matching: find.text('1'),
-          ),
-          findsOneWidget,
-        );
-
-        // Tap increment button
-        final incrementButton = find.byKey(
-          const Key('add_future_instances_button'),
-        );
-        await tester.ensureVisible(incrementButton);
-        await tester.tap(incrementButton);
-        await tester.pumpAndSettle();
-        expect(
-          find.descendant(
-            of: find.byType(FutureInstancesControl),
-            matching: find.text('2'),
-          ),
-          findsOneWidget,
-        );
-
-        // Save
-        final saveButton = find.byKey(const Key('save_task_button'));
-        await tester.ensureVisible(saveButton);
-        await tester.tap(saveButton);
-        await tester.pumpAndSettle();
-
-        // Capture verification
-        final verification = verify(mockRepository.addTaskSchedule(captureAny));
-        verification.called(1);
-        final TaskSchedule savedTask = verification.captured.single;
-        expect(savedTask.futureInstancesCount, 2);
-      },
-    );
-
-    testWidgets(
-      'CreateTaskScreen hides FutureInstancesControl and MissedOccurrencePolicySelector for completion-relative tasks',
+      'CreateTaskScreen hides MissedOccurrencePolicySelector for completion-relative tasks',
       (WidgetTester tester) async {
         final mockRepository = MockTaskRepository();
         when(
@@ -1347,9 +1238,6 @@ void main() {
           await tester.tap(expandButton);
           await tester.pumpAndSettle();
         }
-
-        // Verify that FutureInstancesControl is NOT visible
-        expect(find.byType(FutureInstancesControl), findsNothing);
 
         // Verify that MissedOccurrencePolicySelector is NOT visible
         expect(find.byType(MissedOccurrencePolicySelector), findsNothing);

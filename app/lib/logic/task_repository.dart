@@ -490,12 +490,7 @@ class TaskRepository {
           _spawnedInstancesCache.remove(k);
         }
 
-        final action = SchedulerEngine.evaluate(
-          task,
-          taskInstances,
-          now,
-          futureInstancesCount: task.futureInstancesCount,
-        );
+        final action = SchedulerEngine.evaluate(task, taskInstances, now);
 
         for (final inst in action.instancesToUpdate) {
           batch.set(_instanceRefFor(inst, familyId), inst);
