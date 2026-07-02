@@ -16,7 +16,6 @@ void main() {
       id: 'S-test-task',
       title: 'Test Daily Task',
       description: 'Daily test description',
-      futureInstancesCount: 3,
       schedules: [
         DailySchedule(
           id: 'R-daily-rule',
@@ -174,7 +173,6 @@ void main() {
         id: 'S-finished-task',
         title: 'Finished Task',
         description: 'No more occurrences',
-        futureInstancesCount: 3,
         schedules: [
           OneOffSchedule(
             id: 'R-oneoff-rule',
@@ -196,7 +194,6 @@ void main() {
         id: 'S-future-task',
         title: 'Future Task',
         description: 'Starts in future',
-        futureInstancesCount: 3,
         schedules: [
           DailySchedule(
             id: 'R-daily-future-rule',
@@ -264,6 +261,29 @@ void main() {
     });
 
     testGoldens('SpawnedInstancesList renders correctly', (tester) async {
+      final monthlyTask = TaskSchedule(
+        id: 'S-test-task-monthly',
+        title: 'Test Monthly Task',
+        description: 'Monthly test description',
+        schedules: [
+          MonthlySchedule(
+            id: 'R-monthly-rule',
+            scheduleId: 'S-test-task-monthly',
+            startDate: CivilDay(year: 2026, month: 10, day: 25),
+            interval: 1,
+            dayOfMonth: 25,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.45)
         ..addScenario(
           'SpawnedInstancesList Default with Past and Future',
@@ -272,7 +292,7 @@ void main() {
               padding: const EdgeInsets.all(8.0),
               child: SingleChildScrollView(
                 child: SpawnedInstancesList(
-                  task: dailyTask,
+                  task: monthlyTask,
                   dbInstances: dbInstances,
                   now: now,
                 ),

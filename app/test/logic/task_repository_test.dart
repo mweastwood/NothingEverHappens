@@ -307,7 +307,7 @@ void main() {
         expect(undoneSnapshot.data()!['completedByUserId'], isNull);
         expect(undoneSnapshot.data()!['completedAt'], isNull);
 
-        // Verify next spawned still exists under N=1 spawning
+        // Verify next spawned still exists under new Daily spawning rules
         final nextSnapshotPost = await firestore
             .collection('users')
             .doc(userId)
@@ -316,16 +316,16 @@ void main() {
             .get();
         expect(nextSnapshotPost.exists, isTrue);
 
-        // Verify June 3 was deleted as part of the undo
+        // Verify June 12 was deleted as part of the undo (since June 1 to 11 are within the 10 lookahead limit, June 12 is pruned)
         final instsPostUndo = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
             .get();
-        final hasJune3 = instsPostUndo.docs.any(
-          (d) => d.data()['scheduledDate']['day'] == 3,
+        final hasJune12 = instsPostUndo.docs.any(
+          (d) => d.data()['scheduledDate']['day'] == 12,
         );
-        expect(hasJune3, isFalse);
+        expect(hasJune12, isFalse);
 
         AppClock.reset();
       },
@@ -516,7 +516,7 @@ void main() {
             .collection('instances')
             .get();
 
-        expect(instancesSnap.docs.length, 4);
+        expect(instancesSnap.docs.length, 7);
 
         final weeklyRule = modification.newTask.schedules[0];
         final monthlyRule = modification.newTask.schedules[1];
@@ -1564,24 +1564,24 @@ void main() {
     );
 
     test(
-      'updateTaskSchedule reacts to futureInstancesCount change and triggers missed policy processing',
+      'updateTaskSchedule reacts to schedule change and triggers missed policy processing',
       () async {
         final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
         AppClock.setMockTime(mockTime);
 
         final firestore = FakeFirebaseFirestore();
 
-        // Add a daily task schedule to firestore with futureInstancesCount = 1
+        // Add a weekly task schedule to firestore (should spawn 5 instances under Weekly rule)
         final task = TaskSchedule(
           id: 'settings-reactive-task',
-          title: 'Daily Task',
+          title: 'Weekly Task',
           description: 'Desc',
           lastSpawnedDate: null,
-          futureInstancesCount: 1,
           schedules: [
-            DailySchedule(
+            WeeklySchedule(
               startDate: const CivilDay(year: 2026, month: 6, day: 24),
               interval: 1,
+              daysOfWeek: {3},
             ),
           ],
         );
@@ -1621,37 +1621,32 @@ void main() {
         // Let the stream listener trigger the initial pass
         await Future.delayed(const Duration(milliseconds: 100));
 
-        // Verify that 1 future instance has been created (for June 24)
-        final instsAfter1 = await firestore
+        // Verify that 5 future instances have been created (for June 24, July 1, 8, 15, 22)
+        final instsAfter5 = await firestore
             .collection('users')
             .doc(userId)
             .collection('instances')
             .get();
 
-        final j24Count = instsAfter1.docs
-            .where(
-              (d) =>
-                  d.data()['scheduleId'] == task.id &&
-                  d.data()['scheduledDate']['year'] == 2026 &&
-                  d.data()['scheduledDate']['month'] == 6 &&
-                  d.data()['scheduledDate']['day'] == 24,
-            )
-            .length;
-        expect(j24Count, 1);
-        expect(instsAfter1.docs.length, 1);
+        expect(instsAfter5.docs.length, 5);
 
-        // Now, update task with futureInstancesCount = 3
+        // Now, update task to a Monthly schedule (which pre-creates 3 instances, but only 2 fit within the 30-day engine window)
         final modification = task.edit(
           newTitle: task.title,
           newDescription: task.description,
-          newSchedules: task.schedules,
+          newSchedules: [
+            MonthlySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 24),
+              interval: 1,
+              dayOfMonth: 24,
+            ),
+          ],
           newEstimatedDuration: task.estimatedDuration,
           newMissedPolicy: task.missedPolicy,
           newIsMaster: task.isMaster,
           newLastSpawnedDate: task.lastSpawnedDate,
           newIsFamily: task.isFamily,
           newPriority: task.priority,
-          newFutureInstancesCount: 3,
         );
 
         await repository.updateTaskSchedule(modification);
@@ -1659,7 +1654,7 @@ void main() {
         // Let the repository process and spawn
         await Future.delayed(const Duration(milliseconds: 100));
 
-        // Verify that 3 future instances have been created (for June 24, 25, 26)
+        // Verify that 2 future instances have been created (for June 24 and July 24; August 24 is outside the 30-day window)
         final instsAfter3 = await firestore
             .collection('users')
             .doc(userId)
@@ -1673,25 +1668,17 @@ void main() {
               d.data()['scheduledDate']['month'] == 6 &&
               d.data()['scheduledDate']['day'] == 24,
         );
-        final hasJune25 = instsAfter3.docs.any(
+        final hasJuly24 = instsAfter3.docs.any(
           (d) =>
               d.data()['scheduleId'] == task.id &&
               d.data()['scheduledDate']['year'] == 2026 &&
-              d.data()['scheduledDate']['month'] == 6 &&
-              d.data()['scheduledDate']['day'] == 25,
-        );
-        final hasJune26 = instsAfter3.docs.any(
-          (d) =>
-              d.data()['scheduleId'] == task.id &&
-              d.data()['scheduledDate']['year'] == 2026 &&
-              d.data()['scheduledDate']['month'] == 6 &&
-              d.data()['scheduledDate']['day'] == 26,
+              d.data()['scheduledDate']['month'] == 7 &&
+              d.data()['scheduledDate']['day'] == 24,
         );
 
         expect(hasJune24, isTrue);
-        expect(hasJune25, isTrue);
-        expect(hasJune26, isTrue);
-        expect(instsAfter3.docs.length, 3);
+        expect(hasJuly24, isTrue);
+        expect(instsAfter3.docs.length, 2);
 
         AppClock.reset();
       },
@@ -1745,8 +1732,8 @@ void main() {
               .collection('instances')
               .get();
 
-          // Should spawn exactly 2 instances (today + 1 lookahead), no duplicates!
-          expect(insts.docs.length, 2);
+          // Should spawn exactly 11 instances (today + 10 lookahead), no duplicates!
+          expect(insts.docs.length, 11);
         },
       );
 
@@ -1791,7 +1778,7 @@ void main() {
           // Get the spawned instances
           final userDocRef = firestore.collection('users').doc(userId);
           final instsSnap1 = await userDocRef.collection('instances').get();
-          expect(instsSnap1.docs.length, 2);
+          expect(instsSnap1.docs.length, 11);
 
           // Delete one of the instances directly from firestore to simulate a missing/deleted instance
           final deletedInst = instsSnap1.docs.firstWhere(
@@ -1806,7 +1793,7 @@ void main() {
           await Future.delayed(const Duration(milliseconds: 100));
 
           final instsSnap2 = await userDocRef.collection('instances').get();
-          expect(instsSnap2.docs.length, 1); // Still 1 (not re-spawned)
+          expect(instsSnap2.docs.length, 10); // Still 10 (not re-spawned)
 
           // 2. Advance the clock past 2 seconds (e.g. 3 seconds)
           AppClock.setMockTime(mockTime.add(const Duration(seconds: 3)));
@@ -1817,7 +1804,7 @@ void main() {
           await Future.delayed(const Duration(milliseconds: 100));
 
           final instsSnap3 = await userDocRef.collection('instances').get();
-          expect(instsSnap3.docs.length, 2); // Re-spawned successfully!
+          expect(instsSnap3.docs.length, 11); // Re-spawned successfully!
         },
       );
 

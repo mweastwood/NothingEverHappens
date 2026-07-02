@@ -148,7 +148,12 @@ void main() {
           ],
         );
 
-        final action = SchedulerEngine.evaluate(task, [], now);
+        final action = SchedulerEngine.evaluate(
+          task,
+          [],
+          now,
+          futureInstancesCount: 1,
+        );
 
         // Should spawn 5 instances under N=1: June 16, 17, 18, 19, and future 20
         expect(action.instancesToSpawn, hasLength(5));
@@ -186,7 +191,12 @@ void main() {
             ],
           );
 
-          final action = SchedulerEngine.evaluate(task, [], now);
+          final action = SchedulerEngine.evaluate(
+            task,
+            [],
+            now,
+            futureInstancesCount: 1,
+          );
 
           // Under N=1, today (June 19) and tomorrow (June 20) are pending.
           // Older dates (June 17, 18) are skipped and not spawned.
@@ -233,7 +243,12 @@ void main() {
           status: 'pending',
         );
 
-        final action = SchedulerEngine.evaluate(task, [existingPending], now);
+        final action = SchedulerEngine.evaluate(
+          task,
+          [existingPending],
+          now,
+          futureInstancesCount: 1,
+        );
 
         // Existing yesterday instance should be updated to skipped
         expect(action.instancesToUpdate, hasLength(1));
@@ -284,7 +299,12 @@ void main() {
             status: 'pending',
           );
 
-          final action = SchedulerEngine.evaluate(task, [todayInstance], now);
+          final action = SchedulerEngine.evaluate(
+            task,
+            [todayInstance],
+            now,
+            futureInstancesCount: 1,
+          );
 
           // Today's instance should remain pending, meaning it is NOT updated to skipped!
           expect(action.instancesToUpdate, isEmpty);
@@ -413,7 +433,12 @@ void main() {
           status: 'pending',
         );
 
-        final action = SchedulerEngine.evaluate(task, [yesterdayInstance], now);
+        final action = SchedulerEngine.evaluate(
+          task,
+          [yesterdayInstance],
+          now,
+          futureInstancesCount: 1,
+        );
 
         // Yesterday's instance (expired yesterday at 2:00 PM) is skipped
         expect(action.instancesToUpdate, hasLength(1));
@@ -690,15 +715,14 @@ void main() {
           id: 'task-fallback-count',
           title: 'Daily Task',
           description: 'Desc',
-          futureInstancesCount: 3,
           schedules: [dailyRule],
         );
 
         // Evaluate without passing futureInstancesCount parameter
         final action = SchedulerEngine.evaluate(task, const [], now);
 
-        // It should spawn 3 instances (the fallback from task.futureInstancesCount)
-        expect(action.instancesToSpawn, hasLength(3));
+        // It should spawn 10 instances (the fallback from task.futureInstancesCount for Daily)
+        expect(action.instancesToSpawn, hasLength(10));
       });
     });
 
@@ -725,11 +749,10 @@ void main() {
             id: 'task-id',
             title: 'Daily Task',
             description: 'Desc',
-            futureInstancesCount: 2,
             schedules: [dailyRule],
           );
 
-          // Tuesday is tomorrow. Wednesday and Thursday are subsequent days.
+          // Tuesday is tomorrow. Wednesday onwards are subsequent days.
           // Tuesday's instance is already in the DB and is completed.
           final completedTomorrow = TaskInstance(
             id: 'inst-tue',
@@ -745,24 +768,21 @@ void main() {
 
           // Evaluation:
           // We have a completed future instance on Tuesday.
-          // We want 2 pending future instances (should spawn Wednesday and Thursday).
+          // Under new rules, Daily task pre-creates 10 pending future instances.
           final action = SchedulerEngine.evaluate(task, [
             completedTomorrow,
           ], now);
 
           // Tuesday is completed (resolved), so it shouldn't count.
-          // It should spawn Wednesday and Thursday (2 pending future instances).
+          // It should spawn 10 pending future instances starting from Wednesday.
           final spawnedDates = action.instancesToSpawn
               .map((i) => i.scheduledDate)
               .toList();
           expect(
             spawnedDates,
-            containsAll([
-              today.addDays(2), // Wednesday
-              today.addDays(3), // Thursday
-            ]),
+            containsAll(List.generate(10, (i) => today.addDays(i + 2))),
           );
-          expect(action.instancesToSpawn, hasLength(2));
+          expect(action.instancesToSpawn, hasLength(10));
 
           // The completed Tuesday instance status must remain completed (no update/delete)
           expect(action.instancesToUpdate, isEmpty);
@@ -790,7 +810,6 @@ void main() {
             id: 'task-id',
             title: 'Daily Task',
             description: 'Desc',
-            futureInstancesCount: 1,
             schedules: [dailyRule],
           );
 

@@ -903,8 +903,8 @@ void main() {
             .map((doc) => TaskInstance.fromFirestore(doc))
             .toList();
 
-        // We should have 3 spawned active instances (Monday, Tuesday, Wednesday) plus 1 future instance
-        expect(allInstances.length, 4);
+        // We should have 3 spawned active instances (Monday, Tuesday, Wednesday) plus 10 future instances
+        expect(allInstances.length, 13);
 
         expect(allInstances.any((t) => t.scheduledDate.day == 25), isTrue);
         expect(allInstances.any((t) => t.scheduledDate.day == 26), isTrue);
@@ -1297,7 +1297,7 @@ void main() {
         final dailyRule = task.schedules[0];
         final weeklyRule = task.schedules[1];
 
-        expect(instsBefore.docs.length, 3);
+        expect(instsBefore.docs.length, 21);
         expect(
           instsBefore.docs.any(
             (d) => matchInst(
@@ -1537,8 +1537,8 @@ void main() {
         final dailyRule = task.schedules[0];
         final weeklyRule = task.schedules[1];
 
-        // Expect 6 instances: Daily (June 1, 2, 3, 4) + Weekly (June 3, 10)
-        expect(insts.docs.length, 6);
+        // Expect 18 instances: Daily (June 1-11) + Weekly (June 3, 10, 17, 24, July 1)
+        expect(insts.docs.length, 18);
         expect(
           insts.docs.any(
             (d) => matchInst(
@@ -1654,8 +1654,8 @@ void main() {
         final monthlyRule = task.schedules[3];
         final yearlyRule = task.schedules[4];
 
-        // Total: 1 (OneOff: June 1) + 4 (Daily: June 1, 2, 3, 4) + 2 (Weekly: June 3, 10) + 1 (Monthly: June 15) + 1 (Yearly: Dec 25) = 9 instances.
-        expect(insts.docs.length, 9);
+        // Total: 1 (OneOff) + 13 (Daily) + 5 (Weekly) + 2 (Monthly) + 1 (Yearly) = 22 instances.
+        expect(insts.docs.length, 22);
 
         expect(
           insts.docs.any(
