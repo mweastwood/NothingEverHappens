@@ -411,4 +411,42 @@ void main() {
 
     await screenMatchesGolden(tester, 'dashboard_screen_en');
   });
+
+  testWidgets(
+    'Capacity bar heights scale dynamically to the peak data point of the week',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(
+        DateTime(2026, 7, 1, 9, 0),
+      ); // Wednesday (2026-07-01)
+
+      settingsSubject.add(
+        const UserSettings(
+          hoursAvailable: 8.0,
+          dailyCapacityOverrides: {
+            '2026-07-01': 12.0, // Peak
+            '2026-07-02': 6.0, // 50%
+          },
+        ),
+      );
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      // Wednesday (Peak: 12.0 hrs) should scale to max height (120 px)
+      final wedPaint = find.descendant(
+        of: find.byKey(const Key('capacity_bar_2026-07-01')),
+        matching: find.byType(CustomPaint),
+      );
+      final wedHeight = tester.getSize(wedPaint).height;
+      expect(wedHeight, 120.0);
+
+      // Thursday (6.0 hrs) should scale to 50% height (60 px)
+      final thuPaint = find.descendant(
+        of: find.byKey(const Key('capacity_bar_2026-07-02')),
+        matching: find.byType(CustomPaint),
+      );
+      final thuHeight = tester.getSize(thuPaint).height;
+      expect(thuHeight, 60.0);
+    },
+  );
 }

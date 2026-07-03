@@ -213,25 +213,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    SizedBox(
-                      height: 180,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: upcomingDays.map((date) {
+                    Builder(
+                      builder: (context) {
+                        double peakValue = 0.0;
+                        for (final date in upcomingDays) {
                           final capacity = settings.getCapacityForDate(date);
-                          final dateStr =
-                              '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-                          final isOverridden =
-                              settings.dailyCapacityOverrides?.containsKey(
-                                dateStr,
-                              ) ??
-                              false;
-                          final isToday =
-                              date.day == today.day &&
-                              date.month == today.month &&
-                              date.year == today.year;
-
                           final day = CivilDay.fromDateTime(date);
                           double plannedMinutes = 0.0;
                           for (final inst in instances) {
@@ -251,168 +237,234 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               }
                             }
                           }
-                          final capacityMinutes = capacity * 60.0;
+                          final plannedHours = plannedMinutes / 60.0;
+                          if (capacity > peakValue) {
+                            peakValue = capacity;
+                          }
+                          if (plannedHours > peakValue) {
+                            peakValue = plannedHours;
+                          }
+                        }
+                        final double scaleMax = peakValue > 0 ? peakValue : 8.0;
 
-                          // Peak capacity to scale height (let's assume max scale is 8 hours)
-                          final double scaleMax = 8.0;
-                          final double barHeight = capacity > 0
-                              ? (capacity / scaleMax * 120.0).clamp(8.0, 120.0)
-                              : 0.0;
-                          final double fillHeight = plannedMinutes > 0
-                              ? (plannedMinutes / 60.0 / scaleMax * 120.0)
-                                    .clamp(8.0, 120.0)
-                              : 0.0;
-
-                          final List<String> weekdays = [
-                            'Mon',
-                            'Tue',
-                            'Wed',
-                            'Thu',
-                            'Fri',
-                            'Sat',
-                            'Sun',
-                          ];
-                          final dayLabel = weekdays[date.weekday - 1];
-
-                          return Expanded(
-                            child: GestureDetector(
-                              key: Key('capacity_bar_$dateStr'),
-                              onTap: () => _showEditCapacityDialog(
-                                context,
-                                settings,
+                        return SizedBox(
+                          height: 180,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: upcomingDays.map((date) {
+                              final capacity = settings.getCapacityForDate(
                                 date,
-                                isOverride: true,
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  SizedBox(
-                                    height: 14,
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        _formatForecastLabel(
-                                          plannedMinutes / 60.0,
-                                          capacity,
+                              );
+                              final dateStr =
+                                  '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                              final isOverridden =
+                                  settings.dailyCapacityOverrides?.containsKey(
+                                    dateStr,
+                                  ) ??
+                                  false;
+                              final isToday =
+                                  date.day == today.day &&
+                                  date.month == today.month &&
+                                  date.year == today.year;
+
+                              final day = CivilDay.fromDateTime(date);
+                              double plannedMinutes = 0.0;
+                              for (final inst in instances) {
+                                if (inst.scheduledDate == day &&
+                                    inst.status != 'skipped') {
+                                  if (inst.assignedUserId != null &&
+                                      inst.assignedUserId != currentUserId) {
+                                    continue;
+                                  }
+                                  final schedule = scheduleMap[inst.scheduleId];
+                                  if (schedule != null &&
+                                      schedule.estimatedDuration != null) {
+                                    plannedMinutes += schedule
+                                        .estimatedDuration!
+                                        .inMinutes
+                                        .toDouble();
+                                  }
+                                }
+                              }
+                              final capacityMinutes = capacity * 60.0;
+
+                              final double barHeight = capacity > 0
+                                  ? (capacity / scaleMax * 120.0).clamp(
+                                      8.0,
+                                      120.0,
+                                    )
+                                  : 0.0;
+                              final double fillHeight = plannedMinutes > 0
+                                  ? (plannedMinutes / 60.0 / scaleMax * 120.0)
+                                        .clamp(8.0, 120.0)
+                                  : 0.0;
+
+                              final List<String> weekdays = [
+                                'Mon',
+                                'Tue',
+                                'Wed',
+                                'Thu',
+                                'Fri',
+                                'Sat',
+                                'Sun',
+                              ];
+                              final dayLabel = weekdays[date.weekday - 1];
+
+                              return Expanded(
+                                child: GestureDetector(
+                                  key: Key('capacity_bar_$dateStr'),
+                                  onTap: () => _showEditCapacityDialog(
+                                    context,
+                                    settings,
+                                    date,
+                                    isOverride: true,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      SizedBox(
+                                        height: 14,
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            _formatForecastLabel(
+                                              plannedMinutes / 60.0,
+                                              capacity,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  fontSize: 9,
+                                                  fontWeight: isToday
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
+                                                ),
+                                          ),
                                         ),
-                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      SizedBox(
+                                        height: 120,
+                                        child: Stack(
+                                          alignment: Alignment.bottomCenter,
+                                          children: [
+                                            // Solid fill (planned tasks)
+                                            if (fillHeight > 0)
+                                              Container(
+                                                height: fillHeight,
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors:
+                                                        plannedMinutes >
+                                                            capacityMinutes
+                                                        ? [
+                                                            theme
+                                                                .colorScheme
+                                                                .error,
+                                                            theme
+                                                                .colorScheme
+                                                                .error
+                                                                .withValues(
+                                                                  alpha: 0.7,
+                                                                ),
+                                                          ]
+                                                        : isOverridden
+                                                        ? [
+                                                            theme
+                                                                .colorScheme
+                                                                .tertiary,
+                                                            theme
+                                                                .colorScheme
+                                                                .tertiary
+                                                                .withValues(
+                                                                  alpha: 0.7,
+                                                                ),
+                                                          ]
+                                                        : [
+                                                            theme
+                                                                .colorScheme
+                                                                .primary,
+                                                            theme
+                                                                .colorScheme
+                                                                .primary
+                                                                .withValues(
+                                                                  alpha: 0.7,
+                                                                ),
+                                                          ],
+                                                    begin:
+                                                        Alignment.bottomCenter,
+                                                    end: Alignment.topCenter,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                              ),
+                                            // Dashed outline (capacity)
+                                            if (barHeight > 0)
+                                              Container(
+                                                height: barHeight,
+                                                width: double.infinity,
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                    ),
+                                                child: CustomPaint(
+                                                  painter: DashedRectPainter(
+                                                    color: isToday
+                                                        ? theme
+                                                              .colorScheme
+                                                              .onSurface
+                                                        : isOverridden
+                                                        ? theme
+                                                              .colorScheme
+                                                              .tertiary
+                                                        : theme
+                                                              .colorScheme
+                                                              .primary,
+                                                    strokeWidth: 2.0,
+                                                    borderRadius: 6.0,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        dayLabel,
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              fontWeight: isToday
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                              color: isToday
+                                                  ? theme.colorScheme.primary
+                                                  : theme.colorScheme.onSurface,
+                                            ),
+                                      ),
+                                      Text(
+                                        '${date.day}',
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
-                                              fontSize: 9,
+                                              fontSize: 10,
                                               fontWeight: isToday
                                                   ? FontWeight.bold
                                                   : FontWeight.normal,
                                             ),
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 4),
-                                  SizedBox(
-                                    height: 120,
-                                    child: Stack(
-                                      alignment: Alignment.bottomCenter,
-                                      children: [
-                                        // Solid fill (planned tasks)
-                                        if (fillHeight > 0)
-                                          Container(
-                                            height: fillHeight,
-                                            margin: const EdgeInsets.symmetric(
-                                              horizontal: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors:
-                                                    plannedMinutes >
-                                                        capacityMinutes
-                                                    ? [
-                                                        theme.colorScheme.error,
-                                                        theme.colorScheme.error
-                                                            .withValues(
-                                                              alpha: 0.7,
-                                                            ),
-                                                      ]
-                                                    : isOverridden
-                                                    ? [
-                                                        theme
-                                                            .colorScheme
-                                                            .tertiary,
-                                                        theme
-                                                            .colorScheme
-                                                            .tertiary
-                                                            .withValues(
-                                                              alpha: 0.7,
-                                                            ),
-                                                      ]
-                                                    : [
-                                                        theme
-                                                            .colorScheme
-                                                            .primary,
-                                                        theme
-                                                            .colorScheme
-                                                            .primary
-                                                            .withValues(
-                                                              alpha: 0.7,
-                                                            ),
-                                                      ],
-                                                begin: Alignment.bottomCenter,
-                                                end: Alignment.topCenter,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                          ),
-                                        // Dashed outline (capacity)
-                                        if (barHeight > 0)
-                                          Container(
-                                            height: barHeight,
-                                            width: double.infinity,
-                                            margin: const EdgeInsets.symmetric(
-                                              horizontal: 4,
-                                            ),
-                                            child: CustomPaint(
-                                              painter: DashedRectPainter(
-                                                color: isToday
-                                                    ? theme
-                                                          .colorScheme
-                                                          .onSurface
-                                                    : isOverridden
-                                                    ? theme.colorScheme.tertiary
-                                                    : theme.colorScheme.primary,
-                                                strokeWidth: 2.0,
-                                                borderRadius: 6.0,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    dayLabel,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      fontWeight: isToday
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      color: isToday
-                                          ? theme.colorScheme.primary
-                                          : theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${date.day}',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      fontSize: 10,
-                                      fontWeight: isToday
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     Row(
