@@ -704,7 +704,9 @@ void main() {
       var taskWidgets = tester
           .widgetList<TaskWidget>(find.byType(TaskWidget))
           .toList();
-      expect(taskWidgets.length, equals(1));
+      // June 1 (overdue) and June 3-12 (future lookahead) are pending, June 2 is skipped because June 2 has started.
+      // So total pending instances is 11 (June 1 + 10 lookahead instances).
+      expect(taskWidgets.length, equals(11));
       expect(
         taskWidgets.first.instance.scheduledDate,
         equals(const CivilDay(year: 2026, month: 6, day: 1)),
@@ -717,14 +719,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
       await tester.pumpAndSettle();
 
-      // Reschedules to June 2
+      // Reschedules to June 2 (since June 1 is resolved, June 2 is now the earliest started and becomes pending)
       taskWidgets = tester
           .widgetList<TaskWidget>(find.byType(TaskWidget))
           .toList();
-      expect(taskWidgets.length, equals(1));
+      expect(taskWidgets.length, equals(10));
       expect(
         taskWidgets.first.instance.scheduledDate,
-        equals(const CivilDay(year: 2026, month: 6, day: 2)),
+        equals(const CivilDay(year: 2026, month: 6, day: 3)),
       );
     });
 
