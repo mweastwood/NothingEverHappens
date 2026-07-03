@@ -60,7 +60,7 @@ void main() {
       (user) => user == null,
     );
     print('[signOutAndWait] Sign out complete.');
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   setUp(() async {
@@ -148,6 +148,9 @@ void main() {
       );
     }
 
+    // Add extra settling delay after Firestore sync to prevent auth races
+    await Future.delayed(const Duration(milliseconds: 500));
+
     return creds.user!;
   }
 
@@ -207,7 +210,7 @@ void main() {
     testWidgets(
       'Families collection - allows members to read and joining users to add themselves',
       (WidgetTester tester) async {
-        // 1. Sign in Alice and create a family
+        print('[FamiliesTest] 1. Sign in Alice and create a family...');
         final aliceEmail = 'alice_${uuid.v4()}@example.com';
         final aliceUser = await registerAndSignIn(aliceEmail, 'password123');
         final aliceUid = aliceUser.uid;
@@ -215,7 +218,7 @@ void main() {
         final db = FirebaseFirestore.instance;
         final familyId = 'fam-${uuid.v4()}';
 
-        // Alice creates family - should succeed
+        print('[FamiliesTest] Alice creating family document...');
         await expectLater(
           db.collection('families').doc(familyId).set({
             'name': 'The Simpsons',
@@ -226,18 +229,22 @@ void main() {
           completes,
         );
 
-        // 2. Sign in Bob (non-member)
+        print('[FamiliesTest] 2. Sign in Bob (non-member)...');
         final bobEmail = 'bob_${uuid.v4()}@example.com';
         await signOutAndWait();
         final bobUser = await registerAndSignIn(bobEmail, 'password123');
         final bobUid = bobUser.uid;
 
-        // Bob tries to read the family document - should fail (permission-denied)
+        print(
+          '[FamiliesTest] Bob trying to read family document (expect deny)...',
+        );
         await expectPermissionDenied(
           db.collection('families').doc(familyId).get(),
         );
 
-        // Bob adds himself to the family (join functionality allowed in rules)
+        print(
+          '[FamiliesTest] Bob adding himself to the family (expect allow)...',
+        );
         await expectLater(
           db.collection('families').doc(familyId).update({
             'members.$bobUid': {'role': 'non-parent', 'displayName': 'Bob'},
@@ -245,7 +252,11 @@ void main() {
           completes,
         );
 
-        // Bob reads the family document now - should succeed
+        print(
+          '[FamiliesTest] Bob reading the family document now (expect allow)...',
+        );
+        // Small delay to let update resolve in Firestore indexes
+        await Future.delayed(const Duration(milliseconds: 200));
         final doc = await db.collection('families').doc(familyId).get();
         expect(doc.exists, isTrue);
         expect(doc.data()?['name'], 'The Simpsons');
