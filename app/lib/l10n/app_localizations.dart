@@ -248,6 +248,12 @@ abstract class AppLocalizations {
   /// **'Please enter a positive number of minutes'**
   String get estimatedEffortValidationError;
 
+  /// Label for estimated effort display
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated Effort: {duration}'**
+  String estimatedEffortLabel(String duration);
+
   /// No description provided for @scheduleHeader.
   ///
   /// In en, this message translates to:

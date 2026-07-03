@@ -461,6 +461,20 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     TaskRepository repository,
     bool showLastSpawnedDate,
   ) {
+    String formatDuration(Duration duration) {
+      final minutes = duration.inMinutes;
+      if (minutes <= 0) return '';
+      final hours = minutes ~/ 60;
+      final remainingMinutes = minutes % 60;
+      if (hours > 0) {
+        final hourStr = hours == 1 ? '1 hr' : '$hours hrs';
+        final minStr = remainingMinutes > 0 ? '$remainingMinutes min' : '';
+        return minStr.isEmpty ? hourStr : '$hourStr $minStr';
+      } else {
+        return '$minutes min';
+      }
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
       elevation: 2.0,
@@ -544,6 +558,24 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
               ),
             ),
           ],
+          if (task.estimatedDuration != null)
+            Padding(
+              padding: const EdgeInsets.only(
+                left: 12.0,
+                right: 12.0,
+                bottom: 8.0,
+              ),
+              child: Text(
+                context.l10n.estimatedEffortLabel(
+                  formatDuration(task.estimatedDuration!),
+                ),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.8,
+                  ),
+                ),
+              ),
+            ),
           if (showLastSpawnedDate)
             Padding(
               padding: const EdgeInsets.only(
