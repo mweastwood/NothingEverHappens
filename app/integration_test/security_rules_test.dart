@@ -113,7 +113,11 @@ void main() {
     await auth.authStateChanges().firstWhere(
       (user) => user?.uid == creds.user?.uid,
     );
-    print('[registerAndSignIn] authStateChanges propagated.');
+    print(
+      '[registerAndSignIn] authStateChanges propagated. Force refreshing ID token...',
+    );
+    await creds.user?.getIdToken(true);
+    print('[registerAndSignIn] ID token refreshed.');
     return creds.user!;
   }
 
