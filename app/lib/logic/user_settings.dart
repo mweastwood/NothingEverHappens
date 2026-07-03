@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'app_clock.dart';
 
 class UserSettings {
   final double hoursAvailable;
@@ -34,6 +35,29 @@ class UserSettings {
     return hoursAvailable;
   }
 
+  static Map<String, double>? _pruneOverrides(
+    Map<String, double>? overrides,
+    DateTime now,
+  ) {
+    if (overrides == null || overrides.isEmpty) return overrides;
+
+    final cutoffDate = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(const Duration(days: 90));
+    final cutoffStr =
+        '${cutoffDate.year}-${cutoffDate.month.toString().padLeft(2, '0')}-${cutoffDate.day.toString().padLeft(2, '0')}';
+
+    final pruned = <String, double>{};
+    for (final entry in overrides.entries) {
+      if (entry.key.compareTo(cutoffStr) >= 0) {
+        pruned[entry.key] = entry.value;
+      }
+    }
+    return pruned;
+  }
+
   factory UserSettings.fromJson(Map<String, dynamic> json) {
     final taskListSortJson = json['taskListSort'] as List<dynamic>?;
     final taskListSort = taskListSortJson?.map((e) {
@@ -61,8 +85,12 @@ class UserSettings {
 
     final dailyCapacityOverridesJson =
         json['dailyCapacityOverrides'] as Map<String, dynamic>?;
-    final dailyCapacityOverrides = dailyCapacityOverridesJson?.map(
+    final parsedOverrides = dailyCapacityOverridesJson?.map(
       (k, v) => MapEntry(k, (v as num).toDouble()),
+    );
+    final dailyCapacityOverrides = _pruneOverrides(
+      parsedOverrides,
+      AppClock.now,
     );
 
     return UserSettings(
@@ -77,6 +105,10 @@ class UserSettings {
   }
 
   Map<String, dynamic> toJson() {
+    final prunedOverrides = _pruneOverrides(
+      dailyCapacityOverrides,
+      AppClock.now,
+    );
     return {
       'hoursAvailable': hoursAvailable,
       'showLastSpawnedDate': showLastSpawnedDate,
@@ -90,8 +122,7 @@ class UserSettings {
             .toList(),
       if (defaultDailyCapacity != null)
         'defaultDailyCapacity': defaultDailyCapacity,
-      if (dailyCapacityOverrides != null)
-        'dailyCapacityOverrides': dailyCapacityOverrides,
+      if (prunedOverrides != null) 'dailyCapacityOverrides': prunedOverrides,
       if (lastCapacityConfirmedWeek != null)
         'lastCapacityConfirmedWeek': lastCapacityConfirmedWeek,
     };
@@ -112,8 +143,10 @@ class UserSettings {
       taskListSort: taskListSort ?? this.taskListSort,
       scheduleListSort: scheduleListSort ?? this.scheduleListSort,
       defaultDailyCapacity: defaultDailyCapacity ?? this.defaultDailyCapacity,
-      dailyCapacityOverrides:
-          dailyCapacityOverrides ?? this.dailyCapacityOverrides,
+      dailyCapacityOverrides: _pruneOverrides(
+        dailyCapacityOverrides ?? this.dailyCapacityOverrides,
+        AppClock.now,
+      ),
       lastCapacityConfirmedWeek:
           lastCapacityConfirmedWeek ?? this.lastCapacityConfirmedWeek,
     );
