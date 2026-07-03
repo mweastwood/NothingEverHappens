@@ -315,6 +315,68 @@ void main() {
           expect(action.instancesToSpawn[0].status, 'pending');
         },
       );
+
+      test(
+        'does not skip yesterday\'s missed instance if today\'s instance start time is in the future',
+        () {
+          // today is June 19, 10:00 AM (Friday)
+          // Let's set now to June 19, 8:00 AM (before the 10:00 AM start time)
+          final evalTime = DateTime(2026, 6, 19, 8, 0);
+          final yesterday = today.addDays(-1); // June 18
+
+          final task = TaskSchedule(
+            id: 'newer-bug-test',
+            title: 'Prefer Newer Start Time Task',
+            description: 'Start time test',
+            lastSpawnedDate: yesterday,
+            schedules: [
+              DailySchedule(
+                startDate: yesterday,
+                interval: 1,
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 10, minute: 0), // Starts at 10:00 AM
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+                missedOccurrencePolicy:
+                    const MissedOccurrencePolicy.preferNewer(),
+              ),
+            ],
+          );
+
+          final yesterdayInstance = TaskInstance(
+            id: 'newer-bug-test_yesterday',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: yesterday,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+
+          final action = SchedulerEngine.evaluate(
+            task,
+            [yesterdayInstance],
+            evalTime,
+            futureInstancesCount: 1,
+          );
+
+          // Yesterday's instance should NOT be marked as skipped,
+          // because today's instance (June 19) has not reached its start time (10:00 AM) yet.
+          expect(action.instancesToUpdate, isEmpty);
+        },
+      );
     });
 
     group('FixedCalendarPolicy - Prefer Older', () {

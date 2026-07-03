@@ -300,12 +300,15 @@ class SchedulerEngine {
               }
             }
           } else if (policy == MissedPolicy.preferNewer) {
-            final pastOrPresentDates = targetDates
-                .where((d) => !d.isAfter(today))
-                .toList();
-            final CivilDay? latestPastOrPresentDate = pastOrPresentDates.isEmpty
+            final startedDates = targetDates.where((d) {
+              final inst = workingInstances[d]!;
+              final start = inst.startRelativeTime.referenceTo(d);
+              return !now.isBefore(start);
+            }).toList();
+
+            final CivilDay? latestStartedDate = startedDates.isEmpty
                 ? null
-                : pastOrPresentDates.reduce((a, b) => a.isAfter(b) ? a : b);
+                : startedDates.reduce((a, b) => a.isAfter(b) ? a : b);
 
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
@@ -315,12 +318,11 @@ class SchedulerEngine {
               if (isOriginalResolved) continue;
 
               final String nextStatus;
-              if (date.isAfter(today)) {
+              if (latestStartedDate == null ||
+                  date.compareTo(latestStartedDate) >= 0) {
                 nextStatus = 'pending';
               } else {
-                nextStatus = date == latestPastOrPresentDate
-                    ? 'pending'
-                    : 'skipped';
+                nextStatus = 'skipped';
               }
               if (inst.status != nextStatus) {
                 workingInstances[date] = inst.copyWith(status: nextStatus);
