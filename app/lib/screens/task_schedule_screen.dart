@@ -526,7 +526,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
           if (task.description.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.only(
-                left: 28.0,
+                left: 12.0,
                 right: 12.0,
                 bottom: 8.0,
               ),
@@ -547,7 +547,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
           if (showLastSpawnedDate)
             Padding(
               padding: const EdgeInsets.only(
-                left: 28.0,
+                left: 12.0,
                 right: 12.0,
                 bottom: 8.0,
               ),
