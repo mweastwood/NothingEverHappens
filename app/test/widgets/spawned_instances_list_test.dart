@@ -335,7 +335,9 @@ void main() {
       expect(find.byKey(const Key('current_occurrence_card_0')), findsNothing);
     });
 
-    testGoldens('SpawnedInstancesList renders correctly', (tester) async {
+    testGoldens('SpawnedInstancesList renders narrow tabbed layout correctly', (
+      tester,
+    ) async {
       final monthlyTask = TaskSchedule(
         id: 'S-test-task-monthly',
         title: 'Test Monthly Task',
@@ -359,9 +361,94 @@ void main() {
         ],
       );
 
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.45)
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.8)
         ..addScenario(
-          'SpawnedInstancesList Default with Past and Future',
+          'Narrow Layout - Past Tab',
+          Material(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SingleChildScrollView(
+                child: SpawnedInstancesList(
+                  task: monthlyTask,
+                  dbInstances: dbInstances,
+                  now: now,
+                  initialTabIndex: 0,
+                ),
+              ),
+            ),
+          ),
+        )
+        ..addScenario(
+          'Narrow Layout - Current Tab',
+          Material(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SingleChildScrollView(
+                child: SpawnedInstancesList(
+                  task: monthlyTask,
+                  dbInstances: dbInstances,
+                  now: now,
+                  initialTabIndex: 1,
+                ),
+              ),
+            ),
+          ),
+        )
+        ..addScenario(
+          'Narrow Layout - Future Tab',
+          Material(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SingleChildScrollView(
+                child: SpawnedInstancesList(
+                  task: monthlyTask,
+                  dbInstances: dbInstances,
+                  now: now,
+                  initialTabIndex: 2,
+                ),
+              ),
+            ),
+          ),
+        );
+
+      await tester.pumpWidgetBuilder(
+        builder.build(),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(400, 1500),
+      );
+
+      await screenMatchesGolden(tester, 'spawned_instances_list_narrow_golden');
+    });
+
+    testGoldens('SpawnedInstancesList renders wide column layout correctly', (
+      tester,
+    ) async {
+      final monthlyTask = TaskSchedule(
+        id: 'S-test-task-monthly',
+        title: 'Test Monthly Task',
+        description: 'Monthly test description',
+        schedules: [
+          MonthlySchedule(
+            id: 'R-monthly-rule',
+            scheduleId: 'S-test-task-monthly',
+            startDate: CivilDay(year: 2026, month: 10, day: 25),
+            interval: 1,
+            dayOfMonth: 25,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.6)
+        ..addScenario(
+          'Wide Layout - Three Columns',
           Material(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -379,10 +466,10 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(400, 1000),
+        surfaceSize: const Size(800, 600),
       );
 
-      await screenMatchesGolden(tester, 'spawned_instances_list_golden');
+      await screenMatchesGolden(tester, 'spawned_instances_list_wide_golden');
     });
   });
 }

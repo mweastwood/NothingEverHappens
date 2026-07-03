@@ -9,12 +9,14 @@ class SpawnedInstancesList extends StatefulWidget {
   final TaskSchedule task;
   final List<TaskInstance> dbInstances;
   final DateTime now;
+  final int initialTabIndex;
 
   const SpawnedInstancesList({
     super.key,
     required this.task,
     required this.dbInstances,
     required this.now,
+    this.initialTabIndex = 1,
   });
 
   @override
@@ -73,7 +75,11 @@ class _SpawnedInstancesListState extends State<SpawnedInstancesList>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this, initialIndex: 1);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTabIndex,
+    );
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {});
