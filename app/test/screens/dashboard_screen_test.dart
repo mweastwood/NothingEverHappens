@@ -194,12 +194,74 @@ void main() {
       await tester.tap(saveBtn);
       await tester.pumpAndSettle();
 
-      // Verify settings default capacity was updated for Monday ('1')
+      // Verify settings default capacity was updated for Monday ('1') to 2.25 hours (2.0 + 15 min)
       verify(
         mockUserSettingsRepository.updateSettings(
           argThat(
             predicate<UserSettings>(
-              (settings) => settings.defaultDailyCapacity?['1'] != null,
+              (settings) => settings.defaultDailyCapacity?['1'] == 2.25,
+            ),
+          ),
+        ),
+      ).called(1);
+    },
+  );
+
+  testWidgets(
+    'Tapping different weekdays in default capacity template dialog updates the correct weekday baseline without shifting',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(DateTime(2026, 7, 1, 9, 0)); // Wednesday
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      // Open Default Capacity Template dialog
+      await tester.tap(find.byKey(const Key('edit_default_capacity_button')));
+      await tester.pumpAndSettle();
+
+      // 1. Test Tuesday ('2') - starts at 3.0, incremented to 3.25
+      final tuesdayTile = find.byKey(const Key('default_capacity_tile_2'));
+      await tester.tap(tuesdayTile);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('capacity_increment_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('capacity_save_button')));
+      await tester.pumpAndSettle();
+
+      verify(
+        mockUserSettingsRepository.updateSettings(
+          argThat(
+            predicate<UserSettings>(
+              (settings) => settings.defaultDailyCapacity?['2'] == 3.25,
+            ),
+          ),
+        ),
+      ).called(1);
+
+      clearInteractions(mockUserSettingsRepository);
+
+      // 2. Test Sunday ('7') - starts at 8.0 (default), incremented to 8.25
+      final sundayTile = find.byKey(const Key('default_capacity_tile_7'));
+      await tester.dragUntilVisible(
+        sundayTile,
+        find.byType(ListView),
+        const Offset(0, -100),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(sundayTile);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('capacity_increment_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('capacity_save_button')));
+      await tester.pumpAndSettle();
+
+      verify(
+        mockUserSettingsRepository.updateSettings(
+          argThat(
+            predicate<UserSettings>(
+              (settings) => settings.defaultDailyCapacity?['7'] == 8.25,
             ),
           ),
         ),

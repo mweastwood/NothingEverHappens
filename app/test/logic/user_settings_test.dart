@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 
 void main() {
   group('UserSettings Model Unit Tests', () {
@@ -121,6 +122,53 @@ void main() {
       expect(s1, isNot(s4));
       expect(s1, isNot(s5));
     });
+
+    test(
+      'dailyCapacityOverrides automatically prunes entries older than 90 days',
+      () {
+        // Mock clock time
+        AppClock.setMockTime(
+          DateTime(2026, 7, 10),
+        ); // cutoff is 90 days ago: 2026-04-11
+
+        final input = {
+          'hoursAvailable': 8.0,
+          'dailyCapacityOverrides': {
+            '2026-07-10': 4.0, // Today: keep
+            '2026-07-09': 5.0, // Yesterday: keep
+            '2026-04-12': 6.0, // 89 days ago: keep
+            '2026-04-11': 7.0, // 90 days ago: keep
+            '2026-04-10': 2.0, // 91 days ago: prune
+            '2026-01-01': 1.0, // Long ago: prune
+          },
+        };
+
+        // 1. Test fromJson pruning
+        final settings = UserSettings.fromJson(input);
+        expect(settings.dailyCapacityOverrides, {
+          '2026-07-10': 4.0,
+          '2026-07-09': 5.0,
+          '2026-04-12': 6.0,
+          '2026-04-11': 7.0,
+        });
+
+        // 2. Test toJson pruning
+        // Let's create settings directly with old overrides (which can happen if constructor is called directly)
+        final settingsUnpruned = UserSettings(
+          hoursAvailable: 8.0,
+          dailyCapacityOverrides: const {'2026-07-10': 4.0, '2026-04-10': 2.0},
+        );
+        expect(settingsUnpruned.toJson()['dailyCapacityOverrides'], {
+          '2026-07-10': 4.0,
+        });
+
+        // 3. Test copyWith pruning
+        final updated = settingsUnpruned.copyWith(
+          dailyCapacityOverrides: {'2026-07-09': 5.0, '2026-01-01': 1.0},
+        );
+        expect(updated.dailyCapacityOverrides, {'2026-07-09': 5.0});
+      },
+    );
   });
 
   group('UserSettingsRepository Unit Tests', () {
