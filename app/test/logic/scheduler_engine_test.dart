@@ -400,10 +400,30 @@ void main() {
 
           final action = SchedulerEngine.evaluate(task, [], now);
 
-          // 17 (oldest) should be pending; others (18, 19, 20) are skipped and not spawned
-          expect(action.instancesToSpawn, hasLength(1));
-          expect(action.instancesToSpawn[0].scheduledDate.day, 17);
-          expect(action.instancesToSpawn[0].status, 'pending');
+          // June 17 (oldest started) should be spawned as pending
+          final spawnedDates = action.instancesToSpawn
+              .map((x) => x.scheduledDate.day)
+              .toList();
+          expect(spawnedDates.contains(17), isTrue);
+          expect(
+            action.instancesToSpawn
+                .firstWhere((x) => x.scheduledDate.day == 17)
+                .status,
+            'pending',
+          );
+
+          // June 18 and June 19 have started but are not oldest, so they should be skipped (not spawned)
+          expect(spawnedDates.contains(18), isFalse);
+          expect(spawnedDates.contains(19), isFalse);
+
+          // Future lookahead instances (June 20, etc.) are pending (spawned)
+          expect(spawnedDates.contains(20), isTrue);
+          expect(
+            action.instancesToSpawn
+                .firstWhere((x) => x.scheduledDate.day == 20)
+                .status,
+            'pending',
+          );
         },
       );
 
@@ -444,13 +464,108 @@ void main() {
             status: 'pending',
           );
 
-          final action = SchedulerEngine.evaluate(task, [existingPending], now);
+          final action = SchedulerEngine.evaluate(
+            task,
+            [existingPending],
+            now,
+            futureInstancesCount: 1,
+          );
 
-          // Monday's remains pending (no updates)
+          // Yesterday's (June 18) remains pending (no updates)
           expect(action.instancesToUpdate, isEmpty);
 
-          // Today's new instances (June 19, 20) are skipped and not spawned
-          expect(action.instancesToSpawn, isEmpty);
+          // Today's instance (June 19) has started, so it is skipped (not spawned)
+          final spawnedDates = action.instancesToSpawn
+              .map((x) => x.scheduledDate.day)
+              .toList();
+          expect(spawnedDates.contains(19), isFalse);
+
+          // Tomorrow's instance (June 20, future) has not started yet, so it is pending (spawned)
+          expect(action.instancesToSpawn, hasLength(1));
+          expect(action.instancesToSpawn[0].scheduledDate.day, 20);
+          expect(action.instancesToSpawn[0].status, 'pending');
+        },
+      );
+
+      test(
+        'keeps future lookahead occurrences pending and only skips them when their start time is crossed if an older instance is still pending',
+        () {
+          // today is June 19, 10:00 AM (Friday)
+          // Let's set now to June 19, 8:00 AM (before the 10:00 AM start time of today's instance)
+          final evalTime = DateTime(2026, 6, 19, 8, 0);
+          final yesterday = today.addDays(-1); // June 18
+
+          final task = TaskSchedule(
+            id: 'older-bug-test',
+            title: 'Prefer Older Start Time Task',
+            description: 'Start time test',
+            lastSpawnedDate: yesterday,
+            schedules: [
+              DailySchedule(
+                startDate: yesterday,
+                interval: 1,
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 10, minute: 0), // Starts at 10:00 AM
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+                missedOccurrencePolicy:
+                    const MissedOccurrencePolicy.preferOlder(),
+              ),
+            ],
+          );
+
+          final yesterdayInstance = TaskInstance(
+            id: 'older-bug-test_yesterday',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: yesterday,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+
+          final action = SchedulerEngine.evaluate(
+            task,
+            [yesterdayInstance],
+            evalTime,
+            futureInstancesCount: 1,
+          );
+
+          // Yesterday's instance should remain pending
+          expect(yesterdayInstance.status, 'pending');
+
+          // Both today's instance (June 19) and tomorrow's instance (June 20, lookahead) have not started,
+          // so both should be spawned as pending!
+          expect(action.instancesToSpawn, hasLength(2));
+          final spawnedDates = action.instancesToSpawn
+              .map((x) => x.scheduledDate.day)
+              .toList();
+          expect(spawnedDates.contains(19), isTrue);
+          expect(spawnedDates.contains(20), isTrue);
+          expect(
+            action.instancesToSpawn
+                .firstWhere((x) => x.scheduledDate.day == 19)
+                .status,
+            'pending',
+          );
+          expect(
+            action.instancesToSpawn
+                .firstWhere((x) => x.scheduledDate.day == 20)
+                .status,
+            'pending',
+          );
         },
       );
     });
