@@ -247,6 +247,11 @@ void main() {
             completes,
           );
           await db.waitForPendingWrites();
+          final aliceFamDoc = await db
+              .collection('families')
+              .doc(familyId)
+              .get(const GetOptions(source: Source.server));
+          expect(aliceFamDoc.exists, isTrue);
 
           // 2. Sign in Bob (non-member)
           final bobEmail = 'bob_${uuid.v4()}@example.com';
@@ -274,6 +279,15 @@ void main() {
             completes,
           );
           await db.waitForPendingWrites();
+          final bobJoinDoc = await db
+              .collection('families')
+              .doc(familyId)
+              .get(const GetOptions(source: Source.server));
+          expect(bobJoinDoc.exists, isTrue);
+          expect(
+            (bobJoinDoc.data()?['members'] as Map?)?.containsKey(bobUid),
+            isTrue,
+          );
 
           // Bob reads the family document now - should succeed
           final doc = await db
@@ -326,6 +340,11 @@ void main() {
             completes,
           );
           await db.waitForPendingWrites();
+          final aliceFamDoc2 = await db
+              .collection('families')
+              .doc(familyId)
+              .get(const GetOptions(source: Source.server));
+          expect(aliceFamDoc2.exists, isTrue);
 
           // 2. Sign in Bob (non-parent member)
           await signOutAndWait();
@@ -348,6 +367,13 @@ void main() {
             completes,
           );
           await db.waitForPendingWrites();
+          final bobInstanceDoc = await db
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(instanceId)
+              .get(const GetOptions(source: Source.server));
+          expect(bobInstanceDoc.exists, isTrue);
 
           // Bob tries to delete the instance - should fail (permission-denied)
           await expectPermissionDenied(
