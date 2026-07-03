@@ -52,22 +52,24 @@ void main() {
     print('[setUpAll] Emulators configured.');
   });
 
+  Future<void> signOutAndWait() async {
+    print('[signOutAndWait] Signing out...');
+    await FirebaseAuth.instance.signOut();
+    print('[signOutAndWait] Waiting for authStateChanges to emit null...');
+    await FirebaseAuth.instance.authStateChanges().firstWhere(
+      (user) => user == null,
+    );
+    print('[signOutAndWait] Sign out complete.');
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
   setUp(() async {
     print('[setUp] Starting setup...');
     print('[setUp] Clearing Firestore emulator...');
     await clearFirestoreEmulator(projectId);
     print('[setUp] Clearing Auth emulator...');
     await clearAuthEmulator(projectId);
-    print('[setUp] Signing out current user...');
-    await FirebaseAuth.instance.signOut();
-    print(
-      '[setUp] Waiting for authStateChanges stream to emit null (signed out)...',
-    );
-    await FirebaseAuth.instance.authStateChanges().firstWhere(
-      (user) => user == null,
-    );
-    print('[setUp] authStateChanges emitted null.');
-    await Future.delayed(const Duration(milliseconds: 300));
+    await signOutAndWait();
     print('[setUp] Setup complete.');
   });
 
@@ -226,7 +228,7 @@ void main() {
 
         // 2. Sign in Bob (non-member)
         final bobEmail = 'bob_${uuid.v4()}@example.com';
-        await FirebaseAuth.instance.signOut();
+        await signOutAndWait();
         final bobUser = await registerAndSignIn(bobEmail, 'password123');
         final bobUid = bobUser.uid;
 
@@ -264,11 +266,11 @@ void main() {
         // Alice creates family with Alice as parent and Bob as non-parent
         final bobEmail = 'bob_${uuid.v4()}@example.com';
         // We need Bob's UID to add him. We'll register Bob first to get his UID, then register Alice.
-        await FirebaseAuth.instance.signOut();
+        await signOutAndWait();
         final bobUser = await registerAndSignIn(bobEmail, 'password123');
         final bobUid = bobUser.uid;
 
-        await FirebaseAuth.instance.signOut();
+        await signOutAndWait();
         await registerAndSignIn(aliceEmail, 'password123');
 
         await db.collection('families').doc(familyId).set({
@@ -280,7 +282,7 @@ void main() {
         });
 
         // 2. Sign in Bob (non-parent member)
-        await FirebaseAuth.instance.signOut();
+        await signOutAndWait();
         await registerAndSignIn(bobEmail, 'password123');
 
         final instanceId = 'inst-${uuid.v4()}';
@@ -300,7 +302,7 @@ void main() {
         await expectPermissionDenied(instanceDocRef.delete());
 
         // 3. Sign in Alice (parent)
-        await FirebaseAuth.instance.signOut();
+        await signOutAndWait();
         await registerAndSignIn(aliceEmail, 'password123');
 
         // Alice (parent) deletes the instance - should succeed

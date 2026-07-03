@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
@@ -10,10 +11,18 @@ import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/screens/dashboard_screen.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:nothing_ever_happens/logic/auth_repository.dart';
+import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
 
 void main() {
   late MockUserSettingsRepository mockUserSettingsRepository;
   late BehaviorSubject<UserSettings> settingsSubject;
+  late BehaviorSubject<List<TaskSchedule>> tasksSubject;
+  late BehaviorSubject<List<TaskInstance>> instancesSubject;
 
   setUp(() {
     mockUserSettingsRepository = MockUserSettingsRepository();
@@ -25,6 +34,8 @@ void main() {
         lastCapacityConfirmedWeek: '',
       ),
     );
+    tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([]);
+    instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([]);
     when(
       mockUserSettingsRepository.getSettings(),
     ).thenAnswer((_) => settingsSubject.stream);
@@ -32,6 +43,8 @@ void main() {
 
   tearDown(() {
     settingsSubject.close();
+    tasksSubject.close();
+    instancesSubject.close();
   });
 
   Widget createTestWidget() {
@@ -41,6 +54,9 @@ void main() {
           mockUserSettingsRepository,
         ),
         userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
+        taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+        taskInstancesProvider.overrideWith((ref) => instancesSubject.stream),
+        authStateProvider.overrideWith((ref) => Stream.value(null)),
       ],
       child: buildTestableWidget(child: const DashboardScreen()),
     );
@@ -190,4 +206,147 @@ void main() {
       ).called(1);
     },
   );
+
+  testWidgets(
+    'DashboardScreen calculates and renders planned work vs capacity correctly',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(
+        DateTime(2026, 7, 1, 9, 0),
+      ); // Wednesday (2026-07-01)
+
+      final schedule1 = TaskSchedule(
+        id: 'schedule-1',
+        title: 'Task A',
+        description: '90 minutes task',
+        estimatedDuration: const Duration(minutes: 90),
+        schedules: [
+          DailySchedule(
+            startDate: CivilDay(year: 2026, month: 7, day: 1),
+            interval: 1,
+          ),
+        ],
+      );
+
+      final schedule2 = TaskSchedule(
+        id: 'schedule-2',
+        title: 'Task B',
+        description: '45 minutes task',
+        estimatedDuration: const Duration(minutes: 45),
+        schedules: [
+          DailySchedule(
+            startDate: CivilDay(year: 2026, month: 7, day: 1),
+            interval: 1,
+          ),
+        ],
+      );
+
+      settingsSubject.add(
+        const UserSettings(
+          hoursAvailable: 8.0,
+          defaultDailyCapacity: {'3': 2.0}, // Wed = 2 hours
+          dailyCapacityOverrides: {},
+          lastCapacityConfirmedWeek: '',
+        ),
+      );
+
+      final instance1 = TaskInstance(
+        id: 'inst-1',
+        scheduleId: schedule1.id,
+        ruleId: 'r-1',
+        title: 'Task A Instance',
+        description: 'Desc',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 1),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: 'pending',
+      );
+
+      final instance2 = TaskInstance(
+        id: 'inst-2',
+        scheduleId: schedule2.id,
+        ruleId: 'r-2',
+        title: 'Task B Instance',
+        description: 'Desc',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 1),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: 'pending',
+      );
+
+      tasksSubject.add([schedule1, schedule2]);
+      instancesSubject.add([instance1, instance2]);
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      // Total planned = 2h 15m. Capacity = 2h.
+      expect(find.text('2h 15m/2h'), findsOneWidget);
+    },
+  );
+
+  testGoldens('DashboardScreen golden test', (tester) async {
+    AppClock.setMockTime(DateTime(2026, 7, 1, 9, 0)); // Wednesday (2026-07-01)
+
+    final schedule1 = TaskSchedule(
+      id: 'schedule-1',
+      title: 'Task A',
+      description: '90 minutes task',
+      estimatedDuration: const Duration(minutes: 90),
+      schedules: [
+        DailySchedule(
+          startDate: CivilDay(year: 2026, month: 7, day: 1),
+          interval: 1,
+        ),
+      ],
+    );
+
+    settingsSubject.add(
+      const UserSettings(
+        hoursAvailable: 8.0,
+        defaultDailyCapacity: {'3': 2.0}, // Wed = 2 hours
+        dailyCapacityOverrides: {},
+        lastCapacityConfirmedWeek: '',
+      ),
+    );
+
+    final instance1 = TaskInstance(
+      id: 'inst-1',
+      scheduleId: schedule1.id,
+      ruleId: 'r-1',
+      title: 'Task A Instance',
+      description: 'Desc',
+      scheduledDate: CivilDay(year: 2026, month: 7, day: 1),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      status: 'pending',
+    );
+
+    tasksSubject.add([schedule1]);
+    instancesSubject.add([instance1]);
+
+    await tester.pumpWidgetBuilder(
+      createTestWidget(),
+      surfaceSize: const Size(400, 800),
+    );
+
+    await screenMatchesGolden(tester, 'dashboard_screen_en');
+  });
 }

@@ -1,9 +1,15 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/app_clock.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/civil_day.dart';
+import '../logic/task_instance.dart';
+import '../logic/task_schedule.dart';
+import '../logic/task_repository.dart';
+import '../logic/auth_repository.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -43,25 +49,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  String _formatForecastLabel(double plannedHours, double capacityHours) {
+    if (plannedHours == 0) {
+      return _formatDuration(capacityHours);
+    }
+    return '${_formatDuration(plannedHours)}/${_formatDuration(capacityHours)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final settingsVal = ref.watch(userSettingsProvider);
+    final schedulesVal = ref.watch(taskSchedulesProvider);
+    final instancesVal = ref.watch(taskInstancesProvider);
+    final currentUserId = ref.watch(authStateProvider).value?.uid;
 
-    if (settingsVal.isLoading) {
+    if (settingsVal.isLoading ||
+        schedulesVal.isLoading ||
+        instancesVal.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (settingsVal.hasError) {
+    if (settingsVal.hasError ||
+        schedulesVal.hasError ||
+        instancesVal.hasError) {
+      final err = settingsVal.error ?? schedulesVal.error ?? instancesVal.error;
       return Scaffold(
-        body: Center(
-          child: Text('${context.l10n.errorOccurred}: ${settingsVal.error}'),
-        ),
+        body: Center(child: Text('${context.l10n.errorOccurred}: $err')),
       );
     }
 
     final settings =
         settingsVal.value ?? const UserSettings(hoursAvailable: 8.0);
+    final schedules = schedulesVal.value ?? const <TaskSchedule>[];
+    final instances = instancesVal.value ?? const <TaskInstance>[];
+    final scheduleMap = {for (final s in schedules) s.id: s};
+
     final today = AppClock.now;
     final currentWeekId = _getWeekIdentifier(today);
     final isConfirmed = settings.lastCapacityConfirmedWeek == currentWeekId;
@@ -209,10 +232,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               date.month == today.month &&
                               date.year == today.year;
 
+                          final day = CivilDay.fromDateTime(date);
+                          double plannedMinutes = 0.0;
+                          for (final inst in instances) {
+                            if (inst.scheduledDate == day &&
+                                inst.status != 'skipped') {
+                              if (inst.assignedUserId != null &&
+                                  inst.assignedUserId != currentUserId) {
+                                continue;
+                              }
+                              final schedule = scheduleMap[inst.scheduleId];
+                              if (schedule != null &&
+                                  schedule.estimatedDuration != null) {
+                                plannedMinutes += schedule
+                                    .estimatedDuration!
+                                    .inMinutes
+                                    .toDouble();
+                              }
+                            }
+                          }
+                          final capacityMinutes = capacity * 60.0;
+
                           // Peak capacity to scale height (let's assume max scale is 8 hours)
                           final double scaleMax = 8.0;
-                          final double barHeight = (capacity / scaleMax * 120.0)
-                              .clamp(8.0, 120.0);
+                          final double barHeight = capacity > 0
+                              ? (capacity / scaleMax * 120.0).clamp(8.0, 120.0)
+                              : 0.0;
+                          final double fillHeight = plannedMinutes > 0
+                              ? (plannedMinutes / 60.0 / scaleMax * 120.0)
+                                    .clamp(8.0, 120.0)
+                              : 0.0;
 
                           final List<String> weekdays = [
                             'Mon',
@@ -237,48 +286,107 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  Text(
-                                    _formatDuration(capacity),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      fontSize: 10,
-                                      fontWeight: isToday
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
+                                  SizedBox(
+                                    height: 14,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        _formatForecastLabel(
+                                          plannedMinutes / 60.0,
+                                          capacity,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontSize: 9,
+                                              fontWeight: isToday
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                            ),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  Container(
-                                    height: barHeight,
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: isOverridden
-                                            ? [
-                                                theme.colorScheme.tertiary,
-                                                theme.colorScheme.tertiary
-                                                    .withValues(alpha: 0.7),
-                                              ]
-                                            : [
-                                                theme.colorScheme.primary,
-                                                theme.colorScheme.primary
-                                                    .withValues(alpha: 0.7),
-                                              ],
-                                        begin: Alignment.bottomCenter,
-                                        end: Alignment.topCenter,
-                                      ),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: isToday
-                                          ? Border.all(
-                                              color:
-                                                  theme.colorScheme.onSurface,
-                                              width: 2,
-                                            )
-                                          : null,
+                                  SizedBox(
+                                    height: 120,
+                                    child: Stack(
+                                      alignment: Alignment.bottomCenter,
+                                      children: [
+                                        // Solid fill (planned tasks)
+                                        if (fillHeight > 0)
+                                          Container(
+                                            height: fillHeight,
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors:
+                                                    plannedMinutes >
+                                                        capacityMinutes
+                                                    ? [
+                                                        theme.colorScheme.error,
+                                                        theme.colorScheme.error
+                                                            .withValues(
+                                                              alpha: 0.7,
+                                                            ),
+                                                      ]
+                                                    : isOverridden
+                                                    ? [
+                                                        theme
+                                                            .colorScheme
+                                                            .tertiary,
+                                                        theme
+                                                            .colorScheme
+                                                            .tertiary
+                                                            .withValues(
+                                                              alpha: 0.7,
+                                                            ),
+                                                      ]
+                                                    : [
+                                                        theme
+                                                            .colorScheme
+                                                            .primary,
+                                                        theme
+                                                            .colorScheme
+                                                            .primary
+                                                            .withValues(
+                                                              alpha: 0.7,
+                                                            ),
+                                                      ],
+                                                begin: Alignment.bottomCenter,
+                                                end: Alignment.topCenter,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                          ),
+                                        // Dashed outline (capacity)
+                                        if (barHeight > 0)
+                                          Container(
+                                            height: barHeight,
+                                            width: double.infinity,
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
+                                            child: CustomPaint(
+                                              painter: DashedRectPainter(
+                                                color: isToday
+                                                    ? theme
+                                                          .colorScheme
+                                                          .onSurface
+                                                    : isOverridden
+                                                    ? theme.colorScheme.tertiary
+                                                    : theme.colorScheme.primary,
+                                                strokeWidth: 2.0,
+                                                borderRadius: 6.0,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 4),
                                   Text(
                                     dayLabel,
                                     style: theme.textTheme.labelSmall?.copyWith(
@@ -305,6 +413,48 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           );
                         }).toList(),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 12,
+                          child: CustomPaint(
+                            painter: DashedRectPainter(
+                              color: theme.colorScheme.outlineVariant,
+                              strokeWidth: 1.5,
+                              borderRadius: 3.0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Capacity',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        Container(
+                          width: 16,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Planned Work',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -705,5 +855,64 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
       },
     );
+  }
+}
+
+class DashedRectPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double gap;
+  final double dashLength;
+  final double borderRadius;
+
+  DashedRectPainter({
+    required this.color,
+    this.strokeWidth = 1.0,
+    this.gap = 4.0,
+    this.dashLength = 4.0,
+    this.borderRadius = 6.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, 0, size.width, size.height),
+          Radius.circular(borderRadius),
+        ),
+      );
+
+    final dashPath = Path();
+    for (final PathMetric metric in path.computeMetrics()) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        final double length = dashLength;
+        dashPath.addPath(
+          metric.extractPath(
+            distance,
+            (distance + length).clamp(0.0, metric.length),
+          ),
+          Offset.zero,
+        );
+        distance += length + gap;
+      }
+    }
+
+    canvas.drawPath(dashPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant DashedRectPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.gap != gap ||
+        oldDelegate.dashLength != dashLength ||
+        oldDelegate.borderRadius != borderRadius;
   }
 }

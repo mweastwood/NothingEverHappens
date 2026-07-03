@@ -39,4 +39,4 @@ if [ -z "$DISPLAY" ] && command -v xvfb-run >/dev/null 2>&1; then
     RUN_CMD="xvfb-run bash -c \"$RUN_CMD\""
 fi
 
-npx firebase emulators:exec --only firestore,auth "$RUN_CMD"
+npx firebase emulators:exec --project=nothing-ever-happens-dev --only firestore,auth "$RUN_CMD"
