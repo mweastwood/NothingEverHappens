@@ -1319,7 +1319,7 @@ abstract class AppLocalizations {
   /// No description provided for @occurrenceMissed.
   ///
   /// In en, this message translates to:
-  /// **'Missed (Due: {dateTime})'**
+  /// **'Overdue (Due: {dateTime})'**
   String occurrenceMissed(String dateTime);
 
   /// No description provided for @occurrenceActive.
@@ -2677,6 +2677,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skipped'**
   String get skippedLabel;
+
+  /// No description provided for @pastTabLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Past'**
+  String get pastTabLabel;
+
+  /// No description provided for @currentTabLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get currentTabLabel;
+
+  /// No description provided for @futureTabLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Future'**
+  String get futureTabLabel;
+
+  /// No description provided for @noCurrentOccurrencesPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'No active occurrences.'**
+  String get noCurrentOccurrencesPlaceholder;
 }
 
 class _AppLocalizationsDelegate

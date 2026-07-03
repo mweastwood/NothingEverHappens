@@ -112,9 +112,10 @@ void main() {
         ),
       );
 
-      // Verify Headers
-      expect(find.text('Next 10 Occurrences'), findsOneWidget);
-      expect(find.text('Last 10 Occurrences'), findsOneWidget);
+      // Verify Headers (Wide view / desktop layout)
+      expect(find.text('Past'), findsOneWidget);
+      expect(find.text('Current'), findsOneWidget);
+      expect(find.text('Future'), findsOneWidget);
 
       // Verify Future Occurrences (dates after Monday Oct 26, 10:00)
       // dailyTask has futureInstancesCount = 3
@@ -151,7 +152,7 @@ void main() {
       );
       expect(find.text('Skipped'), findsOneWidget);
       expect(
-        find.text('Missed (Due: Thursday, October 22, 2026 5:00 PM)'),
+        find.text('Overdue (Due: Thursday, October 22, 2026 5:00 PM)'),
         findsOneWidget,
       );
       expect(
@@ -162,8 +163,14 @@ void main() {
       // Card keys check
       expect(find.byKey(const Key('past_occurrence_card_0')), findsOneWidget);
       expect(find.byKey(const Key('past_occurrence_card_1')), findsOneWidget);
-      expect(find.byKey(const Key('past_occurrence_card_2')), findsOneWidget);
-      expect(find.byKey(const Key('past_occurrence_card_3')), findsOneWidget);
+      expect(
+        find.byKey(const Key('current_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('current_occurrence_card_1')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('renders placeholder when no future or past occurrences', (
@@ -233,8 +240,11 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('past_occurrence_card_0')), findsOneWidget);
-      expect(find.text('No past occurrences.'), findsNothing);
+      expect(
+        find.byKey(const Key('current_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(find.text('No past occurrences.'), findsOneWidget);
 
       // Test 2: futureTask (has future, no past)
       await tester.pumpWidget(
@@ -258,6 +268,71 @@ void main() {
         findsNothing,
       );
       expect(find.text('No past occurrences.'), findsOneWidget);
+      expect(find.text('No active occurrences.'), findsOneWidget);
+    });
+
+    testWidgets('renders narrow layout tabs and responds to tap', (
+      tester,
+    ) async {
+      // Set a narrow surface size
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: SpawnedInstancesList(
+                task: dailyTask,
+                dbInstances: dbInstances,
+                now: now,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Verify tabs are visible
+      expect(find.text('Past'), findsOneWidget);
+      expect(find.text('Current'), findsOneWidget);
+      expect(find.text('Future'), findsOneWidget);
+
+      // Initially, index 1 ("Current") is selected.
+      // Current active list has 2 items: I-missed, I-active
+      expect(
+        find.byKey(const Key('current_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('current_occurrence_card_1')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('past_occurrence_card_0')), findsNothing);
+      expect(find.byKey(const Key('spawned_occurrence_card_0')), findsNothing);
+
+      // Tap on the "Past" tab
+      await tester.tap(find.text('Past'));
+      await tester.pumpAndSettle();
+
+      // Now "Past" items should be visible
+      expect(find.byKey(const Key('past_occurrence_card_0')), findsOneWidget);
+      expect(find.byKey(const Key('past_occurrence_card_1')), findsOneWidget);
+      expect(find.byKey(const Key('current_occurrence_card_0')), findsNothing);
+
+      // Tap on the "Future" tab
+      await tester.tap(find.text('Future'));
+      await tester.pumpAndSettle();
+
+      // Now "Future" items should be visible
+      expect(
+        find.byKey(const Key('spawned_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('current_occurrence_card_0')), findsNothing);
     });
 
     testGoldens('SpawnedInstancesList renders correctly', (tester) async {

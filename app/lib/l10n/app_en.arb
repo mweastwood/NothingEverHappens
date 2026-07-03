@@ -409,7 +409,7 @@
     }
   },
   "occurrenceSkipped": "Skipped",
-  "occurrenceMissed": "Missed (Due: {dateTime})",
+  "occurrenceMissed": "Overdue (Due: {dateTime})",
   "@occurrenceMissed": {
     "placeholders": {
       "dateTime": {
@@ -961,5 +961,9 @@
   "wedTodayShort": "Wed (Today)",
   "activeLabel": "Active",
   "expiredLabel": "Expired",
-  "skippedLabel": "Skipped"
+  "skippedLabel": "Skipped",
+  "pastTabLabel": "Past",
+  "currentTabLabel": "Current",
+  "futureTabLabel": "Future",
+  "noCurrentOccurrencesPlaceholder": "No active occurrences."
 }

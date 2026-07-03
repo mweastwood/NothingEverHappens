@@ -5,7 +5,7 @@ import '../logic/task_instance.dart';
 import '../logic/scheduler_engine.dart';
 import '../logic/l10n_extension.dart';
 
-class SpawnedInstancesList extends StatelessWidget {
+class SpawnedInstancesList extends StatefulWidget {
   final TaskSchedule task;
   final List<TaskInstance> dbInstances;
   final DateTime now;
@@ -17,46 +17,8 @@ class SpawnedInstancesList extends StatelessWidget {
     required this.now,
   });
 
-  List<TaskInstance> _calculateFutureInstances(
-    List<TaskInstance> currentInstances,
-  ) {
-    final futureInstances = currentInstances.where((inst) {
-      final startDateTime = inst.startRelativeTime.referenceTo(
-        inst.scheduledDate,
-      );
-      return now.isBefore(startDateTime);
-    }).toList();
-
-    futureInstances.sort((a, b) {
-      final startA = a.startRelativeTime.referenceTo(a.scheduledDate);
-      final startB = b.startRelativeTime.referenceTo(b.scheduledDate);
-      return startA.compareTo(startB);
-    });
-
-    return futureInstances;
-  }
-
-  List<TaskInstance> _calculatePastInstances(
-    List<TaskInstance> currentInstances,
-  ) {
-    final pastInstances = currentInstances.where((inst) {
-      final startDateTime = inst.startRelativeTime.referenceTo(
-        inst.scheduledDate,
-      );
-      return !now.isBefore(startDateTime);
-    }).toList();
-
-    pastInstances.sort((a, b) {
-      final startA = a.startRelativeTime.referenceTo(a.scheduledDate);
-      final startB = b.startRelativeTime.referenceTo(b.scheduledDate);
-      return startB.compareTo(startA);
-    });
-
-    if (pastInstances.length > 10) {
-      return pastInstances.sublist(0, 10);
-    }
-    return pastInstances;
-  }
+  @override
+  State<SpawnedInstancesList> createState() => _SpawnedInstancesListState();
 
   static List<String> _getMonthNames(BuildContext context) {
     final l10n = context.l10n;
@@ -102,12 +64,104 @@ class SpawnedInstancesList extends StatelessWidget {
     final timeStr = TimeOfDay.fromDateTime(dt).format(context);
     return '$weekdayStr, $monthStr ${dt.day}, ${dt.year} $timeStr';
   }
+}
+
+class _SpawnedInstancesListState extends State<SpawnedInstancesList>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this, initialIndex: 1);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  List<TaskInstance> _calculateFutureInstances(
+    List<TaskInstance> currentInstances,
+  ) {
+    final futureInstances = currentInstances.where((inst) {
+      final startDateTime = inst.startRelativeTime.referenceTo(
+        inst.scheduledDate,
+      );
+      return widget.now.isBefore(startDateTime);
+    }).toList();
+
+    futureInstances.sort((a, b) {
+      final startA = a.startRelativeTime.referenceTo(a.scheduledDate);
+      final startB = b.startRelativeTime.referenceTo(b.scheduledDate);
+      return startA.compareTo(startB);
+    });
+
+    if (futureInstances.length > 10) {
+      return futureInstances.sublist(0, 10);
+    }
+    return futureInstances;
+  }
+
+  List<TaskInstance> _calculateCurrentInstances(
+    List<TaskInstance> currentInstances,
+  ) {
+    final activeInstances = currentInstances.where((inst) {
+      final startDateTime = inst.startRelativeTime.referenceTo(
+        inst.scheduledDate,
+      );
+      final hasAppeared = !widget.now.isBefore(startDateTime);
+      final isUnresolved =
+          inst.status != 'completed' && inst.status != 'skipped';
+      return hasAppeared && isUnresolved;
+    }).toList();
+
+    activeInstances.sort((a, b) {
+      final startA = a.startRelativeTime.referenceTo(a.scheduledDate);
+      final startB = b.startRelativeTime.referenceTo(b.scheduledDate);
+      return startA.compareTo(startB);
+    });
+
+    return activeInstances;
+  }
+
+  List<TaskInstance> _calculatePastInstances(
+    List<TaskInstance> currentInstances,
+  ) {
+    final pastInstances = currentInstances.where((inst) {
+      final startDateTime = inst.startRelativeTime.referenceTo(
+        inst.scheduledDate,
+      );
+      final hasAppeared = !widget.now.isBefore(startDateTime);
+      final isResolved = inst.status == 'completed' || inst.status == 'skipped';
+      return hasAppeared && isResolved;
+    }).toList();
+
+    pastInstances.sort((a, b) {
+      final startA = a.startRelativeTime.referenceTo(a.scheduledDate);
+      final startB = b.startRelativeTime.referenceTo(b.scheduledDate);
+      return startB.compareTo(startA);
+    });
+
+    if (pastInstances.length > 10) {
+      return pastInstances.sublist(0, 10);
+    }
+    return pastInstances;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    final action = SchedulerEngine.evaluate(task, dbInstances, now);
+    final action = SchedulerEngine.evaluate(
+      widget.task,
+      widget.dbInstances,
+      widget.now,
+    );
 
     final Set<String> toDeleteIds = action.instancesToDelete.toSet();
     final Map<String, TaskInstance> toUpdateMap = {
@@ -115,7 +169,7 @@ class SpawnedInstancesList extends StatelessWidget {
     };
 
     final List<TaskInstance> currentInstances = [];
-    for (final inst in dbInstances) {
+    for (final inst in widget.dbInstances) {
       if (toDeleteIds.contains(inst.id)) continue;
       if (toUpdateMap.containsKey(inst.id)) {
         currentInstances.add(toUpdateMap[inst.id]!);
@@ -126,72 +180,205 @@ class SpawnedInstancesList extends StatelessWidget {
     currentInstances.addAll(action.instancesToSpawn);
 
     final futureInstances = _calculateFutureInstances(currentInstances);
+    final currentActiveInstances = _calculateCurrentInstances(currentInstances);
     final pastInstances = _calculatePastInstances(currentInstances);
 
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isWide = constraints.maxWidth >= 720;
+        if (isWide) {
+          return _buildWideLayout(
+            context,
+            pastInstances,
+            currentActiveInstances,
+            futureInstances,
+          );
+        } else {
+          return _buildNarrowLayout(
+            context,
+            pastInstances,
+            currentActiveInstances,
+            futureInstances,
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildWideLayout(
+    BuildContext context,
+    List<TaskInstance> past,
+    List<TaskInstance> current,
+    List<TaskInstance> future,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _buildColumnSection(
+            context,
+            title: context.l10n.pastTabLabel,
+            instances: past,
+            placeholder: context.l10n.noPastOccurrencesPlaceholder,
+            isPast: true,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildColumnSection(
+            context,
+            title: context.l10n.currentTabLabel,
+            instances: current,
+            placeholder: context.l10n.noCurrentOccurrencesPlaceholder,
+            isCurrent: true,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildColumnSection(
+            context,
+            title: context.l10n.futureTabLabel,
+            instances: future,
+            placeholder: context.l10n.noOccurrencesPlaceholder,
+            isFuture: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNarrowLayout(
+    BuildContext context,
+    List<TaskInstance> past,
+    List<TaskInstance> current,
+    List<TaskInstance> future,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: context.l10n.pastTabLabel),
+            Tab(text: context.l10n.currentTabLabel),
+            Tab(text: context.l10n.futureTabLabel),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildActiveTabContent(context, past, current, future),
+      ],
+    );
+  }
+
+  Widget _buildActiveTabContent(
+    BuildContext context,
+    List<TaskInstance> past,
+    List<TaskInstance> current,
+    List<TaskInstance> future,
+  ) {
+    final selectedIndex = _tabController.index;
+    if (selectedIndex == 0) {
+      return _buildInstancesList(
+        context,
+        instances: past,
+        placeholder: context.l10n.noPastOccurrencesPlaceholder,
+        isPast: true,
+      );
+    } else if (selectedIndex == 1) {
+      return _buildInstancesList(
+        context,
+        instances: current,
+        placeholder: context.l10n.noCurrentOccurrencesPlaceholder,
+        isCurrent: true,
+      );
+    } else {
+      return _buildInstancesList(
+        context,
+        instances: future,
+        placeholder: context.l10n.noOccurrencesPlaceholder,
+        isFuture: true,
+      );
+    }
+  }
+
+  Widget _buildColumnSection(
+    BuildContext context, {
+    required String title,
+    required List<TaskInstance> instances,
+    required String placeholder,
+    bool isPast = false,
+    bool isCurrent = false,
+    bool isFuture = false,
+  }) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          context.l10n.occurrencesHeader,
+          title,
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 8),
-        if (futureInstances.isEmpty)
-          Text(
-            context.l10n.noOccurrencesPlaceholder,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontStyle: FontStyle.italic,
-            ),
-          )
-        else
-          ListView.builder(
-            padding: EdgeInsets.zero,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: futureInstances.length,
-            itemBuilder: (context, index) {
-              return FutureOccurrenceCard(
-                instance: futureInstances[index],
-                index: index,
-              );
-            },
-          ),
-        const SizedBox(height: 24),
-        const Divider(),
-        const SizedBox(height: 16),
-        Text(
-          context.l10n.pastOccurrencesHeader,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        _buildInstancesList(
+          context,
+          instances: instances,
+          placeholder: placeholder,
+          isPast: isPast,
+          isCurrent: isCurrent,
+          isFuture: isFuture,
         ),
-        const SizedBox(height: 8),
-        if (pastInstances.isEmpty)
-          Text(
-            context.l10n.noPastOccurrencesPlaceholder,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontStyle: FontStyle.italic,
-            ),
-          )
-        else
-          ListView.builder(
-            padding: EdgeInsets.zero,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: pastInstances.length,
-            itemBuilder: (context, index) {
-              return PastOccurrenceCard(
-                instance: pastInstances[index],
-                index: index,
-                now: now,
-              );
-            },
-          ),
       ],
+    );
+  }
+
+  Widget _buildInstancesList(
+    BuildContext context, {
+    required List<TaskInstance> instances,
+    required String placeholder,
+    bool isPast = false,
+    bool isCurrent = false,
+    bool isFuture = false,
+  }) {
+    final theme = Theme.of(context);
+    if (instances.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        child: Text(
+          placeholder,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: instances.length,
+      itemBuilder: (context, index) {
+        if (isPast) {
+          return PastOccurrenceCard(
+            instance: instances[index],
+            index: index,
+            now: widget.now,
+            keyPrefix: 'past',
+          );
+        } else if (isCurrent) {
+          return PastOccurrenceCard(
+            instance: instances[index],
+            index: index,
+            now: widget.now,
+            keyPrefix: 'current',
+          );
+        } else {
+          return FutureOccurrenceCard(instance: instances[index], index: index);
+        }
+      },
     );
   }
 }
@@ -280,12 +467,14 @@ class PastOccurrenceCard extends StatelessWidget {
   final TaskInstance instance;
   final int index;
   final DateTime now;
+  final String keyPrefix;
 
   const PastOccurrenceCard({
     super.key,
     required this.instance,
     required this.index,
     required this.now,
+    this.keyPrefix = 'past',
   });
 
   @override
@@ -352,7 +541,7 @@ class PastOccurrenceCard extends StatelessWidget {
     );
 
     return Card(
-      key: Key('past_occurrence_card_$index'),
+      key: Key('${keyPrefix}_occurrence_card_$index'),
       margin: const EdgeInsets.only(bottom: 8.0),
       elevation: 1,
       child: ListTile(
