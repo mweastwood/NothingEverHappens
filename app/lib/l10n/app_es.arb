@@ -24,6 +24,7 @@
   "estimatedEffortFieldLabel": "Esfuerzo Estimado (Minutos)",
   "estimatedEffortHelper": "Opcional. Ingresa el tiempo estimado en minutos.",
   "estimatedEffortValidationError": "Por favor ingresa un número positivo de minutos",
+  "estimatedEffortLabel": "Esfuerzo Estimado: {duration}",
   "scheduleHeader": "Calendario",
   "oneOffLabel": "Una vez",
   "dailyLabel": "Diario",

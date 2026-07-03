@@ -88,6 +88,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Por favor ingresa un número positivo de minutos';
 
   @override
+  String estimatedEffortLabel(String duration) {
+    return 'Esfuerzo Estimado: $duration';
+  }
+
+  @override
   String get scheduleHeader => 'Calendario';
 
   @override

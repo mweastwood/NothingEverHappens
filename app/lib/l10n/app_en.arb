@@ -24,6 +24,16 @@
   "estimatedEffortFieldLabel": "Estimated Effort (Minutes)",
   "estimatedEffortHelper": "Optional. Enter the estimated time in minutes.",
   "estimatedEffortValidationError": "Please enter a positive number of minutes",
+  "estimatedEffortLabel": "Estimated Effort: {duration}",
+  "@estimatedEffortLabel": {
+    "description": "Label for estimated effort display",
+    "placeholders": {
+      "duration": {
+        "type": "String",
+        "example": "30 min"
+      }
+    }
+  },
   "scheduleHeader": "Schedule",
   "oneOffLabel": "One-off",
   "dailyLabel": "Daily",
