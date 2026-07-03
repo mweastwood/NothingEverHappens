@@ -6,6 +6,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/widgets/spawned_instances_list.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../test_helper.dart';
 
 void main() {
@@ -99,13 +100,16 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        buildTestableWidget(
-          child: Scaffold(
-            body: SingleChildScrollView(
-              child: SpawnedInstancesList(
-                task: dailyTask,
-                dbInstances: dbInstances,
-                now: now,
+        ProviderScope(
+          overrides: defaultTestOverrides,
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: SpawnedInstancesList(
+                  task: dailyTask,
+                  dbInstances: dbInstances,
+                  now: now,
+                ),
               ),
             ),
           ),
@@ -221,13 +225,16 @@ void main() {
 
       // Test 1: finishedTask (has past, no future)
       await tester.pumpWidget(
-        buildTestableWidget(
-          child: Scaffold(
-            body: SingleChildScrollView(
-              child: SpawnedInstancesList(
-                task: finishedTask,
-                dbInstances: const [],
-                now: now,
+        ProviderScope(
+          overrides: defaultTestOverrides,
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: SpawnedInstancesList(
+                  task: finishedTask,
+                  dbInstances: const [],
+                  now: now,
+                ),
               ),
             ),
           ),
@@ -248,13 +255,16 @@ void main() {
 
       // Test 2: futureTask (has future, no past)
       await tester.pumpWidget(
-        buildTestableWidget(
-          child: Scaffold(
-            body: SingleChildScrollView(
-              child: SpawnedInstancesList(
-                task: futureTask,
-                dbInstances: const [],
-                now: now,
+        ProviderScope(
+          overrides: defaultTestOverrides,
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: SpawnedInstancesList(
+                  task: futureTask,
+                  dbInstances: const [],
+                  now: now,
+                ),
               ),
             ),
           ),
@@ -283,13 +293,16 @@ void main() {
       });
 
       await tester.pumpWidget(
-        buildTestableWidget(
-          child: Scaffold(
-            body: SingleChildScrollView(
-              child: SpawnedInstancesList(
-                task: dailyTask,
-                dbInstances: dbInstances,
-                now: now,
+        ProviderScope(
+          overrides: defaultTestOverrides,
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: SpawnedInstancesList(
+                  task: dailyTask,
+                  dbInstances: dbInstances,
+                  now: now,
+                ),
               ),
             ),
           ),
@@ -412,7 +425,7 @@ void main() {
         );
 
       await tester.pumpWidgetBuilder(
-        builder.build(),
+        ProviderScope(overrides: defaultTestOverrides, child: builder.build()),
         wrapper: l10nMaterialAppWrapper(),
         surfaceSize: const Size(400, 1500),
       );
@@ -464,7 +477,7 @@ void main() {
         );
 
       await tester.pumpWidgetBuilder(
-        builder.build(),
+        ProviderScope(overrides: defaultTestOverrides, child: builder.build()),
         wrapper: l10nMaterialAppWrapper(),
         surfaceSize: const Size(800, 600),
       );

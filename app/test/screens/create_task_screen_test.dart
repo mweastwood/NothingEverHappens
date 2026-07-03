@@ -30,6 +30,7 @@ Widget buildTestProviderScope({
   return ProviderScope(
     overrides: [
       authStateProvider.overrideWith((ref) => Stream.value(null)),
+      ...defaultTestOverrides,
       ...overrides,
     ],
     child: child,
@@ -625,6 +626,52 @@ void main() {
         3,
       ); // Initialized from current schedule's month (March)
       expect(schedule.day, 24);
+    });
+
+    testWidgets('Configures and saves Capacity Dependent task successfully', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(createWidgetUnderTest());
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Title'),
+        'Capacity Dependent Task',
+      );
+
+      // Enter estimated effort (required for Capacity Dependent tasks)
+      await tester.enterText(
+        find.byKey(const Key('estimated_effort_field')),
+        '45',
+      );
+
+      // Select Repeating (as Capacity Dependent is a sub-type of repeating)
+      await tester.tap(find.text('Repeating'));
+      await tester.pumpAndSettle();
+
+      // Tap on Capacity Dependent schedule type option
+      final optionFinder = find.text('Based on remaining capacity');
+      await tester.ensureVisible(optionFinder);
+      await tester.tap(optionFinder);
+      await tester.pumpAndSettle();
+
+      final saveButton = find.text('Save');
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+
+      final captured =
+          verify(mockRepository.addTaskSchedule(captureAny)).captured.single
+              as TaskSchedule;
+      expect(captured.title, 'Capacity Dependent Task');
+      expect(
+        captured.schedules.first.schedulingPolicy,
+        isA<CapacityDependentPolicy>(),
+      );
     });
   });
 

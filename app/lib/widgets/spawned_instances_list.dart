@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/civil_day.dart';
 import '../logic/task_schedule.dart';
 import '../logic/task_instance.dart';
 import '../logic/scheduler_engine.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/user_settings_repository.dart';
+import '../logic/task_repository.dart';
 
-class SpawnedInstancesList extends StatefulWidget {
+class SpawnedInstancesList extends ConsumerStatefulWidget {
   final TaskSchedule task;
   final List<TaskInstance> dbInstances;
   final DateTime now;
@@ -20,7 +23,8 @@ class SpawnedInstancesList extends StatefulWidget {
   });
 
   @override
-  State<SpawnedInstancesList> createState() => _SpawnedInstancesListState();
+  ConsumerState<SpawnedInstancesList> createState() =>
+      _SpawnedInstancesListState();
 
   static List<String> _getMonthNames(BuildContext context) {
     final l10n = context.l10n;
@@ -68,7 +72,7 @@ class SpawnedInstancesList extends StatefulWidget {
   }
 }
 
-class _SpawnedInstancesListState extends State<SpawnedInstancesList>
+class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -163,10 +167,33 @@ class _SpawnedInstancesListState extends State<SpawnedInstancesList>
 
   @override
   Widget build(BuildContext context) {
+    final settingsVal = ref.watch(userSettingsProvider);
+    final schedulesVal = ref.watch(taskSchedulesProvider);
+    final instancesVal = ref.watch(taskInstancesProvider);
+
+    final userSettings = settingsVal.value;
+    final allTasks = schedulesVal.value ?? [];
+    final allInstances = instancesVal.value ?? [];
+
+    final taskMap = {for (final t in allTasks) t.id: t};
+    final Map<CivilDay, double> dayPlannedHours = {};
+    for (final inst in allInstances) {
+      if (inst.status != 'skipped' && inst.status != 'failed') {
+        final t = taskMap[inst.scheduleId];
+        if (t != null && t.estimatedDuration != null) {
+          final hours = t.estimatedDuration!.inMinutes / 60.0;
+          dayPlannedHours[inst.scheduledDate] =
+              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+        }
+      }
+    }
+
     final action = SchedulerEngine.evaluate(
       widget.task,
       widget.dbInstances,
       widget.now,
+      userSettings: userSettings,
+      dayPlannedHours: dayPlannedHours,
     );
 
     final Set<String> toDeleteIds = action.instancesToDelete.toSet();

@@ -995,6 +995,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get scheduleRequiredError => 'Se requiere al menos un horario.';
 
   @override
+  String get capacityDependentEffortRequiredError =>
+      'El esfuerzo estimado es obligatorio para tareas dependientes de capacidad.';
+
+  @override
   String get familyTaskToggleLabel => 'Tarea Familiar';
 
   @override
@@ -1096,6 +1100,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get completionRelativeLabel => 'Relativo al Cumplimiento';
+
+  @override
+  String get capacityDependentLabel => 'Dependiente de Capacidad';
+
+  @override
+  String get capacityDependentTitle => 'Basado en la capacidad restante';
+
+  @override
+  String get capacityDependentSubtitle =>
+      'Programado solo si la capacidad lo permite, de lo contrario se pospone día a día';
 
   @override
   String get taskTypeLabel => 'Tipo de Tarea';

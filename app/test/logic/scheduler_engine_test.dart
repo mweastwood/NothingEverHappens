@@ -5,6 +5,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/user_settings.dart';
 
 void main() {
   group('SchedulerEngine Tests', () {
@@ -1089,6 +1090,111 @@ void main() {
           expect(weeklySpawns, hasLength(5));
         },
       );
+    });
+
+    group('CapacityDependentPolicy Tests', () {
+      test('shifts instances forward when daily capacity is insufficient', () {
+        final task = TaskSchedule(
+          id: 'cap-1',
+          title: 'Capacity Task',
+          description: 'Pushed forward',
+          estimatedDuration: const Duration(hours: 4),
+          schedulingPolicy: const CapacityDependentPolicy(),
+          schedules: [DailySchedule(startDate: today, interval: 1)],
+        );
+
+        // Mock UserSettings with 0 capacity on today and today+1, but 8 hours on today+2
+        final userSettings = UserSettings(
+          hoursAvailable: 8.0,
+          dailyCapacityOverrides: {
+            today.toString(): 0.0,
+            today.addDays(1).toString(): 0.0,
+          },
+        );
+
+        final action = SchedulerEngine.evaluate(
+          task,
+          [],
+          now,
+          futureInstancesCount: 2,
+          userSettings: userSettings,
+          dayPlannedHours: {},
+        );
+
+        // Since today (June 19) and tomorrow (June 20) have 0 capacity,
+        // the first instance (originally scheduled for today) should shift to June 21.
+        // The second instance (originally scheduled for June 20) should shift to June 22.
+        expect(action.instancesToSpawn, hasLength(2));
+        expect(
+          action.instancesToSpawn[0].scheduledDate,
+          today.addDays(2),
+        ); // June 21
+        expect(
+          action.instancesToSpawn[1].scheduledDate,
+          today.addDays(3),
+        ); // June 22
+      });
+
+      test('competing capacity dependent tasks prioritized by priority', () {
+        // High priority task
+        final taskHigh = TaskSchedule(
+          id: 'cap-high',
+          title: 'High Priority Task',
+          description: 'High',
+          priority: TaskPriority.high,
+          estimatedDuration: const Duration(hours: 5),
+          schedulingPolicy: const CapacityDependentPolicy(),
+          schedules: [OneOffSchedule(date: today)],
+        );
+
+        // Medium priority task
+        final taskMed = TaskSchedule(
+          id: 'cap-med',
+          title: 'Medium Priority Task',
+          description: 'Med',
+          priority: TaskPriority.medium,
+          estimatedDuration: const Duration(hours: 5),
+          schedulingPolicy: const CapacityDependentPolicy(),
+          schedules: [OneOffSchedule(date: today)],
+        );
+
+        final userSettings = UserSettings(
+          hoursAvailable: 8.0,
+        ); // 8 hours capacity each day
+
+        // Evaluate taskHigh first (it has higher priority)
+        final dayPlannedHours = <CivilDay, double>{};
+        final actionHigh = SchedulerEngine.evaluate(
+          taskHigh,
+          [],
+          now,
+          userSettings: userSettings,
+          dayPlannedHours: dayPlannedHours,
+        );
+
+        expect(actionHigh.instancesToSpawn, hasLength(1));
+        expect(actionHigh.instancesToSpawn.first.scheduledDate, today);
+
+        // Mark today as having 5 hours planned (from taskHigh)
+        dayPlannedHours[today] = 5.0;
+
+        // Evaluate taskMed (with updated dayPlannedHours)
+        final actionMed = SchedulerEngine.evaluate(
+          taskMed,
+          [],
+          now,
+          userSettings: userSettings,
+          dayPlannedHours: dayPlannedHours,
+        );
+
+        // Since today only has 3 hours remaining (8 - 5), and taskMed requires 5 hours,
+        // it must be shifted to tomorrow (June 20).
+        expect(actionMed.instancesToSpawn, hasLength(1));
+        expect(
+          actionMed.instancesToSpawn.first.scheduledDate,
+          today.addDays(1),
+        );
+      });
     });
   });
 }

@@ -643,6 +643,7 @@
     }
   },
   "scheduleRequiredError": "At least one schedule is required.",
+  "capacityDependentEffortRequiredError": "Estimated effort is required for Capacity Dependent tasks.",
   "familyTaskToggleLabel": "Family Task",
   "personalTaskToggleLabel": "Personal Task",
   "effortAndPriorityLabel": "Effort and Priority",
@@ -682,6 +683,9 @@
   "okButton": "OK",
   "fixedCalendarLabel": "Fixed Calendar",
   "completionRelativeLabel": "Completion-Relative",
+  "capacityDependentLabel": "Capacity Dependent",
+  "capacityDependentTitle": "Based on remaining capacity",
+  "capacityDependentSubtitle": "Scheduled only if capacity permits, otherwise pushed forward day-by-day",
   "taskTypeLabel": "Task Type",
   "simulationPresetDaily": "Daily Preset (Feed Pets)",
   "simulationPresetWeekly": "Weekly Preset (Mow Lawn)",

@@ -1,7 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' as gt;
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
+import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
+import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:nothing_ever_happens/logic/user_settings.dart';
+
+final List<Override> defaultTestOverrides = [
+  userSettingsProvider.overrideWith(
+    (ref) => Stream.value(UserSettings(hoursAvailable: 8.0)),
+  ),
+  taskSchedulesProvider.overrideWith((ref) => const Stream.empty()),
+  taskInstancesProvider.overrideWith((ref) => const Stream.empty()),
+];
 
 /// Wraps the widget under test in MaterialApp with all localization delegates.
 ///

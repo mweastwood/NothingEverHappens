@@ -1010,13 +1010,17 @@ enum HierarchicalRecurrenceKind {
   oneOff,
   dailyFixed,
   dailyCompletionRelative,
+  dailyCapacityDependent,
   weeklyFixed,
   weeklyCompletionRelative,
+  weeklyCapacityDependent,
   monthlyFixedDay,
   monthlyNthWeekday,
   monthlyCompletionRelative,
+  monthlyCapacityDependent,
   yearlyFixed,
   yearlyCompletionRelative,
+  yearlyCapacityDependent,
 }
 
 extension TaskScheduleRuleHierarchicalExtension on TaskScheduleRule {
@@ -1027,16 +1031,22 @@ extension TaskScheduleRuleHierarchicalExtension on TaskScheduleRule {
     } else if (self is DailySchedule) {
       if (self.schedulingPolicy is CompletionRelativePolicy) {
         return HierarchicalRecurrenceKind.dailyCompletionRelative;
+      } else if (self.schedulingPolicy is CapacityDependentPolicy) {
+        return HierarchicalRecurrenceKind.dailyCapacityDependent;
       }
       return HierarchicalRecurrenceKind.dailyFixed;
     } else if (self is WeeklySchedule) {
       if (self.schedulingPolicy is CompletionRelativePolicy) {
         return HierarchicalRecurrenceKind.weeklyCompletionRelative;
+      } else if (self.schedulingPolicy is CapacityDependentPolicy) {
+        return HierarchicalRecurrenceKind.weeklyCapacityDependent;
       }
       return HierarchicalRecurrenceKind.weeklyFixed;
     } else if (self is MonthlySchedule) {
       if (self.schedulingPolicy is CompletionRelativePolicy) {
         return HierarchicalRecurrenceKind.monthlyCompletionRelative;
+      } else if (self.schedulingPolicy is CapacityDependentPolicy) {
+        return HierarchicalRecurrenceKind.monthlyCapacityDependent;
       } else if (self.dayOfMonth != null) {
         return HierarchicalRecurrenceKind.monthlyFixedDay;
       }
@@ -1044,6 +1054,8 @@ extension TaskScheduleRuleHierarchicalExtension on TaskScheduleRule {
     } else if (self is YearlySchedule) {
       if (self.schedulingPolicy is CompletionRelativePolicy) {
         return HierarchicalRecurrenceKind.yearlyCompletionRelative;
+      } else if (self.schedulingPolicy is CapacityDependentPolicy) {
+        return HierarchicalRecurrenceKind.yearlyCapacityDependent;
       }
       return HierarchicalRecurrenceKind.yearlyFixed;
     }
@@ -1131,6 +1143,19 @@ TaskScheduleRule convertRuleToKind(
         missedOccurrencePolicy: missedOccurrencePolicy,
       );
 
+    case HierarchicalRecurrenceKind.dailyCapacityDependent:
+      return DailySchedule(
+        id: id,
+        scheduleId: scheduleId,
+        startDate: scheduledDate,
+        interval: interval,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
+        schedulingPolicy: const CapacityDependentPolicy(),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
     case HierarchicalRecurrenceKind.weeklyFixed:
       return WeeklySchedule(
         id: id,
@@ -1159,6 +1184,20 @@ TaskScheduleRule convertRuleToKind(
           interval: Duration(days: interval * 7),
           targetTime: startRelativeTime.time,
         ),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.weeklyCapacityDependent:
+      return WeeklySchedule(
+        id: id,
+        scheduleId: scheduleId,
+        startDate: scheduledDate,
+        interval: interval,
+        daysOfWeek: {scheduledDate.toUtcDateTime().weekday},
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
+        schedulingPolicy: const CapacityDependentPolicy(),
         missedOccurrencePolicy: missedOccurrencePolicy,
       );
 
@@ -1210,6 +1249,20 @@ TaskScheduleRule convertRuleToKind(
         missedOccurrencePolicy: missedOccurrencePolicy,
       );
 
+    case HierarchicalRecurrenceKind.monthlyCapacityDependent:
+      return MonthlySchedule(
+        id: id,
+        scheduleId: scheduleId,
+        startDate: scheduledDate,
+        interval: interval,
+        dayOfMonth: scheduledDate.day <= 28 ? scheduledDate.day : 28,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
+        schedulingPolicy: const CapacityDependentPolicy(),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
     case HierarchicalRecurrenceKind.yearlyFixed:
       return YearlySchedule(
         id: id,
@@ -1240,6 +1293,21 @@ TaskScheduleRule convertRuleToKind(
           interval: Duration(days: interval * 365),
           targetTime: startRelativeTime.time,
         ),
+        missedOccurrencePolicy: missedOccurrencePolicy,
+      );
+
+    case HierarchicalRecurrenceKind.yearlyCapacityDependent:
+      return YearlySchedule(
+        id: id,
+        scheduleId: scheduleId,
+        startDate: scheduledDate,
+        interval: interval,
+        month: scheduledDate.month,
+        day: scheduledDate.day,
+        startRelativeTime: startRelativeTime,
+        dueRelativeTime: dueRelativeTime,
+        notificationRelativeTimes: notificationRelativeTimes,
+        schedulingPolicy: const CapacityDependentPolicy(),
         missedOccurrencePolicy: missedOccurrencePolicy,
       );
   }

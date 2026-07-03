@@ -150,10 +150,22 @@ class _MissedPoliciesPlaygroundTabState
       for (final inst in _taskInstances) inst.id: inst.status,
     };
 
+    final Map<CivilDay, double> dayPlannedHours = {};
+    for (final inst in _taskInstances) {
+      if (inst.status != 'skipped' && inst.status != 'failed') {
+        if (_taskSchedule.estimatedDuration != null) {
+          final hours = _taskSchedule.estimatedDuration!.inMinutes / 60.0;
+          dayPlannedHours[inst.scheduledDate] =
+              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+        }
+      }
+    }
+
     final action = SchedulerEngine.evaluate(
       _taskSchedule,
       _taskInstances,
       _simulatedNow,
+      dayPlannedHours: dayPlannedHours,
     );
 
     setState(() {

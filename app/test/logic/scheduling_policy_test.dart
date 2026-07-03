@@ -79,5 +79,30 @@ void main() {
         );
       });
     });
+
+    group('CapacityDependentPolicy', () {
+      test('equality and hashCode', () {
+        const policy1 = CapacityDependentPolicy();
+        const policy2 = CapacityDependentPolicy();
+
+        expect(policy1, equals(policy2));
+        expect(policy1.hashCode, equals(policy2.hashCode));
+      });
+
+      test('toJson and fromJson serialization', () {
+        const policy = CapacityDependentPolicy();
+        final json = policy.toJson();
+
+        expect(json['type'], 'capacityDependent');
+
+        final deserialized = SchedulingPolicy.fromJson(json);
+        expect(deserialized, isA<CapacityDependentPolicy>());
+      });
+
+      test('toString matches expected output', () {
+        const policy = CapacityDependentPolicy();
+        expect(policy.toString(), 'CapacityDependentPolicy()');
+      });
+    });
   });
 }

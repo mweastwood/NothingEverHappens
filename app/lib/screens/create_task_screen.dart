@@ -192,19 +192,27 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         return;
       }
 
+      final minutesText = _estimatedDurationController.text.trim();
+      final minutes = minutesText.isNotEmpty ? int.tryParse(minutesText) : null;
+      final estimatedDuration = minutes != null
+          ? Duration(minutes: minutes)
+          : null;
+
+      final hasCapacityDependent = _schedules.any(
+        (s) => s.schedulingPolicy is CapacityDependentPolicy,
+      );
+      if (hasCapacityDependent && estimatedDuration == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.capacityDependentEffortRequiredError)),
+        );
+        return;
+      }
+
       setState(() {
         _isSaving = true;
       });
 
       try {
-        final minutesText = _estimatedDurationController.text.trim();
-        final minutes = minutesText.isNotEmpty
-            ? int.tryParse(minutesText)
-            : null;
-        final estimatedDuration = minutes != null
-            ? Duration(minutes: minutes)
-            : null;
-
         final hasRepeating = _schedules.any((s) => s is! OneOffSchedule);
         final firstRepeating =
             _schedules.where((s) => s is! OneOffSchedule).firstOrNull ??
