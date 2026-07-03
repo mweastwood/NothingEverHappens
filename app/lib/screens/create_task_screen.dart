@@ -768,29 +768,29 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             ),
           ),
         ),
-
-        if (_schedules.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
-          SpawnedInstancesList(
-            task: TaskSchedule(
-              id: _taskScheduleId,
-              title: _titleController.text.isEmpty
-                  ? 'Untitled'
-                  : _titleController.text,
-              description: _descriptionController.text,
-              schedules: _schedules,
-              isFamily: _isFamily,
-              priority: _priority,
-              cycleId: _cycleId,
-              assignedUserId: _assignedUserId,
-            ),
-            dbInstances: dbInstances,
-            now: AppClock.now,
-          ),
-        ],
       ],
+    );
+  }
+
+  Widget _buildSpawnedInstancesList(
+    BuildContext context,
+    List<TaskInstance> dbInstances,
+  ) {
+    return SpawnedInstancesList(
+      task: TaskSchedule(
+        id: _taskScheduleId,
+        title: _titleController.text.isEmpty
+            ? 'Untitled'
+            : _titleController.text,
+        description: _descriptionController.text,
+        schedules: _schedules,
+        isFamily: _isFamily,
+        priority: _priority,
+        cycleId: _cycleId,
+        assignedUserId: _assignedUserId,
+      ),
+      dbInstances: dbInstances,
+      now: AppClock.now,
     );
   }
 
@@ -980,6 +980,13 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                           ),
                                         ],
                                       ),
+                                      if (_schedules.isNotEmpty) ...[
+                                        const SizedBox(height: 24),
+                                        _buildSpawnedInstancesList(
+                                          context,
+                                          dbInstances,
+                                        ),
+                                      ],
                                     ],
                                   )
                                 : Column(
@@ -994,6 +1001,13 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                       if (inFamily) ...[
                                         const SizedBox(height: 16),
                                         familyCard,
+                                      ],
+                                      if (_schedules.isNotEmpty) ...[
+                                        const SizedBox(height: 24),
+                                        _buildSpawnedInstancesList(
+                                          context,
+                                          dbInstances,
+                                        ),
                                       ],
                                     ],
                                   ),

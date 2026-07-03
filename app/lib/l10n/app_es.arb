@@ -239,7 +239,7 @@
   "noPastOccurrencesPlaceholder": "No hay ocurrencias pasadas.",
   "occurrenceCompleted": "Completada: {dateTime}",
   "occurrenceSkipped": "Omitida",
-  "occurrenceMissed": "Perdida (Vence: {dateTime})",
+  "occurrenceMissed": "Atrasada (Vence: {dateTime})",
   "occurrenceActive": "Activa (Vence: {dateTime})",
   "visualCalendarGridHeader": "Cuadrícula de Calendario Visual",
   "dayIsRequiredError": "El día es requerido",
@@ -573,5 +573,9 @@
   "wedTodayShort": "Mié (Hoy)",
   "activeLabel": "Activa",
   "expiredLabel": "Vencida",
-  "skippedLabel": "Omitida"
+  "skippedLabel": "Omitida",
+  "pastTabLabel": "Pasadas",
+  "currentTabLabel": "Actuales",
+  "futureTabLabel": "Futuras",
+  "noCurrentOccurrencesPlaceholder": "No hay ocurrencias activas."
 }

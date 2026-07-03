@@ -112,9 +112,10 @@ void main() {
         ),
       );
 
-      // Verify Headers
-      expect(find.text('Next 10 Occurrences'), findsOneWidget);
-      expect(find.text('Last 10 Occurrences'), findsOneWidget);
+      // Verify Headers (Wide view / desktop layout)
+      expect(find.text('Past'), findsOneWidget);
+      expect(find.text('Current'), findsOneWidget);
+      expect(find.text('Future'), findsOneWidget);
 
       // Verify Future Occurrences (dates after Monday Oct 26, 10:00)
       // dailyTask has futureInstancesCount = 3
@@ -151,7 +152,7 @@ void main() {
       );
       expect(find.text('Skipped'), findsOneWidget);
       expect(
-        find.text('Missed (Due: Thursday, October 22, 2026 5:00 PM)'),
+        find.text('Overdue (Due: Thursday, October 22, 2026 5:00 PM)'),
         findsOneWidget,
       );
       expect(
@@ -162,8 +163,14 @@ void main() {
       // Card keys check
       expect(find.byKey(const Key('past_occurrence_card_0')), findsOneWidget);
       expect(find.byKey(const Key('past_occurrence_card_1')), findsOneWidget);
-      expect(find.byKey(const Key('past_occurrence_card_2')), findsOneWidget);
-      expect(find.byKey(const Key('past_occurrence_card_3')), findsOneWidget);
+      expect(
+        find.byKey(const Key('current_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('current_occurrence_card_1')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('renders placeholder when no future or past occurrences', (
@@ -233,8 +240,11 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('past_occurrence_card_0')), findsOneWidget);
-      expect(find.text('No past occurrences.'), findsNothing);
+      expect(
+        find.byKey(const Key('current_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(find.text('No past occurrences.'), findsOneWidget);
 
       // Test 2: futureTask (has future, no past)
       await tester.pumpWidget(
@@ -258,9 +268,76 @@ void main() {
         findsNothing,
       );
       expect(find.text('No past occurrences.'), findsOneWidget);
+      expect(find.text('No active occurrences.'), findsOneWidget);
     });
 
-    testGoldens('SpawnedInstancesList renders correctly', (tester) async {
+    testWidgets('renders narrow layout tabs and responds to tap', (
+      tester,
+    ) async {
+      // Set a narrow surface size
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: SpawnedInstancesList(
+                task: dailyTask,
+                dbInstances: dbInstances,
+                now: now,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Verify tabs are visible
+      expect(find.text('Past'), findsOneWidget);
+      expect(find.text('Current'), findsOneWidget);
+      expect(find.text('Future'), findsOneWidget);
+
+      // Initially, index 1 ("Current") is selected.
+      // Current active list has 2 items: I-missed, I-active
+      expect(
+        find.byKey(const Key('current_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('current_occurrence_card_1')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('past_occurrence_card_0')), findsNothing);
+      expect(find.byKey(const Key('spawned_occurrence_card_0')), findsNothing);
+
+      // Tap on the "Past" tab
+      await tester.tap(find.text('Past'));
+      await tester.pumpAndSettle();
+
+      // Now "Past" items should be visible
+      expect(find.byKey(const Key('past_occurrence_card_0')), findsOneWidget);
+      expect(find.byKey(const Key('past_occurrence_card_1')), findsOneWidget);
+      expect(find.byKey(const Key('current_occurrence_card_0')), findsNothing);
+
+      // Tap on the "Future" tab
+      await tester.tap(find.text('Future'));
+      await tester.pumpAndSettle();
+
+      // Now "Future" items should be visible
+      expect(
+        find.byKey(const Key('spawned_occurrence_card_0')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('current_occurrence_card_0')), findsNothing);
+    });
+
+    testGoldens('SpawnedInstancesList renders narrow tabbed layout correctly', (
+      tester,
+    ) async {
       final monthlyTask = TaskSchedule(
         id: 'S-test-task-monthly',
         title: 'Test Monthly Task',
@@ -284,9 +361,94 @@ void main() {
         ],
       );
 
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.45)
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.8)
         ..addScenario(
-          'SpawnedInstancesList Default with Past and Future',
+          'Narrow Layout - Past Tab',
+          Material(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SingleChildScrollView(
+                child: SpawnedInstancesList(
+                  task: monthlyTask,
+                  dbInstances: dbInstances,
+                  now: now,
+                  initialTabIndex: 0,
+                ),
+              ),
+            ),
+          ),
+        )
+        ..addScenario(
+          'Narrow Layout - Current Tab',
+          Material(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SingleChildScrollView(
+                child: SpawnedInstancesList(
+                  task: monthlyTask,
+                  dbInstances: dbInstances,
+                  now: now,
+                  initialTabIndex: 1,
+                ),
+              ),
+            ),
+          ),
+        )
+        ..addScenario(
+          'Narrow Layout - Future Tab',
+          Material(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SingleChildScrollView(
+                child: SpawnedInstancesList(
+                  task: monthlyTask,
+                  dbInstances: dbInstances,
+                  now: now,
+                  initialTabIndex: 2,
+                ),
+              ),
+            ),
+          ),
+        );
+
+      await tester.pumpWidgetBuilder(
+        builder.build(),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(400, 1500),
+      );
+
+      await screenMatchesGolden(tester, 'spawned_instances_list_narrow_golden');
+    });
+
+    testGoldens('SpawnedInstancesList renders wide column layout correctly', (
+      tester,
+    ) async {
+      final monthlyTask = TaskSchedule(
+        id: 'S-test-task-monthly',
+        title: 'Test Monthly Task',
+        description: 'Monthly test description',
+        schedules: [
+          MonthlySchedule(
+            id: 'R-monthly-rule',
+            scheduleId: 'S-test-task-monthly',
+            startDate: CivilDay(year: 2026, month: 10, day: 25),
+            interval: 1,
+            dayOfMonth: 25,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.6)
+        ..addScenario(
+          'Wide Layout - Three Columns',
           Material(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -304,10 +466,10 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(400, 1000),
+        surfaceSize: const Size(800, 600),
       );
 
-      await screenMatchesGolden(tester, 'spawned_instances_list_golden');
+      await screenMatchesGolden(tester, 'spawned_instances_list_wide_golden');
     });
   });
 }

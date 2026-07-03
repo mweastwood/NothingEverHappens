@@ -716,7 +716,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String occurrenceMissed(String dateTime) {
-    return 'Missed (Due: $dateTime)';
+    return 'Overdue (Due: $dateTime)';
   }
 
   @override
@@ -1552,4 +1552,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get skippedLabel => 'Skipped';
+
+  @override
+  String get pastTabLabel => 'Past';
+
+  @override
+  String get currentTabLabel => 'Current';
+
+  @override
+  String get futureTabLabel => 'Future';
+
+  @override
+  String get noCurrentOccurrencesPlaceholder => 'No active occurrences.';
 }
