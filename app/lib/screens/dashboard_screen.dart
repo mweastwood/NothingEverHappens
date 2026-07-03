@@ -286,17 +286,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  Text(
-                                    _formatForecastLabel(
-                                      plannedMinutes / 60.0,
-                                      capacity,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      fontSize: 9,
-                                      fontWeight: isToday
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
+                                  SizedBox(
+                                    height: 14,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        _formatForecastLabel(
+                                          plannedMinutes / 60.0,
+                                          capacity,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontSize: 9,
+                                              fontWeight: isToday
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                            ),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -379,7 +386,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 4),
                                   Text(
                                     dayLabel,
                                     style: theme.textTheme.labelSmall?.copyWith(
