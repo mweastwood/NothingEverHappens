@@ -194,12 +194,12 @@ void main() {
       await tester.tap(saveBtn);
       await tester.pumpAndSettle();
 
-      // Verify settings default capacity was updated for Monday ('1')
+      // Verify settings default capacity was updated for Monday ('1') to 2.25 hours (2.0 + 15 min)
       verify(
         mockUserSettingsRepository.updateSettings(
           argThat(
             predicate<UserSettings>(
-              (settings) => settings.defaultDailyCapacity?['1'] != null,
+              (settings) => settings.defaultDailyCapacity?['1'] == 2.25,
             ),
           ),
         ),

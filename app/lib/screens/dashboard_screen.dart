@@ -832,10 +832,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ],
                           ),
                           onTap: () {
+                            // 2026-01-05 is a Monday (weekday = 1).
+                            // Thus, 2026-01-04 + weekday aligns weekdayStr with the correct index (1=Mon, ..., 7=Sun).
                             final dummyDate = DateTime(
                               2026,
                               1,
-                              weekday,
+                              4 + weekday,
                             ); // Map to weekday
                             _showEditCapacityDialog(
                               context,
