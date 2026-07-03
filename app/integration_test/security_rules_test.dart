@@ -1,5 +1,6 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, avoid_web_libraries_in_flutter, deprecated_member_use
 
+import 'dart:html' as html;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,6 +9,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nothing_ever_happens/firebase_options_dev.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
+
+void print(Object? object) {
+  final msg = object?.toString() ?? 'null';
+  try {
+    html.window.console.log(msg);
+  } catch (_) {}
+}
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -33,25 +41,6 @@ void main() {
     }
   }
 
-  setUpAll(() async {
-    print('[setUpAll] Initializing Firebase...');
-    if (Firebase.apps.isEmpty) {
-      FirebaseOptions options;
-      try {
-        options = DefaultFirebaseOptions.currentPlatform;
-      } catch (_) {
-        // Fallback to web options for unsupported platforms (like Linux desktop)
-        options = DefaultFirebaseOptions.web;
-      }
-      await Firebase.initializeApp(options: options);
-    }
-    // Configure client SDKs to use the local emulators
-    print('[setUpAll] Configuring emulators...');
-    FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
-    await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
-    print('[setUpAll] Emulators configured.');
-  });
-
   Future<void> signOutAndWait() async {
     print('[signOutAndWait] Signing out...');
     await FirebaseAuth.instance.signOut();
@@ -62,6 +51,21 @@ void main() {
     print('[signOutAndWait] Sign out complete.');
     await Future.delayed(const Duration(milliseconds: 500));
   }
+
+  setUpAll(() async {
+    print('[setUpAll] Initializing default FirebaseApp...');
+    if (Firebase.apps.isEmpty) {
+      FirebaseOptions options;
+      try {
+        options = DefaultFirebaseOptions.currentPlatform;
+      } catch (_) {
+        options = DefaultFirebaseOptions.web;
+      }
+      await Firebase.initializeApp(options: options);
+    }
+    FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+    await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+  });
 
   setUp(() async {
     print('[setUp] Starting setup...');
@@ -106,52 +110,33 @@ void main() {
       (user) => user?.uid == creds.user?.uid,
     );
     print('[registerAndSignIn] authStateChanges propagated.');
+    return creds.user!;
+  }
 
-    // Wait for Firestore to synchronize with the new credentials
+  Future<void> syncFirestoreAuth(String uid, Map<String, dynamic> data) async {
     final db = FirebaseFirestore.instance;
     int attempts = 0;
-    const maxAttempts =
-        100; // Increased to 100 to allow plenty of time for slow virtualized CI environments
-    print('[registerAndSignIn] Starting Firestore synchronization loop...');
+    const maxAttempts = 100;
+    print('[syncFirestoreAuth] Starting sync loop for UID: $uid');
     while (attempts < maxAttempts) {
       try {
-        print(
-          '[registerAndSignIn] Attempt ${attempts + 1}/$maxAttempts: Reading user document...',
-        );
-        final doc = await db.collection('users').doc(creds.user!.uid).get();
-        print(
-          '[registerAndSignIn] Success! Firestore auth is synchronized (doc exists: ${doc.exists}).',
-        );
-        break; // Success! Firestore auth is synchronized.
+        await db.collection('users').doc(uid).set(data);
+        print('[syncFirestoreAuth] Sync success for UID: $uid');
+        return;
       } on FirebaseException catch (e) {
-        if (e.code == 'permission-denied') {
+        if (e.code == 'permission-denied' || e.code == 'unavailable') {
           print(
-            '[registerAndSignIn] Attempt ${attempts + 1}/$maxAttempts: Firestore returned permission-denied. Retrying...',
+            '[syncFirestoreAuth] Attempt ${attempts + 1}/$maxAttempts failed with ${e.code}. Retrying...',
           );
           attempts++;
           await Future.delayed(const Duration(milliseconds: 150));
         } else {
-          print('[registerAndSignIn] Unexpected FirebaseException: $e');
+          print('[syncFirestoreAuth] Unexpected FirebaseException: $e');
           rethrow;
         }
-      } catch (e) {
-        print('[registerAndSignIn] Unexpected exception: $e');
-        rethrow;
       }
     }
-    if (attempts >= maxAttempts) {
-      print(
-        '[registerAndSignIn] ERROR: Firestore auth failed to synchronize after $maxAttempts attempts.',
-      );
-      throw Exception(
-        'Firestore auth failed to sync for UID: ${creds.user!.uid}',
-      );
-    }
-
-    // Add extra settling delay after Firestore sync to prevent auth races
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    return creds.user!;
+    throw Exception('Failed to sync Firestore auth for UID: $uid');
   }
 
   Future<void> expectPermissionDenied(Future<dynamic> functionCall) async {
@@ -177,24 +162,22 @@ void main() {
     testWidgets(
       'Users collection - allows reading/writing own profile and denies writing others',
       (WidgetTester tester) async {
-        // 1. Sign in Alice
+        final db = FirebaseFirestore.instance;
         final aliceEmail = 'alice_${uuid.v4()}@example.com';
         final aliceUser = await registerAndSignIn(aliceEmail, 'password123');
         final aliceUid = aliceUser.uid;
 
-        final db = FirebaseFirestore.instance;
-
-        // Alice writes to her own profile - should succeed
-        await expectLater(
-          db.collection('users').doc(aliceUid).set({
-            'displayName': 'Alice',
-            'email': aliceEmail,
-          }),
-          completes,
-        );
+        // Alice writes to her own profile - serves as initial sync
+        await syncFirestoreAuth(aliceUid, {
+          'displayName': 'Alice',
+          'email': aliceEmail,
+        });
 
         // Alice reads her own profile - should succeed
-        final doc = await db.collection('users').doc(aliceUid).get();
+        final doc = await db
+            .collection('users')
+            .doc(aliceUid)
+            .get(const GetOptions(source: Source.server));
         expect(doc.exists, isTrue);
         expect(doc.data()?['displayName'], 'Alice');
 
@@ -210,15 +193,20 @@ void main() {
     testWidgets(
       'Families collection - allows members to read and joining users to add themselves',
       (WidgetTester tester) async {
-        print('[FamiliesTest] 1. Sign in Alice and create a family...');
+        final db = FirebaseFirestore.instance;
+
+        // 1. Sign in Alice and create a family
         final aliceEmail = 'alice_${uuid.v4()}@example.com';
         final aliceUser = await registerAndSignIn(aliceEmail, 'password123');
         final aliceUid = aliceUser.uid;
+        await syncFirestoreAuth(aliceUid, {
+          'displayName': 'Alice',
+          'email': aliceEmail,
+        });
 
-        final db = FirebaseFirestore.instance;
         final familyId = 'fam-${uuid.v4()}';
 
-        print('[FamiliesTest] Alice creating family document...');
+        // Alice creates family - should succeed
         await expectLater(
           db.collection('families').doc(familyId).set({
             'name': 'The Simpsons',
@@ -229,22 +217,25 @@ void main() {
           completes,
         );
 
-        print('[FamiliesTest] 2. Sign in Bob (non-member)...');
+        // 2. Sign in Bob (non-member)
         final bobEmail = 'bob_${uuid.v4()}@example.com';
         await signOutAndWait();
         final bobUser = await registerAndSignIn(bobEmail, 'password123');
         final bobUid = bobUser.uid;
+        await syncFirestoreAuth(bobUid, {
+          'displayName': 'Bob',
+          'email': bobEmail,
+        });
 
-        print(
-          '[FamiliesTest] Bob trying to read family document (expect deny)...',
-        );
+        // Bob tries to read the family document - should fail (permission-denied)
         await expectPermissionDenied(
-          db.collection('families').doc(familyId).get(),
+          db
+              .collection('families')
+              .doc(familyId)
+              .get(const GetOptions(source: Source.server)),
         );
 
-        print(
-          '[FamiliesTest] Bob adding himself to the family (expect allow)...',
-        );
+        // Bob adds himself to the family (join functionality allowed in rules)
         await expectLater(
           db.collection('families').doc(familyId).update({
             'members.$bobUid': {'role': 'non-parent', 'displayName': 'Bob'},
@@ -252,12 +243,11 @@ void main() {
           completes,
         );
 
-        print(
-          '[FamiliesTest] Bob reading the family document now (expect allow)...',
-        );
-        // Small delay to let update resolve in Firestore indexes
-        await Future.delayed(const Duration(milliseconds: 200));
-        final doc = await db.collection('families').doc(familyId).get();
+        // Bob reads the family document now - should succeed
+        final doc = await db
+            .collection('families')
+            .doc(familyId)
+            .get(const GetOptions(source: Source.server));
         expect(doc.exists, isTrue);
         expect(doc.data()?['name'], 'The Simpsons');
       },
@@ -266,58 +256,89 @@ void main() {
     testWidgets(
       'Instances collection - members can create, but only parents can delete',
       (WidgetTester tester) async {
-        // 1. Sign in Alice (parent)
+        final db = FirebaseFirestore.instance;
+
+        // 1. Register Bob first to get his UID, then register Alice
+        final bobEmail = 'bob_${uuid.v4()}@example.com';
+        final bobUser = await registerAndSignIn(bobEmail, 'password123');
+        final bobUid = bobUser.uid;
+        await syncFirestoreAuth(bobUid, {
+          'displayName': 'Bob',
+          'email': bobEmail,
+        });
+
         final aliceEmail = 'alice_${uuid.v4()}@example.com';
+        await signOutAndWait();
         final aliceUser = await registerAndSignIn(aliceEmail, 'password123');
         final aliceUid = aliceUser.uid;
+        await syncFirestoreAuth(aliceUid, {
+          'displayName': 'Alice',
+          'email': aliceEmail,
+        });
 
-        final db = FirebaseFirestore.instance;
         final familyId = 'fam-${uuid.v4()}';
 
         // Alice creates family with Alice as parent and Bob as non-parent
-        final bobEmail = 'bob_${uuid.v4()}@example.com';
-        // We need Bob's UID to add him. We'll register Bob first to get his UID, then register Alice.
-        await signOutAndWait();
-        final bobUser = await registerAndSignIn(bobEmail, 'password123');
-        final bobUid = bobUser.uid;
-
-        await signOutAndWait();
-        await registerAndSignIn(aliceEmail, 'password123');
-
-        await db.collection('families').doc(familyId).set({
-          'name': 'The Simpsons',
-          'members': {
-            aliceUid: {'role': 'parent', 'displayName': 'Alice'},
-            bobUid: {'role': 'non-parent', 'displayName': 'Bob'},
-          },
-        });
+        await expectLater(
+          db.collection('families').doc(familyId).set({
+            'name': 'The Simpsons',
+            'members': {
+              aliceUid: {'role': 'parent', 'displayName': 'Alice'},
+              bobUid: {'role': 'non-parent', 'displayName': 'Bob'},
+            },
+          }),
+          completes,
+        );
 
         // 2. Sign in Bob (non-parent member)
         await signOutAndWait();
         await registerAndSignIn(bobEmail, 'password123');
+        await syncFirestoreAuth(bobUid, {
+          'displayName': 'Bob',
+          'email': bobEmail,
+        });
 
         final instanceId = 'inst-${uuid.v4()}';
-        final instanceDocRef = db
-            .collection('families')
-            .doc(familyId)
-            .collection('instances')
-            .doc(instanceId);
 
         // Bob (non-parent member) creates an instance - should succeed
         await expectLater(
-          instanceDocRef.set({'title': 'Clean room'}),
+          db
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(instanceId)
+              .set({'title': 'Clean room'}),
           completes,
         );
 
         // Bob tries to delete the instance - should fail (permission-denied)
-        await expectPermissionDenied(instanceDocRef.delete());
+        await expectPermissionDenied(
+          db
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(instanceId)
+              .delete(),
+        );
 
         // 3. Sign in Alice (parent)
         await signOutAndWait();
         await registerAndSignIn(aliceEmail, 'password123');
+        await syncFirestoreAuth(aliceUid, {
+          'displayName': 'Alice',
+          'email': aliceEmail,
+        });
 
         // Alice (parent) deletes the instance - should succeed
-        await expectLater(instanceDocRef.delete(), completes);
+        await expectLater(
+          db
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(instanceId)
+              .delete(),
+          completes,
+        );
       },
     );
   });
