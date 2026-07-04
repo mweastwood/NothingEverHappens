@@ -474,10 +474,40 @@ class TaskRepository {
         }
       }
 
+      final Map<String, DateTime> lastCompletionCache = {};
+      DateTime getLastCompletionTime(TaskSchedule task) {
+        return lastCompletionCache.putIfAbsent(task.id, () {
+          final completed = allInstances
+              .where(
+                (inst) =>
+                    inst.scheduleId == task.id && inst.status == 'completed',
+              )
+              .toList();
+          if (completed.isEmpty) {
+            return DateTime.fromMillisecondsSinceEpoch(0);
+          }
+          return completed
+              .map(
+                (inst) =>
+                    inst.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+              )
+              .reduce((a, b) => a.isAfter(b) ? a : b);
+        });
+      }
+
       // Prioritize capacity-dependent tasks by Priority (High > Medium > Low)
+      // If priority is equal, prioritize (evaluate first) the least recently completed task.
       filteredTasks.sort((a, b) {
         final pCompare = b.priority.index.compareTo(a.priority.index);
         if (pCompare != 0) return pCompare;
+
+        if (a.skipIfNoCapacity && b.skipIfNoCapacity) {
+          final aTime = getLastCompletionTime(a);
+          final bTime = getLastCompletionTime(b);
+          final timeCompare = aTime.compareTo(bTime);
+          if (timeCompare != 0) return timeCompare;
+        }
+
         return a.id.compareTo(b.id);
       });
 

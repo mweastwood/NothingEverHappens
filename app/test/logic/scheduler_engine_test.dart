@@ -1197,6 +1197,220 @@ void main() {
         expect(actionMed.instancesToSpawn, hasLength(1));
         expect(actionMed.instancesToSpawn.first.status, 'skipped');
       });
+
+      test(
+        'competing capacity tasks with equal priority prioritize least recently completed task',
+        () {
+          final taskA = TaskSchedule(
+            id: 'cap-a',
+            title: 'Task A',
+            description: '',
+            priority: TaskPriority.medium,
+            estimatedDuration: const Duration(hours: 5),
+            skipIfNoCapacity: true,
+            schedules: [OneOffSchedule(date: today)],
+          );
+
+          final taskB = TaskSchedule(
+            id: 'cap-b',
+            title: 'Task B',
+            description: '',
+            priority: TaskPriority.medium,
+            estimatedDuration: const Duration(hours: 5),
+            skipIfNoCapacity: true,
+            schedules: [OneOffSchedule(date: today)],
+          );
+
+          final userSettings = UserSettings(hoursAvailable: 8.0);
+
+          // Task A was completed on June 18 (yesterday).
+          // Task B was completed on June 17 (2 days ago).
+          // B is least recently completed, so B should be evaluated first,
+          // getting 'pending' and leaving A with insufficient capacity ('skipped').
+          final allInstances = [
+            TaskInstance(
+              scheduleId: 'S-cap-a',
+              ruleId: 'r1',
+              title: 'Task A Completed',
+              description: '',
+              scheduledDate: today.addDays(-1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+              status: 'completed',
+              completedAt: now.subtract(const Duration(days: 1)),
+            ),
+            TaskInstance(
+              scheduleId: 'S-cap-b',
+              ruleId: 'r2',
+              title: 'Task B Completed',
+              description: '',
+              scheduledDate: today.addDays(-2),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+              status: 'completed',
+              completedAt: now.subtract(const Duration(days: 2)),
+            ),
+          ];
+
+          final list = [taskA, taskB];
+          final Map<String, DateTime> lastCompletionCache = {};
+          DateTime getLastCompletionTime(TaskSchedule t) {
+            return lastCompletionCache.putIfAbsent(t.id, () {
+              final completed = allInstances
+                  .where(
+                    (inst) =>
+                        inst.scheduleId == t.id && inst.status == 'completed',
+                  )
+                  .toList();
+              if (completed.isEmpty) {
+                return DateTime.fromMillisecondsSinceEpoch(0);
+              }
+              return completed
+                  .map(
+                    (inst) =>
+                        inst.completedAt ??
+                        DateTime.fromMillisecondsSinceEpoch(0),
+                  )
+                  .reduce((a, b) => a.isAfter(b) ? a : b);
+            });
+          }
+
+          list.sort((a, b) {
+            final pCompare = b.priority.index.compareTo(a.priority.index);
+            if (pCompare != 0) return pCompare;
+            if (a.skipIfNoCapacity && b.skipIfNoCapacity) {
+              final aTime = getLastCompletionTime(a);
+              final bTime = getLastCompletionTime(b);
+              final timeCompare = aTime.compareTo(bTime);
+              if (timeCompare != 0) return timeCompare;
+            }
+            return a.id.compareTo(b.id);
+          });
+
+          expect(list.first.id, 'S-cap-b');
+
+          final dayPlannedHours = <CivilDay, double>{};
+          final actionB = SchedulerEngine.evaluate(
+            list[0],
+            [],
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: dayPlannedHours,
+          );
+          expect(actionB.instancesToSpawn.first.status, 'pending');
+          dayPlannedHours[today] = 5.0;
+
+          final actionA = SchedulerEngine.evaluate(
+            list[1],
+            [],
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: dayPlannedHours,
+          );
+          expect(actionA.instancesToSpawn.first.status, 'skipped');
+        },
+      );
+
+      test(
+        'revives previously skipped instance back to pending if capacity becomes available',
+        () {
+          final task = TaskSchedule(
+            id: 'cap-revive',
+            title: 'Revive Task',
+            description: 'Revives to pending',
+            estimatedDuration: const Duration(hours: 4),
+            skipIfNoCapacity: true,
+            schedules: [OneOffSchedule(date: today.addDays(1))],
+          );
+
+          final existingInst = TaskInstance(
+            id: 'inst-skipped-today',
+            scheduleId: 'cap-revive',
+            ruleId: task.schedules.first.id,
+            title: 'Revive Task',
+            description: 'Revives to pending',
+            scheduledDate: today.addDays(1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'skipped',
+          );
+
+          final userSettings = UserSettings(hoursAvailable: 8.0);
+          final action = SchedulerEngine.evaluate(
+            task,
+            [existingInst],
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: {},
+          );
+
+          expect(action.instancesToUpdate, hasLength(1));
+          expect(action.instancesToUpdate.first.id, 'inst-skipped-today');
+          expect(action.instancesToUpdate.first.status, 'pending');
+        },
+      );
+
+      test(
+        'revives previously skipped instance back to pending if skipIfNoCapacity is toggled off',
+        () {
+          final task = TaskSchedule(
+            id: 'cap-revive',
+            title: 'Revive Task',
+            description: 'Revives to pending',
+            estimatedDuration: const Duration(hours: 4),
+            skipIfNoCapacity: false,
+            schedules: [OneOffSchedule(date: today.addDays(1))],
+          );
+
+          final existingInst = TaskInstance(
+            id: 'inst-skipped-today',
+            scheduleId: 'cap-revive',
+            ruleId: task.schedules.first.id,
+            title: 'Revive Task',
+            description: 'Revives to pending',
+            scheduledDate: today.addDays(1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'skipped',
+          );
+
+          final userSettings = UserSettings(hoursAvailable: 2.0);
+          final action = SchedulerEngine.evaluate(
+            task,
+            [existingInst],
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: {},
+          );
+
+          expect(action.instancesToUpdate, hasLength(1));
+          expect(action.instancesToUpdate.first.status, 'pending');
+        },
+      );
     });
   });
 }
