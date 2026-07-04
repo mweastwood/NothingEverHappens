@@ -1467,6 +1467,55 @@ void main() {
           expect(actionUpdate.instancesToUpdate, isEmpty);
         },
       );
+
+      test(
+        'does not count the task\'s own existing pending instances against capacity (prevents feedback loop / oscillation)',
+        () {
+          final task = TaskSchedule(
+            id: 'cap-self-exclude',
+            title: 'Self Exclude Task',
+            description: 'Capacity self-exclusion',
+            estimatedDuration: const Duration(hours: 5),
+            skipIfNoCapacity: true,
+            schedules: [OneOffSchedule(date: today.addDays(1))],
+          );
+
+          final existingInst = TaskInstance(
+            id: 'inst-pending-tomorrow',
+            scheduleId:
+                'S-cap-self-exclude', // TaskSchedule automatically prepends 'S-'
+            ruleId: task.schedules.first.id,
+            title: 'Self Exclude Task',
+            description: 'Capacity self-exclusion',
+            scheduledDate: today.addDays(1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+
+          final userSettings = UserSettings(hoursAvailable: 8.0);
+          final dayPlannedHours = {
+            today.addDays(1): 5.0,
+          }; // Consumed fully by this task's own pending instance
+
+          final action = SchedulerEngine.evaluate(
+            task,
+            [existingInst],
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: dayPlannedHours,
+          );
+
+          // It should NOT update the status to skipped because its own 5 hours are excluded from the planned hours calculation.
+          expect(action.instancesToUpdate, isEmpty);
+        },
+      );
     });
   });
 }
