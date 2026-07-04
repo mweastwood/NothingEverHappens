@@ -31,12 +31,9 @@ class SchedulerEngine {
     Map<CivilDay, double>? dayPlannedHours,
   }) {
     final today = CivilDay.fromDateTime(now);
-    final isCapacityDependent = task.schedules.any(
-      (s) => s.schedulingPolicy is CapacityDependentPolicy,
-    );
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
 
-    if (!isRecurring && !isCapacityDependent) {
+    if (!isRecurring) {
       // One-Off Schedule: Ensure an instance exists for each OneOffSchedule in the task.
       final List<TaskInstance> toSpawn = [];
       for (int i = 0; i < task.schedules.length; i++) {
@@ -68,7 +65,38 @@ class SchedulerEngine {
           }
         }
       }
-      return SchedulerAction(instancesToSpawn: toSpawn);
+      final List<TaskInstance> finalToSpawn = [];
+      if (task.skipIfNoCapacity) {
+        final double taskDuration =
+            (task.estimatedDuration ?? const Duration()).inMinutes / 60.0;
+        final Map<CivilDay, double> tempPlannedHours = dayPlannedHours != null
+            ? Map.from(dayPlannedHours)
+            : {};
+
+        for (final inst in toSpawn) {
+          if (inst.status == 'pending' &&
+              inst.scheduledDate.compareTo(today) >= 0) {
+            final capacity =
+                userSettings?.getCapacityForDate(
+                  inst.scheduledDate.toDateTime(),
+                ) ??
+                8.0;
+            final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
+
+            if (capacity - planned < taskDuration) {
+              finalToSpawn.add(inst.copyWith(status: 'skipped'));
+            } else {
+              finalToSpawn.add(inst);
+              tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
+            }
+          } else {
+            finalToSpawn.add(inst);
+          }
+        }
+      } else {
+        finalToSpawn.addAll(toSpawn);
+      }
+      return SchedulerAction(instancesToSpawn: finalToSpawn);
     }
 
     // Recurring Schedule
@@ -146,115 +174,6 @@ class SchedulerEngine {
                 status: 'pending',
               ),
             );
-          }
-        }
-      } else if (s.schedulingPolicy is CapacityDependentPolicy) {
-        // CapacityDependentPolicy
-        final ruleInstances = taskInstances
-            .where((inst) => inst.ruleId == s.id)
-            .toList();
-        final pending =
-            ruleInstances.where((inst) => inst.status == 'pending').toList()
-              ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-        final resolved =
-            ruleInstances.where((inst) => inst.status != 'pending').toList()
-              ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-
-        final int N = futureInstancesCount ?? s.futureInstancesCount;
-        final int R = resolved.length;
-        final int totalOccurrencesNeeded = R + N;
-
-        // Generate the base recurrence dates
-        final List<CivilDay> recurrenceDates = [];
-        CivilDay? currentOcc = s.occursOn(s.scheduledDate)
-            ? s.scheduledDate
-            : s.nextOccurrenceAfter(s.scheduledDate);
-
-        int loopCount = 0;
-        while (recurrenceDates.length < totalOccurrencesNeeded &&
-            currentOcc != null &&
-            loopCount < 1000) {
-          recurrenceDates.add(currentOcc);
-          currentOcc = s.nextOccurrenceAfter(currentOcc);
-          loopCount++;
-        }
-
-        CivilDay? previousDate = resolved.isNotEmpty
-            ? resolved.last.scheduledDate
-            : null;
-        final double taskDuration =
-            (task.estimatedDuration ?? const Duration()).inMinutes / 60.0;
-        final Map<CivilDay, double> tempPlannedHours = dayPlannedHours != null
-            ? Map.from(dayPlannedHours)
-            : {};
-
-        final List<CivilDay> resolvedDates = [];
-
-        for (int j = R; j < recurrenceDates.length; j++) {
-          final baseDate = recurrenceDates[j];
-          var searchDate = baseDate.compareTo(today) < 0 ? today : baseDate;
-          if (previousDate != null && searchDate.compareTo(previousDate) <= 0) {
-            searchDate = previousDate.addDays(1);
-          }
-
-          CivilDay? resolvedDate;
-          for (int dayOffset = 0; dayOffset < 365; dayOffset++) {
-            final candidateDate = searchDate.addDays(dayOffset);
-            final capacity =
-                userSettings?.getCapacityForDate(candidateDate.toDateTime()) ??
-                8.0;
-            final planned = tempPlannedHours[candidateDate] ?? 0.0;
-
-            if (capacity - planned >= taskDuration) {
-              resolvedDate = candidateDate;
-              break;
-            }
-          }
-
-          if (resolvedDate == null) {
-            break;
-          }
-
-          resolvedDates.add(resolvedDate);
-          tempPlannedHours[resolvedDate] =
-              (tempPlannedHours[resolvedDate] ?? 0.0) + taskDuration;
-          previousDate = resolvedDate;
-        }
-
-        // Apply resolvedDates to update or spawn
-        for (int k = 0; k < resolvedDates.length; k++) {
-          final resDate = resolvedDates[k];
-          if (k < pending.length) {
-            final existingPending = pending[k];
-            if (existingPending.scheduledDate != resDate) {
-              toUpdate.add(existingPending.copyWith(scheduledDate: resDate));
-            }
-          } else {
-            toSpawn.add(
-              TaskInstance(
-                id: TaskInstance.generateId(),
-                scheduleId: task.id,
-                ruleId: s.id,
-                title: task.title,
-                description: task.description,
-                scheduledDate: resDate,
-                startRelativeTime: s.startRelativeTime,
-                dueRelativeTime: s.dueRelativeTime,
-                notificationRelativeTimes: s.notificationRelativeTimes,
-                isFamily: task.isFamily,
-                priority: task.priority,
-                cycleId: task.cycleId,
-                assignedUserId: task.assignedUserId,
-                status: 'pending',
-              ),
-            );
-          }
-        }
-
-        // Delete excess pending instances in the DB
-        if (pending.length > resolvedDates.length) {
-          for (int k = resolvedDates.length; k < pending.length; k++) {
-            toDelete.add(pending[k].id);
           }
         }
       } else {
@@ -590,9 +509,96 @@ class SchedulerEngine {
       updatedSchedule = task.copyWith(lastSpawnedDate: maxSpawned);
     }
 
+    final List<TaskInstance> finalToSpawn = [];
+    final List<TaskInstance> finalToUpdate = List.from(toUpdate);
+
+    if (task.skipIfNoCapacity) {
+      final double taskDuration =
+          (task.estimatedDuration ?? const Duration()).inMinutes / 60.0;
+      final Map<CivilDay, double> tempPlannedHours = dayPlannedHours != null
+          ? Map.from(dayPlannedHours)
+          : {};
+
+      // 1. Process instances already in the DB that are pending
+      for (final inst in taskInstances) {
+        if (inst.status == 'pending' &&
+            inst.scheduledDate.compareTo(today) >= 0) {
+          final isMarkedForDelete = toDelete.contains(inst.id);
+          final isMarkedForUpdate = toUpdate.any((x) => x.id == inst.id);
+          if (isMarkedForDelete) continue;
+
+          final capacity =
+              userSettings?.getCapacityForDate(
+                inst.scheduledDate.toDateTime(),
+              ) ??
+              8.0;
+          final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
+
+          if (capacity - planned < taskDuration) {
+            if (isMarkedForUpdate) {
+              final idx = finalToUpdate.indexWhere((x) => x.id == inst.id);
+              finalToUpdate[idx] = finalToUpdate[idx].copyWith(
+                status: 'skipped',
+              );
+            } else {
+              finalToUpdate.add(inst.copyWith(status: 'skipped'));
+            }
+          } else {
+            tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
+          }
+        }
+      }
+
+      // 2. Process toSpawn instances
+      for (final inst in toSpawn) {
+        if (inst.status == 'pending' &&
+            inst.scheduledDate.compareTo(today) >= 0) {
+          final capacity =
+              userSettings?.getCapacityForDate(
+                inst.scheduledDate.toDateTime(),
+              ) ??
+              8.0;
+          final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
+
+          if (capacity - planned < taskDuration) {
+            finalToSpawn.add(inst.copyWith(status: 'skipped'));
+          } else {
+            finalToSpawn.add(inst);
+            tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
+          }
+        } else {
+          finalToSpawn.add(inst);
+        }
+      }
+
+      // 3. Process toUpdate instances that were NOT in taskInstances (e.g. newly created/modified)
+      for (int i = 0; i < finalToUpdate.length; i++) {
+        final inst = finalToUpdate[i];
+        final wasProcessed = taskInstances.any((x) => x.id == inst.id);
+        if (!wasProcessed &&
+            inst.status == 'pending' &&
+            inst.scheduledDate.compareTo(today) >= 0) {
+          final capacity =
+              userSettings?.getCapacityForDate(
+                inst.scheduledDate.toDateTime(),
+              ) ??
+              8.0;
+          final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
+
+          if (capacity - planned < taskDuration) {
+            finalToUpdate[i] = inst.copyWith(status: 'skipped');
+          } else {
+            tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
+          }
+        }
+      }
+    } else {
+      finalToSpawn.addAll(toSpawn);
+    }
+
     return SchedulerAction(
-      instancesToUpdate: toUpdate,
-      instancesToSpawn: toSpawn,
+      instancesToUpdate: finalToUpdate,
+      instancesToSpawn: finalToSpawn,
       instancesToDelete: toDelete,
       updatedSchedule: updatedSchedule,
       triggerTimes: uniqueTriggerTimes,

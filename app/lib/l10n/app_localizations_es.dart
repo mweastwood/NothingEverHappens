@@ -1597,4 +1597,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get noCurrentOccurrencesPlaceholder => 'No hay ocurrencias activas.';
+
+  @override
+  String get skipIfNoCapacityLabel => 'Omitir si se supera la capacidad';
+
+  @override
+  String get skipIfNoCapacityHelper =>
+      'Omitir esta ocurrencia de la tarea si se supera la capacidad diaria disponible';
 }

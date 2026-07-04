@@ -979,5 +979,7 @@
   "pastTabLabel": "Past",
   "currentTabLabel": "Current",
   "futureTabLabel": "Future",
-  "noCurrentOccurrencesPlaceholder": "No active occurrences."
+  "noCurrentOccurrencesPlaceholder": "No active occurrences.",
+  "skipIfNoCapacityLabel": "Skip if capacity is exceeded",
+  "skipIfNoCapacityHelper": "Skip this task occurrence if daily available capacity is exceeded"
 }

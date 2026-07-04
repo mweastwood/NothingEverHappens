@@ -628,7 +628,7 @@ void main() {
       expect(schedule.day, 24);
     });
 
-    testWidgets('Configures and saves Capacity Dependent task successfully', (
+    testWidgets('Configures and saves skipIfNoCapacity task successfully', (
       WidgetTester tester,
     ) async {
       tester.view.physicalSize = const Size(1000, 2000);
@@ -640,23 +640,21 @@ void main() {
 
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Title'),
-        'Capacity Dependent Task',
+        'Skip Capacity Task',
       );
 
-      // Enter estimated effort (required for Capacity Dependent tasks)
+      // Enter estimated effort
       await tester.enterText(
         find.byKey(const Key('estimated_effort_field')),
         '45',
       );
 
-      // Select Repeating (as Capacity Dependent is a sub-type of repeating)
-      await tester.tap(find.text('Repeating'));
-      await tester.pumpAndSettle();
-
-      // Tap on Capacity Dependent schedule type option
-      final optionFinder = find.text('Based on remaining capacity');
-      await tester.ensureVisible(optionFinder);
-      await tester.tap(optionFinder);
+      // Tap on Skip if capacity is exceeded checkbox
+      final checkboxFinder = find.byKey(
+        const Key('skip_if_no_capacity_checkbox'),
+      );
+      await tester.ensureVisible(checkboxFinder);
+      await tester.tap(checkboxFinder);
       await tester.pumpAndSettle();
 
       final saveButton = find.text('Save');
@@ -667,11 +665,8 @@ void main() {
       final captured =
           verify(mockRepository.addTaskSchedule(captureAny)).captured.single
               as TaskSchedule;
-      expect(captured.title, 'Capacity Dependent Task');
-      expect(
-        captured.schedules.first.schedulingPolicy,
-        isA<CapacityDependentPolicy>(),
-      );
+      expect(captured.title, 'Skip Capacity Task');
+      expect(captured.skipIfNoCapacity, isTrue);
     });
   });
 

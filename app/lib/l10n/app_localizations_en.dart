@@ -1583,4 +1583,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noCurrentOccurrencesPlaceholder => 'No active occurrences.';
+
+  @override
+  String get skipIfNoCapacityLabel => 'Skip if capacity is exceeded';
+
+  @override
+  String get skipIfNoCapacityHelper =>
+      'Skip this task occurrence if daily available capacity is exceeded';
 }

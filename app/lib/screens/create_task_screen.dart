@@ -68,6 +68,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   String? _cycleId;
   Map<String, bool> _preferredBy = const {};
   String? _assignedUserId;
+  bool _skipIfNoCapacity = false;
 
   @override
   void initState() {
@@ -83,6 +84,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       _cycleId = task.cycleId;
       _preferredBy = Map<String, bool>.from(task.preferredBy);
       _assignedUserId = task.assignedUserId;
+      _skipIfNoCapacity = task.skipIfNoCapacity;
       if (task.estimatedDuration != null) {
         _estimatedDurationController.text = task.estimatedDuration!.inMinutes
             .toString();
@@ -198,10 +200,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           ? Duration(minutes: minutes)
           : null;
 
-      final hasCapacityDependent = _schedules.any(
-        (s) => s.schedulingPolicy is CapacityDependentPolicy,
-      );
-      if (hasCapacityDependent && estimatedDuration == null) {
+      if (_skipIfNoCapacity && estimatedDuration == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.capacityDependentEffortRequiredError)),
         );
@@ -241,6 +240,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           cycleId: _cycleId,
           preferredBy: _preferredBy,
           assignedUserId: _assignedUserId,
+          skipIfNoCapacity: _skipIfNoCapacity,
         );
 
         final repository = ref.read(taskRepositoryProvider);
@@ -271,6 +271,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               newCycleId: _cycleId,
               newPreferredBy: _preferredBy,
               newAssignedUserId: _assignedUserId,
+              newSkipIfNoCapacity: _skipIfNoCapacity,
             );
             await repository
                 .updateTaskSchedule(modification)
@@ -633,6 +634,32 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     }).toList(),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                key: const Key('skip_if_no_capacity_checkbox'),
+                title: Text(
+                  context.l10n.skipIfNoCapacityLabel,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Text(
+                  context.l10n.skipIfNoCapacityHelper,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                value: _skipIfNoCapacity,
+                onChanged: readOnly
+                    ? null
+                    : (val) {
+                        setState(() {
+                          _skipIfNoCapacity = val ?? false;
+                        });
+                      },
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
               ),
             ],
           ),

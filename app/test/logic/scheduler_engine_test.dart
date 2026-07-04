@@ -1092,14 +1092,14 @@ void main() {
       );
     });
 
-    group('CapacityDependentPolicy Tests', () {
-      test('shifts instances forward when daily capacity is insufficient', () {
+    group('skipIfNoCapacity Tests', () {
+      test('skips instances when daily capacity is insufficient', () {
         final task = TaskSchedule(
           id: 'cap-1',
           title: 'Capacity Task',
-          description: 'Pushed forward',
+          description: 'Skips when full',
           estimatedDuration: const Duration(hours: 4),
-          schedulingPolicy: const CapacityDependentPolicy(),
+          skipIfNoCapacity: true,
           schedules: [DailySchedule(startDate: today, interval: 1)],
         );
 
@@ -1121,18 +1121,23 @@ void main() {
           dayPlannedHours: {},
         );
 
-        // Since today (June 19) and tomorrow (June 20) have 0 capacity,
-        // the first instance (originally scheduled for today) should shift to June 21.
-        // The second instance (originally scheduled for June 20) should shift to June 22.
-        expect(action.instancesToSpawn, hasLength(2));
-        expect(
-          action.instancesToSpawn[0].scheduledDate,
-          today.addDays(2),
-        ); // June 21
-        expect(
-          action.instancesToSpawn[1].scheduledDate,
-          today.addDays(3),
-        ); // June 22
+        // The generated occurrences should have status: 'skipped' on today and tomorrow (June 20),
+        // but status: 'pending' on today+2 (June 21)
+        expect(action.instancesToSpawn, hasLength(3)); // today, tomorrow, day+2
+
+        final instToday = action.instancesToSpawn.firstWhere(
+          (x) => x.scheduledDate == today,
+        );
+        final instTomorrow = action.instancesToSpawn.firstWhere(
+          (x) => x.scheduledDate == today.addDays(1),
+        );
+        final instDay2 = action.instancesToSpawn.firstWhere(
+          (x) => x.scheduledDate == today.addDays(2),
+        );
+
+        expect(instToday.status, 'skipped');
+        expect(instTomorrow.status, 'skipped');
+        expect(instDay2.status, 'pending');
       });
 
       test('competing capacity dependent tasks prioritized by priority', () {
@@ -1143,7 +1148,7 @@ void main() {
           description: 'High',
           priority: TaskPriority.high,
           estimatedDuration: const Duration(hours: 5),
-          schedulingPolicy: const CapacityDependentPolicy(),
+          skipIfNoCapacity: true,
           schedules: [OneOffSchedule(date: today)],
         );
 
@@ -1154,7 +1159,7 @@ void main() {
           description: 'Med',
           priority: TaskPriority.medium,
           estimatedDuration: const Duration(hours: 5),
-          schedulingPolicy: const CapacityDependentPolicy(),
+          skipIfNoCapacity: true,
           schedules: [OneOffSchedule(date: today)],
         );
 
@@ -1173,7 +1178,7 @@ void main() {
         );
 
         expect(actionHigh.instancesToSpawn, hasLength(1));
-        expect(actionHigh.instancesToSpawn.first.scheduledDate, today);
+        expect(actionHigh.instancesToSpawn.first.status, 'pending');
 
         // Mark today as having 5 hours planned (from taskHigh)
         dayPlannedHours[today] = 5.0;
@@ -1188,12 +1193,9 @@ void main() {
         );
 
         // Since today only has 3 hours remaining (8 - 5), and taskMed requires 5 hours,
-        // it must be shifted to tomorrow (June 20).
+        // it must be skipped.
         expect(actionMed.instancesToSpawn, hasLength(1));
-        expect(
-          actionMed.instancesToSpawn.first.scheduledDate,
-          today.addDays(1),
-        );
+        expect(actionMed.instancesToSpawn.first.status, 'skipped');
       });
     });
   });

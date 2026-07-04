@@ -2731,6 +2731,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No active occurrences.'**
   String get noCurrentOccurrencesPlaceholder;
+
+  /// No description provided for @skipIfNoCapacityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip if capacity is exceeded'**
+  String get skipIfNoCapacityLabel;
+
+  /// No description provided for @skipIfNoCapacityHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip this task occurrence if daily available capacity is exceeded'**
+  String get skipIfNoCapacityHelper;
 }
 
 class _AppLocalizationsDelegate

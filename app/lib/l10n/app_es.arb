@@ -582,5 +582,7 @@
   "pastTabLabel": "Pasadas",
   "currentTabLabel": "Actuales",
   "futureTabLabel": "Futuras",
-  "noCurrentOccurrencesPlaceholder": "No hay ocurrencias activas."
+  "noCurrentOccurrencesPlaceholder": "No hay ocurrencias activas.",
+  "skipIfNoCapacityLabel": "Omitir si se supera la capacidad",
+  "skipIfNoCapacityHelper": "Omitir esta ocurrencia de la tarea si se supera la capacidad diaria disponible"
 }
