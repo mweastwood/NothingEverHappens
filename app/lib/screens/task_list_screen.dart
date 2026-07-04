@@ -346,7 +346,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                           ),
                         SliverPadding(
                           key: _taskListKey,
-                          padding: EdgeInsets.zero,
+                          padding: const EdgeInsets.only(bottom: 80.0),
                           sliver: bodySliver,
                         ),
                       ],

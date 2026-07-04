@@ -430,6 +430,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                             // Scrollable list of task cards
                             Expanded(
                               child: ListView.builder(
+                                padding: const EdgeInsets.only(bottom: 80.0),
                                 itemCount: filteredTasks.length,
                                 itemBuilder: (context, index) {
                                   final task = filteredTasks[index];
