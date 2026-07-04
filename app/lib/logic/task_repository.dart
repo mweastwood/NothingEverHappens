@@ -584,6 +584,7 @@ class TaskRepository {
           now,
           userSettings: userSettings,
           dayPlannedHours: dayPlannedHours,
+          applyCapacityLimits: task.assignedUserId == _userId,
         );
 
         for (final inst in action.instancesToUpdate) {

@@ -29,6 +29,7 @@ class SchedulerEngine {
     int? futureInstancesCount,
     UserSettings? userSettings,
     Map<CivilDay, double>? dayPlannedHours,
+    bool applyCapacityLimits = true,
   }) {
     final today = CivilDay.fromDateTime(now);
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
@@ -68,7 +69,7 @@ class SchedulerEngine {
       final List<TaskInstance> finalToSpawn = [];
       final List<TaskInstance> finalToUpdate = [];
 
-      if (task.skipIfNoCapacity) {
+      if (task.skipIfNoCapacity && applyCapacityLimits) {
         final double taskDuration =
             (task.estimatedDuration ?? const Duration()).inMinutes / 60.0;
         final Map<CivilDay, double> tempPlannedHours = dayPlannedHours != null
@@ -123,12 +124,16 @@ class SchedulerEngine {
           }
         }
       } else {
-        // If skipIfNoCapacity is false, revive any skipped instances back to pending
-        for (final inst in taskInstances) {
-          final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
-          final isFuture = now.isBefore(start);
-          if (inst.status == 'skipped' && isFuture) {
-            finalToUpdate.add(inst.copyWith(status: 'pending'));
+        // If skipIfNoCapacity is false and applyCapacityLimits is true, revive any skipped instances back to pending
+        if (!task.skipIfNoCapacity && applyCapacityLimits) {
+          for (final inst in taskInstances) {
+            final start = inst.startRelativeTime.referenceTo(
+              inst.scheduledDate,
+            );
+            final isFuture = now.isBefore(start);
+            if (inst.status == 'skipped' && isFuture) {
+              finalToUpdate.add(inst.copyWith(status: 'pending'));
+            }
           }
         }
         finalToSpawn.addAll(toSpawn);
@@ -553,7 +558,7 @@ class SchedulerEngine {
     final List<TaskInstance> finalToSpawn = [];
     final List<TaskInstance> finalToUpdate = List.from(toUpdate);
 
-    if (task.skipIfNoCapacity) {
+    if (task.skipIfNoCapacity && applyCapacityLimits) {
       final double taskDuration =
           (task.estimatedDuration ?? const Duration()).inMinutes / 60.0;
       final Map<CivilDay, double> tempPlannedHours = dayPlannedHours != null
@@ -648,19 +653,23 @@ class SchedulerEngine {
         }
       }
     } else {
-      // If skipIfNoCapacity is false, revive any skipped instances back to pending
-      for (final inst in taskInstances) {
-        final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
-        final isFuture = now.isBefore(start);
-        if (inst.status == 'skipped' && isFuture) {
-          final isMarkedForDelete = toDelete.contains(inst.id);
-          if (isMarkedForDelete) continue;
-          final isMarkedForUpdate = finalToUpdate.any((x) => x.id == inst.id);
-          if (isMarkedForUpdate) {
-            final idx = finalToUpdate.indexWhere((x) => x.id == inst.id);
-            finalToUpdate[idx] = finalToUpdate[idx].copyWith(status: 'pending');
-          } else {
-            finalToUpdate.add(inst.copyWith(status: 'pending'));
+      // If skipIfNoCapacity is false and applyCapacityLimits is true, revive any skipped instances back to pending
+      if (!task.skipIfNoCapacity && applyCapacityLimits) {
+        for (final inst in taskInstances) {
+          final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
+          final isFuture = now.isBefore(start);
+          if (inst.status == 'skipped' && isFuture) {
+            final isMarkedForDelete = toDelete.contains(inst.id);
+            if (isMarkedForDelete) continue;
+            final isMarkedForUpdate = finalToUpdate.any((x) => x.id == inst.id);
+            if (isMarkedForUpdate) {
+              final idx = finalToUpdate.indexWhere((x) => x.id == inst.id);
+              finalToUpdate[idx] = finalToUpdate[idx].copyWith(
+                status: 'pending',
+              );
+            } else {
+              finalToUpdate.add(inst.copyWith(status: 'pending'));
+            }
           }
         }
       }
