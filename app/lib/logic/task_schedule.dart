@@ -84,6 +84,9 @@ class TaskSchedule {
   /// The ID of the user assigned to this task (null if unassigned).
   final String? assignedUserId;
 
+  /// Whether this task should be skipped if daily capacity is exceeded.
+  final bool skipIfNoCapacity;
+
   int get futureInstancesCount {
     if (schedules.isEmpty) {
       return 1;
@@ -127,6 +130,7 @@ class TaskSchedule {
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
     MissedPolicy? missedPolicy,
+    this.skipIfNoCapacity = false,
   }) : id = id.startsWith('S-') ? id : 'S-$id',
        schedules = (schedules ?? []).map((s) {
          final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
@@ -194,6 +198,7 @@ class TaskSchedule {
     final preferredByRaw = data['preferredBy'] as Map<String, dynamic>? ?? {};
     final preferredBy = preferredByRaw.map((k, v) => MapEntry(k, v as bool));
     final assignedUserId = data['assignedUserId'] as String?;
+    final skipIfNoCapacity = data['skipIfNoCapacity'] as bool? ?? false;
 
     return TaskSchedule(
       id: snapshot.id,
@@ -212,6 +217,7 @@ class TaskSchedule {
       cycleId: cycleId,
       preferredBy: preferredBy,
       assignedUserId: assignedUserId,
+      skipIfNoCapacity: skipIfNoCapacity,
     );
   }
 
@@ -231,6 +237,7 @@ class TaskSchedule {
       'preferredBy': preferredBy,
       if (assignedUserId != null) 'assignedUserId': assignedUserId,
       'futureInstancesCount': futureInstancesCount,
+      'skipIfNoCapacity': skipIfNoCapacity,
     };
   }
 
@@ -249,7 +256,9 @@ class TaskSchedule {
     String? newAssignedUserId,
     SchedulingPolicy? newSchedulingPolicy,
     MissedOccurrencePolicy? newMissedOccurrencePolicy,
+    bool? newSkipIfNoCapacity,
   }) {
+    final resolvedSkip = newSkipIfNoCapacity ?? skipIfNoCapacity;
     final resolvedSchedules = newSchedules.map((s) {
       final sPolicy = newSchedulingPolicy ?? s.schedulingPolicy;
       MissedOccurrencePolicy mPolicy;
@@ -294,6 +303,7 @@ class TaskSchedule {
       preferredBy: newPreferredBy,
       assignedUserId: newAssignedUserId,
       clearAssignedUserId: newAssignedUserId == null,
+      skipIfNoCapacity: resolvedSkip,
     );
 
     final changes = <String, dynamic>{};
@@ -358,6 +368,10 @@ class TaskSchedule {
 
     if (newTask.futureInstancesCount != futureInstancesCount) {
       changes['futureInstancesCount'] = newTask.futureInstancesCount;
+    }
+
+    if (resolvedSkip != skipIfNoCapacity) {
+      changes['skipIfNoCapacity'] = resolvedSkip;
     }
 
     return (newTask: newTask, changes: changes);
@@ -517,6 +531,7 @@ class TaskSchedule {
     bool clearAssignedUserId = false,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
+    bool? skipIfNoCapacity,
   }) {
     final baseSchedules = schedules ?? this.schedules;
     final resolvedSchedules = baseSchedules.map((s) {
@@ -560,6 +575,7 @@ class TaskSchedule {
       assignedUserId: clearAssignedUserId
           ? null
           : (assignedUserId ?? this.assignedUserId),
+      skipIfNoCapacity: skipIfNoCapacity ?? this.skipIfNoCapacity,
     );
   }
 

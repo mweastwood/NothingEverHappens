@@ -30,6 +30,7 @@ Widget buildTestProviderScope({
   return ProviderScope(
     overrides: [
       authStateProvider.overrideWith((ref) => Stream.value(null)),
+      ...defaultTestOverrides,
       ...overrides,
     ],
     child: child,
@@ -625,6 +626,47 @@ void main() {
         3,
       ); // Initialized from current schedule's month (March)
       expect(schedule.day, 24);
+    });
+
+    testWidgets('Configures and saves skipIfNoCapacity task successfully', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(createWidgetUnderTest());
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Title'),
+        'Skip Capacity Task',
+      );
+
+      // Enter estimated effort
+      await tester.enterText(
+        find.byKey(const Key('estimated_effort_field')),
+        '45',
+      );
+
+      // Tap on Skip if capacity is exceeded checkbox
+      final checkboxFinder = find.byKey(
+        const Key('skip_if_no_capacity_checkbox'),
+      );
+      await tester.ensureVisible(checkboxFinder);
+      await tester.tap(checkboxFinder);
+      await tester.pumpAndSettle();
+
+      final saveButton = find.text('Save');
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+
+      final captured =
+          verify(mockRepository.addTaskSchedule(captureAny)).captured.single
+              as TaskSchedule;
+      expect(captured.title, 'Skip Capacity Task');
+      expect(captured.skipIfNoCapacity, isTrue);
     });
   });
 

@@ -993,6 +993,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduleRequiredError => 'At least one schedule is required.';
 
   @override
+  String get capacityDependentEffortRequiredError =>
+      'Estimated effort is required for Capacity Dependent tasks.';
+
+  @override
   String get familyTaskToggleLabel => 'Family Task';
 
   @override
@@ -1090,6 +1094,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get completionRelativeLabel => 'Completion-Relative';
+
+  @override
+  String get capacityDependentLabel => 'Capacity Dependent';
+
+  @override
+  String get capacityDependentTitle => 'Based on remaining capacity';
+
+  @override
+  String get capacityDependentSubtitle =>
+      'Scheduled only if capacity permits, otherwise pushed forward day-by-day';
 
   @override
   String get taskTypeLabel => 'Task Type';
@@ -1569,4 +1583,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noCurrentOccurrencesPlaceholder => 'No active occurrences.';
+
+  @override
+  String get skipIfNoCapacityLabel => 'Skip if capacity is exceeded';
+
+  @override
+  String get skipIfNoCapacityHelper =>
+      'Skip this task occurrence if daily available capacity is exceeded';
 }

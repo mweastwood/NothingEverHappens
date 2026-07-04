@@ -422,6 +422,7 @@
     }
   },
   "scheduleRequiredError": "Se requiere al menos un horario.",
+  "capacityDependentEffortRequiredError": "El esfuerzo estimado es obligatorio para tareas dependientes de capacidad.",
   "familyTaskToggleLabel": "Tarea Familiar",
   "personalTaskToggleLabel": "Tarea Personal",
   "effortAndPriorityLabel": "Esfuerzo y Prioridad",
@@ -454,6 +455,9 @@
   "okButton": "Aceptar",
   "fixedCalendarLabel": "Calendario Fijo",
   "completionRelativeLabel": "Relativo al Cumplimiento",
+  "capacityDependentLabel": "Dependiente de Capacidad",
+  "capacityDependentTitle": "Basado en la capacidad restante",
+  "capacityDependentSubtitle": "Programado solo si la capacidad lo permite, de lo contrario se pospone día a día",
   "taskTypeLabel": "Tipo de Tarea",
   "simulationPresetDaily": "Preestablecido Diario (Alimentar Mascotas)",
   "simulationPresetWeekly": "Preestablecido Semanal (Cortar el Césped)",
@@ -578,5 +582,7 @@
   "pastTabLabel": "Pasadas",
   "currentTabLabel": "Actuales",
   "futureTabLabel": "Futuras",
-  "noCurrentOccurrencesPlaceholder": "No hay ocurrencias activas."
+  "noCurrentOccurrencesPlaceholder": "No hay ocurrencias activas.",
+  "skipIfNoCapacityLabel": "Omitir si se supera la capacidad",
+  "skipIfNoCapacityHelper": "Omitir esta ocurrencia de la tarea si se supera la capacidad diaria disponible"
 }

@@ -1784,6 +1784,12 @@ abstract class AppLocalizations {
   /// **'At least one schedule is required.'**
   String get scheduleRequiredError;
 
+  /// No description provided for @capacityDependentEffortRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated effort is required for Capacity Dependent tasks.'**
+  String get capacityDependentEffortRequiredError;
+
   /// No description provided for @familyTaskToggleLabel.
   ///
   /// In en, this message translates to:
@@ -1963,6 +1969,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Completion-Relative'**
   String get completionRelativeLabel;
+
+  /// No description provided for @capacityDependentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Capacity Dependent'**
+  String get capacityDependentLabel;
+
+  /// No description provided for @capacityDependentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Based on remaining capacity'**
+  String get capacityDependentTitle;
+
+  /// No description provided for @capacityDependentSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled only if capacity permits, otherwise pushed forward day-by-day'**
+  String get capacityDependentSubtitle;
 
   /// No description provided for @taskTypeLabel.
   ///
@@ -2707,6 +2731,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No active occurrences.'**
   String get noCurrentOccurrencesPlaceholder;
+
+  /// No description provided for @skipIfNoCapacityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip if capacity is exceeded'**
+  String get skipIfNoCapacityLabel;
+
+  /// No description provided for @skipIfNoCapacityHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip this task occurrence if daily available capacity is exceeded'**
+  String get skipIfNoCapacityHelper;
 }
 
 class _AppLocalizationsDelegate

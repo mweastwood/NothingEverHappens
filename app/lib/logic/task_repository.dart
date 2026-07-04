@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
@@ -12,6 +13,7 @@ import 'task_instance.dart';
 import 'notification_service.dart';
 import 'auth_repository.dart';
 import 'scheduler_engine.dart';
+import 'user_settings.dart';
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
   final VoidCallback onResume;
@@ -26,15 +28,22 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
   }
 }
 
-final firestoreProvider = Provider<FirebaseFirestore>(
-  (ref) => FirebaseFirestore.instance,
-);
+final firestoreProvider = Provider<FirebaseFirestore?>((ref) {
+  try {
+    if (Firebase.apps.isEmpty) return null;
+    return FirebaseFirestore.instance;
+  } catch (_) {
+    return null;
+  }
+});
 
 final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
+  final firestore = ref.watch(firestoreProvider);
+  if (firestore == null) return null;
   final user = ref.watch(authStateProvider).value;
   if (user == null) return null;
   final repo = TaskRepository(
-    firestore: ref.watch(firestoreProvider),
+    firestore: firestore,
     userId: user.uid,
     notificationService: ref.watch(notificationServiceProvider),
   );
@@ -423,6 +432,85 @@ class TaskRepository {
         allInstances.addAll(familyInstances.docs.map((d) => d.data()));
       }
 
+      // Fetch user settings for capacity calculations
+      final settingsSnapshot = await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('settings')
+          .doc('agile')
+          .get();
+      final userSettings = UserSettings.fromJson(settingsSnapshot.data() ?? {});
+
+      // Fetch all task schedules to build a lookup map for durations
+      final personalTasksSnapshot = await _tasksRef.get();
+      final List<TaskSchedule> allTasks = personalTasksSnapshot.docs
+          .map((d) => d.data())
+          .toList();
+      if (familyId != null && familyId.isNotEmpty) {
+        final familyTasksRef = _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .withConverter<TaskSchedule>(
+              fromFirestore: (snapshot, _) =>
+                  TaskSchedule.fromFirestore(snapshot),
+              toFirestore: (task, _) => task.toFirestore(),
+            );
+        final familyTasks = await familyTasksRef.get();
+        allTasks.addAll(familyTasks.docs.map((d) => d.data()));
+      }
+      final taskMap = {for (final t in allTasks) t.id: t};
+
+      // Calculate planned hours per date
+      final Map<CivilDay, double> dayPlannedHours = {};
+      for (final inst in allInstances) {
+        if (inst.status != 'skipped' && inst.status != 'failed') {
+          final t = taskMap[inst.scheduleId];
+          if (t != null && t.estimatedDuration != null) {
+            final hours = t.estimatedDuration!.inMinutes / 60.0;
+            dayPlannedHours[inst.scheduledDate] =
+                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+          }
+        }
+      }
+
+      final Map<String, DateTime> lastCompletionCache = {};
+      DateTime getLastCompletionTime(TaskSchedule task) {
+        return lastCompletionCache.putIfAbsent(task.id, () {
+          final completed = allInstances
+              .where(
+                (inst) =>
+                    inst.scheduleId == task.id && inst.status == 'completed',
+              )
+              .toList();
+          if (completed.isEmpty) {
+            return DateTime.fromMillisecondsSinceEpoch(0);
+          }
+          return completed
+              .map(
+                (inst) =>
+                    inst.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+              )
+              .reduce((a, b) => a.isAfter(b) ? a : b);
+        });
+      }
+
+      // Prioritize capacity-dependent tasks by Priority (High > Medium > Low)
+      // If priority is equal, prioritize (evaluate first) the least recently completed task.
+      filteredTasks.sort((a, b) {
+        final pCompare = b.priority.index.compareTo(a.priority.index);
+        if (pCompare != 0) return pCompare;
+
+        if (a.skipIfNoCapacity && b.skipIfNoCapacity) {
+          final aTime = getLastCompletionTime(a);
+          final bTime = getLastCompletionTime(b);
+          final timeCompare = aTime.compareTo(bTime);
+          if (timeCompare != 0) return timeCompare;
+        }
+
+        return a.id.compareTo(b.id);
+      });
+
       final batch = _firestore.batch();
       bool hasChanges = false;
       final List<DateTime> allTriggerTimes = [];
@@ -490,11 +578,39 @@ class TaskRepository {
           _spawnedInstancesCache.remove(k);
         }
 
-        final action = SchedulerEngine.evaluate(task, taskInstances, now);
+        final action = SchedulerEngine.evaluate(
+          task,
+          taskInstances,
+          now,
+          userSettings: userSettings,
+          dayPlannedHours: dayPlannedHours,
+        );
 
         for (final inst in action.instancesToUpdate) {
           batch.set(_instanceRefFor(inst, familyId), inst);
           hasChanges = true;
+          // Update in-memory collections so subsequent evaluations see it
+          final idx = allInstances.indexWhere((x) => x.id == inst.id);
+          if (idx >= 0) {
+            final oldInst = allInstances[idx];
+            if (oldInst.status != 'skipped' && oldInst.status != 'failed') {
+              final t = taskMap[oldInst.scheduleId];
+              if (t != null && t.estimatedDuration != null) {
+                final hours = t.estimatedDuration!.inMinutes / 60.0;
+                dayPlannedHours[oldInst.scheduledDate] =
+                    (dayPlannedHours[oldInst.scheduledDate] ?? 0.0) - hours;
+              }
+            }
+            allInstances[idx] = inst;
+            if (inst.status != 'skipped' && inst.status != 'failed') {
+              final t = taskMap[inst.scheduleId];
+              if (t != null && t.estimatedDuration != null) {
+                final hours = t.estimatedDuration!.inMinutes / 60.0;
+                dayPlannedHours[inst.scheduledDate] =
+                    (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+              }
+            }
+          }
         }
 
         for (final inst in action.instancesToSpawn) {
@@ -502,6 +618,16 @@ class TaskRepository {
           _spawnedInstancesCache['${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}'] =
               now;
           hasChanges = true;
+          // Add to in-memory collections so subsequent evaluations see it
+          allInstances.add(inst);
+          if (inst.status != 'skipped' && inst.status != 'failed') {
+            final t = taskMap[inst.scheduleId];
+            if (t != null && t.estimatedDuration != null) {
+              final hours = t.estimatedDuration!.inMinutes / 60.0;
+              dayPlannedHours[inst.scheduledDate] =
+                  (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+            }
+          }
         }
 
         for (final instId in action.instancesToDelete) {
@@ -512,6 +638,16 @@ class TaskRepository {
           final isFamily = task.isFamily;
           batch.delete(_instanceRefForId(instId, isFamily, familyId));
           hasChanges = true;
+          // Remove from in-memory collections so subsequent evaluations see it
+          allInstances.removeWhere((x) => x.id == instId);
+          if (inst.status != 'skipped' && inst.status != 'failed') {
+            final t = taskMap[inst.scheduleId];
+            if (t != null && t.estimatedDuration != null) {
+              final hours = t.estimatedDuration!.inMinutes / 60.0;
+              dayPlannedHours[inst.scheduledDate] =
+                  (dayPlannedHours[inst.scheduledDate] ?? 0.0) - hours;
+            }
+          }
         }
 
         if (action.updatedSchedule != null) {

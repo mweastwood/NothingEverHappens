@@ -2,11 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'user_settings.dart';
 import 'auth_repository.dart';
+import 'task_repository.dart';
 
 final userSettingsRepositoryProvider = Provider<UserSettingsRepository?>((ref) {
+  final firestore = ref.watch(firestoreProvider);
+  if (firestore == null) return null;
   final user = ref.watch(authStateProvider).value;
   if (user == null) return null;
-  return UserSettingsRepository(userId: user.uid);
+  return UserSettingsRepository(firestore: firestore, userId: user.uid);
 });
 
 class UserSettingsRepository {
