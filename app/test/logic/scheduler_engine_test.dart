@@ -1411,6 +1411,111 @@ void main() {
           expect(action.instancesToUpdate.first.status, 'pending');
         },
       );
+
+      test(
+        'does not apply capacity limits (no skip, no revival) if applyCapacityLimits is false',
+        () {
+          final task = TaskSchedule(
+            id: 'cap-no-apply',
+            title: 'No Apply Task',
+            description: 'No capacity evaluation',
+            estimatedDuration: const Duration(hours: 4),
+            skipIfNoCapacity: true,
+            schedules: [OneOffSchedule(date: today.addDays(1))],
+          );
+
+          // We have 0 capacity, so if limits were applied, this would be skipped.
+          // Since limits are NOT applied, it should spawn as pending, not skipped.
+          final userSettings = UserSettings(hoursAvailable: 0.0);
+          final actionSpawn = SchedulerEngine.evaluate(
+            task,
+            [],
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: {},
+            applyCapacityLimits: false,
+          );
+          expect(actionSpawn.instancesToSpawn, hasLength(1));
+          expect(actionSpawn.instancesToSpawn.first.status, 'pending');
+
+          // Similarly, if we have an existing skipped future task, it should not be touched (no revival or changes).
+          final existingInst = TaskInstance(
+            id: 'inst-skipped-today',
+            scheduleId: 'cap-no-apply',
+            ruleId: task.schedules.first.id,
+            title: 'No Apply Task',
+            description: 'No capacity evaluation',
+            scheduledDate: today.addDays(1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'skipped',
+          );
+          final actionUpdate = SchedulerEngine.evaluate(
+            task,
+            [existingInst],
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: {},
+            applyCapacityLimits: false,
+          );
+          expect(actionUpdate.instancesToUpdate, isEmpty);
+        },
+      );
+
+      test(
+        'does not count the task\'s own existing pending instances against capacity (prevents feedback loop / oscillation)',
+        () {
+          final task = TaskSchedule(
+            id: 'cap-self-exclude',
+            title: 'Self Exclude Task',
+            description: 'Capacity self-exclusion',
+            estimatedDuration: const Duration(hours: 5),
+            skipIfNoCapacity: true,
+            schedules: [OneOffSchedule(date: today.addDays(1))],
+          );
+
+          final existingInst = TaskInstance(
+            id: 'inst-pending-tomorrow',
+            scheduleId:
+                'S-cap-self-exclude', // TaskSchedule automatically prepends 'S-'
+            ruleId: task.schedules.first.id,
+            title: 'Self Exclude Task',
+            description: 'Capacity self-exclusion',
+            scheduledDate: today.addDays(1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+
+          final userSettings = UserSettings(hoursAvailable: 8.0);
+          final dayPlannedHours = {
+            today.addDays(1): 5.0,
+          }; // Consumed fully by this task's own pending instance
+
+          final action = SchedulerEngine.evaluate(
+            task,
+            [existingInst],
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: dayPlannedHours,
+          );
+
+          // It should NOT update the status to skipped because its own 5 hours are excluded from the planned hours calculation.
+          expect(action.instancesToUpdate, isEmpty);
+        },
+      );
     });
   });
 }
