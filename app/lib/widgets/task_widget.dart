@@ -16,6 +16,7 @@ import '../logic/undo_notifier.dart';
 import '../logic/app_clock.dart';
 import 'undo_snackbar.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TaskWidget extends ConsumerStatefulWidget {
   final TaskInstance instance;
@@ -677,6 +678,33 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (widget.instance.title.toLowerCase().contains(
+                      'duolingo',
+                    )) ...[
+                      IconButton(
+                        key: const Key('open_duolingo_button'),
+                        icon: const Icon(Icons.open_in_new, size: 20),
+                        tooltip: 'Open Duolingo',
+                        onPressed: () async {
+                          final url = Uri.parse('https://www.duolingo.com');
+                          try {
+                            await launchUrl(
+                              url,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Could not open Duolingo: $e'),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     if (widget.showEditOption &&
                         widget.schedule != null &&
                         schedule is OneOffSchedule) ...[

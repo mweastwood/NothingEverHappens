@@ -51,6 +51,7 @@ dependencies:
   rxdart: ^0.28.0
   flutter_timezone: ^5.1.0
   clock: ^1.1.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

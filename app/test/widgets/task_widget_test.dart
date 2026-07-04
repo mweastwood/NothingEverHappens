@@ -1225,4 +1225,61 @@ void main() {
       AppClock.reset();
     },
   );
+
+  testWidgets(
+    'TaskWidget displays Open Duolingo button if title contains Duolingo',
+    (tester) async {
+      final duolingoTask = TaskSchedule(
+        id: 'S-duo',
+        title: 'Practice Duolingo',
+        description: 'Practice languages',
+        schedules: [
+          OneOffSchedule(
+            id: 'R-duo',
+            scheduleId: 'S-duo',
+            date: const CivilDay(year: 2026, month: 7, day: 4),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(createWidget(duolingoTask));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('open_duolingo_button')), findsOneWidget);
+
+      final normalTask = TaskSchedule(
+        id: 'S-normal',
+        title: 'Water the Houseplants',
+        description: 'Use fertilizer',
+        schedules: [
+          OneOffSchedule(
+            id: 'R-normal',
+            scheduleId: 'S-normal',
+            date: const CivilDay(year: 2026, month: 7, day: 4),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(createWidget(normalTask));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('open_duolingo_button')), findsNothing);
+    },
+  );
 }
