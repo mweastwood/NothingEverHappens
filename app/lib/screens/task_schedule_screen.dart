@@ -665,10 +665,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                 rule.schedulingPolicy
                                         is CompletionRelativePolicy
                                     ? Icons.sync
-                                    : (rule.schedulingPolicy
-                                              is CapacityDependentPolicy
-                                          ? Icons.bar_chart
-                                          : Icons.calendar_today),
+                                    : Icons.calendar_today,
                                 size: 14,
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -678,12 +675,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                   rule.schedulingPolicy
                                           is CompletionRelativePolicy
                                       ? context.l10n.completionRelativeLabel
-                                      : (rule.schedulingPolicy
-                                                is CapacityDependentPolicy
-                                            ? context
-                                                  .l10n
-                                                  .capacityDependentLabel
-                                            : context.l10n.fixedCalendarLabel),
+                                      : context.l10n.fixedCalendarLabel,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
                                     fontWeight: FontWeight.w500,

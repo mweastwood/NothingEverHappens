@@ -28,11 +28,6 @@ class ScheduleTypeSelector extends StatelessWidget {
           icon: const Icon(Icons.replay),
           label: Text(context.l10n.completionRelativeLabel),
         ),
-        ButtonSegment<SchedulingType>(
-          value: SchedulingType.capacityDependent,
-          icon: const Icon(Icons.bar_chart),
-          label: Text(context.l10n.capacityDependentLabel),
-        ),
       ],
       selected: {selectedType},
       onSelectionChanged: readOnly

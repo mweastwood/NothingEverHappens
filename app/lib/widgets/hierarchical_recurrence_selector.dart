@@ -50,20 +50,16 @@ class _HierarchicalRecurrenceSelectorState
       case HierarchicalRecurrenceKind.oneOff:
       case HierarchicalRecurrenceKind.dailyFixed:
       case HierarchicalRecurrenceKind.dailyCompletionRelative:
-      case HierarchicalRecurrenceKind.dailyCapacityDependent:
         return _Cadence.daily;
       case HierarchicalRecurrenceKind.weeklyFixed:
       case HierarchicalRecurrenceKind.weeklyCompletionRelative:
-      case HierarchicalRecurrenceKind.weeklyCapacityDependent:
         return _Cadence.weekly;
       case HierarchicalRecurrenceKind.monthlyFixedDay:
       case HierarchicalRecurrenceKind.monthlyNthWeekday:
       case HierarchicalRecurrenceKind.monthlyCompletionRelative:
-      case HierarchicalRecurrenceKind.monthlyCapacityDependent:
         return _Cadence.monthly;
       case HierarchicalRecurrenceKind.yearlyFixed:
       case HierarchicalRecurrenceKind.yearlyCompletionRelative:
-      case HierarchicalRecurrenceKind.yearlyCapacityDependent:
         return _Cadence.yearly;
     }
   }
@@ -87,12 +83,6 @@ class _HierarchicalRecurrenceSelectorState
             title: context.l10n.dailyCompletionRelativeTitle,
             subtitle: context.l10n.dailyCompletionRelativeSubtitle,
           ),
-          _SpecializationOption(
-            kind: HierarchicalRecurrenceKind.dailyCapacityDependent,
-            icon: Icons.bar_chart,
-            title: context.l10n.capacityDependentTitle,
-            subtitle: context.l10n.capacityDependentSubtitle,
-          ),
         ];
       case _Cadence.weekly:
         return [
@@ -107,12 +97,6 @@ class _HierarchicalRecurrenceSelectorState
             icon: Icons.replay,
             title: context.l10n.weeklyCompletionRelativeTitle,
             subtitle: context.l10n.weeklyCompletionRelativeSubtitle,
-          ),
-          _SpecializationOption(
-            kind: HierarchicalRecurrenceKind.weeklyCapacityDependent,
-            icon: Icons.bar_chart,
-            title: context.l10n.capacityDependentTitle,
-            subtitle: context.l10n.capacityDependentSubtitle,
           ),
         ];
       case _Cadence.monthly:
@@ -135,12 +119,6 @@ class _HierarchicalRecurrenceSelectorState
             title: context.l10n.monthlyCompletionRelativeTitle,
             subtitle: context.l10n.monthlyCompletionRelativeSubtitle,
           ),
-          _SpecializationOption(
-            kind: HierarchicalRecurrenceKind.monthlyCapacityDependent,
-            icon: Icons.bar_chart,
-            title: context.l10n.capacityDependentTitle,
-            subtitle: context.l10n.capacityDependentSubtitle,
-          ),
         ];
       case _Cadence.yearly:
         return [
@@ -155,12 +133,6 @@ class _HierarchicalRecurrenceSelectorState
             icon: Icons.replay,
             title: context.l10n.yearlyCompletionRelativeTitle,
             subtitle: context.l10n.yearlyCompletionRelativeSubtitle,
-          ),
-          _SpecializationOption(
-            kind: HierarchicalRecurrenceKind.yearlyCapacityDependent,
-            icon: Icons.bar_chart,
-            title: context.l10n.capacityDependentTitle,
-            subtitle: context.l10n.capacityDependentSubtitle,
           ),
         ];
     }

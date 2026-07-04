@@ -95,24 +95,12 @@ void main() {
               ),
             ),
           ),
-        )
-        ..addScenario(
-          'Capacity Dependent selected',
-          Material(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: ScheduleTypeSelector(
-                selectedType: SchedulingType.capacityDependent,
-                onChanged: (_) {},
-              ),
-            ),
-          ),
         );
 
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(600, 400),
+        surfaceSize: const Size(600, 300),
       );
       await screenMatchesGolden(tester, 'schedule_type_selector');
     });

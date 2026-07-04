@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum SchedulingType { fixedCalendar, completionRelative, capacityDependent }
+enum SchedulingType { fixedCalendar, completionRelative }
 
 abstract class SchedulingPolicy {
   const SchedulingPolicy();
@@ -22,8 +22,6 @@ abstract class SchedulingPolicy {
           interval: Duration(minutes: intervalMinutes),
           targetTime: TimeOfDay(hour: hour, minute: minute),
         );
-      case SchedulingType.capacityDependent:
-        return const CapacityDependentPolicy();
     }
   }
 }
@@ -89,30 +87,5 @@ class CompletionRelativePolicy extends SchedulingPolicy {
   @override
   String toString() {
     return 'CompletionRelativePolicy(interval: $interval, targetTime: $targetTime)';
-  }
-}
-
-class CapacityDependentPolicy extends SchedulingPolicy {
-  @override
-  SchedulingType get type => SchedulingType.capacityDependent;
-
-  const CapacityDependentPolicy();
-
-  @override
-  Map<String, dynamic> toJson() {
-    return {'type': type.name};
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is CapacityDependentPolicy;
-  }
-
-  @override
-  int get hashCode => type.hashCode;
-
-  @override
-  String toString() {
-    return 'CapacityDependentPolicy()';
   }
 }
