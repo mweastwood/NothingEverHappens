@@ -1,0 +1,44 @@
+name: Promote Play Store Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_track:
+        description: 'Track to promote from'
+        required: true
+        default: 'internal'
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+      to_track:
+        description: 'Track to promote to'
+        required: true
+        default: 'alpha'
+        type: choice
+        options:
+          - alpha
+          - beta
+          - production
+
+jobs:
+  promote_release:
+    name: Promote Release Track
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify Service Account Secret
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}" ]; then
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+
+      - name: Promote Release Track on Google Play
+        uses: kevin-david/promote-play-release@v1
+        with:
+          service-account-json-raw: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
+          package-name: 'com.mweastwood.nothing_ever_happens'
+          from-track: ${{ github.event.inputs.from_track }}
+          to-track: ${{ github.event.inputs.to_track }}
