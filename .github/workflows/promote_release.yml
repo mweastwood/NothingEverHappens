@@ -21,6 +21,9 @@ on:
           - alpha
           - beta
           - production
+  schedule:
+    # Runs every Sunday at 00:00 UTC (once per week)
+    - cron: '0 0 * * 0'
 
 jobs:
   promote_release:
@@ -40,5 +43,5 @@ jobs:
         with:
           service-account-json-raw: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
           package-name: 'com.mweastwood.nothing_ever_happens'
-          from-track: ${{ github.event.inputs.from_track }}
-          to-track: ${{ github.event.inputs.to_track }}
+          from-track: ${{ github.event.inputs.from_track || 'internal' }}
+          to-track: ${{ github.event.inputs.to_track || 'alpha' }}
