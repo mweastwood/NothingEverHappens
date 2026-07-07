@@ -1,0 +1,28 @@
+name: Promote Internal to Alpha
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Runs every Wednesday at 00:00 UTC (once per week)
+    - cron: '0 0 * * 3'
+
+jobs:
+  promote_release:
+    name: Promote Release Track
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify Service Account Secret
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}" ]; then
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+
+      - name: Promote Release Track on Google Play
+        uses: kevin-david/promote-play-release@v1
+        with:
+          service-account-json-raw: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
+          package-name: 'com.mweastwood.nothing_ever_happens'
+          from-track: 'internal'
+          to-track: 'alpha'
