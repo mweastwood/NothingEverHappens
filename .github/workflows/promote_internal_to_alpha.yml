@@ -1,26 +1,7 @@
-name: Promote Play Store Release
+name: Promote Internal to Alpha
 
 on:
   workflow_dispatch:
-    inputs:
-      from_track:
-        description: 'Track to promote from'
-        required: true
-        default: 'internal'
-        type: choice
-        options:
-          - internal
-          - alpha
-          - beta
-      to_track:
-        description: 'Track to promote to'
-        required: true
-        default: 'alpha'
-        type: choice
-        options:
-          - alpha
-          - beta
-          - production
   schedule:
     # Runs every Sunday at 00:00 UTC (once per week)
     - cron: '0 0 * * 0'
@@ -43,5 +24,5 @@ jobs:
         with:
           service-account-json-raw: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
           package-name: 'com.mweastwood.nothing_ever_happens'
-          from-track: ${{ github.event.inputs.from_track || 'internal' }}
-          to-track: ${{ github.event.inputs.to_track || 'alpha' }}
+          from-track: 'internal'
+          to-track: 'alpha'
