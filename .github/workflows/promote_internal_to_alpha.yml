@@ -20,7 +20,7 @@ jobs:
           fi
 
       - name: Promote Release Track on Google Play
-        uses: kevin-david/promote-play-release@v1
+        uses: kevin-david/promote-play-release@v1.2.0
         with:
           service-account-json-raw: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
           package-name: 'com.mweastwood.nothing_ever_happens'
