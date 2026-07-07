@@ -183,6 +183,13 @@ jobs:
           track: internal
           status: completed
 
+      - name: Update Google Play Data Safety Questionnaire
+        env:
+          SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
+          CSV_PATH: ../play_store/data_safety.csv
+          PACKAGE_NAME: "com.mweastwood.nothing_ever_happens"
+        run: node ../play_store/upload_data_safety.js
+
   deploy_prod_firebase_rules:
     runs-on: ubuntu-latest
 
