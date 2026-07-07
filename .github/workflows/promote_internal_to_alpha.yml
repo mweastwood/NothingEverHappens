@@ -3,8 +3,8 @@ name: Promote Internal to Alpha
 on:
   workflow_dispatch:
   schedule:
-    # Runs every Sunday at 00:00 UTC (once per week)
-    - cron: '0 0 * * 0'
+    # Runs every Wednesday at 00:00 UTC (once per week)
+    - cron: '0 0 * * 3'
 
 jobs:
   promote_release:
