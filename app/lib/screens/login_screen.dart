@@ -81,6 +81,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       : context.l10n.signInWithGoogle,
                 ),
               ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        setState(() {
+                          _isLoading = true;
+                        });
+                        try {
+                          final authRepo = ref.read(authRepositoryProvider);
+                          await authRepo.signInAnonymously();
+                        } catch (e, stackTrace) {
+                          if (context.mounted) {
+                            final errorHandler = ref.read(errorHandlerProvider);
+                            final report = errorHandler.report(
+                              e,
+                              stackTrace: stackTrace,
+                            );
+                            errorHandler.showErrorDialog(context, report);
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isLoading = false;
+                            });
+                          }
+                        }
+                      },
+                icon: const Icon(Icons.cloud_off),
+                label: const Text('Use Offline (Guest Mode)'),
+              ),
             ],
           ),
         ),

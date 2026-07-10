@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/screens/family_screen.dart';
+import 'package:nothing_ever_happens/logic/subscription_service.dart';
 import '../test_helper.dart';
 
 void main() {
@@ -33,6 +34,9 @@ void main() {
       overrides: [
         familyRepositoryProvider.overrideWithValue(repository),
         errorHandlerProvider.overrideWithValue(errorHandler),
+        subscriptionServiceProvider.overrideWith(
+          (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
+        ),
       ],
       child: buildTestableWidget(child: const Scaffold(body: FamilyScreen())),
     );

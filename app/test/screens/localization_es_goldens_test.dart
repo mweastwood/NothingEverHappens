@@ -23,6 +23,7 @@ import 'package:nothing_ever_happens/screens/login_screen.dart';
 import 'package:nothing_ever_happens/screens/settings_screen.dart';
 import 'package:nothing_ever_happens/screens/home_screen.dart';
 import 'package:nothing_ever_happens/screens/create_task_screen.dart';
+import 'package:nothing_ever_happens/logic/subscription_service.dart';
 import 'package:nothing_ever_happens/screens/help_screen.dart';
 
 @GenerateNiceMocks([
@@ -345,6 +346,9 @@ void main() {
           familyRepositoryProvider.overrideWithValue(familyRepo),
           userSettingsProvider.overrideWith(
             (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+          ),
+          subscriptionServiceProvider.overrideWith(
+            (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
           ),
         ],
         child: const HomeScreen(),
