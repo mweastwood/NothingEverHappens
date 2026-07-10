@@ -804,4 +804,46 @@ void main() {
       },
     );
   });
+
+  group('CompletionRelativePolicy Sync Tests', () {
+    test(
+      'DailySchedule copyWithTiming updates CompletionRelativePolicy targetTime',
+      () {
+        final schedule = DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 5,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 5),
+            targetTime: TimeOfDay(hour: 9, minute: 0),
+          ),
+        );
+
+        final updated =
+            schedule.copyWithTiming(
+                  startRelativeTime: const RelativeTime(
+                    dayOffset: 0,
+                    time: TimeOfDay(hour: 11, minute: 30),
+                  ),
+                )
+                as DailySchedule;
+
+        expect(
+          updated.startRelativeTime.time,
+          const TimeOfDay(hour: 11, minute: 30),
+        );
+        expect(updated.schedulingPolicy, isA<CompletionRelativePolicy>());
+        final policy = updated.schedulingPolicy as CompletionRelativePolicy;
+        expect(policy.targetTime, const TimeOfDay(hour: 11, minute: 30));
+        expect(policy.interval, const Duration(days: 5));
+      },
+    );
+  });
 }

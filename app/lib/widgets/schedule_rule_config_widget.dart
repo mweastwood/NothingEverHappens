@@ -330,6 +330,13 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             },
             interval: s.interval,
             onIntervalChanged: (val) {
+              var policy = s.schedulingPolicy;
+              if (policy is CompletionRelativePolicy) {
+                policy = CompletionRelativePolicy(
+                  interval: Duration(days: val),
+                  targetTime: policy.targetTime,
+                );
+              }
               widget.onChanged(
                 DailySchedule(
                   id: s.id,
@@ -339,7 +346,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
                   notificationRelativeTimes: s.notificationRelativeTimes,
-                  schedulingPolicy: s.schedulingPolicy,
+                  schedulingPolicy: policy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
               );
@@ -377,6 +384,13 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             },
             interval: s.interval,
             onIntervalChanged: (val) {
+              var policy = s.schedulingPolicy;
+              if (policy is CompletionRelativePolicy) {
+                policy = CompletionRelativePolicy(
+                  interval: Duration(days: val * 7),
+                  targetTime: policy.targetTime,
+                );
+              }
               widget.onChanged(
                 WeeklySchedule(
                   id: s.id,
@@ -387,7 +401,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
                   notificationRelativeTimes: s.notificationRelativeTimes,
-                  schedulingPolicy: s.schedulingPolicy,
+                  schedulingPolicy: policy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
               );
@@ -442,6 +456,13 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             },
             interval: s.interval,
             onIntervalChanged: (val) {
+              var policy = s.schedulingPolicy;
+              if (policy is CompletionRelativePolicy) {
+                policy = CompletionRelativePolicy(
+                  interval: Duration(days: val * 30),
+                  targetTime: policy.targetTime,
+                );
+              }
               widget.onChanged(
                 MonthlySchedule(
                   id: s.id,
@@ -454,7 +475,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
                   notificationRelativeTimes: s.notificationRelativeTimes,
-                  schedulingPolicy: s.schedulingPolicy,
+                  schedulingPolicy: policy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
               );
@@ -581,6 +602,13 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
             },
             interval: s.interval,
             onIntervalChanged: (val) {
+              var policy = s.schedulingPolicy;
+              if (policy is CompletionRelativePolicy) {
+                policy = CompletionRelativePolicy(
+                  interval: Duration(days: val * 365),
+                  targetTime: policy.targetTime,
+                );
+              }
               widget.onChanged(
                 YearlySchedule(
                   id: s.id,
@@ -592,7 +620,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
                   startRelativeTime: s.startRelativeTime,
                   dueRelativeTime: s.dueRelativeTime,
                   notificationRelativeTimes: s.notificationRelativeTimes,
-                  schedulingPolicy: s.schedulingPolicy,
+                  schedulingPolicy: policy,
                   missedOccurrencePolicy: s.missedOccurrencePolicy,
                 ),
               );
