@@ -6,6 +6,13 @@ import 'package:nothing_ever_happens/l10n/app_localizations.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:nothing_ever_happens/logic/subscription_service.dart';
+
+class FakeSubscriptionService extends SubscriptionService {
+  FakeSubscriptionService(super.ref, SubscriptionTier tier) {
+    state = SubscriptionState(tier: tier);
+  }
+}
 
 final List<Override> defaultTestOverrides = [
   userSettingsProvider.overrideWith(

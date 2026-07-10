@@ -26,6 +26,8 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/main.dart';
 import 'package:nothing_ever_happens/screens/create_task_screen.dart';
 
+import 'package:nothing_ever_happens/logic/subscription_service.dart';
+
 @GenerateNiceMocks([
   MockSpec<AuthRepository>(),
   MockSpec<TaskRepository>(),
@@ -85,6 +87,9 @@ void main() {
           mockUserSettingsRepository,
         ),
         familyRepositoryProvider.overrideWithValue(familyRepo),
+        subscriptionServiceProvider.overrideWith(
+          (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
+        ),
       ],
       child: buildTestableWidget(child: HomeScreen(mockUri: mockUri)),
     );

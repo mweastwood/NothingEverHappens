@@ -87,6 +87,17 @@ class AuthRepository {
     }
   }
 
+  Future<User?> signInAnonymously() async {
+    try {
+      final UserCredential userCredential = await _firebaseAuth
+          .signInAnonymously();
+      return userCredential.user;
+    } catch (e) {
+      debugPrint('Error signing in anonymously: $e');
+      rethrow;
+    }
+  }
+
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
     if (!kIsWeb) {
