@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/task_schedule_rule.dart';
+import 'package:nothing_ever_happens/logic/scheduling_policy.dart';
 import 'package:nothing_ever_happens/widgets/schedule_config_card.dart';
 import '../test_helper.dart';
 
@@ -376,5 +377,48 @@ void main() {
 
       await screenMatchesGolden(tester, 'schedule_config_card_golden');
     });
+
+    testWidgets(
+      'editing interval of completion-relative DailySchedule updates the scheduling policy interval',
+      (tester) async {
+        TaskScheduleRule? updatedSchedule;
+        final schedule = DailySchedule(
+          id: 'R-mock',
+          scheduleId: 'S-mock',
+          startDate: const CivilDay(year: 2026, month: 6, day: 15),
+          interval: 2,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 2),
+            targetTime: TimeOfDay(hour: 9, minute: 0),
+          ),
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: _ScheduleConfigTestWrapper(
+                  initialSchedule: schedule,
+                  onChanged: (s) => updatedSchedule = s,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final intervalField = find.byKey(const Key('interval_text_field'));
+        expect(intervalField, findsOneWidget);
+
+        await tester.enterText(intervalField, '5');
+        await tester.pumpAndSettle();
+
+        expect(updatedSchedule, isA<DailySchedule>());
+        final daily = updatedSchedule as DailySchedule;
+        expect(daily.interval, 5);
+        expect(daily.schedulingPolicy, isA<CompletionRelativePolicy>());
+        final policy = daily.schedulingPolicy as CompletionRelativePolicy;
+        expect(policy.interval, const Duration(days: 5));
+      },
+    );
   });
 }

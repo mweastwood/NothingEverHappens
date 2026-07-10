@@ -375,16 +375,24 @@ class DailySchedule extends TaskScheduleRule {
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
+    final newStart = startRelativeTime ?? this.startRelativeTime;
+    var newPolicy = schedulingPolicy ?? this.schedulingPolicy;
+    if (newPolicy is CompletionRelativePolicy && startRelativeTime != null) {
+      newPolicy = CompletionRelativePolicy(
+        interval: newPolicy.interval,
+        targetTime: startRelativeTime.time,
+      );
+    }
     return DailySchedule(
       id: id ?? this.id,
       scheduleId: scheduleId ?? this.scheduleId,
       startDate: startDate,
       interval: interval,
-      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
+      startRelativeTime: newStart,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
       notificationRelativeTimes:
           notificationRelativeTimes ?? this.notificationRelativeTimes,
-      schedulingPolicy: schedulingPolicy ?? this.schedulingPolicy,
+      schedulingPolicy: newPolicy,
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
@@ -560,17 +568,25 @@ class WeeklySchedule extends TaskScheduleRule {
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
+    final newStart = startRelativeTime ?? this.startRelativeTime;
+    var newPolicy = schedulingPolicy ?? this.schedulingPolicy;
+    if (newPolicy is CompletionRelativePolicy && startRelativeTime != null) {
+      newPolicy = CompletionRelativePolicy(
+        interval: newPolicy.interval,
+        targetTime: startRelativeTime.time,
+      );
+    }
     return WeeklySchedule(
       id: id ?? this.id,
       scheduleId: scheduleId ?? this.scheduleId,
       startDate: startDate,
       interval: interval,
       daysOfWeek: daysOfWeek,
-      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
+      startRelativeTime: newStart,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
       notificationRelativeTimes:
           notificationRelativeTimes ?? this.notificationRelativeTimes,
-      schedulingPolicy: schedulingPolicy ?? this.schedulingPolicy,
+      schedulingPolicy: newPolicy,
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
@@ -784,6 +800,14 @@ class MonthlySchedule extends TaskScheduleRule {
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
+    final newStart = startRelativeTime ?? this.startRelativeTime;
+    var newPolicy = schedulingPolicy ?? this.schedulingPolicy;
+    if (newPolicy is CompletionRelativePolicy && startRelativeTime != null) {
+      newPolicy = CompletionRelativePolicy(
+        interval: newPolicy.interval,
+        targetTime: startRelativeTime.time,
+      );
+    }
     return MonthlySchedule(
       id: id ?? this.id,
       scheduleId: scheduleId ?? this.scheduleId,
@@ -792,11 +816,11 @@ class MonthlySchedule extends TaskScheduleRule {
       dayOfMonth: dayOfMonth,
       dayOfWeek: dayOfWeek,
       occurrence: occurrence,
-      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
+      startRelativeTime: newStart,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
       notificationRelativeTimes:
           notificationRelativeTimes ?? this.notificationRelativeTimes,
-      schedulingPolicy: schedulingPolicy ?? this.schedulingPolicy,
+      schedulingPolicy: newPolicy,
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
@@ -967,6 +991,14 @@ class YearlySchedule extends TaskScheduleRule {
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
   }) {
+    final newStart = startRelativeTime ?? this.startRelativeTime;
+    var newPolicy = schedulingPolicy ?? this.schedulingPolicy;
+    if (newPolicy is CompletionRelativePolicy && startRelativeTime != null) {
+      newPolicy = CompletionRelativePolicy(
+        interval: newPolicy.interval,
+        targetTime: startRelativeTime.time,
+      );
+    }
     return YearlySchedule(
       id: id ?? this.id,
       scheduleId: scheduleId ?? this.scheduleId,
@@ -974,11 +1006,11 @@ class YearlySchedule extends TaskScheduleRule {
       interval: interval,
       month: month,
       day: day,
-      startRelativeTime: startRelativeTime ?? this.startRelativeTime,
+      startRelativeTime: newStart,
       dueRelativeTime: dueRelativeTime ?? this.dueRelativeTime,
       notificationRelativeTimes:
           notificationRelativeTimes ?? this.notificationRelativeTimes,
-      schedulingPolicy: schedulingPolicy ?? this.schedulingPolicy,
+      schedulingPolicy: newPolicy,
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
