@@ -57,7 +57,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  fake_cloud_firestore: ^4.0.1
+  fake_cloud_firestore: ^4.2.0
   integration_test:
     sdk: flutter
   http: ^1.2.0
