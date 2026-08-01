@@ -44,7 +44,7 @@ jobs:
           node-version: 20
 
       - name: Build Web App
-        run: flutter build web --release --target lib/main_dev.dart
+        run: flutter build web --release --target lib/main_dev.dart --dart-define=REVENUECAT_API_KEY=${{ secrets.REVENUECAT_GOOGLE_PLAY_API_KEY_DEV || secrets.REVENUECAT_GOOGLE_PLAY_API_KEY || secrets.REVENUECAT_API_KEY }}
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -98,7 +98,7 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
 
       - name: Build Android APK
-        run: flutter build apk --release --flavor dev --target lib/main_dev.dart
+        run: flutter build apk --release --flavor dev --target lib/main_dev.dart --dart-define=REVENUECAT_API_KEY=${{ secrets.REVENUECAT_GOOGLE_PLAY_API_KEY_DEV || secrets.REVENUECAT_GOOGLE_PLAY_API_KEY || secrets.REVENUECAT_API_KEY }}
         env:
           ANDROID_KEYSTORE_PATH: "release.keystore"
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
