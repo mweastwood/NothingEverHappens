@@ -244,13 +244,13 @@ class MonthGrid extends StatelessWidget {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      if (rangeBackground != null) rangeBackground,
+                      ?rangeBackground,
                       Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text('$day', style: textStyle),
-                          if (occurrenceIndicator != null) occurrenceIndicator,
+                          ?occurrenceIndicator,
                         ],
                       ),
                     ],
