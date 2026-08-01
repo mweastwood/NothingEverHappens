@@ -16,6 +16,8 @@ import '../widgets/undo_snackbar.dart';
 import '../widgets/standard_choice_chip.dart';
 import '../widgets/schedule_config_card.dart';
 
+import '../widgets/create_task/task_basic_info_section.dart';
+import '../widgets/create_task/task_family_assignment_section.dart';
 import '../widgets/spawned_instances_list.dart';
 import '../logic/task_instance.dart';
 import 'help_screen.dart';
@@ -321,64 +323,13 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     }
   }
 
-  Widget _buildTitleField(BuildContext context, bool readOnly) {
-    final theme = Theme.of(context);
-    return TextFormField(
-      key: _titleFieldKey,
-      controller: _titleController,
-      focusNode: _titleFocusNode,
-      autofocus: !readOnly,
-      enabled: !readOnly,
-      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-      decoration: InputDecoration(
-        labelText: context.l10n.titleFieldLabel,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(16),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return context.l10n.titleRequiredError;
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildDescriptionField(BuildContext context, bool readOnly) {
-    final theme = Theme.of(context);
-    return TextFormField(
-      controller: _descriptionController,
-      enabled: !readOnly,
-      decoration: InputDecoration(
-        labelText: context.l10n.descriptionFieldLabel,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.all(16),
-      ),
-      style: theme.textTheme.bodyMedium,
-      maxLines: 3,
-    );
-  }
-
   Widget _buildDetailsCard(BuildContext context, bool readOnly) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
-      color: theme.colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildTitleField(context, readOnly),
-            const SizedBox(height: 16),
-            _buildDescriptionField(context, readOnly),
-          ],
-        ),
-      ),
+    return TaskBasicInfoSection(
+      titleFieldKey: _titleFieldKey,
+      titleController: _titleController,
+      descriptionController: _descriptionController,
+      titleFocusNode: _titleFocusNode,
+      readOnly: readOnly,
     );
   }
 
@@ -669,43 +620,14 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   }
 
   Widget _buildFamilyCard(BuildContext context, bool readOnly) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
-      color: theme.colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.familyTab,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            StandardChoiceChip(
-              key: const Key('is_family_toggle'),
-              label: _isFamily
-                  ? context.l10n.familyTaskToggleLabel
-                  : context.l10n.personalTaskToggleLabel,
-              selected: _isFamily,
-              onSelected: readOnly
-                  ? null
-                  : (selected) {
-                      setState(() {
-                        _isFamily = selected;
-                      });
-                    },
-            ),
-          ],
-        ),
-      ),
+    return TaskFamilyAssignmentSection(
+      isFamily: _isFamily,
+      readOnly: readOnly,
+      onFamilyToggled: (selected) {
+        setState(() {
+          _isFamily = selected;
+        });
+      },
     );
   }
 
