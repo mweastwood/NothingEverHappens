@@ -122,7 +122,7 @@ class UserSettings {
             .toList(),
       if (defaultDailyCapacity != null)
         'defaultDailyCapacity': defaultDailyCapacity,
-      if (prunedOverrides != null) 'dailyCapacityOverrides': prunedOverrides,
+      'dailyCapacityOverrides': ?prunedOverrides,
       if (lastCapacityConfirmedWeek != null)
         'lastCapacityConfirmedWeek': lastCapacityConfirmedWeek,
     };

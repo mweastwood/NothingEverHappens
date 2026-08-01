@@ -804,10 +804,7 @@ class TaskRepository {
               .get()
         : null;
 
-    final results = await Future.wait([
-      personalSnapFuture,
-      if (familySnapFuture != null) familySnapFuture,
-    ]);
+    final results = await Future.wait([personalSnapFuture, ?familySnapFuture]);
 
     final personalSnap = results[0];
     for (final doc in personalSnap.docs) {
