@@ -44,7 +44,7 @@ jobs:
           node-version: 20
 
       - name: Build Web App
-        run: flutter build web --release --target lib/main_dev.dart --dart-define=REVENUECAT_API_KEY=${{ secrets.REVENUECAT_TEST_STORE_API_KEY_DEV }}
+        run: flutter build web --release --target lib/main_dev.dart
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

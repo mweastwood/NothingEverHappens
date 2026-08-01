@@ -50,7 +50,7 @@ jobs:
           node-version: 20
 
       - name: Build Web App
-        run: flutter build web --release --target lib/main_prod.dart --build-name=$VERSION_NAME --build-number=$VERSION_CODE --dart-define=REVENUECAT_API_KEY=${{ secrets.REVENUECAT_GOOGLE_PLAY_API_KEY_PROD }}
+        run: flutter build web --release --target lib/main_prod.dart --build-name=$VERSION_NAME --build-number=$VERSION_CODE
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
