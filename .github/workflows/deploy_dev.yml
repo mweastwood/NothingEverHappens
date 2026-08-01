@@ -43,6 +43,9 @@ jobs:
         with:
           node-version: 20
 
+      - name: Analyze project source
+        run: flutter analyze --fatal-infos
+
       - name: Build Web App
         run: flutter build web --release --target lib/main_dev.dart
 

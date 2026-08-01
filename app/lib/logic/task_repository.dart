@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +12,7 @@ import 'task_instance.dart';
 import 'notification_service.dart';
 import 'auth_repository.dart';
 import 'scheduler_engine.dart';
+import 'task_spawner_engine.dart';
 import 'user_settings.dart';
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
@@ -1049,11 +1049,11 @@ class TaskRepository {
     String? familyId,
     List<TaskInstance> taskInstances,
   ) {
-    final nextInst = SchedulerEngine.getNextOccurrenceToSpawn(
-      task,
-      completedInstance,
-      now,
-      taskInstances,
+    final nextInst = TaskSpawnerEngine.calculateNextOccurrence(
+      task: task,
+      completedInstance: completedInstance,
+      completionTime: now,
+      existingInstances: taskInstances,
     );
     if (nextInst != null) {
       batch.set(_instanceRefFor(nextInst, familyId), nextInst);
@@ -1068,19 +1068,15 @@ class TaskRepository {
     DateTime now,
     List<TaskInstance> taskInstances,
   ) {
-    return SchedulerEngine.getNextOccurrenceIdToDelete(
-      task,
-      completedInstance,
-      now,
-      taskInstances,
+    return TaskSpawnerEngine.calculateOccurrenceIdToUndo(
+      task: task,
+      completedInstance: completedInstance,
+      completionTime: now,
+      existingInstances: taskInstances,
     );
   }
 
   String _getScheduleSignature(TaskSchedule task) {
-    final rulesJson = task.schedules.map((s) => s.toJson()).toList();
-    return jsonEncode({
-      'rules': rulesJson,
-      'futureInstancesCount': task.futureInstancesCount,
-    });
+    return TaskSpawnerEngine.computeScheduleSignature(task);
   }
 }
