@@ -58,34 +58,27 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
       duration: const Duration(milliseconds: 200),
     );
 
-    // Layout Collapse: 1.0 -> 0.0 over the FULL 200ms
-    _sizeFactorAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+    // Layout Collapse: 1.0 -> 0.0 over the FULL 200ms with smooth cubic easing
+    _sizeFactorAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
+    );
 
-    // Fade content out in the first 25% (50ms)
+    // Fade content out quickly in the first 30% (60ms)
     _contentOpacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.25, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.3, curve: Curves.easeOut),
       ),
     );
 
-    // Visual Phase 1: Collapse Vertically (Height squish) - first 50%
-    _scaleYAnimation = Tween<double>(begin: 1.0, end: 0.1).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
-      ),
+    // Visual Vertical Collapse: 1.0 -> 0.0 in sync with layout collapse
+    _scaleYAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
     );
 
-    // Visual Phase 2: Collapse Horizontally (Width) - last 50%
+    // Visual Horizontal Collapse: 1.0 -> 0.0 in sync with layout collapse
     _scaleXAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
-      ),
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
     );
 
     _controller.addStatusListener((status) async {
