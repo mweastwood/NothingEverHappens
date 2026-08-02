@@ -969,6 +969,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get scheduleSortByLabel => 'Ordenar por';
 
   @override
+  String get showSortOptions => 'Mostrar opciones de ordenación';
+
+  @override
+  String get hideSortOptions => 'Ocultar opciones de ordenación';
+
+  @override
   String get scheduleGridTypeHeader => 'Tipo';
 
   @override

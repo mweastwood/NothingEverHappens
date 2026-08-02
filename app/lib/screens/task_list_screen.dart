@@ -234,122 +234,133 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         final showSortBar =
             instancesVal.hasValue && (instancesVal.value ?? []).isNotEmpty;
 
+        final isSortBarVisible = ref.watch(showSortBarProvider);
+
         return Padding(
           padding: EdgeInsets.only(
             bottom: isMocked ? 60.0 : 0.0,
           ), // Avoid overlap with dev clock banner
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Stack(
             children: [
-              if (showSortBar) ...[
-                SortBar(
-                  title: context.l10n.scheduleSortByLabel,
-                  sortColumn: sortColumn,
-                  sortAscending: sortAscending,
-                  options: [
-                    SortOption(
-                      key: 'title',
-                      label: context.l10n.titleFieldLabel,
-                    ),
-                    SortOption(
-                      key: 'next_due',
-                      label: context.l10n.scheduleSortNextDueLabel,
-                    ),
-                    SortOption(
-                      key: 'priority',
-                      label: context.l10n.taskPriorityLabel,
-                    ),
-                  ],
-                  onSort: onSort,
-                ),
-                const Divider(height: 1, thickness: 0.5),
-              ],
-              Expanded(
-                child: Builder(
-                  builder: (context) {
-                    final theme = Theme.of(context);
-                    String getWeekIdentifier(DateTime date) {
-                      final monday = date.subtract(
-                        Duration(days: date.weekday - 1),
-                      );
-                      return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
-                    }
+              Builder(
+                builder: (context) {
+                  final theme = Theme.of(context);
+                  String getWeekIdentifier(DateTime date) {
+                    final monday = date.subtract(
+                      Duration(days: date.weekday - 1),
+                    );
+                    return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+                  }
 
-                    final today = AppClock.now;
-                    final currentWeekId = getWeekIdentifier(today);
-                    final isConfirmed =
-                        settings.lastCapacityConfirmedWeek == currentWeekId;
-                    final showCapacityPrompt =
-                        !settingsVal.isLoading &&
-                        !settingsVal.hasError &&
-                        !isConfirmed;
-                    return CustomScrollView(
-                      key: const PageStorageKey('tasksView'),
-                      slivers: [
-                        if (showCapacityPrompt && searchQuery.isEmpty)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                              child: Card(
-                                key: const Key('capacity_prompt_card'),
-                                color: theme.colorScheme.primaryContainer,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  side: BorderSide(
-                                    color: theme.colorScheme.primary.withValues(
-                                      alpha: 0.2,
-                                    ),
+                  final today = AppClock.now;
+                  final currentWeekId = getWeekIdentifier(today);
+                  final isConfirmed =
+                      settings.lastCapacityConfirmedWeek == currentWeekId;
+                  final showCapacityPrompt =
+                      !settingsVal.isLoading &&
+                      !settingsVal.hasError &&
+                      !isConfirmed;
+                  return CustomScrollView(
+                    key: const PageStorageKey('tasksView'),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.fastOutSlowIn,
+                          height: (showSortBar && isSortBarVisible)
+                              ? 60.0
+                              : 0.0,
+                        ),
+                      ),
+                      if (showCapacityPrompt && searchQuery.isEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                            child: Card(
+                              key: const Key('capacity_prompt_card'),
+                              color: theme.colorScheme.primaryContainer,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.2,
                                   ),
                                 ),
-                                child: ListTile(
-                                  leading: Icon(
-                                    Icons.assignment_late,
-                                    color: theme.colorScheme.onPrimaryContainer,
-                                  ),
-                                  title: Text(
-                                    context.l10n.capacityPromptTitle,
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: theme
-                                              .colorScheme
-                                              .onPrimaryContainer,
-                                        ),
-                                  ),
-                                  subtitle: Text(
-                                    context.l10n.capacityPromptSubtitle,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: theme
-                                          .colorScheme
-                                          .onPrimaryContainer
-                                          .withValues(alpha: 0.8),
-                                    ),
-                                  ),
-                                  trailing: Icon(
-                                    Icons.chevron_right,
-                                    color: theme.colorScheme.onPrimaryContainer,
-                                  ),
-                                  onTap: () {
-                                    ref
-                                            .read(homeTabIndexProvider.notifier)
-                                            .state =
-                                        2; // Switch to Dashboard Tab
-                                  },
+                              ),
+                              child: ListTile(
+                                leading: Icon(
+                                  Icons.assignment_late,
+                                  color: theme.colorScheme.onPrimaryContainer,
                                 ),
+                                title: Text(
+                                  context.l10n.capacityPromptTitle,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onPrimaryContainer,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  context.l10n.capacityPromptSubtitle,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onPrimaryContainer
+                                        .withValues(alpha: 0.8),
+                                  ),
+                                ),
+                                trailing: Icon(
+                                  Icons.chevron_right,
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                ),
+                                onTap: () {
+                                  ref
+                                          .read(homeTabIndexProvider.notifier)
+                                          .state =
+                                      2; // Switch to Dashboard Tab
+                                },
                               ),
                             ),
                           ),
-                        SliverPadding(
-                          key: _taskListKey,
-                          padding: const EdgeInsets.only(bottom: 80.0),
-                          sliver: bodySliver,
                         ),
-                      ],
-                    );
-                  },
-                ),
+                      SliverPadding(
+                        key: _taskListKey,
+                        padding: const EdgeInsets.only(bottom: 80.0),
+                        sliver: bodySliver,
+                      ),
+                    ],
+                  );
+                },
               ),
+              if (showSortBar)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: AnimatedFloatingSortBar(
+                    visible: isSortBarVisible,
+                    child: FloatingSortCard(
+                      child: SortBar(
+                        title: context.l10n.scheduleSortByLabel,
+                        sortColumn: sortColumn,
+                        sortAscending: sortAscending,
+                        options: [
+                          SortOption(
+                            key: 'title',
+                            label: context.l10n.titleFieldLabel,
+                          ),
+                          SortOption(
+                            key: 'next_due',
+                            label: context.l10n.scheduleSortNextDueLabel,
+                          ),
+                          SortOption(
+                            key: 'priority',
+                            label: context.l10n.taskPriorityLabel,
+                          ),
+                        ],
+                        onSort: onSort,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         );
