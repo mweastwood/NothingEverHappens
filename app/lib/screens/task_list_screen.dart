@@ -280,7 +280,11 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                     slivers: [
                       SliverToBoxAdapter(
                         child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
+                          duration:
+                              (_scrollController.hasClients &&
+                                  _scrollController.offset > 5.0)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 250),
                           curve: Curves.fastOutSlowIn,
                           height: (showSortBar && isSortBarVisible)
                               ? ((showCapacityPrompt && searchQuery.isEmpty)
