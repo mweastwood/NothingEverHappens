@@ -49,6 +49,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
   bool _isMouse = false;
   DismissDirection? _swipeDirection;
   double _swipeProgress = 0.0;
+  bool _isDismissed = false;
 
   @override
   void initState() {
@@ -58,34 +59,27 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
       duration: const Duration(milliseconds: 200),
     );
 
-    // Layout Collapse: 1.0 -> 0.0 over the FULL 200ms
-    _sizeFactorAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+    // Layout Collapse: 1.0 -> 0.0 over the FULL 200ms with smooth cubic easing
+    _sizeFactorAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
+    );
 
-    // Fade content out in the first 25% (50ms)
+    // Fade content out quickly in the first 30% (60ms)
     _contentOpacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.25, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.3, curve: Curves.easeOut),
       ),
     );
 
-    // Visual Phase 1: Collapse Vertically (Height squish) - first 50%
-    _scaleYAnimation = Tween<double>(begin: 1.0, end: 0.1).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
-      ),
+    // Visual Vertical Collapse: 1.0 -> 0.0 in sync with layout collapse
+    _scaleYAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
     );
 
-    // Visual Phase 2: Collapse Horizontally (Width) - last 50%
+    // Visual Horizontal Collapse: 1.0 -> 0.0 in sync with layout collapse
     _scaleXAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
-      ),
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
     );
 
     _controller.addStatusListener((status) async {
@@ -155,7 +149,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     });
 
     // Wait for fun check animation (confetti) to finish (500ms)
-    // The confetti lasts ~500ms.
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         _controller.forward();
@@ -434,315 +427,321 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     );
     final isFuturePending = AppClock.now.isBefore(startDateTime);
 
-    return Stack(
-      children: [
-        if (_swipeProgress > 0.0 && _swipeDirection != null)
-          Positioned.fill(
-            child: Card(
-              margin: const EdgeInsets.symmetric(
-                horizontal: 4.0,
-                vertical: 5.0,
-              ),
-              color: _swipeDirection == DismissDirection.startToEnd
-                  ? Colors.green
-                  : Theme.of(context).colorScheme.error,
-              elevation: 0,
-              clipBehavior: Clip.antiAlias,
-              child: Container(
-                alignment: _swipeDirection == DismissDirection.startToEnd
-                    ? Alignment.centerLeft
-                    : Alignment.centerRight,
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Icon(
-                  _swipeDirection == DismissDirection.startToEnd
-                      ? Icons.check
-                      : Icons.delete,
-                  color: Colors.white,
-                ),
-              ),
+    if (_isDismissed) {
+      return const SizedBox.shrink();
+    }
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Visual Transformation (Squish/Shrink) affects the whole Card
+        final transformedChild = Transform(
+          alignment: Alignment.topCenter,
+          transform: Matrix4.diagonal3Values(
+            _scaleXAnimation.value,
+            _scaleYAnimation.value,
+            1.0,
+          ),
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+            child: Opacity(
+              opacity: _contentOpacityAnimation.value,
+              child: child,
             ),
           ),
-        Dismissible(
-          key: ValueKey(widget.instance.id),
-          direction: _isMouse
-              ? DismissDirection.none
-              : DismissDirection.horizontal,
-          onUpdate: (details) {
-            setState(() {
-              _swipeDirection = details.direction;
-              _swipeProgress = details.progress;
-            });
-          },
-          onDismissed: (direction) async {
-            final repo = ref.read(taskRepositoryProvider)!;
-            final notifier = ref.read(undoNotifierProvider.notifier);
-            final instance = widget.instance;
-            // Capture context-sensitive values before any async gap.
-            final messenger = ScaffoldMessenger.of(context);
-            final completeMsg = context.l10n.taskCompleted(instance.title);
-            final dismissMsg = context.l10n.taskDismissed(instance.title);
-            final undoLabel = context.l10n.undoButton;
-            final undoneLabel = context.l10n.taskRestored(instance.title);
-            if (direction == DismissDirection.startToEnd) {
-              final resolved = await repo.completeTaskInstance(instance.id);
-              UndoSnackBar.showWithMessenger(
-                messenger: messenger,
-                notifier: notifier,
-                action: UndoResolveTaskInstanceAction(
-                  message: completeMsg,
-                  instance: resolved ?? instance,
-                ),
-                repository: repo,
-                undoLabel: undoLabel,
-                undoneLabel: undoneLabel,
-              );
-            } else if (direction == DismissDirection.endToStart) {
-              final resolved = await repo.dismissTaskInstance(instance.id);
-              UndoSnackBar.showWithMessenger(
-                messenger: messenger,
-                notifier: notifier,
-                action: UndoResolveTaskInstanceAction(
-                  message: dismissMsg,
-                  instance: resolved ?? instance,
-                ),
-                repository: repo,
-                undoLabel: undoLabel,
-                undoneLabel: undoneLabel,
-              );
-            }
-          },
-          child: Listener(
-            onPointerHover: (event) {
-              if (event.kind == PointerDeviceKind.mouse && !_isMouse) {
-                setState(() {
-                  _isMouse = true;
-                });
-              }
-            },
-            onPointerDown: (event) {
-              final isMouse = event.kind == PointerDeviceKind.mouse;
-              if (isMouse != _isMouse) {
-                setState(() {
-                  _isMouse = isMouse;
-                });
-              }
-            },
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                // Visual Transformation (Squish/Shrink) affects the whole Card
-                final transformedChild = Transform(
-                  alignment: Alignment.topCenter,
-                  transform: Matrix4.diagonal3Values(
-                    _scaleXAnimation.value,
-                    _scaleYAnimation.value,
-                    1.0,
-                  ),
-                  child: Card(
-                    child: Opacity(
-                      opacity: _contentOpacityAnimation.value,
-                      child: child,
+        );
+
+        // Layout Transformation (Slide-up)
+        return SizeTransition(
+          sizeFactor: _sizeFactorAnimation,
+          axis: Axis.vertical,
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Stack(
+              children: [
+                if (_swipeProgress > 0.0 && _swipeDirection != null)
+                  Positioned.fill(
+                    child: Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 4.0,
+                        vertical: 4.0,
+                      ),
+                      color: _swipeDirection == DismissDirection.startToEnd
+                          ? Colors.green
+                          : Theme.of(context).colorScheme.error,
+                      elevation: 0,
+                      clipBehavior: Clip.antiAlias,
+                      child: Container(
+                        alignment:
+                            _swipeDirection == DismissDirection.startToEnd
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: Icon(
+                          _swipeDirection == DismissDirection.startToEnd
+                              ? Icons.check
+                              : Icons.delete,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                );
-
-                // Layout Transformation (Slide-up)
-                return SizeTransition(
-                  sizeFactor: _sizeFactorAnimation,
-                  axis: Axis.vertical,
-                  alignment: Alignment.topCenter,
-                  child: transformedChild,
-                );
-              },
-              child: ListTile(
-                onLongPress: _isMouse
-                    ? null
-                    : () async {
-                        final textToCopy =
-                            widget.instance.description.isNotEmpty
-                            ? '${widget.instance.title}\n\n${widget.instance.description}'
-                            : widget.instance.title;
-                        await Clipboard.setData(
-                          ClipboardData(text: textToCopy),
-                        );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(context.l10n.copiedToClipboard),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        }
-                      },
-                leading: FunCheckButton(
-                  value: _isChecking,
-                  onChanged: (value) {
-                    if (value && !_isChecking) {
-                      _handleCompletion();
+                Dismissible(
+                  key: ValueKey(widget.instance.id),
+                  direction: _isMouse
+                      ? DismissDirection.none
+                      : DismissDirection.horizontal,
+                  onUpdate: (details) {
+                    if (_swipeDirection != details.direction ||
+                        _swipeProgress != details.progress) {
+                      setState(() {
+                        _swipeDirection = details.direction;
+                        _swipeProgress = details.progress;
+                      });
                     }
                   },
-                ),
-                title: Padding(
-                  padding: const EdgeInsets.only(bottom: 4.0),
-                  child: _isMouse
-                      ? SelectableText(
-                          widget.instance.title,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        )
-                      : Text(
-                          widget.instance.title,
-                          style: Theme.of(context).textTheme.titleMedium,
+                  onDismissed: (direction) async {
+                    setState(() {
+                      _isDismissed = true;
+                    });
+                    final repo = ref.read(taskRepositoryProvider)!;
+                    final notifier = ref.read(undoNotifierProvider.notifier);
+                    final instance = widget.instance;
+                    // Capture context-sensitive values before any async gap.
+                    final messenger = ScaffoldMessenger.of(context);
+                    final completeMsg = context.l10n.taskCompleted(
+                      instance.title,
+                    );
+                    final dismissMsg = context.l10n.taskDismissed(
+                      instance.title,
+                    );
+                    final undoLabel = context.l10n.undoButton;
+                    final undoneLabel = context.l10n.taskRestored(
+                      instance.title,
+                    );
+                    if (direction == DismissDirection.startToEnd) {
+                      final resolved = await repo.completeTaskInstance(
+                        instance.id,
+                      );
+                      UndoSnackBar.showWithMessenger(
+                        messenger: messenger,
+                        notifier: notifier,
+                        action: UndoResolveTaskInstanceAction(
+                          message: completeMsg,
+                          instance: resolved ?? instance,
                         ),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (widget.instance.description.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      MarkdownBody(
-                        data: widget.instance.description,
-                        selectable: _isMouse,
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6.0,
-                      runSpacing: 6.0,
-                      children: [
-                        // Due Date Badge
-                        _buildDueDateBadge(context),
-                        // Pending Badge
-                        if (isFuturePending)
-                          _buildBadge(
-                            context,
-                            icon: Icons.hourglass_empty_outlined,
-                            label: context.l10n.pendingBadge,
-                            color: Colors.blue,
-                          ),
-                        // Scope (Family only)
-                        if (widget.instance.isFamily)
-                          _buildBadge(
-                            context,
-                            icon: Icons.people_alt,
-                            label: context.l10n.familyTab,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        // Priority
-                        _buildBadge(
-                          context,
-                          icon: _getPriorityIcon(widget.instance.priority),
-                          label: _getPriorityLabel(
-                            context,
-                            widget.instance.priority,
-                          ),
-                          color: _getPriorityColor(
-                            context,
-                            widget.instance.priority,
-                          ),
+                        repository: repo,
+                        undoLabel: undoLabel,
+                        undoneLabel: undoneLabel,
+                      );
+                    } else if (direction == DismissDirection.endToStart) {
+                      final resolved = await repo.dismissTaskInstance(
+                        instance.id,
+                      );
+                      UndoSnackBar.showWithMessenger(
+                        messenger: messenger,
+                        notifier: notifier,
+                        action: UndoResolveTaskInstanceAction(
+                          message: dismissMsg,
+                          instance: resolved ?? instance,
                         ),
-                        // Schedule (Recurring only)
-                        if (schedule is! OneOffSchedule)
-                          _buildBadge(
-                            context,
-                            icon: _getScheduleIcon(schedule),
-                            label: _getScheduleLabel(context, schedule),
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        // Effort/Duration (if any)
-                        if (widget.schedule?.estimatedDuration != null)
-                          _buildBadge(
-                            context,
-                            icon: Icons.timer_outlined,
-                            label: _formatDuration(
-                              widget.schedule!.estimatedDuration!,
-                            ),
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        // Assignee (if family & assigned)
-                        if (widget.instance.isFamily &&
-                            widget.instance.assignedUserId != null)
-                          _buildBadge(
-                            context,
-                            icon: Icons.assignment_ind,
-                            label: _isLoadingAssignee
-                                ? context.l10n.loadingBadge
-                                : (_assigneeName != null
-                                      ? context.l10n.assignedTo(_assigneeName!)
-                                      : context.l10n.assignedBadge),
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                      ],
-                    ),
-                  ],
+                        repository: repo,
+                        undoLabel: undoLabel,
+                        undoneLabel: undoneLabel,
+                      );
+                    }
+                  },
+                  child: Listener(
+                    onPointerHover: (event) {
+                      if (event.kind == PointerDeviceKind.mouse && !_isMouse) {
+                        setState(() {
+                          _isMouse = true;
+                        });
+                      }
+                    },
+                    onPointerDown: (event) {
+                      final isMouse = event.kind == PointerDeviceKind.mouse;
+                      if (isMouse != _isMouse) {
+                        setState(() {
+                          _isMouse = isMouse;
+                        });
+                      }
+                    },
+                    child: transformedChild,
+                  ),
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (widget.instance.title.toLowerCase().contains(
-                      'duolingo',
-                    )) ...[
-                      IconButton(
-                        key: const Key('open_duolingo_button'),
-                        icon: const Icon(Icons.open_in_new, size: 20),
-                        tooltip: 'Open Duolingo',
-                        onPressed: () async {
-                          final url = Uri.parse('https://www.duolingo.com');
-                          try {
-                            await launchUrl(
-                              url,
-                              mode: LaunchMode.externalApplication,
-                            );
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Could not open Duolingo: $e'),
-                                ),
-                              );
-                            }
-                          }
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    if (widget.showEditOption &&
-                        widget.schedule != null &&
-                        schedule is OneOffSchedule) ...[
-                      IconButton(
-                        key: const Key('edit_pencil_button'),
-                        icon: const Icon(Icons.edit, size: 20),
-                        tooltip: context.l10n.editScheduleTooltip,
-                        onPressed: () {
-                          SystemNavigator.routeInformationUpdated(
-                            uri: Uri.parse('/edit/${widget.schedule!.id}'),
-                          );
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CreateTaskScreen(
-                                taskToEdit: widget.schedule!,
-                              ),
-                            ),
-                          ).then((_) {
-                            SystemNavigator.routeInformationUpdated(
-                              uri: Uri.parse('/tasks'),
-                            );
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    FunDeleteButton(
-                      key: const Key('delete_task_button'),
-                      onTap: _handleDeletion,
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
           ),
+        );
+      },
+      child: ListTile(
+        onLongPress: _isMouse
+            ? null
+            : () async {
+                final textToCopy = widget.instance.description.isNotEmpty
+                    ? '${widget.instance.title}\n\n${widget.instance.description}'
+                    : widget.instance.title;
+                await Clipboard.setData(ClipboardData(text: textToCopy));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.l10n.copiedToClipboard),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+        leading: FunCheckButton(
+          value: _isChecking,
+          onChanged: (value) {
+            if (value && !_isChecking) {
+              _handleCompletion();
+            }
+          },
         ),
-      ],
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 4.0),
+          child: _isMouse
+              ? SelectableText(
+                  widget.instance.title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                )
+              : Text(
+                  widget.instance.title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.instance.description.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              MarkdownBody(
+                data: widget.instance.description,
+                selectable: _isMouse,
+              ),
+            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6.0,
+              runSpacing: 6.0,
+              children: [
+                // Due Date Badge
+                _buildDueDateBadge(context),
+                // Pending Badge
+                if (isFuturePending)
+                  _buildBadge(
+                    context,
+                    icon: Icons.hourglass_empty_outlined,
+                    label: context.l10n.pendingBadge,
+                    color: Colors.blue,
+                  ),
+                // Scope (Family only)
+                if (widget.instance.isFamily)
+                  _buildBadge(
+                    context,
+                    icon: Icons.people_alt,
+                    label: context.l10n.familyTab,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                // Priority
+                _buildBadge(
+                  context,
+                  icon: _getPriorityIcon(widget.instance.priority),
+                  label: _getPriorityLabel(context, widget.instance.priority),
+                  color: _getPriorityColor(context, widget.instance.priority),
+                ),
+                // Schedule (Recurring only)
+                if (schedule is! OneOffSchedule)
+                  _buildBadge(
+                    context,
+                    icon: _getScheduleIcon(schedule),
+                    label: _getScheduleLabel(context, schedule),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                // Effort/Duration (if any)
+                if (widget.schedule?.estimatedDuration != null)
+                  _buildBadge(
+                    context,
+                    icon: Icons.timer_outlined,
+                    label: _formatDuration(widget.schedule!.estimatedDuration!),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                // Assignee (if family & assigned)
+                if (widget.instance.isFamily &&
+                    widget.instance.assignedUserId != null)
+                  _buildBadge(
+                    context,
+                    icon: Icons.assignment_ind,
+                    label: _isLoadingAssignee
+                        ? context.l10n.loadingBadge
+                        : (_assigneeName != null
+                              ? context.l10n.assignedTo(_assigneeName!)
+                              : context.l10n.assignedBadge),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+              ],
+            ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.instance.title.toLowerCase().contains('duolingo')) ...[
+              IconButton(
+                key: const Key('open_duolingo_button'),
+                icon: const Icon(Icons.open_in_new, size: 20),
+                tooltip: 'Open Duolingo',
+                onPressed: () async {
+                  final url = Uri.parse('https://www.duolingo.com');
+                  try {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not open Duolingo: $e')),
+                      );
+                    }
+                  }
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (widget.showEditOption &&
+                widget.schedule != null &&
+                schedule is OneOffSchedule) ...[
+              IconButton(
+                key: const Key('edit_pencil_button'),
+                icon: const Icon(Icons.edit, size: 20),
+                tooltip: context.l10n.editScheduleTooltip,
+                onPressed: () {
+                  SystemNavigator.routeInformationUpdated(
+                    uri: Uri.parse('/edit/${widget.schedule!.id}'),
+                  );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CreateTaskScreen(taskToEdit: widget.schedule!),
+                    ),
+                  ).then((_) {
+                    SystemNavigator.routeInformationUpdated(
+                      uri: Uri.parse('/tasks'),
+                    );
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
+            FunDeleteButton(
+              key: const Key('delete_task_button'),
+              onTap: _handleDeletion,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

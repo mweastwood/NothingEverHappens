@@ -597,14 +597,11 @@ class _MissedPoliciesPlaygroundTabState
                 )
               else
                 ...pendingInstances.map((inst) {
-                  return Padding(
+                  return TaskWidget(
                     key: ValueKey(inst.id),
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: TaskWidget(
-                      instance: inst,
-                      schedule: _taskSchedule,
-                      showEditOption: false,
-                    ),
+                    instance: inst,
+                    schedule: _taskSchedule,
+                    showEditOption: false,
                   );
                 }),
               const SizedBox(height: 24),

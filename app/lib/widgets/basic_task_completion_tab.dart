@@ -220,15 +220,11 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
                   final task = _tasks.firstWhere(
                     (t) => t.id == instance.scheduleId,
                   );
-                  return Padding(
+                  return TaskWidget(
                     key: ValueKey(instance.id),
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: TaskWidget(
-                      key: ValueKey(instance.id),
-                      instance: instance,
-                      schedule: task,
-                      showEditOption: false,
-                    ),
+                    instance: instance,
+                    schedule: task,
+                    showEditOption: false,
                   );
                 }),
             ],

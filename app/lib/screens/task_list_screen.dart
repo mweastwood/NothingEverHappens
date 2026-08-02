@@ -220,14 +220,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                   final sched = matchingSchedules.isEmpty
                       ? null
                       : matchingSchedules.first;
-                  return Padding(
+                  return TaskWidget(
                     key: ValueKey(inst.id),
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: TaskWidget(
-                      key: ValueKey(inst.id),
-                      instance: inst,
-                      schedule: sched,
-                    ),
+                    instance: inst,
+                    schedule: sched,
                   );
                 }, childCount: filteredInstances.length),
               ),
