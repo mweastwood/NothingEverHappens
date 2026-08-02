@@ -1736,6 +1736,18 @@ abstract class AppLocalizations {
   /// **'Sort by'**
   String get scheduleSortByLabel;
 
+  /// No description provided for @showSortOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Show sorting options'**
+  String get showSortOptions;
+
+  /// No description provided for @hideSortOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide sorting options'**
+  String get hideSortOptions;
+
   /// No description provided for @scheduleGridTypeHeader.
   ///
   /// In en, this message translates to:

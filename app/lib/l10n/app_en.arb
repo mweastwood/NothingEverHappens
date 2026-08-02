@@ -628,6 +628,8 @@
   "presetYearSingular": "year",
   "presetYearPlural": "years",
   "scheduleSortByLabel": "Sort by",
+  "showSortOptions": "Show sorting options",
+  "hideSortOptions": "Hide sorting options",
   "scheduleGridTypeHeader": "Type",
   "scheduleSortNextStartLabel": "Next Start",
   "scheduleSortNextDueLabel": "Next Due",

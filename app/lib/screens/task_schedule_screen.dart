@@ -397,51 +397,63 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                           return indexA.compareTo(indexB);
                         });
 
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                        final isSortBarVisible = ref.watch(showSortBarProvider);
+
+                        return Stack(
                           children: [
-                            // Sort bar at the top
-                            SortBar(
-                              title: context.l10n.scheduleSortByLabel,
-                              sortColumn: sortColumn,
-                              sortAscending: sortAscending,
-                              options: [
-                                SortOption(
-                                  key: 'title',
-                                  label: context.l10n.titleFieldLabel,
-                                ),
-                                SortOption(
-                                  key: 'next_start',
-                                  label:
-                                      context.l10n.scheduleSortNextStartLabel,
-                                ),
-                                SortOption(
-                                  key: 'next_due',
-                                  label: context.l10n.scheduleSortNextDueLabel,
-                                ),
-                                SortOption(
-                                  key: 'priority',
-                                  label: context.l10n.taskPriorityLabel,
-                                ),
-                              ],
-                              onSort: onSort,
+                            ListView.builder(
+                              padding: EdgeInsets.only(
+                                top: isSortBarVisible ? 60.0 : 8.0,
+                                bottom: 80.0,
+                              ),
+                              itemCount: filteredTasks.length,
+                              itemBuilder: (context, index) {
+                                final task = filteredTasks[index];
+                                return _buildTaskCard(
+                                  context,
+                                  task,
+                                  theme,
+                                  taskRepository,
+                                  showLastSpawnedDate,
+                                );
+                              },
                             ),
-                            const Divider(height: 1, thickness: 0.5),
-                            // Scrollable list of task cards
-                            Expanded(
-                              child: ListView.builder(
-                                padding: const EdgeInsets.only(bottom: 80.0),
-                                itemCount: filteredTasks.length,
-                                itemBuilder: (context, index) {
-                                  final task = filteredTasks[index];
-                                  return _buildTaskCard(
-                                    context,
-                                    task,
-                                    theme,
-                                    taskRepository,
-                                    showLastSpawnedDate,
-                                  );
-                                },
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: AnimatedFloatingSortBar(
+                                visible: isSortBarVisible,
+                                child: FloatingSortCard(
+                                  child: SortBar(
+                                    title: context.l10n.scheduleSortByLabel,
+                                    sortColumn: sortColumn,
+                                    sortAscending: sortAscending,
+                                    options: [
+                                      SortOption(
+                                        key: 'title',
+                                        label: context.l10n.titleFieldLabel,
+                                      ),
+                                      SortOption(
+                                        key: 'next_start',
+                                        label: context
+                                            .l10n
+                                            .scheduleSortNextStartLabel,
+                                      ),
+                                      SortOption(
+                                        key: 'next_due',
+                                        label: context
+                                            .l10n
+                                            .scheduleSortNextDueLabel,
+                                      ),
+                                      SortOption(
+                                        key: 'priority',
+                                        label: context.l10n.taskPriorityLabel,
+                                      ),
+                                    ],
+                                    onSort: onSort,
+                                  ),
+                                ),
                               ),
                             ),
                           ],

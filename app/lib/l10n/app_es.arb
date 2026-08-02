@@ -407,6 +407,8 @@
   "presetYearSingular": "año",
   "presetYearPlural": "años",
   "scheduleSortByLabel": "Ordenar por",
+  "showSortOptions": "Mostrar opciones de ordenación",
+  "hideSortOptions": "Ocultar opciones de ordenación",
   "scheduleGridTypeHeader": "Tipo",
   "scheduleSortNextStartLabel": "Próximo Inicio",
   "scheduleSortNextDueLabel": "Próximo Vencimiento",

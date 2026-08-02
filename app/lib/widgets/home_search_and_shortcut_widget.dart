@@ -6,6 +6,8 @@ import '../screens/task_schedule_screen.dart'; // for scheduleSearchQueryProvide
 import '../screens/help_screen.dart';
 import '../logic/l10n_extension.dart';
 
+import '../widgets/sort_bar.dart';
+
 class HomeSearchAndShortcutWidget extends ConsumerStatefulWidget {
   final int currentIndex;
   final Widget Function(
@@ -125,6 +127,22 @@ class _HomeSearchAndShortcutWidgetState
             },
           )
         else if (widget.currentIndex == 0 || widget.currentIndex == 1) ...[
+          IconButton(
+            icon: Icon(
+              ref.watch(showSortBarProvider) ? Icons.sort : Icons.sort_outlined,
+              color: ref.watch(showSortBarProvider)
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
+            ),
+            tooltip: ref.watch(showSortBarProvider)
+                ? context.l10n.hideSortOptions
+                : context.l10n.showSortOptions,
+            onPressed: () {
+              ref.read(showSortBarProvider.notifier).state = !ref.read(
+                showSortBarProvider,
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.help_outline),
             tooltip: context.l10n.helpTooltip,
