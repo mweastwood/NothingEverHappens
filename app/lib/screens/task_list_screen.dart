@@ -283,16 +283,14 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                           duration: const Duration(milliseconds: 250),
                           curve: Curves.fastOutSlowIn,
                           height: (showSortBar && isSortBarVisible)
-                              ? ((showCapacityPrompt && searchQuery.isEmpty)
-                                    ? 64.0
-                                    : 60.0)
+                              ? 56.0
                               : 0.0,
                         ),
                       ),
                       if (showCapacityPrompt && searchQuery.isEmpty)
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                             child: Card(
                               key: const Key('capacity_prompt_card'),
                               color: theme.colorScheme.primaryContainer,
