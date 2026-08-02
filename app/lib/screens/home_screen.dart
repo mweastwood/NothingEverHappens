@@ -31,6 +31,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     _routeManager = AppRouteManager(mockUri: widget.mockUri);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _routeManager.handleUrlParameters(
         context: context,
         ref: ref,
