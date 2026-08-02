@@ -79,7 +79,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     ref.listen<bool>(showSortBarProvider, (previous, next) {
       if (previous != next && _scrollController.hasClients) {
         final offset = _scrollController.offset;
-        const barHeight = 56.0;
+        const barHeight = 68.0;
         if (next && offset > 5.0) {
           _scrollController.jumpTo(offset + barHeight);
         } else if (!next && offset > barHeight + 5.0) {
@@ -283,7 +283,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                           duration: const Duration(milliseconds: 250),
                           curve: Curves.fastOutSlowIn,
                           height: (showSortBar && isSortBarVisible)
-                              ? 56.0
+                              ? 68.0
                               : 0.0,
                         ),
                       ),
