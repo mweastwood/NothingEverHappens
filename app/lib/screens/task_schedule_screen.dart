@@ -423,7 +423,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                             ListView.builder(
                               controller: _scrollController,
                               padding: EdgeInsets.only(
-                                top: isSortBarVisible ? 60.0 : 8.0,
+                                top: isSortBarVisible ? 62.0 : 8.0,
                                 bottom: 80.0,
                               ),
                               itemCount: filteredTasks.length,

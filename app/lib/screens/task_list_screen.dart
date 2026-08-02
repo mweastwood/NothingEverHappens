@@ -284,8 +284,8 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                           curve: Curves.fastOutSlowIn,
                           height: (showSortBar && isSortBarVisible)
                               ? ((showCapacityPrompt && searchQuery.isEmpty)
-                                    ? 56.0
-                                    : 52.0)
+                                    ? 60.0
+                                    : 56.0)
                               : 0.0,
                         ),
                       ),
