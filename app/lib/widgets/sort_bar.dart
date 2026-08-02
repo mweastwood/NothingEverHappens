@@ -81,7 +81,7 @@ class FloatingSortCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 0.0),
       child: Card(
         elevation: 4.0,
         shadowColor: Colors.black.withValues(alpha: 0.2),
