@@ -79,16 +79,32 @@ class FloatingSortCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Material(
-      elevation: 4.0,
-      shadowColor: Colors.black.withValues(alpha: 0.3),
-      color: theme.colorScheme.surfaceContainerHigh,
-      shape: Border(
-        bottom: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(16.0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8.0,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
         ),
       ),
-      child: child,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(16.0),
+        ),
+        child: child,
+      ),
     );
   }
 }
