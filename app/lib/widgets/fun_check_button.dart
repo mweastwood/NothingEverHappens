@@ -20,6 +20,7 @@ class _FunCheckButtonState extends State<FunCheckButton>
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
   late AnimationController _confettiController;
+  late List<ConfettiParticle> _particles;
   bool _isHovering = false;
 
   @override
@@ -37,6 +38,8 @@ class _FunCheckButtonState extends State<FunCheckButton>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
+
+    _particles = ConfettiPainter.generateParticles();
   }
 
   @override
@@ -76,6 +79,7 @@ class _FunCheckButtonState extends State<FunCheckButton>
                 foregroundPainter: ConfettiPainter(
                   animation: _confettiController,
                   colorScheme: Theme.of(context).colorScheme,
+                  particles: _particles,
                 ),
                 child: Container(
                   width: 24,
@@ -118,28 +122,32 @@ class _FunCheckButtonState extends State<FunCheckButton>
 class ConfettiPainter extends CustomPainter {
   final Animation<double> animation;
   final ColorScheme colorScheme;
-  final List<ConfettiParticle> particles = [];
+  final List<ConfettiParticle> particles;
 
-  ConfettiPainter({required this.animation, required this.colorScheme})
-    : super(repaint: animation) {
-    // Initialize particles once
+  ConfettiPainter({
+    required this.animation,
+    required this.colorScheme,
+    List<ConfettiParticle>? particles,
+  }) : particles = particles ?? generateParticles(),
+       super(repaint: animation);
+
+  static List<ConfettiParticle> generateParticles() {
     final random = Random();
-    for (int i = 0; i < 20; i++) {
-      particles.add(
-        ConfettiParticle(
-          angle: random.nextDouble() * 2 * pi,
-          speed: random.nextDouble() * 20 + 10,
-          color: [
-            Colors.red,
-            Colors.blue,
-            Colors.green,
-            Colors.yellow,
-            Colors.purple,
-          ][random.nextInt(5)],
-          offset: random.nextDouble() * 2 * pi, // Rotation offset
-        ),
-      );
-    }
+    return List.generate(
+      20,
+      (i) => ConfettiParticle(
+        angle: random.nextDouble() * 2 * pi,
+        speed: random.nextDouble() * 20 + 10,
+        color: [
+          Colors.red,
+          Colors.blue,
+          Colors.green,
+          Colors.yellow,
+          Colors.purple,
+        ][random.nextInt(5)],
+        offset: random.nextDouble() * 2 * pi,
+      ),
+    );
   }
 
   @override

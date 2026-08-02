@@ -155,7 +155,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     });
 
     // Wait for fun check animation (confetti) to finish (500ms)
-    // The confetti lasts ~500ms.
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         _controller.forward();
