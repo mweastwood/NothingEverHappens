@@ -79,7 +79,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     ref.listen<bool>(showSortBarProvider, (previous, next) {
       if (previous != next && _scrollController.hasClients) {
         final offset = _scrollController.offset;
-        const barHeight = 48.0;
+        const barHeight = 64.0;
         if (next && offset > 5.0) {
           _scrollController.jumpTo(offset + barHeight);
         } else if (!next && offset > barHeight + 5.0) {
@@ -280,19 +280,26 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                     slivers: [
                       SliverToBoxAdapter(
                         child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
+                          duration:
+                              (_scrollController.hasClients &&
+                                  _scrollController.offset > 5.0)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 250),
                           curve: Curves.fastOutSlowIn,
                           height: (showSortBar && isSortBarVisible)
-                              ? 48.0
+                              ? ((showCapacityPrompt && searchQuery.isEmpty)
+                                    ? 64.0
+                                    : 60.0)
                               : 0.0,
                         ),
                       ),
                       if (showCapacityPrompt && searchQuery.isEmpty)
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                             child: Card(
                               key: const Key('capacity_prompt_card'),
+                              margin: EdgeInsets.zero,
                               color: theme.colorScheme.primaryContainer,
                               elevation: 0,
                               shape: RoundedRectangleBorder(

@@ -292,7 +292,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     ref.listen<bool>(showSortBarProvider, (previous, next) {
       if (previous != next && _scrollController.hasClients) {
         final offset = _scrollController.offset;
-        const barHeight = 48.0;
+        const barHeight = 64.0;
         if (next && offset > 5.0) {
           _scrollController.jumpTo(offset + barHeight);
         } else if (!next && offset > barHeight + 5.0) {
@@ -423,7 +423,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                             ListView.builder(
                               controller: _scrollController,
                               padding: EdgeInsets.only(
-                                top: isSortBarVisible ? 48.0 : 8.0,
+                                top: isSortBarVisible ? 64.0 : 8.0,
                                 bottom: 80.0,
                               ),
                               itemCount: filteredTasks.length,
@@ -509,7 +509,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     }
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       elevation: 2.0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: Column(
