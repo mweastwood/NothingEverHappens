@@ -23,6 +23,7 @@ class TaskListScreen extends ConsumerStatefulWidget {
 
 class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   final Key _taskListKey = const ValueKey('taskList');
+  final ScrollController _scrollController = ScrollController();
   Timer? _rebuildTimer;
   List<({String column, bool ascending})>? _localSortHistory;
 
@@ -69,11 +70,24 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   @override
   void dispose() {
     _rebuildTimer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<bool>(showSortBarProvider, (previous, next) {
+      if (previous != next && _scrollController.hasClients) {
+        final offset = _scrollController.offset;
+        const barHeight = 48.0;
+        if (next && offset > 5.0) {
+          _scrollController.jumpTo(offset + barHeight);
+        } else if (!next && offset > barHeight + 5.0) {
+          _scrollController.jumpTo(offset - barHeight);
+        }
+      }
+    });
+
     return ValueListenableBuilder<DateTime?>(
       valueListenable: AppClock.timeNotifier,
       builder: (context, mockTime, _) {
@@ -262,13 +276,14 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                       !isConfirmed;
                   return CustomScrollView(
                     key: const PageStorageKey('tasksView'),
+                    controller: _scrollController,
                     slivers: [
                       SliverToBoxAdapter(
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
                           curve: Curves.fastOutSlowIn,
                           height: (showSortBar && isSortBarVisible)
-                              ? 60.0
+                              ? 48.0
                               : 0.0,
                         ),
                       ),
