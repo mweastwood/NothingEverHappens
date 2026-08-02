@@ -26,7 +26,14 @@ class TaskScheduleScreen extends ConsumerStatefulWidget {
 }
 
 class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
+  final ScrollController _scrollController = ScrollController();
   List<({String column, bool ascending})>? _localSortHistory;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   List<({String column, bool ascending})> _getSortHistory(
     UserSettings settings,
@@ -282,6 +289,18 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<bool>(showSortBarProvider, (previous, next) {
+      if (previous != next && _scrollController.hasClients) {
+        final offset = _scrollController.offset;
+        const barHeight = 48.0;
+        if (next && offset > 5.0) {
+          _scrollController.jumpTo(offset + barHeight);
+        } else if (!next && offset > barHeight + 5.0) {
+          _scrollController.jumpTo(offset - barHeight);
+        }
+      }
+    });
+
     final taskRepository = ref.watch(taskRepositoryProvider);
     final schedulesVal = ref.watch(taskSchedulesProvider);
     final settingsVal = ref.watch(userSettingsProvider);
@@ -402,8 +421,9 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                         return Stack(
                           children: [
                             ListView.builder(
+                              controller: _scrollController,
                               padding: EdgeInsets.only(
-                                top: isSortBarVisible ? 60.0 : 8.0,
+                                top: isSortBarVisible ? 48.0 : 8.0,
                                 bottom: 80.0,
                               ),
                               itemCount: filteredTasks.length,
