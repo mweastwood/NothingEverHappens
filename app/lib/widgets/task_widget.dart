@@ -530,17 +530,20 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               animation: _controller,
               builder: (context, child) {
                 // Visual Transformation (Squish/Shrink) affects the whole Card
-                final transformedChild = Transform(
-                  alignment: Alignment.topCenter,
-                  transform: Matrix4.diagonal3Values(
-                    _scaleXAnimation.value,
-                    _scaleYAnimation.value,
-                    1.0,
-                  ),
-                  child: Card(
-                    child: Opacity(
-                      opacity: _contentOpacityAnimation.value,
-                      child: child,
+                final transformedChild = Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Transform(
+                    alignment: Alignment.topCenter,
+                    transform: Matrix4.diagonal3Values(
+                      _scaleXAnimation.value,
+                      _scaleYAnimation.value,
+                      1.0,
+                    ),
+                    child: Card(
+                      child: Opacity(
+                        opacity: _contentOpacityAnimation.value,
+                        child: child,
+                      ),
                     ),
                   ),
                 );

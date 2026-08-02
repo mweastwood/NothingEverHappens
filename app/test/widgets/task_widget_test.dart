@@ -590,20 +590,16 @@ void main() {
             mainAxisSize: MainAxisSize.min,
             children: [
               TaskWidget(instance: createInstanceFor(task1), schedule: task1),
-              const SizedBox(height: 8),
               TaskWidget(instance: createInstanceFor(task2), schedule: task2),
-              const SizedBox(height: 8),
               TaskWidget(instance: createInstanceFor(task3), schedule: task3),
-              const SizedBox(height: 8),
               TaskWidget(instance: createInstanceFor(task4), schedule: task4),
-              const SizedBox(height: 8),
               TaskWidget(instance: createInstanceFor(task5), schedule: task5),
             ],
           ),
         ),
       ),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(450, 850),
+      surfaceSize: const Size(450, 860),
     );
 
     await expectLater(
