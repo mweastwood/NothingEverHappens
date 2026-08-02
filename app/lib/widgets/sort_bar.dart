@@ -31,6 +31,7 @@ class SortBar extends StatelessWidget {
     final theme = Theme.of(context);
     return SizedBox(
       height: 48.0,
+      width: double.infinity,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
@@ -79,30 +80,19 @@ class FloatingSortCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      child: Card(
+        elevation: 6.0,
+        shadowColor: Colors.black.withValues(alpha: 0.25),
         color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(16.0),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 8.0,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border(
-          bottom: BorderSide(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+          side: BorderSide(
             color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(16.0),
-        ),
+        clipBehavior: Clip.antiAlias,
         child: child,
       ),
     );
