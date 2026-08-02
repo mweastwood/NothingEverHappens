@@ -53,6 +53,7 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _recalculate();
     });
   }
