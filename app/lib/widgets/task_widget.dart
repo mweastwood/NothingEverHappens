@@ -49,6 +49,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
   bool _isMouse = false;
   DismissDirection? _swipeDirection;
   double _swipeProgress = 0.0;
+  bool _isDismissed = false;
 
   @override
   void initState() {
@@ -426,6 +427,20 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     );
     final isFuturePending = AppClock.now.isBefore(startDateTime);
 
+    if (_isDismissed) {
+      return AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return SizeTransition(
+            sizeFactor: _sizeFactorAnimation,
+            axis: Axis.vertical,
+            alignment: Alignment.topCenter,
+            child: const SizedBox(width: double.infinity, height: 72.0),
+          );
+        },
+      );
+    }
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -496,53 +511,12 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                       });
                     }
                   },
-                  onDismissed: (direction) async {
-                    final repo = ref.read(taskRepositoryProvider)!;
-                    final notifier = ref.read(undoNotifierProvider.notifier);
-                    final instance = widget.instance;
-                    // Capture context-sensitive values before any async gap.
-                    final messenger = ScaffoldMessenger.of(context);
-                    final completeMsg = context.l10n.taskCompleted(
-                      instance.title,
-                    );
-                    final dismissMsg = context.l10n.taskDismissed(
-                      instance.title,
-                    );
-                    final undoLabel = context.l10n.undoButton;
-                    final undoneLabel = context.l10n.taskRestored(
-                      instance.title,
-                    );
-                    if (direction == DismissDirection.startToEnd) {
-                      final resolved = await repo.completeTaskInstance(
-                        instance.id,
-                      );
-                      UndoSnackBar.showWithMessenger(
-                        messenger: messenger,
-                        notifier: notifier,
-                        action: UndoResolveTaskInstanceAction(
-                          message: completeMsg,
-                          instance: resolved ?? instance,
-                        ),
-                        repository: repo,
-                        undoLabel: undoLabel,
-                        undoneLabel: undoneLabel,
-                      );
-                    } else if (direction == DismissDirection.endToStart) {
-                      final resolved = await repo.dismissTaskInstance(
-                        instance.id,
-                      );
-                      UndoSnackBar.showWithMessenger(
-                        messenger: messenger,
-                        notifier: notifier,
-                        action: UndoResolveTaskInstanceAction(
-                          message: dismissMsg,
-                          instance: resolved ?? instance,
-                        ),
-                        repository: repo,
-                        undoLabel: undoLabel,
-                        undoneLabel: undoneLabel,
-                      );
-                    }
+                  onDismissed: (direction) {
+                    _isDeleting = (direction == DismissDirection.endToStart);
+                    setState(() {
+                      _isDismissed = true;
+                    });
+                    _controller.forward();
                   },
                   child: Listener(
                     onPointerHover: (event) {
