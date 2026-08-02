@@ -971,43 +971,46 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                           ),
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 8.0,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            OutlinedButton(
-                              onPressed: _isSaving
-                                  ? null
-                                  : () => Navigator.pop(context),
-                              child: Text(context.l10n.discardButton),
-                            ),
-                            const SizedBox(width: 16),
-                            FilledButton(
-                              key: const Key('save_task_button'),
-                              onPressed: (_isSaving || readOnly)
-                                  ? null
-                                  : _saveTask,
-                              child: _isSaving
-                                  ? SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        value:
-                                            CreateTaskScreen
-                                                .debugDisableAnimations
-                                            ? 0.8
-                                            : null,
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : Text(context.l10n.saveButton),
-                            ),
-                          ],
+                      SafeArea(
+                        top: false,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 8.0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              OutlinedButton(
+                                onPressed: _isSaving
+                                    ? null
+                                    : () => Navigator.pop(context),
+                                child: Text(context.l10n.discardButton),
+                              ),
+                              const SizedBox(width: 16),
+                              FilledButton(
+                                key: const Key('save_task_button'),
+                                onPressed: (_isSaving || readOnly)
+                                    ? null
+                                    : _saveTask,
+                                child: _isSaving
+                                    ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          value:
+                                              CreateTaskScreen
+                                                  .debugDisableAnimations
+                                              ? 0.8
+                                              : null,
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(context.l10n.saveButton),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
