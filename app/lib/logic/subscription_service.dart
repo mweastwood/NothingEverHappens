@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
 import 'auth_repository.dart';
 import 'task_repository.dart';
 
@@ -48,25 +46,35 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
     if (_initialized) return;
     _initialized = true;
 
-    // Configure RevenueCat SDK on Android/iOS
+    // Configure RevenueCat SDK on all platforms (Android/iOS/Web)
     final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
-    if (!kIsWeb && !isTest) {
+    if (!isTest) {
       try {
         await Purchases.setLogLevel(LogLevel.debug);
         const apiKey = String.fromEnvironment(
           'REVENUECAT_API_KEY',
-          defaultValue: 'goog_mock_api_key',
+          defaultValue: '',
         );
         final configuredKey = apiKey.isNotEmpty ? apiKey : 'goog_mock_api_key';
+        if (apiKey.isEmpty) {
+          debugPrint(
+            'RevenueCat Warning: REVENUECAT_API_KEY is not set. Defaulting to mock key.',
+          );
+        }
         await Purchases.configure(PurchasesConfiguration(configuredKey));
+        debugPrint(
+          'RevenueCat SDK successfully configured on ${kIsWeb ? "Web" : "Mobile"}.',
+        );
       } catch (e) {
-        debugPrint("RevenueCat configuration error: $e");
+        debugPrint("RevenueCat SDK configuration error: $e");
       }
 
-      // Listen for customer info updates
-      Purchases.addCustomerInfoUpdateListener((customerInfo) {
-        _updateEntitlements(customerInfo);
-      });
+      if (!kIsWeb) {
+        // Listen for customer info updates on mobile
+        Purchases.addCustomerInfoUpdateListener((customerInfo) {
+          _updateEntitlements(customerInfo);
+        });
+      }
     }
 
     // Listen to Auth changes to configure/identify user
@@ -214,110 +222,49 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
     return searchKeys.any((key) => lower.contains(key));
   }
 
-  if (kIsWeb) {
-    try {
-      const apiKey = String.fromEnvironment(
-        'REVENUECAT_API_KEY',
-        defaultValue: '',
-      );
-      if (apiKey.isEmpty) {
-        debugPrint(
-          'RevenueCat Web API Key (REVENUECAT_API_KEY) is missing/empty. '
-          'Pass --dart-define=REVENUECAT_API_KEY=your_key to fetch live prices.',
-        );
-        return null;
-      }
-
-      // On Web, query the 'stripe' platform so RevenueCat returns the Stripe product variant containing price_string
-      const platform = 'stripe';
-
-      final response = await http.get(
-        Uri.parse(
-          'https://api.revenuecat.com/v1/subscribers/web_user/offerings',
-        ),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-          'X-Platform': platform,
-        },
-      );
-
-      debugPrint('RevenueCat Web REST API Status Code: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        debugPrint('RevenueCat Web REST API Full Response: ${response.body}');
-        var data = jsonDecode(response.body) as Map<String, dynamic>;
-        final currentOfferingId = data['current_offering_id'] as String?;
-        final offerings = data['offerings'] as List<dynamic>?;
-        if (offerings == null || offerings.isEmpty) {
-          debugPrint(
-            'RevenueCat Web REST API Warning: "offerings" list is empty or null in response body.',
-          );
-          return null;
-        }
-
-        final targetOffering = offerings.firstWhere(
-          (o) => o['identifier'] == currentOfferingId,
-          orElse: () => offerings.first,
-        );
-        final packages = targetOffering['packages'] as List<dynamic>?;
-        if (packages == null || packages.isEmpty) {
-          debugPrint(
-            'RevenueCat Web REST API Warning: target offering "${targetOffering['identifier']}" has no packages.',
-          );
-          return null;
-        }
-
-        final pkg = packages.firstWhere((p) {
-          final pkgId = p['identifier'] as String? ?? '';
-          final storeId = p['platform_product_identifier'] as String? ?? '';
-          return matchesPackage(pkgId) || matchesPackage(storeId);
-        }, orElse: () => packages.first);
-
-        final priceString =
-            (pkg['price_string'] as String?) ??
-            (pkg['platform_product_details']
-                    as Map<String, dynamic>?)?['price_string']
-                as String? ??
-            (pkg['store_product'] as Map<String, dynamic>?)?['price_string']
-                as String?;
-
-        if (priceString != null && priceString.isNotEmpty) {
-          return priceString;
-        } else {
-          debugPrint(
-            'RevenueCat Web REST API Warning: Could not parse price_string for package "$packageKey". Package snippet: $pkg',
-          );
-        }
-      } else {
-        debugPrint(
-          'RevenueCat Web REST API Error (${response.statusCode}): ${response.body}',
-        );
-      }
-    } catch (e) {
-      debugPrint('Error querying RevenueCat REST API on Web: $e');
-    }
-    return null;
-  }
-
   try {
+    debugPrint('RevenueCat: Querying offerings for "$packageKey"...');
     final offerings = await Purchases.getOfferings();
     final current = offerings.current;
-    if (current != null && current.availablePackages.isNotEmpty) {
-      final pkg = current.availablePackages.firstWhere(
-        (p) =>
-            matchesPackage(p.identifier) ||
-            matchesPackage(p.storeProduct.identifier),
-        orElse: () => current.availablePackages.first,
-      );
-      return pkg.storeProduct.priceString;
-    } else {
+
+    if (offerings.all.isEmpty) {
       debugPrint(
-        'RevenueCat Native Warning: No offerings or packages found in offerings.current for package "$packageKey"',
+        'RevenueCat Warning: offerings.all is empty. No offerings defined in RevenueCat dashboard.',
       );
+      return null;
     }
+
+    if (current == null) {
+      debugPrint(
+        'RevenueCat Warning: offerings.current is null for "$packageKey". Available offering IDs: ${offerings.all.keys.toList()}',
+      );
+      return null;
+    }
+
+    if (current.availablePackages.isEmpty) {
+      debugPrint(
+        'RevenueCat Warning: Current offering "${current.identifier}" has 0 available packages.',
+      );
+      return null;
+    }
+
+    final pkg = current.availablePackages.firstWhere(
+      (p) =>
+          matchesPackage(p.identifier) ||
+          matchesPackage(p.storeProduct.identifier),
+      orElse: () => current.availablePackages.first,
+    );
+
+    final resolvedPrice = pkg.storeProduct.priceString;
+    debugPrint(
+      'RevenueCat Success: Resolved price for "$packageKey" -> "$resolvedPrice" '
+      '(Package: ${pkg.identifier}, Product: ${pkg.storeProduct.identifier})',
+    );
+    return resolvedPrice;
   } catch (e) {
-    debugPrint('Error querying package price from RevenueCat: $e');
+    debugPrint(
+      'RevenueCat Error: Failed to fetch package price for "$packageKey": $e',
+    );
   }
   return null;
 }
