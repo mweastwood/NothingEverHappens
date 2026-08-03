@@ -249,30 +249,45 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final currentOfferingId = data['current_offering_id'] as String?;
         final offerings = data['offerings'] as List<dynamic>?;
-        if (offerings != null && offerings.isNotEmpty) {
-          final targetOffering = offerings.firstWhere(
-            (o) => o['identifier'] == currentOfferingId,
-            orElse: () => offerings.first,
+        if (offerings == null || offerings.isEmpty) {
+          debugPrint(
+            'RevenueCat Web REST API Warning: "offerings" list is empty or null in response body.',
           );
-          final packages = targetOffering['packages'] as List<dynamic>?;
-          if (packages != null && packages.isNotEmpty) {
-            final pkg = packages.firstWhere((p) {
-              final pkgId = p['identifier'] as String? ?? '';
-              final storeId = p['platform_product_identifier'] as String? ?? '';
-              return matchesPackage(pkgId) || matchesPackage(storeId);
-            }, orElse: () => packages.first);
+          return null;
+        }
 
-            final priceString =
-                (pkg['price_string'] as String?) ??
-                (pkg['platform_product_details']
-                        as Map<String, dynamic>?)?['price_string']
-                    as String? ??
-                (pkg['store_product'] as Map<String, dynamic>?)?['price_string']
-                    as String?;
-            if (priceString != null && priceString.isNotEmpty) {
-              return priceString;
-            }
-          }
+        final targetOffering = offerings.firstWhere(
+          (o) => o['identifier'] == currentOfferingId,
+          orElse: () => offerings.first,
+        );
+        final packages = targetOffering['packages'] as List<dynamic>?;
+        if (packages == null || packages.isEmpty) {
+          debugPrint(
+            'RevenueCat Web REST API Warning: target offering "${targetOffering['identifier']}" has no packages.',
+          );
+          return null;
+        }
+
+        final pkg = packages.firstWhere((p) {
+          final pkgId = p['identifier'] as String? ?? '';
+          final storeId = p['platform_product_identifier'] as String? ?? '';
+          return matchesPackage(pkgId) || matchesPackage(storeId);
+        }, orElse: () => packages.first);
+
+        final priceString =
+            (pkg['price_string'] as String?) ??
+            (pkg['platform_product_details']
+                    as Map<String, dynamic>?)?['price_string']
+                as String? ??
+            (pkg['store_product'] as Map<String, dynamic>?)?['price_string']
+                as String?;
+
+        if (priceString != null && priceString.isNotEmpty) {
+          return priceString;
+        } else {
+          debugPrint(
+            'RevenueCat Web REST API Warning: Could not parse price_string for package "$packageKey". Package snippet: $pkg',
+          );
         }
       } else {
         debugPrint(
@@ -298,7 +313,7 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
       return pkg.storeProduct.priceString;
     } else {
       debugPrint(
-        'RevenueCat Native: No offerings or packages found in offerings.current',
+        'RevenueCat Native Warning: No offerings or packages found in offerings.current for package "$packageKey"',
       );
     }
   } catch (e) {
@@ -308,9 +323,9 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
 }
 
 final individualPlanPriceProvider = FutureProvider<String?>((ref) async {
-  return (await _fetchPackagePrice('standard')) ?? r'$1.99';
+  return _fetchPackagePrice('standard');
 });
 
 final familyPlanPriceProvider = FutureProvider<String?>((ref) async {
-  return (await _fetchPackagePrice('family')) ?? r'$4.99';
+  return _fetchPackagePrice('family');
 });
