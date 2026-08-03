@@ -111,6 +111,9 @@ class FamilyRepository {
   }
 
   Future<void> acceptInvite(FamilyInvite invite) async {
+    final userDoc = await _firestore.collection('users').doc(_userId).get();
+    final prevFamilyId = userDoc.data()?['familyId'] as String?;
+
     final familyRef = _firestore.collection('families').doc(invite.familyId);
 
     final newMember = FamilyMember(
@@ -121,6 +124,13 @@ class FamilyRepository {
     );
 
     final batch = _firestore.batch();
+
+    if (prevFamilyId != null &&
+        prevFamilyId.isNotEmpty &&
+        prevFamilyId != invite.familyId) {
+      final prevFamilyRef = _firestore.collection('families').doc(prevFamilyId);
+      batch.update(prevFamilyRef, {'members.$_userId': FieldValue.delete()});
+    }
 
     batch.update(familyRef, {'members.$_userId': newMember.toJson()});
 
@@ -161,11 +171,50 @@ class FamilyRepository {
   }
 
   Future<void> leaveFamily(String familyId) async {
+    final familyRef = _firestore.collection('families').doc(familyId);
+    final familyDoc = await familyRef.get();
+    final familyData = familyDoc.data();
     final batch = _firestore.batch();
 
-    batch.update(_firestore.collection('families').doc(familyId), {
-      'members.$_userId': FieldValue.delete(),
-    });
+    if (familyData != null) {
+      final membersJson = familyData['members'] as Map<String, dynamic>? ?? {};
+      final members = membersJson.map(
+        (key, value) => MapEntry(
+          key,
+          FamilyMember.fromJson(Map<String, dynamic>.from(value as Map)),
+        ),
+      );
+
+      final remainingMembers = members.values
+          .where((m) => m.userId != _userId)
+          .toList();
+
+      if (remainingMembers.isEmpty) {
+        batch.delete(familyRef);
+      } else {
+        batch.update(familyRef, {'members.$_userId': FieldValue.delete()});
+
+        final currentMember = members[_userId];
+        if (currentMember?.role == 'parent') {
+          final hasOtherParent = remainingMembers.any(
+            (m) => m.role == 'parent',
+          );
+          if (!hasOtherParent && remainingMembers.isNotEmpty) {
+            final nextParent = remainingMembers.first;
+            batch.update(familyRef, {
+              'members.${nextParent.userId}.role': 'parent',
+            });
+            batch.set(
+              _firestore.collection('users').doc(nextParent.userId),
+              {'familyRole': 'parent'},
+              SetOptions(merge: true),
+            );
+          }
+        }
+      }
+    } else {
+      batch.update(familyRef, {'members.$_userId': FieldValue.delete()});
+    }
 
     batch.set(_firestore.collection('users').doc(_userId), {
       'familyId': FieldValue.delete(),
