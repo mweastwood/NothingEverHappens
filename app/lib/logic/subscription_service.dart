@@ -276,6 +276,8 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
 
         final priceString =
             (pkg['price_string'] as String?) ??
+            (pkg['metadata'] as Map<String, dynamic>?)?['price_string']
+                as String? ??
             (pkg['platform_product_details']
                     as Map<String, dynamic>?)?['price_string']
                 as String? ??
