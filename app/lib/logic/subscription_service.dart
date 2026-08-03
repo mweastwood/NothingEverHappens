@@ -228,9 +228,8 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
         return null;
       }
 
-      final platform = apiKey.startsWith('goog_')
-          ? 'android'
-          : (apiKey.startsWith('appl_') ? 'ios' : 'stripe');
+      // On Web, query the 'stripe' platform so RevenueCat returns the Stripe product variant containing price_string
+      const platform = 'stripe';
 
       final response = await http.get(
         Uri.parse(
@@ -246,7 +245,8 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
       debugPrint('RevenueCat Web REST API Status Code: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        debugPrint('RevenueCat Web REST API Full Response: ${response.body}');
+        var data = jsonDecode(response.body) as Map<String, dynamic>;
         final currentOfferingId = data['current_offering_id'] as String?;
         final offerings = data['offerings'] as List<dynamic>?;
         if (offerings == null || offerings.isEmpty) {
