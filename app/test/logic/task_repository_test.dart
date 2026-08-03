@@ -1843,6 +1843,70 @@ void main() {
           expect(dailyRule.startRelativeTime.dayOffset, 0);
         },
       );
+
+      test(
+        'completeTaskInstance on a recurring family task spawns next occurrence in family collection',
+        () async {
+          final now = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(now);
+          addTearDown(AppClock.reset);
+
+          const familyId = 'family-123';
+          await firestore.collection('users').doc('test-user-id').set({
+            'familyId': familyId,
+            'familyRole': 'parent',
+          });
+
+          final repository = TaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+          );
+
+          final task = TaskSchedule(
+            id: 'family-task-1',
+            title: 'Family Trash Chores',
+            description: 'Take out the trash',
+            assignedUserId: 'test-user-id',
+            isFamily: true,
+            schedules: [
+              DailySchedule(
+                id: 'rule-daily-family',
+                scheduleId: 'family-task-1',
+                startDate: const CivilDay(year: 2026, month: 6, day: 23),
+                interval: 1,
+              ),
+            ],
+            missedPolicy: MissedPolicy.stack,
+          );
+
+          await repository.addTaskSchedule(task);
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          // Fetch the spawned family instances
+          final familyInsts = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .get();
+          final initialCount = familyInsts.docs.length;
+          expect(initialCount, greaterThan(0));
+
+          final instId = familyInsts.docs.first.id;
+
+          // Complete the family instance
+          final completed = await repository.completeTaskInstance(instId);
+          expect(completed, isNotNull);
+          expect(completed?.status, 'completed');
+
+          // Should have spawned next occurrence in families collection
+          final familyInstsAfter = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .get();
+          expect(familyInstsAfter.docs.length, greaterThan(initialCount));
+        },
+      );
     });
   });
 }
