@@ -23,6 +23,13 @@ class SubscriptionState {
 }
 
 class SubscriptionService extends StateNotifier<SubscriptionState> {
+  static final Completer<void> _configureCompleter = Completer<void>();
+
+  static Future<void> ensureConfigured() async {
+    if (_configureCompleter.isCompleted) return;
+    await _configureCompleter.future;
+  }
+
   final Ref _ref;
   final FirebaseFirestore? _firestore;
   StreamSubscription<DocumentSnapshot>? _firestoreSub;
@@ -67,6 +74,10 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
         );
       } catch (e) {
         debugPrint("RevenueCat SDK configuration error: $e");
+      } finally {
+        if (!_configureCompleter.isCompleted) {
+          _configureCompleter.complete();
+        }
       }
 
       if (!kIsWeb) {
@@ -212,6 +223,8 @@ final subscriptionServiceProvider =
 Future<String?> _fetchPackagePrice(String packageKey) async {
   final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
   if (isTest) return null;
+
+  await SubscriptionService.ensureConfigured();
 
   final searchKeys = packageKey == 'standard'
       ? ['standard', 'individual']
