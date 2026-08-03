@@ -53,6 +53,7 @@ dependencies:
   clock: ^1.1.1
   url_launcher: ^6.3.2
   purchases_flutter: ^10.4.3
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
@@ -60,7 +61,6 @@ dev_dependencies:
   fake_cloud_firestore: ^4.2.0
   integration_test:
     sdk: flutter
-  http: ^1.2.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

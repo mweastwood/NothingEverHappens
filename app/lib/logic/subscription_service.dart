@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 import 'auth_repository.dart';
 import 'task_repository.dart';
 
@@ -193,3 +195,62 @@ final subscriptionServiceProvider =
       final firestore = ref.watch(firestoreProvider);
       return SubscriptionService(ref, firestore: firestore);
     });
+
+final familyPlanPriceProvider = FutureProvider<String?>((ref) async {
+  final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+  if (isTest) return null;
+
+  if (kIsWeb) {
+    try {
+      const apiKey = String.fromEnvironment(
+        'REVENUECAT_API_KEY',
+        defaultValue: '',
+      );
+      if (apiKey.isEmpty) return null;
+      final response = await http.get(
+        Uri.parse('https://api.revenuecat.com/v1/offerings'),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final currentOfferingId = data['current_offering_id'] as String?;
+        final offerings = data['offerings'] as List<dynamic>?;
+        if (offerings != null && offerings.isNotEmpty) {
+          final targetOffering = offerings.firstWhere(
+            (o) => o['identifier'] == currentOfferingId,
+            orElse: () => offerings.first,
+          );
+          final packages = targetOffering['packages'] as List<dynamic>?;
+          if (packages != null && packages.isNotEmpty) {
+            final pkg = packages.firstWhere(
+              (p) => (p['identifier'] as String? ?? '').contains('family'),
+              orElse: () => packages.first,
+            );
+            return pkg['price_string'] as String?;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error querying RevenueCat REST API on Web: $e');
+    }
+    return null;
+  }
+
+  try {
+    final offerings = await Purchases.getOfferings();
+    final current = offerings.current;
+    if (current != null && current.availablePackages.isNotEmpty) {
+      final pkg = current.availablePackages.firstWhere(
+        (p) => p.identifier.contains('family'),
+        orElse: () => current.availablePackages.first,
+      );
+      return pkg.storeProduct.priceString;
+    }
+  } catch (e) {
+    debugPrint('Error querying family plan price from RevenueCat: $e');
+  }
+  return null;
+});
