@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'task_schedule.dart';
 import 'task_repository.dart';
 import '../screens/settings_screen.dart';
+import '../screens/subscription_screen.dart';
 import '../screens/create_task_screen.dart';
 
 class AppRouteManager {
@@ -117,6 +118,20 @@ class AppRouteManager {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const SettingsScreen()),
+        ).then((_) {
+          if (!context.mounted) return;
+          updateUrlPath(currentIndex);
+        });
+      },
+      'subscriptions': () {
+        onIndexChanged(0);
+        updateUrlPath(0);
+        SystemNavigator.routeInformationUpdated(
+          uri: Uri.parse('/subscriptions'),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SubscriptionScreen()),
         ).then((_) {
           if (!context.mounted) return;
           updateUrlPath(currentIndex);
