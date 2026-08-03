@@ -9,6 +9,7 @@ import 'task_list_screen.dart';
 import 'task_schedule_screen.dart';
 import 'dashboard_screen.dart';
 import 'settings_screen.dart';
+import 'subscription_screen.dart';
 import 'family_screen.dart';
 import 'help_screen.dart';
 import '../logic/l10n_extension.dart';
@@ -145,6 +146,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              ).then((_) {
+                _routeManager.updateUrlPath(currentIndex);
+              });
+            },
+          ),
+          ListTile(
+            key: const Key('drawer_subscription_tile'),
+            leading: const Icon(Icons.star_outline),
+            title: const Text('Subscriptions'),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+              SystemNavigator.routeInformationUpdated(
+                uri: Uri.parse('/subscriptions'),
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SubscriptionScreen(),
+                ),
               ).then((_) {
                 _routeManager.updateUrlPath(currentIndex);
               });
