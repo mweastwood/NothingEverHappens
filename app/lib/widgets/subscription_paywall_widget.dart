@@ -5,12 +5,14 @@ class SubscriptionPaywallWidget extends StatelessWidget {
   final VoidCallback onUpgrade;
   final VoidCallback? onRestore;
   final bool isProcessing;
+  final String? priceString;
 
   const SubscriptionPaywallWidget({
     super.key,
     required this.onUpgrade,
     this.onRestore,
     this.isProcessing = false,
+    this.priceString,
   });
 
   @override
@@ -69,9 +71,14 @@ class SubscriptionPaywallWidget extends StatelessWidget {
                   ),
                   onPressed: onUpgrade,
                   icon: const Icon(Icons.star_outline),
-                  label: const Text(
-                    'Upgrade to Family Plan (\$1.00/mo)',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  label: Text(
+                    priceString != null && priceString!.isNotEmpty
+                        ? 'Upgrade to Family Plan ($priceString/mo)'
+                        : 'Upgrade to Family Plan (\$1.00/mo)',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               const SizedBox(height: 16),

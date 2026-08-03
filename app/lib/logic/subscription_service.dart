@@ -193,3 +193,22 @@ final subscriptionServiceProvider =
       final firestore = ref.watch(firestoreProvider);
       return SubscriptionService(ref, firestore: firestore);
     });
+
+final familyPlanPriceProvider = FutureProvider<String?>((ref) async {
+  final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+  if (kIsWeb || isTest) return null;
+  try {
+    final offerings = await Purchases.getOfferings();
+    final current = offerings.current;
+    if (current != null && current.availablePackages.isNotEmpty) {
+      final pkg = current.availablePackages.firstWhere(
+        (p) => p.identifier.contains('family'),
+        orElse: () => current.availablePackages.first,
+      );
+      return pkg.storeProduct.priceString;
+    }
+  } catch (e) {
+    debugPrint('Error querying family plan price from RevenueCat: $e');
+  }
+  return null;
+});

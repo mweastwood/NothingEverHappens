@@ -225,11 +225,14 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   @override
   Widget build(BuildContext context) {
     final subscription = ref.watch(subscriptionServiceProvider);
+    final priceAsync = ref.watch(familyPlanPriceProvider);
+    final priceString = priceAsync.value;
 
     if (!subscription.isFamilyPlan) {
       return SubscriptionPaywallWidget(
         isProcessing: _isProcessing,
         onUpgrade: () => _upgradeToFamily(context),
+        priceString: priceString,
       );
     }
 
