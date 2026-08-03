@@ -1907,6 +1907,101 @@ void main() {
           expect(familyInstsAfter.docs.length, greaterThan(initialCount));
         },
       );
+
+      test(
+        'completing or dismissing orphan task instance commits status update even if task schedule is deleted',
+        () async {
+          final now = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(now);
+          addTearDown(AppClock.reset);
+
+          final repository = TaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+          );
+
+          // Create an orphan instance directly in Firestore without a task schedule
+          final orphanInst = TaskInstance(
+            id: 'orphan-inst-1',
+            scheduleId: 'deleted-schedule-id',
+            ruleId: 'deleted-rule-id',
+            title: 'Orphan Chore',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 23),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+
+          await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .doc(orphanInst.id)
+              .set(orphanInst.toFirestore());
+
+          // Complete the orphan instance
+          final completed = await repository.completeTaskInstance(
+            'orphan-inst-1',
+          );
+          expect(completed, isNotNull);
+          expect(completed?.status, 'completed');
+
+          // Verify updated status in Firestore
+          final docSnap = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .doc('orphan-inst-1')
+              .get();
+          expect(docSnap.data()?['status'], 'completed');
+
+          // Dismiss another orphan instance
+          final orphanInst2 = TaskInstance(
+            id: 'orphan-inst-2',
+            scheduleId: 'deleted-schedule-id',
+            ruleId: 'deleted-rule-id',
+            title: 'Orphan Chore 2',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 23),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: 'pending',
+          );
+          await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .doc(orphanInst2.id)
+              .set(orphanInst2.toFirestore());
+
+          final dismissed = await repository.dismissTaskInstance(
+            'orphan-inst-2',
+          );
+          expect(dismissed, isNotNull);
+          expect(dismissed?.status, 'dismissed');
+
+          final docSnap2 = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .doc('orphan-inst-2')
+              .get();
+          expect(docSnap2.data()?['status'], 'dismissed');
+        },
+      );
     });
   });
 }

@@ -933,7 +933,6 @@ class TaskRepository {
     if (instance == null) return null;
 
     final task = await _fetchTask(instance.scheduleId);
-    if (task == null) return null;
 
     final familyId = await _getFamilyId();
     final now = AppClock.now;
@@ -950,14 +949,23 @@ class TaskRepository {
       '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
     );
 
-    final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-    if (isRecurring) {
-      final allInstances = await _getInstancesForSchedule(
-        task.id,
-        task.isFamily,
-        familyId,
-      );
-      _spawnNextOccurrence(task, instance, now, batch, familyId, allInstances);
+    if (task != null) {
+      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+      if (isRecurring) {
+        final allInstances = await _getInstancesForSchedule(
+          task.id,
+          task.isFamily,
+          familyId,
+        );
+        _spawnNextOccurrence(
+          task,
+          instance,
+          now,
+          batch,
+          familyId,
+          allInstances,
+        );
+      }
     }
 
     await batch.commit();
@@ -969,7 +977,6 @@ class TaskRepository {
     if (instance == null) return null;
 
     final task = await _fetchTask(instance.scheduleId);
-    if (task == null) return null;
 
     final familyId = await _getFamilyId();
     final now = AppClock.now;
@@ -986,14 +993,23 @@ class TaskRepository {
       '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
     );
 
-    final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-    if (isRecurring) {
-      final allInstances = await _getInstancesForSchedule(
-        task.id,
-        task.isFamily,
-        familyId,
-      );
-      _spawnNextOccurrence(task, instance, now, batch, familyId, allInstances);
+    if (task != null) {
+      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+      if (isRecurring) {
+        final allInstances = await _getInstancesForSchedule(
+          task.id,
+          task.isFamily,
+          familyId,
+        );
+        _spawnNextOccurrence(
+          task,
+          instance,
+          now,
+          batch,
+          familyId,
+          allInstances,
+        );
+      }
     }
 
     await batch.commit();
@@ -1002,7 +1018,6 @@ class TaskRepository {
 
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
     final task = await _fetchTask(resolvedInstance.scheduleId);
-    if (task == null) return;
 
     final familyId = await _getFamilyId();
     final batch = _firestore.batch();
@@ -1017,27 +1032,29 @@ class TaskRepository {
     _spawnedInstancesCache['${resolvedInstance.scheduleId}:${resolvedInstance.ruleId}:${resolvedInstance.scheduledDate}'] =
         now;
 
-    final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-    if (isRecurring) {
-      final allInstances = await _getInstancesForSchedule(
-        task.id,
-        task.isFamily,
-        familyId,
-      );
-      final nextId = _nextOccurrenceId(
-        task,
-        resolvedInstance,
-        now,
-        allInstances,
-      );
-      if (nextId != null) {
-        final nextInst = allInstances.firstWhere((x) => x.id == nextId);
-        _spawnedInstancesCache.remove(
-          '${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}',
+    if (task != null) {
+      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+      if (isRecurring) {
+        final allInstances = await _getInstancesForSchedule(
+          task.id,
+          task.isFamily,
+          familyId,
         );
-        batch.delete(
-          _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
+        final nextId = _nextOccurrenceId(
+          task,
+          resolvedInstance,
+          now,
+          allInstances,
         );
+        if (nextId != null) {
+          final nextInst = allInstances.firstWhere((x) => x.id == nextId);
+          _spawnedInstancesCache.remove(
+            '${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}',
+          );
+          batch.delete(
+            _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
+          );
+        }
       }
     }
 
