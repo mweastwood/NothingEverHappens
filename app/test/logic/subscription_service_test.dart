@@ -108,5 +108,30 @@ void main() {
       await Future.delayed(Duration.zero);
       expect(service.state.tier, SubscriptionTier.free);
     });
+
+    test(
+      'individualPlanPriceProvider and familyPlanPriceProvider can be read and overridden',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            individualPlanPriceProvider.overrideWith(
+              (ref) => Future.value(r'$1.99'),
+            ),
+            familyPlanPriceProvider.overrideWith(
+              (ref) => Future.value(r'$4.99'),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final indPrice = await container.read(
+          individualPlanPriceProvider.future,
+        );
+        final famPrice = await container.read(familyPlanPriceProvider.future);
+
+        expect(indPrice, r'$1.99');
+        expect(famPrice, r'$4.99');
+      },
+    );
   });
 }

@@ -53,7 +53,12 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
     if (!kIsWeb && !isTest) {
       try {
         await Purchases.setLogLevel(LogLevel.debug);
-        await Purchases.configure(PurchasesConfiguration("goog_mock_api_key"));
+        const apiKey = String.fromEnvironment(
+          'REVENUECAT_API_KEY',
+          defaultValue: 'goog_mock_api_key',
+        );
+        final configuredKey = apiKey.isNotEmpty ? apiKey : 'goog_mock_api_key';
+        await Purchases.configure(PurchasesConfiguration(configuredKey));
       } catch (e) {
         debugPrint("RevenueCat configuration error: $e");
       }
@@ -208,7 +213,9 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
       );
       if (apiKey.isEmpty) return null;
       final response = await http.get(
-        Uri.parse('https://api.revenuecat.com/v1/offerings'),
+        Uri.parse(
+          'https://api.revenuecat.com/v1/subscribers/web_user/offerings',
+        ),
         headers: {
           'Authorization': 'Bearer $apiKey',
           'Content-Type': 'application/json',
