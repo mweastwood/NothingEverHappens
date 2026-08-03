@@ -205,13 +205,33 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
   final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
   if (isTest) return null;
 
+  final searchKeys = packageKey == 'standard'
+      ? ['standard', 'individual']
+      : ['family'];
+
+  bool matchesPackage(String id) {
+    final lower = id.toLowerCase();
+    return searchKeys.any((key) => lower.contains(key));
+  }
+
   if (kIsWeb) {
     try {
       const apiKey = String.fromEnvironment(
         'REVENUECAT_API_KEY',
         defaultValue: '',
       );
-      if (apiKey.isEmpty) return null;
+      if (apiKey.isEmpty) {
+        debugPrint(
+          'RevenueCat Web API Key (REVENUECAT_API_KEY) is missing/empty. '
+          'Pass --dart-define=REVENUECAT_API_KEY=your_key to fetch live prices.',
+        );
+        return null;
+      }
+
+      final platform = apiKey.startsWith('goog_')
+          ? 'android'
+          : (apiKey.startsWith('appl_') ? 'ios' : 'stripe');
+
       final response = await http.get(
         Uri.parse(
           'https://api.revenuecat.com/v1/subscribers/web_user/offerings',
@@ -219,8 +239,12 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
         headers: {
           'Authorization': 'Bearer $apiKey',
           'Content-Type': 'application/json',
+          'X-Platform': platform,
         },
       );
+
+      debugPrint('RevenueCat Web REST API Status Code: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final currentOfferingId = data['current_offering_id'] as String?;
@@ -232,13 +256,18 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
           );
           final packages = targetOffering['packages'] as List<dynamic>?;
           if (packages != null && packages.isNotEmpty) {
-            final pkg = packages.firstWhere(
-              (p) => (p['identifier'] as String? ?? '').contains(packageKey),
-              orElse: () => packages.first,
-            );
+            final pkg = packages.firstWhere((p) {
+              final pkgId = p['identifier'] as String? ?? '';
+              final storeId = p['platform_product_identifier'] as String? ?? '';
+              return matchesPackage(pkgId) || matchesPackage(storeId);
+            }, orElse: () => packages.first);
             return pkg['price_string'] as String?;
           }
         }
+      } else {
+        debugPrint(
+          'RevenueCat Web REST API Error (${response.statusCode}): ${response.body}',
+        );
       }
     } catch (e) {
       debugPrint('Error querying RevenueCat REST API on Web: $e');
@@ -251,10 +280,16 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
     final current = offerings.current;
     if (current != null && current.availablePackages.isNotEmpty) {
       final pkg = current.availablePackages.firstWhere(
-        (p) => p.identifier.contains(packageKey),
+        (p) =>
+            matchesPackage(p.identifier) ||
+            matchesPackage(p.storeProduct.identifier),
         orElse: () => current.availablePackages.first,
       );
       return pkg.storeProduct.priceString;
+    } else {
+      debugPrint(
+        'RevenueCat Native: No offerings or packages found in offerings.current',
+      );
     }
   } catch (e) {
     debugPrint('Error querying package price from RevenueCat: $e');
