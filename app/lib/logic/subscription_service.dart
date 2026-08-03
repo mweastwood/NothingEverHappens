@@ -261,7 +261,17 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
               final storeId = p['platform_product_identifier'] as String? ?? '';
               return matchesPackage(pkgId) || matchesPackage(storeId);
             }, orElse: () => packages.first);
-            return pkg['price_string'] as String?;
+
+            final priceString =
+                (pkg['price_string'] as String?) ??
+                (pkg['platform_product_details']
+                        as Map<String, dynamic>?)?['price_string']
+                    as String? ??
+                (pkg['store_product'] as Map<String, dynamic>?)?['price_string']
+                    as String?;
+            if (priceString != null && priceString.isNotEmpty) {
+              return priceString;
+            }
           }
         }
       } else {
@@ -298,9 +308,9 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
 }
 
 final individualPlanPriceProvider = FutureProvider<String?>((ref) async {
-  return _fetchPackagePrice('standard');
+  return (await _fetchPackagePrice('standard')) ?? r'$1.99';
 });
 
 final familyPlanPriceProvider = FutureProvider<String?>((ref) async {
-  return _fetchPackagePrice('family');
+  return (await _fetchPackagePrice('family')) ?? r'$4.99';
 });
