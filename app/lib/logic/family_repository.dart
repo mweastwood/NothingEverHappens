@@ -111,6 +111,9 @@ class FamilyRepository {
   }
 
   Future<void> acceptInvite(FamilyInvite invite) async {
+    final userDoc = await _firestore.collection('users').doc(_userId).get();
+    final prevFamilyId = userDoc.data()?['familyId'] as String?;
+
     final familyRef = _firestore.collection('families').doc(invite.familyId);
 
     final newMember = FamilyMember(
@@ -121,6 +124,13 @@ class FamilyRepository {
     );
 
     final batch = _firestore.batch();
+
+    if (prevFamilyId != null &&
+        prevFamilyId.isNotEmpty &&
+        prevFamilyId != invite.familyId) {
+      final prevFamilyRef = _firestore.collection('families').doc(prevFamilyId);
+      batch.update(prevFamilyRef, {'members.$_userId': FieldValue.delete()});
+    }
 
     batch.update(familyRef, {'members.$_userId': newMember.toJson()});
 
