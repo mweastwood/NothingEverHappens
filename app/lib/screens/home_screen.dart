@@ -12,6 +12,7 @@ import 'settings_screen.dart';
 import 'family_screen.dart';
 import 'help_screen.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/utils/app_version.dart';
 
 final homeTabIndexProvider = StateProvider<int>((ref) => 0);
 
@@ -168,6 +169,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onTap: () async {
               await ref.read(authRepositoryProvider).signOut();
             },
+          ),
+          const Divider(),
+          ListTile(
+            key: const Key('drawer_version_tile'),
+            leading: const Icon(Icons.info_outline),
+            title: Text(AppVersion.display),
+            enabled: false,
           ),
         ],
       ),
