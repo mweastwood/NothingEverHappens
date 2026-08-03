@@ -952,10 +952,11 @@ class TaskRepository {
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
-      final allInstances = await _instancesRef
-          .where('scheduleId', isEqualTo: task.id)
-          .get()
-          .then((snap) => snap.docs.map((d) => d.data()).toList());
+      final allInstances = await _getInstancesForSchedule(
+        task.id,
+        task.isFamily,
+        familyId,
+      );
       _spawnNextOccurrence(task, instance, now, batch, familyId, allInstances);
     }
 
@@ -987,10 +988,11 @@ class TaskRepository {
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
-      final allInstances = await _instancesRef
-          .where('scheduleId', isEqualTo: task.id)
-          .get()
-          .then((snap) => snap.docs.map((d) => d.data()).toList());
+      final allInstances = await _getInstancesForSchedule(
+        task.id,
+        task.isFamily,
+        familyId,
+      );
       _spawnNextOccurrence(task, instance, now, batch, familyId, allInstances);
     }
 
@@ -1017,10 +1019,11 @@ class TaskRepository {
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
     if (isRecurring) {
-      final allInstances = await _instancesRef
-          .where('scheduleId', isEqualTo: task.id)
-          .get()
-          .then((snap) => snap.docs.map((d) => d.data()).toList());
+      final allInstances = await _getInstancesForSchedule(
+        task.id,
+        task.isFamily,
+        familyId,
+      );
       final nextId = _nextOccurrenceId(
         task,
         resolvedInstance,
@@ -1039,6 +1042,31 @@ class TaskRepository {
     }
 
     await batch.commit();
+  }
+
+  Future<List<TaskInstance>> _getInstancesForSchedule(
+    String scheduleId,
+    bool isFamily,
+    String? familyId,
+  ) async {
+    if (isFamily && familyId != null && familyId.isNotEmpty) {
+      final familySnap = await _firestore
+          .collection('families')
+          .doc(familyId)
+          .collection('instances')
+          .withConverter<TaskInstance>(
+            fromFirestore: (snapshot, _) =>
+                TaskInstance.fromFirestore(snapshot),
+            toFirestore: (instance, _) => instance.toFirestore(),
+          )
+          .where('scheduleId', isEqualTo: scheduleId)
+          .get();
+      return familySnap.docs.map((d) => d.data()).toList();
+    }
+    final personalSnap = await _instancesRef
+        .where('scheduleId', isEqualTo: scheduleId)
+        .get();
+    return personalSnap.docs.map((d) => d.data()).toList();
   }
 
   void _spawnNextOccurrence(
