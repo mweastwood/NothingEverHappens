@@ -229,10 +229,10 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
       }
 
       final platform = apiKey.startsWith('goog_')
-          ? 'android'
-          : (apiKey.startsWith('appl_') ? 'ios' : 'stripe');
+          ? 'play_store'
+          : (apiKey.startsWith('appl_') ? 'app_store' : 'stripe');
 
-      final response = await http.get(
+      var response = await http.get(
         Uri.parse(
           'https://api.revenuecat.com/v1/subscribers/web_user/offerings',
         ),
@@ -246,9 +246,9 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
       debugPrint('RevenueCat Web REST API Status Code: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final currentOfferingId = data['current_offering_id'] as String?;
-        final offerings = data['offerings'] as List<dynamic>?;
+        var data = jsonDecode(response.body) as Map<String, dynamic>;
+        var currentOfferingId = data['current_offering_id'] as String?;
+        var offerings = data['offerings'] as List<dynamic>?;
         if (offerings == null || offerings.isEmpty) {
           debugPrint(
             'RevenueCat Web REST API Warning: "offerings" list is empty or null in response body.',
@@ -256,14 +256,43 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
           return null;
         }
 
-        final targetOffering = offerings.firstWhere(
+        var targetOffering = offerings.firstWhere(
           (o) => o['identifier'] == currentOfferingId,
-          orElse: () => offerings.first,
+          orElse: () => offerings!.first,
         );
-        final packages = targetOffering['packages'] as List<dynamic>?;
+        var packages = targetOffering['packages'] as List<dynamic>?;
+
+        // If packages is empty when platform header was provided, retry without X-Platform header
+        if ((packages == null || packages.isEmpty) && platform.isNotEmpty) {
+          debugPrint(
+            'RevenueCat Web REST API Warning: target offering "${targetOffering['identifier']}" has no packages with X-Platform: $platform. Retrying without X-Platform header...',
+          );
+          response = await http.get(
+            Uri.parse(
+              'https://api.revenuecat.com/v1/subscribers/web_user/offerings',
+            ),
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
+            },
+          );
+          if (response.statusCode == 200) {
+            data = jsonDecode(response.body) as Map<String, dynamic>;
+            currentOfferingId = data['current_offering_id'] as String?;
+            offerings = data['offerings'] as List<dynamic>?;
+            if (offerings != null && offerings.isNotEmpty) {
+              targetOffering = offerings.firstWhere(
+                (o) => o['identifier'] == currentOfferingId,
+                orElse: () => offerings!.first,
+              );
+              packages = targetOffering['packages'] as List<dynamic>?;
+            }
+          }
+        }
+
         if (packages == null || packages.isEmpty) {
           debugPrint(
-            'RevenueCat Web REST API Warning: target offering "${targetOffering['identifier']}" has no packages.',
+            'RevenueCat Web REST API Warning: target offering "${targetOffering['identifier']}" has no packages. Target offering content: $targetOffering',
           );
           return null;
         }
@@ -272,7 +301,7 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
           final pkgId = p['identifier'] as String? ?? '';
           final storeId = p['platform_product_identifier'] as String? ?? '';
           return matchesPackage(pkgId) || matchesPackage(storeId);
-        }, orElse: () => packages.first);
+        }, orElse: () => packages!.first);
 
         final priceString =
             (pkg['price_string'] as String?) ??
