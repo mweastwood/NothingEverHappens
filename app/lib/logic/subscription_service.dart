@@ -53,12 +53,20 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
         await Purchases.setLogLevel(LogLevel.debug);
         const apiKey = String.fromEnvironment(
           'REVENUECAT_API_KEY',
-          defaultValue: 'goog_mock_api_key',
+          defaultValue: '',
         );
         final configuredKey = apiKey.isNotEmpty ? apiKey : 'goog_mock_api_key';
+        if (apiKey.isEmpty) {
+          debugPrint(
+            'RevenueCat Warning: REVENUECAT_API_KEY is not set. Defaulting to mock key.',
+          );
+        }
         await Purchases.configure(PurchasesConfiguration(configuredKey));
+        debugPrint(
+          'RevenueCat SDK successfully configured on ${kIsWeb ? "Web" : "Mobile"}.',
+        );
       } catch (e) {
-        debugPrint("RevenueCat configuration error: $e");
+        debugPrint("RevenueCat SDK configuration error: $e");
       }
 
       if (!kIsWeb) {
@@ -215,23 +223,48 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
   }
 
   try {
+    debugPrint('RevenueCat: Querying offerings for "$packageKey"...');
     final offerings = await Purchases.getOfferings();
     final current = offerings.current;
-    if (current != null && current.availablePackages.isNotEmpty) {
-      final pkg = current.availablePackages.firstWhere(
-        (p) =>
-            matchesPackage(p.identifier) ||
-            matchesPackage(p.storeProduct.identifier),
-        orElse: () => current.availablePackages.first,
-      );
-      return pkg.storeProduct.priceString;
-    } else {
+
+    if (offerings.all.isEmpty) {
       debugPrint(
-        'RevenueCat: No offerings or packages found in offerings.current for package "$packageKey"',
+        'RevenueCat Warning: offerings.all is empty. No offerings defined in RevenueCat dashboard.',
       );
+      return null;
     }
+
+    if (current == null) {
+      debugPrint(
+        'RevenueCat Warning: offerings.current is null for "$packageKey". Available offering IDs: ${offerings.all.keys.toList()}',
+      );
+      return null;
+    }
+
+    if (current.availablePackages.isEmpty) {
+      debugPrint(
+        'RevenueCat Warning: Current offering "${current.identifier}" has 0 available packages.',
+      );
+      return null;
+    }
+
+    final pkg = current.availablePackages.firstWhere(
+      (p) =>
+          matchesPackage(p.identifier) ||
+          matchesPackage(p.storeProduct.identifier),
+      orElse: () => current.availablePackages.first,
+    );
+
+    final resolvedPrice = pkg.storeProduct.priceString;
+    debugPrint(
+      'RevenueCat Success: Resolved price for "$packageKey" -> "$resolvedPrice" '
+      '(Package: ${pkg.identifier}, Product: ${pkg.storeProduct.identifier})',
+    );
+    return resolvedPrice;
   } catch (e) {
-    debugPrint('Error querying package price from RevenueCat: $e');
+    debugPrint(
+      'RevenueCat Error: Failed to fetch package price for "$packageKey": $e',
+    );
   }
   return null;
 }
