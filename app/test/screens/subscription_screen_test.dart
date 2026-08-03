@@ -7,35 +7,59 @@ import 'package:nothing_ever_happens/logic/subscription_service.dart';
 import '../test_helper.dart';
 
 void main() {
-  testWidgets('SubscriptionScreen renders current tier and available plans', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          familyPlanPriceProvider.overrideWith((ref) => Future.value('\$1.00')),
-        ],
-        child: buildTestableWidget(child: const SubscriptionScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Subscriptions'), findsOneWidget);
-    expect(find.text('Current Tier'), findsOneWidget);
-    expect(find.text('Free Tier'), findsWidgets);
-    expect(find.text('Family Plan'), findsWidgets);
-    expect(
-      find.byKey(const Key('subscription_screen_upgrade_button')),
-      findsOneWidget,
-    );
-  });
-
   testWidgets(
-    'SubscriptionScreen renders explicit \$X.XX/mo fallback when price is null',
+    'SubscriptionScreen renders all 3 tiers (Free, Individual, Family)',
     (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            subscriptionServiceProvider.overrideWith(
+              (ref) => FakeSubscriptionService(ref, SubscriptionTier.free),
+            ),
+            individualPlanPriceProvider.overrideWith(
+              (ref) => Future.value('\$1.99'),
+            ),
+            familyPlanPriceProvider.overrideWith(
+              (ref) => Future.value('\$4.99'),
+            ),
+          ],
+          child: buildTestableWidget(child: const SubscriptionScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Subscriptions'), findsOneWidget);
+      expect(find.text('Current Tier'), findsOneWidget);
+      expect(find.text('Free Tier'), findsWidgets);
+      expect(find.text('Individual Subscription'), findsWidgets);
+      expect(find.text('Family Subscription'), findsWidgets);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('upgrade_to_individual_button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('subscription_screen_upgrade_button')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'SubscriptionScreen renders explicit \$X.XX/mo fallback when prices are null',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            subscriptionServiceProvider.overrideWith(
+              (ref) => FakeSubscriptionService(ref, SubscriptionTier.free),
+            ),
+            individualPlanPriceProvider.overrideWith(
+              (ref) => Future.value(null),
+            ),
             familyPlanPriceProvider.overrideWith((ref) => Future.value(null)),
           ],
           child: buildTestableWidget(child: const SubscriptionScreen()),
@@ -44,21 +68,35 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('\$X.XX/mo'), findsWidgets);
-      expect(find.text('Upgrade to Family Plan (\$X.XX/mo)'), findsOneWidget);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Upgrade to Individual Subscription (\$X.XX/mo)'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Upgrade to Family Subscription (\$X.XX/mo)'),
+        findsOneWidget,
+      );
     },
   );
 
   testWidgets(
-    'SubscriptionScreen renders active status when user is on Family Plan',
+    'SubscriptionScreen renders active status for Individual tier and hides Individual upgrade button',
     (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             subscriptionServiceProvider.overrideWith(
-              (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
+              (ref) => FakeSubscriptionService(ref, SubscriptionTier.standard),
+            ),
+            individualPlanPriceProvider.overrideWith(
+              (ref) => Future.value('\$1.99'),
             ),
             familyPlanPriceProvider.overrideWith(
-              (ref) => Future.value('\$1.00'),
+              (ref) => Future.value('\$4.99'),
             ),
           ],
           child: buildTestableWidget(child: const SubscriptionScreen()),
@@ -67,9 +105,18 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Active'), findsOneWidget);
+      expect(find.text('Individual Subscription'), findsWidgets);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('upgrade_to_individual_button')),
+        findsNothing,
+      );
       expect(
         find.byKey(const Key('subscription_screen_upgrade_button')),
-        findsNothing,
+        findsOneWidget,
       );
     },
   );
@@ -82,6 +129,12 @@ void main() {
       ..addScenario(
         widget: ProviderScope(
           overrides: [
+            subscriptionServiceProvider.overrideWith(
+              (ref) => FakeSubscriptionService(ref, SubscriptionTier.free),
+            ),
+            individualPlanPriceProvider.overrideWith(
+              (ref) => Future.value(null),
+            ),
             familyPlanPriceProvider.overrideWith((ref) => Future.value(null)),
           ],
           child: buildTestableWidget(child: const SubscriptionScreen()),
@@ -105,8 +158,11 @@ void main() {
             subscriptionServiceProvider.overrideWith(
               (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
             ),
+            individualPlanPriceProvider.overrideWith(
+              (ref) => Future.value('\$1.99'),
+            ),
             familyPlanPriceProvider.overrideWith(
-              (ref) => Future.value('\$1.00'),
+              (ref) => Future.value('\$4.99'),
             ),
           ],
           child: buildTestableWidget(child: const SubscriptionScreen()),

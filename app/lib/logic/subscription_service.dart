@@ -196,7 +196,7 @@ final subscriptionServiceProvider =
       return SubscriptionService(ref, firestore: firestore);
     });
 
-final familyPlanPriceProvider = FutureProvider<String?>((ref) async {
+Future<String?> _fetchPackagePrice(String packageKey) async {
   final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
   if (isTest) return null;
 
@@ -226,7 +226,7 @@ final familyPlanPriceProvider = FutureProvider<String?>((ref) async {
           final packages = targetOffering['packages'] as List<dynamic>?;
           if (packages != null && packages.isNotEmpty) {
             final pkg = packages.firstWhere(
-              (p) => (p['identifier'] as String? ?? '').contains('family'),
+              (p) => (p['identifier'] as String? ?? '').contains(packageKey),
               orElse: () => packages.first,
             );
             return pkg['price_string'] as String?;
@@ -244,13 +244,21 @@ final familyPlanPriceProvider = FutureProvider<String?>((ref) async {
     final current = offerings.current;
     if (current != null && current.availablePackages.isNotEmpty) {
       final pkg = current.availablePackages.firstWhere(
-        (p) => p.identifier.contains('family'),
+        (p) => p.identifier.contains(packageKey),
         orElse: () => current.availablePackages.first,
       );
       return pkg.storeProduct.priceString;
     }
   } catch (e) {
-    debugPrint('Error querying family plan price from RevenueCat: $e');
+    debugPrint('Error querying package price from RevenueCat: $e');
   }
   return null;
+}
+
+final individualPlanPriceProvider = FutureProvider<String?>((ref) async {
+  return _fetchPackagePrice('standard');
+});
+
+final familyPlanPriceProvider = FutureProvider<String?>((ref) async {
+  return _fetchPackagePrice('family');
 });

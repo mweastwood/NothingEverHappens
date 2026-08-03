@@ -16,6 +16,53 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool _isProcessing = false;
 
+  Future<void> _upgradeToIndividual(BuildContext context) async {
+    setState(() {
+      _isProcessing = true;
+    });
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      final user = authRepo.currentUser;
+      if (user != null) {
+        if (!kIsWeb) {
+          try {
+            final offerings = await Purchases.getOfferings();
+            final current = offerings.current;
+            if (current != null && current.availablePackages.isNotEmpty) {
+              final package = current.availablePackages.firstWhere(
+                (p) => p.identifier.contains('standard'),
+                orElse: () => current.availablePackages.first,
+              );
+              await Purchases.purchase(PurchaseParams.package(package));
+            }
+          } catch (e) {
+            debugPrint('RevenueCat purchase error / fallback: $e');
+          }
+        }
+
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'subscriptionTier': 'standard',
+        }, SetOptions(merge: true));
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Upgraded to Individual Subscription!'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error purchasing: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
   Future<void> _upgradeToFamily(BuildContext context) async {
     setState(() {
       _isProcessing = true;
@@ -46,7 +93,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Upgraded to Family Plan!')),
+            const SnackBar(content: Text('Upgraded to Family Subscription!')),
           );
         }
       }
@@ -76,15 +123,22 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     }
   }
 
+  String _formatPrice(String? rawPrice) {
+    if (rawPrice != null && rawPrice.isNotEmpty) {
+      return rawPrice.contains('/mo') ? rawPrice : '$rawPrice/mo';
+    }
+    return '\$X.XX/mo';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final subscription = ref.watch(subscriptionServiceProvider);
-    final priceAsync = ref.watch(familyPlanPriceProvider);
-    final rawPrice = priceAsync.value;
-    final priceString = (rawPrice != null && rawPrice.isNotEmpty)
-        ? (rawPrice.contains('/mo') ? rawPrice : '$rawPrice/mo')
-        : '\$X.XX/mo';
+    final indPriceAsync = ref.watch(individualPlanPriceProvider);
+    final famPriceAsync = ref.watch(familyPlanPriceProvider);
+
+    final individualPrice = _formatPrice(indPriceAsync.value);
+    final familyPrice = _formatPrice(famPriceAsync.value);
 
     String tierName;
     IconData tierIcon;
@@ -92,12 +146,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
     switch (subscription.tier) {
       case SubscriptionTier.family:
-        tierName = 'Family Plan';
+        tierName = 'Family Subscription';
         tierIcon = Icons.stars;
         tierColor = Colors.amber;
         break;
       case SubscriptionTier.standard:
-        tierName = 'Standard Plan';
+        tierName = 'Individual Subscription';
         tierIcon = Icons.star;
         tierColor = theme.colorScheme.primary;
         break;
@@ -181,7 +235,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Free Tier Card
+          // 1. Free Tier Card
           _PlanCard(
             title: 'Free Tier',
             price: 'Free',
@@ -194,26 +248,60 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Family Plan Card
+          // 2. Individual Subscription Card
           _PlanCard(
-            title: 'Family Plan',
-            price: priceString,
+            title: 'Individual Subscription',
+            price: individualPrice,
+            isCurrent: subscription.tier == SubscriptionTier.standard,
+            features: const [
+              'Multi-device cloud sync',
+              'Automatic cloud task backup',
+              'Advanced scheduling & recurrence rules',
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // 3. Family Subscription Card
+          _PlanCard(
+            title: 'Family Subscription',
+            price: familyPrice,
             isCurrent: subscription.tier == SubscriptionTier.family,
             isRecommended: true,
             features: const [
+              'Includes all Individual features',
               'Real-time family group task sharing',
               'Up to 10 family members sync',
               'Shared task assignment & activity log',
-              'Cloud backup & multi-device sync',
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
-          // Upgrade Button
-          if (subscription.tier != SubscriptionTier.family) ...[
-            if (_isProcessing)
-              const Center(child: CircularProgressIndicator())
-            else
+          // Action Buttons
+          if (_isProcessing)
+            const Center(child: CircularProgressIndicator())
+          else ...[
+            if (subscription.tier == SubscriptionTier.free) ...[
+              OutlinedButton.icon(
+                key: const Key('upgrade_to_individual_button'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: () => _upgradeToIndividual(context),
+                icon: const Icon(Icons.person_outline),
+                label: Text(
+                  'Upgrade to Individual Subscription ($individualPrice)',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (subscription.tier != SubscriptionTier.family) ...[
               FilledButton.icon(
                 key: const Key('subscription_screen_upgrade_button'),
                 style: FilledButton.styleFrom(
@@ -225,14 +313,15 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 onPressed: () => _upgradeToFamily(context),
                 icon: const Icon(Icons.star_outline),
                 label: Text(
-                  'Upgrade to Family Plan ($priceString)',
+                  'Upgrade to Family Subscription ($familyPrice)',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
+            ],
           ],
 
           TextButton(
@@ -270,7 +359,9 @@ class _PlanCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16.0),
         side: isRecommended
             ? BorderSide(color: theme.colorScheme.primary, width: 2)
-            : BorderSide.none,
+            : (isCurrent
+                  ? BorderSide(color: theme.colorScheme.outline, width: 1.5)
+                  : BorderSide.none),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -279,37 +370,42 @@ class _PlanCard extends StatelessWidget {
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    if (isRecommended) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'RECOMMENDED',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer,
-                            fontWeight: FontWeight.bold,
+                      if (isRecommended) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'RECOMMENDED',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onPrimaryContainer,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Text(
                   price,
                   style: theme.textTheme.titleMedium?.copyWith(
