@@ -73,8 +73,10 @@ class SubscriptionPaywallWidget extends StatelessWidget {
                   icon: const Icon(Icons.star_outline),
                   label: Text(
                     priceString != null && priceString!.isNotEmpty
-                        ? 'Upgrade to Family Plan ($priceString/mo)'
-                        : 'Upgrade to Family Plan (\$1.00/mo)',
+                        ? (priceString!.contains('/mo')
+                              ? 'Upgrade to Family Plan ($priceString)'
+                              : 'Upgrade to Family Plan ($priceString/mo)')
+                        : 'Upgrade to Family Plan (\$X.XX/mo)',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

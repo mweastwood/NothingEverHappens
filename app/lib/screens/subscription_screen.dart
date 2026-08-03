@@ -81,7 +81,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final theme = Theme.of(context);
     final subscription = ref.watch(subscriptionServiceProvider);
     final priceAsync = ref.watch(familyPlanPriceProvider);
-    final priceString = priceAsync.value ?? '\$1.00';
+    final rawPrice = priceAsync.value;
+    final priceString = (rawPrice != null && rawPrice.isNotEmpty)
+        ? (rawPrice.contains('/mo') ? rawPrice : '$rawPrice/mo')
+        : '\$X.XX/mo';
 
     String tierName;
     IconData tierIcon;
@@ -194,7 +197,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           // Family Plan Card
           _PlanCard(
             title: 'Family Plan',
-            price: '$priceString/mo',
+            price: priceString,
             isCurrent: subscription.tier == SubscriptionTier.family,
             isRecommended: true,
             features: const [
@@ -222,7 +225,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 onPressed: () => _upgradeToFamily(context),
                 icon: const Icon(Icons.star_outline),
                 label: Text(
-                  'Upgrade to Family Plan ($priceString/mo)',
+                  'Upgrade to Family Plan ($priceString)',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
