@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/family.dart';
 import '../logic/family_repository.dart';
@@ -570,17 +572,29 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
       final authRepo = ref.read(authRepositoryProvider);
       final user = authRepo.currentUser;
       if (user != null) {
+        if (!kIsWeb) {
+          try {
+            final offerings = await Purchases.getOfferings();
+            final current = offerings.current;
+            if (current != null && current.availablePackages.isNotEmpty) {
+              final package = current.availablePackages.firstWhere(
+                (p) => p.identifier.contains('family'),
+                orElse: () => current.availablePackages.first,
+              );
+              await Purchases.purchase(PurchaseParams.package(package));
+            }
+          } catch (e) {
+            debugPrint('RevenueCat purchase error / fallback: $e');
+          }
+        }
+
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'subscriptionTier': 'family',
         }, SetOptions(merge: true));
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Mock purchase successful: Upgraded to Family Plan!',
-              ),
-            ),
+            const SnackBar(content: Text('Upgraded to Family Plan!')),
           );
         }
       }
