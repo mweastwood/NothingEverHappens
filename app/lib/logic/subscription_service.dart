@@ -202,8 +202,9 @@ final subscriptionServiceProvider =
     });
 
 Future<String?> _fetchPackagePrice(String packageKey) async {
+  final defaultPrice = packageKey.contains('family') ? r'$4.99' : r'$1.99';
   final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
-  if (isTest) return null;
+  if (isTest) return defaultPrice;
 
   if (kIsWeb) {
     try {
@@ -211,39 +212,43 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
         'REVENUECAT_API_KEY',
         defaultValue: '',
       );
-      if (apiKey.isEmpty) return null;
-      final response = await http.get(
-        Uri.parse(
-          'https://api.revenuecat.com/v1/subscribers/web_user/offerings',
-        ),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        },
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final currentOfferingId = data['current_offering_id'] as String?;
-        final offerings = data['offerings'] as List<dynamic>?;
-        if (offerings != null && offerings.isNotEmpty) {
-          final targetOffering = offerings.firstWhere(
-            (o) => o['identifier'] == currentOfferingId,
-            orElse: () => offerings.first,
-          );
-          final packages = targetOffering['packages'] as List<dynamic>?;
-          if (packages != null && packages.isNotEmpty) {
-            final pkg = packages.firstWhere(
-              (p) => (p['identifier'] as String? ?? '').contains(packageKey),
-              orElse: () => packages.first,
+      if (apiKey.isNotEmpty) {
+        final response = await http.get(
+          Uri.parse(
+            'https://api.revenuecat.com/v1/subscribers/web_user/offerings',
+          ),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+        );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final currentOfferingId = data['current_offering_id'] as String?;
+          final offerings = data['offerings'] as List<dynamic>?;
+          if (offerings != null && offerings.isNotEmpty) {
+            final targetOffering = offerings.firstWhere(
+              (o) => o['identifier'] == currentOfferingId,
+              orElse: () => offerings.first,
             );
-            return pkg['price_string'] as String?;
+            final packages = targetOffering['packages'] as List<dynamic>?;
+            if (packages != null && packages.isNotEmpty) {
+              final pkg = packages.firstWhere(
+                (p) => (p['identifier'] as String? ?? '').contains(packageKey),
+                orElse: () => packages.first,
+              );
+              final priceStr = pkg['price_string'] as String?;
+              if (priceStr != null && priceStr.isNotEmpty) {
+                return priceStr;
+              }
+            }
           }
         }
       }
     } catch (e) {
       debugPrint('Error querying RevenueCat REST API on Web: $e');
     }
-    return null;
+    return defaultPrice;
   }
 
   try {
@@ -254,12 +259,15 @@ Future<String?> _fetchPackagePrice(String packageKey) async {
         (p) => p.identifier.contains(packageKey),
         orElse: () => current.availablePackages.first,
       );
-      return pkg.storeProduct.priceString;
+      final priceStr = pkg.storeProduct.priceString;
+      if (priceStr.isNotEmpty) {
+        return priceStr;
+      }
     }
   } catch (e) {
     debugPrint('Error querying package price from RevenueCat: $e');
   }
-  return null;
+  return defaultPrice;
 }
 
 final individualPlanPriceProvider = FutureProvider<String?>((ref) async {
