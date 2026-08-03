@@ -47,7 +47,7 @@ jobs:
         run: flutter analyze --fatal-infos
 
       - name: Build Web App
-        run: flutter build web --release --target lib/main_dev.dart --dart-define=APP_VERSION=v0.0.0-dev --dart-define=GIT_HASH=${{ github.sha }}
+        run: flutter build web --release --target lib/main_dev.dart --dart-define=REVENUECAT_API_KEY=${{ secrets.REVENUECAT_TEST_STORE_API_KEY_DEV }} --dart-define=APP_VERSION=v0.0.0-dev --dart-define=GIT_HASH=${{ github.sha }}
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
