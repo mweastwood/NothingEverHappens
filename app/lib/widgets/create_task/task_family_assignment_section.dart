@@ -18,38 +18,68 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
-      color: theme.colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.familyTab,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+        color: theme.colorScheme.surfaceContainerLow,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.familyTab,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            StandardChoiceChip(
-              key: const Key('is_family_toggle'),
-              label: isFamily
-                  ? context.l10n.familyTaskToggleLabel
-                  : context.l10n.personalTaskToggleLabel,
-              selected: isFamily,
-              onSelected: readOnly
-                  ? null
-                  : (selected) {
-                      onFamilyToggled?.call(selected);
-                    },
-            ),
-          ],
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: [
+                  StandardChoiceChip(
+                    key: const Key('personal_task_chip'),
+                    label: context.l10n.personalTaskToggleLabel,
+                    selected: !isFamily,
+                    onSelected: readOnly
+                        ? null
+                        : (selected) {
+                            if (selected) {
+                              onFamilyToggled?.call(false);
+                            }
+                          },
+                  ),
+                  StandardChoiceChip(
+                    key: const Key('is_family_toggle'),
+                    label: context.l10n.familyTaskToggleLabel,
+                    selected: isFamily,
+                    onSelected: readOnly
+                        ? null
+                        : (selected) {
+                            if (selected) {
+                              onFamilyToggled?.call(true);
+                            }
+                          },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isFamily
+                    ? context.l10n.familyTaskHelper
+                    : context.l10n.personalTaskHelper,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

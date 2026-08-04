@@ -717,6 +717,23 @@ void main() {
       },
     );
 
+    testGoldens(
+      'CreateTaskScreen renders family assignment card when user in family',
+      (tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+
+        await tester.pumpWidgetBuilder(
+          createWidget(),
+          surfaceSize: const Size(800, 1000),
+        );
+
+        await screenMatchesGolden(tester, 'create_task_screen_in_family');
+      },
+    );
+
     testWidgets('hides family toggle if user is not in a family', (
       WidgetTester tester,
     ) async {
@@ -822,6 +839,114 @@ void main() {
       );
       expect(saveButton.onPressed, isNotNull);
     });
+
+    testWidgets(
+      'converts family task to individual task and calls updateTaskSchedule with newIsFamily false',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+
+        when(
+          mockTaskRepository.updateTaskSchedule(any),
+        ).thenAnswer((_) async {});
+
+        final familyTask = TaskSchedule(
+          id: 'task-1',
+          title: 'Family Chore',
+          description: 'Desc',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2026, month: 6, day: 2),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+          isFamily: true,
+        );
+
+        await tester.pumpWidget(createWidget(taskToEdit: familyTask));
+        await tester.pumpAndSettle();
+
+        final personalChip = find.byKey(const Key('personal_task_chip'));
+        await tester.ensureVisible(personalChip);
+        await tester.tap(personalChip);
+        await tester.pumpAndSettle();
+
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        final verification = verify(
+          mockTaskRepository.updateTaskSchedule(captureAny),
+        );
+        verification.called(1);
+        final modification = verification.captured.single as TaskModification;
+        expect(modification.newTask.isFamily, isFalse);
+      },
+    );
+
+    testWidgets(
+      'converts individual task to family task and calls updateTaskSchedule with newIsFamily true',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+
+        when(
+          mockTaskRepository.updateTaskSchedule(any),
+        ).thenAnswer((_) async {});
+
+        final individualTask = TaskSchedule(
+          id: 'task-2',
+          title: 'Personal Chore',
+          description: 'Desc',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2026, month: 6, day: 2),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+          isFamily: false,
+        );
+
+        await tester.pumpWidget(createWidget(taskToEdit: individualTask));
+        await tester.pumpAndSettle();
+
+        final familyChip = find.byKey(const Key('is_family_toggle'));
+        await tester.ensureVisible(familyChip);
+        await tester.tap(familyChip);
+        await tester.pumpAndSettle();
+
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        final verification = verify(
+          mockTaskRepository.updateTaskSchedule(captureAny),
+        );
+        verification.called(1);
+        final modification = verification.captured.single as TaskModification;
+        expect(modification.newTask.isFamily, isTrue);
+      },
+    );
 
     testWidgets(
       'shows task title in AppBar when editing and scrolled down, updating dynamically',

@@ -238,6 +238,114 @@ void main() {
     );
 
     test(
+      'leaveFamily converts family tasks and instances to individual tasks when last member leaves',
+      () async {
+        await repository.createFamily('The Simpsons');
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        final familyId = userDoc.data()?['familyId'] as String;
+
+        // Seed family task schedule and instance
+        await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .doc('task-100')
+            .set({'id': 'task-100', 'title': 'Clean House', 'isFamily': true});
+
+        await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances')
+            .doc('inst-100')
+            .set({
+              'id': 'inst-100',
+              'scheduleId': 'task-100',
+              'isFamily': true,
+            });
+
+        await repository.leaveFamily(familyId);
+
+        // Verify family doc deleted
+        final familyDoc = await firestore
+            .collection('families')
+            .doc(familyId)
+            .get();
+        expect(familyDoc.exists, isFalse);
+
+        // Verify task schedule converted and moved to user's collection
+        final userTaskDoc = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .doc('task-100')
+            .get();
+        expect(userTaskDoc.exists, isTrue);
+        expect(userTaskDoc.data()?['isFamily'], isFalse);
+        expect(userTaskDoc.data()?['title'], 'Clean House');
+
+        // Verify task instance converted and moved to user's collection
+        final userInstanceDoc = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .doc('inst-100')
+            .get();
+        expect(userInstanceDoc.exists, isTrue);
+        expect(userInstanceDoc.data()?['isFamily'], isFalse);
+      },
+    );
+
+    test(
+      'leaveFamily preserves family tasks for remaining members when non-last member leaves',
+      () async {
+        await repository.createFamily('The Simpsons');
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        final familyId = userDoc.data()?['familyId'] as String;
+
+        // Add Bob to family
+        await firestore.collection('families').doc(familyId).update({
+          'members.user-bob': {
+            'userId': 'user-bob',
+            'displayName': 'Bob',
+            'email': 'bob@example.com',
+            'role': 'parent',
+          },
+        });
+
+        // Seed family task
+        await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .doc('task-shared')
+            .set({
+              'id': 'task-shared',
+              'title': 'Shared Chores',
+              'isFamily': true,
+            });
+
+        await repository.leaveFamily(familyId);
+
+        // Family still exists for Bob
+        final familyDoc = await firestore
+            .collection('families')
+            .doc(familyId)
+            .get();
+        expect(familyDoc.exists, isTrue);
+
+        // Task stays in family collection as a family task
+        final familyTaskDoc = await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .doc('task-shared')
+            .get();
+        expect(familyTaskDoc.exists, isTrue);
+        expect(familyTaskDoc.data()?['isFamily'], isTrue);
+      },
+    );
+
+    test(
       'acceptInvite removes member from previous family when switching families',
       () async {
         // Create Family 1 with Alice

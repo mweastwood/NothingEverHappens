@@ -340,6 +340,43 @@ void main() {
       },
     );
 
+    test('edit converts family task to individual task correctly', () {
+      final task = TaskSchedule(
+        id: 't-family',
+        title: 'Family Task',
+        description: '',
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 3, day: 8),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+        isFamily: true,
+      );
+
+      final result = task.edit(
+        newTitle: task.title,
+        newDescription: task.description,
+        newSchedules: task.schedules,
+        newEstimatedDuration: task.estimatedDuration,
+        newMissedPolicy: MissedPolicy.stack,
+        newIsMaster: false,
+        newLastSpawnedDate: null,
+        newIsFamily: false, // converting family task to individual
+        newPriority: task.priority,
+      );
+
+      expect(result.newTask.isFamily, isFalse);
+      expect(result.changes['isFamily'], isFalse);
+    });
+
     test(
       'updateCycleId modifies cycleId and generates correct changes map',
       () {

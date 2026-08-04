@@ -588,6 +588,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get familyTaskHelper => 'Share this task with all family members.';
 
   @override
+  String get personalTaskHelper => 'Only visible to you.';
+
+  @override
   String get viewTaskTitle => 'View Task';
 
   @override

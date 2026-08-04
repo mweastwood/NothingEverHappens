@@ -124,8 +124,7 @@ class FamilyRepository {
     if (prevFamilyId != null &&
         prevFamilyId.isNotEmpty &&
         prevFamilyId != invite.familyId) {
-      final prevFamilyRef = _firestore.collection('families').doc(prevFamilyId);
-      batch.update(prevFamilyRef, {'members.$_userId': FieldValue.delete()});
+      await leaveFamily(prevFamilyId);
     }
 
     batch.update(familyRef, {'members.$_userId': newMember.toJson()});
@@ -186,6 +185,36 @@ class FamilyRepository {
           .toList();
 
       if (remainingMembers.isEmpty) {
+        final tasksSnap = await familyRef.collection('tasks').get();
+        for (final doc in tasksSnap.docs) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['isFamily'] = false;
+          batch.set(
+            _firestore
+                .collection('users')
+                .doc(_userId)
+                .collection('tasks')
+                .doc(doc.id),
+            data,
+          );
+          batch.delete(doc.reference);
+        }
+
+        final instancesSnap = await familyRef.collection('instances').get();
+        for (final doc in instancesSnap.docs) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['isFamily'] = false;
+          batch.set(
+            _firestore
+                .collection('users')
+                .doc(_userId)
+                .collection('instances')
+                .doc(doc.id),
+            data,
+          );
+          batch.delete(doc.reference);
+        }
+
         batch.delete(familyRef);
       } else {
         batch.update(familyRef, {'members.$_userId': FieldValue.delete()});

@@ -314,6 +314,7 @@
   "priorityHigh": "High",
   "familyTaskLabel": "Family Task",
   "familyTaskHelper": "Share this task with all family members.",
+  "personalTaskHelper": "Only visible to you.",
   "viewTaskTitle": "View Task",
   "onlyParentsCanEditFamilyTasks": "Only parents can edit family tasks",
   "sprintDashboardTitle": "Sprint Dashboard",

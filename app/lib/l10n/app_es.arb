@@ -204,6 +204,7 @@
   "priorityHigh": "Alta",
   "familyTaskLabel": "Tarea Familiar",
   "familyTaskHelper": "Comparte esta tarea con todos los miembros de la familia.",
+  "personalTaskHelper": "Solo visible para ti.",
   "viewTaskTitle": "Ver Tarea",
   "onlyParentsCanEditFamilyTasks": "Solo los padres pueden editar tareas familiares",
   "sprintDashboardTitle": "Panel del Sprint",

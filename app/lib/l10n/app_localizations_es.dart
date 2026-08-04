@@ -589,6 +589,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'Comparte esta tarea con todos los miembros de la familia.';
 
   @override
+  String get personalTaskHelper => 'Solo visible para ti.';
+
+  @override
   String get viewTaskTitle => 'Ver Tarea';
 
   @override
