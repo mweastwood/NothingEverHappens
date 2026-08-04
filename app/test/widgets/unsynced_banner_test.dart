@@ -310,44 +310,87 @@ void main() {
     );
   });
 
-  group('UnsyncedBanner Golden Tests', () {
-    testGoldens('UnsyncedBanner renders correctly in Light and Dark modes', (
-      tester,
-    ) async {
-      final unsyncedTask = TaskSchedule(
-        id: 'S-unsynced-g',
-        title: 'Unsynced Task',
-        description: '',
-        hasPendingWrites: true,
-      );
-
-      final builder = GoldenBuilder.column()
-        ..addScenario('Light Mode Unsynced Banner', const UnsyncedBanner())
-        ..addScenario(
-          'Dark Mode Unsynced Banner',
-          Theme(data: ThemeData.dark(), child: const UnsyncedBanner()),
-        );
-
-      await tester.pumpWidgetBuilder(
-        builder.build(),
-        wrapper: (child) => ProviderScope(
-          overrides: [
-            subscriptionServiceProvider.overrideWith(
-              (ref) => MockSubscriptionService(
-                const SubscriptionState(tier: SubscriptionTier.standard),
+  group('Unsynced Widgets Golden Tests', () {
+    testGoldens(
+      'Unsynced banner, task widget, and schedule card golden scenarios',
+      (tester) async {
+        final unsyncedTask = TaskSchedule(
+          id: 'S-unsynced-g',
+          title: 'Unsynced Task Schedule',
+          description: 'Pending Cloud sync description',
+          hasPendingWrites: true,
+          schedules: [
+            DailySchedule(
+              id: 'R-g1',
+              scheduleId: 'S-unsynced-g',
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
               ),
             ),
-            taskSchedulesProvider.overrideWith(
-              (ref) => Stream.value([unsyncedTask]),
-            ),
-            taskInstancesProvider.overrideWith((ref) => Stream.value([])),
           ],
-          child: l10nMaterialAppWrapper()(child),
-        ),
-        surfaceSize: const Size(600, 400),
-      );
+        );
 
-      await screenMatchesGolden(tester, 'unsynced_banner_golden');
-    });
+        final unsyncedInstance = TaskInstance(
+          id: 'I-unsynced-g',
+          scheduleId: 'S-unsynced-g',
+          ruleId: 'R-g1',
+          title: 'Unsynced Task Instance',
+          description: 'Saved locally pending Cloud sync',
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 4),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          hasPendingWrites: true,
+        );
+
+        final builder = GoldenBuilder.column()
+          ..addScenario('Light Mode Unsynced Banner', const UnsyncedBanner())
+          ..addScenario(
+            'Dark Mode Unsynced Banner',
+            Theme(data: ThemeData.dark(), child: const UnsyncedBanner()),
+          )
+          ..addScenario(
+            'Unsynced TaskWidget (Pending Cloud Sync)',
+            TaskWidget(instance: unsyncedInstance),
+          )
+          ..addScenario(
+            'Unsynced ScheduleCard (Pending Cloud Sync)',
+            ScheduleCard(task: unsyncedTask, onEdit: () {}, onDelete: () {}),
+          );
+
+        await tester.pumpWidgetBuilder(
+          builder.build(),
+          wrapper: (child) => ProviderScope(
+            overrides: [
+              subscriptionServiceProvider.overrideWith(
+                (ref) => MockSubscriptionService(
+                  const SubscriptionState(tier: SubscriptionTier.standard),
+                ),
+              ),
+              taskSchedulesProvider.overrideWith(
+                (ref) => Stream.value([unsyncedTask]),
+              ),
+              taskInstancesProvider.overrideWith((ref) => Stream.value([])),
+            ],
+            child: l10nMaterialAppWrapper()(child),
+          ),
+          surfaceSize: const Size(600, 800),
+        );
+
+        await screenMatchesGolden(tester, 'unsynced_banner_golden');
+      },
+    );
   });
 }
