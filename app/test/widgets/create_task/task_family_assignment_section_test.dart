@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/create_task/task_family_assignment_section.dart';
 import 'package:nothing_ever_happens/widgets/standard_choice_chip.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
+import '../../test_helper.dart';
 
 void main() {
   Widget buildWidget({
@@ -151,5 +153,41 @@ void main() {
 
       expect(toggled, isFalse);
     });
+
+    testGoldens(
+      'TaskFamilyAssignmentSection renders correctly in different states',
+      (tester) async {
+        final builder = GoldenBuilder.column()
+          ..addScenario(
+            'Individual (Personal Task Selected)',
+            TaskFamilyAssignmentSection(
+              isFamily: false,
+              onFamilyToggled: (_) {},
+            ),
+          )
+          ..addScenario(
+            'Family Task Selected',
+            TaskFamilyAssignmentSection(
+              isFamily: true,
+              onFamilyToggled: (_) {},
+            ),
+          )
+          ..addScenario(
+            'Read Only State',
+            TaskFamilyAssignmentSection(isFamily: true, readOnly: true),
+          );
+
+        await tester.pumpWidgetBuilder(
+          builder.build(),
+          wrapper: l10nMaterialAppWrapper(),
+          surfaceSize: const Size(600, 600),
+        );
+
+        await screenMatchesGolden(
+          tester,
+          'task_family_assignment_section_golden',
+        );
+      },
+    );
   });
 }

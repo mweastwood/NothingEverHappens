@@ -717,6 +717,23 @@ void main() {
       },
     );
 
+    testGoldens(
+      'CreateTaskScreen renders family assignment card when user in family',
+      (tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+
+        await tester.pumpWidgetBuilder(
+          createWidget(),
+          surfaceSize: const Size(800, 1000),
+        );
+
+        await screenMatchesGolden(tester, 'create_task_screen_in_family');
+      },
+    );
+
     testWidgets('hides family toggle if user is not in a family', (
       WidgetTester tester,
     ) async {
