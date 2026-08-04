@@ -78,6 +78,8 @@ class SortBar extends StatelessWidget {
                   label: Text(option.label),
                   selected: isSelected,
                   showCheckmark: false,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
                   avatar: isSelected
                       ? Icon(
                           sortAscending
