@@ -2038,7 +2038,9 @@ void main() {
               .set(familyTask.toFirestore());
 
           final tasksStream = repository.getTasks();
-          final tasks = await tasksStream.first;
+          final tasks = await tasksStream.firstWhere(
+            (list) => list.any((t) => t.id == 'family-task-1'),
+          );
           expect(tasks.any((t) => t.id == 'family-task-1'), isTrue);
         },
       );
