@@ -247,13 +247,12 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Saved locally (pending Cloud sync)'), findsOneWidget);
-        expect(find.byIcon(Icons.cloud_sync_outlined), findsWidgets);
+        expect(find.byIcon(Icons.cloud_sync_outlined), findsOneWidget);
       },
     );
 
     testWidgets(
-      'ScheduleCard displays "pending Cloud sync" chip & title icon for active subscriber',
+      'ScheduleCard displays pending Cloud sync icon before title for active subscriber',
       (tester) async {
         final unsyncedSchedule = TaskSchedule(
           id: 'S-unsynced-sched',
@@ -304,8 +303,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Saved locally (pending Cloud sync)'), findsOneWidget);
-        expect(find.byIcon(Icons.cloud_sync_outlined), findsWidgets);
+        expect(find.byIcon(Icons.cloud_sync_outlined), findsOneWidget);
       },
     );
   });

@@ -607,6 +607,19 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
           padding: const EdgeInsets.only(bottom: 4.0),
           child: Row(
             children: [
+              if (ref.watch(subscriptionServiceProvider).isActivePremium &&
+                  (widget.instance.hasPendingWrites ||
+                      (widget.schedule?.hasPendingWrites ?? false))) ...[
+                Tooltip(
+                  message: 'Saved locally (pending Cloud sync)',
+                  child: Icon(
+                    Icons.cloud_sync_outlined,
+                    size: 20,
+                    color: Colors.amber.shade800,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
               Expanded(
                 child: _isMouse
                     ? SelectableText(
@@ -618,19 +631,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
               ),
-              if (ref.watch(subscriptionServiceProvider).isActivePremium &&
-                  (widget.instance.hasPendingWrites ||
-                      (widget.schedule?.hasPendingWrites ?? false))) ...[
-                const SizedBox(width: 6),
-                Tooltip(
-                  message: 'Saved locally (pending Cloud sync)',
-                  child: Icon(
-                    Icons.cloud_sync_outlined,
-                    size: 20,
-                    color: Colors.amber.shade800,
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -649,16 +649,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               spacing: 6.0,
               runSpacing: 6.0,
               children: [
-                // Unsynced / Local-Only Badge (subscribed users only)
-                if (ref.watch(subscriptionServiceProvider).isActivePremium &&
-                    (widget.instance.hasPendingWrites ||
-                        (widget.schedule?.hasPendingWrites ?? false)))
-                  _buildBadge(
-                    context,
-                    icon: Icons.cloud_sync_outlined,
-                    label: 'Saved locally (pending Cloud sync)',
-                    color: Colors.amber.shade800,
-                  ),
                 // Due Date Badge
                 _buildDueDateBadge(context),
                 // Pending Badge

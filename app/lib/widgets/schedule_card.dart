@@ -155,18 +155,10 @@ class ScheduleCard extends ConsumerWidget {
                 Expanded(
                   child: Row(
                     children: [
-                      Flexible(
-                        child: Text(
-                          task.title,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ),
                       if (ref
                               .watch(subscriptionServiceProvider)
                               .isActivePremium &&
                           task.hasPendingWrites) ...[
-                        const SizedBox(width: 6),
                         Tooltip(
                           message: 'Saved locally (pending Cloud sync)',
                           child: Icon(
@@ -175,7 +167,15 @@ class ScheduleCard extends ConsumerWidget {
                             color: Colors.amber.shade800,
                           ),
                         ),
+                        const SizedBox(width: 6),
                       ],
+                      Flexible(
+                        child: Text(
+                          task.title,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -224,42 +224,6 @@ class ScheduleCard extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    if (ref
-                            .watch(subscriptionServiceProvider)
-                            .isActivePremium &&
-                        task.hasPendingWrites) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.amber.shade800),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.cloud_sync_outlined,
-                              size: 14,
-                              color: Colors.amber.shade900,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Saved locally (pending Cloud sync)',
-                              style: TextStyle(
-                                color: Colors.amber.shade900,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ],
