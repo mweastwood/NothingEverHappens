@@ -13,6 +13,7 @@ import 'logic/auth_repository.dart';
 import 'logic/task_repository.dart';
 import 'logic/notification_service.dart';
 import 'l10n/app_localizations.dart';
+import 'logic/hive_local_data_source.dart';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -65,11 +66,21 @@ Future<void> main() async {
     );
   }
 
-  mainCommon();
+  final hiveDataSource = HiveLocalDataSource();
+  await hiveDataSource.init();
+
+  mainCommon(hiveDataSource);
 }
 
-void mainCommon() {
-  runApp(const ProviderScope(child: MyApp()));
+void mainCommon(HiveLocalDataSource hiveDataSource) {
+  runApp(
+    ProviderScope(
+      overrides: [
+        hiveLocalDataSourceProvider.overrideWithValue(hiveDataSource),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends ConsumerWidget {

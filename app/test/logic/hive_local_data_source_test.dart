@@ -1,0 +1,165 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
+import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late HiveLocalDataSource dataSource;
+  late Directory tempDir;
+
+  setUp(() async {
+    tempDir = await Directory.systemTemp.createTemp('hive_test');
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'getApplicationDocumentsDirectory') {
+              return tempDir.path;
+            }
+            return null;
+          },
+        );
+
+    dataSource = HiveLocalDataSource();
+    await dataSource.init();
+  });
+
+  tearDown(() async {
+    await Hive.close();
+    await tempDir.delete(recursive: true);
+  });
+
+  test('Test CRUD operations on tasksBox', () async {
+    final task = TaskSchedule(
+      id: 'S-task1',
+      title: 'Task 1',
+      description: 'Desc 1',
+      schedules: [],
+      activeOccurrenceIndex: 0,
+      updatedAt: DateTime.now(),
+    );
+
+    await dataSource.saveTask(task);
+
+    final tasks = dataSource.getTasks();
+    expect(tasks.length, 1);
+    expect(tasks.first.id, 'S-task1');
+    expect(tasks.first.title, 'Task 1');
+
+    await dataSource.deleteTask('S-task1');
+    final afterDelete = dataSource.getTasks();
+    expect(afterDelete.isEmpty, true);
+  });
+
+  test('Test CRUD operations on instancesBox', () async {
+    final instance = TaskInstance(
+      id: 'I-inst1',
+      scheduleId: 'S-task1',
+      ruleId: 'rule1',
+      title: 'Inst 1',
+      description: 'Desc 1',
+      scheduledDate: CivilDay(year: 2026, month: 8, day: 4),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      updatedAt: DateTime.now(),
+    );
+
+    await dataSource.saveInstance(instance);
+
+    final instances = dataSource.getInstances();
+    expect(instances.length, 1);
+    expect(instances.first.id, 'I-inst1');
+
+    await dataSource.deleteInstance('I-inst1');
+    final afterDelete = dataSource.getInstances();
+    expect(afterDelete.isEmpty, true);
+  });
+
+  test('Test stream emissions from watchTasks() and watchInstances()', () async {
+    final task = TaskSchedule(
+      id: 'S-task2',
+      title: 'Task 2',
+      description: 'Desc 2',
+      schedules: [],
+      updatedAt: DateTime.now(),
+    );
+    final instance = TaskInstance(
+      id: 'I-inst2',
+      scheduleId: 'S-task2',
+      ruleId: 'rule1',
+      title: 'Inst 2',
+      description: 'Desc 2',
+      scheduledDate: CivilDay(year: 2026, month: 8, day: 4),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      updatedAt: DateTime.now(),
+    );
+
+    bool taskEmitted = false;
+    bool instanceEmitted = false;
+
+    final tSub = dataSource.watchTasks().listen((tasks) {
+      if (tasks.any((t) => t.id == 'S-task2')) taskEmitted = true;
+    });
+    final iSub = dataSource.watchInstances().listen((instances) {
+      if (instances.any((i) => i.id == 'I-inst2')) instanceEmitted = true;
+    });
+
+    await dataSource.saveTask(task);
+    await dataSource.saveInstance(instance);
+
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    expect(taskEmitted, true);
+
+    // Check if it's in the box directly
+    final directInstances = dataSource.getInstances();
+    expect(
+      directInstances.any((i) => i.id == 'I-inst2'),
+      true,
+      reason:
+          'Instance not found in box directly. Instances: ${directInstances.map((i) => i.id).toList()}',
+    );
+
+    expect(instanceEmitted, true, reason: 'Stream did not emit instance');
+
+    await tSub.cancel();
+    await iSub.cancel();
+  });
+
+  test('Test dirty tracking', () async {
+    await dataSource.markDirty('task3');
+    final dirtyList1 = dataSource.getDirtyTaskIds();
+    expect(dirtyList1, contains('task3'));
+
+    await dataSource.markDirty('inst3');
+    final dirtyList2 = dataSource.getDirtyTaskIds();
+    expect(dirtyList2, contains('task3'));
+    expect(dirtyList2, contains('inst3'));
+
+    await dataSource.clearDirty('task3');
+    final dirtyList3 = dataSource.getDirtyTaskIds();
+    expect(dirtyList3, isNot(contains('task3')));
+    expect(dirtyList3, contains('inst3'));
+  });
+}

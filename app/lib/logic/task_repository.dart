@@ -14,6 +14,9 @@ import 'auth_repository.dart';
 import 'scheduler_engine.dart';
 import 'task_spawner_engine.dart';
 import 'user_settings.dart';
+import 'unified_task_repository.dart';
+import 'hive_local_data_source.dart';
+import 'task_sync_service.dart';
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
   final VoidCallback onResume;
@@ -42,7 +45,13 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
   if (firestore == null) return null;
   final user = ref.watch(authStateProvider).value;
   if (user == null) return null;
-  final repo = TaskRepository(
+
+  final localDataSource = ref.watch(hiveLocalDataSourceProvider);
+  final syncService = ref.watch(taskSyncServiceProvider);
+
+  final repo = UnifiedTaskRepository(
+    localDataSource: localDataSource,
+    syncService: syncService,
     firestore: firestore,
     userId: user.uid,
     notificationService: ref.watch(notificationServiceProvider),

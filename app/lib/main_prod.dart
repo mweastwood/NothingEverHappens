@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'firebase_options_prod.dart';
 import 'main.dart';
+import 'logic/hive_local_data_source.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,5 +22,9 @@ void main() async {
   }
 
   AppConfig.environment = AppEnvironment.prod;
-  mainCommon();
+
+  final hiveDataSource = HiveLocalDataSource();
+  await hiveDataSource.init();
+
+  mainCommon(hiveDataSource);
 }
