@@ -132,15 +132,9 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
     final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
     if (isTest || _firestore == null) return;
 
-    if (tier == SubscriptionTier.free) {
-      _firestore.disableNetwork().catchError((e) {
-        debugPrint("Error disabling Firestore network: $e");
-      });
-    } else {
-      _firestore.enableNetwork().catchError((e) {
-        debugPrint("Error enabling Firestore network: $e");
-      });
-    }
+    _firestore.enableNetwork().catchError((e) {
+      debugPrint("Error enabling Firestore network: $e");
+    });
   }
 
   Future<void> _resetUser() async {
