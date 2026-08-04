@@ -11,6 +11,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/widgets/unsynced_banner.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:nothing_ever_happens/widgets/schedule_card.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
 import '../test_helper.dart';
 
@@ -312,6 +313,8 @@ void main() {
     testGoldens(
       'Unsynced banner, task widget, and schedule card golden scenarios',
       (tester) async {
+        AppClock.setMockTime(DateTime(2026, 8, 3, 12, 0));
+        addTearDown(AppClock.reset);
         final unsyncedTask = TaskSchedule(
           id: 'S-unsynced-g',
           title: 'Unsynced Task Schedule',
