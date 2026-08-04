@@ -6,6 +6,8 @@ import '../screens/task_schedule_screen.dart'; // for scheduleSearchQueryProvide
 import '../screens/help_screen.dart';
 import '../logic/l10n_extension.dart';
 
+import '../logic/user_settings.dart';
+import '../logic/user_settings_repository.dart';
 import '../widgets/sort_bar.dart';
 
 class HomeSearchAndShortcutWidget extends ConsumerStatefulWidget {
@@ -138,9 +140,25 @@ class _HomeSearchAndShortcutWidgetState
                 ? context.l10n.hideSortOptions
                 : context.l10n.showSortOptions,
             onPressed: () {
-              ref.read(showSortBarProvider.notifier).state = !ref.read(
-                showSortBarProvider,
-              );
+              final settings =
+                  ref.read(userSettingsProvider).value ??
+                  const UserSettings(hoursAvailable: 8.0);
+              final repo = ref.read(userSettingsRepositoryProvider);
+              if (widget.currentIndex == 0) {
+                final newValue = !ref.read(showTaskListSortBarProvider);
+                ref.read(taskListSortBarOverrideProvider.notifier).state =
+                    newValue;
+                repo?.updateSettings(
+                  settings.copyWith(showTaskListSortBar: newValue),
+                );
+              } else if (widget.currentIndex == 1) {
+                final newValue = !ref.read(showScheduleListSortBarProvider);
+                ref.read(scheduleListSortBarOverrideProvider.notifier).state =
+                    newValue;
+                repo?.updateSettings(
+                  settings.copyWith(showScheduleListSortBar: newValue),
+                );
+              }
             },
           ),
           IconButton(

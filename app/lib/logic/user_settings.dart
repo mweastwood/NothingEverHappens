@@ -9,6 +9,8 @@ class UserSettings {
   final Map<String, double>? defaultDailyCapacity;
   final Map<String, double>? dailyCapacityOverrides;
   final String? lastCapacityConfirmedWeek;
+  final bool showTaskListSortBar;
+  final bool showScheduleListSortBar;
 
   const UserSettings({
     required this.hoursAvailable,
@@ -18,6 +20,8 @@ class UserSettings {
     this.defaultDailyCapacity,
     this.dailyCapacityOverrides,
     this.lastCapacityConfirmedWeek,
+    this.showTaskListSortBar = true,
+    this.showScheduleListSortBar = true,
   });
 
   double getCapacityForDate(DateTime date) {
@@ -101,6 +105,8 @@ class UserSettings {
       defaultDailyCapacity: defaultDailyCapacity,
       dailyCapacityOverrides: dailyCapacityOverrides,
       lastCapacityConfirmedWeek: json['lastCapacityConfirmedWeek'] as String?,
+      showTaskListSortBar: json['showTaskListSortBar'] as bool? ?? true,
+      showScheduleListSortBar: json['showScheduleListSortBar'] as bool? ?? true,
     );
   }
 
@@ -125,6 +131,8 @@ class UserSettings {
       'dailyCapacityOverrides': ?prunedOverrides,
       if (lastCapacityConfirmedWeek != null)
         'lastCapacityConfirmedWeek': lastCapacityConfirmedWeek,
+      'showTaskListSortBar': showTaskListSortBar,
+      'showScheduleListSortBar': showScheduleListSortBar,
     };
   }
 
@@ -136,6 +144,8 @@ class UserSettings {
     Map<String, double>? defaultDailyCapacity,
     Map<String, double>? dailyCapacityOverrides,
     String? lastCapacityConfirmedWeek,
+    bool? showTaskListSortBar,
+    bool? showScheduleListSortBar,
   }) {
     return UserSettings(
       hoursAvailable: hoursAvailable ?? this.hoursAvailable,
@@ -149,6 +159,9 @@ class UserSettings {
       ),
       lastCapacityConfirmedWeek:
           lastCapacityConfirmedWeek ?? this.lastCapacityConfirmedWeek,
+      showTaskListSortBar: showTaskListSortBar ?? this.showTaskListSortBar,
+      showScheduleListSortBar:
+          showScheduleListSortBar ?? this.showScheduleListSortBar,
     );
   }
 
@@ -163,7 +176,9 @@ class UserSettings {
         listEquals(scheduleListSort, other.scheduleListSort) &&
         mapEquals(defaultDailyCapacity, other.defaultDailyCapacity) &&
         mapEquals(dailyCapacityOverrides, other.dailyCapacityOverrides) &&
-        lastCapacityConfirmedWeek == other.lastCapacityConfirmedWeek;
+        lastCapacityConfirmedWeek == other.lastCapacityConfirmedWeek &&
+        showTaskListSortBar == other.showTaskListSortBar &&
+        showScheduleListSortBar == other.showScheduleListSortBar;
   }
 
   @override
@@ -175,5 +190,7 @@ class UserSettings {
     defaultDailyCapacity?.hashCode,
     dailyCapacityOverrides?.hashCode,
     lastCapacityConfirmedWeek,
+    showTaskListSortBar,
+    showScheduleListSortBar,
   );
 }

@@ -1,7 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../logic/user_settings_repository.dart';
+import '../screens/home_screen.dart';
 
-final showSortBarProvider = StateProvider<bool>((ref) => true);
+final taskListSortBarOverrideProvider = StateProvider<bool?>((ref) => null);
+final scheduleListSortBarOverrideProvider = StateProvider<bool?>((ref) => null);
+
+final showTaskListSortBarProvider = Provider<bool>((ref) {
+  final override = ref.watch(taskListSortBarOverrideProvider);
+  if (override != null) return override;
+  final settings = ref.watch(userSettingsProvider).value;
+  return settings?.showTaskListSortBar ?? true;
+});
+
+final showScheduleListSortBarProvider = Provider<bool>((ref) {
+  final override = ref.watch(scheduleListSortBarOverrideProvider);
+  if (override != null) return override;
+  final settings = ref.watch(userSettingsProvider).value;
+  return settings?.showScheduleListSortBar ?? true;
+});
+
+final showSortBarProvider = Provider<bool>((ref) {
+  final tabIndex = ref.watch(homeTabIndexProvider);
+  if (tabIndex == 1) {
+    return ref.watch(showScheduleListSortBarProvider);
+  }
+  return ref.watch(showTaskListSortBarProvider);
+});
 
 class SortOption {
   final String key;
