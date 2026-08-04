@@ -2028,6 +2028,76 @@ void main() {
         },
       );
     });
+
+    group('Web Stream & Missed Policy Stability Tests', () {
+      test(
+        'getTasks stream emissions process missed policies out-of-band via microtask without re-entrancy error loops',
+        () async {
+          final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(mockTime);
+
+          final firestore = FakeFirebaseFirestore();
+
+          final task = TaskSchedule(
+            id: 'web-stream-test-task',
+            title: 'Daily Task',
+            description: 'Web stream stability check',
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 23),
+                interval: 1,
+              ),
+            ],
+          );
+
+          await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('tasks')
+              .doc(task.id)
+              .set(task.toFirestore());
+
+          final container = ProviderContainer(
+            overrides: [
+              authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
+              firestoreProvider.overrideWithValue(firestore),
+              userSettingsProvider.overrideWith(
+                (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+              ),
+              notificationServiceProvider.overrideWithValue(
+                LoggingNotificationService(),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+          await container.read(authStateProvider.future);
+
+          final repository = container.read(taskRepositoryProvider);
+          expect(repository, isNotNull);
+
+          final receivedLists = <List<TaskSchedule>>[];
+          final subscription = repository!.getTasks().listen((tasks) {
+            receivedLists.add(tasks);
+          });
+          addTearDown(subscription.cancel);
+
+          // Wait for microtask & initial stream emission
+          await Future.delayed(const Duration(milliseconds: 100));
+          expect(receivedLists.isNotEmpty, isTrue);
+          expect(receivedLists.first.first.id, 'S-web-stream-test-task');
+
+          // Verify task instances spawned without any assertion failure or exception
+          final instances = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .get();
+          expect(instances.docs.isNotEmpty, isTrue);
+
+          AppClock.reset();
+        },
+      );
+    });
   });
 }
 

@@ -363,7 +363,9 @@ class TaskRepository {
 
       if (familyId.isEmpty) {
         return personalStream.map((personalTasks) {
-          _checkAndProcessMissedPolicies(personalTasks);
+          scheduleMicrotask(
+            () => _checkAndProcessMissedPolicies(personalTasks),
+          );
           return personalTasks;
         });
       } else {
@@ -390,7 +392,7 @@ class TaskRepository {
           List<TaskSchedule>
         >(personalStream, familyStream, (personal, family) {
           final allTasks = [...personal, ...family];
-          _checkAndProcessMissedPolicies(allTasks);
+          scheduleMicrotask(() => _checkAndProcessMissedPolicies(allTasks));
           return allTasks;
         });
       }
@@ -446,6 +448,7 @@ class TaskRepository {
     }
     _isProcessingMissedPolicies = true;
     _needsProcessingAgain = false;
+    bool hasError = false;
 
     try {
       final now = AppClock.now;
@@ -497,25 +500,8 @@ class TaskRepository {
           .get();
       final userSettings = UserSettings.fromJson(settingsSnapshot.data() ?? {});
 
-      // Fetch all task schedules to build a lookup map for durations
-      final personalTasksSnapshot = await _tasksRef.get();
-      final List<TaskSchedule> allTasks = personalTasksSnapshot.docs
-          .map((d) => d.data())
-          .toList();
-      if (familyId != null && familyId.isNotEmpty) {
-        final familyTasksRef = _firestore
-            .collection('families')
-            .doc(familyId)
-            .collection('tasks')
-            .withConverter<TaskSchedule>(
-              fromFirestore: (snapshot, _) =>
-                  TaskSchedule.fromFirestore(snapshot),
-              toFirestore: (task, _) => task.toFirestore(),
-            );
-        final familyTasks = await familyTasksRef.get();
-        allTasks.addAll(familyTasks.docs.map((d) => d.data()));
-      }
-      final taskMap = {for (final t in allTasks) t.id: t};
+      // Build lookup map for durations directly from passed tasks list
+      final taskMap = {for (final t in tasks) t.id: t};
 
       // Calculate planned hours per date
       final Map<CivilDay, double> dayPlannedHours = {};
@@ -732,14 +718,18 @@ class TaskRepository {
         _scheduleTriggerTimer(nextTrigger);
       }
     } catch (e) {
+      hasError = true;
       // ignore: avoid_print
       print('Error in auto-processing missed policies: $e');
     } finally {
       _isProcessingMissedPolicies = false;
-      if (_needsProcessingAgain && _nextTasksToProcess != null) {
+      if (!hasError && _needsProcessingAgain && _nextTasksToProcess != null) {
         final next = _nextTasksToProcess!;
         _nextTasksToProcess = null;
         _checkAndProcessMissedPolicies(next);
+      } else {
+        _needsProcessingAgain = false;
+        _nextTasksToProcess = null;
       }
     }
   }
