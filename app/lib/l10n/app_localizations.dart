@@ -1106,6 +1106,12 @@ abstract class AppLocalizations {
   /// **'Share this task with all family members.'**
   String get familyTaskHelper;
 
+  /// No description provided for @personalTaskHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Only visible to you.'**
+  String get personalTaskHelper;
+
   /// No description provided for @viewTaskTitle.
   ///
   /// In en, this message translates to:
