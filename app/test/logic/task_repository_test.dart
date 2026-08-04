@@ -118,7 +118,7 @@ void main() {
 
         final stream = repository.getTasks();
         final futureTasks = stream.firstWhere(
-          (list) => list.any((t) => t.id == 'family-task-1'),
+          (list) => list.any((t) => t.id == familyTask.id),
         );
 
         // Add a personal task and a family task so both personal and family streams receive events
@@ -126,7 +126,7 @@ void main() {
         await repository.addTaskSchedule(familyTask);
 
         final tasks = await futureTasks;
-        expect(tasks.any((t) => t.id == 'family-task-1'), isTrue);
+        expect(tasks.any((t) => t.id == familyTask.id), isTrue);
         expect(tasks.any((t) => t.id == testTask.id), isTrue);
       },
     );

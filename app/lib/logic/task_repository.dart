@@ -327,9 +327,12 @@ class TaskRepository {
               toFirestore: (task, _) => task.toFirestore(),
             );
 
-        final familyStream = familyTasksRef.snapshots().map((snapshot) {
-          return snapshot.docs.map((doc) => doc.data()).toList();
-        });
+        final familyStream = Rx.retry(
+          () => familyTasksRef.snapshots().map((snapshot) {
+            return snapshot.docs.map((doc) => doc.data()).toList();
+          }),
+          5,
+        );
 
         return Rx.combineLatest2<
           List<TaskSchedule>,
@@ -367,9 +370,12 @@ class TaskRepository {
               toFirestore: (instance, _) => instance.toFirestore(),
             );
 
-        final familyStream = familyInstancesRef.snapshots().map((snapshot) {
-          return snapshot.docs.map((doc) => doc.data()).toList();
-        });
+        final familyStream = Rx.retry(
+          () => familyInstancesRef.snapshots().map((snapshot) {
+            return snapshot.docs.map((doc) => doc.data()).toList();
+          }),
+          5,
+        );
 
         return Rx.combineLatest2<
           List<TaskInstance>,
