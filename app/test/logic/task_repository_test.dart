@@ -116,15 +116,16 @@ void main() {
           ],
         );
 
-        // Add a personal task and a family task so both personal and family streams have documents in fake_cloud_firestore
+        final stream = repository.getTasks();
+        final futureTasks = stream.firstWhere(
+          (list) => list.any((t) => t.id == 'family-task-1'),
+        );
+
+        // Add a personal task and a family task so both personal and family streams receive events
         await repository.addTaskSchedule(testTask);
         await repository.addTaskSchedule(familyTask);
 
-        final stream = repository.getTasks();
-
-        final tasks = await stream.firstWhere(
-          (list) => list.any((t) => t.id == 'family-task-1'),
-        );
+        final tasks = await futureTasks;
         expect(tasks.any((t) => t.id == 'family-task-1'), isTrue);
         expect(tasks.any((t) => t.id == testTask.id), isTrue);
       },
