@@ -89,22 +89,43 @@ void main() {
       expect(data['title'], testTask.title);
     });
 
-    test('getTasks returns a stream of tasks', () async {
-      await repository.addTaskSchedule(testTask);
+    test(
+      'getTasks returns a stream of tasks including family tasks when in family',
+      () async {
+        await firestore.collection('users').doc(userId).set({
+          'familyId': 'fam-123',
+        });
 
-      final stream = repository.getTasks();
+        final familyTask = TaskSchedule(
+          id: 'family-task-1',
+          title: 'Family Task',
+          description: 'Shared Family Task',
+          isFamily: true,
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2026, month: 8, day: 3),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 10, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 18, minute: 0),
+              ),
+            ),
+          ],
+        );
 
-      expect(
-        stream,
-        emits(
-          isA<List<TaskSchedule>>().having(
-            (list) => list.first.title,
-            'title',
-            testTask.title,
-          ),
-        ),
-      );
-    });
+        await repository.addTaskSchedule(familyTask);
+
+        final stream = repository.getTasks();
+
+        final tasks = await stream.firstWhere(
+          (list) => list.any((t) => t.id == 'family-task-1'),
+        );
+        expect(tasks.any((t) => t.id == 'family-task-1'), isTrue);
+      },
+    );
 
     test('updateTask updates an existing task', () async {
       await repository.addTaskSchedule(testTask);
@@ -2000,48 +2021,6 @@ void main() {
               .doc('orphan-inst-2')
               .get();
           expect(docSnap2.data()?['status'], 'dismissed');
-        },
-      );
-
-      test(
-        'getTasks and getInstances combine family tasks and instances when user belongs to a family',
-        () async {
-          await firestore.collection('users').doc(userId).set({
-            'familyId': 'fam-123',
-          });
-
-          final familyTask = TaskSchedule(
-            id: 'family-task-1',
-            title: 'Family Task',
-            description: 'Shared Family Task',
-            isFamily: true,
-            schedules: [
-              OneOffSchedule(
-                date: const CivilDay(year: 2026, month: 8, day: 3),
-                startRelativeTime: const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 10, minute: 0),
-                ),
-                dueRelativeTime: const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 18, minute: 0),
-                ),
-              ),
-            ],
-          );
-
-          await firestore
-              .collection('families')
-              .doc('fam-123')
-              .collection('tasks')
-              .doc(familyTask.id)
-              .set(familyTask.toFirestore());
-
-          final tasksStream = repository.getTasks();
-          final tasks = await tasksStream.firstWhere(
-            (list) => list.any((t) => t.id == 'family-task-1'),
-          );
-          expect(tasks.any((t) => t.id == 'family-task-1'), isTrue);
         },
       );
     });
