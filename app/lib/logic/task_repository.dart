@@ -279,47 +279,79 @@ class TaskRepository {
     return _instanceRefForId(instance.id, instance.isFamily, familyId);
   }
 
+  Future<DocumentSnapshot<T>> _getDocWithCacheFallback<T>(
+    DocumentReference<T> ref,
+  ) async {
+    try {
+      return await ref
+          .get(const GetOptions(source: Source.serverAndCache))
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {
+      try {
+        return await ref.get(const GetOptions(source: Source.cache));
+      } catch (_) {
+        return await ref.get();
+      }
+    }
+  }
+
+  Future<QuerySnapshot<T>> _getQueryWithCacheFallback<T>(Query<T> query) async {
+    try {
+      return await query
+          .get(const GetOptions(source: Source.serverAndCache))
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {
+      try {
+        return await query.get(const GetOptions(source: Source.cache));
+      } catch (_) {
+        return await query.get();
+      }
+    }
+  }
+
   Future<TaskSchedule?> _fetchTask(String id) async {
     // Try personal first
-    final personalDoc = await _tasksRef.doc(id).get();
+    final personalDoc = await _getDocWithCacheFallback(_tasksRef.doc(id));
     if (personalDoc.exists) return personalDoc.data();
 
     // If not found, check family collection
     final familyId = await _getFamilyId();
     if (familyId != null && familyId.isNotEmpty) {
-      final familyDoc = await _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('tasks')
-          .doc(id)
-          .withConverter<TaskSchedule>(
-            fromFirestore: (snapshot, _) =>
-                TaskSchedule.fromFirestore(snapshot),
-            toFirestore: (task, _) => task.toFirestore(),
-          )
-          .get();
+      final familyDoc = await _getDocWithCacheFallback(
+        _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .doc(id)
+            .withConverter<TaskSchedule>(
+              fromFirestore: (snapshot, _) =>
+                  TaskSchedule.fromFirestore(snapshot),
+              toFirestore: (task, _) => task.toFirestore(),
+            ),
+      );
       if (familyDoc.exists) return familyDoc.data();
     }
     return null;
   }
 
   Future<TaskInstance?> _fetchInstance(String id) async {
-    final personalDoc = await _instancesRef.doc(id).get();
+    final personalDoc = await _getDocWithCacheFallback(_instancesRef.doc(id));
     if (personalDoc.exists) return personalDoc.data();
 
     final familyId = await _getFamilyId();
     if (familyId != null && familyId.isNotEmpty) {
-      final familyDoc = await _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('instances')
-          .doc(id)
-          .withConverter<TaskInstance>(
-            fromFirestore: (snapshot, _) =>
-                TaskInstance.fromFirestore(snapshot),
-            toFirestore: (instance, _) => instance.toFirestore(),
-          )
-          .get();
+      final familyDoc = await _getDocWithCacheFallback(
+        _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances')
+            .doc(id)
+            .withConverter<TaskInstance>(
+              fromFirestore: (snapshot, _) =>
+                  TaskInstance.fromFirestore(snapshot),
+              toFirestore: (instance, _) => instance.toFirestore(),
+            ),
+      );
       if (familyDoc.exists) return familyDoc.data();
     }
     return null;
@@ -845,23 +877,24 @@ class TaskRepository {
     final List<DocumentSnapshot<TaskInstance>> personalPending = [];
     final List<DocumentSnapshot<TaskInstance>> familyPending = [];
 
-    final personalSnapFuture = _instancesRef
-        .where('scheduleId', isEqualTo: newTask.id)
-        .get();
+    final personalSnapFuture = _getQueryWithCacheFallback(
+      _instancesRef.where('scheduleId', isEqualTo: newTask.id),
+    );
 
     final Future<QuerySnapshot<TaskInstance>>? familySnapFuture =
         (familyId != null && familyId.isNotEmpty)
-        ? _firestore
-              .collection('families')
-              .doc(familyId)
-              .collection('instances')
-              .withConverter<TaskInstance>(
-                fromFirestore: (snapshot, _) =>
-                    TaskInstance.fromFirestore(snapshot),
-                toFirestore: (instance, _) => instance.toFirestore(),
-              )
-              .where('scheduleId', isEqualTo: newTask.id)
-              .get()
+        ? _getQueryWithCacheFallback(
+            _firestore
+                .collection('families')
+                .doc(familyId)
+                .collection('instances')
+                .withConverter<TaskInstance>(
+                  fromFirestore: (snapshot, _) =>
+                      TaskInstance.fromFirestore(snapshot),
+                  toFirestore: (instance, _) => instance.toFirestore(),
+                )
+                .where('scheduleId', isEqualTo: newTask.id),
+          )
         : null;
 
     final results = await Future.wait([personalSnapFuture, ?familySnapFuture]);
@@ -934,9 +967,9 @@ class TaskRepository {
 
     final List<TaskInstance> pendingInstances = [];
 
-    final personalInstances = await _instancesRef
-        .where('scheduleId', isEqualTo: id)
-        .get();
+    final personalInstances = await _getQueryWithCacheFallback(
+      _instancesRef.where('scheduleId', isEqualTo: id),
+    );
     for (final doc in personalInstances.docs) {
       if (doc.data().status == 'pending') {
         pendingInstances.add(doc.data());
@@ -945,17 +978,18 @@ class TaskRepository {
     }
 
     if (familyId != null && familyId.isNotEmpty) {
-      final familyInstances = await _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('instances')
-          .where('scheduleId', isEqualTo: id)
-          .withConverter<TaskInstance>(
-            fromFirestore: (snapshot, _) =>
-                TaskInstance.fromFirestore(snapshot),
-            toFirestore: (instance, _) => instance.toFirestore(),
-          )
-          .get();
+      final familyInstances = await _getQueryWithCacheFallback(
+        _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances')
+            .where('scheduleId', isEqualTo: id)
+            .withConverter<TaskInstance>(
+              fromFirestore: (snapshot, _) =>
+                  TaskInstance.fromFirestore(snapshot),
+              toFirestore: (instance, _) => instance.toFirestore(),
+            ),
+      );
       for (final doc in familyInstances.docs) {
         if (doc.data().status == 'pending') {
           pendingInstances.add(doc.data());
@@ -1127,22 +1161,23 @@ class TaskRepository {
     String? familyId,
   ) async {
     if (isFamily && familyId != null && familyId.isNotEmpty) {
-      final familySnap = await _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('instances')
-          .withConverter<TaskInstance>(
-            fromFirestore: (snapshot, _) =>
-                TaskInstance.fromFirestore(snapshot),
-            toFirestore: (instance, _) => instance.toFirestore(),
-          )
-          .where('scheduleId', isEqualTo: scheduleId)
-          .get();
+      final familySnap = await _getQueryWithCacheFallback(
+        _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances')
+            .withConverter<TaskInstance>(
+              fromFirestore: (snapshot, _) =>
+                  TaskInstance.fromFirestore(snapshot),
+              toFirestore: (instance, _) => instance.toFirestore(),
+            )
+            .where('scheduleId', isEqualTo: scheduleId),
+      );
       return familySnap.docs.map((d) => d.data()).toList();
     }
-    final personalSnap = await _instancesRef
-        .where('scheduleId', isEqualTo: scheduleId)
-        .get();
+    final personalSnap = await _getQueryWithCacheFallback(
+      _instancesRef.where('scheduleId', isEqualTo: scheduleId),
+    );
     return personalSnap.docs.map((d) => d.data()).toList();
   }
 

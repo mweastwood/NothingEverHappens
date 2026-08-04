@@ -45,7 +45,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         await repository
             .updateSettings(updatedSettings)
             .timeout(
-              const Duration(seconds: 10),
+              const Duration(seconds: 30),
               onTimeout: () => throw Exception(l10n.saveTimeoutError),
             );
 
