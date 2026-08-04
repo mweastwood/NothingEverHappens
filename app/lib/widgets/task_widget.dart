@@ -18,6 +18,8 @@ import 'undo_snackbar.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../logic/subscription_service.dart';
+
 class TaskWidget extends ConsumerStatefulWidget {
   final TaskInstance instance;
   final TaskSchedule? schedule;
@@ -603,15 +605,34 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         ),
         title: Padding(
           padding: const EdgeInsets.only(bottom: 4.0),
-          child: _isMouse
-              ? SelectableText(
-                  widget.instance.title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                )
-              : Text(
-                  widget.instance.title,
-                  style: Theme.of(context).textTheme.titleMedium,
+          child: Row(
+            children: [
+              Expanded(
+                child: _isMouse
+                    ? SelectableText(
+                        widget.instance.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      )
+                    : Text(
+                        widget.instance.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+              ),
+              if (ref.watch(subscriptionServiceProvider).isActivePremium &&
+                  (widget.instance.hasPendingWrites ||
+                      (widget.schedule?.hasPendingWrites ?? false))) ...[
+                const SizedBox(width: 6),
+                Tooltip(
+                  message: 'Saved locally (pending Cloud sync)',
+                  child: Icon(
+                    Icons.cloud_sync_outlined,
+                    size: 20,
+                    color: Colors.amber.shade800,
+                  ),
                 ),
+              ],
+            ],
+          ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,6 +649,16 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               spacing: 6.0,
               runSpacing: 6.0,
               children: [
+                // Unsynced / Local-Only Badge (subscribed users only)
+                if (ref.watch(subscriptionServiceProvider).isActivePremium &&
+                    (widget.instance.hasPendingWrites ||
+                        (widget.schedule?.hasPendingWrites ?? false)))
+                  _buildBadge(
+                    context,
+                    icon: Icons.cloud_sync_outlined,
+                    label: 'Saved locally (pending Cloud sync)',
+                    color: Colors.amber.shade800,
+                  ),
                 // Due Date Badge
                 _buildDueDateBadge(context),
                 // Pending Badge

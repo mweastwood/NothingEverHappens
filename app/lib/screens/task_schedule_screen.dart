@@ -15,6 +15,8 @@ import '../logic/user_settings_repository.dart';
 import '../logic/user_settings.dart';
 import '../logic/sort_helper.dart';
 import '../widgets/sort_bar.dart';
+import '../widgets/unsynced_banner.dart';
+import '../logic/subscription_service.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -419,6 +421,13 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                         final isSortBarVisible = ref.watch(
                           showScheduleListSortBarProvider,
                         );
+                        final hasSubscription = ref
+                            .watch(subscriptionServiceProvider)
+                            .isActivePremium;
+                        final showUnsyncedBanner =
+                            hasSubscription &&
+                            (ref.watch(unsyncedCountProvider) > 0 ||
+                                ref.watch(isFromCacheProvider));
 
                         return Stack(
                           children: [
@@ -428,8 +437,16 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                 top: isSortBarVisible ? 64.0 : 8.0,
                                 bottom: 80.0,
                               ),
-                              itemCount: filteredTasks.length,
+                              itemCount:
+                                  filteredTasks.length +
+                                  (showUnsyncedBanner ? 1 : 0),
                               itemBuilder: (context, index) {
+                                if (showUnsyncedBanner) {
+                                  if (index == 0) {
+                                    return const UnsyncedBanner();
+                                  }
+                                  index--;
+                                }
                                 final task = filteredTasks[index];
                                 return _buildTaskCard(
                                   context,

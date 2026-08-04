@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -61,13 +62,15 @@ void main() {
       bool deleteTapped = false;
 
       await tester.pumpWidget(
-        buildTestableWidget(
-          child: Scaffold(
-            body: SingleChildScrollView(
-              child: ScheduleCard(
-                task: dailyTask,
-                onEdit: () => editTapped = true,
-                onDelete: () => deleteTapped = true,
+        ProviderScope(
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ScheduleCard(
+                  task: dailyTask,
+                  onEdit: () => editTapped = true,
+                  onDelete: () => deleteTapped = true,
+                ),
               ),
             ),
           ),
@@ -92,13 +95,15 @@ void main() {
 
     testWidgets('renders weekly task details correctly', (tester) async {
       await tester.pumpWidget(
-        buildTestableWidget(
-          child: Scaffold(
-            body: SingleChildScrollView(
-              child: ScheduleCard(
-                task: weeklyTask,
-                onEdit: () {},
-                onDelete: () {},
+        ProviderScope(
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ScheduleCard(
+                  task: weeklyTask,
+                  onEdit: () {},
+                  onDelete: () {},
+                ),
               ),
             ),
           ),
@@ -126,7 +131,8 @@ void main() {
 
         await tester.pumpWidgetBuilder(
           builder.build(),
-          wrapper: l10nMaterialAppWrapper(),
+          wrapper: (child) =>
+              ProviderScope(child: l10nMaterialAppWrapper()(child)),
           surfaceSize: const Size(600, 1000),
         );
 
