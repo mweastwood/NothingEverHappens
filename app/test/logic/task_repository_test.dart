@@ -89,22 +89,47 @@ void main() {
       expect(data['title'], testTask.title);
     });
 
-    test('getTasks returns a stream of tasks', () async {
-      await repository.addTaskSchedule(testTask);
+    test(
+      'getTasks returns a stream of tasks including family tasks when in family',
+      () async {
+        await firestore.collection('users').doc(userId).set({
+          'familyId': 'fam-123',
+        });
 
-      final stream = repository.getTasks();
+        final familyTask = TaskSchedule(
+          id: 'family-task-1',
+          title: 'Family Task',
+          description: 'Shared Family Task',
+          isFamily: true,
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2026, month: 8, day: 3),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 10, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 18, minute: 0),
+              ),
+            ),
+          ],
+        );
 
-      expect(
-        stream,
-        emits(
-          isA<List<TaskSchedule>>().having(
-            (list) => list.first.title,
-            'title',
-            testTask.title,
-          ),
-        ),
-      );
-    });
+        final stream = repository.getTasks();
+        final futureTasks = stream.firstWhere(
+          (list) => list.any((t) => t.id == familyTask.id),
+        );
+
+        // Add a personal task and a family task so both personal and family streams receive events
+        await repository.addTaskSchedule(testTask);
+        await repository.addTaskSchedule(familyTask);
+
+        final tasks = await futureTasks;
+        expect(tasks.any((t) => t.id == familyTask.id), isTrue);
+        expect(tasks.any((t) => t.id == testTask.id), isTrue);
+      },
+    );
 
     test('updateTask updates an existing task', () async {
       await repository.addTaskSchedule(testTask);

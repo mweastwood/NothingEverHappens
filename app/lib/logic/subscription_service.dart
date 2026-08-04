@@ -178,8 +178,9 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
       if (doc.exists) {
         final data = doc.data();
         final tierStr = data?['subscriptionTier'] as String?;
+        final familyId = data?['familyId'] as String? ?? '';
         SubscriptionTier detectedTier = SubscriptionTier.free;
-        if (tierStr == 'family') {
+        if (tierStr == 'family' || familyId.isNotEmpty) {
           detectedTier = SubscriptionTier.family;
         } else if (tierStr == 'standard') {
           detectedTier = SubscriptionTier.standard;
