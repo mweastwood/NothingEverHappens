@@ -30,7 +30,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     UserSettings currentSettings,
   ) async {
     if (_formKey.currentState!.validate()) {
-      final l10n = context.l10n;
       setState(() {
         _isSaving = true;
       });
@@ -42,12 +41,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           showLastSpawnedDate: _showLastSpawnedDate,
         );
 
-        await repository
-            .updateSettings(updatedSettings)
-            .timeout(
-              const Duration(seconds: 10),
-              onTimeout: () => throw Exception(l10n.saveTimeoutError),
-            );
+        await repository.updateSettings(updatedSettings);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

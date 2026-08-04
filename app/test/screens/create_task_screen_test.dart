@@ -236,7 +236,6 @@ void main() {
   testGoldens('CreateTaskScreen renders saving state correctly', (
     tester,
   ) async {
-    CreateTaskScreen.saveTimeout = const Duration(minutes: 30);
     CreateTaskScreen.debugDisableAnimations = true;
     try {
       final mockRepository = MockTaskRepository();
@@ -287,7 +286,6 @@ void main() {
       completer.complete();
       await tester.pumpAndSettle();
     } finally {
-      CreateTaskScreen.saveTimeout = const Duration(seconds: 10);
       CreateTaskScreen.debugDisableAnimations = false;
     }
   });

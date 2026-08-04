@@ -23,7 +23,6 @@ import '../logic/task_instance.dart';
 import 'help_screen.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
-  static Duration saveTimeout = const Duration(seconds: 10);
   static bool debugDisableAnimations = false;
 
   final TaskSchedule? taskToEdit;
@@ -275,12 +274,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               newAssignedUserId: _assignedUserId,
               newSkipIfNoCapacity: _skipIfNoCapacity,
             );
-            await repository
-                .updateTaskSchedule(modification)
-                .timeout(
-                  CreateTaskScreen.saveTimeout,
-                  onTimeout: () => throw Exception(l10n.saveTimeoutError),
-                );
+            await repository.updateTaskSchedule(modification);
             if (mounted) {
               UndoSnackBar.show(
                 context: context,
@@ -296,12 +290,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               Navigator.pop(context);
             }
           } else {
-            await repository
-                .addTaskSchedule(newTask)
-                .timeout(
-                  CreateTaskScreen.saveTimeout,
-                  onTimeout: () => throw Exception(l10n.saveTimeoutError),
-                );
+            await repository.addTaskSchedule(newTask);
             if (mounted) {
               Navigator.pop(context);
             }
