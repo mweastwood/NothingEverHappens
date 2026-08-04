@@ -202,19 +202,15 @@ class PlatformNotificationService implements NotificationService {
         }
       }
     } else {
-      // Cancel slots on Android. We can cancel by ID
-      // To cancel safely, we cancel all notification IDs associated with the task
-      // ID calculation is (taskId.hashCode + i * 100 + j) & 0x7FFFFFFF.
+      // Cancel slots on Android concurrently via Future.wait
+      final cancelFutures = <Future<void>>[];
       for (var i = 0; i < 10; i++) {
         for (var j = 0; j < 5; j++) {
           final notifId = (taskId.hashCode + i * 100 + j) & 0x7FFFFFFF;
-          try {
-            await _plugin.cancel(id: notifId);
-          } catch (e) {
-            // Ignore
-          }
+          cancelFutures.add(_plugin.cancel(id: notifId).catchError((_) {}));
         }
       }
+      await Future.wait(cancelFutures);
     }
   }
 

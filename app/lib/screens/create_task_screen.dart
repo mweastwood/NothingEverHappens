@@ -23,7 +23,7 @@ import '../logic/task_instance.dart';
 import 'help_screen.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
-  static Duration saveTimeout = const Duration(seconds: 30);
+  static Duration saveTimeout = const Duration(seconds: 10);
   static bool debugDisableAnimations = false;
 
   final TaskSchedule? taskToEdit;
