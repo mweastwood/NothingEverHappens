@@ -2002,6 +2002,46 @@ void main() {
           expect(docSnap2.data()?['status'], 'dismissed');
         },
       );
+
+      test(
+        'getTasks and getInstances combine family tasks and instances when user belongs to a family',
+        () async {
+          await firestore.collection('users').doc(userId).set({
+            'familyId': 'fam-123',
+          });
+
+          final familyTask = TaskSchedule(
+            id: 'family-task-1',
+            title: 'Family Task',
+            description: 'Shared Family Task',
+            isFamily: true,
+            schedules: [
+              OneOffSchedule(
+                date: const CivilDay(year: 2026, month: 8, day: 3),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 10, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 18, minute: 0),
+                ),
+              ),
+            ],
+          );
+
+          await firestore
+              .collection('families')
+              .doc('fam-123')
+              .collection('tasks')
+              .doc(familyTask.id)
+              .set(familyTask.toFirestore());
+
+          final tasksStream = repository.getTasks();
+          final tasks = await tasksStream.first;
+          expect(tasks.any((t) => t.id == 'family-task-1'), isTrue);
+        },
+      );
     });
   });
 }

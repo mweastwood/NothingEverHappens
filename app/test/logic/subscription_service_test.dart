@@ -110,6 +110,40 @@ void main() {
     });
 
     test(
+      'updates subscription tier to family when user document has familyId set',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            firestoreProvider.overrideWithValue(fakeFirestore),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        late Ref ref;
+        container.read(
+          Provider((r) {
+            ref = r;
+            return null;
+          }),
+        );
+
+        final service = TestSubscriptionService(ref, firestore: fakeFirestore);
+
+        service.triggerListenToFirestore('test-user-123');
+        await Future.delayed(Duration.zero);
+
+        await fakeFirestore.collection('users').doc('test-user-123').set({
+          'familyId': 'fam-abc-123',
+          'familyRole': 'non-parent',
+        });
+        await Future.delayed(Duration.zero);
+        expect(service.state.tier, SubscriptionTier.family);
+        expect(service.state.isFamilyPlan, isTrue);
+      },
+    );
+
+    test(
       'individualPlanPriceProvider and familyPlanPriceProvider can be read and overridden',
       () async {
         final container = ProviderContainer(
