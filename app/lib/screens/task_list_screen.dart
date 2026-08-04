@@ -76,7 +76,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<bool>(showSortBarProvider, (previous, next) {
+    ref.listen<bool>(showTaskListSortBarProvider, (previous, next) {
       if (previous != next && _scrollController.hasClients) {
         final offset = _scrollController.offset;
         const barHeight = 64.0;
@@ -248,7 +248,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         final showSortBar =
             instancesVal.hasValue && (instancesVal.value ?? []).isNotEmpty;
 
-        final isSortBarVisible = ref.watch(showSortBarProvider);
+        final isSortBarVisible = ref.watch(showTaskListSortBarProvider);
 
         return Padding(
           padding: EdgeInsets.only(

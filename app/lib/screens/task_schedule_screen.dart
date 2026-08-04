@@ -289,7 +289,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<bool>(showSortBarProvider, (previous, next) {
+    ref.listen<bool>(showScheduleListSortBarProvider, (previous, next) {
       if (previous != next && _scrollController.hasClients) {
         final offset = _scrollController.offset;
         const barHeight = 64.0;
@@ -416,7 +416,9 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                           return indexA.compareTo(indexB);
                         });
 
-                        final isSortBarVisible = ref.watch(showSortBarProvider);
+                        final isSortBarVisible = ref.watch(
+                          showScheduleListSortBarProvider,
+                        );
 
                         return Stack(
                           children: [

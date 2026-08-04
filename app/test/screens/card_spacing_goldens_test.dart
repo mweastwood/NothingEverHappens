@@ -159,14 +159,21 @@ void main() {
   }) {
     if (!capacityPromptVisible) {
       settingsSubject.add(
-        const UserSettings(
+        UserSettings(
           hoursAvailable: 8.0,
           lastCapacityConfirmedWeek: '2026-03-02',
+          showTaskListSortBar: sortBarVisible,
+          showScheduleListSortBar: sortBarVisible,
         ),
       );
     } else {
       settingsSubject.add(
-        const UserSettings(hoursAvailable: 8.0, lastCapacityConfirmedWeek: ''),
+        UserSettings(
+          hoursAvailable: 8.0,
+          lastCapacityConfirmedWeek: '',
+          showTaskListSortBar: sortBarVisible,
+          showScheduleListSortBar: sortBarVisible,
+        ),
       );
     }
 
@@ -178,6 +185,8 @@ void main() {
           mockUserSettingsRepository,
         ),
         homeTabIndexProvider.overrideWith((ref) => initialTab),
+        showTaskListSortBarProvider.overrideWith((ref) => sortBarVisible),
+        showScheduleListSortBarProvider.overrideWith((ref) => sortBarVisible),
         showSortBarProvider.overrideWith((ref) => sortBarVisible),
       ],
       child: buildTestableWidget(child: const HomeScreen()),

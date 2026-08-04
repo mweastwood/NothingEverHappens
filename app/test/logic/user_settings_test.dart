@@ -6,22 +6,31 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 
 void main() {
   group('UserSettings Model Unit Tests', () {
-    test('default instantiation has 8.0 hoursAvailable', () {
-      const settings = UserSettings(hoursAvailable: 8.0);
-      expect(settings.hoursAvailable, 8.0);
-      expect(settings.showLastSpawnedDate, isFalse);
-    });
+    test(
+      'default instantiation has 8.0 hoursAvailable and true for sort bar visibility',
+      () {
+        const settings = UserSettings(hoursAvailable: 8.0);
+        expect(settings.hoursAvailable, 8.0);
+        expect(settings.showLastSpawnedDate, isFalse);
+        expect(settings.showTaskListSortBar, isTrue);
+        expect(settings.showScheduleListSortBar, isTrue);
+      },
+    );
 
-    test('fromJson handles empty JSON by falling back to 8.0 and false', () {
+    test('fromJson handles empty JSON by falling back to defaults', () {
       final settings = UserSettings.fromJson(const {});
       expect(settings.hoursAvailable, 8.0);
       expect(settings.showLastSpawnedDate, isFalse);
+      expect(settings.showTaskListSortBar, isTrue);
+      expect(settings.showScheduleListSortBar, isTrue);
     });
 
-    test('fromJson handles valid JSON input', () {
+    test('fromJson handles valid JSON input including sort bar visibility', () {
       final settings = UserSettings.fromJson(const {
         'hoursAvailable': 12.5,
         'showLastSpawnedDate': true,
+        'showTaskListSortBar': false,
+        'showScheduleListSortBar': false,
         'taskListSort': [
           {'column': 'priority', 'ascending': false},
         ],
@@ -31,6 +40,8 @@ void main() {
       });
       expect(settings.hoursAvailable, 12.5);
       expect(settings.showLastSpawnedDate, isTrue);
+      expect(settings.showTaskListSortBar, isFalse);
+      expect(settings.showScheduleListSortBar, isFalse);
       expect(settings.taskListSort, const [
         (column: 'priority', ascending: false),
       ]);
@@ -39,10 +50,12 @@ void main() {
       ]);
     });
 
-    test('toJson serializes correctly', () {
+    test('toJson serializes correctly including sort bar visibility', () {
       const settings = UserSettings(
         hoursAvailable: 6.0,
         showLastSpawnedDate: true,
+        showTaskListSortBar: false,
+        showScheduleListSortBar: true,
         taskListSort: [(column: 'priority', ascending: false)],
         scheduleListSort: [(column: 'next_due', ascending: true)],
       );
@@ -55,6 +68,8 @@ void main() {
         'scheduleListSort': [
           {'column': 'next_due', 'ascending': true},
         ],
+        'showTaskListSortBar': false,
+        'showScheduleListSortBar': true,
       });
     });
 
@@ -219,6 +234,8 @@ void main() {
       expect(snapshot.data(), {
         'hoursAvailable': 15.0,
         'showLastSpawnedDate': true,
+        'showTaskListSortBar': true,
+        'showScheduleListSortBar': true,
       });
 
       final settingsFromRepository = await repository.getSettings().first;
