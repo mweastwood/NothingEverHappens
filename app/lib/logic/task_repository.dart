@@ -327,9 +327,28 @@ class TaskRepository {
               toFirestore: (task, _) => task.toFirestore(),
             );
 
-        final familyStream = familyTasksRef.snapshots().map((snapshot) {
-          return snapshot.docs.map((doc) => doc.data()).toList();
-        });
+        final familyStream = familyTasksRef
+            .snapshots()
+            .map((snapshot) {
+              return snapshot.docs.map((doc) => doc.data()).toList();
+            })
+            .onErrorResume((error, stackTrace) {
+              final errStr = error.toString().toLowerCase();
+              if (errStr.contains('permission-denied') ||
+                  errStr.contains('permission denied')) {
+                debugPrint(
+                  'Transient permission error on family tasks stream right after joining family, retrying stream...',
+                );
+                return Stream.periodic(const Duration(milliseconds: 500))
+                    .take(1)
+                    .switchMap(
+                      (_) => familyTasksRef.snapshots().map(
+                        (s) => s.docs.map((d) => d.data()).toList(),
+                      ),
+                    );
+              }
+              return Stream.error(error, stackTrace);
+            });
 
         return Rx.combineLatest2<
           List<TaskSchedule>,
@@ -367,9 +386,28 @@ class TaskRepository {
               toFirestore: (instance, _) => instance.toFirestore(),
             );
 
-        final familyStream = familyInstancesRef.snapshots().map((snapshot) {
-          return snapshot.docs.map((doc) => doc.data()).toList();
-        });
+        final familyStream = familyInstancesRef
+            .snapshots()
+            .map((snapshot) {
+              return snapshot.docs.map((doc) => doc.data()).toList();
+            })
+            .onErrorResume((error, stackTrace) {
+              final errStr = error.toString().toLowerCase();
+              if (errStr.contains('permission-denied') ||
+                  errStr.contains('permission denied')) {
+                debugPrint(
+                  'Transient permission error on family instances stream right after joining family, retrying stream...',
+                );
+                return Stream.periodic(const Duration(milliseconds: 500))
+                    .take(1)
+                    .switchMap(
+                      (_) => familyInstancesRef.snapshots().map(
+                        (s) => s.docs.map((d) => d.data()).toList(),
+                      ),
+                    );
+              }
+              return Stream.error(error, stackTrace);
+            });
 
         return Rx.combineLatest2<
           List<TaskInstance>,
