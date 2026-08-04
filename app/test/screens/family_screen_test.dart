@@ -29,13 +29,13 @@ void main() {
     errorHandler = ErrorHandler();
   });
 
-  Widget buildTestWidget() {
+  Widget buildTestWidget({SubscriptionTier tier = SubscriptionTier.family}) {
     return ProviderScope(
       overrides: [
         familyRepositoryProvider.overrideWithValue(repository),
         errorHandlerProvider.overrideWithValue(errorHandler),
         subscriptionServiceProvider.overrideWith(
-          (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
+          (ref) => FakeSubscriptionService(ref, tier),
         ),
       ],
       child: buildTestableWidget(child: const Scaffold(body: FamilyScreen())),
@@ -435,5 +435,82 @@ void main() {
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'family_screen_outstanding_invites');
+  });
+
+  testWidgets(
+    'on free tier without invite, tapping upgrade navigates to SubscriptionScreen',
+    (WidgetTester tester) async {
+      await firestore.collection('users').doc(userId).set({});
+
+      await tester.pumpWidget(buildTestWidget(tier: SubscriptionTier.free));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unlock Family Groups'), findsOneWidget);
+      expect(find.byKey(const Key('upgrade_to_family_button')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('upgrade_to_family_button')));
+      await tester.pumpAndSettle();
+
+      // Should open SubscriptionScreen
+      expect(find.text('Subscriptions'), findsOneWidget);
+      expect(find.text('Available Plans'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'on free tier with pending invite, displays invite directly on main screen',
+    (WidgetTester tester) async {
+      await firestore.collection('users').doc(userId).set({});
+      await repository.inviteMember(
+        familyId: 'fam-999',
+        familyName: 'The Addams',
+        toEmail: userEmail,
+        role: 'non-parent',
+      );
+
+      await tester.pumpWidget(buildTestWidget(tier: SubscriptionTier.free));
+      await tester.pumpAndSettle();
+
+      // Paywall splash screen should not hide the pending invite
+      expect(find.text('Unlock Family Groups'), findsNothing);
+      expect(find.text('Pending Invites'), findsOneWidget);
+      expect(find.text('The Addams'), findsOneWidget);
+      expect(find.text('Accept'), findsOneWidget);
+      expect(find.text('Decline'), findsOneWidget);
+    },
+  );
+
+  testGoldens('FamilyScreen free tier paywall splash golden', (tester) async {
+    await firestore.collection('users').doc(userId).set({});
+
+    await tester.pumpWidgetBuilder(
+      buildTestWidget(tier: SubscriptionTier.free),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'family_screen_free_tier_paywall');
+  });
+
+  testGoldens('FamilyScreen free tier with pending invite golden', (
+    tester,
+  ) async {
+    await firestore.collection('users').doc(userId).set({});
+    await repository.inviteMember(
+      familyId: 'fam-999',
+      familyName: 'The Addams',
+      toEmail: userEmail,
+      role: 'non-parent',
+    );
+
+    await tester.pumpWidgetBuilder(
+      buildTestWidget(tier: SubscriptionTier.free),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 800),
+    );
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'family_screen_free_tier_pending_invite');
   });
 }

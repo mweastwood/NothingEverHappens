@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
-import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/family.dart';
 import '../logic/family_repository.dart';
@@ -11,8 +9,8 @@ import '../widgets/family_invite_card.dart';
 import '../widgets/family_outstanding_invite_tile.dart';
 import '../widgets/family_member_tile.dart';
 import '../widgets/subscription_paywall_widget.dart';
-import '../logic/auth_repository.dart';
 import '../logic/subscription_service.dart';
+import 'subscription_screen.dart';
 
 class FamilyScreen extends ConsumerStatefulWidget {
   const FamilyScreen({super.key});
@@ -23,6 +21,13 @@ class FamilyScreen extends ConsumerStatefulWidget {
 
 class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   bool _isProcessing = false;
+
+  void _navigateToSubscriptions(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SubscriptionScreen()),
+    );
+  }
 
   Future<void> _createFamily(FamilyRepository repository) async {
     final name = await showDialog<String>(
@@ -227,18 +232,16 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     final subscription = ref.watch(subscriptionServiceProvider);
     final priceAsync = ref.watch(familyPlanPriceProvider);
     final priceString = priceAsync.value;
-
-    if (!subscription.isFamilyPlan) {
-      return SubscriptionPaywallWidget(
-        isProcessing: _isProcessing,
-        onUpgrade: () => _upgradeToFamily(context),
-        priceString: priceString,
-      );
-    }
-
     final familyRepo = ref.watch(familyRepositoryProvider);
 
     if (familyRepo == null) {
+      if (!subscription.isFamilyPlan) {
+        return SubscriptionPaywallWidget(
+          isProcessing: _isProcessing,
+          onUpgrade: () => _navigateToSubscriptions(context),
+          priceString: priceString,
+        );
+      }
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -265,11 +268,37 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
         final familyId = profileData['familyId'] as String? ?? '';
         final familyRole = profileData['familyRole'] as String? ?? '';
 
-        if (familyId.isEmpty) {
-          return _buildNoFamilyScreen(familyRepo);
-        } else {
+        if (familyId.isNotEmpty) {
           return _buildFamilyScreen(familyRepo, familyId, familyRole);
         }
+
+        if (subscription.isFamilyPlan) {
+          return _buildNoFamilyScreen(familyRepo);
+        }
+
+        return StreamBuilder<List<FamilyInvite>>(
+          stream: familyRepo.getPendingInvites(),
+          builder: (context, invitesSnapshot) {
+            if (invitesSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final invites = invitesSnapshot.data ?? [];
+            if (invites.isNotEmpty) {
+              return _buildPendingInvitesScreen(
+                familyRepo,
+                invites,
+                isFamilyPlan: false,
+              );
+            }
+
+            return SubscriptionPaywallWidget(
+              isProcessing: _isProcessing,
+              onUpgrade: () => _navigateToSubscriptions(context),
+              priceString: priceString,
+            );
+          },
+        );
       },
     );
   }
@@ -567,49 +596,65 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     );
   }
 
-  Future<void> _upgradeToFamily(BuildContext context) async {
-    setState(() {
-      _isProcessing = true;
-    });
-    try {
-      final authRepo = ref.read(authRepositoryProvider);
-      final user = authRepo.currentUser;
-      if (user != null) {
-        if (!kIsWeb) {
-          try {
-            final offerings = await Purchases.getOfferings();
-            final current = offerings.current;
-            if (current != null && current.availablePackages.isNotEmpty) {
-              final package = current.availablePackages.firstWhere(
-                (p) => p.identifier.contains('family'),
-                orElse: () => current.availablePackages.first,
-              );
-              await Purchases.purchase(PurchaseParams.package(package));
-            }
-          } catch (e) {
-            debugPrint('RevenueCat purchase error / fallback: $e');
-          }
-        }
-
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'subscriptionTier': 'family',
-        }, SetOptions(merge: true));
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Upgraded to Family Plan!')),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Error purchasing: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
-    }
+  Widget _buildPendingInvitesScreen(
+    FamilyRepository repository,
+    List<FamilyInvite> invites, {
+    required bool isFamilyPlan,
+  }) {
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        Text(
+          context.l10n.pendingInvitesHeader,
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: invites.length,
+          itemBuilder: (context, index) {
+            final invite = invites[index];
+            return FamilyInviteCard(
+              invite: invite,
+              onAccept: () => _handleInvite(repository, invite, true),
+              onDecline: () => _handleInvite(repository, invite, false),
+            );
+          },
+        ),
+        if (isFamilyPlan) ...[
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            key: const Key('create_family_button'),
+            onPressed: () => _createFamily(repository),
+            icon: const Icon(Icons.add),
+            label: Text(context.l10n.createFamilyButton),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ] else ...[
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            key: const Key('view_subscriptions_button'),
+            onPressed: () => _navigateToSubscriptions(context),
+            icon: const Icon(Icons.star_outline),
+            label: const Text('View Subscriptions'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
 
