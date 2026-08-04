@@ -124,10 +124,14 @@ final isFromCacheProvider = Provider<bool>((ref) {
   final tasks = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
   final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
   if (tasks.isEmpty && instances.isEmpty) return false;
-  final tasksFromCache = tasks.isNotEmpty && tasks.every((t) => t.isFromCache);
-  final instancesFromCache =
+  final hasTasksFromCache =
+      tasks.isNotEmpty && tasks.every((t) => t.isFromCache);
+  final hasInstancesFromCache =
       instances.isNotEmpty && instances.every((i) => i.isFromCache);
-  return tasksFromCache && instancesFromCache;
+  if (tasks.isNotEmpty && instances.isNotEmpty) {
+    return hasTasksFromCache && hasInstancesFromCache;
+  }
+  return hasTasksFromCache || hasInstancesFromCache;
 });
 
 class TaskRepository {
@@ -356,6 +360,12 @@ class TaskRepository {
   }
 
   Stream<List<TaskSchedule>> getTasks() {
+    final personalStream = _tasksRef
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => doc.data()).toList();
+        });
+
     return _firestore
         .collection('users')
         .doc(_userId)
@@ -363,10 +373,6 @@ class TaskRepository {
         .map((doc) => doc.data()?['familyId'] as String? ?? '')
         .distinct()
         .switchMap((familyId) {
-          final personalStream = _tasksRef.snapshots().map((snapshot) {
-            return snapshot.docs.map((doc) => doc.data()).toList();
-          });
-
           if (familyId.isEmpty) {
             return personalStream.map((personalTasks) {
               scheduleMicrotask(
@@ -385,12 +391,11 @@ class TaskRepository {
                   toFirestore: (task, _) => task.toFirestore(),
                 );
 
-            final familyStream = Rx.retry(
-              () => familyTasksRef.snapshots().map((snapshot) {
-                return snapshot.docs.map((doc) => doc.data()).toList();
-              }),
-              5,
-            );
+            final familyStream = familyTasksRef
+                .snapshots(includeMetadataChanges: true)
+                .map((snapshot) {
+                  return snapshot.docs.map((doc) => doc.data()).toList();
+                });
 
             return Rx.combineLatest2<
               List<TaskSchedule>,
@@ -406,6 +411,12 @@ class TaskRepository {
   }
 
   Stream<List<TaskInstance>> getInstances() {
+    final personalStream = _instancesRef
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => doc.data()).toList();
+        });
+
     return _firestore
         .collection('users')
         .doc(_userId)
@@ -413,10 +424,6 @@ class TaskRepository {
         .map((doc) => doc.data()?['familyId'] as String? ?? '')
         .distinct()
         .switchMap((familyId) {
-          final personalStream = _instancesRef.snapshots().map((snapshot) {
-            return snapshot.docs.map((doc) => doc.data()).toList();
-          });
-
           if (familyId.isEmpty) {
             return personalStream;
           } else {
@@ -430,12 +437,11 @@ class TaskRepository {
                   toFirestore: (instance, _) => instance.toFirestore(),
                 );
 
-            final familyStream = Rx.retry(
-              () => familyInstancesRef.snapshots().map((snapshot) {
-                return snapshot.docs.map((doc) => doc.data()).toList();
-              }),
-              5,
-            );
+            final familyStream = familyInstancesRef
+                .snapshots(includeMetadataChanges: true)
+                .map((snapshot) {
+                  return snapshot.docs.map((doc) => doc.data()).toList();
+                });
 
             return Rx.combineLatest2<
               List<TaskInstance>,
