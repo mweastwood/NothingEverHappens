@@ -3,13 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'family.dart';
 import 'auth_repository.dart';
 
-import 'subscription_service.dart';
-
 final familyRepositoryProvider = Provider<FamilyRepository?>((ref) {
   final user = ref.watch(authStateProvider).value;
   if (user == null) return null;
-  final subscription = ref.watch(subscriptionServiceProvider);
-  if (!subscription.isFamilyPlan) return null;
   return FamilyRepository(
     userId: user.uid,
     userEmail: user.email,
