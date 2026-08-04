@@ -31,6 +31,9 @@ class TaskInstance {
   /// Whether this instance document was retrieved from local offline cache.
   final bool isFromCache;
 
+  /// Timestamp of the last update for sync conflict resolution.
+  final DateTime updatedAt;
+
   TaskInstance({
     String? id,
     required this.scheduleId,
@@ -50,7 +53,9 @@ class TaskInstance {
     this.status = 'pending',
     this.hasPendingWrites = false,
     this.isFromCache = false,
+    DateTime? updatedAt,
   }) : id = id ?? TaskInstance.generateId(),
+       updatedAt = updatedAt ?? DateTime.now(),
        notificationRelativeTimes = notificationRelativeTimes ?? const [];
 
   factory TaskInstance.fromFirestore(
@@ -123,6 +128,18 @@ class TaskInstance {
 
     final status = data['status'] as String? ?? 'pending';
 
+    final updatedAtRaw = data['updatedAt'];
+    DateTime? updatedAt;
+    if (updatedAtRaw != null) {
+      if (updatedAtRaw is Timestamp) {
+        updatedAt = updatedAtRaw.toDate();
+      } else if (updatedAtRaw is String) {
+        updatedAt = DateTime.parse(updatedAtRaw);
+      } else if (updatedAtRaw is int) {
+        updatedAt = DateTime.fromMillisecondsSinceEpoch(updatedAtRaw);
+      }
+    }
+
     return TaskInstance(
       id: snapshot.id,
       scheduleId: scheduleId,
@@ -142,6 +159,7 @@ class TaskInstance {
       status: status,
       hasPendingWrites: snapshot.metadata.hasPendingWrites,
       isFromCache: snapshot.metadata.isFromCache,
+      updatedAt: updatedAt,
     );
   }
 
@@ -165,6 +183,7 @@ class TaskInstance {
       if (completedByUserId != null) 'completedByUserId': completedByUserId,
       if (completedAt != null) 'completedAt': completedAt,
       'status': status,
+      'updatedAt': updatedAt,
     };
   }
 
@@ -189,6 +208,7 @@ class TaskInstance {
     String? status,
     bool? hasPendingWrites,
     bool? isFromCache,
+    DateTime? updatedAt,
   }) {
     return TaskInstance(
       id: id,
@@ -215,6 +235,7 @@ class TaskInstance {
       status: status ?? this.status,
       hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
       isFromCache: isFromCache ?? this.isFromCache,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }

@@ -1622,6 +1622,13 @@ void main() {
           overrides: [
             authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
             firestoreProvider.overrideWithValue(firestore),
+            taskRepositoryProvider.overrideWith(
+              (ref) => TaskRepository(
+                firestore: firestore,
+                userId: userId,
+                notificationService: ref.watch(notificationServiceProvider),
+              ),
+            ),
             userSettingsProvider.overrideWith(
               (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
             ),
@@ -1734,6 +1741,13 @@ void main() {
             overrides: [
               authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
               firestoreProvider.overrideWithValue(firestore),
+              taskRepositoryProvider.overrideWith(
+                (ref) => TaskRepository(
+                  firestore: firestore,
+                  userId: userId,
+                  notificationService: ref.watch(notificationServiceProvider),
+                ),
+              ),
               notificationServiceProvider.overrideWithValue(
                 LoggingNotificationService(),
               ),
@@ -1786,6 +1800,13 @@ void main() {
             overrides: [
               authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
               firestoreProvider.overrideWithValue(firestore),
+              taskRepositoryProvider.overrideWith(
+                (ref) => TaskRepository(
+                  firestore: firestore,
+                  userId: userId,
+                  notificationService: ref.watch(notificationServiceProvider),
+                ),
+              ),
               notificationServiceProvider.overrideWithValue(
                 LoggingNotificationService(),
               ),
@@ -2061,6 +2082,13 @@ void main() {
             overrides: [
               authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
               firestoreProvider.overrideWithValue(firestore),
+              taskRepositoryProvider.overrideWith(
+                (ref) => TaskRepository(
+                  firestore: firestore,
+                  userId: 'test-user-id',
+                  notificationService: ref.watch(notificationServiceProvider),
+                ),
+              ),
               userSettingsProvider.overrideWith(
                 (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
               ),

@@ -93,6 +93,9 @@ class TaskSchedule {
   /// Whether this document was retrieved from local offline cache.
   final bool isFromCache;
 
+  /// Timestamp of the last update for sync conflict resolution.
+  final DateTime updatedAt;
+
   int get futureInstancesCount {
     if (schedules.isEmpty) {
       return 1;
@@ -139,7 +142,9 @@ class TaskSchedule {
     this.skipIfNoCapacity = false,
     this.hasPendingWrites = false,
     this.isFromCache = false,
+    DateTime? updatedAt,
   }) : id = id.startsWith('S-') ? id : 'S-$id',
+       updatedAt = updatedAt ?? DateTime.now(),
        schedules = (schedules ?? []).map((s) {
          final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
          final mPolicy =
@@ -208,6 +213,18 @@ class TaskSchedule {
     final assignedUserId = data['assignedUserId'] as String?;
     final skipIfNoCapacity = data['skipIfNoCapacity'] as bool? ?? false;
 
+    final updatedAtRaw = data['updatedAt'];
+    DateTime? updatedAt;
+    if (updatedAtRaw != null) {
+      if (updatedAtRaw is Timestamp) {
+        updatedAt = updatedAtRaw.toDate();
+      } else if (updatedAtRaw is String) {
+        updatedAt = DateTime.parse(updatedAtRaw);
+      } else if (updatedAtRaw is int) {
+        updatedAt = DateTime.fromMillisecondsSinceEpoch(updatedAtRaw);
+      }
+    }
+
     return TaskSchedule(
       id: snapshot.id,
       title: data['title'] as String? ?? 'Untitled',
@@ -228,6 +245,7 @@ class TaskSchedule {
       skipIfNoCapacity: skipIfNoCapacity,
       hasPendingWrites: snapshot.metadata.hasPendingWrites,
       isFromCache: snapshot.metadata.isFromCache,
+      updatedAt: updatedAt,
     );
   }
 
@@ -248,6 +266,7 @@ class TaskSchedule {
       if (assignedUserId != null) 'assignedUserId': assignedUserId,
       'futureInstancesCount': futureInstancesCount,
       'skipIfNoCapacity': skipIfNoCapacity,
+      'updatedAt': updatedAt,
     };
   }
 
@@ -495,6 +514,7 @@ class TaskSchedule {
     bool clearAssignedUserId = false,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
+    DateTime? updatedAt,
   }) {
     return _copyWith(
       title: title,
@@ -517,6 +537,7 @@ class TaskSchedule {
       clearAssignedUserId: clearAssignedUserId,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
+      updatedAt: updatedAt,
     );
   }
 
@@ -544,6 +565,7 @@ class TaskSchedule {
     bool? skipIfNoCapacity,
     bool? hasPendingWrites,
     bool? isFromCache,
+    DateTime? updatedAt,
   }) {
     final baseSchedules = schedules ?? this.schedules;
     final resolvedSchedules = baseSchedules.map((s) {
@@ -590,6 +612,7 @@ class TaskSchedule {
       skipIfNoCapacity: skipIfNoCapacity ?? this.skipIfNoCapacity,
       hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
       isFromCache: isFromCache ?? this.isFromCache,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
