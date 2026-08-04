@@ -25,6 +25,12 @@ class TaskInstance {
   final DateTime? completedAt;
   final String status;
 
+  /// Whether this instance document has pending local writes that have not yet synced to Firestore server.
+  final bool hasPendingWrites;
+
+  /// Whether this instance document was retrieved from local offline cache.
+  final bool isFromCache;
+
   TaskInstance({
     String? id,
     required this.scheduleId,
@@ -42,6 +48,8 @@ class TaskInstance {
     this.completedByUserId,
     this.completedAt,
     this.status = 'pending',
+    this.hasPendingWrites = false,
+    this.isFromCache = false,
   }) : id = id ?? TaskInstance.generateId(),
        notificationRelativeTimes = notificationRelativeTimes ?? const [];
 
@@ -132,6 +140,8 @@ class TaskInstance {
       completedByUserId: completedByUserId,
       completedAt: completedAt,
       status: status,
+      hasPendingWrites: snapshot.metadata.hasPendingWrites,
+      isFromCache: snapshot.metadata.isFromCache,
     );
   }
 
@@ -177,6 +187,8 @@ class TaskInstance {
     DateTime? completedAt,
     bool clearCompletedAt = false,
     String? status,
+    bool? hasPendingWrites,
+    bool? isFromCache,
   }) {
     return TaskInstance(
       id: id,
@@ -201,6 +213,8 @@ class TaskInstance {
           : (completedByUserId ?? this.completedByUserId),
       completedAt: clearCompletedAt ? null : (completedAt ?? this.completedAt),
       status: status ?? this.status,
+      hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
+      isFromCache: isFromCache ?? this.isFromCache,
     );
   }
 }

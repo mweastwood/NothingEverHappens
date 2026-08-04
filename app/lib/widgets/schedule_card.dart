@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/task_schedule.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
+import '../logic/subscription_service.dart';
 
-class ScheduleCard extends StatelessWidget {
+class ScheduleCard extends ConsumerWidget {
   final TaskSchedule task;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -25,7 +27,7 @@ class ScheduleCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final schedule = task.schedules.isNotEmpty
         ? task.schedules[task.activeOccurrenceIndex < task.schedules.length
               ? task.activeOccurrenceIndex
@@ -151,11 +153,30 @@ class ScheduleCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    task.title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    children: [
+                      if (ref
+                              .watch(subscriptionServiceProvider)
+                              .isActivePremium &&
+                          task.hasPendingWrites) ...[
+                        Tooltip(
+                          message: 'Saved locally (pending Cloud sync)',
+                          child: Icon(
+                            Icons.cloud_sync_outlined,
+                            size: 20,
+                            color: Colors.amber.shade800,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Flexible(
+                        child: Text(
+                          task.title,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Row(

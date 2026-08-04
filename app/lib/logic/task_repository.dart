@@ -104,6 +104,28 @@ final taskInstancesProvider = StreamProvider<List<TaskInstance>>((ref) {
   return repo.getInstances();
 });
 
+final unsyncedTasksProvider = Provider<List<TaskSchedule>>((ref) {
+  final tasks = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
+  return tasks.where((t) => t.hasPendingWrites).toList();
+});
+
+final unsyncedInstancesProvider = Provider<List<TaskInstance>>((ref) {
+  final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
+  return instances.where((i) => i.hasPendingWrites).toList();
+});
+
+final unsyncedCountProvider = Provider<int>((ref) {
+  final unsyncedTasks = ref.watch(unsyncedTasksProvider);
+  final unsyncedInstances = ref.watch(unsyncedInstancesProvider);
+  return unsyncedTasks.length + unsyncedInstances.length;
+});
+
+final isFromCacheProvider = Provider<bool>((ref) {
+  final tasks = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
+  final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
+  return tasks.any((t) => t.isFromCache) || instances.any((i) => i.isFromCache);
+});
+
 class TaskRepository {
   final FirebaseFirestore _firestore;
   final String _userId;
@@ -116,6 +138,8 @@ class TaskRepository {
   final Map<String, ({DateTime processedAt, String signature})>
   _lastProcessedTasks = {};
   final Map<String, DateTime> _spawnedInstancesCache = {};
+  String? _cachedFamilyId;
+  DateTime? _lastFamilyIdCheck;
 
   String get userId => _userId;
 
@@ -171,8 +195,34 @@ class TaskRepository {
   }
 
   Future<String?> _getFamilyId() async {
-    final userDoc = await _firestore.collection('users').doc(_userId).get();
-    return userDoc.data()?['familyId'] as String?;
+    if (_cachedFamilyId != null &&
+        _lastFamilyIdCheck != null &&
+        DateTime.now().difference(_lastFamilyIdCheck!) <
+            const Duration(seconds: 15)) {
+      return _cachedFamilyId;
+    }
+    try {
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(_userId)
+          .get(const GetOptions(source: Source.serverAndCache))
+          .timeout(const Duration(seconds: 2));
+      _cachedFamilyId = userDoc.data()?['familyId'] as String?;
+      _lastFamilyIdCheck = DateTime.now();
+      return _cachedFamilyId;
+    } catch (_) {
+      try {
+        final cacheDoc = await _firestore
+            .collection('users')
+            .doc(_userId)
+            .get(const GetOptions(source: Source.cache));
+        _cachedFamilyId = cacheDoc.data()?['familyId'] as String?;
+        _lastFamilyIdCheck = DateTime.now();
+        return _cachedFamilyId;
+      } catch (_) {
+        return _cachedFamilyId;
+      }
+    }
   }
 
   DocumentReference<TaskSchedule> _taskRefFor(

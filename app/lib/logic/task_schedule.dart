@@ -87,6 +87,12 @@ class TaskSchedule {
   /// Whether this task should be skipped if daily capacity is exceeded.
   final bool skipIfNoCapacity;
 
+  /// Whether this document has pending local writes that have not yet synced to Firestore server.
+  final bool hasPendingWrites;
+
+  /// Whether this document was retrieved from local offline cache.
+  final bool isFromCache;
+
   int get futureInstancesCount {
     if (schedules.isEmpty) {
       return 1;
@@ -131,6 +137,8 @@ class TaskSchedule {
     MissedOccurrencePolicy? missedOccurrencePolicy,
     MissedPolicy? missedPolicy,
     this.skipIfNoCapacity = false,
+    this.hasPendingWrites = false,
+    this.isFromCache = false,
   }) : id = id.startsWith('S-') ? id : 'S-$id',
        schedules = (schedules ?? []).map((s) {
          final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
@@ -218,6 +226,8 @@ class TaskSchedule {
       preferredBy: preferredBy,
       assignedUserId: assignedUserId,
       skipIfNoCapacity: skipIfNoCapacity,
+      hasPendingWrites: snapshot.metadata.hasPendingWrites,
+      isFromCache: snapshot.metadata.isFromCache,
     );
   }
 
@@ -532,6 +542,8 @@ class TaskSchedule {
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
     bool? skipIfNoCapacity,
+    bool? hasPendingWrites,
+    bool? isFromCache,
   }) {
     final baseSchedules = schedules ?? this.schedules;
     final resolvedSchedules = baseSchedules.map((s) {
@@ -576,6 +588,8 @@ class TaskSchedule {
           ? null
           : (assignedUserId ?? this.assignedUserId),
       skipIfNoCapacity: skipIfNoCapacity ?? this.skipIfNoCapacity,
+      hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
+      isFromCache: isFromCache ?? this.isFromCache,
     );
   }
 

@@ -11,6 +11,9 @@ import '../logic/user_settings_repository.dart';
 import '../logic/task_instance.dart';
 import '../logic/sort_helper.dart';
 import '../widgets/sort_bar.dart';
+import '../widgets/unsynced_banner.dart';
+
+import '../logic/subscription_service.dart';
 
 final taskSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -274,10 +277,19 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                       !settingsVal.isLoading &&
                       !settingsVal.hasError &&
                       !isConfirmed;
+                  final hasSubscription = ref
+                      .watch(subscriptionServiceProvider)
+                      .isActivePremium;
+                  final showUnsyncedBanner =
+                      hasSubscription &&
+                      (ref.watch(unsyncedCountProvider) > 0 ||
+                          ref.watch(isFromCacheProvider));
                   return CustomScrollView(
                     key: const PageStorageKey('tasksView'),
                     controller: _scrollController,
                     slivers: [
+                      if (showUnsyncedBanner)
+                        const SliverToBoxAdapter(child: UnsyncedBanner()),
                       SliverToBoxAdapter(
                         child: AnimatedContainer(
                           duration:

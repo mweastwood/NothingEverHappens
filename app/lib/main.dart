@@ -45,12 +45,17 @@ Future<void> main() async {
     );
   }
 
-  // Enable persistence for Web
-  if (kIsWeb) {
+  // Enable local Firestore offline persistence and caching across all platforms
+  try {
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
     );
-  } else {
+  } catch (e) {
+    debugPrint("Firestore settings initialization error: $e");
+  }
+
+  if (!kIsWeb) {
     await Workmanager().initialize(callbackDispatcher);
     await Workmanager().registerPeriodicTask(
       "scheduler-periodic-task",

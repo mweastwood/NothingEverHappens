@@ -18,6 +18,8 @@ import 'undo_snackbar.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../logic/subscription_service.dart';
+
 class TaskWidget extends ConsumerStatefulWidget {
   final TaskInstance instance;
   final TaskSchedule? schedule;
@@ -603,15 +605,34 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         ),
         title: Padding(
           padding: const EdgeInsets.only(bottom: 4.0),
-          child: _isMouse
-              ? SelectableText(
-                  widget.instance.title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                )
-              : Text(
-                  widget.instance.title,
-                  style: Theme.of(context).textTheme.titleMedium,
+          child: Row(
+            children: [
+              if (ref.watch(subscriptionServiceProvider).isActivePremium &&
+                  (widget.instance.hasPendingWrites ||
+                      (widget.schedule?.hasPendingWrites ?? false))) ...[
+                Tooltip(
+                  message: 'Saved locally (pending Cloud sync)',
+                  child: Icon(
+                    Icons.cloud_sync_outlined,
+                    size: 20,
+                    color: Colors.amber.shade800,
+                  ),
                 ),
+                const SizedBox(width: 6),
+              ],
+              Expanded(
+                child: _isMouse
+                    ? SelectableText(
+                        widget.instance.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      )
+                    : Text(
+                        widget.instance.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+              ),
+            ],
+          ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
