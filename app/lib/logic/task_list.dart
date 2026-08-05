@@ -32,32 +32,10 @@ class TaskList {
       final first = task.schedules.first;
       bool sameRecurrence = true;
       for (final s in task.schedules) {
-        if (s.runtimeType != first.runtimeType ||
-            s.scheduledDate != first.scheduledDate) {
+        if (s.scheduledDate != first.scheduledDate ||
+            !s.hasSameRecurrence(first)) {
           sameRecurrence = false;
           break;
-        }
-        if (s is DailySchedule && first is DailySchedule) {
-          if (s.interval != first.interval) {
-            sameRecurrence = false;
-          }
-        } else if (s is WeeklySchedule && first is WeeklySchedule) {
-          if (s.interval != first.interval ||
-              s.daysOfWeek.length != first.daysOfWeek.length ||
-              !s.daysOfWeek.every(first.daysOfWeek.contains)) {
-            sameRecurrence = false;
-          }
-        } else if (s is MonthlySchedule && first is MonthlySchedule) {
-          if (s.interval != first.interval ||
-              s.dayOfMonth != first.dayOfMonth) {
-            sameRecurrence = false;
-          }
-        } else if (s is YearlySchedule && first is YearlySchedule) {
-          if (s.interval != first.interval ||
-              s.month != first.month ||
-              s.day != first.day) {
-            sameRecurrence = false;
-          }
         }
       }
       isSlotBased = sameRecurrence && task.schedules.length > 1;
