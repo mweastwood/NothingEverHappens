@@ -13,7 +13,7 @@ class TaskSpawnerEngine {
     required DateTime completionTime,
     required List<TaskInstance> existingInstances,
   }) {
-    return SchedulerEngine.getNextOccurrenceToSpawn(
+    return const SchedulerEngine().getNextOccurrenceToSpawn(
       task,
       completedInstance,
       completionTime,
@@ -28,7 +28,7 @@ class TaskSpawnerEngine {
     required DateTime completionTime,
     required List<TaskInstance> existingInstances,
   }) {
-    return SchedulerEngine.getNextOccurrenceIdToDelete(
+    return const SchedulerEngine().getNextOccurrenceIdToDelete(
       task,
       completedInstance,
       completionTime,

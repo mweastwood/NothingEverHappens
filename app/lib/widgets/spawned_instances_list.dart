@@ -192,7 +192,7 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
       }
     }
 
-    final action = SchedulerEngine.evaluate(
+    final action = const SchedulerEngine().evaluate(
       widget.task,
       widget.dbInstances,
       widget.now,

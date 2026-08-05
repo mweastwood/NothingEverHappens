@@ -797,7 +797,7 @@ class TaskRepository {
           _spawnedInstancesCache.remove(k);
         }
 
-        final action = SchedulerEngine.evaluate(
+        final action = const SchedulerEngine().evaluate(
           task,
           taskInstances,
           now,

@@ -33,7 +33,7 @@ void main() {
           ],
         );
 
-        final action = SchedulerEngine.evaluate(task, [], now);
+        final action = const SchedulerEngine().evaluate(task, [], now);
 
         expect(action.instancesToSpawn, hasLength(1));
         final spawned = action.instancesToSpawn.first;
@@ -82,7 +82,9 @@ void main() {
           status: TaskStatus.pending,
         );
 
-        final action = SchedulerEngine.evaluate(task, [existingInstance], now);
+        final action = const SchedulerEngine().evaluate(task, [
+          existingInstance,
+        ], now);
 
         expect(action.instancesToSpawn, isEmpty);
         expect(action.instancesToUpdate, isEmpty);
@@ -124,7 +126,9 @@ void main() {
             completedAt: now.subtract(const Duration(days: 2)),
           );
 
-          final action = SchedulerEngine.evaluate(task, [resolvedOneOff], now);
+          final action = const SchedulerEngine().evaluate(task, [
+            resolvedOneOff,
+          ], now);
 
           // Verify that resolvedOneOff is not modified / rescheduled / marked as skipped
           final changedIds = action.instancesToUpdate.map((i) => i.id).toList();
@@ -149,7 +153,7 @@ void main() {
           ],
         );
 
-        final action = SchedulerEngine.evaluate(
+        final action = const SchedulerEngine().evaluate(
           task,
           [],
           now,
@@ -192,7 +196,7 @@ void main() {
             ],
           );
 
-          final action = SchedulerEngine.evaluate(
+          final action = const SchedulerEngine().evaluate(
             task,
             [],
             now,
@@ -244,7 +248,7 @@ void main() {
           status: TaskStatus.pending,
         );
 
-        final action = SchedulerEngine.evaluate(
+        final action = const SchedulerEngine().evaluate(
           task,
           [existingPending],
           now,
@@ -300,7 +304,7 @@ void main() {
             status: TaskStatus.pending,
           );
 
-          final action = SchedulerEngine.evaluate(
+          final action = const SchedulerEngine().evaluate(
             task,
             [todayInstance],
             now,
@@ -366,7 +370,7 @@ void main() {
             status: TaskStatus.pending,
           );
 
-          final action = SchedulerEngine.evaluate(
+          final action = const SchedulerEngine().evaluate(
             task,
             [yesterdayInstance],
             evalTime,
@@ -399,7 +403,7 @@ void main() {
             ],
           );
 
-          final action = SchedulerEngine.evaluate(task, [], now);
+          final action = const SchedulerEngine().evaluate(task, [], now);
 
           // June 17 (oldest started) should be spawned as pending
           final spawnedDates = action.instancesToSpawn
@@ -465,7 +469,7 @@ void main() {
             status: TaskStatus.pending,
           );
 
-          final action = SchedulerEngine.evaluate(
+          final action = const SchedulerEngine().evaluate(
             task,
             [existingPending],
             now,
@@ -537,7 +541,7 @@ void main() {
             status: TaskStatus.pending,
           );
 
-          final action = SchedulerEngine.evaluate(
+          final action = const SchedulerEngine().evaluate(
             task,
             [yesterdayInstance],
             evalTime,
@@ -611,7 +615,7 @@ void main() {
           status: TaskStatus.pending,
         );
 
-        final action = SchedulerEngine.evaluate(
+        final action = const SchedulerEngine().evaluate(
           task,
           [yesterdayInstance],
           now,
@@ -670,7 +674,7 @@ void main() {
             completedAt: DateTime(2026, 6, 19, 14, 0),
           );
 
-          final nextInst = SchedulerEngine.getNextOccurrenceToSpawn(
+          final nextInst = const SchedulerEngine().getNextOccurrenceToSpawn(
             task,
             completedInstance,
             DateTime(2026, 6, 19, 14, 0),
@@ -709,7 +713,9 @@ void main() {
           status: TaskStatus.completed,
         );
 
-        final action = SchedulerEngine.evaluate(task, [resolvedMay1], now);
+        final action = const SchedulerEngine().evaluate(task, [
+          resolvedMay1,
+        ], now);
 
         // Under N=1 model, the future July 1 occurrence is spawned immediately
         expect(action.instancesToSpawn, hasLength(1));
@@ -739,7 +745,7 @@ void main() {
           );
 
           // First evaluate from null. Capped at 30 days from May 1 -> May 31. Spawns May 15.
-          final action1 = SchedulerEngine.evaluate(task, [], now);
+          final action1 = const SchedulerEngine().evaluate(task, [], now);
           expect(action1.instancesToSpawn, hasLength(1));
           expect(
             action1.instancesToSpawn.first.scheduledDate,
@@ -756,7 +762,7 @@ void main() {
             completedAt: now,
           );
           final updatedTask1 = action1.updatedSchedule!;
-          final action2 = SchedulerEngine.evaluate(updatedTask1, [
+          final action2 = const SchedulerEngine().evaluate(updatedTask1, [
             spawnedMay15,
           ], now);
 
@@ -869,7 +875,7 @@ void main() {
           ];
 
           // Run evaluate with futureInstancesCount = 2
-          final action = SchedulerEngine.evaluate(
+          final action = const SchedulerEngine().evaluate(
             task,
             existingInstances,
             now,
@@ -897,7 +903,7 @@ void main() {
         );
 
         // Evaluate without passing futureInstancesCount parameter
-        final action = SchedulerEngine.evaluate(task, const [], now);
+        final action = const SchedulerEngine().evaluate(task, const [], now);
 
         // It should spawn 10 instances (the fallback from task.futureInstancesCount for Daily)
         expect(action.instancesToSpawn, hasLength(10));
@@ -947,7 +953,7 @@ void main() {
           // Evaluation:
           // We have a completed future instance on Tuesday.
           // Under new rules, Daily task pre-creates 10 pending future instances.
-          final action = SchedulerEngine.evaluate(task, [
+          final action = const SchedulerEngine().evaluate(task, [
             completedTomorrow,
           ], now);
 
@@ -1016,7 +1022,7 @@ void main() {
           );
 
           // Run evaluate
-          final action = SchedulerEngine.evaluate(task, [
+          final action = const SchedulerEngine().evaluate(task, [
             satInstance,
             sunInstance,
           ], now);
@@ -1075,7 +1081,7 @@ void main() {
             schedules: [dailyRule, weeklyRule],
           );
 
-          final action = SchedulerEngine.evaluate(task, const [], now);
+          final action = const SchedulerEngine().evaluate(task, const [], now);
 
           // Daily rule (limit 10) spawns today + 10 lookahead = 11 daily instances
           final dailySpawns = action.instancesToSpawn
@@ -1112,7 +1118,7 @@ void main() {
           },
         );
 
-        final action = SchedulerEngine.evaluate(
+        final action = const SchedulerEngine().evaluate(
           task,
           [],
           now,
@@ -1169,7 +1175,7 @@ void main() {
 
         // Evaluate taskHigh first (it has higher priority)
         final dayPlannedHours = <CivilDay, double>{};
-        final actionHigh = SchedulerEngine.evaluate(
+        final actionHigh = const SchedulerEngine().evaluate(
           taskHigh,
           [],
           now,
@@ -1184,7 +1190,7 @@ void main() {
         dayPlannedHours[today] = 5.0;
 
         // Evaluate taskMed (with updated dayPlannedHours)
-        final actionMed = SchedulerEngine.evaluate(
+        final actionMed = const SchedulerEngine().evaluate(
           taskMed,
           [],
           now,
@@ -1303,7 +1309,7 @@ void main() {
           expect(list.first.id, 'S-cap-b');
 
           final dayPlannedHours = <CivilDay, double>{};
-          final actionB = SchedulerEngine.evaluate(
+          final actionB = const SchedulerEngine().evaluate(
             list[0],
             [],
             now,
@@ -1313,7 +1319,7 @@ void main() {
           expect(actionB.instancesToSpawn.first.status, TaskStatus.pending);
           dayPlannedHours[today] = 5.0;
 
-          final actionA = SchedulerEngine.evaluate(
+          final actionA = const SchedulerEngine().evaluate(
             list[1],
             [],
             now,
@@ -1355,7 +1361,7 @@ void main() {
           );
 
           final userSettings = UserSettings(hoursAvailable: 8.0);
-          final action = SchedulerEngine.evaluate(
+          final action = const SchedulerEngine().evaluate(
             task,
             [existingInst],
             now,
@@ -1400,7 +1406,7 @@ void main() {
           );
 
           final userSettings = UserSettings(hoursAvailable: 2.0);
-          final action = SchedulerEngine.evaluate(
+          final action = const SchedulerEngine().evaluate(
             task,
             [existingInst],
             now,
@@ -1428,7 +1434,7 @@ void main() {
           // We have 0 capacity, so if limits were applied, this would be skipped.
           // Since limits are NOT applied, it should spawn as pending, not skipped.
           final userSettings = UserSettings(hoursAvailable: 0.0);
-          final actionSpawn = SchedulerEngine.evaluate(
+          final actionSpawn = const SchedulerEngine().evaluate(
             task,
             [],
             now,
@@ -1457,7 +1463,7 @@ void main() {
             ),
             status: TaskStatus.skipped,
           );
-          final actionUpdate = SchedulerEngine.evaluate(
+          final actionUpdate = const SchedulerEngine().evaluate(
             task,
             [existingInst],
             now,
@@ -1503,7 +1509,7 @@ void main() {
           final userSettings = UserSettings(hoursAvailable: 8.0);
 
           // Scenario 1: Prior tasks already planned 5.0 hours on that day (8 - 5 = 3 available < 5 task duration)
-          final actionExceeded = SchedulerEngine.evaluate(
+          final actionExceeded = const SchedulerEngine().evaluate(
             task,
             [existingInst],
             now,
@@ -1519,7 +1525,7 @@ void main() {
           );
 
           // Scenario 2: Prior tasks only planned 2.0 hours (8 - 2 = 6 available >= 5 task duration)
-          final actionAvailable = SchedulerEngine.evaluate(
+          final actionAvailable = const SchedulerEngine().evaluate(
             task,
             [existingInst],
             now,
@@ -1575,7 +1581,7 @@ void main() {
 
           final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
 
-          final action = SchedulerEngine.evaluate(task, [
+          final action = const SchedulerEngine().evaluate(task, [
             mondayInst,
           ], tuesdayDateTime);
 
@@ -1659,7 +1665,7 @@ void main() {
 
           final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
 
-          final action = SchedulerEngine.evaluate(mixedTask, [
+          final action = const SchedulerEngine().evaluate(mixedTask, [
             mondayOneOffInst,
             mondayDailyInst,
           ], tuesdayDateTime);
@@ -1755,7 +1761,7 @@ void main() {
           // Move to Thursday June 18th 10:00 PM (past sched0 due, before sched1 due)
           final thurs10pm = DateTime(2026, 6, 18, 22, 0);
 
-          var action = SchedulerEngine.evaluate(task, [
+          var action = const SchedulerEngine().evaluate(task, [
             sched0Inst,
             sched1Inst,
           ], thurs10pm);
@@ -1768,7 +1774,7 @@ void main() {
           final fri1205am = DateTime(2026, 6, 19, 0, 5);
           // Sched1 inst should still be pending, and Friday's instance should spawn.
 
-          action = SchedulerEngine.evaluate(task, [
+          action = const SchedulerEngine().evaluate(task, [
             sched0Inst.copyWith(status: TaskStatus.skipped),
             sched1Inst,
           ], fri1205am);
@@ -1785,7 +1791,7 @@ void main() {
           // Move to Friday June 19th 2:05 AM (AFTER due time 2:00 AM)
           final fri205am = DateTime(2026, 6, 19, 2, 5);
 
-          action = SchedulerEngine.evaluate(task, [
+          action = const SchedulerEngine().evaluate(task, [
             sched0Inst.copyWith(status: TaskStatus.skipped),
             sched1Inst,
           ], fri205am);
@@ -1839,7 +1845,7 @@ void main() {
           // Move time to 6:00 PM (past due time of 5:00 PM, but within 3-hour grace period)
           final withinGrace = DateTime(2026, 5, 25, 18, 0);
 
-          var action = SchedulerEngine.evaluate(task, [
+          var action = const SchedulerEngine().evaluate(task, [
             mondayInst,
           ], withinGrace);
           expect(action.instancesToUpdate, isEmpty);
@@ -1847,7 +1853,7 @@ void main() {
           // Move time to 8:05 PM (past 3-hour grace period)
           final pastGrace = DateTime(2026, 5, 25, 20, 5);
 
-          action = SchedulerEngine.evaluate(task, [mondayInst], pastGrace);
+          action = const SchedulerEngine().evaluate(task, [mondayInst], pastGrace);
           expect(action.instancesToUpdate, hasLength(1));
           expect(action.instancesToUpdate.first.status, TaskStatus.skipped);
         },
@@ -1882,7 +1888,7 @@ void main() {
           // Wednesday
           final wednesdayDateTime = DateTime(2026, 5, 27, 10, 0);
 
-          final action = SchedulerEngine.evaluate(
+          final action = const SchedulerEngine().evaluate(
             task,
             [],
             wednesdayDateTime,
