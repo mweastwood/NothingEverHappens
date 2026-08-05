@@ -8,11 +8,14 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
 import 'package:nothing_ever_happens/logic/task_spawner_engine.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
 
 class UnifiedTaskRepository extends TaskRepository {
   final HiveLocalDataSource _localDataSource;
   final TaskSyncService _syncService;
+  final FirebaseFirestore? _rawFirestore;
 
   bool _isProcessingMissedPolicies = false;
 
@@ -23,7 +26,29 @@ class UnifiedTaskRepository extends TaskRepository {
     super.firestore,
     super.notificationService,
   }) : _localDataSource = localDataSource,
-       _syncService = syncService;
+       _syncService = syncService,
+       _rawFirestore = firestore {
+    _initMigration();
+  }
+
+  void _initMigration() {
+    if (!_localDataSource.isMigrationCompleted() && userId.isNotEmpty) {
+      final migrationService = InitialFirebaseMigrationService(
+        firestore: _rawFirestore,
+        localDataSource: _localDataSource,
+        userId: userId,
+      );
+      migrationService
+          .migrateIfNeeded()
+          .then((_) {
+            triggerMissedPolicyProcessing();
+          })
+          .catchError((e) {
+            // ignore: avoid_print
+            print('Initial migration error: $e');
+          });
+    }
+  }
 
   @override
   Stream<List<TaskSchedule>> getTasks() {

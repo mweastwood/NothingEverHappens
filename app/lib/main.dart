@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:workmanager/workmanager.dart';
@@ -46,24 +45,20 @@ Future<void> main() async {
     );
   }
 
-  // Enable local Firestore offline persistence and caching across all platforms
-  try {
-    FirebaseFirestore.instance.settings = const Settings(
-      persistenceEnabled: true,
-      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-    );
-  } catch (e) {
-    debugPrint("Firestore settings initialization error: $e");
-  }
-
   if (!kIsWeb) {
-    await Workmanager().initialize(callbackDispatcher);
-    await Workmanager().registerPeriodicTask(
-      "scheduler-periodic-task",
-      "periodicEvaluationTask",
-      frequency: const Duration(minutes: 15),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
-    );
+    Workmanager()
+        .initialize(callbackDispatcher)
+        .then((_) {
+          Workmanager().registerPeriodicTask(
+            "scheduler-periodic-task",
+            "periodicEvaluationTask",
+            frequency: const Duration(minutes: 15),
+            existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+          );
+        })
+        .catchError((e) {
+          debugPrint("Workmanager initialization error: $e");
+        });
   }
 
   final hiveDataSource = HiveLocalDataSource();
