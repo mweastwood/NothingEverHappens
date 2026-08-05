@@ -189,6 +189,7 @@ void main() {
     AppConfig.environment = AppEnvironment
         .prod; // Hide dev clock banner/bottom sheet from blocking hits
     AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+    addTearDown(AppClock.reset);
 
     await tester.pumpWidget(createScreen());
     await tester.pumpAndSettle();
@@ -304,6 +305,7 @@ void main() {
     'Completing a recurring task advances its schedule and does not reappear on screen',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      addTearDown(AppClock.reset);
 
       final recurringTask = TaskSchedule(
         id: 'recur-1',
@@ -373,8 +375,6 @@ void main() {
       await tester.pumpWidget(createScreen());
       await tester.pumpAndSettle();
       robot.expectGone();
-
-      AppClock.reset();
     },
   );
 
@@ -382,6 +382,7 @@ void main() {
     'TaskSchedule list screen filters out tasks scheduled in the future',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      addTearDown(AppClock.reset);
 
       final todayTask = TaskSchedule(
         id: 'today-task',
@@ -431,8 +432,6 @@ void main() {
 
       // Tomorrow's task should be filtered out
       expect(find.text('Tomorrow TaskSchedule'), findsNothing);
-
-      AppClock.reset();
     },
   );
 
@@ -440,6 +439,7 @@ void main() {
     'TaskSchedule list screen shows one-off tasks starting today but due in the future',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      addTearDown(AppClock.reset);
 
       final activeOneOffTask = TaskSchedule(
         id: 'active-one-off',
@@ -467,8 +467,6 @@ void main() {
 
       // Since it starts today (March 8), it should be shown
       expect(find.text('Active One-Off'), findsOneWidget);
-
-      AppClock.reset();
     },
   );
 
@@ -476,6 +474,7 @@ void main() {
     'TaskSchedule list screen hides one-off tasks due today but snoozed/starting in the future',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      addTearDown(AppClock.reset);
 
       final snoozedOneOffTask = TaskSchedule(
         id: 'snoozed-one-off',
@@ -503,8 +502,6 @@ void main() {
 
       // Since it is snoozed until tomorrow (March 9), it should NOT be shown today
       expect(find.text('Snoozed One-Off'), findsNothing);
-
-      AppClock.reset();
     },
   );
 
@@ -512,6 +509,7 @@ void main() {
     WidgetTester tester,
   ) async {
     AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+    addTearDown(AppClock.reset);
 
     final futureTodayTask = TaskSchedule(
       id: 'future-today-task',
@@ -539,8 +537,6 @@ void main() {
 
     // Since it starts at 10:00 AM and mock time is 9:00 AM, it should NOT be shown
     expect(find.text('Future Today Task'), findsNothing);
-
-    AppClock.reset();
   });
 
   testWidgets(
@@ -663,6 +659,7 @@ void main() {
 
   testGoldens('TaskListScreen - Shows Undo SnackBar', (tester) async {
     AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+    addTearDown(AppClock.reset);
 
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
@@ -744,12 +741,11 @@ void main() {
     expect(find.text('Undo'), findsOneWidget);
 
     await screenMatchesGolden(tester, 'task_list_screen_with_snackbar');
-
-    AppClock.reset();
   });
 
   testGoldens('TaskListScreen - Search Active with Results', (tester) async {
     AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+    addTearDown(AppClock.reset);
 
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
@@ -820,14 +816,13 @@ void main() {
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'task_list_screen_search_results');
-
-    AppClock.reset();
   });
 
   testGoldens('TaskListScreen - Search Active No Results Fallback', (
     tester,
   ) async {
     AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+    addTearDown(AppClock.reset);
 
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
@@ -859,8 +854,6 @@ void main() {
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'task_list_screen_search_no_results');
-
-    AppClock.reset();
   });
 
   testWidgets('TaskListScreen search filters by title and description', (
@@ -868,6 +861,7 @@ void main() {
   ) async {
     // Set mock time
     AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+    addTearDown(AppClock.reset);
 
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
@@ -1024,8 +1018,6 @@ void main() {
     // Verify search field is cleared and both tasks are back
     expect(find.text('Water the Houseplants'), findsOneWidget);
     expect(find.text('Buy Groceries'), findsOneWidget);
-
-    AppClock.reset();
   });
 
   testWidgets('pressing slash key focuses the search input', (
@@ -1318,6 +1310,7 @@ void main() {
 
     final now = DateTime(2026, 6, 22, 12, 0);
     AppClock.setMockTime(now);
+    addTearDown(AppClock.reset);
     final taskDate = CivilDay.fromDateTime(now);
 
     // B: Title Apple, Priority low, Start offset 1 hour, Due offset 2 hours
@@ -1499,8 +1492,6 @@ void main() {
       tester.widget<TaskWidget>(textFinder.at(2)).instance.title,
       'Banana',
     );
-
-    AppClock.reset();
   });
 
   testWidgets(
@@ -1514,6 +1505,7 @@ void main() {
       AppClock.setMockTime(
         DateTime(2026, 7, 1, 9, 0),
       ); // Wednesday (2026-07-01)
+      addTearDown(AppClock.reset);
 
       final settingsSubject = BehaviorSubject<UserSettings>.seeded(
         const UserSettings(

@@ -66,6 +66,7 @@ void main() {
     WidgetTester tester,
   ) async {
     AppClock.setMockTime(DateTime(2026, 7, 1, 9, 0)); // Wednesday
+    addTearDown(AppClock.reset);
     await tester.pumpWidget(createTestWidget());
     await tester.pumpAndSettle();
 
@@ -86,6 +87,7 @@ void main() {
     WidgetTester tester,
   ) async {
     AppClock.setMockTime(DateTime(2026, 7, 1, 9, 0)); // Wednesday
+    addTearDown(AppClock.reset);
     await tester.pumpWidget(createTestWidget());
     await tester.pumpAndSettle();
 
@@ -113,6 +115,7 @@ void main() {
       AppClock.setMockTime(
         DateTime(2026, 7, 1, 9, 0),
       ); // Wednesday (2026-07-01)
+      addTearDown(AppClock.reset);
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
@@ -156,6 +159,7 @@ void main() {
     'Tapping pencil icon opens default template dialog and lets user edit weekday baseline',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 7, 1, 9, 0)); // Wednesday
+      addTearDown(AppClock.reset);
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
@@ -211,6 +215,7 @@ void main() {
     'Tapping different weekdays in default capacity template dialog updates the correct weekday baseline without shifting',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 7, 1, 9, 0)); // Wednesday
+      addTearDown(AppClock.reset);
 
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
@@ -275,6 +280,7 @@ void main() {
       AppClock.setMockTime(
         DateTime(2026, 7, 1, 9, 0),
       ); // Wednesday (2026-07-01)
+      addTearDown(AppClock.reset);
 
       final schedule1 = TaskSchedule(
         id: 'schedule-1',
@@ -360,6 +366,7 @@ void main() {
 
   testGoldens('DashboardScreen golden test', (tester) async {
     AppClock.setMockTime(DateTime(2026, 7, 1, 9, 0)); // Wednesday (2026-07-01)
+    addTearDown(AppClock.reset);
 
     final schedule1 = TaskSchedule(
       id: 'schedule-1',
@@ -418,6 +425,7 @@ void main() {
       AppClock.setMockTime(
         DateTime(2026, 7, 1, 9, 0),
       ); // Wednesday (2026-07-01)
+      addTearDown(AppClock.reset);
 
       settingsSubject.add(
         const UserSettings(

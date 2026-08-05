@@ -19,11 +19,10 @@ import '../test_helper.dart';
 void main() {
   setUp(() {
     AppClock.setMockTime(DateTime(2026, 6, 5));
+    addTearDown(AppClock.reset);
   });
 
-  tearDown(() {
-    AppClock.reset();
-  });
+  tearDown(() {});
 
   Widget buildTestWidget(Widget child) {
     return buildTestableWidget(child: child);
