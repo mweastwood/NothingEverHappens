@@ -138,12 +138,25 @@ final isFromCacheProvider = Provider<bool>((ref) {
 });
 
 class TaskRepository {
+  /// Cache duration for family ID to avoid excessive DB reads.
+  static const Duration _familyIdCacheDuration = Duration(seconds: 15);
+
+  /// Timeout for fetching family ID from the network.
+  static const Duration _familyIdFetchTimeout = Duration(seconds: 2);
+
+  /// Debounce duration to prevent redundant processing of the same task.
+  static const Duration _taskDebounceDuration = Duration(seconds: 2);
+
+  /// Expiration duration for recently spawned virtual instances.
+  static const Duration _spawnedInstanceCacheDuration = Duration(seconds: 2);
+
+  /// Conversion factor for minutes to hours.
+  static const double _minutesPerHour = 60.0;
+
   final FirebaseFirestore _firestore;
   final String _userId;
   final NotificationService? _notificationService;
-  bool _isProcessingMissedPolicies = false;
-  bool _needsProcessingAgain = false;
-  List<TaskSchedule>? _nextTasksToProcess;
+  Future<void>? _processingFuture;
   Timer? _triggerTimer;
   DateTime? _scheduledTriggerTime;
   final Map<String, ({DateTime processedAt, String signature})>
@@ -151,6 +164,7 @@ class TaskRepository {
   final Map<String, DateTime> _spawnedInstancesCache = {};
   String? _cachedFamilyId;
   DateTime? _lastFamilyIdCheck;
+  static const int _instanceQueryCutoffDays = 90;
 
   String get userId => _userId;
 
@@ -209,7 +223,7 @@ class TaskRepository {
     if (_cachedFamilyId != null &&
         _lastFamilyIdCheck != null &&
         DateTime.now().difference(_lastFamilyIdCheck!) <
-            const Duration(seconds: 15)) {
+            _familyIdCacheDuration) {
       return _cachedFamilyId;
     }
     try {
@@ -217,7 +231,7 @@ class TaskRepository {
           .collection('users')
           .doc(_userId)
           .get(const GetOptions(source: Source.serverAndCache))
-          .timeout(const Duration(seconds: 2));
+          .timeout(_familyIdFetchTimeout);
       _cachedFamilyId = userDoc.data()?['familyId'] as String?;
       _lastFamilyIdCheck = DateTime.now();
       return _cachedFamilyId;
@@ -455,16 +469,13 @@ class TaskRepository {
         });
   }
 
-  void _checkAndProcessMissedPolicies(List<TaskSchedule> tasks) async {
-    if (_isProcessingMissedPolicies) {
-      _needsProcessingAgain = true;
-      _nextTasksToProcess = tasks;
-      return;
-    }
-    _isProcessingMissedPolicies = true;
-    _needsProcessingAgain = false;
-    bool hasError = false;
+  void _checkAndProcessMissedPolicies(List<TaskSchedule> tasks) {
+    _processingFuture = (_processingFuture ?? Future<void>.value()).then(
+      (_) => _doProcessMissedPolicies(tasks),
+    );
+  }
 
+  Future<void> _doProcessMissedPolicies(List<TaskSchedule> tasks) async {
     try {
       final now = AppClock.now;
 
@@ -474,7 +485,7 @@ class TaskRepository {
           final signature = _getScheduleSignature(task);
           if (lastProcessed.signature == signature &&
               now.difference(lastProcessed.processedAt).abs() <
-                  const Duration(seconds: 2)) {
+                  _taskDebounceDuration) {
             return false;
           }
         }
@@ -486,9 +497,14 @@ class TaskRepository {
       }
 
       final familyId = await _getFamilyId();
+      final cutoffDate = AppClock.now.subtract(
+        const Duration(days: _instanceQueryCutoffDays),
+      );
 
       // Fetch all instances
-      final personalInstances = await _instancesRef.get();
+      final personalInstances = await _instancesRef
+          .where('updatedAt', isGreaterThan: cutoffDate)
+          .get();
       final List<TaskInstance> allInstances = personalInstances.docs
           .map((d) => d.data())
           .toList();
@@ -502,7 +518,9 @@ class TaskRepository {
                   TaskInstance.fromFirestore(snapshot),
               toFirestore: (instance, _) => instance.toFirestore(),
             );
-        final familyInstances = await familyInstancesRef.get();
+        final familyInstances = await familyInstancesRef
+            .where('updatedAt', isGreaterThan: cutoffDate)
+            .get();
         allInstances.addAll(familyInstances.docs.map((d) => d.data()));
       }
 
@@ -524,7 +542,7 @@ class TaskRepository {
         if (inst.status != 'skipped' && inst.status != 'failed') {
           final t = taskMap[inst.scheduleId];
           if (t != null && t.estimatedDuration != null) {
-            final hours = t.estimatedDuration!.inMinutes / 60.0;
+            final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
             dayPlannedHours[inst.scheduledDate] =
                 (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
           }
@@ -586,7 +604,8 @@ class TaskRepository {
           final key = entry.key;
           final spawnTime = entry.value;
 
-          if (now.difference(spawnTime).abs() >= const Duration(seconds: 2)) {
+          if (now.difference(spawnTime).abs() >=
+              _spawnedInstanceCacheDuration) {
             keysToRemove.add(key);
             continue;
           }
@@ -654,7 +673,7 @@ class TaskRepository {
             if (oldInst.status != 'skipped' && oldInst.status != 'failed') {
               final t = taskMap[oldInst.scheduleId];
               if (t != null && t.estimatedDuration != null) {
-                final hours = t.estimatedDuration!.inMinutes / 60.0;
+                final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
                 dayPlannedHours[oldInst.scheduledDate] =
                     (dayPlannedHours[oldInst.scheduledDate] ?? 0.0) - hours;
               }
@@ -663,7 +682,7 @@ class TaskRepository {
             if (inst.status != 'skipped' && inst.status != 'failed') {
               final t = taskMap[inst.scheduleId];
               if (t != null && t.estimatedDuration != null) {
-                final hours = t.estimatedDuration!.inMinutes / 60.0;
+                final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
                 dayPlannedHours[inst.scheduledDate] =
                     (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
               }
@@ -681,7 +700,7 @@ class TaskRepository {
           if (inst.status != 'skipped' && inst.status != 'failed') {
             final t = taskMap[inst.scheduleId];
             if (t != null && t.estimatedDuration != null) {
-              final hours = t.estimatedDuration!.inMinutes / 60.0;
+              final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
               dayPlannedHours[inst.scheduledDate] =
                   (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
             }
@@ -701,7 +720,7 @@ class TaskRepository {
           if (inst.status != 'skipped' && inst.status != 'failed') {
             final t = taskMap[inst.scheduleId];
             if (t != null && t.estimatedDuration != null) {
-              final hours = t.estimatedDuration!.inMinutes / 60.0;
+              final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
               dayPlannedHours[inst.scheduledDate] =
                   (dayPlannedHours[inst.scheduledDate] ?? 0.0) - hours;
             }
@@ -733,19 +752,8 @@ class TaskRepository {
         _scheduleTriggerTimer(nextTrigger);
       }
     } catch (e) {
-      hasError = true;
       // ignore: avoid_print
       print('Error in auto-processing missed policies: $e');
-    } finally {
-      _isProcessingMissedPolicies = false;
-      if (!hasError && _needsProcessingAgain && _nextTasksToProcess != null) {
-        final next = _nextTasksToProcess!;
-        _nextTasksToProcess = null;
-        _checkAndProcessMissedPolicies(next);
-      } else {
-        _needsProcessingAgain = false;
-        _nextTasksToProcess = null;
-      }
     }
   }
 
