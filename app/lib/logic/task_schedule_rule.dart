@@ -836,6 +836,16 @@ class MonthlySchedule extends TaskScheduleRule {
   }
 
   @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! MonthlySchedule) return false;
+    if (interval != other.interval) return false;
+    if (dayOfMonth != other.dayOfMonth) return false;
+    if (dayOfWeek != other.dayOfWeek) return false;
+    if (occurrence != other.occurrence) return false;
+    return true;
+  }
+
+  @override
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -1025,6 +1035,15 @@ class YearlySchedule extends TaskScheduleRule {
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! YearlySchedule) return false;
+    if (interval != other.interval) return false;
+    if (month != other.month) return false;
+    if (day != other.day) return false;
+    return true;
   }
 
   @override
