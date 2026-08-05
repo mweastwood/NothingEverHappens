@@ -143,9 +143,12 @@ class TaskSyncService {
       final localTasks = _localDataSource.getTasks();
       final localInstances = _localDataSource.getInstances();
 
+      final tasksMap = {for (final t in localTasks) t.id: t};
+      final instancesMap = {for (final i in localInstances) i.id: i};
+
       for (final taskId in dirtyTaskIds) {
         if (taskId.startsWith('S-')) {
-          final task = localTasks.where((t) => t.id == taskId).firstOrNull;
+          final task = tasksMap[taskId];
           if (task != null) {
             await _pushTaskToRemote(task);
           } else {
@@ -158,7 +161,7 @@ class TaskSyncService {
                 .delete();
           }
         } else if (taskId.startsWith('I-')) {
-          final inst = localInstances.where((i) => i.id == taskId).firstOrNull;
+          final inst = instancesMap[taskId];
           if (inst != null) {
             await _pushInstanceToRemote(inst);
           } else {
