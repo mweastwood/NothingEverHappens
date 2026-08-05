@@ -10,6 +10,7 @@ void main() {
     required Widget Function(BuildContext, bool, PreferredSizeWidget) builder,
   }) {
     return ProviderScope(
+      overrides: defaultTestOverrides,
       child: buildTestableWidget(
         child: HomeSearchAndShortcutWidget(
           currentIndex: currentIndex,

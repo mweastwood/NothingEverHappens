@@ -8,6 +8,8 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:nothing_ever_happens/logic/user_settings.dart';
+
 final hiveLocalDataSourceProvider = Provider<HiveLocalDataSource>(
   (ref) => HiveLocalDataSource(),
 );
@@ -16,25 +18,40 @@ class HiveLocalDataSource {
   static const String _tasksBoxName = 'tasksBox';
   static const String _instancesBoxName = 'instancesBox';
   static const String _syncMetaBoxName = 'syncMetaBox';
+  static const String _settingsBoxName = 'settingsBox';
 
-  late Box<Map> _tasksBox;
-  late Box<Map> _instancesBox;
-  late Box<Map> _syncMetaBox;
+  Box<Map>? _tasksBox;
+  Box<Map>? _instancesBox;
+  Box<Map>? _syncMetaBox;
+  Box<Map>? _settingsBox;
 
-  final _tasksSubject = BehaviorSubject<List<TaskSchedule>>();
-  final _instancesSubject = BehaviorSubject<List<TaskInstance>>();
+  final Map<String, TaskSchedule> _memTasks = {};
+  final Map<String, TaskInstance> _memInstances = {};
+  final Map<String, dynamic> _memMeta = {};
+  UserSettings _memSettings = const UserSettings(hoursAvailable: 8.0);
+
+  final _tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded(const []);
+  final _instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded(
+    const [],
+  );
+  final _settingsSubject = BehaviorSubject<UserSettings>.seeded(
+    const UserSettings(hoursAvailable: 8.0),
+  );
 
   Future<void> init() async {
     await Hive.initFlutter();
     _tasksBox = await Hive.openBox<Map>(_tasksBoxName);
     _instancesBox = await Hive.openBox<Map>(_instancesBoxName);
     _syncMetaBox = await Hive.openBox<Map>(_syncMetaBoxName);
+    _settingsBox = await Hive.openBox<Map>(_settingsBoxName);
 
     _emitTasks();
     _emitInstances();
+    _emitSettings();
 
-    _tasksBox.watch().listen((_) => _emitTasks());
-    _instancesBox.watch().listen((_) => _emitInstances());
+    _tasksBox?.watch().listen((_) => _emitTasks());
+    _instancesBox?.watch().listen((_) => _emitInstances());
+    _settingsBox?.watch().listen((_) => _emitSettings());
   }
 
   void _emitTasks() {
@@ -45,53 +62,96 @@ class HiveLocalDataSource {
     _instancesSubject.add(getInstances());
   }
 
+  void _emitSettings() {
+    _settingsSubject.add(getSettings());
+  }
+
   Stream<List<TaskSchedule>> watchTasks() => _tasksSubject.stream;
   Stream<List<TaskInstance>> watchInstances() => _instancesSubject.stream;
+  Stream<UserSettings> watchSettings() => _settingsSubject.stream;
+
+  UserSettings getSettings() {
+    if (_settingsBox != null && _settingsBox!.isOpen) {
+      final raw = _settingsBox!.get('agile');
+      if (raw != null) {
+        final data = Map<String, dynamic>.from(raw);
+        return UserSettings.fromJson(data);
+      }
+    }
+    return _memSettings;
+  }
+
+  Future<void> saveSettings(UserSettings settings) async {
+    _memSettings = settings;
+    if (_settingsBox != null && _settingsBox!.isOpen) {
+      await _settingsBox!.put('agile', settings.toJson());
+    }
+    _emitSettings();
+  }
 
   List<TaskSchedule> getTasks() {
-    return _tasksBox.values.map((map) {
-      final data = Map<String, dynamic>.from(map);
-      return _taskScheduleFromJson(data);
-    }).toList();
+    if (_tasksBox != null && _tasksBox!.isOpen) {
+      return _tasksBox!.values.map((map) {
+        final data = Map<String, dynamic>.from(map);
+        return _taskScheduleFromJson(data);
+      }).toList();
+    }
+    return _memTasks.values.toList();
   }
 
   List<TaskInstance> getInstances() {
-    return _instancesBox.values.map((map) {
-      final data = Map<String, dynamic>.from(map);
-      return _taskInstanceFromJson(data);
-    }).toList();
+    if (_instancesBox != null && _instancesBox!.isOpen) {
+      return _instancesBox!.values.map((map) {
+        final data = Map<String, dynamic>.from(map);
+        return _taskInstanceFromJson(data);
+      }).toList();
+    }
+    return _memInstances.values.toList();
   }
 
   Future<void> saveTask(TaskSchedule task) async {
-    final data = task.toFirestore();
-    data['id'] = task.id; // Store ID in the map
-    if (data['updatedAt'] is DateTime) {
-      data['updatedAt'] = (data['updatedAt'] as DateTime).toIso8601String();
+    _memTasks[task.id] = task;
+    if (_tasksBox != null && _tasksBox!.isOpen) {
+      final data = task.toFirestore();
+      data['id'] = task.id;
+      if (data['updatedAt'] is DateTime) {
+        data['updatedAt'] = (data['updatedAt'] as DateTime).toIso8601String();
+      }
+      await _tasksBox!.put(task.id, data);
     }
-    await _tasksBox.put(task.id, data);
     _emitTasks();
   }
 
   Future<void> deleteTask(String id) async {
-    await _tasksBox.delete(id);
+    _memTasks.remove(id);
+    if (_tasksBox != null && _tasksBox!.isOpen) {
+      await _tasksBox!.delete(id);
+    }
     _emitTasks();
   }
 
   Future<void> saveInstance(TaskInstance instance) async {
-    final data = instance.toFirestore();
-    data['id'] = instance.id;
-    if (data['updatedAt'] is DateTime) {
-      data['updatedAt'] = (data['updatedAt'] as DateTime).toIso8601String();
+    _memInstances[instance.id] = instance;
+    if (_instancesBox != null && _instancesBox!.isOpen) {
+      final data = instance.toFirestore();
+      data['id'] = instance.id;
+      if (data['updatedAt'] is DateTime) {
+        data['updatedAt'] = (data['updatedAt'] as DateTime).toIso8601String();
+      }
+      if (data['completedAt'] is DateTime) {
+        data['completedAt'] = (data['completedAt'] as DateTime)
+            .toIso8601String();
+      }
+      await _instancesBox!.put(instance.id, data);
     }
-    if (data['completedAt'] is DateTime) {
-      data['completedAt'] = (data['completedAt'] as DateTime).toIso8601String();
-    }
-    await _instancesBox.put(instance.id, data);
     _emitInstances();
   }
 
   Future<void> deleteInstance(String id) async {
-    await _instancesBox.delete(id);
+    _memInstances.remove(id);
+    if (_instancesBox != null && _instancesBox!.isOpen) {
+      await _instancesBox!.delete(id);
+    }
     _emitInstances();
   }
 
@@ -99,12 +159,18 @@ class HiveLocalDataSource {
     final dirtyList = getDirtyTaskIds();
     if (!dirtyList.contains(id)) {
       dirtyList.add(id);
-      await _syncMetaBox.put('dirty_tasks', {'list': dirtyList});
+      if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+        await _syncMetaBox!.put('dirty_tasks', {'list': dirtyList});
+      } else {
+        _memMeta['dirty_tasks'] = {'list': dirtyList};
+      }
     }
   }
 
   List<String> getDirtyTaskIds() {
-    final data = _syncMetaBox.get('dirty_tasks');
+    final data = _syncMetaBox != null && _syncMetaBox!.isOpen
+        ? _syncMetaBox!.get('dirty_tasks')
+        : _memMeta['dirty_tasks'];
     if (data == null) return [];
     return List<String>.from(data['list'] ?? []);
   }
@@ -112,16 +178,26 @@ class HiveLocalDataSource {
   Future<void> clearDirty(String id) async {
     final dirtyList = getDirtyTaskIds();
     if (dirtyList.remove(id)) {
-      await _syncMetaBox.put('dirty_tasks', {'list': dirtyList});
+      if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+        await _syncMetaBox!.put('dirty_tasks', {'list': dirtyList});
+      } else {
+        _memMeta['dirty_tasks'] = {'list': dirtyList};
+      }
     }
   }
 
   Future<void> setMigrationCompleted(bool completed) async {
-    await _syncMetaBox.put('migration_completed', {'value': completed});
+    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+      await _syncMetaBox!.put('migration_completed', {'value': completed});
+    } else {
+      _memMeta['migration_completed'] = {'value': completed};
+    }
   }
 
   bool isMigrationCompleted() {
-    final data = _syncMetaBox.get('migration_completed');
+    final data = _syncMetaBox != null && _syncMetaBox!.isOpen
+        ? _syncMetaBox!.get('migration_completed')
+        : _memMeta['migration_completed'];
     if (data == null) return false;
     return data['value'] == true;
   }

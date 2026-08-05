@@ -1,10 +1,39 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late Directory tempDir;
+  late HiveLocalDataSource localDataSource;
+
+  setUpAll(() async {
+    tempDir = await Directory.systemTemp.createTemp('user_settings_test');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'getApplicationDocumentsDirectory') {
+              return tempDir.path;
+            }
+            return null;
+          },
+        );
+  });
+
+  tearDownAll(() async {
+    await Hive.close();
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
+  });
   group('UserSettings Model Unit Tests', () {
     test(
       'default instantiation has 8.0 hoursAvailable and true for sort bar visibility',
@@ -191,9 +220,15 @@ void main() {
     late UserSettingsRepository repository;
     const userId = 'test-user';
 
-    setUp(() {
+    setUp(() async {
       firestore = FakeFirebaseFirestore();
-      repository = UserSettingsRepository(firestore: firestore, userId: userId);
+      localDataSource = HiveLocalDataSource();
+      await localDataSource.init();
+      repository = UserSettingsRepository(
+        firestore: firestore,
+        userId: userId,
+        localDataSource: localDataSource,
+      );
     });
 
     test(
@@ -204,13 +239,8 @@ void main() {
       },
     );
 
-    test('getSettings returns stored settings when document exists', () async {
-      await firestore
-          .collection('users')
-          .doc(userId)
-          .collection('settings')
-          .doc('agile')
-          .set({'hoursAvailable': 10.0});
+    test('getSettings returns stored settings when saved', () async {
+      await repository.updateSettings(const UserSettings(hoursAvailable: 10.0));
 
       final settings = await repository.getSettings().first;
       expect(settings.hoursAvailable, 10.0);

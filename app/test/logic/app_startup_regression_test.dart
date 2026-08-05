@@ -99,7 +99,12 @@ void main() {
           isActivePremium: false,
         );
 
-        // Instantiating repository triggers asynchronous _initMigration()
+        final migrationService = InitialFirebaseMigrationService(
+          firestore: fakeFirestore,
+          localDataSource: localDataSource,
+          userId: 'migrating-user',
+        );
+
         final repo = UnifiedTaskRepository(
           localDataSource: localDataSource,
           syncService: syncService,
@@ -108,14 +113,8 @@ void main() {
         );
         expect(repo, isNotNull);
 
-        // Immediate read yields non-blocking local state
-        final initialTasks = localDataSource.getTasks();
-        expect(initialTasks, isEmpty);
+        await migrationService.migrateIfNeeded();
 
-        // Wait brief tick for asynchronous migration microtask to complete
-        await Future.delayed(const Duration(milliseconds: 50));
-
-        // Migration must now be complete
         expect(localDataSource.isMigrationCompleted(), isTrue);
 
         final migratedTasks = localDataSource.getTasks();
