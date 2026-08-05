@@ -15,9 +15,8 @@ class UnsyncedBanner extends ConsumerWidget {
     }
 
     final unsyncedCount = ref.watch(unsyncedCountProvider);
-    final isFromCache = ref.watch(isFromCacheProvider);
 
-    if (unsyncedCount == 0 && !isFromCache) {
+    if (unsyncedCount == 0) {
       return const SizedBox.shrink();
     }
 

@@ -132,7 +132,9 @@ final unsyncedCountProvider = Provider<int>((ref) {
 final isFromCacheProvider = Provider<bool>((ref) {
   final tasks = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
   final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
-  return tasks.any((t) => t.isFromCache) || instances.any((i) => i.isFromCache);
+  if (tasks.isEmpty && instances.isEmpty) return false;
+  return tasks.every((t) => t.isFromCache) &&
+      instances.every((i) => i.isFromCache);
 });
 
 class TaskRepository {
@@ -361,92 +363,96 @@ class TaskRepository {
   }
 
   Stream<List<TaskSchedule>> getTasks() {
-    return _firestore.collection('users').doc(_userId).snapshots().switchMap((
-      userDoc,
-    ) {
-      final familyId = userDoc.data()?['familyId'] as String? ?? '';
+    return _firestore
+        .collection('users')
+        .doc(_userId)
+        .snapshots()
+        .map((doc) => doc.data()?['familyId'] as String? ?? '')
+        .distinct()
+        .switchMap((familyId) {
+          final personalStream = _tasksRef.snapshots().map((snapshot) {
+            return snapshot.docs.map((doc) => doc.data()).toList();
+          });
 
-      final personalStream = _tasksRef.snapshots().map((snapshot) {
-        return snapshot.docs.map((doc) => doc.data()).toList();
-      });
+          if (familyId.isEmpty) {
+            return personalStream.map((personalTasks) {
+              scheduleMicrotask(
+                () => _checkAndProcessMissedPolicies(personalTasks),
+              );
+              return personalTasks;
+            });
+          } else {
+            final familyTasksRef = _firestore
+                .collection('families')
+                .doc(familyId)
+                .collection('tasks')
+                .withConverter<TaskSchedule>(
+                  fromFirestore: (snapshot, _) =>
+                      TaskSchedule.fromFirestore(snapshot),
+                  toFirestore: (task, _) => task.toFirestore(),
+                );
 
-      if (familyId.isEmpty) {
-        return personalStream.map((personalTasks) {
-          scheduleMicrotask(
-            () => _checkAndProcessMissedPolicies(personalTasks),
-          );
-          return personalTasks;
-        });
-      } else {
-        final familyTasksRef = _firestore
-            .collection('families')
-            .doc(familyId)
-            .collection('tasks')
-            .withConverter<TaskSchedule>(
-              fromFirestore: (snapshot, _) =>
-                  TaskSchedule.fromFirestore(snapshot),
-              toFirestore: (task, _) => task.toFirestore(),
+            final familyStream = Rx.retry(
+              () => familyTasksRef.snapshots().map((snapshot) {
+                return snapshot.docs.map((doc) => doc.data()).toList();
+              }),
+              5,
             );
 
-        final familyStream = Rx.retry(
-          () => familyTasksRef.snapshots().map((snapshot) {
-            return snapshot.docs.map((doc) => doc.data()).toList();
-          }),
-          5,
-        );
-
-        return Rx.combineLatest2<
-          List<TaskSchedule>,
-          List<TaskSchedule>,
-          List<TaskSchedule>
-        >(personalStream, familyStream, (personal, family) {
-          final allTasks = [...personal, ...family];
-          scheduleMicrotask(() => _checkAndProcessMissedPolicies(allTasks));
-          return allTasks;
+            return Rx.combineLatest2<
+              List<TaskSchedule>,
+              List<TaskSchedule>,
+              List<TaskSchedule>
+            >(personalStream, familyStream, (personal, family) {
+              final allTasks = [...personal, ...family];
+              scheduleMicrotask(() => _checkAndProcessMissedPolicies(allTasks));
+              return allTasks;
+            });
+          }
         });
-      }
-    });
   }
 
   Stream<List<TaskInstance>> getInstances() {
-    return _firestore.collection('users').doc(_userId).snapshots().switchMap((
-      userDoc,
-    ) {
-      final familyId = userDoc.data()?['familyId'] as String? ?? '';
+    return _firestore
+        .collection('users')
+        .doc(_userId)
+        .snapshots()
+        .map((doc) => doc.data()?['familyId'] as String? ?? '')
+        .distinct()
+        .switchMap((familyId) {
+          final personalStream = _instancesRef.snapshots().map((snapshot) {
+            return snapshot.docs.map((doc) => doc.data()).toList();
+          });
 
-      final personalStream = _instancesRef.snapshots().map((snapshot) {
-        return snapshot.docs.map((doc) => doc.data()).toList();
-      });
+          if (familyId.isEmpty) {
+            return personalStream;
+          } else {
+            final familyInstancesRef = _firestore
+                .collection('families')
+                .doc(familyId)
+                .collection('instances')
+                .withConverter<TaskInstance>(
+                  fromFirestore: (snapshot, _) =>
+                      TaskInstance.fromFirestore(snapshot),
+                  toFirestore: (instance, _) => instance.toFirestore(),
+                );
 
-      if (familyId.isEmpty) {
-        return personalStream;
-      } else {
-        final familyInstancesRef = _firestore
-            .collection('families')
-            .doc(familyId)
-            .collection('instances')
-            .withConverter<TaskInstance>(
-              fromFirestore: (snapshot, _) =>
-                  TaskInstance.fromFirestore(snapshot),
-              toFirestore: (instance, _) => instance.toFirestore(),
+            final familyStream = Rx.retry(
+              () => familyInstancesRef.snapshots().map((snapshot) {
+                return snapshot.docs.map((doc) => doc.data()).toList();
+              }),
+              5,
             );
 
-        final familyStream = Rx.retry(
-          () => familyInstancesRef.snapshots().map((snapshot) {
-            return snapshot.docs.map((doc) => doc.data()).toList();
-          }),
-          5,
-        );
-
-        return Rx.combineLatest2<
-          List<TaskInstance>,
-          List<TaskInstance>,
-          List<TaskInstance>
-        >(personalStream, familyStream, (personal, family) {
-          return [...personal, ...family];
+            return Rx.combineLatest2<
+              List<TaskInstance>,
+              List<TaskInstance>,
+              List<TaskInstance>
+            >(personalStream, familyStream, (personal, family) {
+              return [...personal, ...family];
+            });
+          }
         });
-      }
-    });
   }
 
   void _checkAndProcessMissedPolicies(List<TaskSchedule> tasks) async {
