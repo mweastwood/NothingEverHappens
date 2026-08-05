@@ -42,7 +42,8 @@ class SchedulerEngine {
         if (s is OneOffSchedule) {
           final exists = taskInstances.any(
             (inst) =>
-                inst.ruleId == s.id && inst.scheduledDate == s.scheduledDate,
+                _isInstanceForRule(inst, s, task) &&
+                inst.scheduledDate == s.scheduledDate,
           );
           if (!exists) {
             toSpawn.add(
@@ -167,7 +168,7 @@ class SchedulerEngine {
       if (s.schedulingPolicy is CompletionRelativePolicy) {
         final policy = s.schedulingPolicy as CompletionRelativePolicy;
         final ruleInstances = taskInstances
-            .where((inst) => inst.ruleId == s.id)
+            .where((inst) => _isInstanceForRule(inst, s, task))
             .toList();
         final pendingForSchedule = ruleInstances
             .where((inst) => inst.status == 'pending')
@@ -179,16 +180,20 @@ class SchedulerEngine {
             dateToSpawn = s.scheduledDate;
           } else {
             final resolved =
-                ruleInstances
-                    .where(
-                      (inst) =>
-                          inst.status != 'pending' && inst.completedAt != null,
-                    )
-                    .toList()
-                  ..sort((a, b) => b.completedAt!.compareTo(a.completedAt!));
+                ruleInstances.where((inst) => inst.status != 'pending').toList()
+                  ..sort(
+                    (a, b) =>
+                        (b.completedAt ??
+                                DateTime.fromMillisecondsSinceEpoch(0))
+                            .compareTo(
+                              a.completedAt ??
+                                  DateTime.fromMillisecondsSinceEpoch(0),
+                            ),
+                  );
             if (resolved.isNotEmpty) {
               final latest = resolved.first;
-              final nextSpawnTime = latest.completedAt!.add(policy.interval);
+              final completedAtTime = latest.completedAt ?? now;
+              final nextSpawnTime = completedAtTime.add(policy.interval);
               if (!now.isBefore(nextSpawnTime)) {
                 dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
               }
@@ -235,7 +240,7 @@ class SchedulerEngine {
       } else {
         // FixedCalendarPolicy: N future instances queue-based model
         final ruleInstances = taskInstances
-            .where((inst) => inst.ruleId == s.id)
+            .where((inst) => _isInstanceForRule(inst, s, task))
             .toList();
         final pending =
             ruleInstances.where((inst) => inst.status == 'pending').toList()
@@ -862,6 +867,19 @@ class SchedulerEngine {
       return ruleInstances.first.id;
     }
     return null;
+  }
+
+  static bool _isInstanceForRule(
+    TaskInstance inst,
+    TaskScheduleRule s,
+    TaskSchedule task,
+  ) {
+    if (inst.ruleId == s.id) return true;
+    if (inst.ruleId.isEmpty && task.schedules.isNotEmpty) {
+      final index = task.schedules.indexOf(s);
+      return index == 0;
+    }
+    return false;
   }
 
   static int _ruleIndexOfInstance(TaskSchedule task, TaskInstance instance) {

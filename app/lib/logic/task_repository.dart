@@ -363,6 +363,10 @@ class TaskRepository {
   }
 
   Stream<List<TaskSchedule>> getTasks() {
+    final personalStream = _tasksRef.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    });
+
     return _firestore
         .collection('users')
         .doc(_userId)
@@ -370,10 +374,6 @@ class TaskRepository {
         .map((doc) => doc.data()?['familyId'] as String? ?? '')
         .distinct()
         .switchMap((familyId) {
-          final personalStream = _tasksRef.snapshots().map((snapshot) {
-            return snapshot.docs.map((doc) => doc.data()).toList();
-          });
-
           if (familyId.isEmpty) {
             return personalStream.map((personalTasks) {
               scheduleMicrotask(
@@ -413,6 +413,10 @@ class TaskRepository {
   }
 
   Stream<List<TaskInstance>> getInstances() {
+    final personalStream = _instancesRef.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    });
+
     return _firestore
         .collection('users')
         .doc(_userId)
@@ -420,10 +424,6 @@ class TaskRepository {
         .map((doc) => doc.data()?['familyId'] as String? ?? '')
         .distinct()
         .switchMap((familyId) {
-          final personalStream = _instancesRef.snapshots().map((snapshot) {
-            return snapshot.docs.map((doc) => doc.data()).toList();
-          });
-
           if (familyId.isEmpty) {
             return personalStream;
           } else {
