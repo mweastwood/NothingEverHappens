@@ -3,24 +3,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'user_settings.dart';
 import 'auth_repository.dart';
 import 'task_repository.dart';
+import 'hive_local_data_source.dart';
 
 final userSettingsRepositoryProvider = Provider<UserSettingsRepository?>((ref) {
   final firestore = ref.watch(firestoreProvider);
-  if (firestore == null) return null;
+  final hiveDataSource = ref.watch(hiveLocalDataSourceProvider);
   final user = ref.watch(authStateProvider).value;
-  if (user == null) return null;
-  return UserSettingsRepository(firestore: firestore, userId: user.uid);
+  return UserSettingsRepository(
+    firestore: firestore,
+    userId: user?.uid ?? '',
+    localDataSource: hiveDataSource,
+  );
 });
 
 class UserSettingsRepository {
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? _firestore;
   final String _userId;
+  final HiveLocalDataSource _localDataSource;
 
-  UserSettingsRepository({FirebaseFirestore? firestore, required String userId})
-    : _firestore = firestore ?? FirebaseFirestore.instance,
-      _userId = userId;
+  UserSettingsRepository({
+    FirebaseFirestore? firestore,
+    required String userId,
+    required HiveLocalDataSource localDataSource,
+  }) : _firestore = firestore,
+       _userId = userId,
+       _localDataSource = localDataSource;
 
-  DocumentReference<UserSettings> _settingsRefForUser(String userId) {
+  DocumentReference<UserSettings>? _settingsRefForUser(String userId) {
+    if (_firestore == null || userId.isEmpty) return null;
     return _firestore
         .collection('users')
         .doc(userId)
@@ -33,28 +43,24 @@ class UserSettingsRepository {
         );
   }
 
-  DocumentReference<UserSettings> get _settingsRef =>
-      _settingsRefForUser(_userId);
-
   Stream<UserSettings> getSettings() {
-    return getSettingsForUser(_userId);
-  }
-
-  Stream<UserSettings> getSettingsForUser(String userId) {
-    return _settingsRefForUser(userId).snapshots().map((snapshot) {
-      return snapshot.data() ?? const UserSettings(hoursAvailable: 8.0);
-    });
+    return _localDataSource.watchSettings();
   }
 
   Future<void> updateSettings(UserSettings settings) async {
-    await _settingsRef.set(settings, SetOptions(merge: true));
+    await _localDataSource.saveSettings(settings);
+    final ref = _settingsRefForUser(_userId);
+    if (ref != null) {
+      try {
+        await ref.set(settings, SetOptions(merge: true));
+      } catch (e) {
+        // Local Hive save succeeded; background firestore sync can fail silently if offline/free
+      }
+    }
   }
 }
 
 final userSettingsProvider = StreamProvider<UserSettings>((ref) {
-  final repo = ref.watch(userSettingsRepositoryProvider);
-  if (repo == null) {
-    return Stream.value(const UserSettings(hoursAvailable: 8.0));
-  }
-  return repo.getSettings();
+  final hiveDataSource = ref.watch(hiveLocalDataSourceProvider);
+  return hiveDataSource.watchSettings();
 });
