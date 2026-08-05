@@ -65,7 +65,7 @@ class UserSettings {
   factory UserSettings.fromJson(Map<String, dynamic> json) {
     final taskListSortJson = json['taskListSort'] as List<dynamic>?;
     final taskListSort = taskListSortJson?.map((e) {
-      final map = e as Map<String, dynamic>;
+      final map = Map<String, dynamic>.from(e as Map);
       return (
         column: map['column'] as String,
         ascending: map['ascending'] as bool,
@@ -74,24 +74,26 @@ class UserSettings {
 
     final scheduleListSortJson = json['scheduleListSort'] as List<dynamic>?;
     final scheduleListSort = scheduleListSortJson?.map((e) {
-      final map = e as Map<String, dynamic>;
+      final map = Map<String, dynamic>.from(e as Map);
       return (
         column: map['column'] as String,
         ascending: map['ascending'] as bool,
       );
     }).toList();
 
-    final defaultDailyCapacityJson =
-        json['defaultDailyCapacity'] as Map<String, dynamic>?;
-    final defaultDailyCapacity = defaultDailyCapacityJson?.map(
-      (k, v) => MapEntry(k, (v as num).toDouble()),
-    );
+    final defaultDailyCapacityRaw = json['defaultDailyCapacity'] as Map?;
+    final defaultDailyCapacity = defaultDailyCapacityRaw != null
+        ? Map<String, dynamic>.from(
+            defaultDailyCapacityRaw,
+          ).map((k, v) => MapEntry(k.toString(), (v as num).toDouble()))
+        : null;
 
-    final dailyCapacityOverridesJson =
-        json['dailyCapacityOverrides'] as Map<String, dynamic>?;
-    final parsedOverrides = dailyCapacityOverridesJson?.map(
-      (k, v) => MapEntry(k, (v as num).toDouble()),
-    );
+    final dailyCapacityOverridesRaw = json['dailyCapacityOverrides'] as Map?;
+    final parsedOverrides = dailyCapacityOverridesRaw != null
+        ? Map<String, dynamic>.from(
+            dailyCapacityOverridesRaw,
+          ).map((k, v) => MapEntry(k.toString(), (v as num).toDouble()))
+        : null;
     final dailyCapacityOverrides = _pruneOverrides(
       parsedOverrides,
       AppClock.now,

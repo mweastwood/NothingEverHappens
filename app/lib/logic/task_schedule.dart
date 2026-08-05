@@ -192,13 +192,16 @@ class TaskSchedule {
 
     final schedulesRaw = data['schedules'] as List<dynamic>? ?? [];
     final schedules = schedulesRaw
-        .map((item) => TaskScheduleRule.fromJson(item as Map<String, dynamic>))
+        .map(
+          (item) =>
+              TaskScheduleRule.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
 
     final isMaster = data['isMaster'] as bool? ?? false;
-    final lastSpawnedDateRaw = data['lastSpawnedDate'] as Map<String, dynamic>?;
+    final lastSpawnedDateRaw = data['lastSpawnedDate'] as Map?;
     final lastSpawnedDate = lastSpawnedDateRaw != null
-        ? CivilDay.fromJson(lastSpawnedDateRaw)
+        ? CivilDay.fromJson(Map<String, dynamic>.from(lastSpawnedDateRaw))
         : null;
     final parentTaskId = data['parentTaskId'] as String?;
     final isFamily = data['isFamily'] as bool? ?? false;
@@ -208,8 +211,10 @@ class TaskSchedule {
       orElse: () => TaskPriority.medium,
     );
     final cycleId = data['cycleId'] as String?;
-    final preferredByRaw = data['preferredBy'] as Map<String, dynamic>? ?? {};
-    final preferredBy = preferredByRaw.map((k, v) => MapEntry(k, v as bool));
+    final preferredByRaw = data['preferredBy'] as Map? ?? {};
+    final preferredBy = Map<String, dynamic>.from(
+      preferredByRaw,
+    ).map((k, v) => MapEntry(k.toString(), v as bool));
     final assignedUserId = data['assignedUserId'] as String?;
     final skipIfNoCapacity = data['skipIfNoCapacity'] as bool? ?? false;
 

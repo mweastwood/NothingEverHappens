@@ -72,20 +72,19 @@ class TaskInstance {
     final title = data['title'] as String? ?? 'Untitled';
     final description = data['description'] as String? ?? '';
 
-    final scheduledDateRaw = data['scheduledDate'] as Map<String, dynamic>?;
+    final scheduledDateRaw = data['scheduledDate'] as Map?;
     final scheduledDate = scheduledDateRaw != null
-        ? CivilDay.fromJson(scheduledDateRaw)
+        ? CivilDay.fromJson(Map<String, dynamic>.from(scheduledDateRaw))
         : CivilDay.fromDateTime(DateTime.now());
 
-    final startRelativeTimeRaw =
-        data['startRelativeTime'] as Map<String, dynamic>?;
+    final startRelativeTimeRaw = data['startRelativeTime'] as Map?;
     final startRelativeTime = startRelativeTimeRaw != null
-        ? RelativeTime.fromJson(startRelativeTimeRaw)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(startRelativeTimeRaw))
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
 
-    final dueRelativeTimeRaw = data['dueRelativeTime'] as Map<String, dynamic>?;
+    final dueRelativeTimeRaw = data['dueRelativeTime'] as Map?;
     final dueRelativeTime = dueRelativeTimeRaw != null
-        ? RelativeTime.fromJson(dueRelativeTimeRaw)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(dueRelativeTimeRaw))
         : const RelativeTime(
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
@@ -95,11 +94,16 @@ class TaskInstance {
     if (data['notificationRelativeTimes'] != null) {
       final list = data['notificationRelativeTimes'] as List;
       notificationRelativeTimes = list
-          .map((item) => RelativeTime.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) =>
+                RelativeTime.fromJson(Map<String, dynamic>.from(item as Map)),
+          )
           .toList();
     } else if (data['notificationRelativeTime'] != null) {
-      final notifRaw = data['notificationRelativeTime'] as Map<String, dynamic>;
-      notificationRelativeTimes = [RelativeTime.fromJson(notifRaw)];
+      final notifRaw = data['notificationRelativeTime'] as Map;
+      notificationRelativeTimes = [
+        RelativeTime.fromJson(Map<String, dynamic>.from(notifRaw)),
+      ];
     }
 
     final isFamily = data['isFamily'] as bool? ?? false;
