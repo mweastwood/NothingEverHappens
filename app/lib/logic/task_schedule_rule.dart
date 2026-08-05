@@ -92,6 +92,9 @@ abstract class TaskScheduleRule {
     MissedOccurrencePolicy? missedOccurrencePolicy,
   });
 
+  /// Checks if this rule has the same recurrence pattern as [other].
+  bool hasSameRecurrence(TaskScheduleRule other);
+
   Map<String, dynamic> toJson();
 
   factory TaskScheduleRule.fromJson(Map<String, dynamic> json) {
@@ -229,6 +232,12 @@ class OneOffSchedule extends TaskScheduleRule {
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! OneOffSchedule) return false;
+    return date == other.date;
   }
 
   @override
@@ -401,6 +410,12 @@ class DailySchedule extends TaskScheduleRule {
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! DailySchedule) return false;
+    return interval == other.interval;
   }
 
   @override
@@ -597,6 +612,14 @@ class WeeklySchedule extends TaskScheduleRule {
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! WeeklySchedule) return false;
+    if (interval != other.interval) return false;
+    if (daysOfWeek.length != other.daysOfWeek.length) return false;
+    return daysOfWeek.every(other.daysOfWeek.contains);
   }
 
   @override
