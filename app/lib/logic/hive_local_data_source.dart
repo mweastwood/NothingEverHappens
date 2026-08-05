@@ -38,12 +38,44 @@ class HiveLocalDataSource {
     const UserSettings(hoursAvailable: 8.0),
   );
 
+  bool isFallbackInMemoryMode = false;
+
+  Future<Box<Map>?> _openBoxSafely(String boxName) async {
+    try {
+      return await Hive.openBox<Map>(boxName);
+    } catch (e, st) {
+      // ignore: avoid_print
+      print(
+        '⚠️ [HIVE_UPGRADE_RECOVERY] Box "$boxName" opening failed on app upgrade: $e\n$st. Re-creating clean box.',
+      );
+      try {
+        await Hive.deleteBoxFromDisk(boxName);
+        return await Hive.openBox<Map>(boxName);
+      } catch (err, stack) {
+        // ignore: avoid_print
+        print(
+          '⚠️ [HIVE_UPGRADE_RECOVERY_FAILED] Failed to recreate box "$boxName": $err\n$stack',
+        );
+        return null;
+      }
+    }
+  }
+
   Future<void> init() async {
-    await Hive.initFlutter();
-    _tasksBox = await Hive.openBox<Map>(_tasksBoxName);
-    _instancesBox = await Hive.openBox<Map>(_instancesBoxName);
-    _syncMetaBox = await Hive.openBox<Map>(_syncMetaBoxName);
-    _settingsBox = await Hive.openBox<Map>(_settingsBoxName);
+    try {
+      await Hive.initFlutter();
+      _tasksBox = await _openBoxSafely(_tasksBoxName);
+      _instancesBox = await _openBoxSafely(_instancesBoxName);
+      _syncMetaBox = await _openBoxSafely(_syncMetaBoxName);
+      _settingsBox = await _openBoxSafely(_settingsBoxName);
+    } catch (e, st) {
+      isFallbackInMemoryMode = true;
+      // ignore: avoid_print
+      print(
+        '⚠️ [HIVE_STORAGE_FALLBACK] Hive storage failed to initialize. '
+        'Falling back to in-memory mode: $e\n$st',
+      );
+    }
 
     _emitTasks();
     _emitInstances();

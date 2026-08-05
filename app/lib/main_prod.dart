@@ -6,16 +6,26 @@ import 'logic/hive_local_data_source.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (Firebase.apps.isEmpty) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (e, st) {
+    // ignore: avoid_print
+    print('⚠️ [PROD_FIREBASE_INIT_WARNING] Firebase init failed: $e\n$st');
   }
 
   AppConfig.environment = AppEnvironment.prod;
 
   final hiveDataSource = HiveLocalDataSource();
-  await hiveDataSource.init();
+  try {
+    await hiveDataSource.init();
+  } catch (e, st) {
+    // ignore: avoid_print
+    print('⚠️ [PROD_HIVE_INIT_WARNING] Hive init failed: $e\n$st');
+  }
 
   mainCommon(hiveDataSource);
 }
