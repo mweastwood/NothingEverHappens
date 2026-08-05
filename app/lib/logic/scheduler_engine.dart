@@ -33,6 +33,7 @@ class SchedulerEngine {
   }) {
     final today = CivilDay.fromDateTime(now);
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+    final List<String> toDelete = [];
 
     if (!isRecurring) {
       // One-Off Schedule: Ensure an instance exists for each OneOffSchedule in the task.
@@ -40,12 +41,19 @@ class SchedulerEngine {
       for (int i = 0; i < task.schedules.length; i++) {
         final s = task.schedules[i];
         if (s is OneOffSchedule) {
-          final exists = taskInstances.any(
-            (inst) =>
-                _isInstanceForRule(inst, s, task) &&
-                inst.scheduledDate == s.scheduledDate,
+          final ruleInstances = taskInstances
+              .where((inst) => _isInstanceForRule(inst, s, task))
+              .toList();
+          final hasResolved = ruleInstances.any(
+            (inst) => inst.status != 'pending',
           );
-          if (!exists) {
+          if (hasResolved) {
+            for (final inst in ruleInstances) {
+              if (inst.status == 'pending') {
+                toDelete.add(inst.id);
+              }
+            }
+          } else if (ruleInstances.isEmpty) {
             toSpawn.add(
               TaskInstance(
                 id: TaskInstance.generateId(),
@@ -153,13 +161,13 @@ class SchedulerEngine {
       return SchedulerAction(
         instancesToSpawn: finalToSpawn,
         instancesToUpdate: finalToUpdate,
+        instancesToDelete: toDelete,
       );
     }
 
     // Recurring Schedule
     final List<TaskInstance> toUpdate = [];
     final List<TaskInstance> toSpawn = [];
-    final List<String> toDelete = [];
     CivilDay? maxSpawned;
 
     for (int i = 0; i < task.schedules.length; i++) {
@@ -522,13 +530,18 @@ class SchedulerEngine {
           }
         }
 
-        // 5. Delete pending instances that are no longer in the target queue (pruning)
+        // 5. Delete pending instances that are no longer in the target queue or duplicate of resolved instances
+        final resolvedDates = ruleInstances
+            .where((inst) => inst.status != 'pending')
+            .map((inst) => inst.scheduledDate)
+            .toSet();
         final futureTargetDates = targetDates
             .where((d) => d.compareTo(today) > 0)
             .toSet();
         for (final inst in pending) {
-          if (inst.scheduledDate.compareTo(today) > 0 &&
-              !futureTargetDates.contains(inst.scheduledDate)) {
+          if (resolvedDates.contains(inst.scheduledDate) ||
+              (inst.scheduledDate.compareTo(today) > 0 &&
+                  !futureTargetDates.contains(inst.scheduledDate))) {
             toDelete.add(inst.id);
           }
         }
