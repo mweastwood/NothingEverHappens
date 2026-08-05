@@ -1,10 +1,13 @@
+import 'package:nothing_ever_happens/logic/family_invite_status.dart';
+import 'package:nothing_ever_happens/logic/family_role.dart';
+import 'package:nothing_ever_happens/logic/task_status.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FamilyMember {
   final String userId;
   final String displayName;
   final String email;
-  final String role; // 'parent' or 'non-parent'
+  final FamilyRole role;
 
   const FamilyMember({
     required this.userId,
@@ -18,7 +21,7 @@ class FamilyMember {
       userId: json['userId'] as String? ?? '',
       displayName: json['displayName'] as String? ?? '',
       email: json['email'] as String? ?? '',
-      role: json['role'] as String? ?? 'non-parent',
+      role: FamilyRole.fromString(json['role'] as String? ?? 'non-parent'),
     );
   }
 
@@ -27,7 +30,7 @@ class FamilyMember {
       'userId': userId,
       'displayName': displayName,
       'email': email,
-      'role': role,
+      'role': role.toJson(),
     };
   }
 }
@@ -69,8 +72,8 @@ class FamilyInvite {
   final String fromEmail;
   final String fromName;
   final String toEmail;
-  final String role; // 'parent' or 'non-parent'
-  final String status; // 'pending' | 'accepted' | 'declined'
+  final FamilyRole role;
+  final FamilyInviteStatus status;
   final DateTime createdAt;
 
   const FamilyInvite({
@@ -93,8 +96,10 @@ class FamilyInvite {
       fromEmail: json['fromEmail'] as String? ?? '',
       fromName: json['fromName'] as String? ?? '',
       toEmail: json['toEmail'] as String? ?? '',
-      role: json['role'] as String? ?? 'non-parent',
-      status: json['status'] as String? ?? 'pending',
+      role: FamilyRole.fromString(json['role'] as String? ?? 'non-parent'),
+      status: FamilyInviteStatus.fromString(
+        json['status'] as String? ?? 'pending',
+      ),
       createdAt: json['createdAt'] != null
           ? (json['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -108,8 +113,8 @@ class FamilyInvite {
       'fromEmail': fromEmail,
       'fromName': fromName,
       'toEmail': toEmail,
-      'role': role,
-      'status': status,
+      'role': role.toJson(),
+      'status': status.toJson(),
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }

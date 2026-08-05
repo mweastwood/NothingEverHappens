@@ -222,7 +222,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           double plannedMinutes = 0.0;
                           for (final inst in instances) {
                             if (inst.scheduledDate == day &&
-                                inst.status != 'skipped') {
+                                inst.status != TaskStatus.skipped) {
                               if (inst.assignedUserId != null &&
                                   inst.assignedUserId != currentUserId) {
                                 continue;
@@ -272,7 +272,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               double plannedMinutes = 0.0;
                               for (final inst in instances) {
                                 if (inst.scheduledDate == day &&
-                                    inst.status != 'skipped') {
+                                    inst.status != TaskStatus.skipped) {
                                   if (inst.assignedUserId != null &&
                                       inst.assignedUserId != currentUserId) {
                                     continue;

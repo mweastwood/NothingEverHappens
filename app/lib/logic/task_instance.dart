@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
 import 'task_priority.dart';
+import 'task_status.dart';
 
 class TaskInstance {
   static String generateId() => 'I-${const Uuid().v4()}';
@@ -23,7 +24,7 @@ class TaskInstance {
   final String? assignedUserId;
   final String? completedByUserId;
   final DateTime? completedAt;
-  final String status;
+  final TaskStatus status;
 
   /// Whether this instance document has pending local writes that have not yet synced to Firestore server.
   final bool hasPendingWrites;
@@ -50,7 +51,7 @@ class TaskInstance {
     this.assignedUserId,
     this.completedByUserId,
     this.completedAt,
-    this.status = 'pending',
+    this.status = TaskStatus.pending,
     this.hasPendingWrites = false,
     this.isFromCache = false,
     DateTime? updatedAt,
@@ -130,7 +131,8 @@ class TaskInstance {
       }
     }
 
-    final status = data['status'] as String? ?? 'pending';
+    final statusStr = data['status'] as String? ?? TaskStatus.pending;
+    final status = TaskStatus.fromString(statusStr);
 
     final updatedAtRaw = data['updatedAt'];
     DateTime? updatedAt;
@@ -186,7 +188,7 @@ class TaskInstance {
       if (assignedUserId != null) 'assignedUserId': assignedUserId,
       if (completedByUserId != null) 'completedByUserId': completedByUserId,
       if (completedAt != null) 'completedAt': completedAt,
-      'status': status,
+      'status': status.toJson(),
       'updatedAt': updatedAt,
     };
   }
@@ -209,7 +211,7 @@ class TaskInstance {
     bool clearCompletedByUserId = false,
     DateTime? completedAt,
     bool clearCompletedAt = false,
-    String? status,
+    TaskStatus? status,
     bool? hasPendingWrites,
     bool? isFromCache,
     DateTime? updatedAt,

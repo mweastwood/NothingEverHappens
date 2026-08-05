@@ -1,3 +1,4 @@
+import 'package:nothing_ever_happens/logic/task_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -112,7 +113,7 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
           dueRelativeTime: s.dueRelativeTime,
           isFamily: task.isFamily,
           priority: task.priority,
-          status: 'pending',
+          status: TaskStatus.pending,
         );
       });
     });
@@ -286,7 +287,7 @@ class FakeTaskRepository extends TaskRepository {
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
     // Restore the pending version of the instance to the list
     final pending = resolvedInstance.copyWith(
-      status: 'pending',
+      status: TaskStatus.pending,
       clearCompletedByUserId: true,
       clearCompletedAt: true,
     );

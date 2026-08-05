@@ -1,3 +1,4 @@
+import 'package:nothing_ever_happens/logic/family_role.dart';
 import 'package:flutter/material.dart';
 import '../logic/family.dart';
 import '../logic/l10n_extension.dart';
@@ -45,7 +46,7 @@ class FamilyInviteCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    invite.role == 'parent'
+                    invite.role == FamilyRole.parent
                         ? context.l10n.parentRole
                         : context.l10n.nonParentRole,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(

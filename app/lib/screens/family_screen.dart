@@ -1,3 +1,4 @@
+import 'package:nothing_ever_happens/logic/family_role.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -443,7 +444,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final isParent = familyRole == 'parent';
+        final isParent = familyRole == FamilyRole.parent;
 
         return ListView(
           padding: const EdgeInsets.all(16.0),
@@ -731,7 +732,7 @@ class _InviteMemberDialog extends StatefulWidget {
 class _InviteMemberDialogState extends State<_InviteMemberDialog> {
   late final TextEditingController _emailController;
   final _formKey = GlobalKey<FormState>();
-  String _selectedRole = 'non-parent';
+  FamilyRole _selectedRole = FamilyRole.nonParent;
 
   @override
   void initState() {
@@ -783,11 +784,11 @@ class _InviteMemberDialogState extends State<_InviteMemberDialog> {
               ),
               items: [
                 DropdownMenuItem(
-                  value: 'parent',
+                  value: FamilyRole.parent,
                   child: Text(context.l10n.parentRole),
                 ),
                 DropdownMenuItem(
-                  value: 'non-parent',
+                  value: FamilyRole.nonParent,
                   child: Text(context.l10n.nonParentRole),
                 ),
               ],

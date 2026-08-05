@@ -1,3 +1,4 @@
+import 'package:nothing_ever_happens/logic/task_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -152,7 +153,8 @@ class _MissedPoliciesPlaygroundTabState
 
     final Map<CivilDay, double> dayPlannedHours = {};
     for (final inst in _taskInstances) {
-      if (inst.status != 'skipped' && inst.status != 'failed') {
+      if (inst.status != TaskStatus.skipped &&
+          inst.status != TaskStatus.failed) {
         if (_taskSchedule.estimatedDuration != null) {
           final hours = _taskSchedule.estimatedDuration!.inMinutes / 60.0;
           dayPlannedHours[inst.scheduledDate] =
@@ -236,7 +238,7 @@ class _MissedPoliciesPlaygroundTabState
       if (idx == -1) return;
       final taskInst = _taskInstances[idx];
       _taskInstances[idx] = taskInst.copyWith(
-        status: 'completed',
+        status: TaskStatus.completed,
         completedAt: _simulatedNow,
       );
       _historyLog.add(
@@ -378,7 +380,9 @@ class _MissedPoliciesPlaygroundTabState
     final l10n = context.l10n;
 
     final pendingInstances =
-        _taskInstances.where((inst) => inst.status == 'pending').toList()
+        _taskInstances
+            .where((inst) => inst.status == TaskStatus.pending)
+            .toList()
           ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
     return Scaffold(

@@ -1,3 +1,4 @@
+import 'package:nothing_ever_happens/logic/family_role.dart';
 import 'package:flutter/material.dart';
 import '../logic/family.dart';
 import '../logic/l10n_extension.dart';
@@ -9,7 +10,7 @@ class FamilyMemberTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final memberIsParent = member.role == 'parent';
+    final memberIsParent = member.role == FamilyRole.parent;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
