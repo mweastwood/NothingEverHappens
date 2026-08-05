@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../test_factories.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
@@ -14,23 +15,19 @@ void main() {
 
     group('OneOffSchedule', () {
       test('spawns instance when none exists', () {
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createOneOff(
           id: 'oneoff-1',
           title: 'One Off Task',
           description: 'A simple one-off task',
-          schedules: [
-            OneOffSchedule(
-              date: today,
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
-            ),
-          ],
+          date: today,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
         );
 
         final action = const SchedulerEngine().evaluate(task, [], now);
@@ -45,23 +42,19 @@ void main() {
       });
 
       test('does not spawn instance if it already exists', () {
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createOneOff(
           id: 'oneoff-1',
           title: 'One Off Task',
           description: 'A simple one-off task',
-          schedules: [
-            OneOffSchedule(
-              date: today,
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
-            ),
-          ],
+          date: today,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
         );
 
         final existingInstance = TaskInstance(
@@ -140,17 +133,13 @@ void main() {
     group('FixedCalendarPolicy - Stack', () {
       test('spawns all missing instances up to today as pending', () {
         final startDate = today.addDays(-3); // June 16
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createDaily(
           id: 'stack-1',
           title: 'Stack Task',
           description: 'Piles up',
-          schedules: [
-            DailySchedule(
-              startDate: startDate,
-              interval: 1,
-              missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
-            ),
-          ],
+          startDate: startDate,
+          interval: 1,
+          missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
         );
 
         final action = const SchedulerEngine().evaluate(
@@ -182,18 +171,13 @@ void main() {
         'skips older missed instances and keeps only the latest pending',
         () {
           final startDate = today.addDays(-2); // June 17
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'newer-1',
             title: 'Prefer Newer Task',
             description: 'Keeps newest only',
-            schedules: [
-              DailySchedule(
-                startDate: startDate,
-                interval: 1,
-                missedOccurrencePolicy:
-                    const MissedOccurrencePolicy.preferNewer(),
-              ),
-            ],
+            startDate: startDate,
+            interval: 1,
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
           );
 
           final action = const SchedulerEngine().evaluate(
@@ -215,19 +199,13 @@ void main() {
 
       test('skips previous pending when a new occurrence is evaluated', () {
         final yesterday = today.addDays(-1);
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createDaily(
           id: 'newer-2',
           title: 'Prefer Newer Task 2',
           description: 'Advances active',
-          lastSpawnedDate: yesterday,
-          schedules: [
-            DailySchedule(
-              startDate: yesterday,
-              interval: 1,
-              missedOccurrencePolicy:
-                  const MissedOccurrencePolicy.preferNewer(),
-            ),
-          ],
+          startDate: yesterday,
+          interval: 1,
+          missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
         );
 
         final existingPending = TaskInstance(
@@ -270,19 +248,13 @@ void main() {
       test(
         'keeps today\'s instance as pending and does not skip it in favor of a future lookahead instance',
         () {
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'newer-3',
             title: 'Prefer Newer Task 3',
             description: 'Today is active, tomorrow is future',
-            lastSpawnedDate: today,
-            schedules: [
-              DailySchedule(
-                startDate: today,
-                interval: 1,
-                missedOccurrencePolicy:
-                    const MissedOccurrencePolicy.preferNewer(),
-              ),
-            ],
+            startDate: today,
+            interval: 1,
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
           );
 
           // Simulate where today's instance is already spawned as pending in DB
@@ -329,27 +301,21 @@ void main() {
           final evalTime = DateTime(2026, 6, 19, 8, 0);
           final yesterday = today.addDays(-1); // June 18
 
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'newer-bug-test',
             title: 'Prefer Newer Start Time Task',
             description: 'Start time test',
-            lastSpawnedDate: yesterday,
-            schedules: [
-              DailySchedule(
-                startDate: yesterday,
-                interval: 1,
-                startRelativeTime: const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 10, minute: 0), // Starts at 10:00 AM
-                ),
-                dueRelativeTime: const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 17, minute: 0),
-                ),
-                missedOccurrencePolicy:
-                    const MissedOccurrencePolicy.preferNewer(),
-              ),
-            ],
+            startDate: yesterday,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0), // Starts at 10:00 AM
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
           );
 
           final yesterdayInstance = TaskInstance(
@@ -389,18 +355,13 @@ void main() {
         'keeps the oldest missed instance pending, and skips subsequent newer ones',
         () {
           final startDate = today.addDays(-2); // June 17
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'older-1',
             title: 'Prefer Older Task',
             description: 'Keeps oldest only',
-            schedules: [
-              DailySchedule(
-                startDate: startDate,
-                interval: 1,
-                missedOccurrencePolicy:
-                    const MissedOccurrencePolicy.preferOlder(),
-              ),
-            ],
+            startDate: startDate,
+            interval: 1,
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
           );
 
           final action = const SchedulerEngine().evaluate(task, [], now);
@@ -436,19 +397,13 @@ void main() {
         'does not spawn any new pending if old is still pending, skips newer candidates',
         () {
           final yesterday = today.addDays(-1);
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'older-2',
             title: 'Prefer Older Task 2',
             description: 'Keeps oldest only',
-            lastSpawnedDate: yesterday,
-            schedules: [
-              DailySchedule(
-                startDate: yesterday,
-                interval: 1,
-                missedOccurrencePolicy:
-                    const MissedOccurrencePolicy.preferOlder(),
-              ),
-            ],
+            startDate: yesterday,
+            interval: 1,
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
           );
 
           final existingPending = TaskInstance(
@@ -500,27 +455,21 @@ void main() {
           final evalTime = DateTime(2026, 6, 19, 8, 0);
           final yesterday = today.addDays(-1); // June 18
 
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'older-bug-test',
             title: 'Prefer Older Start Time Task',
             description: 'Start time test',
-            lastSpawnedDate: yesterday,
-            schedules: [
-              DailySchedule(
-                startDate: yesterday,
-                interval: 1,
-                startRelativeTime: const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 10, minute: 0), // Starts at 10:00 AM
-                ),
-                dueRelativeTime: const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 17, minute: 0),
-                ),
-                missedOccurrencePolicy:
-                    const MissedOccurrencePolicy.preferOlder(),
-              ),
-            ],
+            startDate: yesterday,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0), // Starts at 10:00 AM
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
           );
 
           final yesterdayInstance = TaskInstance(
@@ -578,23 +527,19 @@ void main() {
     group('FixedCalendarPolicy - Auto-Dismiss', () {
       test('auto-dismisses expired pending, keeps within grace period', () {
         final yesterday = today.addDays(-1);
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createDaily(
           id: 'dismiss-1',
           title: 'Auto Dismiss Task',
           description: 'Auto Dismiss Task',
-          schedules: [
-            DailySchedule(
-              startDate: yesterday,
-              interval: 1,
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 12, minute: 0),
-              ),
-              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
-                gracePeriod: Duration(hours: 2),
-              ),
-            ),
-          ],
+          startDate: yesterday,
+          interval: 1,
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 12, minute: 0),
+          ),
+          missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+            gracePeriod: Duration(hours: 2),
+          ),
         );
 
         final yesterdayInstance = TaskInstance(
@@ -639,20 +584,16 @@ void main() {
       test(
         'spawns completion relative next instance relative to completion time',
         () {
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'relative-spawn',
             title: 'Completion Relative Task',
             description: 'Relative task',
-            schedules: [
-              DailySchedule(
-                startDate: today.addDays(-1),
-                interval: 3,
-                schedulingPolicy: const CompletionRelativePolicy(
-                  interval: Duration(days: 3),
-                  targetTime: TimeOfDay(hour: 9, minute: 0),
-                ),
-              ),
-            ],
+            startDate: today.addDays(-1),
+            interval: 3,
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 3),
+              targetTime: TimeOfDay(hour: 9, minute: 0),
+            ),
           );
 
           final completedInstance = TaskInstance(
@@ -1100,13 +1041,14 @@ void main() {
 
     group('skipIfNoCapacity Tests', () {
       test('skips instances when daily capacity is insufficient', () {
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createDaily(
           id: 'cap-1',
           title: 'Capacity Task',
           description: 'Skips when full',
-          estimatedDuration: const Duration(hours: 4),
+          startDate: today,
+          interval: 1,
+          estimatedDuration: const Duration(hours: 5),
           skipIfNoCapacity: true,
-          schedules: [DailySchedule(startDate: today, interval: 1)],
         );
 
         // Mock UserSettings with 0 capacity on today and today+1, but 8 hours on today+2
@@ -1148,25 +1090,25 @@ void main() {
 
       test('competing capacity dependent tasks prioritized by priority', () {
         // High priority task
-        final taskHigh = TaskSchedule(
+        final taskHigh = TestTaskFactory.createOneOff(
           id: 'cap-high',
           title: 'High Priority Task',
           description: 'High',
           priority: TaskPriority.high,
+          date: today,
           estimatedDuration: const Duration(hours: 5),
           skipIfNoCapacity: true,
-          schedules: [OneOffSchedule(date: today)],
         );
 
         // Medium priority task
-        final taskMed = TaskSchedule(
+        final taskMed = TestTaskFactory.createOneOff(
           id: 'cap-med',
           title: 'Medium Priority Task',
           description: 'Med',
           priority: TaskPriority.medium,
+          date: today,
           estimatedDuration: const Duration(hours: 5),
           skipIfNoCapacity: true,
-          schedules: [OneOffSchedule(date: today)],
         );
 
         final userSettings = UserSettings(
@@ -1207,24 +1149,24 @@ void main() {
       test(
         'competing capacity tasks with equal priority prioritize least recently completed task',
         () {
-          final taskA = TaskSchedule(
+          final taskA = TestTaskFactory.createOneOff(
             id: 'cap-a',
             title: 'Task A',
             description: '',
             priority: TaskPriority.medium,
+            date: today,
             estimatedDuration: const Duration(hours: 5),
             skipIfNoCapacity: true,
-            schedules: [OneOffSchedule(date: today)],
           );
 
-          final taskB = TaskSchedule(
+          final taskB = TestTaskFactory.createOneOff(
             id: 'cap-b',
             title: 'Task B',
             description: '',
             priority: TaskPriority.medium,
+            date: today,
             estimatedDuration: const Duration(hours: 5),
             skipIfNoCapacity: true,
-            schedules: [OneOffSchedule(date: today)],
           );
 
           final userSettings = UserSettings(hoursAvailable: 8.0);
@@ -1333,13 +1275,13 @@ void main() {
       test(
         'revives previously skipped instance back to pending if capacity becomes available',
         () {
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createOneOff(
             id: 'cap-revive',
             title: 'Revive Task',
             description: 'Revives to pending',
+            date: today.addDays(1),
             estimatedDuration: const Duration(hours: 4),
             skipIfNoCapacity: true,
-            schedules: [OneOffSchedule(date: today.addDays(1))],
           );
 
           final existingInst = TaskInstance(
@@ -1378,13 +1320,13 @@ void main() {
       test(
         'revives previously skipped instance back to pending if skipIfNoCapacity is toggled off',
         () {
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createOneOff(
             id: 'cap-revive',
             title: 'Revive Task',
             description: 'Revives to pending',
+            date: today.addDays(1),
             estimatedDuration: const Duration(hours: 4),
             skipIfNoCapacity: false,
-            schedules: [OneOffSchedule(date: today.addDays(1))],
           );
 
           final existingInst = TaskInstance(
@@ -1422,13 +1364,13 @@ void main() {
       test(
         'does not apply capacity limits (no skip, no revival) if applyCapacityLimits is false',
         () {
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createOneOff(
             id: 'cap-no-apply',
             title: 'No Apply Task',
             description: 'No capacity evaluation',
-            estimatedDuration: const Duration(hours: 4),
+            date: today.addDays(1),
+            estimatedDuration: const Duration(hours: 5),
             skipIfNoCapacity: true,
-            schedules: [OneOffSchedule(date: today.addDays(1))],
           );
 
           // We have 0 capacity, so if limits were applied, this would be skipped.
@@ -1478,13 +1420,13 @@ void main() {
       test(
         'skips existing pending instance when prior tasks exceed capacity, and keeps pending when capacity is available',
         () {
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createOneOff(
             id: 'cap-check',
             title: 'Capacity Check Task',
             description: 'Capacity evaluation',
             estimatedDuration: const Duration(hours: 5),
             skipIfNoCapacity: true,
-            schedules: [OneOffSchedule(date: today.addDays(1))],
+            date: today.addDays(1),
           );
 
           final existingInst = TaskInstance(

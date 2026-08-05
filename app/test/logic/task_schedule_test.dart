@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../test_factories.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
@@ -12,23 +13,19 @@ void main() {
   group('TaskSchedule Properties', () {
     test('isOverdue checks dueFromMidnight correctly', () {
       const todayCivil = CivilDay(year: 2024, month: 1, day: 1);
-      final task = TaskSchedule(
+      final task = TestTaskFactory.createOneOff(
         id: '1',
         title: 'Test',
         description: 'Test',
-        schedules: [
-          OneOffSchedule(
-            date: todayCivil,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 0, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 12, minute: 0),
-            ),
-          ),
-        ],
+        date: todayCivil,
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 0, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 12, minute: 0),
+        ),
       );
 
       // 10:00 AM
@@ -88,16 +85,14 @@ void main() {
     test(
       'serializes and deserializes CompletionRelativePolicy and autoDismiss missed policy correctly',
       () async {
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createOneOff(
           id: 'task-completion-relative-test',
           title: 'Completion Relative Task',
           description: 'Chore',
-          schedules: [
-            OneOffSchedule(date: const CivilDay(year: 2026, month: 6, day: 1)),
-          ],
-          schedulingPolicy: CompletionRelativePolicy(
-            interval: const Duration(days: 7),
-            targetTime: const TimeOfDay(hour: 9, minute: 30),
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 7),
+            targetTime: TimeOfDay(hour: 9, minute: 30),
           ),
           missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
             gracePeriod: Duration(hours: 4),
@@ -144,23 +139,19 @@ void main() {
     );
 
     test('serializes and deserializes estimatedDuration correctly', () async {
-      final task = TaskSchedule(
+      final task = TestTaskFactory.createOneOff(
         id: 'task-duration-test',
         title: 'TaskSchedule with duration',
         description: 'Desc',
-        schedules: [
-          OneOffSchedule(
-            date: const CivilDay(year: 2026, month: 3, day: 8),
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
-            ),
-          ),
-        ],
+        date: const CivilDay(year: 2026, month: 3, day: 8),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
         estimatedDuration: const Duration(minutes: 45),
       );
 
@@ -177,23 +168,19 @@ void main() {
     });
 
     test('deserializes null estimatedDuration correctly', () async {
-      final task = TaskSchedule(
+      final task = TestTaskFactory.createOneOff(
         id: 'task-no-duration',
         title: 'TaskSchedule without duration',
         description: 'Desc',
-        schedules: [
-          OneOffSchedule(
-            date: const CivilDay(year: 2026, month: 3, day: 8),
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
-            ),
-          ),
-        ],
+        date: const CivilDay(year: 2026, month: 3, day: 8),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
       );
 
       final map = task.toFirestore();
@@ -212,28 +199,24 @@ void main() {
     });
 
     test('serializes and deserializes new Agile fields correctly', () async {
-      final task = TaskSchedule(
+      final task = TestTaskFactory.createOneOff(
         id: 'task-agile-test',
         title: 'Agile TaskSchedule',
         description: 'Desc',
-        schedules: [
-          OneOffSchedule(
-            date: const CivilDay(year: 2026, month: 3, day: 8),
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
-            ),
-          ),
-        ],
         isFamily: true,
         priority: TaskPriority.high,
         cycleId: '2026-W23',
-        preferredBy: const {'user-1': true, 'user-2': false},
         assignedUserId: 'user-1',
+        preferredBy: const {'user-1': true, 'user-2': false},
+        date: const CivilDay(year: 2026, month: 3, day: 8),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
       );
 
       final map = task.toFirestore();
@@ -296,24 +279,19 @@ void main() {
     test(
       'TaskSchedule.edit() returns correctly updated task and changes map',
       () {
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createOneOff(
           id: 'edit-test-task',
           title: 'Initial Title',
           description: 'Initial Desc',
-          schedules: [
-            OneOffSchedule(
-              date: const CivilDay(year: 2026, month: 3, day: 8),
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
-            ),
-          ],
-          estimatedDuration: const Duration(minutes: 30),
+          date: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
         );
 
         final result = task.edit(
@@ -373,24 +351,20 @@ void main() {
     );
 
     test('edit converts family task to individual task correctly', () {
-      final task = TaskSchedule(
+      final task = TestTaskFactory.createOneOff(
         id: 't-family',
         title: 'Family Task',
         description: '',
-        schedules: [
-          OneOffSchedule(
-            date: const CivilDay(year: 2026, month: 3, day: 8),
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
-            ),
-          ),
-        ],
         isFamily: true,
+        date: const CivilDay(year: 2026, month: 3, day: 8),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
       );
 
       final result = task.edit(
@@ -412,23 +386,19 @@ void main() {
     test(
       'updateCycleId modifies cycleId and generates correct changes map',
       () {
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createOneOff(
           id: 't1',
           title: 'TaskSchedule 1',
           description: '',
-          schedules: [
-            OneOffSchedule(
-              date: const CivilDay(year: 2026, month: 6, day: 1),
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
-            ),
-          ],
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
         );
 
         final result = task.updateCycleId('2026-W23');
@@ -445,23 +415,19 @@ void main() {
     test(
       'updateAssignedUserId modifies assignedUserId and generates correct changes map',
       () {
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createOneOff(
           id: 't1',
           title: 'TaskSchedule 1',
           description: '',
-          schedules: [
-            OneOffSchedule(
-              date: const CivilDay(year: 2026, month: 6, day: 1),
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
-            ),
-          ],
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
         );
 
         final result = task.updateAssignedUserId('user2');
@@ -509,23 +475,19 @@ void main() {
     test(
       'updatePreferredBy modifies preferredBy map and generates correct update delta',
       () {
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createOneOff(
           id: 't1',
           title: 'TaskSchedule 1',
           description: '',
-          schedules: [
-            OneOffSchedule(
-              date: const CivilDay(year: 2026, month: 6, day: 1),
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
-            ),
-          ],
+          date: const CivilDay(year: 2026, month: 6, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
         );
 
         final result = task.updatePreferredBy(const {'user2': true});
@@ -1046,19 +1008,15 @@ void main() {
         final repository = TaskRepository(firestore: firestore, userId: userId);
 
         final start = const CivilDay(year: 2026, month: 6, day: 1);
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createDaily(
           id: 'repo-autodismiss-cap',
           title: 'Auto-dismiss Cap Repo',
           description: 'Test',
-          schedules: [
-            DailySchedule(
-              startDate: start,
-              interval: 1,
-              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
-                gracePeriod: Duration.zero,
-              ),
-            ),
-          ],
+          startDate: start,
+          interval: 1,
+          missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+            gracePeriod: Duration.zero,
+          ),
         );
 
         // Add task on June 1
@@ -1562,18 +1520,14 @@ void main() {
       test(
         'edit updates independent rules and correctly computes changes map',
         () {
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'edit-multi-task',
             title: 'Task Title',
             description: 'Desc',
-            schedules: [
-              DailySchedule(
-                startDate: const CivilDay(year: 2026, month: 6, day: 1),
-                interval: 1,
-                schedulingPolicy: const FixedCalendarPolicy(),
-                missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
-              ),
-            ],
+            startDate: const CivilDay(year: 2026, month: 6, day: 1),
+            interval: 1,
+            schedulingPolicy: const FixedCalendarPolicy(),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
           );
 
           // Edit the rule to have autoDismiss missedOccurrencePolicy and completionRelative schedulingPolicy
@@ -1642,21 +1596,17 @@ void main() {
         );
         final monday = const CivilDay(year: 2026, month: 5, day: 25);
 
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createDaily(
           id: 'comp-relative-spawn',
           title: 'Comp Relative Spawn',
           description: 'Testing initial spawn',
-          schedules: [
-            DailySchedule(
-              startDate: monday,
-              interval: 1,
-              schedulingPolicy: const CompletionRelativePolicy(
-                interval: Duration(days: 3),
-                targetTime: TimeOfDay(hour: 10, minute: 0),
-              ),
-              missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
-            ),
-          ],
+          startDate: monday,
+          interval: 1,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 3),
+            targetTime: TimeOfDay(hour: 10, minute: 0),
+          ),
+          missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
         );
 
         AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
@@ -1687,28 +1637,24 @@ void main() {
           );
           final monday = const CivilDay(year: 2026, month: 5, day: 25);
 
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'comp-relative-complete',
             title: 'Comp Relative Complete',
             description: 'Testing completion spawn',
-            schedules: [
-              DailySchedule(
-                startDate: monday,
-                interval: 1,
-                startRelativeTime: const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 9, minute: 0),
-                ),
-                dueRelativeTime: const RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 17, minute: 0),
-                ),
-                schedulingPolicy: const CompletionRelativePolicy(
-                  interval: Duration(days: 3),
-                  targetTime: TimeOfDay(hour: 10, minute: 0),
-                ),
-              ),
-            ],
+            startDate: monday,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 3),
+              targetTime: TimeOfDay(hour: 10, minute: 0),
+            ),
           );
 
           // Monday May 25, 9:00 AM - initial spawned
@@ -1782,31 +1728,27 @@ void main() {
         );
         final monday = const CivilDay(year: 2026, month: 5, day: 25);
 
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createDaily(
           id: 'comp-relative-ignore-dismiss',
           title: 'Comp Relative Ignore Dismiss',
           description: 'Testing ignore dismiss',
-          schedules: [
-            DailySchedule(
-              startDate: monday,
-              interval: 1,
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
-              schedulingPolicy: const CompletionRelativePolicy(
-                interval: Duration(days: 3),
-                targetTime: TimeOfDay(hour: 10, minute: 0),
-              ),
-              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
-                gracePeriod: Duration(hours: 1),
-              ),
-            ),
-          ],
+          startDate: monday,
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 3),
+            targetTime: TimeOfDay(hour: 10, minute: 0),
+          ),
+          missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+            gracePeriod: Duration(hours: 1),
+          ),
         );
 
         AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
@@ -1847,20 +1789,16 @@ void main() {
           );
           final monday = const CivilDay(year: 2026, month: 5, day: 25);
 
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'comp-relative-bg-spawn',
             title: 'Comp Relative BG Spawn',
             description: 'Testing bg spawn',
-            schedules: [
-              DailySchedule(
-                startDate: monday,
-                interval: 1,
-                schedulingPolicy: const CompletionRelativePolicy(
-                  interval: Duration(days: 3),
-                  targetTime: TimeOfDay(hour: 10, minute: 0),
-                ),
-              ),
-            ],
+            startDate: monday,
+            interval: 1,
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 3),
+              targetTime: TimeOfDay(hour: 10, minute: 0),
+            ),
           );
 
           AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
