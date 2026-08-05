@@ -73,10 +73,36 @@ void main() {
     // Default completeTask/dismissTask/undoResolve to do nothing
     when(
       mockTaskRepository.completeTaskInstance(any),
-    ).thenAnswer((_) async => null);
+    ).thenAnswer((invocation) async {
+      final id = invocation.positionalArguments[0] as String;
+      return TaskInstance(
+        id: id,
+        scheduleId: 'S-mock',
+        ruleId: 'R-mock',
+        title: 'Mock Task',
+        description: 'Mock Description',
+        scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
+        status: 'completed',
+      );
+    });
     when(
       mockTaskRepository.dismissTaskInstance(any),
-    ).thenAnswer((_) async => null);
+    ).thenAnswer((invocation) async {
+      final id = invocation.positionalArguments[0] as String;
+      return TaskInstance(
+        id: id,
+        scheduleId: 'S-mock',
+        ruleId: 'R-mock',
+        title: 'Mock Task',
+        description: 'Mock Description',
+        scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+        startRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 17, minute: 0)),
+        status: 'dismissed',
+      );
+    });
     when(
       mockTaskRepository.undoResolveTaskInstance(any),
     ).thenAnswer((_) async {});
@@ -362,7 +388,17 @@ void main() {
   ) async {
     when(
       mockTaskRepository.deleteTaskSchedule(any),
-    ).thenAnswer((_) async => null);
+    ).thenAnswer((invocation) async {
+      final id = invocation.positionalArguments[0] as String;
+      return (
+        task: TaskSchedule(
+          id: id,
+          title: 'Mock Task',
+          description: 'Mock Description',
+        ),
+        pendingInstances: <TaskInstance>[],
+      );
+    });
 
     await tester.pumpWidget(
       buildTestableWidget(
@@ -944,7 +980,17 @@ void main() {
     (tester) async {
       when(
         mockTaskRepository.deleteTaskSchedule(any),
-      ).thenAnswer((_) async => null);
+      ).thenAnswer((invocation) async {
+        final id = invocation.positionalArguments[0] as String;
+        return (
+          task: TaskSchedule(
+            id: id,
+            title: 'Mock Task',
+            description: 'Mock Description',
+          ),
+          pendingInstances: <TaskInstance>[],
+        );
+      });
       await tester.pumpWidget(createWidget(testTask));
 
       final titleFinder = find.text(testTask.title);
