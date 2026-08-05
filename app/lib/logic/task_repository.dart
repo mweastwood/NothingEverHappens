@@ -103,13 +103,13 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
 
 final taskSchedulesProvider = StreamProvider<List<TaskSchedule>>((ref) {
   final repo = ref.watch(taskRepositoryProvider);
-  if (repo == null) return const Stream.empty();
+  if (repo == null) return Stream.value(const []);
   return repo.getTasks();
 });
 
 final taskInstancesProvider = StreamProvider<List<TaskInstance>>((ref) {
   final repo = ref.watch(taskRepositoryProvider);
-  if (repo == null) return const Stream.empty();
+  if (repo == null) return Stream.value(const []);
   return repo.getInstances();
 });
 
