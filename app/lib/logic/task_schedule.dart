@@ -84,6 +84,9 @@ class TaskSchedule {
   /// The ID of the user assigned to this task (null if unassigned).
   final String? assignedUserId;
 
+  /// Optional URL to open when interacting with this task (e.g. for app integrations like Duolingo).
+  final String? appLaunchUrl;
+
   /// Whether this task should be skipped if daily capacity is exceeded.
   final bool skipIfNoCapacity;
 
@@ -136,6 +139,7 @@ class TaskSchedule {
     this.cycleId,
     this.preferredBy = const {},
     this.assignedUserId,
+    this.appLaunchUrl,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
     MissedPolicy? missedPolicy,
@@ -216,6 +220,7 @@ class TaskSchedule {
       preferredByRaw,
     ).map((k, v) => MapEntry(k.toString(), v as bool));
     final assignedUserId = data['assignedUserId'] as String?;
+    final appLaunchUrl = data['appLaunchUrl'] as String?;
     final skipIfNoCapacity = data['skipIfNoCapacity'] as bool? ?? false;
 
     final updatedAtRaw = data['updatedAt'];
@@ -247,6 +252,7 @@ class TaskSchedule {
       cycleId: cycleId,
       preferredBy: preferredBy,
       assignedUserId: assignedUserId,
+      appLaunchUrl: appLaunchUrl,
       skipIfNoCapacity: skipIfNoCapacity,
       hasPendingWrites: snapshot.metadata.hasPendingWrites,
       isFromCache: snapshot.metadata.isFromCache,
@@ -269,6 +275,7 @@ class TaskSchedule {
       if (cycleId != null) 'cycleId': cycleId,
       'preferredBy': preferredBy,
       if (assignedUserId != null) 'assignedUserId': assignedUserId,
+      if (appLaunchUrl != null) 'appLaunchUrl': appLaunchUrl,
       'futureInstancesCount': futureInstancesCount,
       'skipIfNoCapacity': skipIfNoCapacity,
       'updatedAt': updatedAt,
@@ -288,6 +295,7 @@ class TaskSchedule {
     String? newCycleId,
     Map<String, bool>? newPreferredBy,
     String? newAssignedUserId,
+    String? newAppLaunchUrl,
     SchedulingPolicy? newSchedulingPolicy,
     MissedOccurrencePolicy? newMissedOccurrencePolicy,
     bool? newSkipIfNoCapacity,
@@ -337,6 +345,8 @@ class TaskSchedule {
       preferredBy: newPreferredBy,
       assignedUserId: newAssignedUserId,
       clearAssignedUserId: newAssignedUserId == null,
+      appLaunchUrl: newAppLaunchUrl,
+      clearAppLaunchUrl: newAppLaunchUrl == null,
       skipIfNoCapacity: resolvedSkip,
     );
 
@@ -398,6 +408,10 @@ class TaskSchedule {
 
     if (assignedUserId != newAssignedUserId) {
       changes['assignedUserId'] = newAssignedUserId;
+    }
+
+    if (appLaunchUrl != newAppLaunchUrl) {
+      changes['appLaunchUrl'] = newAppLaunchUrl;
     }
 
     if (newTask.futureInstancesCount != futureInstancesCount) {
@@ -492,6 +506,15 @@ class TaskSchedule {
     return (newTask: newTask, changes: {'assignedUserId': newAssignedUserId});
   }
 
+  /// Updates the app launch URL and returns the modified task and changes.
+  TaskModification updateAppLaunchUrl(String? newAppLaunchUrl) {
+    final newTask = _copyWith(
+      appLaunchUrl: newAppLaunchUrl,
+      clearAppLaunchUrl: newAppLaunchUrl == null,
+    );
+    return (newTask: newTask, changes: {'appLaunchUrl': newAppLaunchUrl});
+  }
+
   /// Updates the preferredBy map and returns the modified task and changes.
   TaskModification updatePreferredBy(Map<String, bool> newPreferredBy) {
     final newTask = _copyWith(preferredBy: newPreferredBy);
@@ -517,6 +540,8 @@ class TaskSchedule {
     Map<String, bool>? preferredBy,
     String? assignedUserId,
     bool clearAssignedUserId = false,
+    String? appLaunchUrl,
+    bool clearAppLaunchUrl = false,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
     DateTime? updatedAt,
@@ -540,6 +565,8 @@ class TaskSchedule {
       preferredBy: preferredBy,
       assignedUserId: assignedUserId,
       clearAssignedUserId: clearAssignedUserId,
+      appLaunchUrl: appLaunchUrl,
+      clearAppLaunchUrl: clearAppLaunchUrl,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
       updatedAt: updatedAt,
@@ -565,6 +592,8 @@ class TaskSchedule {
     Map<String, bool>? preferredBy,
     String? assignedUserId,
     bool clearAssignedUserId = false,
+    String? appLaunchUrl,
+    bool clearAppLaunchUrl = false,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
     bool? skipIfNoCapacity,
@@ -614,6 +643,9 @@ class TaskSchedule {
       assignedUserId: clearAssignedUserId
           ? null
           : (assignedUserId ?? this.assignedUserId),
+      appLaunchUrl: clearAppLaunchUrl
+          ? null
+          : (appLaunchUrl ?? this.appLaunchUrl),
       skipIfNoCapacity: skipIfNoCapacity ?? this.skipIfNoCapacity,
       hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
       isFromCache: isFromCache ?? this.isFromCache,

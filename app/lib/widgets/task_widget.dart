@@ -654,19 +654,19 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (widget.instance.title.toLowerCase().contains('duolingo')) ...[
+            if (widget.schedule?.appLaunchUrl != null) ...[
               IconButton(
-                key: const Key('open_duolingo_button'),
+                key: const Key('open_app_button'),
                 icon: const Icon(Icons.open_in_new, size: 20),
-                tooltip: 'Open Duolingo',
+                tooltip: 'Open link',
                 onPressed: () async {
-                  final url = Uri.parse('https://www.duolingo.com');
+                  final url = Uri.parse(widget.schedule!.appLaunchUrl!);
                   try {
                     await launchUrl(url, mode: LaunchMode.externalApplication);
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Could not open Duolingo: $e')),
+                        SnackBar(content: Text('Could not open link: $e')),
                       );
                     }
                   }
