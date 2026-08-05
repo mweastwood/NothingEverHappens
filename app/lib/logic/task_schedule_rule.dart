@@ -11,12 +11,15 @@ List<RelativeTime> _parseNotificationRelativeTimes(Map<String, dynamic> json) {
   if (json['notificationRelativeTimes'] != null) {
     final list = json['notificationRelativeTimes'] as List;
     return list
-        .map((item) => RelativeTime.fromJson(item as Map<String, dynamic>))
+        .map(
+          (item) =>
+              RelativeTime.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
   }
   if (json['notificationRelativeTime'] != null) {
-    final notifJson = json['notificationRelativeTime'] as Map<String, dynamic>;
-    return [RelativeTime.fromJson(notifJson)];
+    final notifRaw = json['notificationRelativeTime'] as Map;
+    return [RelativeTime.fromJson(Map<String, dynamic>.from(notifRaw))];
   }
   return [];
 }
@@ -138,14 +141,14 @@ class OneOffSchedule extends TaskScheduleRule {
   factory OneOffSchedule.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String? ?? TaskScheduleRule.generateId();
     final scheduleId = json['scheduleId'] as String? ?? '';
-    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
-    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
+    final startJson = json['startRelativeTime'] as Map?;
+    final dueJson = json['dueRelativeTime'] as Map?;
     final start = startJson != null
-        ? RelativeTime.fromJson(startJson)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(startJson))
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
 
     final due = dueJson != null
-        ? RelativeTime.fromJson(dueJson)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(dueJson))
         : const RelativeTime(
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
@@ -155,20 +158,20 @@ class OneOffSchedule extends TaskScheduleRule {
 
     final schedulingPolicy = json['schedulingPolicy'] != null
         ? SchedulingPolicy.fromJson(
-            json['schedulingPolicy'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(json['schedulingPolicy'] as Map),
           )
         : const FixedCalendarPolicy();
 
     final missedOccurrencePolicy = json['missedOccurrencePolicy'] != null
         ? MissedOccurrencePolicy.fromJson(
-            json['missedOccurrencePolicy'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(json['missedOccurrencePolicy'] as Map),
           )
         : const MissedOccurrencePolicy.stack();
 
     return OneOffSchedule(
       id: id,
       scheduleId: scheduleId,
-      date: CivilDay.fromJson(json['date'] as Map<String, dynamic>),
+      date: CivilDay.fromJson(Map<String, dynamic>.from(json['date'] as Map)),
       startRelativeTime: start,
       dueRelativeTime: due,
       notificationRelativeTimes: notifs,
@@ -276,14 +279,14 @@ class DailySchedule extends TaskScheduleRule {
   factory DailySchedule.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String? ?? TaskScheduleRule.generateId();
     final scheduleId = json['scheduleId'] as String? ?? '';
-    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
-    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
+    final startJson = json['startRelativeTime'] as Map?;
+    final dueJson = json['dueRelativeTime'] as Map?;
     final start = startJson != null
-        ? RelativeTime.fromJson(startJson)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(startJson))
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
 
     final due = dueJson != null
-        ? RelativeTime.fromJson(dueJson)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(dueJson))
         : const RelativeTime(
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
@@ -293,20 +296,22 @@ class DailySchedule extends TaskScheduleRule {
 
     final schedulingPolicy = json['schedulingPolicy'] != null
         ? SchedulingPolicy.fromJson(
-            json['schedulingPolicy'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(json['schedulingPolicy'] as Map),
           )
         : const FixedCalendarPolicy();
 
     final missedOccurrencePolicy = json['missedOccurrencePolicy'] != null
         ? MissedOccurrencePolicy.fromJson(
-            json['missedOccurrencePolicy'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(json['missedOccurrencePolicy'] as Map),
           )
         : const MissedOccurrencePolicy.stack();
 
     return DailySchedule(
       id: id,
       scheduleId: scheduleId,
-      startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
+      startDate: CivilDay.fromJson(
+        Map<String, dynamic>.from(json['startDate'] as Map),
+      ),
       interval: json['interval'] as int,
       startRelativeTime: start,
       dueRelativeTime: due,
@@ -451,14 +456,14 @@ class WeeklySchedule extends TaskScheduleRule {
   factory WeeklySchedule.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String? ?? TaskScheduleRule.generateId();
     final scheduleId = json['scheduleId'] as String? ?? '';
-    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
-    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
+    final startJson = json['startRelativeTime'] as Map?;
+    final dueJson = json['dueRelativeTime'] as Map?;
     final start = startJson != null
-        ? RelativeTime.fromJson(startJson)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(startJson))
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
 
     final due = dueJson != null
-        ? RelativeTime.fromJson(dueJson)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(dueJson))
         : const RelativeTime(
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
@@ -468,20 +473,22 @@ class WeeklySchedule extends TaskScheduleRule {
 
     final schedulingPolicy = json['schedulingPolicy'] != null
         ? SchedulingPolicy.fromJson(
-            json['schedulingPolicy'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(json['schedulingPolicy'] as Map),
           )
         : const FixedCalendarPolicy();
 
     final missedOccurrencePolicy = json['missedOccurrencePolicy'] != null
         ? MissedOccurrencePolicy.fromJson(
-            json['missedOccurrencePolicy'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(json['missedOccurrencePolicy'] as Map),
           )
         : const MissedOccurrencePolicy.stack();
 
     return WeeklySchedule(
       id: id,
       scheduleId: scheduleId,
-      startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
+      startDate: CivilDay.fromJson(
+        Map<String, dynamic>.from(json['startDate'] as Map),
+      ),
       interval: json['interval'] as int,
       daysOfWeek: (json['daysOfWeek'] as List<dynamic>).cast<int>().toSet(),
       startRelativeTime: start,
@@ -665,14 +672,14 @@ class MonthlySchedule extends TaskScheduleRule {
   factory MonthlySchedule.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String? ?? TaskScheduleRule.generateId();
     final scheduleId = json['scheduleId'] as String? ?? '';
-    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
-    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
+    final startJson = json['startRelativeTime'] as Map?;
+    final dueJson = json['dueRelativeTime'] as Map?;
     final start = startJson != null
-        ? RelativeTime.fromJson(startJson)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(startJson))
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
 
     final due = dueJson != null
-        ? RelativeTime.fromJson(dueJson)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(dueJson))
         : const RelativeTime(
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
@@ -682,20 +689,22 @@ class MonthlySchedule extends TaskScheduleRule {
 
     final schedulingPolicy = json['schedulingPolicy'] != null
         ? SchedulingPolicy.fromJson(
-            json['schedulingPolicy'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(json['schedulingPolicy'] as Map),
           )
         : const FixedCalendarPolicy();
 
     final missedOccurrencePolicy = json['missedOccurrencePolicy'] != null
         ? MissedOccurrencePolicy.fromJson(
-            json['missedOccurrencePolicy'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(json['missedOccurrencePolicy'] as Map),
           )
         : const MissedOccurrencePolicy.stack();
 
     return MonthlySchedule(
       id: id,
       scheduleId: scheduleId,
-      startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
+      startDate: CivilDay.fromJson(
+        Map<String, dynamic>.from(json['startDate'] as Map),
+      ),
       interval: json['interval'] as int,
       dayOfMonth: json['dayOfMonth'] as int?,
       dayOfWeek: json['dayOfWeek'] as int?,
@@ -886,14 +895,14 @@ class YearlySchedule extends TaskScheduleRule {
   factory YearlySchedule.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String? ?? TaskScheduleRule.generateId();
     final scheduleId = json['scheduleId'] as String? ?? '';
-    final startJson = json['startRelativeTime'] as Map<String, dynamic>?;
-    final dueJson = json['dueRelativeTime'] as Map<String, dynamic>?;
+    final startJson = json['startRelativeTime'] as Map?;
+    final dueJson = json['dueRelativeTime'] as Map?;
     final start = startJson != null
-        ? RelativeTime.fromJson(startJson)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(startJson))
         : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
 
     final due = dueJson != null
-        ? RelativeTime.fromJson(dueJson)
+        ? RelativeTime.fromJson(Map<String, dynamic>.from(dueJson))
         : const RelativeTime(
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
@@ -903,20 +912,22 @@ class YearlySchedule extends TaskScheduleRule {
 
     final schedulingPolicy = json['schedulingPolicy'] != null
         ? SchedulingPolicy.fromJson(
-            json['schedulingPolicy'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(json['schedulingPolicy'] as Map),
           )
         : const FixedCalendarPolicy();
 
     final missedOccurrencePolicy = json['missedOccurrencePolicy'] != null
         ? MissedOccurrencePolicy.fromJson(
-            json['missedOccurrencePolicy'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(json['missedOccurrencePolicy'] as Map),
           )
         : const MissedOccurrencePolicy.stack();
 
     return YearlySchedule(
       id: id,
       scheduleId: scheduleId,
-      startDate: CivilDay.fromJson(json['startDate'] as Map<String, dynamic>),
+      startDate: CivilDay.fromJson(
+        Map<String, dynamic>.from(json['startDate'] as Map),
+      ),
       interval: json['interval'] as int,
       month: json['month'] as int,
       day: json['day'] as int,

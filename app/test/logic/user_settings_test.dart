@@ -79,6 +79,36 @@ void main() {
       ]);
     });
 
+    test(
+      'fromJson safely parses raw Map<dynamic, dynamic> nested maps from Hive Web',
+      () {
+        final Map<dynamic, dynamic> rawDynamicMap = <dynamic, dynamic>{
+          'hoursAvailable': 10.0,
+          'taskListSort': <dynamic>[
+            <dynamic, dynamic>{'column': 'priority', 'ascending': false},
+          ],
+          'scheduleListSort': <dynamic>[
+            <dynamic, dynamic>{'column': 'next_due', 'ascending': true},
+          ],
+          'defaultDailyCapacity': <dynamic, dynamic>{'1': 8.0},
+          'dailyCapacityOverrides': <dynamic, dynamic>{'2026-08-05': 6.0},
+        };
+
+        final settings = UserSettings.fromJson(
+          Map<String, dynamic>.from(rawDynamicMap),
+        );
+        expect(settings.hoursAvailable, 10.0);
+        expect(settings.taskListSort, const [
+          (column: 'priority', ascending: false),
+        ]);
+        expect(settings.scheduleListSort, const [
+          (column: 'next_due', ascending: true),
+        ]);
+        expect(settings.defaultDailyCapacity, {'1': 8.0});
+        expect(settings.dailyCapacityOverrides, {'2026-08-05': 6.0});
+      },
+    );
+
     test('toJson serializes correctly including sort bar visibility', () {
       const settings = UserSettings(
         hoursAvailable: 6.0,

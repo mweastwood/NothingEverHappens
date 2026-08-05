@@ -104,10 +104,17 @@ class HiveLocalDataSource {
 
   UserSettings getSettings() {
     if (_settingsBox != null && _settingsBox!.isOpen) {
-      final raw = _settingsBox!.get('agile');
-      if (raw != null) {
-        final data = Map<String, dynamic>.from(raw);
-        return UserSettings.fromJson(data);
+      try {
+        final raw = _settingsBox!.get('agile');
+        if (raw != null) {
+          final data = Map<String, dynamic>.from(raw);
+          return UserSettings.fromJson(data);
+        }
+      } catch (e, st) {
+        // ignore: avoid_print
+        print(
+          '⚠️ [HIVE_SETTINGS_PARSE_ERROR] Failed to parse settings from Hive: $e\n$st',
+        );
       }
     }
     return _memSettings;
@@ -123,20 +130,38 @@ class HiveLocalDataSource {
 
   List<TaskSchedule> getTasks() {
     if (_tasksBox != null && _tasksBox!.isOpen) {
-      return _tasksBox!.values.map((map) {
-        final data = Map<String, dynamic>.from(map);
-        return _taskScheduleFromJson(data);
-      }).toList();
+      final list = <TaskSchedule>[];
+      for (final map in _tasksBox!.values) {
+        try {
+          final data = Map<String, dynamic>.from(map);
+          list.add(_taskScheduleFromJson(data));
+        } catch (e, st) {
+          // ignore: avoid_print
+          print(
+            '⚠️ [HIVE_TASK_PARSE_ERROR] Failed to parse task schedule from Hive: $e\n$st',
+          );
+        }
+      }
+      return list;
     }
     return _memTasks.values.toList();
   }
 
   List<TaskInstance> getInstances() {
     if (_instancesBox != null && _instancesBox!.isOpen) {
-      return _instancesBox!.values.map((map) {
-        final data = Map<String, dynamic>.from(map);
-        return _taskInstanceFromJson(data);
-      }).toList();
+      final list = <TaskInstance>[];
+      for (final map in _instancesBox!.values) {
+        try {
+          final data = Map<String, dynamic>.from(map);
+          list.add(_taskInstanceFromJson(data));
+        } catch (e, st) {
+          // ignore: avoid_print
+          print(
+            '⚠️ [HIVE_INSTANCE_PARSE_ERROR] Failed to parse task instance from Hive: $e\n$st',
+          );
+        }
+      }
+      return list;
     }
     return _memInstances.values.toList();
   }
