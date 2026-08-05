@@ -196,13 +196,8 @@ void main() {
     await tester.tap(find.byType(FunCheckButton));
     await tester.pump(); // Start confetti
 
-    // Wait for confetti delay (500ms) plus buffer
-    await tester.pump(const Duration(milliseconds: 510));
-    await tester.pump(); // Start ticker
-
-    // Wait for animation (200ms) plus buffer
-    await tester.pump(const Duration(milliseconds: 210));
-    await tester.pump(); // Ensure listener executes
+    // Fast-forward through confetti and collapse animations
+    await tester.pumpAndSettle();
 
     verify(
       mockTaskRepository.completeTaskInstance('I-${testTask.id}_2024-01-01'),
@@ -432,17 +427,8 @@ void main() {
     await tester.tap(find.byKey(const Key('delete_task_button')));
     await tester.pump(); // Register tap
 
-    // Wait for first Future.delayed (350ms) in FunDeleteButton
-    await tester.pump(const Duration(milliseconds: 350));
-    await tester.pump(); // Trigger _handleDeletion()
-
-    // Wait for second Future.delayed (400ms) in _handleDeletion()
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump(); // Trigger _controller.forward()
-
-    // Wait for collapse animation (200ms) to complete
-    await tester.pump(const Duration(milliseconds: 210));
-    await tester.pump(); // Allow completion listener to run
+    // Fast-forward through delays and poof animation
+    await tester.pumpAndSettle();
 
     // Verify repository dismissTaskInstance is called
     verify(
@@ -1161,8 +1147,7 @@ void main() {
       // Tap the checkbox to complete the task
       await tester.tap(find.byType(FunCheckButton));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500)); // wait for confetti
-      await tester.pumpAndSettle(); // start and complete collapse animation
+      await tester.pumpAndSettle(); // wait for confetti, start and complete collapse animation
 
       // At this point, repo.completeTaskInstance has been called and is pending.
       // Manually unmount the TaskWidget before the repository completes
