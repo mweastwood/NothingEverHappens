@@ -254,10 +254,9 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
       error: (error, stackTrace) =>
           Center(child: Text('${context.l10n.errorOccurred}: $error')),
       loading: () => const Center(child: CircularProgressIndicator()),
-      data: (profileSnapshot) {
-        final profileData = profileSnapshot?.data() ?? {};
-        final familyId = profileData['familyId'] as String? ?? '';
-        final familyRole = profileData['familyRole'] as String? ?? '';
+      data: (profile) {
+        final familyId = profile?.familyId ?? '';
+        final familyRole = profile?.familyRole ?? '';
 
         if (familyId.isNotEmpty) {
           return _buildFamilyScreen(familyRepo, familyId, familyRole);

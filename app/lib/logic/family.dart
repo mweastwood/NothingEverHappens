@@ -4,6 +4,30 @@ export 'family_invite_status.dart';
 export 'family_role.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+class FamilyProfile {
+  final String familyId;
+  final String familyRole;
+
+  const FamilyProfile({
+    required this.familyId,
+    required this.familyRole,
+  });
+
+  factory FamilyProfile.fromJson(Map<String, dynamic> json) {
+    return FamilyProfile(
+      familyId: json['familyId'] as String? ?? '',
+      familyRole: json['familyRole'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'familyId': familyId,
+      'familyRole': familyRole,
+    };
+  }
+}
+
 class FamilyMember {
   final String userId;
   final String displayName;

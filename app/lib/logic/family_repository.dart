@@ -15,7 +15,7 @@ final familyRepositoryProvider = Provider<FamilyRepository?>((ref) {
 });
 
 final familyProfileStreamProvider =
-    StreamProvider.autoDispose<DocumentSnapshot<Map<String, dynamic>>?>((ref) {
+    StreamProvider.autoDispose<FamilyProfile?>((ref) {
       final familyRepo = ref.watch(familyRepositoryProvider);
       if (familyRepo == null) return Stream.value(null);
       return familyRepo.getProfile();
@@ -59,8 +59,10 @@ class FamilyRepository {
        _userEmail = userEmail,
        _userDisplayName = userDisplayName;
 
-  Stream<DocumentSnapshot<Map<String, dynamic>>> getProfile() {
-    return _firestore.collection('users').doc(_userId).snapshots();
+  Stream<FamilyProfile> getProfile() {
+    return _firestore.collection('users').doc(_userId).snapshots().map(
+      (snapshot) => FamilyProfile.fromJson(snapshot.data() ?? {}),
+    );
   }
 
   Stream<Family?> getFamily(String familyId) {
