@@ -652,19 +652,20 @@ class MonthlySchedule extends TaskScheduleRule {
     super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
-  }) : assert(
-         (dayOfMonth != null && dayOfWeek == null && occurrence == null) ||
-             (dayOfMonth == null && dayOfWeek != null && occurrence != null),
-       ),
-       assert(
-         dayOfMonth == null ||
-             (dayOfMonth >= 1 && dayOfMonth <= 28) ||
-             (dayOfMonth >= -28 && dayOfMonth <= -1),
-       ),
-       super(
+  }) : super(
          id: id ?? TaskScheduleRule.generateId(),
          scheduleId: scheduleId ?? '',
-       );
+       ) {
+    if (!((dayOfMonth != null && dayOfWeek == null && occurrence == null) ||
+        (dayOfMonth == null && dayOfWeek != null && occurrence != null))) {
+      throw ArgumentError();
+    }
+    if (!(dayOfMonth == null ||
+        (dayOfMonth! >= 1 && dayOfMonth! <= 28) ||
+        (dayOfMonth! >= -28 && dayOfMonth! <= -1))) {
+      throw ArgumentError();
+    }
+  }
 
   @override
   CivilDay get scheduledDate => startDate;
