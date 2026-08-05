@@ -39,11 +39,15 @@ class HiveLocalDataSource {
   );
 
   Future<void> init() async {
-    await Hive.initFlutter();
-    _tasksBox = await Hive.openBox<Map>(_tasksBoxName);
-    _instancesBox = await Hive.openBox<Map>(_instancesBoxName);
-    _syncMetaBox = await Hive.openBox<Map>(_syncMetaBoxName);
-    _settingsBox = await Hive.openBox<Map>(_settingsBoxName);
+    try {
+      await Hive.initFlutter();
+      _tasksBox = await Hive.openBox<Map>(_tasksBoxName);
+      _instancesBox = await Hive.openBox<Map>(_instancesBoxName);
+      _syncMetaBox = await Hive.openBox<Map>(_syncMetaBoxName);
+      _settingsBox = await Hive.openBox<Map>(_settingsBoxName);
+    } catch (e, st) {
+      debugPrint('Hive init exception (falling back to memory): $e\n$st');
+    }
 
     _emitTasks();
     _emitInstances();

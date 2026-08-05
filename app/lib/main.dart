@@ -39,10 +39,14 @@ void callbackDispatcher() {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (Firebase.apps.isEmpty) {
-    await Firebase.initializeApp(
-      options: dev.DefaultFirebaseOptions.currentPlatform,
-    );
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: dev.DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (e) {
+    debugPrint("Firebase initialization error: $e");
   }
 
   if (!kIsWeb) {
@@ -62,7 +66,11 @@ Future<void> main() async {
   }
 
   final hiveDataSource = HiveLocalDataSource();
-  await hiveDataSource.init();
+  try {
+    await hiveDataSource.init();
+  } catch (e) {
+    debugPrint("Hive initialization error: $e");
+  }
 
   mainCommon(hiveDataSource);
 }
