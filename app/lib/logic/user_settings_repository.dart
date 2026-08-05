@@ -61,6 +61,10 @@ class UserSettingsRepository {
 }
 
 final userSettingsProvider = StreamProvider<UserSettings>((ref) {
+  final repo = ref.watch(userSettingsRepositoryProvider);
+  if (repo != null) {
+    return repo.getSettings();
+  }
   final hiveDataSource = ref.watch(hiveLocalDataSourceProvider);
   return hiveDataSource.watchSettings();
 });
