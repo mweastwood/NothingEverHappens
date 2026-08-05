@@ -11,7 +11,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 
 final hiveLocalDataSourceProvider = Provider<HiveLocalDataSource>(
-  (ref) => HiveLocalDataSource(),
+  (ref) {
+    final ds = HiveLocalDataSource();
+    ref.onDispose(() => ds.dispose());
+    return ds;
+  },
 );
 
 class HiveLocalDataSource {
@@ -402,5 +406,11 @@ class HiveLocalDataSource {
       isFromCache: true,
       updatedAt: updatedAt ?? DateTime.now(),
     );
+  }
+
+  Future<void> dispose() async {
+    await _tasksSubject.close();
+    await _instancesSubject.close();
+    await _settingsSubject.close();
   }
 }
