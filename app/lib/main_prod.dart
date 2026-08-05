@@ -12,8 +12,9 @@ void main() async {
         options: DefaultFirebaseOptions.currentPlatform,
       );
     }
-  } catch (e) {
-    debugPrint('Prod Firebase init error: $e');
+  } catch (e, st) {
+    // ignore: avoid_print
+    print('⚠️ [PROD_FIREBASE_INIT_WARNING] Firebase init failed: $e\n$st');
   }
 
   AppConfig.environment = AppEnvironment.prod;
@@ -21,8 +22,9 @@ void main() async {
   final hiveDataSource = HiveLocalDataSource();
   try {
     await hiveDataSource.init();
-  } catch (e) {
-    debugPrint('Prod Hive init error: $e');
+  } catch (e, st) {
+    // ignore: avoid_print
+    print('⚠️ [PROD_HIVE_INIT_WARNING] Hive init failed: $e\n$st');
   }
 
   mainCommon(hiveDataSource);

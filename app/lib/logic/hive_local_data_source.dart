@@ -38,6 +38,8 @@ class HiveLocalDataSource {
     const UserSettings(hoursAvailable: 8.0),
   );
 
+  bool isFallbackInMemoryMode = false;
+
   Future<void> init() async {
     try {
       await Hive.initFlutter();
@@ -46,7 +48,12 @@ class HiveLocalDataSource {
       _syncMetaBox = await Hive.openBox<Map>(_syncMetaBoxName);
       _settingsBox = await Hive.openBox<Map>(_settingsBoxName);
     } catch (e, st) {
-      debugPrint('Hive init exception (falling back to memory): $e\n$st');
+      isFallbackInMemoryMode = true;
+      // ignore: avoid_print
+      print(
+        '⚠️ [HIVE_STORAGE_FALLBACK] Hive storage failed to initialize. '
+        'Falling back to in-memory mode: $e\n$st',
+      );
     }
 
     _emitTasks();
