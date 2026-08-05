@@ -151,6 +151,7 @@ class TaskRepository {
   final Map<String, DateTime> _spawnedInstancesCache = {};
   String? _cachedFamilyId;
   DateTime? _lastFamilyIdCheck;
+  static const int _instanceQueryCutoffDays = 90;
 
   String get userId => _userId;
 
@@ -486,9 +487,12 @@ class TaskRepository {
       }
 
       final familyId = await _getFamilyId();
+      final cutoffDate = AppClock.now.subtract(const Duration(days: _instanceQueryCutoffDays));
 
       // Fetch all instances
-      final personalInstances = await _instancesRef.get();
+      final personalInstances = await _instancesRef
+          .where('updatedAt', isGreaterThan: cutoffDate)
+          .get();
       final List<TaskInstance> allInstances = personalInstances.docs
           .map((d) => d.data())
           .toList();
@@ -502,7 +506,9 @@ class TaskRepository {
                   TaskInstance.fromFirestore(snapshot),
               toFirestore: (instance, _) => instance.toFirestore(),
             );
-        final familyInstances = await familyInstancesRef.get();
+        final familyInstances = await familyInstancesRef
+            .where('updatedAt', isGreaterThan: cutoffDate)
+            .get();
         allInstances.addAll(familyInstances.docs.map((d) => d.data()));
       }
 
