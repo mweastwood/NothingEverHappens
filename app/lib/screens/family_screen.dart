@@ -22,6 +22,23 @@ class FamilyScreen extends ConsumerStatefulWidget {
 class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   bool _isProcessing = false;
 
+  late Stream<DocumentSnapshot<Map<String, dynamic>>> _profileStream;
+  late Stream<List<FamilyInvite>> _pendingInvitesStream;
+
+  String? _currentFamilyId;
+  Stream<Family?>? _familyStream;
+  Stream<List<FamilyInvite>>? _outstandingInvitesStream;
+
+  @override
+  void initState() {
+    super.initState();
+    final familyRepo = ref.read(familyRepositoryProvider);
+    if (familyRepo != null) {
+      _profileStream = familyRepo.getProfile();
+      _pendingInvitesStream = familyRepo.getPendingInvites();
+    }
+  }
+
   void _navigateToSubscriptions(BuildContext context) {
     Navigator.push(
       context,
@@ -250,7 +267,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: familyRepo.getProfile(),
+      stream: _profileStream,
       builder: (context, profileSnapshot) {
         if (profileSnapshot.hasError) {
           return Center(
@@ -277,7 +294,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
         }
 
         return StreamBuilder<List<FamilyInvite>>(
-          stream: familyRepo.getPendingInvites(),
+          stream: _pendingInvitesStream,
           builder: (context, invitesSnapshot) {
             if (invitesSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -381,7 +398,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
         ),
         const SizedBox(height: 8),
         StreamBuilder<List<FamilyInvite>>(
-          stream: repository.getPendingInvites(),
+          stream: _pendingInvitesStream,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return Text('${context.l10n.errorOccurred}: ${snapshot.error}');
@@ -427,8 +444,15 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     String familyId,
     String familyRole,
   ) {
+    if (_currentFamilyId != familyId) {
+      _currentFamilyId = familyId;
+      _familyStream = repository.getFamily(familyId);
+      _outstandingInvitesStream =
+          repository.getOutstandingFamilyInvites(familyId);
+    }
+
     return StreamBuilder<Family?>(
-      stream: repository.getFamily(familyId),
+      stream: _familyStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(
@@ -528,7 +552,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
               ),
               const SizedBox(height: 8),
               StreamBuilder<List<FamilyInvite>>(
-                stream: repository.getOutstandingFamilyInvites(family.id),
+                stream: _outstandingInvitesStream,
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return Text(
