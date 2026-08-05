@@ -7,10 +7,11 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:rxdart/rxdart.dart';
 
 final hiveLocalDataSourceProvider = Provider<HiveLocalDataSource>((ref) {
-  final ds = HiveLocalDataSource();
+  final ds = HiveLocalDataSource(errorHandler: ref.read(errorHandlerProvider));
   ref.onDispose(() => ds.dispose());
   return ds;
 });
@@ -21,10 +22,14 @@ class HiveLocalDataSource {
   static const String _syncMetaBoxName = 'syncMetaBox';
   static const String _settingsBoxName = 'settingsBox';
 
+  final ErrorHandler? errorHandler;
+
   Box<Map>? _tasksBox;
   Box<Map>? _instancesBox;
   Box<Map>? _syncMetaBox;
   Box<Map>? _settingsBox;
+
+  HiveLocalDataSource({this.errorHandler});
 
   final Map<String, TaskSchedule> _memTasks = {};
   final Map<String, TaskInstance> _memInstances = {};
@@ -46,6 +51,7 @@ class HiveLocalDataSource {
     try {
       return await Hive.openBox<Map>(boxName);
     } catch (e, st) {
+      errorHandler?.report(e, stackTrace: st);
       // ignore: avoid_print
       print(
         '⚠️ [HIVE_UPGRADE_RECOVERY] Box "$boxName" opening failed on app '
@@ -55,6 +61,7 @@ class HiveLocalDataSource {
         await Hive.deleteBoxFromDisk(boxName);
         return await Hive.openBox<Map>(boxName);
       } catch (err, stack) {
+        errorHandler?.report(err, stackTrace: stack);
         // ignore: avoid_print
         print(
           '⚠️ [HIVE_UPGRADE_RECOVERY_FAILED] Failed to recreate box '
@@ -74,6 +81,7 @@ class HiveLocalDataSource {
       _settingsBox = await _openBoxSafely(_settingsBoxName);
     } catch (e, st) {
       isFallbackInMemoryMode = true;
+      errorHandler?.report(e, stackTrace: st);
       // ignore: avoid_print
       print(
         '⚠️ [HIVE_STORAGE_FALLBACK] Hive storage failed to initialize. '
@@ -115,6 +123,7 @@ class HiveLocalDataSource {
           return UserSettings.fromJson(data);
         }
       } catch (e, st) {
+        errorHandler?.report(e, stackTrace: st);
         // ignore: avoid_print
         print(
           '⚠️ [HIVE_SETTINGS_PARSE_ERROR] Failed to parse settings from '
@@ -148,6 +157,7 @@ class HiveLocalDataSource {
           final data = Map<String, dynamic>.from(map);
           list.add(_taskScheduleFromJson(data));
         } catch (e, st) {
+          errorHandler?.report(e, stackTrace: st);
           // ignore: avoid_print
           print(
             '⚠️ [HIVE_TASK_PARSE_ERROR] Failed to parse task schedule from '
@@ -168,6 +178,7 @@ class HiveLocalDataSource {
           final data = Map<String, dynamic>.from(map);
           list.add(_taskInstanceFromJson(data));
         } catch (e, st) {
+          errorHandler?.report(e, stackTrace: st);
           // ignore: avoid_print
           print(
             '⚠️ [HIVE_INSTANCE_PARSE_ERROR] Failed to parse task instance '
