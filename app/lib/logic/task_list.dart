@@ -46,26 +46,16 @@ class TaskList {
         newActiveOccurrenceIndex++;
       } else {
         newActiveOccurrenceIndex = 0;
-        if (task.schedules.first is OneOffSchedule) {
+        final List<TaskScheduleRule> list = [];
+        for (final s in task.schedules) {
+          final advanced = s.advanceAfterCompletion(today);
+          if (advanced != null) {
+            list.add(advanced);
+          }
+        }
+        newSchedules = list;
+        if (newSchedules.isEmpty) {
           shouldRemoveTask = true;
-        } else {
-          final List<TaskScheduleRule> list = [];
-          for (final s in task.schedules) {
-            final firstOccur = s.occursOn(s.scheduledDate)
-                ? s.scheduledDate
-                : s.nextOccurrenceAfter(s.scheduledDate);
-            final refDate = today.isBefore(s.scheduledDate)
-                ? (firstOccur ?? s.scheduledDate)
-                : today;
-            final nextOccur = s.nextOccurrenceAfter(refDate);
-            if (nextOccur != null) {
-              list.add(s.copyWithStartDate(nextOccur));
-            }
-          }
-          newSchedules = list;
-          if (newSchedules.isEmpty) {
-            shouldRemoveTask = true;
-          }
         }
       }
     } else {
@@ -73,28 +63,9 @@ class TaskList {
       // Remove one-off schedules that occurred on or before today.
       final List<TaskScheduleRule> list = [];
       for (final s in task.schedules) {
-        if (s is OneOffSchedule) {
-          if (s.scheduledDate.isBefore(today) || s.scheduledDate == today) {
-            // Completed! Drop it.
-            continue;
-          }
-          list.add(s);
-        } else {
-          final firstOccur = s.occursOn(s.scheduledDate)
-              ? s.scheduledDate
-              : s.nextOccurrenceAfter(s.scheduledDate);
-          if (firstOccur != null &&
-              (firstOccur.isBefore(today) || firstOccur == today)) {
-            final refDate = today.isBefore(s.scheduledDate)
-                ? firstOccur
-                : today;
-            final nextOccur = s.nextOccurrenceAfter(refDate);
-            if (nextOccur != null) {
-              list.add(s.copyWithStartDate(nextOccur));
-            }
-          } else {
-            list.add(s);
-          }
+        final advanced = s.advanceAfterCompletion(today);
+        if (advanced != null) {
+          list.add(advanced);
         }
       }
       newSchedules = list;

@@ -98,6 +98,14 @@ abstract class TaskScheduleRule {
   /// Checks if this rule has the same recurrence pattern as [other].
   bool hasSameRecurrence(TaskScheduleRule other);
 
+  /// Returns the next schedule rule after completing on or before [today],
+  /// or `null` if this rule should be removed (e.g., a completed one-off).
+  ///
+  /// For one-off schedules: returns `null` if the scheduled date is on or
+  /// before [today] (completed), otherwise returns `this` unchanged.
+  /// For recurring schedules: advances to the next occurrence after [today].
+  TaskScheduleRule? advanceAfterCompletion(CivilDay today);
+
   Map<String, dynamic> toJson();
 
   factory TaskScheduleRule.fromJson(Map<String, dynamic> json) {
@@ -241,6 +249,14 @@ class OneOffSchedule extends TaskScheduleRule {
   bool hasSameRecurrence(TaskScheduleRule other) {
     if (other is! OneOffSchedule) return false;
     return date == other.date;
+  }
+
+  @override
+  TaskScheduleRule? advanceAfterCompletion(CivilDay today) {
+    if (scheduledDate.isBefore(today) || scheduledDate == today) {
+      return null; // Completed one-off, remove it.
+    }
+    return this; // Future one-off, keep it.
   }
 
   @override
@@ -425,6 +441,23 @@ class DailySchedule extends TaskScheduleRule {
   bool hasSameRecurrence(TaskScheduleRule other) {
     if (other is! DailySchedule) return false;
     return interval == other.interval;
+  }
+
+  @override
+  TaskScheduleRule? advanceAfterCompletion(CivilDay today) {
+    final firstOccur = occursOn(scheduledDate)
+        ? scheduledDate
+        : nextOccurrenceAfter(scheduledDate);
+    if (firstOccur != null &&
+        (firstOccur.isBefore(today) || firstOccur == today)) {
+      final refDate = today.isBefore(scheduledDate) ? firstOccur : today;
+      final nextOccur = nextOccurrenceAfter(refDate);
+      if (nextOccur != null) {
+        return copyWithStartDate(nextOccur);
+      }
+      return null;
+    }
+    return this;
   }
 
   @override
@@ -673,6 +706,23 @@ class WeeklySchedule extends TaskScheduleRule {
     if (interval != other.interval) return false;
     if (daysOfWeek.length != other.daysOfWeek.length) return false;
     return daysOfWeek.every(other.daysOfWeek.contains);
+  }
+
+  @override
+  TaskScheduleRule? advanceAfterCompletion(CivilDay today) {
+    final firstOccur = occursOn(scheduledDate)
+        ? scheduledDate
+        : nextOccurrenceAfter(scheduledDate);
+    if (firstOccur != null &&
+        (firstOccur.isBefore(today) || firstOccur == today)) {
+      final refDate = today.isBefore(scheduledDate) ? firstOccur : today;
+      final nextOccur = nextOccurrenceAfter(refDate);
+      if (nextOccur != null) {
+        return copyWithStartDate(nextOccur);
+      }
+      return null;
+    }
+    return this;
   }
 
   @override
@@ -991,6 +1041,23 @@ class MonthlySchedule extends TaskScheduleRule {
   }
 
   @override
+  TaskScheduleRule? advanceAfterCompletion(CivilDay today) {
+    final firstOccur = occursOn(scheduledDate)
+        ? scheduledDate
+        : nextOccurrenceAfter(scheduledDate);
+    if (firstOccur != null &&
+        (firstOccur.isBefore(today) || firstOccur == today)) {
+      final refDate = today.isBefore(scheduledDate) ? firstOccur : today;
+      final nextOccur = nextOccurrenceAfter(refDate);
+      if (nextOccur != null) {
+        return copyWithStartDate(nextOccur);
+      }
+      return null;
+    }
+    return this;
+  }
+
+  @override
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -1205,6 +1272,23 @@ class YearlySchedule extends TaskScheduleRule {
     if (month != other.month) return false;
     if (day != other.day) return false;
     return true;
+  }
+
+  @override
+  TaskScheduleRule? advanceAfterCompletion(CivilDay today) {
+    final firstOccur = occursOn(scheduledDate)
+        ? scheduledDate
+        : nextOccurrenceAfter(scheduledDate);
+    if (firstOccur != null &&
+        (firstOccur.isBefore(today) || firstOccur == today)) {
+      final refDate = today.isBefore(scheduledDate) ? firstOccur : today;
+      final nextOccur = nextOccurrenceAfter(refDate);
+      if (nextOccur != null) {
+        return copyWithStartDate(nextOccur);
+      }
+      return null;
+    }
+    return this;
   }
 
   @override
