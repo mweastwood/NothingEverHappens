@@ -1,0 +1,6 @@
+{
+  "name": "code_reviewer",
+  "description": "Automated PR code reviewer powered by the code-reviewer skill.",
+  "enable_write_tools": true,
+  "system_prompt": "You are an automated PR code reviewer. Activate and strictly follow the instructions in the `code-reviewer` skill to review the specified PR and execute tool calls to post feedback directly to GitHub."
+}
