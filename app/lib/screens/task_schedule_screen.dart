@@ -31,6 +31,67 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
   final ScrollController _scrollController = ScrollController();
   List<({String column, bool ascending})>? _localSortHistory;
 
+  List<TaskSchedule>? _cachedAllTasks;
+  String? _cachedSearchQuery;
+  String? _cachedSortHistoryString;
+  DateTime? _cachedMockTime;
+  List<TaskSchedule> _cachedSortedTasks = [];
+
+  List<TaskSchedule> _getSortedFilteredTasks(
+    List<TaskSchedule> allTasks,
+    String searchQuery,
+    List<({String column, bool ascending})> sortHistory,
+    DateTime? mockTime,
+  ) {
+    final sortHistoryString = sortHistory.toString();
+    if (_cachedAllTasks == allTasks &&
+        _cachedSearchQuery == searchQuery &&
+        _cachedSortHistoryString == sortHistoryString &&
+        _cachedMockTime == mockTime) {
+      return _cachedSortedTasks;
+    }
+
+    final recurringTasks = allTasks
+        .where((task) => task.schedules.any((s) => s is! OneOffSchedule))
+        .toList();
+
+    final filteredTasks = recurringTasks.where((task) {
+      if (searchQuery.isEmpty) return true;
+      final queryWords = searchQuery
+          .split(RegExp(r'\s+'))
+          .where((word) => word.isNotEmpty);
+      if (queryWords.isEmpty) return true;
+
+      return queryWords.every((word) {
+        final matchesTitle = task.title.toLowerCase().contains(word);
+        final matchesDesc = task.description.toLowerCase().contains(word);
+        return matchesTitle || matchesDesc;
+      });
+    }).toList();
+
+    final originalIndices = {
+      for (int i = 0; i < filteredTasks.length; i++) filteredTasks[i].id: i,
+    };
+
+    filteredTasks.sort((a, b) {
+      for (final sort in sortHistory) {
+        final result = _compareTasks(a, b, sort.column, sort.ascending);
+        if (result != 0) return result;
+      }
+      final indexA = originalIndices[a.id] ?? 0;
+      final indexB = originalIndices[b.id] ?? 0;
+      return indexA.compareTo(indexB);
+    });
+
+    _cachedAllTasks = allTasks;
+    _cachedSearchQuery = searchQuery;
+    _cachedSortHistoryString = sortHistoryString;
+    _cachedMockTime = mockTime;
+    _cachedSortedTasks = filteredTasks;
+
+    return filteredTasks;
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -363,60 +424,25 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                       data: (allTasks) {
                         final showLastSpawnedDate =
                             settings.showLastSpawnedDate;
-                        final recurringTasks = allTasks
-                            .where(
-                              (task) => task.schedules.any(
-                                (s) => s is! OneOffSchedule,
-                              ),
-                            )
-                            .toList();
+                        final hasRecurringTasks = allTasks.any(
+                          (task) =>
+                              task.schedules.any((s) => s is! OneOffSchedule),
+                        );
 
-                        // Filter based on search query
-                        final filteredTasks = recurringTasks.where((task) {
-                          if (searchQuery.isEmpty) return true;
-                          final queryWords = searchQuery
-                              .split(RegExp(r'\s+'))
-                              .where((word) => word.isNotEmpty);
-                          if (queryWords.isEmpty) return true;
-
-                          return queryWords.every((word) {
-                            final matchesTitle = task.title
-                                .toLowerCase()
-                                .contains(word);
-                            final matchesDesc = task.description
-                                .toLowerCase()
-                                .contains(word);
-                            return matchesTitle || matchesDesc;
-                          });
-                        }).toList();
-
-                        if (recurringTasks.isEmpty) {
+                        if (!hasRecurringTasks) {
                           return _buildEmptyState(context);
                         }
+
+                        final filteredTasks = _getSortedFilteredTasks(
+                          allTasks,
+                          searchQuery,
+                          sortHistory,
+                          mockTime,
+                        );
 
                         if (filteredTasks.isEmpty && searchQuery.isNotEmpty) {
                           return _buildNoMatchesState(context);
                         }
-
-                        // Sort filtered tasks using sort history (stable multi-key sort)
-                        final originalIndices = {
-                          for (int i = 0; i < filteredTasks.length; i++)
-                            filteredTasks[i].id: i,
-                        };
-                        filteredTasks.sort((a, b) {
-                          for (final sort in sortHistory) {
-                            final result = _compareTasks(
-                              a,
-                              b,
-                              sort.column,
-                              sort.ascending,
-                            );
-                            if (result != 0) return result;
-                          }
-                          final indexA = originalIndices[a.id] ?? 0;
-                          final indexB = originalIndices[b.id] ?? 0;
-                          return indexA.compareTo(indexB);
-                        });
 
                         final isSortBarVisible = ref.watch(
                           showScheduleListSortBarProvider,
