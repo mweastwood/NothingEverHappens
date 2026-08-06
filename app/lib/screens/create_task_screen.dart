@@ -10,7 +10,6 @@ import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import '../logic/family_repository.dart';
-import '../logic/family.dart';
 import '../logic/undo_notifier.dart';
 import '../widgets/undo_snackbar.dart';
 
