@@ -151,7 +151,8 @@ void main() {
       'deleteTask removes a task, returns deleted data, and restore restores it',
       () async {
         await repository.addTaskSchedule(testTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         final instanceId = await findInstanceId(
           testTask.id,
@@ -227,7 +228,8 @@ void main() {
 
     test('completeTask completes the instance', () async {
       await repository.addTaskSchedule(testTask);
-      await Future.delayed(Duration.zero);
+      // Yield to allow Firestore mock batches to complete
+      await Future(() {});
 
       final instanceId = await findInstanceId(
         testTask.id,
@@ -248,7 +250,8 @@ void main() {
 
     test('dismissTaskInstance dismisses the instance', () async {
       await repository.addTaskSchedule(testTask);
-      await Future.delayed(Duration.zero);
+      // Yield to allow Firestore mock batches to complete
+      await Future(() {});
 
       final instanceId = await findInstanceId(
         testTask.id,
@@ -287,7 +290,8 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
         addTearDown(AppClock.reset);
         await repository.addTaskSchedule(recurringTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         final instanceId = await findInstanceId(
           recurringTask.id,
@@ -359,7 +363,8 @@ void main() {
       'undoResolveTaskInstance reverts dismissed instance to pending',
       () async {
         await repository.addTaskSchedule(testTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         final instanceId = await findInstanceId(
           testTask.id,
@@ -419,7 +424,8 @@ void main() {
         addTearDown(AppClock.reset);
 
         await repository.addTaskSchedule(dailyTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         final instanceId = await findInstanceId(
           dailyTask.id,
@@ -449,7 +455,8 @@ void main() {
           ],
         );
         await repository.addTaskSchedule(dailyTask2);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         final instanceId2 = await findInstanceId(
           dailyTask2.id,
@@ -492,7 +499,8 @@ void main() {
         );
 
         await repository.addTaskSchedule(weeklyTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         // Now edit it to add a monthly schedule
         final updatedTaskSchedules = [
@@ -521,7 +529,8 @@ void main() {
         );
 
         await repository.updateTaskSchedule(modification);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         // Check tasks
         final tasksSnap = await firestore
@@ -711,7 +720,8 @@ void main() {
       addTearDown(AppClock.reset);
 
       await repository.addTaskSchedule(notifTask);
-      await Future.delayed(Duration.zero);
+      // Yield to allow Firestore mock batches to complete
+      await Future(() {});
       expect(
         notificationService.scheduledTasks.containsKey(notifTask.id),
         isTrue,
@@ -751,7 +761,8 @@ void main() {
         );
 
         await repository.addTaskSchedule(stackTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         // Spawns instance for June 1 (startDate) and June 2 (since N=1)
         final instanceId = await findInstanceId(
@@ -795,7 +806,8 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 2, 12, 0));
         addTearDown(AppClock.reset);
         await repository.triggerMissedPolicyProcessing();
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Under queue model, now that June 1 is completed and June 2 is the next/current, June 3 should be spawned.
         final june3InstanceId = await findInstanceId(
@@ -839,7 +851,8 @@ void main() {
         );
 
         await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         // Under N=1 queue, June 3 instance is spawned immediately on June 1 as a future occurrence.
         final instanceId = await findInstanceId(
@@ -934,7 +947,8 @@ void main() {
             .set(taskB.toFirestore());
 
         // Wait a moment for the streams and background futures to complete.
-        await Future.delayed(const Duration(milliseconds: 500));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify if instances for both Task A and Task B were spawned.
         final instancesSnapshot = await firestore
@@ -993,7 +1007,8 @@ void main() {
         await repository.addTaskSchedule(task);
 
         // Wait a moment for background processing
-        await Future.delayed(const Duration(milliseconds: 200));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         final instanceId = await findInstanceId(
           task.id,
@@ -1044,7 +1059,8 @@ void main() {
         final subscription = repository.getTasks().listen((_) {});
 
         await repository.addTaskSchedule(task);
-        await Future.delayed(const Duration(milliseconds: 200));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify instance is spawned for today
         final instanceId = await findInstanceId(
@@ -1099,7 +1115,8 @@ void main() {
         );
 
         await repository.updateTaskSchedule(modification);
-        await Future.delayed(const Duration(milliseconds: 200));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify if new instance is spawned for today (with new UUID since it was recreated)
         final newInstanceId = await findInstanceId(
@@ -1174,7 +1191,8 @@ void main() {
         final subscription = repository.getTasks().listen((_) {});
 
         await repository.completeTaskInstance(instanceId);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         final updatedDoc = await firestore
             .collection('users')
@@ -1207,7 +1225,8 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 25, 10, 0));
         addTearDown(AppClock.reset);
         await repository.triggerMissedPolicyProcessing();
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Now, the task's lastSpawnedDate should be advanced to 6/25 since June 25 is now in the past/today
         final finalDoc = await firestore
@@ -1304,7 +1323,8 @@ void main() {
         final subscription = repository.getTasks().listen((_) {});
 
         await repository.undoResolveTaskInstance(instance);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         final updatedDoc = await firestore
             .collection('users')
@@ -1344,7 +1364,8 @@ void main() {
         );
 
         await repository.addTaskSchedule(dailyTask);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Under N=1 model, both June 22 and June 23 are spawned immediately
         final june22Id = await findInstanceId(
@@ -1376,7 +1397,8 @@ void main() {
 
         // Complete June 22
         await repository.completeTaskInstance(june22Id);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Completing June 22 advances the latest uncompleted to June 23.
         // The queue (N=1) now needs June 24 to be spawned.
@@ -1416,7 +1438,8 @@ void main() {
         );
 
         await repository.addTaskSchedule(task);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // The June 25 instance is spawned immediately (since N=1 and Thursday June 25 is the next occurrence)
         final oldFutureId = await findInstanceId(
@@ -1460,7 +1483,8 @@ void main() {
         );
 
         await repository.updateTaskSchedule(modification);
-        await Future.delayed(const Duration(milliseconds: 200));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify the old June 25 instance is deleted
         final snapOldDeleted = await firestore
@@ -1551,14 +1575,17 @@ void main() {
         // Complete the June 22 instance on June 23 (today)
         // June 23's instance has not been spawned yet, and the stream listener is not active yet.
         await repository.completeTaskInstance(instanceId22);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         final subscription = repository.getTasks().listen((_) {});
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Now run missed policy processing to see if June 23's instance spawns
         await repository.triggerMissedPolicyProcessing();
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify that today's instance (June 23) was spawned
         final instsAfter = await firestore
@@ -1649,7 +1676,8 @@ void main() {
         addTearDown(subscription.cancel);
 
         // Let the stream listener trigger the initial pass
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify that 5 future instances have been created (for June 24, July 1, 8, 15, 22)
         final instsAfter5 = await firestore
@@ -1682,7 +1710,8 @@ void main() {
         await repository.updateTaskSchedule(modification);
 
         // Let the repository process and spawn
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify that 2 future instances have been created (for June 24 and July 24; August 24 is outside the 30-day window)
         final instsAfter3 = await firestore
@@ -1759,7 +1788,8 @@ void main() {
           final tasksFuture2 = repository.addTaskSchedule(dailyTask);
 
           await Future.wait([tasksFuture1, tasksFuture2]);
-          await Future.delayed(const Duration(milliseconds: 200));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
 
           final insts = await firestore
               .collection('users')
@@ -1815,7 +1845,8 @@ void main() {
 
           // Trigger evaluation
           await repository.addTaskSchedule(dailyTask);
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
 
           // Get the spawned instances
           final userDocRef = firestore.collection('users').doc(userId);
@@ -1832,7 +1863,8 @@ void main() {
           // 1. If we evaluate immediately (under 2 seconds), write tracker cache is still fresh.
           // It injects a virtual instance, so the evaluator thinks it still exists and does NOT re-spawn it.
           await repository.triggerMissedPolicyProcessing();
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
 
           final instsSnap2 = await userDocRef.collection('instances').get();
           expect(instsSnap2.docs.length, 10); // Still 10 (not re-spawned)
@@ -1844,7 +1876,8 @@ void main() {
           // Evaluate again. The tracker entry has expired, so it is ignored.
           // The evaluator sees the database is missing the instance, and re-spawns it!
           await repository.triggerMissedPolicyProcessing();
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
 
           final instsSnap3 = await userDocRef.collection('instances').get();
           expect(instsSnap3.docs.length, 11); // Re-spawned successfully!
@@ -1923,7 +1956,8 @@ void main() {
           );
 
           await repository.addTaskSchedule(task);
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
 
           // Fetch the spawned family instances
           final familyInsts = await firestore
@@ -2108,7 +2142,8 @@ void main() {
           addTearDown(subscription.cancel);
 
           // Wait for microtask & initial stream emission
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
           expect(receivedLists.isNotEmpty, isTrue);
           expect(receivedLists.first.first.id, 'S-web-stream-test-task');
 
