@@ -217,7 +217,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         for (final date in upcomingDays) {
                           final capacity = settings.getCapacityForDate(date);
                           final day = CivilDay.fromDateTime(date);
-                          final plannedMinutes = plannedMinutesPerDay[day] ?? 0.0;
+                          final plannedMinutes =
+                              plannedMinutesPerDay[day] ?? 0.0;
                           final plannedHours = plannedMinutes / 60.0;
                           if (capacity > peakValue) {
                             peakValue = capacity;
@@ -250,7 +251,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   date.year == today.year;
 
                               final day = CivilDay.fromDateTime(date);
-                              final plannedMinutes = plannedMinutesPerDay[day] ?? 0.0;
+                              final plannedMinutes =
+                                  plannedMinutesPerDay[day] ?? 0.0;
                               final capacityMinutes = capacity * 60.0;
 
                               final double barHeight = capacity > 0
