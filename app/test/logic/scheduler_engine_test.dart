@@ -79,7 +79,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         );
 
         final action = SchedulerEngine.evaluate(task, [existingInstance], now);
@@ -120,7 +120,7 @@ void main() {
             scheduledDate: today.addDays(-2),
             startRelativeTime: oneOffRule.startRelativeTime,
             dueRelativeTime: oneOffRule.dueRelativeTime,
-            status: 'completed',
+            status: TaskStatus.completed,
             completedAt: now.subtract(const Duration(days: 2)),
           );
 
@@ -241,7 +241,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         );
 
         final action = SchedulerEngine.evaluate(
@@ -297,7 +297,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           final action = SchedulerEngine.evaluate(
@@ -363,7 +363,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           final action = SchedulerEngine.evaluate(
@@ -462,7 +462,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           final action = SchedulerEngine.evaluate(
@@ -534,7 +534,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           final action = SchedulerEngine.evaluate(
@@ -608,7 +608,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 12, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         );
 
         final action = SchedulerEngine.evaluate(
@@ -666,7 +666,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'completed',
+            status: TaskStatus.completed,
             completedAt: DateTime(2026, 6, 19, 14, 0),
           );
 
@@ -706,7 +706,7 @@ void main() {
           scheduledDate: startDate,
           startRelativeTime: task.schedules.first.startRelativeTime,
           dueRelativeTime: task.schedules.first.dueRelativeTime,
-          status: 'completed',
+          status: TaskStatus.completed,
         );
 
         final action = SchedulerEngine.evaluate(task, [resolvedMay1], now);
@@ -752,7 +752,7 @@ void main() {
 
           // Complete the May 15 instance, and evaluate again. Capped at 30 days from June 15 -> July 15.
           final spawnedMay15 = action1.instancesToSpawn.first.copyWith(
-            status: 'completed',
+            status: TaskStatus.completed,
             completedAt: now,
           );
           final updatedTask1 = action1.updatedSchedule!;
@@ -807,7 +807,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
           final inst21 = TaskInstance(
             id: 'inst-2',
@@ -824,7 +824,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
           final inst22 = TaskInstance(
             id: 'inst-3',
@@ -841,7 +841,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
           final inst23 = TaskInstance(
             id: 'inst-4',
@@ -858,7 +858,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           final List<TaskInstance> existingInstances = [
@@ -941,7 +941,7 @@ void main() {
             scheduledDate: today.addDays(1), // Tuesday
             startRelativeTime: dailyRule.startRelativeTime,
             dueRelativeTime: dailyRule.dueRelativeTime,
-            status: 'completed',
+            status: TaskStatus.completed,
           );
 
           // Evaluation:
@@ -1001,7 +1001,7 @@ void main() {
             scheduledDate: today.addDays(-2), // Saturday
             startRelativeTime: dailyRule.startRelativeTime,
             dueRelativeTime: dailyRule.dueRelativeTime,
-            status: 'pending',
+            status: TaskStatus.pending,
           );
           final sunInstance = TaskInstance(
             id: 'inst-sun',
@@ -1012,7 +1012,7 @@ void main() {
             scheduledDate: today.addDays(-1), // Sunday
             startRelativeTime: dailyRule.startRelativeTime,
             dueRelativeTime: dailyRule.dueRelativeTime,
-            status: 'completed', // Resolved
+            status: TaskStatus.completed, // Resolved
           );
 
           // Run evaluate
@@ -1121,8 +1121,8 @@ void main() {
           dayPlannedHours: {},
         );
 
-        // The generated occurrences should have status: 'skipped' on today and tomorrow (June 20),
-        // but status: 'pending' on today+2 (June 21)
+        // The generated occurrences should have status: TaskStatus.skipped on today and tomorrow (June 20),
+        // but status: TaskStatus.pending on today+2 (June 21)
         expect(action.instancesToSpawn, hasLength(3)); // today, tomorrow, day+2
 
         final instToday = action.instancesToSpawn.firstWhere(
@@ -1242,7 +1242,7 @@ void main() {
                 dayOffset: 0,
                 time: TimeOfDay(hour: 17, minute: 0),
               ),
-              status: 'completed',
+              status: TaskStatus.completed,
               completedAt: now.subtract(const Duration(days: 1)),
             ),
             TaskInstance(
@@ -1259,7 +1259,7 @@ void main() {
                 dayOffset: 0,
                 time: TimeOfDay(hour: 17, minute: 0),
               ),
-              status: 'completed',
+              status: TaskStatus.completed,
               completedAt: now.subtract(const Duration(days: 2)),
             ),
           ];
@@ -1271,7 +1271,8 @@ void main() {
               final completed = allInstances
                   .where(
                     (inst) =>
-                        inst.scheduleId == t.id && inst.status == 'completed',
+                        inst.scheduleId == t.id &&
+                        inst.status == TaskStatus.completed,
                   )
                   .toList();
               if (completed.isEmpty) {
@@ -1350,7 +1351,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'skipped',
+            status: TaskStatus.skipped,
           );
 
           final userSettings = UserSettings(hoursAvailable: 8.0);
@@ -1395,7 +1396,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'skipped',
+            status: TaskStatus.skipped,
           );
 
           final userSettings = UserSettings(hoursAvailable: 2.0);
@@ -1454,7 +1455,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'skipped',
+            status: TaskStatus.skipped,
           );
           final actionUpdate = SchedulerEngine.evaluate(
             task,
@@ -1496,7 +1497,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           final userSettings = UserSettings(hoursAvailable: 8.0);

@@ -1,4 +1,3 @@
-import 'package:nothing_ever_happens/logic/task_status.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -1060,7 +1059,7 @@ class TaskRepository {
     final batch = _firestore.batch();
 
     final dismissedInstance = instance.copyWith(
-      status: 'dismissed',
+      status: TaskStatus.skipped,
       completedByUserId: _userId,
       completedAt: now,
     );

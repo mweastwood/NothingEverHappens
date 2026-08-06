@@ -1,4 +1,3 @@
-import 'package:nothing_ever_happens/logic/task_status.dart';
 import 'package:flutter/material.dart';
 import 'civil_day.dart';
 import 'task_schedule.dart';
@@ -435,7 +434,7 @@ class SchedulerEngine {
               );
               if (isOriginalResolved) continue;
 
-              final String nextStatus;
+              final TaskStatus nextStatus;
               if (latestStartedDate == null ||
                   date.compareTo(latestStartedDate) >= 0) {
                 nextStatus = TaskStatus.pending;
@@ -467,7 +466,7 @@ class SchedulerEngine {
               );
               if (isOriginalResolved) continue;
 
-              final String nextStatus;
+              final TaskStatus nextStatus;
               if (!now.isBefore(inst.startRelativeTime.referenceTo(date))) {
                 nextStatus = date == earliestStartedDate
                     ? TaskStatus.pending

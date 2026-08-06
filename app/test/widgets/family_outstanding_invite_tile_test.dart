@@ -14,8 +14,8 @@ void main() {
       fromEmail: 'homer@simpsons.com',
       fromName: 'Homer',
       toEmail: 'new_parent@example.com',
-      role: 'parent',
-      status: 'pending',
+      role: FamilyRole.parent,
+      status: FamilyInviteStatus.pending,
       createdAt: DateTime(2026, 6, 11),
     );
 
@@ -26,8 +26,8 @@ void main() {
       fromEmail: 'homer@simpsons.com',
       fromName: 'Homer',
       toEmail: 'new_child@example.com',
-      role: 'non-parent',
-      status: 'pending',
+      role: FamilyRole.nonParent,
+      status: FamilyInviteStatus.pending,
       createdAt: DateTime(2026, 6, 11),
     );
 

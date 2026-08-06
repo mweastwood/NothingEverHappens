@@ -1,4 +1,3 @@
-import 'package:nothing_ever_happens/logic/task_status.dart';
 import 'dart:async';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/task_sync_service.dart';
@@ -194,7 +193,7 @@ class UnifiedTaskRepository extends TaskRepository {
     if (instance == null) return null;
 
     final dismissedInstance = instance.copyWith(
-      status: 'dismissed',
+      status: TaskStatus.skipped,
       completedByUserId: userId,
       completedAt: AppClock.now,
       updatedAt: DateTime.now(),

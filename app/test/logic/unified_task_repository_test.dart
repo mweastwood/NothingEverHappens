@@ -94,7 +94,7 @@ void main() {
         time: TimeOfDay(hour: 17, minute: 0),
       ),
       updatedAt: DateTime.now(),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
     await localDataSource.saveInstance(instance);
 

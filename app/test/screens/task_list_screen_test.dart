@@ -32,6 +32,76 @@ void main() {
   late MockTaskRepository mockTaskRepository;
   late BehaviorSubject<List<TaskSchedule>> tasksSubject;
   late BehaviorSubject<List<TaskInstance>> instancesSubject;
+  StreamSubscription<List<TaskSchedule>>? tasksSub;
+  VoidCallback? clockListener;
+
+  List<TaskInstance> mockInstancesFromSchedules(
+    List<TaskSchedule> schedules,
+    DateTime todayDate,
+  ) {
+    final today = CivilDay.fromDateTime(todayDate);
+    final List<TaskInstance> list = [];
+    for (final task in schedules) {
+      final baseTaskId = task.id.startsWith('S-')
+          ? task.id.substring(2)
+          : task.id;
+      for (int i = 0; i < task.schedules.length; i++) {
+        final s = task.schedules[i];
+        if (s is OneOffSchedule) {
+          final startsDate = s.date.addDays(s.startRelativeTime.dayOffset);
+          if (!today.isBefore(startsDate)) {
+            list.add(
+              TaskInstance(
+                id: task.schedules.length <= 1
+                    ? 'I-${baseTaskId}_${s.date}'
+                    : 'I-${baseTaskId}_${s.date}_$i',
+                scheduleId: task.id,
+                ruleId: s.id,
+                title: task.title,
+                description: task.description,
+                scheduledDate: s.date,
+                startRelativeTime: s.startRelativeTime,
+                dueRelativeTime: s.dueRelativeTime,
+                isFamily: task.isFamily,
+                priority: task.priority,
+                cycleId: task.cycleId,
+                assignedUserId: task.assignedUserId,
+                status: TaskStatus.pending,
+              ),
+            );
+          }
+        } else if (s is DailySchedule) {
+          if (!today.isBefore(s.startDate)) {
+            list.add(
+              TaskInstance(
+                id: task.schedules.length <= 1
+                    ? 'I-${baseTaskId}_$today'
+                    : 'I-${baseTaskId}_${today}_$i',
+                scheduleId: task.id,
+                ruleId: s.id,
+                title: task.title,
+                description: task.description,
+                scheduledDate: today,
+                startRelativeTime: s.startRelativeTime,
+                dueRelativeTime: s.dueRelativeTime,
+                isFamily: task.isFamily,
+                priority: task.priority,
+                cycleId: task.cycleId,
+                assignedUserId: task.assignedUserId,
+                status: TaskStatus.pending,
+              ),
+            );
+          }
+        }
+      }
+    }
+    return list;
+  }
+
+  void updateInstances() {
+    final list = mockInstancesFromSchedules(tasksSubject.value, AppClock.now);
+    instancesSubject.add(list);
+  }
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
@@ -822,7 +892,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([task]);
@@ -838,7 +908,7 @@ void main() {
     when(mockTaskRepository.completeTaskInstance(any)).thenAnswer((_) async {
       // Optimistically remove the instance to mimic Firestore latency compensation
       instancesSubject.add([]);
-      return instance.copyWith(status: 'completed');
+      return instance.copyWith(status: TaskStatus.completed);
     });
 
     await tester.pumpWidgetBuilder(
@@ -908,7 +978,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
@@ -1043,7 +1113,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     final inst2 = TaskInstance(
@@ -1061,7 +1131,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
@@ -1312,7 +1382,7 @@ void main() {
         scheduledDate: taskDate,
         startRelativeTime: relativeStart,
         dueRelativeTime: relativeDue,
-        status: 'pending',
+        status: TaskStatus.pending,
       );
       final instancesSubj = BehaviorSubject<List<TaskInstance>>.seeded([
         futureInstance,
@@ -1393,7 +1463,7 @@ void main() {
       scheduledDate: taskDate,
       startRelativeTime: relativeStart,
       dueRelativeTime: relativeDue,
-      status: 'pending',
+      status: TaskStatus.pending,
     );
     final instancesSubj = BehaviorSubject<List<TaskInstance>>.seeded([
       futureInstance,

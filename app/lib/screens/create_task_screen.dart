@@ -739,7 +739,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         final familyId = profileData['familyId'] as String? ?? '';
         final familyRole = profileData['familyRole'] as String? ?? '';
         final inFamily = familyId.isNotEmpty;
-        final isParent = familyRole == FamilyRole.parent;
+        final isParent = familyRole == FamilyRole.parent.value;
 
         final isEditingFamilyTask = widget.taskToEdit?.isFamily ?? false;
         final hasEditPermission = !isEditingFamilyTask || isParent;

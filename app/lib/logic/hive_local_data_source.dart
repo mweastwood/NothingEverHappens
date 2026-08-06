@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -416,7 +414,7 @@ class HiveLocalDataSource {
       assignedUserId: data['assignedUserId'] as String?,
       completedByUserId: data['completedByUserId'] as String?,
       completedAt: completedAt,
-      status: data['status'] as String? ?? TaskStatus.pending,
+      status: TaskStatus.fromString(data['status'] as String?),
       hasPendingWrites: false,
       isFromCache: true,
       updatedAt: updatedAt ?? DateTime.now(),

@@ -1,4 +1,3 @@
-import 'package:nothing_ever_happens/logic/task_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -261,7 +260,7 @@ class _MissedPoliciesPlaygroundTabState
       if (idx == -1) return;
       final taskInst = _taskInstances[idx];
       _taskInstances[idx] = taskInst.copyWith(
-        status: 'dismissed',
+        status: TaskStatus.skipped,
         completedAt: _simulatedNow,
       );
       _historyLog.add(

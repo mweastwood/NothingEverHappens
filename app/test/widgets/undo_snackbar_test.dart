@@ -65,7 +65,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'completed',
+          status: TaskStatus.completed,
         );
 
         final action = UndoResolveTaskInstanceAction(
@@ -172,7 +172,7 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        status: 'completed',
+        status: TaskStatus.completed,
       );
 
       final action = UndoResolveTaskInstanceAction(
@@ -216,7 +216,7 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        status: 'completed',
+        status: TaskStatus.completed,
       );
 
       final action = UndoResolveTaskInstanceAction(

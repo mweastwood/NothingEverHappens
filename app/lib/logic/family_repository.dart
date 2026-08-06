@@ -1,5 +1,3 @@
-import 'package:nothing_ever_happens/logic/family_role.dart';
-import 'package:nothing_ever_happens/logic/task_status.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 
@@ -91,7 +89,7 @@ class FamilyRepository {
     required String familyId,
     required String familyName,
     required String toEmail,
-    required String role,
+    required FamilyRole role,
   }) async {
     final inviteRef = _firestore.collection('invites').doc();
     final invite = FamilyInvite(

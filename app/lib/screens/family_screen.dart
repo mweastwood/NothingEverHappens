@@ -1,4 +1,3 @@
-import 'package:nothing_ever_happens/logic/family_role.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -73,7 +72,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           familyId: family.id,
           familyName: family.name,
           toEmail: result['email']!,
-          role: result['role']!,
+          role: result['role'] as FamilyRole,
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -444,7 +443,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final isParent = familyRole == FamilyRole.parent;
+        final isParent = familyRole == FamilyRole.parent.value;
 
         return ListView(
           padding: const EdgeInsets.all(16.0),
@@ -775,7 +774,7 @@ class _InviteMemberDialogState extends State<_InviteMemberDialog> {
               },
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
+            DropdownButtonFormField<FamilyRole>(
               key: const Key('invite_role_dropdown'),
               initialValue: _selectedRole,
               decoration: InputDecoration(

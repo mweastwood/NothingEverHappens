@@ -11,14 +11,14 @@ void main() {
       userId: 'user-1',
       displayName: 'Alice',
       email: 'alice@example.com',
-      role: 'parent',
+      role: FamilyRole.parent,
     );
 
     const nonParentMember = FamilyMember(
       userId: 'user-2',
       displayName: 'Bob',
       email: 'bob@example.com',
-      role: 'non-parent',
+      role: FamilyRole.nonParent,
     );
 
     testWidgets('renders all fields correctly', (tester) async {

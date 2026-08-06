@@ -1,4 +1,3 @@
-import 'package:nothing_ever_happens/logic/family_role.dart';
 import 'package:flutter/material.dart';
 import '../logic/family.dart';
 import '../logic/l10n_extension.dart';

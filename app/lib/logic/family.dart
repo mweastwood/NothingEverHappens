@@ -1,6 +1,7 @@
-import 'package:nothing_ever_happens/logic/family_invite_status.dart';
-import 'package:nothing_ever_happens/logic/family_role.dart';
-import 'package:nothing_ever_happens/logic/task_status.dart';
+import 'family_invite_status.dart';
+import 'family_role.dart';
+export 'family_invite_status.dart';
+export 'family_role.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FamilyMember {

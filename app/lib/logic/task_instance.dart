@@ -5,6 +5,7 @@ import 'civil_day.dart';
 import 'relative_time.dart';
 import 'task_priority.dart';
 import 'task_status.dart';
+export 'task_status.dart';
 
 class TaskInstance {
   static String generateId() => 'I-${const Uuid().v4()}';
@@ -131,8 +132,10 @@ class TaskInstance {
       }
     }
 
-    final statusStr = data['status'] as String? ?? TaskStatus.pending;
-    final status = TaskStatus.fromString(statusStr);
+    final statusRaw = data['status'];
+    final status = statusRaw is TaskStatus
+        ? statusRaw
+        : TaskStatus.fromString(statusRaw as String?);
 
     final updatedAtRaw = data['updatedAt'];
     DateTime? updatedAt;

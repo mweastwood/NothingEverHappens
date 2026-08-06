@@ -41,7 +41,7 @@ void main() {
         assignedUserId: 'user-abc',
         completedByUserId: 'user-xyz',
         completedAt: completedAt,
-        status: 'completed',
+        status: TaskStatus.completed,
       );
 
       expect(instance.id, 'instance-123');
@@ -79,7 +79,7 @@ void main() {
         assignedUserId: 'user-abc',
         completedByUserId: 'user-xyz',
         completedAt: completedAt,
-        status: 'completed',
+        status: TaskStatus.completed,
       );
 
       final map = instance.toFirestore();
@@ -220,7 +220,7 @@ void main() {
         assignedUserId: 'user-abc',
         completedByUserId: 'user-xyz',
         completedAt: completedAt,
-        status: 'pending',
+        status: TaskStatus.pending,
       );
 
       final updated = instance.copyWith(
@@ -242,7 +242,7 @@ void main() {
         clearAssignedUserId: true,
         clearCompletedByUserId: true,
         clearCompletedAt: true,
-        status: 'completed',
+        status: TaskStatus.completed,
       );
 
       expect(updated.id, 'instance-123');

@@ -267,7 +267,7 @@ void main() {
           .get();
 
       expect(instanceSnapshot.exists, isTrue);
-      expect(instanceSnapshot.data()!['status'], 'dismissed');
+      expect(instanceSnapshot.data()!['status'], 'skipped');
       expect(instanceSnapshot.data()!['completedByUserId'], userId);
       expect(instanceSnapshot.data()!['completedAt'], isNotNull);
     });
@@ -437,7 +437,7 @@ void main() {
 
         expect(resolved, isNotNull);
         expect(resolved!.id, instanceId);
-        expect(resolved.status, 'completed');
+        expect(resolved.status, TaskStatus.completed);
         expect(resolved.completedAt, isNotNull);
         expect(resolved.completedByUserId, userId);
 
@@ -467,7 +467,7 @@ void main() {
         );
 
         expect(resolvedDismissed, isNotNull);
-        expect(resolvedDismissed!.status, 'dismissed');
+        expect(resolvedDismissed!.status, TaskStatus.skipped);
         expect(resolvedDismissed.completedAt, isNotNull);
       },
     );
@@ -1179,7 +1179,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         );
         await firestore
             .collection('users')
@@ -1283,7 +1283,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'completed',
+          status: TaskStatus.completed,
           completedAt: DateTime(2026, 6, 22, 10, 0),
           completedByUserId: userId,
         );
@@ -1311,7 +1311,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         );
         await firestore
             .collection('users')
@@ -1563,7 +1563,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         );
         await firestore
             .collection('users')
@@ -1973,7 +1973,7 @@ void main() {
           // Complete the family instance
           final completed = await repository.completeTaskInstance(instId);
           expect(completed, isNotNull);
-          expect(completed?.status, 'completed');
+          expect(completed?.status, TaskStatus.completed);
 
           // Should have spawned next occurrence in families collection
           final familyInstsAfter = await firestore
@@ -2013,7 +2013,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           await firestore
@@ -2028,7 +2028,7 @@ void main() {
             'orphan-inst-1',
           );
           expect(completed, isNotNull);
-          expect(completed?.status, 'completed');
+          expect(completed?.status, TaskStatus.completed);
 
           // Verify updated status in Firestore
           final docSnap = await firestore
@@ -2055,7 +2055,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
           await firestore
               .collection('users')
@@ -2068,7 +2068,7 @@ void main() {
             'orphan-inst-2',
           );
           expect(dismissed, isNotNull);
-          expect(dismissed?.status, 'dismissed');
+          expect(dismissed?.status, TaskStatus.skipped);
 
           final docSnap2 = await firestore
               .collection('users')
@@ -2076,7 +2076,7 @@ void main() {
               .collection('instances')
               .doc('orphan-inst-2')
               .get();
-          expect(docSnap2.data()?['status'], 'dismissed');
+          expect(docSnap2.data()?['status'], 'skipped');
         },
       );
     });
