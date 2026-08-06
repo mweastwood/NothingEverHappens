@@ -8,10 +8,7 @@ class FamilyProfile {
   final String familyId;
   final String familyRole;
 
-  const FamilyProfile({
-    required this.familyId,
-    required this.familyRole,
-  });
+  const FamilyProfile({required this.familyId, required this.familyRole});
 
   factory FamilyProfile.fromJson(Map<String, dynamic> json) {
     return FamilyProfile(
@@ -21,10 +18,7 @@ class FamilyProfile {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'familyId': familyId,
-      'familyRole': familyRole,
-    };
+    return {'familyId': familyId, 'familyRole': familyRole};
   }
 }
 

@@ -9,7 +9,6 @@ import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
-import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import '../logic/family_repository.dart';
 import '../logic/family.dart';
 import '../logic/undo_notifier.dart';
@@ -736,7 +735,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     return StreamBuilder<FamilyProfile>(
       stream: familyRepo?.getProfile() ?? const Stream.empty(),
       builder: (context, snapshot) {
-        final profile = snapshot.data ?? const FamilyProfile(familyId: '', familyRole: '');
+        final profile =
+            snapshot.data ?? const FamilyProfile(familyId: '', familyRole: '');
         final familyId = profile.familyId;
         final familyRole = profile.familyRole;
         final inFamily = familyId.isNotEmpty;

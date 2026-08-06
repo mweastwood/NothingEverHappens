@@ -60,9 +60,11 @@ class FamilyRepository {
        _userDisplayName = userDisplayName;
 
   Stream<FamilyProfile> getProfile() {
-    return _firestore.collection('users').doc(_userId).snapshots().map(
-      (snapshot) => FamilyProfile.fromJson(snapshot.data() ?? {}),
-    );
+    return _firestore
+        .collection('users')
+        .doc(_userId)
+        .snapshots()
+        .map((snapshot) => FamilyProfile.fromJson(snapshot.data() ?? {}));
   }
 
   Stream<Family?> getFamily(String familyId) {
