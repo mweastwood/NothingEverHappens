@@ -10,13 +10,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 
-final hiveLocalDataSourceProvider = Provider<HiveLocalDataSource>(
-  (ref) {
-    final ds = HiveLocalDataSource();
-    ref.onDispose(() => ds.dispose());
-    return ds;
-  },
-);
+final hiveLocalDataSourceProvider = Provider<HiveLocalDataSource>((ref) {
+  final ds = HiveLocalDataSource();
+  ref.onDispose(() => ds.dispose());
+  return ds;
+});
 
 class HiveLocalDataSource {
   static const String _tasksBoxName = 'tasksBox';
