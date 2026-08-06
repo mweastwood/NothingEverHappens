@@ -47,6 +47,7 @@ void main() {
 
   setUp(() {
     AppClock.setMockTime(now);
+    addTearDown(AppClock.reset);
 
     mockAuthRepository = MockAuthRepository();
     mockTaskRepository = MockTaskRepository();

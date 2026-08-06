@@ -3,9 +3,7 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 
 void main() {
   group('AppClock Unit Tests', () {
-    tearDown(() {
-      AppClock.reset();
-    });
+    tearDown(() {});
 
     test('now returns real system time by default', () {
       final clockTime = AppClock.now;
@@ -22,6 +20,7 @@ void main() {
     test('setMockTime overrides system clock and updates notifier', () {
       final mockTime = DateTime(2026, 3, 8, 9, 0);
       AppClock.setMockTime(mockTime);
+      addTearDown(AppClock.reset);
 
       expect(AppClock.now, mockTime);
       expect(AppClock.timeNotifier.value, mockTime);
@@ -30,6 +29,7 @@ void main() {
     test('advanceTime increases mock time relatively', () {
       final mockTime = DateTime(2026, 3, 8, 9, 0);
       AppClock.setMockTime(mockTime);
+      addTearDown(AppClock.reset);
 
       AppClock.advanceTime(const Duration(hours: 2, minutes: 15));
 
@@ -61,6 +61,7 @@ void main() {
       () {
         final mockTime = DateTime(2026, 3, 8, 9, 0);
         AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
 
         expect(AppClock.timeNotifier.value, isNotNull);
 

@@ -41,11 +41,10 @@ Widget buildTestProviderScope({
 void main() {
   setUp(() {
     AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+    addTearDown(AppClock.reset);
   });
 
-  tearDown(() {
-    AppClock.reset();
-  });
+  tearDown(() {});
 
   testWidgets('CreateTaskScreen renders form and saves task', (
     WidgetTester tester,

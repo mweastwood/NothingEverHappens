@@ -107,6 +107,7 @@ void main() {
       // Complete on Monday, June 1
       final monday = DateTime(2026, 6, 1, 12, 0);
       AppClock.setMockTime(monday);
+      addTearDown(AppClock.reset);
       final nextState = taskList.complete(task.id);
 
       final updatedTask = nextState.activeTasks.firstWhere(
@@ -121,8 +122,6 @@ void main() {
       // Weekly schedule should advance to Wednesday, June 3 (the next weekday occurrence)
       final weekly = updatedTask.schedules[1] as WeeklySchedule;
       expect(weekly.startDate, const CivilDay(year: 2026, month: 6, day: 3));
-
-      AppClock.reset();
     });
 
     test(
@@ -182,6 +181,7 @@ void main() {
 
         final monday = DateTime(2026, 6, 1, 12, 0);
         AppClock.setMockTime(monday);
+        addTearDown(AppClock.reset);
         final nextState = taskList.complete(task.id);
 
         final updatedTask = nextState.activeTasks.firstWhere(
@@ -202,8 +202,6 @@ void main() {
           (updatedTask.schedules[1] as DailySchedule).startDate,
           const CivilDay(year: 2026, month: 6, day: 2),
         );
-
-        AppClock.reset();
       },
     );
 
@@ -247,6 +245,7 @@ void main() {
 
         final monday = DateTime(2026, 6, 1, 12, 0);
         AppClock.setMockTime(monday);
+        addTearDown(AppClock.reset);
 
         // Complete first slot
         var state = taskList.complete(task.id);
@@ -263,8 +262,6 @@ void main() {
           state.activeTasks.length,
           0,
         ); // Removed since all one-offs are completed
-
-        AppClock.reset();
       },
     );
 
@@ -308,6 +305,7 @@ void main() {
         // Complete on Monday, June 1
         final monday = DateTime(2026, 6, 1, 12, 0);
         AppClock.setMockTime(monday);
+        addTearDown(AppClock.reset);
         var state = taskList.complete(task.id);
         expect(state.activeTasks.length, 1);
 
@@ -321,13 +319,12 @@ void main() {
         // Complete on Wednesday, June 3
         final wednesday = DateTime(2026, 6, 3, 16, 0);
         AppClock.setMockTime(wednesday);
+        addTearDown(AppClock.reset);
         state = state.complete(task.id);
         expect(
           state.activeTasks.length,
           0,
         ); // Removed since last one-off completed
-
-        AppClock.reset();
       },
     );
   });

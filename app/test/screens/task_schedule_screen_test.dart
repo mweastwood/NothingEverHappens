@@ -33,11 +33,11 @@ void main() {
 
     when(mockTaskRepository.getTasks()).thenAnswer((_) => tasksSubject.stream);
     AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0));
+    addTearDown(AppClock.reset);
   });
 
   tearDown(() {
     tasksSubject.close();
-    AppClock.reset();
   });
 
   Widget createScreen() {

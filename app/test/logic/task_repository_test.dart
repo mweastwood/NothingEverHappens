@@ -285,6 +285,7 @@ void main() {
         );
 
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(recurringTask);
         await Future.delayed(Duration.zero);
 
@@ -351,8 +352,6 @@ void main() {
           (d) => d.data()['scheduledDate']['day'] == 12,
         );
         expect(hasJune12, isFalse);
-
-        AppClock.reset();
       },
     );
 
@@ -735,6 +734,7 @@ void main() {
       () async {
         // Set mock time to June 1, 2026
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        addTearDown(AppClock.reset);
 
         final stackTask = TaskSchedule(
           id: 'task-stack-id',
@@ -793,6 +793,7 @@ void main() {
 
         // Fast-forward to June 2
         AppClock.setMockTime(DateTime(2026, 6, 2, 12, 0));
+        addTearDown(AppClock.reset);
         await repository.triggerMissedPolicyProcessing();
         await Future.delayed(const Duration(milliseconds: 100));
 
@@ -809,8 +810,6 @@ void main() {
             .get();
         expect(june3Snapshot.exists, isTrue);
         expect(june3Snapshot.data()!['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -819,6 +818,7 @@ void main() {
       () async {
         // Set mock time to June 1, 2026
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'early-comp-task',
@@ -882,8 +882,6 @@ void main() {
             .get();
         expect(nextSnapshotBefore.exists, isTrue);
         expect(nextSnapshotBefore.data()!['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -967,6 +965,7 @@ void main() {
       () async {
         final mockTime = DateTime(2026, 6, 22, 10, 0, 0);
         AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'future-repeating-task',
@@ -1011,7 +1010,6 @@ void main() {
         expect(instanceSnapshot.data()!['status'], equals('pending'));
 
         await subscription.cancel();
-        AppClock.reset();
       },
     );
 
@@ -1020,6 +1018,7 @@ void main() {
       () async {
         final mockTime = DateTime(2026, 6, 22, 10, 0, 0);
         AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'edit-repeating-task',
@@ -1121,7 +1120,6 @@ void main() {
         );
 
         await subscription.cancel();
-        AppClock.reset();
       },
     );
 
@@ -1129,6 +1127,7 @@ void main() {
       'regression: completing a recurring task advances lastSpawnedDate to the newly spawned instance date',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 22, 10, 0));
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'complete-last-spawned-advance',
@@ -1206,6 +1205,7 @@ void main() {
 
         // Fast-forward to Thursday 6/25
         AppClock.setMockTime(DateTime(2026, 6, 25, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.triggerMissedPolicyProcessing();
         await Future.delayed(const Duration(milliseconds: 100));
 
@@ -1223,7 +1223,6 @@ void main() {
         );
 
         await subscription.cancel();
-        AppClock.reset();
       },
     );
 
@@ -1231,6 +1230,7 @@ void main() {
       'regression: undoing a recurring task resolution does not revert lastSpawnedDate under queue model',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 22, 10, 0));
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'undo-last-spawned-revert',
@@ -1321,7 +1321,6 @@ void main() {
         );
 
         await subscription.cancel();
-        AppClock.reset();
       },
     );
 
@@ -1329,6 +1328,7 @@ void main() {
       'unit: queue-based spawning logic maintains N future instances',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0)); // Monday June 22
+        addTearDown(AppClock.reset);
 
         // Task with daily schedule (every day)
         final dailyTask = TaskSchedule(
@@ -1392,8 +1392,6 @@ void main() {
             .get();
         expect(snapJune24.exists, isTrue);
         expect(snapJune24.data()!['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -1401,6 +1399,7 @@ void main() {
       'unit: editing a schedule deletes old future instances and recreates them',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0)); // Monday June 22
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'edit-cleanup-task',
@@ -1485,8 +1484,6 @@ void main() {
             .get();
         expect(snapNewFuture.exists, isTrue);
         expect(snapNewFuture.data()!['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -1495,6 +1492,7 @@ void main() {
       () async {
         final mockTime = DateTime(2026, 6, 23, 10, 0, 0); // Today is June 23
         AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'late-completion-bug',
@@ -1584,7 +1582,6 @@ void main() {
         );
 
         await subscription.cancel();
-        AppClock.reset();
       },
     );
 
@@ -1593,6 +1590,7 @@ void main() {
       () async {
         final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
         AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
 
         final firestore = FakeFirebaseFirestore();
 
@@ -1711,8 +1709,6 @@ void main() {
         expect(hasJune24, isTrue);
         expect(hasJuly24, isTrue);
         expect(instsAfter3.docs.length, 2);
-
-        AppClock.reset();
       },
     );
 
@@ -1843,6 +1839,7 @@ void main() {
 
           // 2. Advance the clock past 2 seconds (e.g. 3 seconds)
           AppClock.setMockTime(mockTime.add(const Duration(seconds: 3)));
+          addTearDown(AppClock.reset);
 
           // Evaluate again. The tracker entry has expired, so it is ignored.
           // The evaluator sees the database is missing the instance, and re-spawns it!
@@ -2056,6 +2053,7 @@ void main() {
         () async {
           final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
           AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
 
           final firestore = FakeFirebaseFirestore();
 
@@ -2121,8 +2119,6 @@ void main() {
               .collection('instances')
               .get();
           expect(instances.docs.isNotEmpty, isTrue);
-
-          AppClock.reset();
         },
       );
     });

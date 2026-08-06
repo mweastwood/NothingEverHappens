@@ -1129,6 +1129,7 @@ void main() {
       // Set clock to 2026-06-19 09:00 AM
       final now = DateTime(2026, 6, 19, 9, 0);
       AppClock.setMockTime(now);
+      addTearDown(AppClock.reset);
 
       final overdueTask = TaskSchedule(
         id: 'S-overdue_1',
@@ -1217,8 +1218,6 @@ void main() {
           tester.element(find.text('Due Tomorrow at 5:00 PM')),
         ).colorScheme.secondary,
       );
-
-      AppClock.reset();
     },
   );
 
@@ -1284,6 +1283,7 @@ void main() {
   ) async {
     final now = DateTime(2026, 7, 4, 12, 0); // 12:00 PM
     AppClock.setMockTime(now);
+    addTearDown(AppClock.reset);
 
     final duolingoTask = TaskSchedule(
       id: 'S-duo-golden',
@@ -1327,7 +1327,5 @@ void main() {
       find.byType(MaterialApp),
       matchesGoldenFile('goldens/task_widget_duolingo.png'),
     );
-
-    AppClock.reset();
   });
 }

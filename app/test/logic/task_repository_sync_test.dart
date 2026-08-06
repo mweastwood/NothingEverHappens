@@ -15,13 +15,12 @@ void main() {
 
   setUp(() {
     AppClock.setMockTime(DateTime(2026, 6, 3, 12, 0));
+    addTearDown(AppClock.reset);
     firestore = FakeFirebaseFirestore();
     repository = TaskRepository(firestore: firestore, userId: userId);
   });
 
-  tearDown(() {
-    AppClock.reset();
-  });
+  tearDown(() {});
 
   test(
     'getTasks merges personal and family collections when in a family',

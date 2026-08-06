@@ -273,6 +273,7 @@ void main() {
     (WidgetTester tester) async {
       AppConfig.environment = AppEnvironment.prod;
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      addTearDown(AppClock.reset);
 
       await tester.pumpWidget(createScreen());
       await tester.pumpAndSettle();
@@ -294,6 +295,7 @@ void main() {
     (WidgetTester tester) async {
       AppConfig.environment = AppEnvironment.prod;
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      addTearDown(AppClock.reset);
 
       await tester.pumpWidget(createScreen());
       await tester.pumpAndSettle();
