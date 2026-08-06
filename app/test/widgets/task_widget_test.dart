@@ -1147,7 +1147,8 @@ void main() {
       // Tap the checkbox to complete the task
       await tester.tap(find.byType(FunCheckButton));
       await tester.pump();
-      await tester.pumpAndSettle(); // wait for confetti, start and complete collapse animation
+      await tester
+          .pumpAndSettle(); // wait for confetti, start and complete collapse animation
 
       // At this point, repo.completeTaskInstance has been called and is pending.
       // Manually unmount the TaskWidget before the repository completes
