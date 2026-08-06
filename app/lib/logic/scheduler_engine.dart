@@ -22,6 +22,15 @@ class SchedulerAction {
 }
 
 class SchedulerEngine {
+  /// Maximum number of days into the future to evaluate schedule rules.
+  static const int maxEvaluationDays = 30;
+
+  /// Default available capacity in hours per day when user settings are not available.
+  static const double defaultDailyCapacityHours = 8.0;
+
+  /// Conversion factor for minutes to hours.
+  static const double minutesPerHour = 60.0;
+
   static SchedulerAction evaluate(
     TaskSchedule task,
     List<TaskInstance> taskInstances,
@@ -72,7 +81,8 @@ class SchedulerEngine {
 
       if (task.skipIfNoCapacity && applyCapacityLimits) {
         final double taskDuration =
-            (task.estimatedDuration ?? const Duration()).inMinutes / 60.0;
+            (task.estimatedDuration ?? const Duration()).inMinutes /
+            minutesPerHour;
         final Map<CivilDay, double> tempPlannedHours = dayPlannedHours != null
             ? Map.from(dayPlannedHours)
             : {};
@@ -97,7 +107,7 @@ class SchedulerEngine {
                 userSettings?.getCapacityForDate(
                   inst.scheduledDate.toDateTime(),
                 ) ??
-                8.0;
+                defaultDailyCapacityHours;
             final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
             if (capacity - planned < taskDuration) {
@@ -121,7 +131,7 @@ class SchedulerEngine {
                 userSettings?.getCapacityForDate(
                   inst.scheduledDate.toDateTime(),
                 ) ??
-                8.0;
+                defaultDailyCapacityHours;
             final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
             if (capacity - planned < taskDuration) {
@@ -268,7 +278,7 @@ class SchedulerEngine {
           }
         }
 
-        final maxEvaluationDate = initialBaseDate.addDays(30);
+        final maxEvaluationDate = initialBaseDate.addDays(maxEvaluationDays);
 
         // Keep a set/list of all instances for this rule (both existing DB ones and candidates we spawn)
         // We will update their statuses as we loop.
@@ -575,7 +585,8 @@ class SchedulerEngine {
 
     if (task.skipIfNoCapacity && applyCapacityLimits) {
       final double taskDuration =
-          (task.estimatedDuration ?? const Duration()).inMinutes / 60.0;
+          (task.estimatedDuration ?? const Duration()).inMinutes /
+          minutesPerHour;
       final Map<CivilDay, double> tempPlannedHours = dayPlannedHours != null
           ? Map.from(dayPlannedHours)
           : {};
@@ -606,7 +617,7 @@ class SchedulerEngine {
               userSettings?.getCapacityForDate(
                 inst.scheduledDate.toDateTime(),
               ) ??
-              8.0;
+              defaultDailyCapacityHours;
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
           if (capacity - planned < taskDuration) {
@@ -644,7 +655,7 @@ class SchedulerEngine {
               userSettings?.getCapacityForDate(
                 inst.scheduledDate.toDateTime(),
               ) ??
-              8.0;
+              defaultDailyCapacityHours;
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
           if (capacity - planned < taskDuration) {
@@ -669,7 +680,7 @@ class SchedulerEngine {
               userSettings?.getCapacityForDate(
                 inst.scheduledDate.toDateTime(),
               ) ??
-              8.0;
+              defaultDailyCapacityHours;
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
           if (capacity - planned < taskDuration) {
