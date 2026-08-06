@@ -1,6 +1,6 @@
 ---
 name: code_reviewer
-description: Bare-bones automated PR code reviewer operating in a dedicated per-invocation working directory.
+description: Automated PR code reviewer operating in a dedicated per-invocation working directory.
 enable_write_tools: true
 ---
 
