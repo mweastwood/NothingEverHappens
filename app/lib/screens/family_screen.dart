@@ -447,8 +447,9 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     if (_currentFamilyId != familyId) {
       _currentFamilyId = familyId;
       _familyStream = repository.getFamily(familyId);
-      _outstandingInvitesStream =
-          repository.getOutstandingFamilyInvites(familyId);
+      _outstandingInvitesStream = repository.getOutstandingFamilyInvites(
+        familyId,
+      );
     }
 
     return StreamBuilder<Family?>(
