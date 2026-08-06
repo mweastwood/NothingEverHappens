@@ -14,14 +14,14 @@ import 'hierarchical_recurrence_selector.dart';
 import 'notification_list_widget.dart';
 import 'missed_occurrence_policy_selector.dart';
 
-typedef ScheduleWidgetBuilder =
+typedef _ScheduleWidgetBuilder =
     Widget Function(
       BuildContext context,
       _ScheduleRuleConfigWidgetState state,
       TaskScheduleRule s,
     );
 
-final Map<Type, ScheduleWidgetBuilder> _configBuilders = {
+final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
   DailySchedule: (context, state, s) {
     final rule = s as DailySchedule;
     return DailySchedulingWidget(
