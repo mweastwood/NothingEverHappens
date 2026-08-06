@@ -78,6 +78,9 @@ abstract class TaskScheduleRule {
   /// Calculates the next occurrence of the task strictly after [date].
   CivilDay? nextOccurrenceAfter(CivilDay date);
 
+  /// Checks if two rules have identical recurrence patterns.
+  bool hasSameRecurrence(TaskScheduleRule other);
+
   /// Creates a copy of this schedule with a new scheduled/start date.
   TaskScheduleRule copyWithStartDate(CivilDay newStartDate);
 
@@ -247,6 +250,12 @@ class OneOffSchedule extends TaskScheduleRule {
             .map((t) => t.toJson())
             .toList(),
     };
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! OneOffSchedule) return false;
+    return date == other.date;
   }
 }
 
@@ -420,6 +429,12 @@ class DailySchedule extends TaskScheduleRule {
             .map((t) => t.toJson())
             .toList(),
     };
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! DailySchedule) return false;
+    return interval == other.interval;
   }
 }
 
@@ -617,6 +632,14 @@ class WeeklySchedule extends TaskScheduleRule {
             .map((t) => t.toJson())
             .toList(),
     };
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! WeeklySchedule) return false;
+    if (interval != other.interval) return false;
+    return daysOfWeek.length == other.daysOfWeek.length &&
+        daysOfWeek.containsAll(other.daysOfWeek);
   }
 }
 

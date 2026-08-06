@@ -50,7 +50,8 @@ class WeeklyCapacityChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final today = DateTime.now(); // or AppClock.now but we can use day comparison
+    final today =
+        DateTime.now(); // or AppClock.now but we can use day comparison
 
     double peakValue = 0.0;
     for (final data in daysData) {
@@ -62,9 +63,7 @@ class WeeklyCapacityChart extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: theme.colorScheme.surfaceContainerLow,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -191,16 +190,16 @@ class WeeklyCapacityChart extends StatelessWidget {
                                                     .withValues(alpha: 0.7),
                                               ]
                                             : isOverridden
-                                                ? [
-                                                    theme.colorScheme.tertiary,
-                                                    theme.colorScheme.tertiary
-                                                        .withValues(alpha: 0.7),
-                                                  ]
-                                                : [
-                                                    theme.colorScheme.primary,
-                                                    theme.colorScheme.primary
-                                                        .withValues(alpha: 0.7),
-                                                  ],
+                                            ? [
+                                                theme.colorScheme.tertiary,
+                                                theme.colorScheme.tertiary
+                                                    .withValues(alpha: 0.7),
+                                              ]
+                                            : [
+                                                theme.colorScheme.primary,
+                                                theme.colorScheme.primary
+                                                    .withValues(alpha: 0.7),
+                                              ],
                                         begin: Alignment.bottomCenter,
                                         end: Alignment.topCenter,
                                       ),
@@ -219,8 +218,8 @@ class WeeklyCapacityChart extends StatelessWidget {
                                         color: isToday
                                             ? theme.colorScheme.onSurface
                                             : isOverridden
-                                                ? theme.colorScheme.tertiary
-                                                : theme.colorScheme.primary,
+                                            ? theme.colorScheme.tertiary
+                                            : theme.colorScheme.primary,
                                         strokeWidth: 2.0,
                                         borderRadius: 6.0,
                                       ),
