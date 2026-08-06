@@ -289,10 +289,13 @@ class UnifiedTaskRepository extends TaskRepository {
 
       bool hasChanges = false;
 
+      final Map<String, List<TaskInstance>> instancesByScheduleId = {};
+      for (final inst in allInstances) {
+        instancesByScheduleId.putIfAbsent(inst.scheduleId, () => []).add(inst);
+      }
+
       for (final task in tasks) {
-        final taskInstances = allInstances
-            .where((i) => i.scheduleId == task.id)
-            .toList();
+        final taskInstances = instancesByScheduleId[task.id] ?? [];
 
         final action = SchedulerEngine.evaluate(
           task,
