@@ -487,7 +487,9 @@ class TaskRepository {
       }
 
       final familyId = await _getFamilyId();
-      final cutoffDate = AppClock.now.subtract(const Duration(days: _instanceQueryCutoffDays));
+      final cutoffDate = AppClock.now.subtract(
+        const Duration(days: _instanceQueryCutoffDays),
+      );
 
       // Fetch all instances
       final personalInstances = await _instancesRef
