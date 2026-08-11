@@ -658,12 +658,16 @@ class MonthlySchedule extends TaskScheduleRule {
        ) {
     if (!((dayOfMonth != null && dayOfWeek == null && occurrence == null) ||
         (dayOfMonth == null && dayOfWeek != null && occurrence != null))) {
-      throw ArgumentError();
+      throw ArgumentError(
+        'Either dayOfMonth or both dayOfWeek and occurrence must be specified.',
+      );
     }
     if (!(dayOfMonth == null ||
         (dayOfMonth! >= 1 && dayOfMonth! <= 28) ||
         (dayOfMonth! >= -28 && dayOfMonth! <= -1))) {
-      throw ArgumentError();
+      throw ArgumentError(
+        'dayOfMonth must be between 1 and 28 or between -28 and -1.',
+      );
     }
   }
 
