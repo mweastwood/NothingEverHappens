@@ -71,12 +71,50 @@ void main() {
   setUp(() {
     mockTaskRepository = MockTaskRepository();
     // Default completeTask/dismissTask/undoResolve to do nothing
-    when(
-      mockTaskRepository.completeTaskInstance(any),
-    ).thenAnswer((_) async => null);
-    when(
-      mockTaskRepository.dismissTaskInstance(any),
-    ).thenAnswer((_) async => null);
+    when(mockTaskRepository.completeTaskInstance(any)).thenAnswer((
+      invocation,
+    ) async {
+      final id = invocation.positionalArguments[0] as String;
+      return TaskInstance(
+        id: id,
+        scheduleId: 'S-mock',
+        ruleId: 'R-mock',
+        title: 'Mock Task',
+        description: 'Mock Description',
+        scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: 'completed',
+      );
+    });
+    when(mockTaskRepository.dismissTaskInstance(any)).thenAnswer((
+      invocation,
+    ) async {
+      final id = invocation.positionalArguments[0] as String;
+      return TaskInstance(
+        id: id,
+        scheduleId: 'S-mock',
+        ruleId: 'R-mock',
+        title: 'Mock Task',
+        description: 'Mock Description',
+        scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: 'dismissed',
+      );
+    });
     when(
       mockTaskRepository.undoResolveTaskInstance(any),
     ).thenAnswer((_) async {});
@@ -360,9 +398,19 @@ void main() {
   testWidgets('TaskWidget delete action plays poof animation and deletes', (
     tester,
   ) async {
-    when(
-      mockTaskRepository.deleteTaskSchedule(any),
-    ).thenAnswer((_) async => null);
+    when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((
+      invocation,
+    ) async {
+      final id = invocation.positionalArguments[0] as String;
+      return (
+        task: TaskSchedule(
+          id: id,
+          title: 'Mock Task',
+          description: 'Mock Description',
+        ),
+        pendingInstances: <TaskInstance>[],
+      );
+    });
 
     await tester.pumpWidget(
       buildTestableWidget(
@@ -942,9 +990,19 @@ void main() {
   testWidgets(
     'TaskWidget mouse swipe RTL does not trigger deletion or show confirmation dialog',
     (tester) async {
-      when(
-        mockTaskRepository.deleteTaskSchedule(any),
-      ).thenAnswer((_) async => null);
+      when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((
+        invocation,
+      ) async {
+        final id = invocation.positionalArguments[0] as String;
+        return (
+          task: TaskSchedule(
+            id: id,
+            title: 'Mock Task',
+            description: 'Mock Description',
+          ),
+          pendingInstances: <TaskInstance>[],
+        );
+      });
       await tester.pumpWidget(createWidget(testTask));
 
       final titleFinder = find.text(testTask.title);
