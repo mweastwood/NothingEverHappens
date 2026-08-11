@@ -20,7 +20,7 @@ void main() {
       expect(deserialized.userId, 'u1');
       expect(deserialized.displayName, 'Alice');
       expect(deserialized.email, 'alice@example.com');
-      expect(deserialized.role, 'parent');
+      expect(deserialized.role, FamilyRole.parent);
     });
 
     test('Family serialization and deserialization', () {
@@ -84,7 +84,7 @@ void main() {
         final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
         expect(family.name, 'The Simpsons');
         expect(family.members[userId]?.displayName, userName);
-        expect(family.members[userId]?.role, 'parent');
+        expect(family.members[userId]?.role, FamilyRole.parent);
       },
     );
 

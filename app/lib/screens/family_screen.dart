@@ -58,7 +58,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   }
 
   Future<void> _inviteMember(FamilyRepository repository, Family family) async {
-    final result = await showDialog<Map<String, String>>(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => const _InviteMemberDialog(),
     );

@@ -102,7 +102,7 @@ void main() {
 
     final insts = localDataSource.getInstances();
     final updatedInst = insts.firstWhere((i) => i.id == 'I-1');
-    expect(updatedInst.status, 'completed');
+    expect(updatedInst.status, TaskStatus.completed);
   });
 
   test('deleteTaskSchedule and updateTaskSchedule', () async {

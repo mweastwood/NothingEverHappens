@@ -1121,7 +1121,7 @@ void main() {
         capturedInstance!.completedAt,
         equals(resolvedInstance.completedAt),
       );
-      expect(capturedInstance!.status, equals('completed'));
+      expect(capturedInstance!.status, equals(TaskStatus.completed));
     },
   );
 

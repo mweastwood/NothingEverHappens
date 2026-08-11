@@ -39,7 +39,7 @@ void main() {
         final spawned = action.instancesToSpawn.first;
         expect(spawned.id.startsWith('I-'), isTrue);
         expect(spawned.scheduledDate, today);
-        expect(spawned.status, 'pending');
+        expect(spawned.status, TaskStatus.pending);
         expect(action.instancesToUpdate, isEmpty);
         expect(action.updatedSchedule, null);
       });
@@ -159,15 +159,15 @@ void main() {
         // Should spawn 5 instances under N=1: June 16, 17, 18, 19, and future 20
         expect(action.instancesToSpawn, hasLength(5));
         expect(action.instancesToSpawn[0].scheduledDate.day, 16);
-        expect(action.instancesToSpawn[0].status, 'pending');
+        expect(action.instancesToSpawn[0].status, TaskStatus.pending);
         expect(action.instancesToSpawn[1].scheduledDate.day, 17);
-        expect(action.instancesToSpawn[1].status, 'pending');
+        expect(action.instancesToSpawn[1].status, TaskStatus.pending);
         expect(action.instancesToSpawn[2].scheduledDate.day, 18);
-        expect(action.instancesToSpawn[2].status, 'pending');
+        expect(action.instancesToSpawn[2].status, TaskStatus.pending);
         expect(action.instancesToSpawn[3].scheduledDate.day, 19);
-        expect(action.instancesToSpawn[3].status, 'pending');
+        expect(action.instancesToSpawn[3].status, TaskStatus.pending);
         expect(action.instancesToSpawn[4].scheduledDate.day, 20);
-        expect(action.instancesToSpawn[4].status, 'pending');
+        expect(action.instancesToSpawn[4].status, TaskStatus.pending);
 
         expect(action.updatedSchedule!.lastSpawnedDate, today);
       });
@@ -203,9 +203,9 @@ void main() {
           // Older dates (June 17, 18) are skipped and not spawned.
           expect(action.instancesToSpawn, hasLength(2));
           expect(action.instancesToSpawn[0].scheduledDate.day, 19);
-          expect(action.instancesToSpawn[0].status, 'pending');
+          expect(action.instancesToSpawn[0].status, TaskStatus.pending);
           expect(action.instancesToSpawn[1].scheduledDate.day, 20);
-          expect(action.instancesToSpawn[1].status, 'pending');
+          expect(action.instancesToSpawn[1].status, TaskStatus.pending);
         },
       );
 
@@ -253,14 +253,14 @@ void main() {
 
         // Existing yesterday instance should be updated to skipped
         expect(action.instancesToUpdate, hasLength(1));
-        expect(action.instancesToUpdate.first.status, 'skipped');
+        expect(action.instancesToUpdate.first.status, TaskStatus.skipped);
 
         // Today (June 19) and tomorrow (June 20) should be spawned as pending
         expect(action.instancesToSpawn, hasLength(2));
         expect(action.instancesToSpawn[0].scheduledDate.day, 19);
-        expect(action.instancesToSpawn[0].status, 'pending');
+        expect(action.instancesToSpawn[0].status, TaskStatus.pending);
         expect(action.instancesToSpawn[1].scheduledDate.day, 20);
-        expect(action.instancesToSpawn[1].status, 'pending');
+        expect(action.instancesToSpawn[1].status, TaskStatus.pending);
       });
 
       test(
@@ -313,7 +313,7 @@ void main() {
           // Tomorrow's lookahead instance (June 20) should be spawned as pending
           expect(action.instancesToSpawn, hasLength(1));
           expect(action.instancesToSpawn[0].scheduledDate, today.addDays(1));
-          expect(action.instancesToSpawn[0].status, 'pending');
+          expect(action.instancesToSpawn[0].status, TaskStatus.pending);
         },
       );
 
@@ -484,7 +484,7 @@ void main() {
           // Tomorrow's instance (June 20, future) has not started yet, so it is pending (spawned)
           expect(action.instancesToSpawn, hasLength(1));
           expect(action.instancesToSpawn[0].scheduledDate.day, 20);
-          expect(action.instancesToSpawn[0].status, 'pending');
+          expect(action.instancesToSpawn[0].status, TaskStatus.pending);
         },
       );
 
@@ -545,7 +545,7 @@ void main() {
           );
 
           // Yesterday's instance should remain pending
-          expect(yesterdayInstance.status, 'pending');
+          expect(yesterdayInstance.status, TaskStatus.pending);
 
           // Both today's instance (June 19) and tomorrow's instance (June 20, lookahead) have not started,
           // so both should be spawned as pending!
@@ -620,14 +620,14 @@ void main() {
 
         // Yesterday's instance (expired yesterday at 2:00 PM) is skipped
         expect(action.instancesToUpdate, hasLength(1));
-        expect(action.instancesToUpdate.first.status, 'skipped');
+        expect(action.instancesToUpdate.first.status, TaskStatus.skipped);
 
         // June 19 (pending) and June 20 (pending N=1 future) should be spawned
         expect(action.instancesToSpawn, hasLength(2));
         expect(action.instancesToSpawn[0].scheduledDate, today);
-        expect(action.instancesToSpawn[0].status, 'pending');
+        expect(action.instancesToSpawn[0].status, TaskStatus.pending);
         expect(action.instancesToSpawn[1].scheduledDate, today.addDays(1));
-        expect(action.instancesToSpawn[1].status, 'pending');
+        expect(action.instancesToSpawn[1].status, TaskStatus.pending);
       });
     });
 
@@ -678,7 +678,7 @@ void main() {
           );
           expect(nextInst, isNotNull);
           expect(nextInst!.scheduledDate, today.addDays(3)); // June 22
-          expect(nextInst.status, 'pending');
+          expect(nextInst.status, TaskStatus.pending);
         },
       );
     });
@@ -1135,9 +1135,9 @@ void main() {
           (x) => x.scheduledDate == today.addDays(2),
         );
 
-        expect(instToday.status, 'skipped');
-        expect(instTomorrow.status, 'skipped');
-        expect(instDay2.status, 'pending');
+        expect(instToday.status, TaskStatus.skipped);
+        expect(instTomorrow.status, TaskStatus.skipped);
+        expect(instDay2.status, TaskStatus.pending);
       });
 
       test('competing capacity dependent tasks prioritized by priority', () {
@@ -1178,7 +1178,7 @@ void main() {
         );
 
         expect(actionHigh.instancesToSpawn, hasLength(1));
-        expect(actionHigh.instancesToSpawn.first.status, 'pending');
+        expect(actionHigh.instancesToSpawn.first.status, TaskStatus.pending);
 
         // Mark today as having 5 hours planned (from taskHigh)
         dayPlannedHours[today] = 5.0;
@@ -1195,7 +1195,7 @@ void main() {
         // Since today only has 3 hours remaining (8 - 5), and taskMed requires 5 hours,
         // it must be skipped.
         expect(actionMed.instancesToSpawn, hasLength(1));
-        expect(actionMed.instancesToSpawn.first.status, 'skipped');
+        expect(actionMed.instancesToSpawn.first.status, TaskStatus.skipped);
       });
 
       test(
@@ -1310,7 +1310,7 @@ void main() {
             userSettings: userSettings,
             dayPlannedHours: dayPlannedHours,
           );
-          expect(actionB.instancesToSpawn.first.status, 'pending');
+          expect(actionB.instancesToSpawn.first.status, TaskStatus.pending);
           dayPlannedHours[today] = 5.0;
 
           final actionA = SchedulerEngine.evaluate(
@@ -1320,7 +1320,7 @@ void main() {
             userSettings: userSettings,
             dayPlannedHours: dayPlannedHours,
           );
-          expect(actionA.instancesToSpawn.first.status, 'skipped');
+          expect(actionA.instancesToSpawn.first.status, TaskStatus.skipped);
         },
       );
 
@@ -1365,7 +1365,7 @@ void main() {
 
           expect(action.instancesToUpdate, hasLength(1));
           expect(action.instancesToUpdate.first.id, 'inst-skipped-today');
-          expect(action.instancesToUpdate.first.status, 'pending');
+          expect(action.instancesToUpdate.first.status, TaskStatus.pending);
         },
       );
 
@@ -1409,7 +1409,7 @@ void main() {
           );
 
           expect(action.instancesToUpdate, hasLength(1));
-          expect(action.instancesToUpdate.first.status, 'pending');
+          expect(action.instancesToUpdate.first.status, TaskStatus.pending);
         },
       );
 
@@ -1437,7 +1437,7 @@ void main() {
             applyCapacityLimits: false,
           );
           expect(actionSpawn.instancesToSpawn, hasLength(1));
-          expect(actionSpawn.instancesToSpawn.first.status, 'pending');
+          expect(actionSpawn.instancesToSpawn.first.status, TaskStatus.pending);
 
           // Similarly, if we have an existing skipped future task, it should not be touched (no revival or changes).
           final existingInst = TaskInstance(
