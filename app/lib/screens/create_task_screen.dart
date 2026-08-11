@@ -97,19 +97,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       }
     } else {
       _taskScheduleId = TaskSchedule.generateId();
-      final now = AppClock.now;
-      final tomorrow = now.add(const Duration(days: 1));
-      final civilTomorrow = CivilDay.fromDateTime(tomorrow);
-
-      final startMidnight = DateTime.utc(now.year, now.month, now.day);
-      final dueMidnight = DateTime.utc(
-        tomorrow.year,
-        tomorrow.month,
-        tomorrow.day,
-      );
-      final diff = startMidnight.difference(dueMidnight).inDays;
-
       if (widget.defaultToRepeating) {
+        final now = AppClock.now;
         _schedules = [
           DailySchedule(
             id: TaskScheduleRule.generateId(),
@@ -128,21 +117,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           ),
         ];
       } else {
-        _schedules = [
-          OneOffSchedule(
-            id: TaskScheduleRule.generateId(),
-            scheduleId: _taskScheduleId,
-            date: civilTomorrow,
-            startRelativeTime: RelativeTime(
-              dayOffset: diff,
-              time: TimeOfDay.fromDateTime(now),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
-            ),
-          ),
-        ];
+        _schedules = [_createDefaultOneOffSchedule()];
       }
       _expandedScheduleIndex = 0;
     }
@@ -184,6 +159,34 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   void _onEstimatedDurationChanged() {
     setState(() {});
+  }
+
+  OneOffSchedule _createDefaultOneOffSchedule() {
+    final now = AppClock.now;
+    final tomorrow = now.add(const Duration(days: 1));
+    final civilTomorrow = CivilDay.fromDateTime(tomorrow);
+
+    final startMidnight = DateTime.utc(now.year, now.month, now.day);
+    final dueMidnight = DateTime.utc(
+      tomorrow.year,
+      tomorrow.month,
+      tomorrow.day,
+    );
+    final diff = startMidnight.difference(dueMidnight).inDays;
+
+    return OneOffSchedule(
+      id: TaskScheduleRule.generateId(),
+      scheduleId: _taskScheduleId,
+      date: civilTomorrow,
+      startRelativeTime: RelativeTime(
+        dayOffset: diff,
+        time: TimeOfDay.fromDateTime(now),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+    );
   }
 
   Future<void> _saveTask() async {
@@ -681,39 +684,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     key: const Key('add_schedule_button'),
                     onPressed: () {
                       setState(() {
-                        final now = AppClock.now;
-                        final tomorrow = now.add(const Duration(days: 1));
-                        final civilTomorrow = CivilDay.fromDateTime(tomorrow);
-
-                        final startMidnight = DateTime.utc(
-                          now.year,
-                          now.month,
-                          now.day,
-                        );
-                        final dueMidnight = DateTime.utc(
-                          tomorrow.year,
-                          tomorrow.month,
-                          tomorrow.day,
-                        );
-                        final diff = startMidnight
-                            .difference(dueMidnight)
-                            .inDays;
-
-                        _schedules.add(
-                          OneOffSchedule(
-                            id: TaskScheduleRule.generateId(),
-                            scheduleId: _taskScheduleId,
-                            date: civilTomorrow,
-                            startRelativeTime: RelativeTime(
-                              dayOffset: diff,
-                              time: TimeOfDay.fromDateTime(now),
-                            ),
-                            dueRelativeTime: const RelativeTime(
-                              dayOffset: 0,
-                              time: TimeOfDay(hour: 17, minute: 0),
-                            ),
-                          ),
-                        );
+                        _schedules.add(_createDefaultOneOffSchedule());
                         _expandedScheduleIndex = _schedules.length - 1;
                       });
                     },
