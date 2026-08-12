@@ -40,9 +40,9 @@ class FamilyRepository {
         .doc(familyId)
         .snapshots()
         .map((snapshot) {
-      if (!snapshot.exists || snapshot.data() == null) return null;
-      return Family.fromJson(snapshot.data()!, snapshot.id);
-    });
+          if (!snapshot.exists || snapshot.data() == null) return null;
+          return Family.fromJson(snapshot.data()!, snapshot.id);
+        });
   }
 
   Stream<List<FamilyInvite>> getPendingInvites() {
