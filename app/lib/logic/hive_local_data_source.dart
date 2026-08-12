@@ -406,9 +406,69 @@ class HiveLocalDataSource {
     );
   }
 
+  Map<String, dynamic> exportRawState() {
+    final tasksList = <Map<String, dynamic>>[];
+    if (_tasksBox != null && _tasksBox!.isOpen) {
+      for (final map in _tasksBox!.values) {
+        try {
+          tasksList.add(Map<String, dynamic>.from(map));
+        } catch (_) {}
+      }
+    } else {
+      for (final task in _memTasks.values) {
+        final data = task.toFirestore();
+        data['id'] = task.id;
+        tasksList.add(data);
+      }
+    }
+
+    final instancesList = <Map<String, dynamic>>[];
+    if (_instancesBox != null && _instancesBox!.isOpen) {
+      for (final map in _instancesBox!.values) {
+        try {
+          instancesList.add(Map<String, dynamic>.from(map));
+        } catch (_) {}
+      }
+    } else {
+      for (final instance in _memInstances.values) {
+        final data = instance.toFirestore();
+        data['id'] = instance.id;
+        instancesList.add(data);
+      }
+    }
+
+    Map<String, dynamic> settingsMap = {};
+    if (_settingsBox != null && _settingsBox!.isOpen) {
+      try {
+        final raw = _settingsBox!.get('agile');
+        if (raw != null) {
+          settingsMap = Map<String, dynamic>.from(raw);
+        } else {
+          settingsMap = _memSettings.toJson();
+        }
+      } catch (_) {
+        settingsMap = _memSettings.toJson();
+      }
+    } else {
+      settingsMap = _memSettings.toJson();
+    }
+
+    return {
+      'inMemoryFallback': isFallbackInMemoryMode,
+      'tasks': tasksList,
+      'instances': instancesList,
+      'syncMeta': {
+        'dirty_tasks': getDirtyTaskIds(),
+        'migration_completed': isMigrationCompleted(),
+      },
+      'settings': settingsMap,
+    };
+  }
+
   Future<void> dispose() async {
     await _tasksSubject.close();
     await _instancesSubject.close();
     await _settingsSubject.close();
   }
 }
+

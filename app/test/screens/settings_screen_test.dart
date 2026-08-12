@@ -173,4 +173,17 @@ void main() {
       ).called(1);
     },
   );
+
+  testWidgets('SettingsScreen renders export debug state button',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    final exportButtonFinder =
+        find.byKey(const Key('export_debug_state_button'));
+    expect(exportButtonFinder, findsOneWidget);
+    expect(find.text('Debug & Diagnostics'), findsOneWidget);
+    expect(find.text('Export Debug State (LLM JSON)'), findsOneWidget);
+  });
 }
+
