@@ -11,6 +11,7 @@ enum TaskStatus {
       case 'completed':
         return TaskStatus.completed;
       case 'skipped':
+      case 'dismissed':
         return TaskStatus.skipped;
       case 'failed':
         return TaskStatus.failed;
