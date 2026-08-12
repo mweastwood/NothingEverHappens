@@ -1,14 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:rxdart/rxdart.dart';
-import 'package:nothing_ever_happens/logic/task_schedule.dart';
-import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:nothing_ever_happens/logic/task_instance.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:rxdart/rxdart.dart';
 
 final hiveLocalDataSourceProvider = Provider<HiveLocalDataSource>((ref) {
   final ds = HiveLocalDataSource();
@@ -48,7 +47,8 @@ class HiveLocalDataSource {
     } catch (e, st) {
       // ignore: avoid_print
       print(
-        '⚠️ [HIVE_UPGRADE_RECOVERY] Box "$boxName" opening failed on app upgrade: $e\n$st. Re-creating clean box.',
+        '⚠️ [HIVE_UPGRADE_RECOVERY] Box "$boxName" opening failed on app '
+        'upgrade: $e\n$st. Re-creating clean box.',
       );
       try {
         await Hive.deleteBoxFromDisk(boxName);
@@ -56,7 +56,8 @@ class HiveLocalDataSource {
       } catch (err, stack) {
         // ignore: avoid_print
         print(
-          '⚠️ [HIVE_UPGRADE_RECOVERY_FAILED] Failed to recreate box "$boxName": $err\n$stack',
+          '⚠️ [HIVE_UPGRADE_RECOVERY_FAILED] Failed to recreate box '
+          '"$boxName": $err\n$stack',
         );
         return null;
       }
@@ -115,7 +116,8 @@ class HiveLocalDataSource {
       } catch (e, st) {
         // ignore: avoid_print
         print(
-          '⚠️ [HIVE_SETTINGS_PARSE_ERROR] Failed to parse settings from Hive: $e\n$st',
+          '⚠️ [HIVE_SETTINGS_PARSE_ERROR] Failed to parse settings from '
+          'Hive: $e\n$st',
         );
       }
     }
@@ -140,7 +142,8 @@ class HiveLocalDataSource {
         } catch (e, st) {
           // ignore: avoid_print
           print(
-            '⚠️ [HIVE_TASK_PARSE_ERROR] Failed to parse task schedule from Hive: $e\n$st',
+            '⚠️ [HIVE_TASK_PARSE_ERROR] Failed to parse task schedule from '
+            'Hive: $e\n$st',
           );
         }
       }
@@ -159,7 +162,8 @@ class HiveLocalDataSource {
         } catch (e, st) {
           // ignore: avoid_print
           print(
-            '⚠️ [HIVE_INSTANCE_PARSE_ERROR] Failed to parse task instance from Hive: $e\n$st',
+            '⚠️ [HIVE_INSTANCE_PARSE_ERROR] Failed to parse task instance from '
+            'Hive: $e\n$st',
           );
         }
       }
@@ -329,12 +333,19 @@ class HiveLocalDataSource {
 
     final startRelativeTimeRaw = data['startRelativeTime'] as Map?;
     final startRelativeTime = startRelativeTimeRaw != null
-        ? RelativeTime.fromJson(Map<String, dynamic>.from(startRelativeTimeRaw))
-        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
+        ? RelativeTime.fromJson(
+            Map<String, dynamic>.from(startRelativeTimeRaw),
+          )
+        : const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          );
 
     final dueRelativeTimeRaw = data['dueRelativeTime'] as Map?;
     final dueRelativeTime = dueRelativeTimeRaw != null
-        ? RelativeTime.fromJson(Map<String, dynamic>.from(dueRelativeTimeRaw))
+        ? RelativeTime.fromJson(
+            Map<String, dynamic>.from(dueRelativeTimeRaw),
+          )
         : const RelativeTime(
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
@@ -344,7 +355,11 @@ class HiveLocalDataSource {
     if (data['notificationRelativeTimes'] != null) {
       final list = data['notificationRelativeTimes'] as List;
       notificationRelativeTimes = list
-          .map((item) => RelativeTime.fromJson(Map<String, dynamic>.from(item)))
+          .map(
+            (item) => RelativeTime.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
           .toList();
     } else if (data['notificationRelativeTime'] != null) {
       final notifRaw = data['notificationRelativeTime'] as Map;
@@ -471,4 +486,3 @@ class HiveLocalDataSource {
     await _settingsSubject.close();
   }
 }
-

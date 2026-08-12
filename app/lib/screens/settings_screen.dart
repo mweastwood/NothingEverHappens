@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../logic/user_settings.dart';
-import '../logic/user_settings_repository.dart';
+
+import '../logic/app_state_exporter.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
-import '../logic/app_state_exporter.dart';
-
+import '../logic/user_settings.dart';
+import '../logic/user_settings_repository.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -192,7 +192,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Export the complete local and remote app state as structured JSON for debugging with LLMs or support.',
+                          'Export the complete local and remote app state as '
+                          'structured JSON for debugging with LLMs or support.',
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                         const SizedBox(height: 12),

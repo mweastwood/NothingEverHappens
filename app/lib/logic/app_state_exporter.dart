@@ -38,7 +38,7 @@ class AppStateExporter {
     FirebaseAuth? firebaseAuth,
     AuthRepository? authRepository,
     required HiveLocalDataSource hiveDataSource,
-  })  : _firestore = firestore,
+  }) : _firestore = firestore,
         _firebaseAuth = firebaseAuth,
         _authRepository = authRepository,
         _hiveDataSource = hiveDataSource;
@@ -236,6 +236,7 @@ class AppStateExporter {
   }
 
   Future<void> shareDebugState(BuildContext context) async {
+    bool progressDialogShowing = true;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -249,8 +250,9 @@ class AppStateExporter {
     try {
       final jsonString = await exportStateJson(pretty: true);
 
-      if (context.mounted) {
+      if (context.mounted && progressDialogShowing) {
         Navigator.of(context, rootNavigator: true).pop();
+        progressDialogShowing = false;
       }
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -264,8 +266,11 @@ class AppStateExporter {
           final file = File('${tempDir.path}/$fileName');
           await file.writeAsString(jsonString);
 
-          final xFile =
-              XFile(file.path, mimeType: 'application/json', name: fileName);
+          final xFile = XFile(
+            file.path,
+            mimeType: 'application/json',
+            name: fileName,
+          );
           await Share.shareXFiles(
             [xFile],
             subject: 'App State Debug Export',
@@ -289,7 +294,10 @@ class AppStateExporter {
       }
     } catch (e, stackTrace) {
       if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
+        if (progressDialogShowing) {
+          Navigator.of(context, rootNavigator: true).pop();
+          progressDialogShowing = false;
+        }
         final errorHandler = ErrorHandler();
         final report = errorHandler.report(e, stackTrace: stackTrace);
         errorHandler.showErrorDialog(context, report);

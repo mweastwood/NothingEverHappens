@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rxdart/rxdart.dart';
-import '../test_helper.dart';
-
+import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
-import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/screens/settings_screen.dart';
+import 'package:rxdart/rxdart.dart';
+
+import '../test_helper.dart';
 
 @GenerateNiceMocks([MockSpec<UserSettingsRepository>()])
 import 'settings_screen_test.mocks.dart';
@@ -186,4 +186,3 @@ void main() {
     expect(find.text('Export Debug State (LLM JSON)'), findsOneWidget);
   });
 }
-
