@@ -255,7 +255,9 @@ class AppStateExporter {
       value.forEach((k, v) {
         final keyStr = k.toString();
         final lowerKey = keyStr.toLowerCase();
-        if ((lowerKey == 'email' || lowerKey.endsWith('email')) && v is String) {
+        final isEmailKey =
+            lowerKey == 'email' || lowerKey.endsWith('email');
+        if (isEmailKey && v is String) {
           result[keyStr] = maskEmail(v);
         } else {
           result[keyStr] = sanitizeForJson(v);

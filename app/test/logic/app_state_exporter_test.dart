@@ -23,7 +23,10 @@ void main() {
       expect(AppStateExporter.maskEmail(null), null);
       expect(AppStateExporter.maskEmail(''), '');
       expect(AppStateExporter.maskEmail('   '), '');
-      expect(AppStateExporter.maskEmail('john.doe@example.com'), 'j***@example.com');
+      expect(
+        AppStateExporter.maskEmail('john.doe@example.com'),
+        'j***@example.com',
+      );
       expect(AppStateExporter.maskEmail('a@b.com'), 'a***@b.com');
       expect(AppStateExporter.maskEmail('invalid-email'), '***');
     });
@@ -78,7 +81,8 @@ void main() {
     });
 
     test(
-      'exportStateRaw assembles Hive and FakeFirestore state correctly including family collections',
+      'exportStateRaw assembles Hive and FakeFirestore state correctly '
+      'including family collections',
       () async {
         final fakeFirestore = FakeFirebaseFirestore();
 
