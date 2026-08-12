@@ -39,9 +39,9 @@ class AppStateExporter {
     AuthRepository? authRepository,
     required HiveLocalDataSource hiveDataSource,
   }) : _firestore = firestore,
-        _firebaseAuth = firebaseAuth,
-        _authRepository = authRepository,
-        _hiveDataSource = hiveDataSource;
+       _firebaseAuth = firebaseAuth,
+       _authRepository = authRepository,
+       _hiveDataSource = hiveDataSource;
 
   Future<Map<String, dynamic>> exportStateRaw() async {
     bool isOffline = false;
@@ -64,8 +64,9 @@ class AppStateExporter {
         'isAnonymous': user.isAnonymous,
         'emailVerified': user.emailVerified,
         'creationTime': user.metadata.creationTime?.toUtc().toIso8601String(),
-        'lastSignInTime':
-            user.metadata.lastSignInTime?.toUtc().toIso8601String(),
+        'lastSignInTime': user.metadata.lastSignInTime
+            ?.toUtc()
+            .toIso8601String(),
       };
     }
 
@@ -90,8 +91,9 @@ class AppStateExporter {
     } else {
       try {
         final userDocRef = _firestore!.collection('users').doc(uid);
-        final userDocSnap =
-            await userDocRef.get().timeout(const Duration(seconds: 5));
+        final userDocSnap = await userDocRef.get().timeout(
+          const Duration(seconds: 5),
+        );
         final userProfileData = userDocSnap.data();
         if (userDocSnap.exists && userProfileData != null) {
           remoteFirebaseState['userProfileDoc'] = userProfileData;
@@ -241,9 +243,7 @@ class AppStateExporter {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
+        return const Center(child: CircularProgressIndicator());
       },
     );
 

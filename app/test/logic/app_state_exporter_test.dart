@@ -48,10 +48,11 @@ void main() {
       expect(sanitized['dateTime'], '2026-08-12T05:00:00.000Z');
       expect(sanitized['timestamp'], '2026-08-12T05:00:00.000Z');
       expect(sanitized['civilDay'], {'year': 2026, 'month': 8, 'day': 12});
-      expect(
-        sanitized['relativeTime'],
-        {'dayOffset': 1, 'hour': 14, 'minute': 30},
-      );
+      expect(sanitized['relativeTime'], {
+        'dayOffset': 1,
+        'hour': 14,
+        'minute': 30,
+      });
       expect(sanitized['duration'], 2700000);
       expect(sanitized['priority'], 'high');
 
@@ -162,23 +163,20 @@ void main() {
       },
     );
 
-    test(
-      'exportStateJson produces pretty and compact JSON strings',
-      () async {
-        final exporter = AppStateExporter(
-          firestore: null,
-          hiveDataSource: localDataSource,
-        );
+    test('exportStateJson produces pretty and compact JSON strings', () async {
+      final exporter = AppStateExporter(
+        firestore: null,
+        hiveDataSource: localDataSource,
+      );
 
-        final prettyJson = await exporter.exportStateJson(pretty: true);
-        final compactJson = await exporter.exportStateJson(pretty: false);
+      final prettyJson = await exporter.exportStateJson(pretty: true);
+      final compactJson = await exporter.exportStateJson(pretty: false);
 
-        expect(prettyJson, contains('\n'));
-        expect(compactJson, isNot(contains('\n')));
+      expect(prettyJson, contains('\n'));
+      expect(compactJson, isNot(contains('\n')));
 
-        final decoded = jsonDecode(prettyJson);
-        expect(decoded['exportMetadata'], isNotNull);
-      },
-    );
+      final decoded = jsonDecode(prettyJson);
+      expect(decoded['exportMetadata'], isNotNull);
+    });
   });
 }
