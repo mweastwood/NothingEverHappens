@@ -252,7 +252,10 @@ class AppStateExporter {
 
       if (!context.mounted) return;
       if (progressDialogShowing) {
-        Navigator.of(context, rootNavigator: true).pop();
+        final navigator = Navigator.of(context, rootNavigator: true);
+        if (navigator.canPop()) {
+          navigator.pop();
+        }
         progressDialogShowing = false;
       }
 
@@ -295,7 +298,10 @@ class AppStateExporter {
     } catch (e, stackTrace) {
       if (!context.mounted) return;
       if (progressDialogShowing) {
-        Navigator.of(context, rootNavigator: true).pop();
+        final navigator = Navigator.of(context, rootNavigator: true);
+        if (navigator.canPop()) {
+          navigator.pop();
+        }
         progressDialogShowing = false;
       }
       final errorHandler = ErrorHandler();

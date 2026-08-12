@@ -138,7 +138,7 @@ void main() {
         final localState = raw['localHiveState'];
         expect(localState['inMemoryFallback'], isTrue);
         expect(localState['tasks'], hasLength(1));
-        expect(localState['tasks'][0]['id'], 'task-1');
+        expect(localState['tasks'][0]['id'], 'S-task-1');
         expect(localState['instances'], hasLength(1));
         expect(localState['instances'][0]['id'], 'inst-1');
         expect(localState['syncMeta']['dirty_tasks'], contains('task-1'));
