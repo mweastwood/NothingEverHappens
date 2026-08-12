@@ -81,8 +81,7 @@ void main() {
     });
 
     test(
-      'exportStateRaw assembles Hive and FakeFirestore state correctly '
-      'including family collections',
+      'exportStateRaw assembles Hive and FakeFirestore state correctly',
       () async {
         final fakeFirestore = FakeFirebaseFirestore();
 
