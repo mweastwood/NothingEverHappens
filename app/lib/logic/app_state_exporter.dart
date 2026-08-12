@@ -43,6 +43,18 @@ class AppStateExporter {
        _authRepository = authRepository,
        _hiveDataSource = hiveDataSource;
 
+  static String? maskEmail(String? email) {
+    if (email == null) return null;
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) return trimmed;
+    final parts = trimmed.split('@');
+    if (parts.length != 2) return '***';
+    final local = parts[0];
+    final domain = parts[1];
+    if (local.isEmpty) return '***@$domain';
+    return '${local[0]}***@$domain';
+  }
+
   Future<Map<String, dynamic>> exportStateRaw() async {
     bool isOffline = false;
     final User? user =
@@ -60,7 +72,7 @@ class AppStateExporter {
     if (user != null) {
       authState = {
         'uid': user.uid,
-        'email': user.email,
+        'email': maskEmail(user.email),
         'isAnonymous': user.isAnonymous,
         'emailVerified': user.emailVerified,
         'creationTime': user.metadata.creationTime?.toUtc().toIso8601String(),
@@ -80,6 +92,8 @@ class AppStateExporter {
       'tasks': <dynamic>[],
       'instances': <dynamic>[],
       'familyDoc': null,
+      'familyTasks': <dynamic>[],
+      'familyInstances': <dynamic>[],
       'invites': <dynamic>[],
     };
 
@@ -126,9 +140,8 @@ class AppStateExporter {
 
         final String? familyId = userProfileData?['familyId'] as String?;
         if (familyId != null && familyId.isNotEmpty) {
-          final familySnap = await _firestore
-              .collection('families')
-              .doc(familyId)
+          final familyRef = _firestore.collection('families').doc(familyId);
+          final familySnap = await familyRef
               .get()
               .timeout(const Duration(seconds: 5));
           if (familySnap.exists && familySnap.data() != null) {
@@ -137,6 +150,22 @@ class AppStateExporter {
               ...familySnap.data()!,
             };
           }
+
+          final familyTasksQuery = await familyRef
+              .collection('tasks')
+              .get()
+              .timeout(const Duration(seconds: 5));
+          remoteFirebaseState['familyTasks'] = familyTasksQuery.docs
+              .map((doc) => {'id': doc.id, ...doc.data()})
+              .toList();
+
+          final familyInstancesQuery = await familyRef
+              .collection('instances')
+              .get()
+              .timeout(const Duration(seconds: 5));
+          remoteFirebaseState['familyInstances'] = familyInstancesQuery.docs
+              .map((doc) => {'id': doc.id, ...doc.data()})
+              .toList();
         }
 
         final String? email = user?.email;
@@ -179,7 +208,11 @@ class AppStateExporter {
 
   dynamic sanitizeForJson(dynamic value) {
     if (value == null) return null;
-    if (value is num || value is bool || value is String) return value;
+    if (value is num || value is bool) return value;
+
+    if (value is String) {
+      return value;
+    }
 
     if (value is DateTime) {
       return value.toUtc().toIso8601String();
@@ -220,7 +253,13 @@ class AppStateExporter {
     if (value is Map) {
       final Map<String, dynamic> result = {};
       value.forEach((k, v) {
-        result[k.toString()] = sanitizeForJson(v);
+        final keyStr = k.toString();
+        final lowerKey = keyStr.toLowerCase();
+        if ((lowerKey == 'email' || lowerKey.endsWith('email')) && v is String) {
+          result[keyStr] = maskEmail(v);
+        } else {
+          result[keyStr] = sanitizeForJson(v);
+        }
       });
       return result;
     }
@@ -239,25 +278,35 @@ class AppStateExporter {
 
   Future<void> shareDebugState(BuildContext context) async {
     bool progressDialogShowing = true;
+    BuildContext? dialogContext;
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
+      builder: (BuildContext ctx) {
+        dialogContext = ctx;
         return const Center(child: CircularProgressIndicator());
       },
     );
 
+    void dismissProgressDialog() {
+      if (progressDialogShowing) {
+        progressDialogShowing = false;
+        if (dialogContext != null && dialogContext!.mounted) {
+          Navigator.of(dialogContext!).pop();
+        } else if (rootNavigator.canPop()) {
+          rootNavigator.pop();
+        }
+      }
+    }
+
     try {
       final jsonString = await exportStateJson(pretty: true);
 
+      dismissProgressDialog();
+
       if (!context.mounted) return;
-      if (progressDialogShowing) {
-        final navigator = Navigator.of(context, rootNavigator: true);
-        if (navigator.canPop()) {
-          navigator.pop();
-        }
-        progressDialogShowing = false;
-      }
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'debug_app_state_$timestamp.json';
@@ -296,14 +345,9 @@ class AppStateExporter {
         );
       }
     } catch (e, stackTrace) {
+      dismissProgressDialog();
+
       if (!context.mounted) return;
-      if (progressDialogShowing) {
-        final navigator = Navigator.of(context, rootNavigator: true);
-        if (navigator.canPop()) {
-          navigator.pop();
-        }
-        progressDialogShowing = false;
-      }
       final errorHandler = ErrorHandler();
       final report = errorHandler.report(e, stackTrace: stackTrace);
       errorHandler.showErrorDialog(context, report);

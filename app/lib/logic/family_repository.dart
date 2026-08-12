@@ -35,12 +35,14 @@ class FamilyRepository {
 
   Stream<Family?> getFamily(String familyId) {
     if (familyId.isEmpty) return Stream.value(null);
-    return _firestore.collection('families').doc(familyId).snapshots().map((
-      snapshot,
-    ) {
-      if (!snapshot.exists || snapshot.data() == null) return null;
-      return Family.fromJson(snapshot.data()!, snapshot.id);
-    });
+    return _firestore
+        .collection('families')
+        .doc(familyId)
+        .snapshots()
+        .map((snapshot) {
+          if (!snapshot.exists || snapshot.data() == null) return null;
+          return Family.fromJson(snapshot.data()!, snapshot.id);
+        });
   }
 
   Stream<List<FamilyInvite>> getPendingInvites() {

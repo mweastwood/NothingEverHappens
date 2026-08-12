@@ -19,7 +19,16 @@ void main() {
       localDataSource.isFallbackInMemoryMode = true;
     });
 
-    test('sanitizeForJson converts complex types correctly', () {
+    test('maskEmail handles various email inputs correctly', () {
+      expect(AppStateExporter.maskEmail(null), null);
+      expect(AppStateExporter.maskEmail(''), '');
+      expect(AppStateExporter.maskEmail('   '), '');
+      expect(AppStateExporter.maskEmail('john.doe@example.com'), 'j***@example.com');
+      expect(AppStateExporter.maskEmail('a@b.com'), 'a***@b.com');
+      expect(AppStateExporter.maskEmail('invalid-email'), '***');
+    });
+
+    test('sanitizeForJson converts complex types and masks email fields', () {
       final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
       final now = DateTime.utc(2026, 8, 12, 5, 0, 0);
@@ -38,8 +47,12 @@ void main() {
         'relativeTime': relativeTime,
         'duration': duration,
         'priority': TaskPriority.high,
+        'email': 'user@example.com',
+        'toEmail': 'invitee@example.com',
+        'fromEmail': 'inviter@example.com',
         'nestedMap': {
           'list': [now, timestamp, civilDay],
+          'userEmail': 'nested@example.com',
         },
       };
 
@@ -55,13 +68,17 @@ void main() {
       });
       expect(sanitized['duration'], 2700000);
       expect(sanitized['priority'], 'high');
+      expect(sanitized['email'], 'u***@example.com');
+      expect(sanitized['toEmail'], 'i***@example.com');
+      expect(sanitized['fromEmail'], 'i***@example.com');
+      expect(sanitized['nestedMap']['userEmail'], 'n***@example.com');
 
       final jsonString = jsonEncode(sanitized);
       expect(jsonString, isNotEmpty);
     });
 
     test(
-      'exportStateRaw assembles Hive and FakeFirestore state correctly',
+      'exportStateRaw assembles Hive and FakeFirestore state correctly including family collections',
       () async {
         final fakeFirestore = FakeFirebaseFirestore();
 
@@ -124,6 +141,18 @@ void main() {
         await fakeFirestore.collection('families').doc('fam-1').set({
           'name': 'Test Family',
         });
+        await fakeFirestore
+            .collection('families')
+            .doc('fam-1')
+            .collection('tasks')
+            .doc('ftask-1')
+            .set({'title': 'Family Task'});
+        await fakeFirestore
+            .collection('families')
+            .doc('fam-1')
+            .collection('instances')
+            .doc('finst-1')
+            .set({'title': 'Family Instance'});
 
         final exporter = AppStateExporter(
           firestore: fakeFirestore,
@@ -143,6 +172,13 @@ void main() {
         expect(localState['instances'][0]['id'], 'inst-1');
         expect(localState['syncMeta']['dirty_tasks'], contains('task-1'));
         expect(localState['syncMeta']['migration_completed'], isTrue);
+
+        final remoteState = raw['remoteFirebaseState'];
+        expect(remoteState['userProfileDoc']['email'], 't***@example.com');
+        expect(remoteState['familyTasks'], hasLength(1));
+        expect(remoteState['familyTasks'][0]['id'], 'ftask-1');
+        expect(remoteState['familyInstances'], hasLength(1));
+        expect(remoteState['familyInstances'][0]['id'], 'finst-1');
       },
     );
 
