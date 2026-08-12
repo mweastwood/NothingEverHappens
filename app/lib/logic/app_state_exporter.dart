@@ -280,33 +280,25 @@ class AppStateExporter {
 
   Future<void> shareDebugState(BuildContext context) async {
     bool progressDialogShowing = true;
-    BuildContext? dialogContext;
     final rootNavigator = Navigator.of(context, rootNavigator: true);
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext ctx) {
-        dialogContext = ctx;
+      builder: (BuildContext dialogContext) {
         return const Center(child: CircularProgressIndicator());
       },
     );
 
-    void dismissProgressDialog() {
-      if (progressDialogShowing) {
-        progressDialogShowing = false;
-        if (dialogContext != null && dialogContext!.mounted) {
-          Navigator.of(dialogContext!).pop();
-        } else if (rootNavigator.canPop()) {
-          rootNavigator.pop();
-        }
-      }
-    }
-
     try {
       final jsonString = await exportStateJson(pretty: true);
 
-      dismissProgressDialog();
+      if (progressDialogShowing) {
+        if (rootNavigator.canPop()) {
+          rootNavigator.pop();
+        }
+        progressDialogShowing = false;
+      }
 
       if (!context.mounted) return;
 
@@ -347,7 +339,12 @@ class AppStateExporter {
         );
       }
     } catch (e, stackTrace) {
-      dismissProgressDialog();
+      if (progressDialogShowing) {
+        if (rootNavigator.canPop()) {
+          rootNavigator.pop();
+        }
+        progressDialogShowing = false;
+      }
 
       if (!context.mounted) return;
       final errorHandler = ErrorHandler();
