@@ -1556,7 +1556,7 @@ void main() {
             scheduledDate: monday,
             startRelativeTime: task.schedules[0].startRelativeTime,
             dueRelativeTime: task.schedules[0].dueRelativeTime,
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
@@ -1567,11 +1567,11 @@ void main() {
 
           expect(action.instancesToUpdate, hasLength(1));
           expect(action.instancesToUpdate.first.id, 'monday');
-          expect(action.instancesToUpdate.first.status, 'skipped');
+          expect(action.instancesToUpdate.first.status, TaskStatus.skipped);
 
           expect(action.instancesToSpawn, isNotEmpty);
           expect(action.instancesToSpawn.first.scheduledDate.day, 26);
-          expect(action.instancesToSpawn.first.status, 'pending');
+          expect(action.instancesToSpawn.first.status, TaskStatus.pending);
         },
       );
 
@@ -1628,7 +1628,7 @@ void main() {
             scheduledDate: monday,
             startRelativeTime: mixedTask.schedules[0].startRelativeTime,
             dueRelativeTime: mixedTask.schedules[0].dueRelativeTime,
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           final mondayDailyInst = TaskInstance(
@@ -1640,7 +1640,7 @@ void main() {
             scheduledDate: monday,
             startRelativeTime: mixedTask.schedules[1].startRelativeTime,
             dueRelativeTime: mixedTask.schedules[1].dueRelativeTime,
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
@@ -1658,8 +1658,8 @@ void main() {
             (i) => i.ruleId == mixedTask.schedules[1].id,
           );
 
-          expect(updatedOneOff.status, 'skipped');
-          expect(updatedDaily.status, 'skipped');
+          expect(updatedOneOff.status, TaskStatus.skipped);
+          expect(updatedDaily.status, TaskStatus.skipped);
 
           expect(action.instancesToSpawn, isNotEmpty);
           expect(
@@ -1667,7 +1667,7 @@ void main() {
             mixedTask.schedules[1].id,
           );
           expect(action.instancesToSpawn.first.scheduledDate.day, 26);
-          expect(action.instancesToSpawn.first.status, 'pending');
+          expect(action.instancesToSpawn.first.status, TaskStatus.pending);
         },
       );
 
@@ -1723,7 +1723,7 @@ void main() {
             scheduledDate: const CivilDay(year: 2026, month: 6, day: 18),
             startRelativeTime: task.schedules[0].startRelativeTime,
             dueRelativeTime: task.schedules[0].dueRelativeTime,
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           final sched1Inst = TaskInstance(
@@ -1735,7 +1735,7 @@ void main() {
             scheduledDate: const CivilDay(year: 2026, month: 6, day: 18),
             startRelativeTime: task.schedules[1].startRelativeTime,
             dueRelativeTime: task.schedules[1].dueRelativeTime,
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           // Move to Thursday June 18th 10:00 PM (past sched0 due, before sched1 due)
@@ -1748,14 +1748,14 @@ void main() {
 
           expect(action.instancesToUpdate, hasLength(1));
           expect(action.instancesToUpdate.first.ruleId, task.schedules[0].id);
-          expect(action.instancesToUpdate.first.status, 'skipped');
+          expect(action.instancesToUpdate.first.status, TaskStatus.skipped);
 
           // Move to Friday June 19th 12:05 AM (past midnight, but BEFORE due time 2:00 AM)
           final fri1205am = DateTime(2026, 6, 19, 0, 5);
           // Sched1 inst should still be pending, and Friday's instance should spawn.
 
           action = SchedulerEngine.evaluate(task, [
-            sched0Inst.copyWith(status: 'skipped'),
+            sched0Inst.copyWith(status: TaskStatus.skipped),
             sched1Inst,
           ], fri1205am);
 
@@ -1772,13 +1772,13 @@ void main() {
           final fri205am = DateTime(2026, 6, 19, 2, 5);
 
           action = SchedulerEngine.evaluate(task, [
-            sched0Inst.copyWith(status: 'skipped'),
+            sched0Inst.copyWith(status: TaskStatus.skipped),
             sched1Inst,
           ], fri205am);
 
           expect(action.instancesToUpdate, hasLength(1));
           expect(action.instancesToUpdate.first.ruleId, task.schedules[1].id);
-          expect(action.instancesToUpdate.first.status, 'skipped');
+          expect(action.instancesToUpdate.first.status, TaskStatus.skipped);
         },
       );
 
@@ -1819,7 +1819,7 @@ void main() {
             scheduledDate: monday,
             startRelativeTime: task.schedules[0].startRelativeTime,
             dueRelativeTime: task.schedules[0].dueRelativeTime,
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           // Move time to 6:00 PM (past due time of 5:00 PM, but within 3-hour grace period)
@@ -1835,7 +1835,7 @@ void main() {
 
           action = SchedulerEngine.evaluate(task, [mondayInst], pastGrace);
           expect(action.instancesToUpdate, hasLength(1));
-          expect(action.instancesToUpdate.first.status, 'skipped');
+          expect(action.instancesToUpdate.first.status, TaskStatus.skipped);
         },
       );
 

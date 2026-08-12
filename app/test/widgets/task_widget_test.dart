@@ -90,7 +90,7 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        status: 'completed',
+        status: TaskStatus.completed,
       );
     });
     when(mockTaskRepository.dismissTaskInstance(any)).thenAnswer((
@@ -112,7 +112,7 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        status: 'dismissed',
+        status: TaskStatus.skipped,
       );
     });
     when(
