@@ -78,6 +78,7 @@ void main() {
           scheduleId: 'task-1',
           ruleId: 'rule-1',
           title: 'Test Instance',
+          description: 'Test Instance description',
           scheduledDate: const CivilDay(year: 2026, month: 8, day: 12),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,

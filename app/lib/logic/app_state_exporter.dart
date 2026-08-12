@@ -90,7 +90,7 @@ class AppStateExporter {
           : 'Firestore instance not available';
     } else {
       try {
-        final userDocRef = _firestore!.collection('users').doc(uid);
+        final userDocRef = _firestore.collection('users').doc(uid);
         final userDocSnap = await userDocRef.get().timeout(
           const Duration(seconds: 5),
         );
@@ -126,7 +126,7 @@ class AppStateExporter {
 
         final String? familyId = userProfileData?['familyId'] as String?;
         if (familyId != null && familyId.isNotEmpty) {
-          final familySnap = await _firestore!
+          final familySnap = await _firestore
               .collection('families')
               .doc(familyId)
               .get()
@@ -141,7 +141,7 @@ class AppStateExporter {
 
         final String? email = user?.email;
         if (email != null && email.isNotEmpty) {
-          final invitesQuery = await _firestore!
+          final invitesQuery = await _firestore
               .collection('invites')
               .where('toEmail', isEqualTo: email.trim().toLowerCase())
               .get()
@@ -250,7 +250,8 @@ class AppStateExporter {
     try {
       final jsonString = await exportStateJson(pretty: true);
 
-      if (context.mounted && progressDialogShowing) {
+      if (!context.mounted) return;
+      if (progressDialogShowing) {
         Navigator.of(context, rootNavigator: true).pop();
         progressDialogShowing = false;
       }
@@ -284,24 +285,22 @@ class AppStateExporter {
 
       if (!shared) {
         await Clipboard.setData(ClipboardData(text: jsonString));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Debug state JSON copied to clipboard.'),
-            ),
-          );
-        }
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Debug state JSON copied to clipboard.'),
+          ),
+        );
       }
     } catch (e, stackTrace) {
-      if (context.mounted) {
-        if (progressDialogShowing) {
-          Navigator.of(context, rootNavigator: true).pop();
-          progressDialogShowing = false;
-        }
-        final errorHandler = ErrorHandler();
-        final report = errorHandler.report(e, stackTrace: stackTrace);
-        errorHandler.showErrorDialog(context, report);
+      if (!context.mounted) return;
+      if (progressDialogShowing) {
+        Navigator.of(context, rootNavigator: true).pop();
+        progressDialogShowing = false;
       }
+      final errorHandler = ErrorHandler();
+      final report = errorHandler.report(e, stackTrace: stackTrace);
+      errorHandler.showErrorDialog(context, report);
     }
   }
 }

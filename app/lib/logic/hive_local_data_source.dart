@@ -416,7 +416,9 @@ class HiveLocalDataSource {
       for (final map in _tasksBox!.values) {
         try {
           tasksList.add(Map<String, dynamic>.from(map));
-        } catch (_) {}
+        } catch (e, stackTrace) {
+          debugPrint('Error exporting raw task map: $e\n$stackTrace');
+        }
       }
     } else {
       for (final task in _memTasks.values) {
@@ -431,7 +433,9 @@ class HiveLocalDataSource {
       for (final map in _instancesBox!.values) {
         try {
           instancesList.add(Map<String, dynamic>.from(map));
-        } catch (_) {}
+        } catch (e, stackTrace) {
+          debugPrint('Error exporting raw instance map: $e\n$stackTrace');
+        }
       }
     } else {
       for (final instance in _memInstances.values) {
@@ -450,7 +454,8 @@ class HiveLocalDataSource {
         } else {
           settingsMap = _memSettings.toJson();
         }
-      } catch (_) {
+      } catch (e, stackTrace) {
+        debugPrint('Error exporting raw settings map: $e\n$stackTrace');
         settingsMap = _memSettings.toJson();
       }
     } else {
