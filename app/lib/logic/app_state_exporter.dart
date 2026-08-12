@@ -141,9 +141,9 @@ class AppStateExporter {
         final String? familyId = userProfileData?['familyId'] as String?;
         if (familyId != null && familyId.isNotEmpty) {
           final familyRef = _firestore.collection('families').doc(familyId);
-          final familySnap = await familyRef
-              .get()
-              .timeout(const Duration(seconds: 5));
+          final familySnap = await familyRef.get().timeout(
+            const Duration(seconds: 5),
+          );
           if (familySnap.exists && familySnap.data() != null) {
             remoteFirebaseState['familyDoc'] = {
               'id': familySnap.id,
@@ -255,8 +255,7 @@ class AppStateExporter {
       value.forEach((k, v) {
         final keyStr = k.toString();
         final lowerKey = keyStr.toLowerCase();
-        final isEmailKey =
-            lowerKey == 'email' || lowerKey.endsWith('email');
+        final isEmailKey = lowerKey == 'email' || lowerKey.endsWith('email');
         if (isEmailKey && v is String) {
           result[keyStr] = maskEmail(v);
         } else {
