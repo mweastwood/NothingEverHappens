@@ -231,9 +231,11 @@ class FamilyRepository {
             batch.update(familyRef, {
               'members.${nextParent.userId}.role': 'parent',
             });
-            batch.set(_firestore.collection('users').doc(nextParent.userId), {
-              'familyRole': 'parent',
-            }, SetOptions(merge: true));
+            batch.set(
+              _firestore.collection('users').doc(nextParent.userId),
+              {'familyRole': 'parent'},
+              SetOptions(merge: true),
+            );
           }
         }
       }
