@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
-import 'family.dart';
+
 import 'auth_repository.dart';
+import 'family.dart';
 
 final familyRepositoryProvider = Provider<FamilyRepository?>((ref) {
   final user = ref.watch(authStateProvider).value;
