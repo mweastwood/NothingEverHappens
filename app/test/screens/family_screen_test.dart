@@ -653,4 +653,32 @@ void main() {
       expect(find.text('Family One'), findsNothing);
     },
   );
+
+  testWidgets(
+    'renders error widget when pendingInvitesStreamProvider returns an error',
+    (WidgetTester tester) async {
+      await firestore.collection('users').doc(userId).set({});
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            familyRepositoryProvider.overrideWithValue(repository),
+            errorHandlerProvider.overrideWithValue(errorHandler),
+            subscriptionServiceProvider.overrideWith(
+              (ref) => FakeSubscriptionService(ref, SubscriptionTier.free),
+            ),
+            pendingInvitesStreamProvider.overrideWith(
+              (ref) => Stream.error('Failed to fetch invites'),
+            ),
+          ],
+          child: buildTestableWidget(
+            child: const Scaffold(body: FamilyScreen()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Failed to fetch invites'), findsOneWidget);
+    },
+  );
 }

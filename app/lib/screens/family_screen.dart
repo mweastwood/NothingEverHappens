@@ -274,10 +274,10 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
         final invitesAsync = ref.watch(pendingInvitesStreamProvider);
 
         return invitesAsync.when(
-          error: (error, stackTrace) => SubscriptionPaywallWidget(
-            isProcessing: _isProcessing,
-            onUpgrade: () => _navigateToSubscriptions(context),
-            priceString: priceString,
+          error: (error, stackTrace) => Center(
+            child: Text(
+              '${context.l10n.errorOccurred}: $error',
+            ),
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
           data: (invites) {
