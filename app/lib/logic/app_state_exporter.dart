@@ -13,6 +13,7 @@ import 'auth_repository.dart';
 import 'civil_day.dart';
 import 'error_handler.dart';
 import 'hive_local_data_source.dart';
+import 'l10n_extension.dart';
 import 'relative_time.dart';
 import 'task_repository.dart';
 
@@ -343,9 +344,10 @@ class AppStateExporter {
     void dismissProgressDialog() {
       if (isDismissed) return;
       exportFinished = true;
-      if (dialogContext != null && dialogContext!.mounted) {
+      final targetCtx = dialogContext;
+      if (targetCtx != null && targetCtx.mounted) {
         isDismissed = true;
-        Navigator.of(dialogContext!).pop();
+        Navigator.of(targetCtx).pop();
       }
     }
 
@@ -371,10 +373,11 @@ class AppStateExporter {
             mimeType: 'application/json',
             name: fileName,
           );
+          if (!context.mounted) return;
           await Share.shareXFiles(
             [xFile],
-            subject: 'App State Debug Export',
-            text: 'Debug app state JSON export for NothingEverHappens.',
+            subject: context.l10n.debugStateShareSubject,
+            text: context.l10n.debugStateShareText,
           );
           shared = true;
         } catch (e) {
@@ -386,8 +389,8 @@ class AppStateExporter {
         await Clipboard.setData(ClipboardData(text: jsonString));
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Debug state JSON copied to clipboard.'),
+          SnackBar(
+            content: Text(context.l10n.debugStateCopiedToClipboard),
           ),
         );
       }

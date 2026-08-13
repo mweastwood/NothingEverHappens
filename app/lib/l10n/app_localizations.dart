@@ -908,6 +908,24 @@ abstract class AppLocalizations {
   /// **'Export Debug State (LLM JSON)'**
   String get exportDebugStateButton;
 
+  /// No description provided for @debugStateCopiedToClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug state JSON copied to clipboard.'**
+  String get debugStateCopiedToClipboard;
+
+  /// No description provided for @debugStateShareSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'App State Debug Export'**
+  String get debugStateShareSubject;
+
+  /// No description provided for @debugStateShareText.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug app state JSON export for NothingEverHappens.'**
+  String get debugStateShareText;
+
   /// No description provided for @pendingBadge.
   ///
   /// In en, this message translates to:

@@ -477,6 +477,18 @@ class AppLocalizationsEs extends AppLocalizations {
       'Exportar estado de depuración (JSON para LLM)';
 
   @override
+  String get debugStateCopiedToClipboard =>
+      'JSON de estado de depuración copiado al portapapeles.';
+
+  @override
+  String get debugStateShareSubject =>
+      'Exportación de estado de depuración';
+
+  @override
+  String get debugStateShareText =>
+      'Exportación JSON del estado de depuración para NothingEverHappens.';
+
+  @override
   String get pendingBadge => 'Pendiente';
 
   @override
