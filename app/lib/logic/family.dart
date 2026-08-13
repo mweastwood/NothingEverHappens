@@ -20,6 +20,17 @@ class FamilyProfile {
   Map<String, dynamic> toJson() {
     return {'familyId': familyId, 'familyRole': familyRole};
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is FamilyProfile &&
+        other.familyId == familyId &&
+        other.familyRole == familyRole;
+  }
+
+  @override
+  int get hashCode => Object.hash(familyId, familyRole);
 }
 
 class FamilyMember {
