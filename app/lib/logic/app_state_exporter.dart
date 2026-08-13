@@ -19,6 +19,7 @@ import 'hive_local_data_source.dart';
 import 'l10n_extension.dart';
 import 'relative_time.dart';
 import 'task_repository.dart';
+import 'utils/app_version.dart';
 
 final appStateExporterProvider = Provider<AppStateExporter>((ref) {
   final firestore = ref.watch(firestoreProvider);
@@ -63,16 +64,20 @@ class AppStateExporter {
     return '${trimmed[0]}***';
   }
 
-  static bool _isPiiKey(String lowerKey) {
+  static bool _isNonPiiKey(String lowerKey) {
     if (lowerKey.contains('email')) return false;
-    if (lowerKey == 'id' ||
+    return lowerKey == 'id' ||
         lowerKey == 'ids' ||
         lowerKey.endsWith('id') ||
         lowerKey.endsWith('_id') ||
         lowerKey.endsWith('ids') ||
-        lowerKey.endsWith('_ids')) {
-      return false;
-    }
+        lowerKey.endsWith('_ids') ||
+        lowerKey == 'role' ||
+        lowerKey == 'status';
+  }
+
+  static bool _isPiiKey(String lowerKey) {
+    if (_isNonPiiKey(lowerKey)) return false;
     const piiKeywords = [
       'displayname',
       'display_name',
@@ -102,6 +107,7 @@ class AppStateExporter {
       'inviter',
       'invitee',
       'member',
+      'profile',
     ];
     if (piiKeywords.any((k) => lowerKey.contains(k))) return true;
     if (lowerKey == 'name') return true;
@@ -115,7 +121,7 @@ class AppStateExporter {
 
     final exportMetadata = <String, dynamic>{
       'exportedAt': DateTime.now().toUtc().toIso8601String(),
-      'appVersion': '1.0.0+1',
+      'appVersion': AppVersion.display,
       'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
       'isOffline': false,
     };
@@ -158,55 +164,83 @@ class AppStateExporter {
       final List<String> errors = [];
       final userDocRef = _firestore.collection('users').doc(uid);
 
-      try {
-        final userDocSnap =
-            await userDocRef.get().timeout(const Duration(seconds: 5));
-        final userProfileData = userDocSnap.data();
-        if (userDocSnap.exists && userProfileData != null) {
-          remoteFirebaseState['userProfileDoc'] = userProfileData;
-        }
-      } catch (e) {
-        errors.add('userProfileDoc: $e');
+      final phase1Futures = <Future<void>>[
+        () async {
+          try {
+            final userDocSnap =
+                await userDocRef.get().timeout(const Duration(seconds: 5));
+            final userProfileData = userDocSnap.data();
+            if (userDocSnap.exists && userProfileData != null) {
+              remoteFirebaseState['userProfileDoc'] = userProfileData;
+            }
+          } catch (e) {
+            errors.add('userProfileDoc: $e');
+          }
+        }(),
+        () async {
+          try {
+            final settingsSnap = await userDocRef
+                .collection('settings')
+                .doc('agile')
+                .get()
+                .timeout(const Duration(seconds: 5));
+            if (settingsSnap.exists && settingsSnap.data() != null) {
+              remoteFirebaseState['settingsDoc'] = settingsSnap.data();
+            }
+          } catch (e) {
+            errors.add('settingsDoc: $e');
+          }
+        }(),
+        () async {
+          try {
+            final tasksQuery = await userDocRef
+                .collection('tasks')
+                .limit(500)
+                .get()
+                .timeout(const Duration(seconds: 5));
+            remoteFirebaseState['tasks'] = tasksQuery.docs
+                .map((doc) => {'id': doc.id, ...doc.data()})
+                .toList();
+          } catch (e) {
+            errors.add('tasks: $e');
+          }
+        }(),
+        () async {
+          try {
+            final instancesQuery = await userDocRef
+                .collection('instances')
+                .limit(500)
+                .get()
+                .timeout(const Duration(seconds: 5));
+            remoteFirebaseState['instances'] = instancesQuery.docs
+                .map((doc) => {'id': doc.id, ...doc.data()})
+                .toList();
+          } catch (e) {
+            errors.add('instances: $e');
+          }
+        }(),
+      ];
+
+      final String? email = user?.email;
+      if (email != null && email.isNotEmpty) {
+        phase1Futures.add(() async {
+          try {
+            final invitesQuery = await _firestore
+                .collection('invites')
+                .where('toEmail', isEqualTo: email.trim().toLowerCase())
+                .limit(500)
+                .get()
+                .timeout(const Duration(seconds: 5));
+            remoteFirebaseState['invites'] = invitesQuery.docs
+                .map((doc) => {'id': doc.id, ...doc.data()})
+                .toList();
+          } catch (e) {
+            errors.add('invites: $e');
+          }
+        }());
       }
 
-      try {
-        final settingsSnap = await userDocRef
-            .collection('settings')
-            .doc('agile')
-            .get()
-            .timeout(const Duration(seconds: 5));
-        if (settingsSnap.exists && settingsSnap.data() != null) {
-          remoteFirebaseState['settingsDoc'] = settingsSnap.data();
-        }
-      } catch (e) {
-        errors.add('settingsDoc: $e');
-      }
-
-      try {
-        final tasksQuery = await userDocRef
-            .collection('tasks')
-            .limit(500)
-            .get()
-            .timeout(const Duration(seconds: 5));
-        remoteFirebaseState['tasks'] = tasksQuery.docs
-            .map((doc) => {'id': doc.id, ...doc.data()})
-            .toList();
-      } catch (e) {
-        errors.add('tasks: $e');
-      }
-
-      try {
-        final instancesQuery = await userDocRef
-            .collection('instances')
-            .limit(500)
-            .get()
-            .timeout(const Duration(seconds: 5));
-        remoteFirebaseState['instances'] = instancesQuery.docs
-            .map((doc) => {'id': doc.id, ...doc.data()})
-            .toList();
-      } catch (e) {
-        errors.add('instances: $e');
-      }
+      await Future.wait(phase1Futures);
 
       final userProfileData =
           remoteFirebaseState['userProfileDoc'] as Map<String, dynamic>?;
@@ -217,64 +251,57 @@ class AppStateExporter {
         familyId = (localSettings?['familyId'] ?? localHiveState['familyId'])
             as String?;
       }
+
       if (familyId != null && familyId.isNotEmpty) {
         final familyRef = _firestore.collection('families').doc(familyId);
 
-        try {
-          final familySnap =
-              await familyRef.get().timeout(const Duration(seconds: 5));
-          if (familySnap.exists && familySnap.data() != null) {
-            remoteFirebaseState['familyDoc'] = {
-              'id': familySnap.id,
-              ...familySnap.data()!,
-            };
-          }
-        } catch (e) {
-          errors.add('familyDoc: $e');
-        }
+        final phase2Futures = <Future<void>>[
+          () async {
+            try {
+              final familySnap =
+                  await familyRef.get().timeout(const Duration(seconds: 5));
+              if (familySnap.exists && familySnap.data() != null) {
+                remoteFirebaseState['familyDoc'] = {
+                  'id': familySnap.id,
+                  ...familySnap.data()!,
+                };
+              }
+            } catch (e) {
+              errors.add('familyDoc: $e');
+            }
+          }(),
+          () async {
+            try {
+              final familyTasksQuery = await familyRef
+                  .collection('tasks')
+                  .limit(500)
+                  .get()
+                  .timeout(const Duration(seconds: 5));
+              remoteFirebaseState['familyTasks'] = familyTasksQuery.docs
+                  .map((doc) => {'id': doc.id, ...doc.data()})
+                  .toList();
+            } catch (e) {
+              errors.add('familyTasks: $e');
+            }
+          }(),
+          () async {
+            try {
+              final familyInstancesQuery = await familyRef
+                  .collection('instances')
+                  .limit(500)
+                  .get()
+                  .timeout(const Duration(seconds: 5));
+              remoteFirebaseState['familyInstances'] = familyInstancesQuery
+                  .docs
+                  .map((doc) => {'id': doc.id, ...doc.data()})
+                  .toList();
+            } catch (e) {
+              errors.add('familyInstances: $e');
+            }
+          }(),
+        ];
 
-        try {
-          final familyTasksQuery = await familyRef
-              .collection('tasks')
-              .limit(500)
-              .get()
-              .timeout(const Duration(seconds: 5));
-          remoteFirebaseState['familyTasks'] = familyTasksQuery.docs
-              .map((doc) => {'id': doc.id, ...doc.data()})
-              .toList();
-        } catch (e) {
-          errors.add('familyTasks: $e');
-        }
-
-        try {
-          final familyInstancesQuery = await familyRef
-              .collection('instances')
-              .limit(500)
-              .get()
-              .timeout(const Duration(seconds: 5));
-          remoteFirebaseState['familyInstances'] = familyInstancesQuery.docs
-              .map((doc) => {'id': doc.id, ...doc.data()})
-              .toList();
-        } catch (e) {
-          errors.add('familyInstances: $e');
-        }
-      }
-
-      final String? email = user?.email;
-      if (email != null && email.isNotEmpty) {
-        try {
-          final invitesQuery = await _firestore
-              .collection('invites')
-              .where('toEmail', isEqualTo: email.trim().toLowerCase())
-              .limit(500)
-              .get()
-              .timeout(const Duration(seconds: 5));
-          remoteFirebaseState['invites'] = invitesQuery.docs
-              .map((doc) => {'id': doc.id, ...doc.data()})
-              .toList();
-        } catch (e) {
-          errors.add('invites: $e');
-        }
+        await Future.wait(phase2Futures);
       }
 
       if (errors.isNotEmpty) {
@@ -358,8 +385,9 @@ class AppStateExporter {
       value.forEach((k, v) {
         final keyStr = k.toString();
         final lowerKey = keyStr.toLowerCase();
-        final entryIsEmailKey = lowerKey.contains('email');
-        final entryIsPiiKey = _isPiiKey(lowerKey);
+        final entryIsEmailKey = isEmailKey || lowerKey.contains('email');
+        final entryIsPiiKey =
+            !_isNonPiiKey(lowerKey) && (isPiiKey || _isPiiKey(lowerKey));
         result[keyStr] = sanitizeForJson(
           v,
           isEmailKey: entryIsEmailKey,
@@ -407,7 +435,11 @@ class AppStateExporter {
     void popDialog(BuildContext ctx) {
       if (!isPopped && ctx.mounted) {
         isPopped = true;
-        Navigator.of(ctx).pop();
+        final navigator = Navigator.of(ctx, rootNavigator: true);
+        final route = ModalRoute.of(ctx);
+        if (navigator.canPop() && (route == null || route.isCurrent)) {
+          navigator.pop();
+        }
       }
     }
 

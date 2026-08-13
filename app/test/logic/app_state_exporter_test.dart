@@ -247,6 +247,29 @@ void main() {
     );
 
     test(
+      'sanitizeForJson masks child properties of parent PII maps while keeping non-PII keys unmasked',
+      () {
+        final exporter = AppStateExporter(hiveDataSource: localDataSource);
+
+        final rawData = {
+          'profile': {
+            'id': 'p123',
+            'nickname': 'Johnny',
+            'bio': 'Software developer',
+            'details': 'Hidden info',
+          },
+        };
+
+        final sanitized = exporter.sanitizeForJson(rawData);
+
+        expect(sanitized['profile']['id'], 'p123');
+        expect(sanitized['profile']['nickname'], 'J***');
+        expect(sanitized['profile']['bio'], 'S***');
+        expect(sanitized['profile']['details'], 'H***');
+      },
+    );
+
+    test(
       'exportStateRaw falls back to local settings/state for familyId when userProfileDoc query fails',
       () async {
         final fakeFirestore = FakeFirebaseFirestore();
