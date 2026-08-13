@@ -67,7 +67,19 @@ void main() {
       expect(AppStateExporter.maskEmail('invalid-email'), '***');
     });
 
-    test('sanitizeForJson converts complex types and masks email fields', () {
+    test('maskPii handles various PII string inputs correctly', () {
+      expect(AppStateExporter.maskPii(null), null);
+      expect(AppStateExporter.maskPii(''), '');
+      expect(AppStateExporter.maskPii('   '), '');
+      expect(AppStateExporter.maskPii('John Doe'), 'J***');
+      expect(AppStateExporter.maskPii('+15551234567'), '+***');
+      expect(
+        AppStateExporter.maskPii('https://example.com/avatar.jpg'),
+        'h***',
+      );
+    });
+
+    test('sanitizeForJson converts complex types and masks email and PII fields', () {
       final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
       final now = DateTime.utc(2026, 8, 12, 5, 0, 0);
@@ -92,9 +104,16 @@ void main() {
         'emails': ['one@example.com', 'two@example.com'],
         'primary_email': 'primary@example.com',
         'email_address': 'address@example.com',
+        'displayName': 'John Doe',
+        'phoneNumber': '+15551234567',
+        'photoURL': 'https://example.com/avatar.png',
+        'title': 'Secret task',
+        'description': 'Sensitive details',
+        'notes': 'Private notes',
         'nestedMap': {
           'list': [now, timestamp, civilDay],
           'userEmail': 'nested@example.com',
+          'comment': 'Private comment',
         },
       };
 
@@ -116,7 +135,14 @@ void main() {
       expect(sanitized['emails'], ['o***@example.com', 't***@example.com']);
       expect(sanitized['primary_email'], 'p***@example.com');
       expect(sanitized['email_address'], 'a***@example.com');
+      expect(sanitized['displayName'], 'J***');
+      expect(sanitized['phoneNumber'], '+***');
+      expect(sanitized['photoURL'], 'h***');
+      expect(sanitized['title'], 'S***');
+      expect(sanitized['description'], 'S***');
+      expect(sanitized['notes'], 'P***');
       expect(sanitized['nestedMap']['userEmail'], 'n***@example.com');
+      expect(sanitized['nestedMap']['comment'], 'P***');
 
       final jsonString = jsonEncode(sanitized);
       expect(jsonString, isNotEmpty);

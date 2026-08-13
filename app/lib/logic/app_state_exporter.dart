@@ -1,12 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'auth_repository.dart';
@@ -54,6 +55,52 @@ class AppStateExporter {
     final domain = parts[1];
     if (local.isEmpty) return '***@$domain';
     return '${local[0]}***@$domain';
+  }
+
+  static String? maskPii(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return trimmed;
+    return '${trimmed[0]}***';
+  }
+
+  static bool _isPiiKey(String lowerKey) {
+    if (lowerKey.contains('email')) return false;
+    const piiKeywords = [
+      'displayname',
+      'display_name',
+      'fullname',
+      'full_name',
+      'firstname',
+      'first_name',
+      'lastname',
+      'last_name',
+      'username',
+      'user_name',
+      'phonenumber',
+      'phone_number',
+      'phone',
+      'photourl',
+      'photo_url',
+      'photo',
+      'avatar',
+      'picture',
+      'title',
+      'description',
+      'notes',
+      'note',
+      'content',
+      'summary',
+      'text',
+      'comment',
+      'address',
+      'street',
+      'zipcode',
+      'postalcode',
+    ];
+    if (piiKeywords.any((k) => lowerKey.contains(k))) return true;
+    if (lowerKey == 'name') return true;
+    return false;
   }
 
   Future<Map<String, dynamic>> exportStateRaw() async {
@@ -247,12 +294,18 @@ class AppStateExporter {
     return jsonEncode(rawMap);
   }
 
-  dynamic sanitizeForJson(dynamic value, {bool isEmailKey = false}) {
+  dynamic sanitizeForJson(
+    dynamic value, {
+    bool isEmailKey = false,
+    bool isPiiKey = false,
+  }) {
     if (value == null) return null;
     if (value is num || value is bool) return value;
 
     if (value is String) {
-      return isEmailKey ? maskEmail(value) : value;
+      if (isEmailKey) return maskEmail(value);
+      if (isPiiKey) return maskPii(value);
+      return value;
     }
 
     if (value is DateTime) {
@@ -297,61 +350,73 @@ class AppStateExporter {
         final keyStr = k.toString();
         final lowerKey = keyStr.toLowerCase();
         final entryIsEmailKey = isEmailKey || lowerKey.contains('email');
-        result[keyStr] = sanitizeForJson(v, isEmailKey: entryIsEmailKey);
+        final entryIsPiiKey = isPiiKey || _isPiiKey(lowerKey);
+        result[keyStr] = sanitizeForJson(
+          v,
+          isEmailKey: entryIsEmailKey,
+          isPiiKey: entryIsPiiKey,
+        );
       });
       return result;
     }
 
     if (value is Iterable) {
       return value
-          .map((e) => sanitizeForJson(e, isEmailKey: isEmailKey))
+          .map(
+            (e) => sanitizeForJson(
+              e,
+              isEmailKey: isEmailKey,
+              isPiiKey: isPiiKey,
+            ),
+          )
           .toList();
     }
 
     try {
       final dynamic json = (value as dynamic).toJson();
-      return sanitizeForJson(json, isEmailKey: isEmailKey);
+      return sanitizeForJson(
+        json,
+        isEmailKey: isEmailKey,
+        isPiiKey: isPiiKey,
+      );
     } catch (_) {
       final str = value.toString();
-      return isEmailKey ? maskEmail(str) : str;
+      if (isEmailKey) return maskEmail(str);
+      if (isPiiKey) return maskPii(str);
+      return str;
     }
   }
 
   Future<void> shareDebugState(BuildContext context) async {
-    BuildContext? dialogContext;
-    bool exportFinished = false;
+    if (!context.mounted) return;
+
+    final Completer<BuildContext> dialogContextCompleter =
+        Completer<BuildContext>();
     bool isDismissed = false;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext ctx) {
-        dialogContext = ctx;
-        if (exportFinished && !isDismissed) {
-          isDismissed = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (ctx.mounted) {
-              Navigator.of(ctx).pop();
-            }
-          });
+        if (!dialogContextCompleter.isCompleted) {
+          dialogContextCompleter.complete(ctx);
         }
         return const Center(child: CircularProgressIndicator());
       },
     );
 
-    void dismissProgressDialog() {
+    Future<void> dismissProgressDialog() async {
       if (isDismissed) return;
-      exportFinished = true;
-      final targetCtx = dialogContext;
-      if (targetCtx != null && targetCtx.mounted) {
-        isDismissed = true;
-        Navigator.of(targetCtx).pop();
+      isDismissed = true;
+      final dialogCtx = await dialogContextCompleter.future;
+      if (dialogCtx.mounted) {
+        Navigator.of(dialogCtx, rootNavigator: true).pop();
       }
     }
 
     try {
       final jsonString = await exportStateJson(pretty: true);
-      dismissProgressDialog();
+      await dismissProgressDialog();
 
       if (!context.mounted) return;
 
@@ -362,20 +427,29 @@ class AppStateExporter {
 
       if (!kIsWeb) {
         try {
-          final tempDir = await getTemporaryDirectory();
-          final file = File('${tempDir.path}/$fileName');
-          await file.writeAsString(jsonString);
+          final RenderBox? box = context.findRenderObject() as RenderBox?;
+          final Rect sharePositionOrigin = (box != null && box.hasSize)
+              ? (box.localToGlobal(Offset.zero) & box.size)
+              : Rect.fromLTWH(
+                  0,
+                  0,
+                  MediaQuery.maybeOf(context)?.size.width ?? 400,
+                  (MediaQuery.maybeOf(context)?.size.height ?? 800) / 2,
+                );
 
-          final xFile = XFile(
-            file.path,
+          final bytes = Uint8List.fromList(utf8.encode(jsonString));
+          final xFile = XFile.fromData(
+            bytes,
             mimeType: 'application/json',
             name: fileName,
           );
+
           if (!context.mounted) return;
           await Share.shareXFiles(
             [xFile],
             subject: context.l10n.debugStateShareSubject,
             text: context.l10n.debugStateShareText,
+            sharePositionOrigin: sharePositionOrigin,
           );
           shared = true;
         } catch (e) {
@@ -393,7 +467,7 @@ class AppStateExporter {
         );
       }
     } catch (e, stackTrace) {
-      dismissProgressDialog();
+      await dismissProgressDialog();
 
       if (!context.mounted) return;
       final errorHandler = ErrorHandler();
@@ -402,3 +476,4 @@ class AppStateExporter {
     }
   }
 }
+
