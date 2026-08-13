@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/user_profile_provider.dart';
 import '../logic/task_integration.dart';
 import '../logic/task_schedule.dart';

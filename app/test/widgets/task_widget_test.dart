@@ -347,6 +347,37 @@ void main() {
     expect(find.byKey(const Key('delete_task_button')), findsOneWidget);
   });
 
+  testWidgets(
+    'TaskWidget displays launch link button when appLaunchUrl is set on non-duolingo task',
+    (tester) async {
+      final customUrlTask = TaskSchedule(
+        id: 'S-custom-url',
+        title: 'Custom Non-Duolingo Task',
+        description: 'Task with external link',
+        appLaunchUrl: 'https://example.com/custom-app',
+        schedules: [
+          OneOffSchedule(
+            id: 'R-custom-1',
+            scheduleId: 'S-custom-url',
+            date: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(createWidget(customUrlTask));
+
+      expect(find.byKey(const Key('open_duolingo_button')), findsOneWidget);
+    },
+  );
+
   testWidgets('TaskWidget does not expose edit button for recurring tasks', (
     tester,
   ) async {

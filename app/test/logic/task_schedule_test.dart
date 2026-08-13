@@ -291,6 +291,7 @@ void main() {
       expect(deserialized.id, task.id);
       expect(deserialized.appLaunchUrl, 'https://example.com/app');
     });
+  });
 
   group('TaskSchedule Editing and Changes Aggregation', () {
     test(

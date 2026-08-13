@@ -40,30 +40,31 @@ void main() {
       test(
         'returns null when appLaunchUrl is null/empty and title does not match',
         () {
-        expect(
-          TaskIntegration.resolveLaunchUrl(
-            title: 'Read a book',
-            appLaunchUrl: null,
-          ),
-          isNull,
-        );
+          expect(
+            TaskIntegration.resolveLaunchUrl(
+              title: 'Read a book',
+              appLaunchUrl: null,
+            ),
+            isNull,
+          );
 
-        expect(
-          TaskIntegration.resolveLaunchUrl(
-            title: 'Do math homework',
-            appLaunchUrl: '',
-          ),
-          isNull,
-        );
+          expect(
+            TaskIntegration.resolveLaunchUrl(
+              title: 'Do math homework',
+              appLaunchUrl: '',
+            ),
+            isNull,
+          );
 
-        expect(
-          TaskIntegration.resolveLaunchUrl(
-            title: null,
-            appLaunchUrl: null,
-          ),
-          isNull,
-        );
-      });
+          expect(
+            TaskIntegration.resolveLaunchUrl(
+              title: null,
+              appLaunchUrl: null,
+            ),
+            isNull,
+          );
+        },
+      );
 
       test('falls back to title check when appLaunchUrl is empty string', () {
         final result = TaskIntegration.resolveLaunchUrl(
