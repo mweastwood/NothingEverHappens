@@ -259,7 +259,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
       data: (profileSnapshot) {
-        final profileData = profileSnapshot.data() ?? {};
+        final profileData = profileSnapshot?.data() ?? {};
         final familyId = profileData['familyId'] as String? ?? '';
         final familyRole = profileData['familyRole'] as String? ?? '';
 

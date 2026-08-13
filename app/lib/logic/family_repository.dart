@@ -15,23 +15,23 @@ final familyRepositoryProvider = Provider<FamilyRepository?>((ref) {
 });
 
 final familyProfileStreamProvider =
-    StreamProvider.autoDispose<DocumentSnapshot<Map<String, dynamic>>>((ref) {
+    StreamProvider.autoDispose<DocumentSnapshot<Map<String, dynamic>>?>((ref) {
   final familyRepo = ref.watch(familyRepositoryProvider);
-  if (familyRepo == null) return const Stream.empty();
+  if (familyRepo == null) return Stream.value(null);
   return familyRepo.getProfile();
 });
 
 final pendingInvitesStreamProvider =
     StreamProvider.autoDispose<List<FamilyInvite>>((ref) {
   final familyRepo = ref.watch(familyRepositoryProvider);
-  if (familyRepo == null) return const Stream.empty();
+  if (familyRepo == null) return Stream.value([]);
   return familyRepo.getPendingInvites();
 });
 
 final familyStreamProvider =
     StreamProvider.autoDispose.family<Family?, String>((ref, familyId) {
   final familyRepo = ref.watch(familyRepositoryProvider);
-  if (familyRepo == null) return const Stream.empty();
+  if (familyRepo == null) return Stream.value(null);
   return familyRepo.getFamily(familyId);
 });
 
@@ -41,7 +41,7 @@ final outstandingInvitesStreamProvider =
   familyId,
 ) {
   final familyRepo = ref.watch(familyRepositoryProvider);
-  if (familyRepo == null) return const Stream.empty();
+  if (familyRepo == null) return Stream.value([]);
   return familyRepo.getOutstandingFamilyInvites(familyId);
 });
 
