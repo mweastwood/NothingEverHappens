@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/gestures.dart';
@@ -15,6 +16,7 @@ import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
+
 import '../test_helper.dart';
 
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
@@ -196,7 +198,8 @@ void main() {
     await tester.tap(find.byType(FunCheckButton));
     await tester.pump(); // Start confetti
 
-    // Fast-forward through confetti and collapse animations
+    // Wait for confetti delay (500ms), then settle collapse animation
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
 
     verify(
@@ -427,15 +430,15 @@ void main() {
     await tester.tap(find.byKey(const Key('delete_task_button')));
     await tester.pump(); // Register tap
 
-    // Advance through FunDeleteButton delay (350ms) and _handleDeletion delay (400ms), then settle collapse animation
+    // Advance through FunDeleteButton delay (350ms) and _handleDeletion delay
+    // (400ms), then settle collapse animation
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
     // Verify repository dismissTaskInstance is called
-    verify(
-      mockTaskRepository.dismissTaskInstance('I-S-1_2024-01-01'),
-    ).called(1);
+    verify(mockTaskRepository.dismissTaskInstance('I-S-1_2024-01-01'))
+        .called(1);
   });
 
   testGoldens('TaskWidget focused state golden', (tester) async {
@@ -538,8 +541,7 @@ void main() {
     final task2 = TaskSchedule(
       id: 'S-b2',
       title: 'Family Daily TaskSchedule with Assignee',
-      description:
-          'Family task with daily schedule, medium priority, stack policy, and assignee.',
+      description: 'Family task with daily schedule, medium priority, stack policy, and assignee.',
       isFamily: true,
       priority: TaskPriority.medium,
       assignedUserId: 'user_1',
@@ -558,8 +560,7 @@ void main() {
     final task3 = TaskSchedule(
       id: 'S-b3',
       title: 'Low Priority Weekly TaskSchedule with Prefer Older Policy',
-      description:
-          'Personal task with low priority, weekly schedule, and prefer older policy.',
+      description: 'Personal task with low priority, weekly schedule, and prefer older policy.',
       priority: TaskPriority.low,
       missedPolicy: MissedPolicy.preferOlder,
       schedules: [
@@ -679,9 +680,8 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
 
     // Verify dismissTaskInstance is called immediately
-    verify(
-      mockTaskRepository.dismissTaskInstance('I-S-1_2024-01-01'),
-    ).called(1);
+    verify(mockTaskRepository.dismissTaskInstance('I-S-1_2024-01-01'))
+        .called(1);
 
     // Verify SnackBar with undo option is shown
     expect(find.byType(SnackBar), findsOneWidget);
@@ -702,9 +702,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify dismissTaskInstance called
-      verify(
-        mockTaskRepository.dismissTaskInstance('I-S-1_2024-01-01'),
-      ).called(1);
+      verify(mockTaskRepository.dismissTaskInstance('I-S-1_2024-01-01'))
+          .called(1);
 
       // Tap Undo button on SnackBar
       await tester.tap(find.text('Undo'));
@@ -1033,9 +1032,8 @@ void main() {
         completedByUserId: 'user-1',
         completedAt: DateTime(2026, 6, 18, 9, 0),
       );
-      when(
-        mockTaskRepository.dismissTaskInstance(any),
-      ).thenAnswer((_) async => resolvedInstance);
+      when(mockTaskRepository.dismissTaskInstance(any))
+          .thenAnswer((_) async => resolvedInstance);
 
       TaskInstance? capturedInstance;
       when(mockTaskRepository.undoResolveTaskInstance(any)).thenAnswer((
@@ -1078,9 +1076,8 @@ void main() {
         completedByUserId: 'user-1',
         completedAt: DateTime(2026, 6, 18, 9, 0),
       );
-      when(
-        mockTaskRepository.completeTaskInstance(any),
-      ).thenAnswer((_) async => resolvedInstance);
+      when(mockTaskRepository.completeTaskInstance(any))
+          .thenAnswer((_) async => resolvedInstance);
 
       TaskInstance? capturedInstance;
       when(mockTaskRepository.undoResolveTaskInstance(any)).thenAnswer((
@@ -1117,9 +1114,8 @@ void main() {
     'TaskWidget shows undo SnackBar even if unmounted during the repository async gap',
     (tester) async {
       final completeCompleter = Completer<TaskInstance?>();
-      when(
-        mockTaskRepository.completeTaskInstance(any),
-      ).thenAnswer((_) => completeCompleter.future);
+      when(mockTaskRepository.completeTaskInstance(any))
+          .thenAnswer((_) => completeCompleter.future);
 
       bool showTask = true;
       late StateSetter setWrapperState;
@@ -1149,8 +1145,8 @@ void main() {
       // Tap the checkbox to complete the task
       await tester.tap(find.byType(FunCheckButton));
       await tester.pump();
-      await tester
-          .pumpAndSettle(); // wait for confetti, start and complete collapse animation
+      await tester.pump(const Duration(milliseconds: 500)); // wait for confetti
+      await tester.pumpAndSettle(); // start and complete collapse animation
 
       // At this point, repo.completeTaskInstance has been called and is pending.
       // Manually unmount the TaskWidget before the repository completes
@@ -1237,9 +1233,9 @@ void main() {
       );
       expect(
         overdueTextWidget.style?.color,
-        Theme.of(
-          tester.element(find.text('Overdue: Yesterday at 5:00 PM')),
-        ).colorScheme.error,
+        Theme.of(tester.element(find.text('Overdue: Yesterday at 5:00 PM')))
+            .colorScheme
+            .error,
       );
 
       // Test Due Today
@@ -1260,9 +1256,9 @@ void main() {
       );
       expect(
         tomorrowTextWidget.style?.color,
-        Theme.of(
-          tester.element(find.text('Due Tomorrow at 5:00 PM')),
-        ).colorScheme.secondary,
+        Theme.of(tester.element(find.text('Due Tomorrow at 5:00 PM')))
+            .colorScheme
+            .secondary,
       );
     },
   );
