@@ -14,6 +14,37 @@ final familyRepositoryProvider = Provider<FamilyRepository?>((ref) {
   );
 });
 
+final familyProfileStreamProvider =
+    StreamProvider.autoDispose<DocumentSnapshot<Map<String, dynamic>>>((ref) {
+      final familyRepo = ref.watch(familyRepositoryProvider);
+      if (familyRepo == null) return const Stream.empty();
+      return familyRepo.getProfile();
+    });
+
+final pendingInvitesStreamProvider =
+    StreamProvider.autoDispose<List<FamilyInvite>>((ref) {
+      final familyRepo = ref.watch(familyRepositoryProvider);
+      if (familyRepo == null) return const Stream.empty();
+      return familyRepo.getPendingInvites();
+    });
+
+final familyStreamProvider =
+    StreamProvider.autoDispose.family<Family?, String>((ref, familyId) {
+      final familyRepo = ref.watch(familyRepositoryProvider);
+      if (familyRepo == null) return const Stream.empty();
+      return familyRepo.getFamily(familyId);
+    });
+
+final outstandingInvitesStreamProvider =
+    StreamProvider.autoDispose.family<List<FamilyInvite>, String>((
+      ref,
+      familyId,
+    ) {
+      final familyRepo = ref.watch(familyRepositoryProvider);
+      if (familyRepo == null) return const Stream.empty();
+      return familyRepo.getOutstandingFamilyInvites(familyId);
+    });
+
 class FamilyRepository {
   final FirebaseFirestore _firestore;
   final String _userId;

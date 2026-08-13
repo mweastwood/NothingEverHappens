@@ -514,4 +514,143 @@ void main() {
 
     await screenMatchesGolden(tester, 'family_screen_free_tier_pending_invite');
   });
+
+  testWidgets(
+    'handles null familyRepositoryProvider initially without LateInitializationError and updates when provider resolves',
+    (WidgetTester tester) async {
+      await firestore.collection('users').doc(userId).set({
+        'familyId': 'fam-123',
+        'familyRole': 'parent',
+      });
+      await firestore.collection('families').doc('fam-123').set({
+        'name': 'The Simpsons',
+        'members': {
+          userId: {
+            'userId': userId,
+            'displayName': userName,
+            'email': userEmail,
+            'role': 'parent',
+          },
+        },
+      });
+
+      final container = ProviderContainer(
+        overrides: [
+          familyRepositoryProvider.overrideWithValue(null),
+          errorHandlerProvider.overrideWithValue(errorHandler),
+          subscriptionServiceProvider.overrideWith(
+            (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: buildTestableWidget(
+            child: const Scaffold(body: FamilyScreen()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Should render progress indicator without throwing LateInitializationError
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      // Resolve familyRepositoryProvider to valid repository instance
+      container.updateOverrides([
+        familyRepositoryProvider.overrideWithValue(repository),
+        errorHandlerProvider.overrideWithValue(errorHandler),
+        subscriptionServiceProvider.overrideWith(
+          (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
+        ),
+      ]);
+
+      await tester.pumpAndSettle();
+
+      // Should display family details from newly provided repository
+      expect(find.text('The Simpsons'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'updates streams when familyRepositoryProvider changes to a new repository instance',
+    (WidgetTester tester) async {
+      final firestore2 = FakeFirebaseFirestore();
+      final repository2 = FamilyRepository(
+        firestore: firestore2,
+        userId: 'user-2',
+        userEmail: 'user2@example.com',
+        userDisplayName: 'Bob',
+      );
+
+      await firestore.collection('users').doc(userId).set({
+        'familyId': 'fam-1',
+        'familyRole': 'parent',
+      });
+      await firestore.collection('families').doc('fam-1').set({
+        'name': 'Family One',
+        'members': {
+          userId: {
+            'userId': userId,
+            'displayName': userName,
+            'email': userEmail,
+            'role': 'parent',
+          },
+        },
+      });
+
+      await firestore2.collection('users').doc('user-2').set({
+        'familyId': 'fam-2',
+        'familyRole': 'parent',
+      });
+      await firestore2.collection('families').doc('fam-2').set({
+        'name': 'Family Two',
+        'members': {
+          'user-2': {
+            'userId': 'user-2',
+            'displayName': 'Bob',
+            'email': 'user2@example.com',
+            'role': 'parent',
+          },
+        },
+      });
+
+      final container = ProviderContainer(
+        overrides: [
+          familyRepositoryProvider.overrideWithValue(repository),
+          errorHandlerProvider.overrideWithValue(errorHandler),
+          subscriptionServiceProvider.overrideWith(
+            (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: buildTestableWidget(
+            child: const Scaffold(body: FamilyScreen()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Family One'), findsOneWidget);
+
+      // Change familyRepositoryProvider to repository2
+      container.updateOverrides([
+        familyRepositoryProvider.overrideWithValue(repository2),
+        errorHandlerProvider.overrideWithValue(errorHandler),
+        subscriptionServiceProvider.overrideWith(
+          (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
+        ),
+      ]);
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Family Two'), findsOneWidget);
+      expect(find.text('Family One'), findsNothing);
+    },
+  );
 }

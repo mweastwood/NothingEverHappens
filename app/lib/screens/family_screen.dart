@@ -22,23 +22,6 @@ class FamilyScreen extends ConsumerStatefulWidget {
 class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   bool _isProcessing = false;
 
-  late Stream<DocumentSnapshot<Map<String, dynamic>>> _profileStream;
-  late Stream<List<FamilyInvite>> _pendingInvitesStream;
-
-  String? _currentFamilyId;
-  Stream<Family?>? _familyStream;
-  Stream<List<FamilyInvite>>? _outstandingInvitesStream;
-
-  @override
-  void initState() {
-    super.initState();
-    final familyRepo = ref.read(familyRepositoryProvider);
-    if (familyRepo != null) {
-      _profileStream = familyRepo.getProfile();
-      _pendingInvitesStream = familyRepo.getPendingInvites();
-    }
-  }
-
   void _navigateToSubscriptions(BuildContext context) {
     Navigator.push(
       context,
@@ -266,22 +249,17 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: _profileStream,
-      builder: (context, profileSnapshot) {
-        if (profileSnapshot.hasError) {
-          return Center(
-            child: Text(
-              '${context.l10n.errorOccurred}: ${profileSnapshot.error}',
-            ),
-          );
-        }
+    final profileAsync = ref.watch(familyProfileStreamProvider);
 
-        if (profileSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final profileData = profileSnapshot.data?.data() ?? {};
+    return profileAsync.when(
+      error: (error, stackTrace) => Center(
+        child: Text(
+          '${context.l10n.errorOccurred}: $error',
+        ),
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      data: (profileSnapshot) {
+        final profileData = profileSnapshot.data() ?? {};
         final familyId = profileData['familyId'] as String? ?? '';
         final familyRole = profileData['familyRole'] as String? ?? '';
 
@@ -293,14 +271,16 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           return _buildNoFamilyScreen(familyRepo);
         }
 
-        return StreamBuilder<List<FamilyInvite>>(
-          stream: _pendingInvitesStream,
-          builder: (context, invitesSnapshot) {
-            if (invitesSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        final invitesAsync = ref.watch(pendingInvitesStreamProvider);
 
-            final invites = invitesSnapshot.data ?? [];
+        return invitesAsync.when(
+          error: (error, stackTrace) => SubscriptionPaywallWidget(
+            isProcessing: _isProcessing,
+            onUpgrade: () => _navigateToSubscriptions(context),
+            priceString: priceString,
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          data: (invites) {
             if (invites.isNotEmpty) {
               return _buildPendingInvitesScreen(
                 familyRepo,
@@ -321,6 +301,8 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   }
 
   Widget _buildNoFamilyScreen(FamilyRepository repository) {
+    final pendingInvitesAsync = ref.watch(pendingInvitesStreamProvider);
+
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
@@ -397,16 +379,11 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        StreamBuilder<List<FamilyInvite>>(
-          stream: _pendingInvitesStream,
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Text('${context.l10n.errorOccurred}: ${snapshot.error}');
-            }
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final invites = snapshot.data ?? [];
+        pendingInvitesAsync.when(
+          error: (error, stackTrace) =>
+              Text('${context.l10n.errorOccurred}: $error'),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          data: (invites) {
             if (invites.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24.0),
@@ -444,26 +421,14 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     String familyId,
     String familyRole,
   ) {
-    if (_currentFamilyId != familyId) {
-      _currentFamilyId = familyId;
-      _familyStream = repository.getFamily(familyId);
-      _outstandingInvitesStream = repository.getOutstandingFamilyInvites(
-        familyId,
-      );
-    }
+    final familyAsync = ref.watch(familyStreamProvider(familyId));
 
-    return StreamBuilder<Family?>(
-      stream: _familyStream,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Text('${context.l10n.errorOccurred}: ${snapshot.error}'),
-          );
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final family = snapshot.data;
+    return familyAsync.when(
+      error: (error, stackTrace) => Center(
+        child: Text('${context.l10n.errorOccurred}: $error'),
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      data: (family) {
         if (family == null) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -552,46 +517,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              StreamBuilder<List<FamilyInvite>>(
-                stream: _outstandingInvitesStream,
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Text(
-                      '${context.l10n.errorOccurred}: ${snapshot.error}',
-                    );
-                  }
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final invites = snapshot.data ?? [];
-                  if (invites.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: Center(
-                        child: Text(
-                          context.l10n.noOutstandingInvites,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(context).disabledColor,
-                              ),
-                        ),
-                      ),
-                    );
-                  }
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: invites.length,
-                    itemBuilder: (context, index) {
-                      final invite = invites[index];
-                      return FamilyOutstandingInviteTile(
-                        invite: invite,
-                        onRevoke: () => _revokeInvite(repository, invite),
-                      );
-                    },
-                  );
-                },
-              ),
+              _buildOutstandingInvitesList(repository, familyId),
             ],
             const SizedBox(height: 32),
             Center(
@@ -616,6 +542,48 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  Widget _buildOutstandingInvitesList(
+    FamilyRepository repository,
+    String familyId,
+  ) {
+    final outstandingAsync = ref.watch(
+      outstandingInvitesStreamProvider(familyId),
+    );
+
+    return outstandingAsync.when(
+      error: (error, stackTrace) =>
+          Text('${context.l10n.errorOccurred}: $error'),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      data: (invites) {
+        if (invites.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(
+              child: Text(
+                context.l10n.noOutstandingInvites,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).disabledColor,
+                ),
+              ),
+            ),
+          );
+        }
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: invites.length,
+          itemBuilder: (context, index) {
+            final invite = invites[index];
+            return FamilyOutstandingInviteTile(
+              invite: invite,
+              onRevoke: () => _revokeInvite(repository, invite),
+            );
+          },
         );
       },
     );
