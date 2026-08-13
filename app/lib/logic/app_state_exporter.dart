@@ -373,7 +373,7 @@ class AppStateExporter {
             (e) => sanitizeForJson(
               e,
               isEmailKey: isEmailKey,
-              isPiiKey: isPiiKey,
+              isPiiKey: false,
             ),
           )
           .toList();
@@ -405,7 +405,7 @@ class AppStateExporter {
     void popDialog(BuildContext ctx) {
       if (!isPopped && ctx.mounted) {
         isPopped = true;
-        Navigator.of(ctx, rootNavigator: true).pop();
+        Navigator.of(ctx).pop();
       }
     }
 
@@ -442,6 +442,7 @@ class AppStateExporter {
     try {
       try {
         final jsonString = await exportStateJson(pretty: true);
+        await dismissProgressDialog();
 
         if (!context.mounted) return;
 

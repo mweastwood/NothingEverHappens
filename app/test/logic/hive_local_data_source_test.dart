@@ -181,7 +181,11 @@ void main() {
         'updatedAt': DateTime.now().toIso8601String(),
       };
 
-      final task = TaskSchedule.fromJson(rawTaskMap);
+      final tasksBox = Hive.box<Map>('tasksBox');
+      await tasksBox.put('task-non-bool', rawTaskMap);
+
+      final tasks = dataSource.getTasks();
+      final task = tasks.firstWhere((t) => t.id == 'task-non-bool');
       expect(task.id, 'task-non-bool');
       expect(task.preferredBy['user1'], true);
       expect(task.preferredBy['user2'], false);

@@ -195,6 +195,7 @@ void main() {
             'email': 'invitee@example.com',
             'name': 'David Invitee',
           },
+          'members': ['user_123', 'user_456'],
           'membersList': [
             {
               'id': 'u999',
@@ -212,6 +213,7 @@ void main() {
         expect(sanitized['inviteeId'], 'user-789');
         expect(sanitized['userId'], 'user-000');
         expect(sanitized['member_id'], 'user-111');
+        expect(sanitized['members'], ['user_123', 'user_456']);
 
         expect(sanitized['member']['id'], 'u123');
         expect(sanitized['member']['role'], 'admin');
