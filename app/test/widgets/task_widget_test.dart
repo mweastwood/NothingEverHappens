@@ -427,7 +427,9 @@ void main() {
     await tester.tap(find.byKey(const Key('delete_task_button')));
     await tester.pump(); // Register tap
 
-    // Fast-forward through delays and poof animation
+    // Advance through FunDeleteButton delay (350ms) and _handleDeletion delay (400ms), then settle collapse animation
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
     // Verify repository dismissTaskInstance is called
