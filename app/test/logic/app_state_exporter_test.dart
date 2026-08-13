@@ -280,7 +280,7 @@ void main() {
 
         expect(remoteState['familyDoc'], isNotNull);
         expect(remoteState['familyDoc']['id'], 'fallback-fam-123');
-        expect(remoteState['familyDoc']['name'], 'Fallback Family Name');
+        expect(remoteState['familyDoc']['name'], 'F***');
         expect(remoteState['familyTasks'], hasLength(1));
         expect(remoteState['familyTasks'][0]['id'], 'ftask-1');
       },

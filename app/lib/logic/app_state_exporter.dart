@@ -150,7 +150,6 @@ class AppStateExporter {
 
     if (_firestore == null || uid == null || uid.isEmpty) {
       isOffline = true;
-      exportMetadata['isOffline'] = isOffline;
       remoteFirebaseState['status'] = 'error';
       remoteFirebaseState['errorMessage'] = uid == null || uid.isEmpty
           ? 'No authenticated user'
