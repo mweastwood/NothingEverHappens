@@ -890,6 +890,24 @@ abstract class AppLocalizations {
   /// **'Display the last spawned date on each task schedule card for debugging.'**
   String get showLastSpawnedDateHelper;
 
+  /// No description provided for @debugDiagnosticsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug & Diagnostics'**
+  String get debugDiagnosticsSectionTitle;
+
+  /// No description provided for @debugDiagnosticsSectionHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Export the complete local and remote app state as structured JSON for debugging with LLMs or support.'**
+  String get debugDiagnosticsSectionHelper;
+
+  /// No description provided for @exportDebugStateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Debug State (LLM JSON)'**
+  String get exportDebugStateButton;
+
   /// No description provided for @pendingBadge.
   ///
   /// In en, this message translates to:

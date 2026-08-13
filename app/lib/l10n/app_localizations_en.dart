@@ -466,6 +466,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Display the last spawned date on each task schedule card for debugging.';
 
   @override
+  String get debugDiagnosticsSectionTitle => 'Debug & Diagnostics';
+
+  @override
+  String get debugDiagnosticsSectionHelper =>
+      'Export the complete local and remote app state as structured JSON for debugging with LLMs or support.';
+
+  @override
+  String get exportDebugStateButton => 'Export Debug State (LLM JSON)';
+
+  @override
   String get pendingBadge => 'Pending';
 
   @override

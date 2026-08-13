@@ -184,17 +184,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Debug & Diagnostics',
+                                context.l10n.debugDiagnosticsSectionTitle,
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Export the complete local and remote app state as '
-                          'structured JSON for debugging with LLMs or support.',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        Text(
+                          context.l10n.debugDiagnosticsSectionHelper,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton.icon(
@@ -205,7 +207,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 .shareDebugState(context);
                           },
                           icon: const Icon(Icons.ios_share),
-                          label: const Text('Export Debug State (LLM JSON)'),
+                          label: Text(context.l10n.exportDebugStateButton),
                         ),
                       ],
                     ),
