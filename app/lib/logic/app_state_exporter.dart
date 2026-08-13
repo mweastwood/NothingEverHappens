@@ -146,6 +146,7 @@ class AppStateExporter {
 
     if (_firestore == null || uid == null || uid.isEmpty) {
       isOffline = true;
+      exportMetadata['isOffline'] = isOffline;
       remoteFirebaseState['status'] = 'error';
       remoteFirebaseState['errorMessage'] = uid == null || uid.isEmpty
           ? 'No authenticated user'
@@ -269,6 +270,7 @@ class AppStateExporter {
 
       if (errors.isNotEmpty) {
         isOffline = true;
+        exportMetadata['isOffline'] = isOffline;
         remoteFirebaseState['status'] = 'error';
         remoteFirebaseState['errorMessage'] = errors.join('; ');
       }
@@ -493,7 +495,7 @@ class AppStateExporter {
       if (!shared) {
         await Clipboard.setData(ClipboardData(text: jsonString));
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           SnackBar(
             content: Text(context.l10n.debugStateCopiedToClipboard),
           ),

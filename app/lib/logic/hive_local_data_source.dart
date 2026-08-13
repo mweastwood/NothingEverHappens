@@ -280,7 +280,7 @@ class HiveLocalDataSource {
 
     final preferredByRaw = data['preferredBy'] as Map? ?? {};
     final preferredBy = preferredByRaw.map(
-      (k, v) => MapEntry(k.toString(), v as bool),
+      (k, v) => MapEntry(k.toString(), v == true),
     );
 
     final priorityStr = data['priority'] as String? ?? 'medium';

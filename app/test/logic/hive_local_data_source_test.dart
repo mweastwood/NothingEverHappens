@@ -162,4 +162,32 @@ void main() {
     expect(dirtyList3, isNot(contains('task3')));
     expect(dirtyList3, contains('inst3'));
   });
+
+  test(
+    'Test taskScheduleFromJson handles non-boolean preferredBy values safely',
+    () async {
+      final rawTaskMap = {
+        'id': 'task-non-bool',
+        'title': 'Non-bool preferredBy Task',
+        'description': 'Testing type safety',
+        'schedules': <dynamic>[],
+        'preferredBy': {
+          'user1': true,
+          'user2': false,
+          'user3': null,
+          'user4': 'invalid',
+          'user5': 123,
+        },
+        'updatedAt': DateTime.now().toIso8601String(),
+      };
+
+      final task = TaskSchedule.fromJson(rawTaskMap);
+      expect(task.id, 'task-non-bool');
+      expect(task.preferredBy['user1'], true);
+      expect(task.preferredBy['user2'], false);
+      expect(task.preferredBy['user3'], false);
+      expect(task.preferredBy['user4'], false);
+      expect(task.preferredBy['user5'], false);
+    },
+  );
 }
