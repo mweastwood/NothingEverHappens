@@ -79,7 +79,9 @@ void main() {
       );
     });
 
-    test('sanitizeForJson converts complex types and masks email and PII fields', () {
+    test(
+      'sanitizeForJson converts complex types and masks email and PII fields',
+      () {
       final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
       final now = DateTime.utc(2026, 8, 12, 5, 0, 0);
@@ -110,6 +112,12 @@ void main() {
         'title': 'Secret task',
         'description': 'Sensitive details',
         'notes': 'Private notes',
+        'bio': 'Developer bio',
+        'sender': 'Alice Sender',
+        'recipient': 'Bob Recipient',
+        'inviter': 'Charlie Inviter',
+        'invitee': 'David Invitee',
+        'member': 'Eve Member',
         'nestedMap': {
           'list': [now, timestamp, civilDay],
           'userEmail': 'nested@example.com',
@@ -141,6 +149,12 @@ void main() {
       expect(sanitized['title'], 'S***');
       expect(sanitized['description'], 'S***');
       expect(sanitized['notes'], 'P***');
+      expect(sanitized['bio'], 'D***');
+      expect(sanitized['sender'], 'A***');
+      expect(sanitized['recipient'], 'B***');
+      expect(sanitized['inviter'], 'C***');
+      expect(sanitized['invitee'], 'D***');
+      expect(sanitized['member'], 'E***');
       expect(sanitized['nestedMap']['userEmail'], 'n***@example.com');
       expect(sanitized['nestedMap']['comment'], 'P***');
 

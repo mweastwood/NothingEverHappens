@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'auth_repository.dart';
@@ -97,6 +99,12 @@ class AppStateExporter {
       'street',
       'zipcode',
       'postalcode',
+      'bio',
+      'sender',
+      'recipient',
+      'inviter',
+      'invitee',
+      'member',
     ];
     if (piiKeywords.any((k) => lowerKey.contains(k))) return true;
     if (lowerKey == 'name') return true;
@@ -408,9 +416,15 @@ class AppStateExporter {
     Future<void> dismissProgressDialog() async {
       if (isDismissed) return;
       isDismissed = true;
-      final dialogCtx = await dialogContextCompleter.future;
-      if (dialogCtx.mounted) {
-        Navigator.of(dialogCtx, rootNavigator: true).pop();
+      try {
+        final dialogCtx = await dialogContextCompleter.future.timeout(
+          const Duration(seconds: 2),
+        );
+        if (dialogCtx.mounted) {
+          Navigator.of(dialogCtx, rootNavigator: true).pop();
+        }
+      } catch (_) {
+        // Safety timeout reached or context unavailable; ignore.
       }
     }
 
@@ -437,9 +451,13 @@ class AppStateExporter {
                   (MediaQuery.maybeOf(context)?.size.height ?? 800) / 2,
                 );
 
-          final bytes = Uint8List.fromList(utf8.encode(jsonString));
-          final xFile = XFile.fromData(
-            bytes,
+          final tempDir = await getTemporaryDirectory();
+          final filePath = '${tempDir.path}/$fileName';
+          final file = File(filePath);
+          await file.writeAsString(jsonString, flush: true);
+
+          final xFile = XFile(
+            filePath,
             mimeType: 'application/json',
             name: fileName,
           );
