@@ -33,17 +33,14 @@ final appStateExporterProvider = Provider<AppStateExporter>((ref) {
 
 class AppStateExporter {
   final FirebaseFirestore? _firestore;
-  final FirebaseAuth? _firebaseAuth;
   final AuthRepository? _authRepository;
   final HiveLocalDataSource _hiveDataSource;
 
   AppStateExporter({
     FirebaseFirestore? firestore,
-    FirebaseAuth? firebaseAuth,
     AuthRepository? authRepository,
     required HiveLocalDataSource hiveDataSource,
   })  : _firestore = firestore,
-        _firebaseAuth = firebaseAuth,
         _authRepository = authRepository,
         _hiveDataSource = hiveDataSource;
 
@@ -105,8 +102,7 @@ class AppStateExporter {
 
   Future<Map<String, dynamic>> exportStateRaw() async {
     bool isOffline = false;
-    final User? user =
-        _firebaseAuth?.currentUser ?? _authRepository?.currentUser;
+    final User? user = _authRepository?.currentUser;
     final String? uid = user?.uid;
 
     final exportMetadata = <String, dynamic>{
@@ -351,8 +347,8 @@ class AppStateExporter {
       value.forEach((k, v) {
         final keyStr = k.toString();
         final lowerKey = keyStr.toLowerCase();
-        final entryIsEmailKey = isEmailKey || lowerKey.contains('email');
-        final entryIsPiiKey = isPiiKey || _isPiiKey(lowerKey);
+        final entryIsEmailKey = lowerKey.contains('email');
+        final entryIsPiiKey = _isPiiKey(lowerKey);
         result[keyStr] = sanitizeForJson(
           v,
           isEmailKey: entryIsEmailKey,
@@ -446,7 +442,6 @@ class AppStateExporter {
       bool shared = false;
 
       if (!kIsWeb) {
-        File? tempFile;
         try {
           final RenderBox? box = context.findRenderObject() as RenderBox?;
           final Rect sharePositionOrigin = (box != null && box.hasSize)
@@ -460,7 +455,7 @@ class AppStateExporter {
 
           final tempDir = await getTemporaryDirectory();
           final filePath = '${tempDir.path}/$fileName';
-          tempFile = File(filePath);
+          final tempFile = File(filePath);
           await tempFile.writeAsString(jsonString, flush: true);
 
           final xFile = XFile(
@@ -479,16 +474,6 @@ class AppStateExporter {
           shared = true;
         } catch (e) {
           debugPrint('Share file failed, falling back to clipboard: $e');
-        } finally {
-          if (tempFile != null) {
-            try {
-              if (await tempFile.exists()) {
-                await tempFile.delete();
-              }
-            } catch (e) {
-              debugPrint('Failed to delete temporary debug file: $e');
-            }
-          }
         }
       }
 

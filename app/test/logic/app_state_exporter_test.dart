@@ -163,6 +163,71 @@ void main() {
     });
 
     test(
+      'sanitizeForJson preserves object IDs, roles, and status fields '
+      'inside nested member or invite objects',
+      () {
+        final exporter = AppStateExporter(hiveDataSource: localDataSource);
+
+        final rawData = {
+          'member': {
+            'id': 'u123',
+            'role': 'admin',
+            'status': 'active',
+            'displayName': 'Eve Member',
+            'joinedAt': DateTime.utc(2026, 1, 1),
+          },
+          'inviter': {
+            'id': 'u456',
+            'role': 'member',
+            'status': 'pending',
+            'email': 'inviter@example.com',
+            'name': 'Charlie Inviter',
+          },
+          'invitee': {
+            'id': 'u789',
+            'role': 'viewer',
+            'status': 'accepted',
+            'email': 'invitee@example.com',
+            'name': 'David Invitee',
+          },
+          'membersList': [
+            {
+              'id': 'u999',
+              'role': 'owner',
+              'status': 'active',
+              'displayName': 'Frank Member',
+            }
+          ],
+        };
+
+        final sanitized = exporter.sanitizeForJson(rawData);
+
+        expect(sanitized['member']['id'], 'u123');
+        expect(sanitized['member']['role'], 'admin');
+        expect(sanitized['member']['status'], 'active');
+        expect(sanitized['member']['displayName'], 'E***');
+        expect(sanitized['member']['joinedAt'], '2026-01-01T00:00:00.000Z');
+
+        expect(sanitized['inviter']['id'], 'u456');
+        expect(sanitized['inviter']['role'], 'member');
+        expect(sanitized['inviter']['status'], 'pending');
+        expect(sanitized['inviter']['email'], 'i***@example.com');
+        expect(sanitized['inviter']['name'], 'C***');
+
+        expect(sanitized['invitee']['id'], 'u789');
+        expect(sanitized['invitee']['role'], 'viewer');
+        expect(sanitized['invitee']['status'], 'accepted');
+        expect(sanitized['invitee']['email'], 'i***@example.com');
+        expect(sanitized['invitee']['name'], 'D***');
+
+        expect(sanitized['membersList'][0]['id'], 'u999');
+        expect(sanitized['membersList'][0]['role'], 'owner');
+        expect(sanitized['membersList'][0]['status'], 'active');
+        expect(sanitized['membersList'][0]['displayName'], 'F***');
+      },
+    );
+
+    test(
       'exportStateRaw assembles Hive and FakeFirestore state correctly',
       () async {
         final fakeFirestore = FakeFirebaseFirestore();
