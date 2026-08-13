@@ -65,6 +65,9 @@ class AppStateExporter {
 
   static bool _isPiiKey(String lowerKey) {
     if (lowerKey.contains('email')) return false;
+    if (lowerKey == 'id' || lowerKey.endsWith('id') || lowerKey.endsWith('_id')) {
+      return false;
+    }
     const piiKeywords = [
       'displayname',
       'display_name',
@@ -203,7 +206,13 @@ class AppStateExporter {
 
       final userProfileData =
           remoteFirebaseState['userProfileDoc'] as Map<String, dynamic>?;
-      final String? familyId = userProfileData?['familyId'] as String?;
+      String? familyId = userProfileData?['familyId'] as String?;
+      if (familyId == null || familyId.isEmpty) {
+        final localSettings =
+            localHiveState['settings'] as Map<String, dynamic>?;
+        familyId = (localSettings?['familyId'] ?? localHiveState['familyId'])
+            as String?;
+      }
       if (familyId != null && familyId.isNotEmpty) {
         final familyRef = _firestore.collection('families').doc(familyId);
 
@@ -431,64 +440,65 @@ class AppStateExporter {
     }
 
     try {
-      final jsonString = await exportStateJson(pretty: true);
-      await dismissProgressDialog();
+      try {
+        final jsonString = await exportStateJson(pretty: true);
 
-      if (!context.mounted) return;
-
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = 'debug_app_state_$timestamp.json';
-
-      bool shared = false;
-
-      if (!kIsWeb) {
-        try {
-          final RenderBox? box = context.findRenderObject() as RenderBox?;
-          final Rect sharePositionOrigin = (box != null && box.hasSize)
-              ? (box.localToGlobal(Offset.zero) & box.size)
-              : Rect.fromLTWH(
-                  0,
-                  0,
-                  MediaQuery.maybeOf(context)?.size.width ?? 400,
-                  (MediaQuery.maybeOf(context)?.size.height ?? 800) / 2,
-                );
-
-          final tempDir = await getTemporaryDirectory();
-          final filePath = '${tempDir.path}/$fileName';
-          final tempFile = File(filePath);
-          await tempFile.writeAsString(jsonString, flush: true);
-
-          final xFile = XFile(
-            filePath,
-            mimeType: 'application/json',
-            name: fileName,
-          );
-
-          if (!context.mounted) return;
-          await Share.shareXFiles(
-            [xFile],
-            subject: context.l10n.debugStateShareSubject,
-            text: context.l10n.debugStateShareText,
-            sharePositionOrigin: sharePositionOrigin,
-          );
-          shared = true;
-        } catch (e) {
-          debugPrint('Share file failed, falling back to clipboard: $e');
-        }
-      }
-
-      if (!shared) {
-        await Clipboard.setData(ClipboardData(text: jsonString));
         if (!context.mounted) return;
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.debugStateCopiedToClipboard),
-          ),
-        );
+
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final fileName = 'debug_app_state_$timestamp.json';
+
+        bool shared = false;
+
+        if (!kIsWeb) {
+          try {
+            final RenderBox? box = context.findRenderObject() as RenderBox?;
+            final Rect sharePositionOrigin = (box != null && box.hasSize)
+                ? (box.localToGlobal(Offset.zero) & box.size)
+                : Rect.fromLTWH(
+                    0,
+                    0,
+                    MediaQuery.maybeOf(context)?.size.width ?? 400,
+                    (MediaQuery.maybeOf(context)?.size.height ?? 800) / 2,
+                  );
+
+            final tempDir = await getTemporaryDirectory();
+            final filePath = '${tempDir.path}/$fileName';
+            final tempFile = File(filePath);
+            await tempFile.writeAsString(jsonString, flush: true);
+
+            final xFile = XFile(
+              filePath,
+              mimeType: 'application/json',
+              name: fileName,
+            );
+
+            if (!context.mounted) return;
+            await Share.shareXFiles(
+              [xFile],
+              subject: context.l10n.debugStateShareSubject,
+              text: context.l10n.debugStateShareText,
+              sharePositionOrigin: sharePositionOrigin,
+            );
+            shared = true;
+          } catch (e) {
+            debugPrint('Share file failed, falling back to clipboard: $e');
+          }
+        }
+
+        if (!shared) {
+          await Clipboard.setData(ClipboardData(text: jsonString));
+          if (!context.mounted) return;
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+            SnackBar(
+              content: Text(context.l10n.debugStateCopiedToClipboard),
+            ),
+          );
+        }
+      } finally {
+        await dismissProgressDialog();
       }
     } catch (e, stackTrace) {
-      await dismissProgressDialog();
-
       if (!context.mounted) return;
       final errorHandler = ErrorHandler();
       final report = errorHandler.report(e, stackTrace: stackTrace);

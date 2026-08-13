@@ -169,6 +169,11 @@ void main() {
         final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
         final rawData = {
+          'memberId': 'user-123',
+          'inviterId': 'user-456',
+          'inviteeId': 'user-789',
+          'userId': 'user-000',
+          'member_id': 'user-111',
           'member': {
             'id': 'u123',
             'role': 'admin',
@@ -202,6 +207,12 @@ void main() {
 
         final sanitized = exporter.sanitizeForJson(rawData);
 
+        expect(sanitized['memberId'], 'user-123');
+        expect(sanitized['inviterId'], 'user-456');
+        expect(sanitized['inviteeId'], 'user-789');
+        expect(sanitized['userId'], 'user-000');
+        expect(sanitized['member_id'], 'user-111');
+
         expect(sanitized['member']['id'], 'u123');
         expect(sanitized['member']['role'], 'admin');
         expect(sanitized['member']['status'], 'active');
@@ -224,6 +235,46 @@ void main() {
         expect(sanitized['membersList'][0]['role'], 'owner');
         expect(sanitized['membersList'][0]['status'], 'active');
         expect(sanitized['membersList'][0]['displayName'], 'F***');
+      },
+    );
+
+    test(
+      'exportStateRaw falls back to local settings/state for familyId when userProfileDoc query fails',
+      () async {
+        final fakeFirestore = FakeFirebaseFirestore();
+        final mockUser = MockUser();
+        final mockAuthRepo = MockAuthRepository(mockUser);
+
+        await localDataSource.saveSettings(
+          const UserSettings(hoursAvailable: 8.0),
+        );
+        localDataSource.exportRawState()['settings']['familyId'] =
+            'fallback-fam-123';
+
+        await fakeFirestore.collection('families').doc('fallback-fam-123').set({
+          'name': 'Fallback Family Name',
+        });
+        await fakeFirestore
+            .collection('families')
+            .doc('fallback-fam-123')
+            .collection('tasks')
+            .doc('ftask-1')
+            .set({'title': 'Fallback Task'});
+
+        final exporter = AppStateExporter(
+          firestore: fakeFirestore,
+          authRepository: mockAuthRepo,
+          hiveDataSource: localDataSource,
+        );
+
+        final raw = await exporter.exportStateRaw();
+        final remoteState = raw['remoteFirebaseState'];
+
+        expect(remoteState['familyDoc'], isNotNull);
+        expect(remoteState['familyDoc']['id'], 'fallback-fam-123');
+        expect(remoteState['familyDoc']['name'], 'Fallback Family Name');
+        expect(remoteState['familyTasks'], hasLength(1));
+        expect(remoteState['familyTasks'][0]['id'], 'ftask-1');
       },
     );
 
