@@ -241,7 +241,7 @@ void main() {
         final raw = await exporter.exportStateRaw();
 
         expect(raw['exportMetadata'], isNotNull);
-        expect(raw['exportMetadata']['isOffline'], isFalse);
+        expect(raw['exportMetadata']['isOffline'], isTrue);
         expect(raw['localHiveState'], isNotNull);
         expect(raw['remoteFirebaseState']['status'], 'error');
         expect(raw['remoteFirebaseState']['errorMessage'], isNotNull);

@@ -39,10 +39,10 @@ class AppStateExporter {
     FirebaseAuth? firebaseAuth,
     AuthRepository? authRepository,
     required HiveLocalDataSource hiveDataSource,
-  }) : _firestore = firestore,
-       _firebaseAuth = firebaseAuth,
-       _authRepository = authRepository,
-       _hiveDataSource = hiveDataSource;
+  })  : _firestore = firestore,
+        _firebaseAuth = firebaseAuth,
+        _authRepository = authRepository,
+        _hiveDataSource = hiveDataSource;
 
   static String? maskEmail(String? email) {
     if (email == null) return null;
@@ -77,9 +77,8 @@ class AppStateExporter {
         'isAnonymous': user.isAnonymous,
         'emailVerified': user.emailVerified,
         'creationTime': user.metadata.creationTime?.toUtc().toIso8601String(),
-        'lastSignInTime': user.metadata.lastSignInTime
-            ?.toUtc()
-            .toIso8601String(),
+        'lastSignInTime':
+            user.metadata.lastSignInTime?.toUtc().toIso8601String(),
       };
     }
 
@@ -99,6 +98,7 @@ class AppStateExporter {
     };
 
     if (_firestore == null || uid == null || uid.isEmpty) {
+      isOffline = true;
       remoteFirebaseState['status'] = 'error';
       remoteFirebaseState['errorMessage'] = uid == null || uid.isEmpty
           ? 'No authenticated user'
@@ -108,9 +108,8 @@ class AppStateExporter {
       final userDocRef = _firestore.collection('users').doc(uid);
 
       try {
-        final userDocSnap = await userDocRef.get().timeout(
-          const Duration(seconds: 5),
-        );
+        final userDocSnap =
+            await userDocRef.get().timeout(const Duration(seconds: 5));
         final userProfileData = userDocSnap.data();
         if (userDocSnap.exists && userProfileData != null) {
           remoteFirebaseState['userProfileDoc'] = userProfileData;
@@ -165,9 +164,8 @@ class AppStateExporter {
         final familyRef = _firestore.collection('families').doc(familyId);
 
         try {
-          final familySnap = await familyRef.get().timeout(
-            const Duration(seconds: 5),
-          );
+          final familySnap =
+              await familyRef.get().timeout(const Duration(seconds: 5));
           if (familySnap.exists && familySnap.data() != null) {
             remoteFirebaseState['familyDoc'] = {
               'id': familySnap.id,
