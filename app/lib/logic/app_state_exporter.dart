@@ -87,14 +87,6 @@ class AppStateExporter {
       'photo',
       'avatar',
       'picture',
-      'title',
-      'description',
-      'notes',
-      'note',
-      'content',
-      'summary',
-      'text',
-      'comment',
       'address',
       'street',
       'zipcode',
@@ -401,11 +393,24 @@ class AppStateExporter {
     final Completer<BuildContext> dialogContextCompleter =
         Completer<BuildContext>();
     bool isDismissed = false;
+    bool isPopped = false;
+
+    void popDialog(BuildContext ctx) {
+      if (!isPopped && ctx.mounted) {
+        isPopped = true;
+        Navigator.of(ctx, rootNavigator: true).pop();
+      }
+    }
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext ctx) {
+        if (isDismissed) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            popDialog(ctx);
+          });
+        }
         if (!dialogContextCompleter.isCompleted) {
           dialogContextCompleter.complete(ctx);
         }
@@ -420,11 +425,10 @@ class AppStateExporter {
         final dialogCtx = await dialogContextCompleter.future.timeout(
           const Duration(seconds: 2),
         );
-        if (dialogCtx.mounted) {
-          Navigator.of(dialogCtx, rootNavigator: true).pop();
-        }
+        popDialog(dialogCtx);
       } catch (_) {
-        // Safety timeout reached or context unavailable; ignore.
+        // Safety timeout reached; if the dialog appears later,
+        // the builder checks `isDismissed` and schedules `popDialog`.
       }
     }
 
@@ -440,6 +444,7 @@ class AppStateExporter {
       bool shared = false;
 
       if (!kIsWeb) {
+        File? tempFile;
         try {
           final RenderBox? box = context.findRenderObject() as RenderBox?;
           final Rect sharePositionOrigin = (box != null && box.hasSize)
@@ -453,8 +458,8 @@ class AppStateExporter {
 
           final tempDir = await getTemporaryDirectory();
           final filePath = '${tempDir.path}/$fileName';
-          final file = File(filePath);
-          await file.writeAsString(jsonString, flush: true);
+          tempFile = File(filePath);
+          await tempFile.writeAsString(jsonString, flush: true);
 
           final xFile = XFile(
             filePath,
@@ -472,6 +477,16 @@ class AppStateExporter {
           shared = true;
         } catch (e) {
           debugPrint('Share file failed, falling back to clipboard: $e');
+        } finally {
+          if (tempFile != null) {
+            try {
+              if (await tempFile.exists()) {
+                await tempFile.delete();
+              }
+            } catch (e) {
+              debugPrint('Failed to delete temporary debug file: $e');
+            }
+          }
         }
       }
 

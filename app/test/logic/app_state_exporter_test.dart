@@ -146,9 +146,9 @@ void main() {
       expect(sanitized['displayName'], 'J***');
       expect(sanitized['phoneNumber'], '+***');
       expect(sanitized['photoURL'], 'h***');
-      expect(sanitized['title'], 'S***');
-      expect(sanitized['description'], 'S***');
-      expect(sanitized['notes'], 'P***');
+      expect(sanitized['title'], 'Secret task');
+      expect(sanitized['description'], 'Sensitive details');
+      expect(sanitized['notes'], 'Private notes');
       expect(sanitized['bio'], 'D***');
       expect(sanitized['sender'], 'A***');
       expect(sanitized['recipient'], 'B***');
@@ -156,7 +156,7 @@ void main() {
       expect(sanitized['invitee'], 'D***');
       expect(sanitized['member'], 'E***');
       expect(sanitized['nestedMap']['userEmail'], 'n***@example.com');
-      expect(sanitized['nestedMap']['comment'], 'P***');
+      expect(sanitized['nestedMap']['comment'], 'Private comment');
 
       final jsonString = jsonEncode(sanitized);
       expect(jsonString, isNotEmpty);

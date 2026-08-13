@@ -88,7 +88,10 @@ void main() {
     await tester.tap(saveButtonFinder);
     await tester.pumpAndSettle();
 
-    expect(find.text('Please enter a number between 0 and 24'), findsOneWidget);
+    expect(
+      find.text('Please enter a number between 0 and 24'),
+      findsOneWidget,
+    );
     verifyNever(mockRepository.updateSettings(any));
   });
 
@@ -141,7 +144,9 @@ void main() {
     await screenMatchesGolden(tester, 'settings_screen_validation_error');
   });
 
-  testGoldens('SettingsScreen with all options enabled golden', (tester) async {
+  testGoldens('SettingsScreen with all options enabled golden', (
+    tester,
+  ) async {
     settingsSubject.add(
       const UserSettings(hoursAvailable: 8.0, showLastSpawnedDate: true),
     );
