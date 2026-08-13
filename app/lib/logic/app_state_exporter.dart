@@ -65,7 +65,12 @@ class AppStateExporter {
 
   static bool _isPiiKey(String lowerKey) {
     if (lowerKey.contains('email')) return false;
-    if (lowerKey == 'id' || lowerKey.endsWith('id') || lowerKey.endsWith('_id')) {
+    if (lowerKey == 'id' ||
+        lowerKey == 'ids' ||
+        lowerKey.endsWith('id') ||
+        lowerKey.endsWith('_id') ||
+        lowerKey.endsWith('ids') ||
+        lowerKey.endsWith('_ids')) {
       return false;
     }
     const piiKeywords = [
@@ -274,8 +279,6 @@ class AppStateExporter {
       }
 
       if (errors.isNotEmpty) {
-        isOffline = true;
-        exportMetadata['isOffline'] = isOffline;
         remoteFirebaseState['status'] = 'error';
         remoteFirebaseState['errorMessage'] = errors.join('; ');
       }
@@ -373,7 +376,7 @@ class AppStateExporter {
             (e) => sanitizeForJson(
               e,
               isEmailKey: isEmailKey,
-              isPiiKey: false,
+              isPiiKey: isPiiKey,
             ),
           )
           .toList();
@@ -409,6 +412,12 @@ class AppStateExporter {
       }
     }
 
+    dialogContextCompleter.future.then((dialogCtx) {
+      if (isDismissed) {
+        popDialog(dialogCtx);
+      }
+    });
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -428,14 +437,9 @@ class AppStateExporter {
     Future<void> dismissProgressDialog() async {
       if (isDismissed) return;
       isDismissed = true;
-      try {
-        final dialogCtx = await dialogContextCompleter.future.timeout(
-          const Duration(seconds: 2),
-        );
+      if (dialogContextCompleter.isCompleted) {
+        final dialogCtx = await dialogContextCompleter.future;
         popDialog(dialogCtx);
-      } catch (_) {
-        // Safety timeout reached; if the dialog appears later,
-        // the builder checks `isDismissed` and schedules `popDialog`.
       }
     }
 

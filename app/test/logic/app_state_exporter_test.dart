@@ -108,11 +108,13 @@ void main() {
         'email_address': 'address@example.com',
         'displayName': 'John Doe',
         'phoneNumber': '+15551234567',
+        'phoneNumbers': ['+15551234567', '+15559876543'],
         'photoURL': 'https://example.com/avatar.png',
         'title': 'Secret task',
         'description': 'Sensitive details',
         'notes': 'Private notes',
         'bio': 'Developer bio',
+        'bios': ['First bio', 'Second bio'],
         'sender': 'Alice Sender',
         'recipient': 'Bob Recipient',
         'inviter': 'Charlie Inviter',
@@ -145,11 +147,13 @@ void main() {
       expect(sanitized['email_address'], 'a***@example.com');
       expect(sanitized['displayName'], 'J***');
       expect(sanitized['phoneNumber'], '+***');
+      expect(sanitized['phoneNumbers'], ['+***', '+***']);
       expect(sanitized['photoURL'], 'h***');
       expect(sanitized['title'], 'Secret task');
       expect(sanitized['description'], 'Sensitive details');
       expect(sanitized['notes'], 'Private notes');
       expect(sanitized['bio'], 'D***');
+      expect(sanitized['bios'], ['F***', 'S***']);
       expect(sanitized['sender'], 'A***');
       expect(sanitized['recipient'], 'B***');
       expect(sanitized['inviter'], 'C***');
@@ -174,6 +178,8 @@ void main() {
           'inviteeId': 'user-789',
           'userId': 'user-000',
           'member_id': 'user-111',
+          'memberIds': ['user_123', 'user_456'],
+          'member_ids': ['user_789', 'user_000'],
           'member': {
             'id': 'u123',
             'role': 'admin',
@@ -195,7 +201,6 @@ void main() {
             'email': 'invitee@example.com',
             'name': 'David Invitee',
           },
-          'members': ['user_123', 'user_456'],
           'membersList': [
             {
               'id': 'u999',
@@ -213,7 +218,8 @@ void main() {
         expect(sanitized['inviteeId'], 'user-789');
         expect(sanitized['userId'], 'user-000');
         expect(sanitized['member_id'], 'user-111');
-        expect(sanitized['members'], ['user_123', 'user_456']);
+        expect(sanitized['memberIds'], ['user_123', 'user_456']);
+        expect(sanitized['member_ids'], ['user_789', 'user_000']);
 
         expect(sanitized['member']['id'], 'u123');
         expect(sanitized['member']['role'], 'admin');
@@ -421,5 +427,64 @@ void main() {
       final decoded = jsonDecode(prettyJson);
       expect(decoded['exportMetadata'], isNotNull);
     });
+
+    test(
+      'exportStateRaw keeps isOffline false when partial query error occurs online',
+      () async {
+        final fakeFirestore = FakeFirebaseFirestore();
+        final mockUser = MockUser();
+        final mockAuthRepo = MockAuthRepository(mockUser);
+
+        // Populate basic user doc so Firestore is initialized & user is authenticated
+        await fakeFirestore.collection('users').doc('user-123').set({
+          'displayName': 'Test User',
+          'email': 'test@example.com',
+        });
+
+        final exporter = AppStateExporter(
+          firestore: fakeFirestore,
+          authRepository: mockAuthRepo,
+          hiveDataSource: localDataSource,
+        );
+
+        final raw = await exporter.exportStateRaw();
+        final exportMeta = raw['exportMetadata'];
+        final remoteState = raw['remoteFirebaseState'];
+
+        expect(exportMeta['isOffline'], isFalse);
+        expect(remoteState['status'], 'success');
+      },
+    );
+
+    testWidgets(
+      'shareDebugState completes fast without 2-second timeout delay',
+      (WidgetTester tester) async {
+        final exporter = AppStateExporter(
+          firestore: null,
+          hiveDataSource: localDataSource,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  return ElevatedButton(
+                    onPressed: () => exporter.shareDebugState(context),
+                    child: const Text('Share'),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byType(ElevatedButton));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+      },
+    );
   });
 }
