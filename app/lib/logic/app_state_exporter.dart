@@ -134,6 +134,7 @@ class AppStateExporter {
       try {
         final tasksQuery = await userDocRef
             .collection('tasks')
+            .limit(500)
             .get()
             .timeout(const Duration(seconds: 5));
         remoteFirebaseState['tasks'] = tasksQuery.docs
@@ -146,6 +147,7 @@ class AppStateExporter {
       try {
         final instancesQuery = await userDocRef
             .collection('instances')
+            .limit(500)
             .get()
             .timeout(const Duration(seconds: 5));
         remoteFirebaseState['instances'] = instancesQuery.docs
@@ -178,6 +180,7 @@ class AppStateExporter {
         try {
           final familyTasksQuery = await familyRef
               .collection('tasks')
+              .limit(500)
               .get()
               .timeout(const Duration(seconds: 5));
           remoteFirebaseState['familyTasks'] = familyTasksQuery.docs
@@ -190,6 +193,7 @@ class AppStateExporter {
         try {
           final familyInstancesQuery = await familyRef
               .collection('instances')
+              .limit(500)
               .get()
               .timeout(const Duration(seconds: 5));
           remoteFirebaseState['familyInstances'] = familyInstancesQuery.docs
@@ -206,6 +210,7 @@ class AppStateExporter {
           final invitesQuery = await _firestore
               .collection('invites')
               .where('toEmail', isEqualTo: email.trim().toLowerCase())
+              .limit(500)
               .get()
               .timeout(const Duration(seconds: 5));
           remoteFirebaseState['invites'] = invitesQuery.docs
@@ -243,12 +248,12 @@ class AppStateExporter {
     return jsonEncode(rawMap);
   }
 
-  dynamic sanitizeForJson(dynamic value) {
+  dynamic sanitizeForJson(dynamic value, {bool isEmailKey = false}) {
     if (value == null) return null;
     if (value is num || value is bool) return value;
 
     if (value is String) {
-      return value;
+      return isEmailKey ? maskEmail(value) : value;
     }
 
     if (value is DateTime) {
@@ -292,45 +297,55 @@ class AppStateExporter {
       value.forEach((k, v) {
         final keyStr = k.toString();
         final lowerKey = keyStr.toLowerCase();
-        final isEmailKey = lowerKey == 'email' || lowerKey.endsWith('email');
-        if (isEmailKey && v is String) {
-          result[keyStr] = maskEmail(v);
-        } else {
-          result[keyStr] = sanitizeForJson(v);
-        }
+        final entryIsEmailKey = isEmailKey || lowerKey.contains('email');
+        result[keyStr] = sanitizeForJson(v, isEmailKey: entryIsEmailKey);
       });
       return result;
     }
 
     if (value is Iterable) {
-      return value.map((e) => sanitizeForJson(e)).toList();
+      return value
+          .map((e) => sanitizeForJson(e, isEmailKey: isEmailKey))
+          .toList();
     }
 
     try {
       final dynamic json = (value as dynamic).toJson();
-      return sanitizeForJson(json);
+      return sanitizeForJson(json, isEmailKey: isEmailKey);
     } catch (_) {
-      return value.toString();
+      final str = value.toString();
+      return isEmailKey ? maskEmail(str) : str;
     }
   }
 
   Future<void> shareDebugState(BuildContext context) async {
-    bool isDialogShowing = true;
+    BuildContext? dialogContext;
+    bool exportFinished = false;
+    bool isDismissed = false;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
+      builder: (BuildContext ctx) {
+        dialogContext = ctx;
+        if (exportFinished && !isDismissed) {
+          isDismissed = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (ctx.mounted) {
+              Navigator.of(ctx).pop();
+            }
+          });
+        }
         return const Center(child: CircularProgressIndicator());
       },
-    ).then((_) {
-      isDialogShowing = false;
-    });
+    );
 
     void dismissProgressDialog() {
-      if (isDialogShowing && context.mounted) {
-        isDialogShowing = false;
-        Navigator.of(context, rootNavigator: true).pop();
+      if (isDismissed) return;
+      exportFinished = true;
+      if (dialogContext != null && dialogContext!.mounted) {
+        isDismissed = true;
+        Navigator.of(dialogContext!).pop();
       }
     }
 

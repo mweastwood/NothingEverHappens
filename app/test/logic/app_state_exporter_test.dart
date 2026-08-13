@@ -3,12 +3,48 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:mockito/mockito.dart';
 import 'package:nothing_ever_happens/logic/app_state_exporter.dart';
+import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+
+class MockAuthRepository extends Mock implements AuthRepository {
+  final fb_auth.User? _mockUser;
+  MockAuthRepository(this._mockUser);
+
+  @override
+  fb_auth.User? get currentUser => _mockUser;
+}
+
+class MockUserMetadata extends Mock implements fb_auth.UserMetadata {
+  @override
+  DateTime? get creationTime => null;
+
+  @override
+  DateTime? get lastSignInTime => null;
+}
+
+class MockUser extends Mock implements fb_auth.User {
+  @override
+  String get uid => 'user-123';
+
+  @override
+  String? get email => 'test@example.com';
+
+  @override
+  bool get isAnonymous => false;
+
+  @override
+  bool get emailVerified => true;
+
+  @override
+  fb_auth.UserMetadata get metadata => MockUserMetadata();
+}
 
 void main() {
   group('AppStateExporter', () {
@@ -53,6 +89,9 @@ void main() {
         'email': 'user@example.com',
         'toEmail': 'invitee@example.com',
         'fromEmail': 'inviter@example.com',
+        'emails': ['one@example.com', 'two@example.com'],
+        'primary_email': 'primary@example.com',
+        'email_address': 'address@example.com',
         'nestedMap': {
           'list': [now, timestamp, civilDay],
           'userEmail': 'nested@example.com',
@@ -74,6 +113,9 @@ void main() {
       expect(sanitized['email'], 'u***@example.com');
       expect(sanitized['toEmail'], 'i***@example.com');
       expect(sanitized['fromEmail'], 'i***@example.com');
+      expect(sanitized['emails'], ['o***@example.com', 't***@example.com']);
+      expect(sanitized['primary_email'], 'p***@example.com');
+      expect(sanitized['email_address'], 'a***@example.com');
       expect(sanitized['nestedMap']['userEmail'], 'n***@example.com');
 
       final jsonString = jsonEncode(sanitized);
@@ -84,6 +126,8 @@ void main() {
       'exportStateRaw assembles Hive and FakeFirestore state correctly',
       () async {
         final fakeFirestore = FakeFirebaseFirestore();
+        final mockUser = MockUser();
+        final mockAuthRepo = MockAuthRepository(mockUser);
 
         final task = TaskSchedule(
           id: 'task-1',
@@ -159,6 +203,7 @@ void main() {
 
         final exporter = AppStateExporter(
           firestore: fakeFirestore,
+          authRepository: mockAuthRepo,
           hiveDataSource: localDataSource,
         );
 
