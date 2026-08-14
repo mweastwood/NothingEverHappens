@@ -188,9 +188,9 @@ void main() {
     },
   );
 
-  testWidgets(
-    'SettingsScreen renders export debug state button',
-    (WidgetTester tester) async {
+  testWidgets('SettingsScreen renders export debug state button', (
+    WidgetTester tester,
+  ) async {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
