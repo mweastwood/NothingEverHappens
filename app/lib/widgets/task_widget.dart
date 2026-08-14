@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/user_profile_provider.dart';
+import '../logic/task_integration.dart';
 import '../logic/task_schedule.dart';
 import '../logic/task_repository.dart';
 import '../screens/create_task_screen.dart';
@@ -654,19 +655,35 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (widget.instance.title.toLowerCase().contains('duolingo')) ...[
+            if (TaskIntegration.resolveLaunchUrl(
+                  title: widget.instance.title,
+                  appLaunchUrl: widget.schedule?.appLaunchUrl,
+                ) !=
+                null) ...[
               IconButton(
-                key: const Key('open_duolingo_button'),
+                key: const Key('open_app_url_button'),
                 icon: const Icon(Icons.open_in_new, size: 20),
-                tooltip: 'Open Duolingo',
+                tooltip: 'Open link',
                 onPressed: () async {
-                  final url = Uri.parse('https://www.duolingo.com');
+                  final urlStr = TaskIntegration.resolveLaunchUrl(
+                    title: widget.instance.title,
+                    appLaunchUrl: widget.schedule?.appLaunchUrl,
+                  )!;
                   try {
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                    final url = Uri.parse(urlStr);
+                    final launched = await launchUrl(
+                      url,
+                      mode: LaunchMode.externalApplication,
+                    );
+                    if (!launched && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not open link: $urlStr')),
+                      );
+                    }
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Could not open Duolingo: $e')),
+                        SnackBar(content: Text('Could not open link: $e')),
                       );
                     }
                   }
