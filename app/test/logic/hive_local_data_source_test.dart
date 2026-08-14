@@ -181,7 +181,7 @@ void main() {
         'updatedAt': DateTime.now().toIso8601String(),
       };
 
-      final task = TaskSchedule.fromJson(rawTaskMap);
+      final task = dataSource.taskScheduleFromJson(rawTaskMap);
       expect(task.id, 'task-non-bool');
       expect(task.preferredBy['user1'], true);
       expect(task.preferredBy['user2'], false);

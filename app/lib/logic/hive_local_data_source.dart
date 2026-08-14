@@ -273,6 +273,10 @@ class HiveLocalDataSource {
     return data['value'] == true;
   }
 
+  @visibleForTesting
+  TaskSchedule taskScheduleFromJson(Map<String, dynamic> data) =>
+      _taskScheduleFromJson(data);
+
   TaskSchedule _taskScheduleFromJson(Map<String, dynamic> data) {
     final schedulesRaw = data['schedules'] as List<dynamic>? ?? [];
     final schedules = schedulesRaw
