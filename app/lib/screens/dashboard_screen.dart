@@ -6,10 +6,7 @@ import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/civil_day.dart';
-import '../logic/task_instance.dart';
-import '../logic/task_schedule.dart';
 import '../logic/task_repository.dart';
-import '../logic/auth_repository.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -62,7 +59,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final settingsVal = ref.watch(userSettingsProvider);
     final schedulesVal = ref.watch(taskSchedulesProvider);
     final instancesVal = ref.watch(taskInstancesProvider);
-    final currentUserId = ref.watch(authStateProvider).value?.uid;
 
     if (settingsVal.isLoading ||
         schedulesVal.isLoading ||
@@ -81,9 +77,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final settings =
         settingsVal.value ?? const UserSettings(hoursAvailable: 8.0);
-    final schedules = schedulesVal.value ?? const <TaskSchedule>[];
-    final instances = instancesVal.value ?? const <TaskInstance>[];
-    final scheduleMap = {for (final s in schedules) s.id: s};
+    final plannedMinutesPerDay = ref.watch(plannedMinutesPerDayProvider);
 
     final today = AppClock.now;
     final currentWeekId = _getWeekIdentifier(today);
@@ -219,24 +213,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         for (final date in upcomingDays) {
                           final capacity = settings.getCapacityForDate(date);
                           final day = CivilDay.fromDateTime(date);
-                          double plannedMinutes = 0.0;
-                          for (final inst in instances) {
-                            if (inst.scheduledDate == day &&
-                                inst.status != TaskStatus.skipped) {
-                              if (inst.assignedUserId != null &&
-                                  inst.assignedUserId != currentUserId) {
-                                continue;
-                              }
-                              final schedule = scheduleMap[inst.scheduleId];
-                              if (schedule != null &&
-                                  schedule.estimatedDuration != null) {
-                                plannedMinutes += schedule
-                                    .estimatedDuration!
-                                    .inMinutes
-                                    .toDouble();
-                              }
-                            }
-                          }
+                          final plannedMinutes =
+                              plannedMinutesPerDay[day] ?? 0.0;
                           final plannedHours = plannedMinutes / 60.0;
                           if (capacity > peakValue) {
                             peakValue = capacity;
@@ -269,24 +247,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   date.year == today.year;
 
                               final day = CivilDay.fromDateTime(date);
-                              double plannedMinutes = 0.0;
-                              for (final inst in instances) {
-                                if (inst.scheduledDate == day &&
-                                    inst.status != TaskStatus.skipped) {
-                                  if (inst.assignedUserId != null &&
-                                      inst.assignedUserId != currentUserId) {
-                                    continue;
-                                  }
-                                  final schedule = scheduleMap[inst.scheduleId];
-                                  if (schedule != null &&
-                                      schedule.estimatedDuration != null) {
-                                    plannedMinutes += schedule
-                                        .estimatedDuration!
-                                        .inMinutes
-                                        .toDouble();
-                                  }
-                                }
-                              }
+                              final plannedMinutes =
+                                  plannedMinutesPerDay[day] ?? 0.0;
                               final capacityMinutes = capacity * 60.0;
 
                               final double barHeight = capacity > 0

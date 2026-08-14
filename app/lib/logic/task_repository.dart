@@ -139,6 +139,31 @@ final isFromCacheProvider = Provider<bool>((ref) {
       instances.every((i) => i.isFromCache);
 });
 
+final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {
+  final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
+  final schedules = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
+  final currentUserId = ref.watch(authStateProvider).valueOrNull?.uid;
+
+  final scheduleMap = {for (final s in schedules) s.id: s};
+  final plannedMinutesPerDay = <CivilDay, double>{};
+
+  for (final inst in instances) {
+    if (inst.status != TaskStatus.skipped) {
+      if (inst.assignedUserId != null && inst.assignedUserId != currentUserId) {
+        continue;
+      }
+      final schedule = scheduleMap[inst.scheduleId];
+      if (schedule != null && schedule.estimatedDuration != null) {
+        final mins = schedule.estimatedDuration!.inMinutes.toDouble();
+        plannedMinutesPerDay[inst.scheduledDate] =
+            (plannedMinutesPerDay[inst.scheduledDate] ?? 0.0) + mins;
+      }
+    }
+  }
+
+  return plannedMinutesPerDay;
+});
+
 class TaskRepository {
   /// Cache duration for family ID to avoid excessive DB reads.
   static const Duration _familyIdCacheDuration = Duration(seconds: 15);
