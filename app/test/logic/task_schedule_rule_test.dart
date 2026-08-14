@@ -866,4 +866,335 @@ void main() {
       },
     );
   });
+
+  group('hasSameRecurrence Tests across all TaskScheduleRule subclasses', () {
+    test('OneOffSchedule hasSameRecurrence compares date accurately', () {
+      final s1 = OneOffSchedule(
+        id: 'r1',
+        scheduleId: 'sched1',
+        date: const CivilDay(year: 2026, month: 8, day: 14),
+      );
+      final s2 = OneOffSchedule(
+        id: 'r2',
+        scheduleId: 'sched2',
+        date: const CivilDay(year: 2026, month: 8, day: 14),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 10, minute: 0),
+        ),
+      );
+      final sDifferentDate = OneOffSchedule(
+        date: const CivilDay(year: 2026, month: 8, day: 15),
+      );
+      final sDifferentType = DailySchedule(
+        startDate: const CivilDay(year: 2026, month: 8, day: 14),
+        interval: 1,
+      );
+
+      expect(s1.hasSameRecurrence(s2), isTrue);
+      expect(s2.hasSameRecurrence(s1), isTrue);
+      expect(s1.hasSameRecurrence(sDifferentDate), isFalse);
+      expect(s1.hasSameRecurrence(sDifferentType), isFalse);
+    });
+
+    test('DailySchedule hasSameRecurrence compares interval accurately', () {
+      final s1 = DailySchedule(
+        id: 'd1',
+        startDate: const CivilDay(year: 2026, month: 1, day: 1),
+        interval: 3,
+      );
+      final s2 = DailySchedule(
+        id: 'd2',
+        startDate: const CivilDay(year: 2026, month: 6, day: 15),
+        interval: 3,
+      );
+      final sDifferentInterval = DailySchedule(
+        startDate: const CivilDay(year: 2026, month: 1, day: 1),
+        interval: 5,
+      );
+      final sDifferentType = WeeklySchedule(
+        startDate: const CivilDay(year: 2026, month: 1, day: 1),
+        interval: 3,
+        daysOfWeek: const {1},
+      );
+
+      expect(s1.hasSameRecurrence(s2), isTrue);
+      expect(s2.hasSameRecurrence(s1), isTrue);
+      expect(s1.hasSameRecurrence(sDifferentInterval), isFalse);
+      expect(s1.hasSameRecurrence(sDifferentType), isFalse);
+    });
+
+    test(
+      'WeeklySchedule hasSameRecurrence compares interval and daysOfWeek',
+      () {
+        final s1 = WeeklySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 2,
+          daysOfWeek: const {1, 3, 5},
+        );
+        final s2 = WeeklySchedule(
+          startDate: const CivilDay(year: 2026, month: 5, day: 10),
+          interval: 2,
+          daysOfWeek: const {5, 1, 3}, // Different set insertion order
+        );
+        final sDifferentInterval = WeeklySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          daysOfWeek: const {1, 3, 5},
+        );
+        final sDifferentDays = WeeklySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 2,
+          daysOfWeek: const {1, 3, 6},
+        );
+        final sFewerDays = WeeklySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 2,
+          daysOfWeek: const {1, 3},
+        );
+        final sDifferentType = OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 1, day: 1),
+        );
+
+        expect(s1.hasSameRecurrence(s2), isTrue);
+        expect(s2.hasSameRecurrence(s1), isTrue);
+        expect(s1.hasSameRecurrence(sDifferentInterval), isFalse);
+        expect(s1.hasSameRecurrence(sDifferentDays), isFalse);
+        expect(s1.hasSameRecurrence(sFewerDays), isFalse);
+        expect(s1.hasSameRecurrence(sDifferentType), isFalse);
+      },
+    );
+
+    test(
+      'MonthlySchedule hasSameRecurrence compares recurrence rules accurately',
+      () {
+        // Day of month positive
+        final sDay15A = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfMonth: 15,
+        );
+        final sDay15B = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 4, day: 15),
+          interval: 1,
+          dayOfMonth: 15,
+        );
+        final sDay16 = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfMonth: 16,
+        );
+        final sDay15Interval2 = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 2,
+          dayOfMonth: 15,
+        );
+
+        // Day of month negative
+        final sLastDayA = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfMonth: -1,
+        );
+        final sLastDayB = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 7, day: 1),
+          interval: 1,
+          dayOfMonth: -1,
+        );
+
+        // Nth day of week
+        final s2ndTuesdayA = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfWeek: 2,
+          occurrence: 2,
+        );
+        final s2ndTuesdayB = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 1),
+          interval: 1,
+          dayOfWeek: 2,
+          occurrence: 2,
+        );
+        final s3rdTuesday = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfWeek: 2,
+          occurrence: 3,
+        );
+        final s2ndWednesday = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          dayOfWeek: 3,
+          occurrence: 2,
+        );
+
+        expect(sDay15A.hasSameRecurrence(sDay15B), isTrue);
+        expect(sDay15A.hasSameRecurrence(sDay16), isFalse);
+        expect(sDay15A.hasSameRecurrence(sDay15Interval2), isFalse);
+
+        expect(sLastDayA.hasSameRecurrence(sLastDayB), isTrue);
+        expect(sLastDayA.hasSameRecurrence(sDay15A), isFalse);
+
+        expect(s2ndTuesdayA.hasSameRecurrence(s2ndTuesdayB), isTrue);
+        expect(s2ndTuesdayA.hasSameRecurrence(s3rdTuesday), isFalse);
+        expect(s2ndTuesdayA.hasSameRecurrence(s2ndWednesday), isFalse);
+        expect(s2ndTuesdayA.hasSameRecurrence(sDay15A), isFalse);
+
+        final sDifferentType = YearlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 1),
+          interval: 1,
+          month: 1,
+          day: 15,
+        );
+        expect(sDay15A.hasSameRecurrence(sDifferentType), isFalse);
+      },
+    );
+
+    test(
+      'YearlySchedule hasSameRecurrence compares interval, month, and day',
+      () {
+        final s1 = YearlySchedule(
+          startDate: const CivilDay(year: 2024, month: 2, day: 29),
+          interval: 4,
+          month: 2,
+          day: 29,
+        );
+        final s2 = YearlySchedule(
+          startDate: const CivilDay(year: 2028, month: 2, day: 29),
+          interval: 4,
+          month: 2,
+          day: 29,
+        );
+        final sDifferentInterval = YearlySchedule(
+          startDate: const CivilDay(year: 2024, month: 2, day: 29),
+          interval: 1,
+          month: 2,
+          day: 29,
+        );
+        final sDifferentMonth = YearlySchedule(
+          startDate: const CivilDay(year: 2024, month: 2, day: 29),
+          interval: 4,
+          month: 3,
+          day: 29,
+        );
+        final sDifferentDay = YearlySchedule(
+          startDate: const CivilDay(year: 2024, month: 2, day: 29),
+          interval: 4,
+          month: 2,
+          day: 28,
+        );
+        final sDifferentType = DailySchedule(
+          startDate: const CivilDay(year: 2024, month: 2, day: 29),
+          interval: 4,
+        );
+
+        expect(s1.hasSameRecurrence(s2), isTrue);
+        expect(s2.hasSameRecurrence(s1), isTrue);
+        expect(s1.hasSameRecurrence(sDifferentInterval), isFalse);
+        expect(s1.hasSameRecurrence(sDifferentMonth), isFalse);
+        expect(s1.hasSameRecurrence(sDifferentDay), isFalse);
+        expect(s1.hasSameRecurrence(sDifferentType), isFalse);
+      },
+    );
+  });
+
+  group('Mathematical nextOccurrenceAfter edge case and boundary tests', () {
+    test(
+      'WeeklySchedule nextOccurrenceAfter jumps across multi-week gaps directly',
+      () {
+        // Repetition every 4 weeks on Tuesday (2) and Thursday (4)
+        // Reference start: June 2, 2026 (Tuesday, week 0)
+        const start = CivilDay(year: 2026, month: 6, day: 2);
+        final schedule = WeeklySchedule(
+          startDate: start,
+          interval: 4,
+          daysOfWeek: const {2, 4},
+        );
+
+        // Next occurrence after Tuesday June 2 is Thursday June 4
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2026, month: 6, day: 2),
+          ),
+          const CivilDay(year: 2026, month: 6, day: 4),
+        );
+
+        // Next occurrence after Thursday June 4 jumps 4 weeks to Tuesday June 30
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2026, month: 6, day: 4),
+          ),
+          const CivilDay(year: 2026, month: 6, day: 30),
+        );
+
+        // Next occurrence when queried midway through intermediate week (e.g. June 15) jumps directly to June 30
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2026, month: 6, day: 15),
+          ),
+          const CivilDay(year: 2026, month: 6, day: 30),
+        );
+      },
+    );
+
+    test(
+      'MonthlySchedule nextOccurrenceAfter handles nth weekday and year wrap accurately',
+      () {
+        // 1st Monday of every month, interval = 1
+        const start = CivilDay(year: 2026, month: 11, day: 1);
+        final schedule = MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfWeek: 1, // Monday
+          occurrence: 1,
+        );
+
+        // In Nov 2026: Nov 1 is Sunday, 1st Monday is Nov 2
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2026, month: 10, day: 31),
+          ),
+          const CivilDay(year: 2026, month: 11, day: 2),
+        );
+
+        // Next occurrence after Nov 2 is Dec 7, 2026
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2026, month: 11, day: 2),
+          ),
+          const CivilDay(year: 2026, month: 12, day: 7),
+        );
+
+        // Next occurrence after Dec 7 wraps to Jan 4, 2027
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2026, month: 12, day: 7),
+          ),
+          const CivilDay(year: 2027, month: 1, day: 4),
+        );
+      },
+    );
+
+    test(
+      'YearlySchedule nextOccurrenceAfter handles leap day correctly across century non-leap years',
+      () {
+        // Feb 29 interval = 1
+        const start = CivilDay(year: 2096, month: 2, day: 29);
+        final schedule = YearlySchedule(
+          startDate: start,
+          interval: 1,
+          month: 2,
+          day: 29,
+        );
+
+        // 2096 is leap year. Next is 2104 because 2100 is NOT a leap year (century rule)!
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2096, month: 2, day: 29),
+          ),
+          const CivilDay(year: 2104, month: 2, day: 29),
+        );
+      },
+    );
+  });
 }
