@@ -128,7 +128,8 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
       );
       final hasAppeared = !widget.now.isBefore(startDateTime);
       final isUnresolved =
-          inst.status != 'completed' && inst.status != 'skipped';
+          inst.status != TaskStatus.completed &&
+          inst.status != TaskStatus.skipped;
       return hasAppeared && isUnresolved;
     }).toList();
 
@@ -149,7 +150,9 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
         inst.scheduledDate,
       );
       final hasAppeared = !widget.now.isBefore(startDateTime);
-      final isResolved = inst.status == 'completed' || inst.status == 'skipped';
+      final isResolved =
+          inst.status == TaskStatus.completed ||
+          inst.status == TaskStatus.skipped;
       return hasAppeared && isResolved;
     }).toList();
 
@@ -178,7 +181,8 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
     final taskMap = {for (final t in allTasks) t.id: t};
     final Map<CivilDay, double> dayPlannedHours = {};
     for (final inst in allInstances) {
-      if (inst.status != 'skipped' && inst.status != 'failed') {
+      if (inst.status != TaskStatus.skipped &&
+          inst.status != TaskStatus.failed) {
         final t = taskMap[inst.scheduleId];
         if (t != null && t.estimatedDuration != null) {
           final hours = t.estimatedDuration!.inMinutes / 60.0;
@@ -520,14 +524,14 @@ class PastOccurrenceCard extends StatelessWidget {
     final IconData iconData;
     final Color color;
 
-    if (instance.status == 'completed') {
+    if (instance.status == TaskStatus.completed) {
       final formattedCompletedAt = instance.completedAt != null
           ? SpawnedInstancesList.formatDateTime(context, instance.completedAt!)
           : '';
       statusText = context.l10n.occurrenceCompleted(formattedCompletedAt);
       iconData = Icons.check_circle;
       color = Colors.green;
-    } else if (instance.status == 'skipped') {
+    } else if (instance.status == TaskStatus.skipped) {
       statusText = context.l10n.occurrenceSkipped;
       iconData = Icons.skip_next;
       color = theme.colorScheme.onSurfaceVariant;

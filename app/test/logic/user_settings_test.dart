@@ -204,6 +204,7 @@ void main() {
         AppClock.setMockTime(
           DateTime(2026, 7, 10),
         ); // cutoff is 90 days ago: 2026-04-11
+        addTearDown(AppClock.reset);
 
         final input = {
           'hoursAvailable': 8.0,

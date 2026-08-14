@@ -1,27 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rxdart/rxdart.dart';
-import '../test_helper.dart';
-
+import 'package:nothing_ever_happens/logic/app_state_exporter.dart';
+import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
-import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/screens/settings_screen.dart';
+import 'package:rxdart/rxdart.dart';
+
+import '../test_helper.dart';
 
 @GenerateNiceMocks([MockSpec<UserSettingsRepository>()])
 import 'settings_screen_test.mocks.dart';
 
+class MockAppStateExporter extends Mock implements AppStateExporter {
+  @override
+  Future<void> shareDebugState(BuildContext? context) =>
+      (super.noSuchMethod(
+            Invocation.method(#shareDebugState, [context]),
+            returnValue: Future<void>.value(),
+            returnValueForMissingStub: Future<void>.value(),
+          )
+          as Future<void>);
+}
+
 void main() {
   late MockUserSettingsRepository mockRepository;
+  late MockAppStateExporter mockExporter;
   late ErrorHandler errorHandler;
   late BehaviorSubject<UserSettings> settingsSubject;
 
   setUp(() {
     mockRepository = MockUserSettingsRepository();
+    mockExporter = MockAppStateExporter();
     errorHandler = ErrorHandler();
     settingsSubject = BehaviorSubject<UserSettings>.seeded(
       const UserSettings(hoursAvailable: 8.0),
@@ -41,6 +55,7 @@ void main() {
       overrides: [
         userSettingsRepositoryProvider.overrideWithValue(mockRepository),
         errorHandlerProvider.overrideWithValue(errorHandler),
+        appStateExporterProvider.overrideWithValue(mockExporter),
       ],
       child: buildTestableWidget(child: const SettingsScreen()),
     );
@@ -171,6 +186,40 @@ void main() {
           const UserSettings(hoursAvailable: 8.0, showLastSpawnedDate: true),
         ),
       ).called(1);
+    },
+  );
+
+  testWidgets('SettingsScreen renders export debug state button', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    final exportButtonFinder = find.byKey(
+      const Key('export_debug_state_button'),
+    );
+    expect(exportButtonFinder, findsOneWidget);
+    expect(find.text('Debug & Diagnostics'), findsOneWidget);
+    expect(find.text('Export Debug State (LLM JSON)'), findsOneWidget);
+  });
+
+  testWidgets(
+    'SettingsScreen triggers export debug state when export button is tapped',
+    (WidgetTester tester) async {
+      when(mockExporter.shareDebugState(any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      final exportButtonFinder = find.byKey(
+        const Key('export_debug_state_button'),
+      );
+      expect(exportButtonFinder, findsOneWidget);
+
+      await tester.tap(exportButtonFinder);
+      await tester.pumpAndSettle();
+
+      verify(mockExporter.shareDebugState(any)).called(1);
     },
   );
 }

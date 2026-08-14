@@ -362,7 +362,7 @@ void main() {
           startRelativeTime: testStart,
           dueRelativeTime: testDue,
         ),
-        throwsAssertionError,
+        throwsArgumentError,
       );
       expect(
         () => MonthlySchedule(
@@ -372,7 +372,7 @@ void main() {
           startRelativeTime: testStart,
           dueRelativeTime: testDue,
         ),
-        throwsAssertionError,
+        throwsArgumentError,
       );
       expect(
         () => MonthlySchedule(
@@ -382,7 +382,27 @@ void main() {
           startRelativeTime: testStart,
           dueRelativeTime: testDue,
         ),
-        throwsAssertionError,
+        throwsArgumentError,
+      );
+      expect(
+        () => MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: 32,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfMonth: -32,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        ),
+        throwsArgumentError,
       );
     });
 

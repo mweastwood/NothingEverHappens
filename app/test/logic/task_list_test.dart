@@ -49,6 +49,7 @@ void main() {
       'complete of recurring task advances its schedule rather than removing it',
       () {
         AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+        addTearDown(AppClock.reset);
         final recurringTask = TaskSchedule(
           id: 'task-recur',
           title: 'Daily TaskSchedule',
@@ -82,8 +83,6 @@ void main() {
           newSchedule.startDate,
           const CivilDay(year: 2026, month: 3, day: 10),
         );
-
-        AppClock.reset();
       },
     );
 
@@ -92,6 +91,7 @@ void main() {
       () {
         // Tuesday, March 3, 2026
         AppClock.setMockTime(DateTime(2026, 3, 3, 9, 0));
+        addTearDown(AppClock.reset);
 
         final weeklyTask = TaskSchedule(
           id: 'task-weekly',
@@ -124,8 +124,6 @@ void main() {
           newSchedule.startDate,
           const CivilDay(year: 2026, month: 3, day: 2),
         );
-
-        AppClock.reset();
       },
     );
     test(
@@ -133,6 +131,7 @@ void main() {
       () {
         // Wednesday, June 3, 2026
         AppClock.setMockTime(DateTime(2026, 6, 3, 9, 0));
+        addTearDown(AppClock.reset);
 
         final stackTask = TaskSchedule(
           id: 'task-stack',
@@ -162,8 +161,6 @@ void main() {
           newSchedule.startDate,
           const CivilDay(year: 2026, month: 6, day: 4),
         );
-
-        AppClock.reset();
       },
     );
   });

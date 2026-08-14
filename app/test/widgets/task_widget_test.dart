@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/gestures.dart';
@@ -15,6 +16,7 @@ import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
+
 import '../test_helper.dart';
 
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
@@ -62,7 +64,7 @@ void main() {
       priority: task.priority,
       cycleId: task.cycleId,
       assignedUserId: task.assignedUserId,
-      status: 'pending',
+      status: TaskStatus.pending,
     );
   }
 
@@ -71,12 +73,50 @@ void main() {
   setUp(() {
     mockTaskRepository = MockTaskRepository();
     // Default completeTask/dismissTask/undoResolve to do nothing
-    when(
-      mockTaskRepository.completeTaskInstance(any),
-    ).thenAnswer((_) async => null);
-    when(
-      mockTaskRepository.dismissTaskInstance(any),
-    ).thenAnswer((_) async => null);
+    when(mockTaskRepository.completeTaskInstance(any)).thenAnswer((
+      invocation,
+    ) async {
+      final id = invocation.positionalArguments[0] as String;
+      return TaskInstance(
+        id: id,
+        scheduleId: 'S-mock',
+        ruleId: 'R-mock',
+        title: 'Mock Task',
+        description: 'Mock Description',
+        scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.completed,
+      );
+    });
+    when(mockTaskRepository.dismissTaskInstance(any)).thenAnswer((
+      invocation,
+    ) async {
+      final id = invocation.positionalArguments[0] as String;
+      return TaskInstance(
+        id: id,
+        scheduleId: 'S-mock',
+        ruleId: 'R-mock',
+        title: 'Mock Task',
+        description: 'Mock Description',
+        scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.skipped,
+      );
+    });
     when(
       mockTaskRepository.undoResolveTaskInstance(any),
     ).thenAnswer((_) async {});
@@ -158,13 +198,9 @@ void main() {
     await tester.tap(find.byType(FunCheckButton));
     await tester.pump(); // Start confetti
 
-    // Wait for confetti delay (500ms) plus buffer
-    await tester.pump(const Duration(milliseconds: 510));
-    await tester.pump(); // Start ticker
-
-    // Wait for animation (200ms) plus buffer
-    await tester.pump(const Duration(milliseconds: 210));
-    await tester.pump(); // Ensure listener executes
+    // Wait for confetti delay (500ms), then settle collapse animation
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
 
     verify(
       mockTaskRepository.completeTaskInstance('I-${testTask.id}_2024-01-01'),
@@ -360,9 +396,19 @@ void main() {
   testWidgets('TaskWidget delete action plays poof animation and deletes', (
     tester,
   ) async {
-    when(
-      mockTaskRepository.deleteTaskSchedule(any),
-    ).thenAnswer((_) async => null);
+    when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((
+      invocation,
+    ) async {
+      final id = invocation.positionalArguments[0] as String;
+      return (
+        task: TaskSchedule(
+          id: id,
+          title: 'Mock Task',
+          description: 'Mock Description',
+        ),
+        pendingInstances: <TaskInstance>[],
+      );
+    });
 
     await tester.pumpWidget(
       buildTestableWidget(
@@ -384,17 +430,11 @@ void main() {
     await tester.tap(find.byKey(const Key('delete_task_button')));
     await tester.pump(); // Register tap
 
-    // Wait for first Future.delayed (350ms) in FunDeleteButton
+    // Advance through FunDeleteButton delay (350ms) and _handleDeletion delay
+    // (400ms), then settle collapse animation
     await tester.pump(const Duration(milliseconds: 350));
-    await tester.pump(); // Trigger _handleDeletion()
-
-    // Wait for second Future.delayed (400ms) in _handleDeletion()
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump(); // Trigger _controller.forward()
-
-    // Wait for collapse animation (200ms) to complete
-    await tester.pump(const Duration(milliseconds: 210));
-    await tester.pump(); // Allow completion listener to run
+    await tester.pumpAndSettle();
 
     // Verify repository dismissTaskInstance is called
     verify(
@@ -942,9 +982,19 @@ void main() {
   testWidgets(
     'TaskWidget mouse swipe RTL does not trigger deletion or show confirmation dialog',
     (tester) async {
-      when(
-        mockTaskRepository.deleteTaskSchedule(any),
-      ).thenAnswer((_) async => null);
+      when(mockTaskRepository.deleteTaskSchedule(any)).thenAnswer((
+        invocation,
+      ) async {
+        final id = invocation.positionalArguments[0] as String;
+        return (
+          task: TaskSchedule(
+            id: id,
+            title: 'Mock Task',
+            description: 'Mock Description',
+          ),
+          pendingInstances: <TaskInstance>[],
+        );
+      });
       await tester.pumpWidget(createWidget(testTask));
 
       final titleFinder = find.text(testTask.title);
@@ -983,7 +1033,7 @@ void main() {
       // captured, causing undoResolveTaskInstance to compute the wrong
       // refDate and fail to delete the next spawned occurrence.
       final resolvedInstance = createInstanceFor(testTask).copyWith(
-        status: 'dismissed',
+        status: TaskStatus.skipped,
         completedByUserId: 'user-1',
         completedAt: DateTime(2026, 6, 18, 9, 0),
       );
@@ -1019,7 +1069,7 @@ void main() {
         capturedInstance!.completedAt,
         equals(resolvedInstance.completedAt),
       );
-      expect(capturedInstance!.status, equals('dismissed'));
+      expect(capturedInstance!.status, equals(TaskStatus.skipped));
     },
   );
 
@@ -1028,7 +1078,7 @@ void main() {
     (tester) async {
       // Same regression test for the complete (LTR) swipe direction.
       final resolvedInstance = createInstanceFor(testTask).copyWith(
-        status: 'completed',
+        status: TaskStatus.completed,
         completedByUserId: 'user-1',
         completedAt: DateTime(2026, 6, 18, 9, 0),
       );
@@ -1063,7 +1113,7 @@ void main() {
         capturedInstance!.completedAt,
         equals(resolvedInstance.completedAt),
       );
-      expect(capturedInstance!.status, equals('completed'));
+      expect(capturedInstance!.status, equals(TaskStatus.completed));
     },
   );
 
@@ -1129,6 +1179,7 @@ void main() {
       // Set clock to 2026-06-19 09:00 AM
       final now = DateTime(2026, 6, 19, 9, 0);
       AppClock.setMockTime(now);
+      addTearDown(AppClock.reset);
 
       final overdueTask = TaskSchedule(
         id: 'S-overdue_1',
@@ -1217,8 +1268,6 @@ void main() {
           tester.element(find.text('Due Tomorrow at 5:00 PM')),
         ).colorScheme.secondary,
       );
-
-      AppClock.reset();
     },
   );
 
@@ -1284,6 +1333,7 @@ void main() {
   ) async {
     final now = DateTime(2026, 7, 4, 12, 0); // 12:00 PM
     AppClock.setMockTime(now);
+    addTearDown(AppClock.reset);
 
     final duolingoTask = TaskSchedule(
       id: 'S-duo-golden',
@@ -1327,7 +1377,5 @@ void main() {
       find.byType(MaterialApp),
       matchesGoldenFile('goldens/task_widget_duolingo.png'),
     );
-
-    AppClock.reset();
   });
 }

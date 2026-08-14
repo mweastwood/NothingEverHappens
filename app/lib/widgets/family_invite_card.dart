@@ -45,7 +45,7 @@ class FamilyInviteCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    invite.role == 'parent'
+                    invite.role == FamilyRole.parent
                         ? context.l10n.parentRole
                         : context.l10n.nonParentRole,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(

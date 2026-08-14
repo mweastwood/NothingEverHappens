@@ -94,7 +94,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     ),
     TaskInstance(
       id: 'S-2_R-2_2026-03-08',
@@ -111,7 +111,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 12, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     ),
   ];
 
@@ -120,6 +120,7 @@ void main() {
   setUp(() async {
     await loadAppFonts();
     AppClock.setMockTime(fixedDate);
+    addTearDown(AppClock.reset);
     AppConfig.environment = AppEnvironment.prod;
 
     mockAuthRepository = MockAuthRepository();

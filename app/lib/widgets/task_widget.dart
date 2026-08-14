@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../logic/user_profile_provider.dart';
 import '../logic/task_schedule.dart';
 import '../logic/task_repository.dart';
 import '../screens/create_task_screen.dart';
@@ -43,9 +43,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
   late Animation<double> _scaleXAnimation;
   late Animation<double> _sizeFactorAnimation;
   late Animation<double> _contentOpacityAnimation;
-  static final Map<String, String> _userNameCache = {};
-  String? _assigneeName;
-  bool _isLoadingAssignee = false;
+
   bool _isChecking = false;
   bool _isDeleting = false;
   bool _isMouse = false;
@@ -125,16 +123,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         }
       }
     });
-
-    _loadAssigneeName();
-  }
-
-  @override
-  void didUpdateWidget(TaskWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.instance.assignedUserId != oldWidget.instance.assignedUserId) {
-      _loadAssigneeName();
-    }
   }
 
   @override
@@ -171,54 +159,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         _controller.forward();
       }
     });
-  }
-
-  Future<void> _loadAssigneeName() async {
-    final assigneeId = widget.instance.assignedUserId;
-    if (assigneeId == null) {
-      setState(() {
-        _assigneeName = null;
-      });
-      return;
-    }
-
-    if (_userNameCache.containsKey(assigneeId)) {
-      setState(() {
-        _assigneeName = _userNameCache[assigneeId];
-      });
-      return;
-    }
-
-    if (mounted) {
-      setState(() {
-        _isLoadingAssignee = true;
-      });
-    }
-
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(assigneeId)
-          .get();
-      final name =
-          doc.data()?['displayName'] as String? ??
-          doc.data()?['email'] as String? ??
-          'User';
-      _userNameCache[assigneeId] = name;
-      if (mounted) {
-        setState(() {
-          _assigneeName = name;
-          _isLoadingAssignee = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _assigneeName = 'User';
-          _isLoadingAssignee = false;
-        });
-      }
-    }
   }
 
   String _formatDuration(Duration duration) {
@@ -696,11 +636,15 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                   _buildBadge(
                     context,
                     icon: Icons.assignment_ind,
-                    label: _isLoadingAssignee
-                        ? context.l10n.loadingBadge
-                        : (_assigneeName != null
-                              ? context.l10n.assignedTo(_assigneeName!)
-                              : context.l10n.assignedBadge),
+                    label: ref
+                        .watch(
+                          userNameProvider(widget.instance.assignedUserId!),
+                        )
+                        .when(
+                          data: (name) => context.l10n.assignedTo(name),
+                          loading: () => context.l10n.loadingBadge,
+                          error: (_, _) => context.l10n.assignedBadge,
+                        ),
                     color: Theme.of(context).colorScheme.primary,
                   ),
               ],

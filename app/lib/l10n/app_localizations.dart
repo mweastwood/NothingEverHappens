@@ -890,6 +890,42 @@ abstract class AppLocalizations {
   /// **'Display the last spawned date on each task schedule card for debugging.'**
   String get showLastSpawnedDateHelper;
 
+  /// No description provided for @debugDiagnosticsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug & Diagnostics'**
+  String get debugDiagnosticsSectionTitle;
+
+  /// No description provided for @debugDiagnosticsSectionHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Export the complete local and remote app state as structured JSON for debugging with LLMs or support.'**
+  String get debugDiagnosticsSectionHelper;
+
+  /// No description provided for @exportDebugStateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Debug State (LLM JSON)'**
+  String get exportDebugStateButton;
+
+  /// No description provided for @debugStateCopiedToClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug state JSON copied to clipboard.'**
+  String get debugStateCopiedToClipboard;
+
+  /// No description provided for @debugStateShareSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'App State Debug Export'**
+  String get debugStateShareSubject;
+
+  /// No description provided for @debugStateShareText.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug app state JSON export for NothingEverHappens.'**
+  String get debugStateShareText;
+
   /// No description provided for @pendingBadge.
   ///
   /// In en, this message translates to:

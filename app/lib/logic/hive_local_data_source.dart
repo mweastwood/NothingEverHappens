@@ -1,18 +1,19 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:rxdart/rxdart.dart';
-import 'package:nothing_ever_happens/logic/task_schedule.dart';
-import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:nothing_ever_happens/logic/task_instance.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:rxdart/rxdart.dart';
 
-final hiveLocalDataSourceProvider = Provider<HiveLocalDataSource>(
-  (ref) => HiveLocalDataSource(),
-);
+final hiveLocalDataSourceProvider = Provider<HiveLocalDataSource>((ref) {
+  final ds = HiveLocalDataSource();
+  ref.onDispose(() => ds.dispose());
+  return ds;
+});
 
 class HiveLocalDataSource {
   static const String _tasksBoxName = 'tasksBox';
@@ -29,6 +30,7 @@ class HiveLocalDataSource {
   final Map<String, TaskInstance> _memInstances = {};
   final Map<String, dynamic> _memMeta = {};
   UserSettings _memSettings = const UserSettings(hoursAvailable: 8.0);
+  Map<String, dynamic> _memRawSettings = {};
 
   final _tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded(const []);
   final _instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded(
@@ -46,7 +48,8 @@ class HiveLocalDataSource {
     } catch (e, st) {
       // ignore: avoid_print
       print(
-        '⚠️ [HIVE_UPGRADE_RECOVERY] Box "$boxName" opening failed on app upgrade: $e\n$st. Re-creating clean box.',
+        '⚠️ [HIVE_UPGRADE_RECOVERY] Box "$boxName" opening failed on app '
+        'upgrade: $e\n$st. Re-creating clean box.',
       );
       try {
         await Hive.deleteBoxFromDisk(boxName);
@@ -54,7 +57,8 @@ class HiveLocalDataSource {
       } catch (err, stack) {
         // ignore: avoid_print
         print(
-          '⚠️ [HIVE_UPGRADE_RECOVERY_FAILED] Failed to recreate box "$boxName": $err\n$stack',
+          '⚠️ [HIVE_UPGRADE_RECOVERY_FAILED] Failed to recreate box '
+          '"$boxName": $err\n$stack',
         );
         return null;
       }
@@ -113,7 +117,8 @@ class HiveLocalDataSource {
       } catch (e, st) {
         // ignore: avoid_print
         print(
-          '⚠️ [HIVE_SETTINGS_PARSE_ERROR] Failed to parse settings from Hive: $e\n$st',
+          '⚠️ [HIVE_SETTINGS_PARSE_ERROR] Failed to parse settings from '
+          'Hive: $e\n$st',
         );
       }
     }
@@ -128,6 +133,13 @@ class HiveLocalDataSource {
     _emitSettings();
   }
 
+  Future<void> saveRawSettings(Map<String, dynamic> settings) async {
+    _memRawSettings = Map<String, dynamic>.from(settings);
+    if (_settingsBox != null && _settingsBox!.isOpen) {
+      await _settingsBox!.put('agile', settings);
+    }
+  }
+
   List<TaskSchedule> getTasks() {
     if (_tasksBox != null && _tasksBox!.isOpen) {
       final list = <TaskSchedule>[];
@@ -138,7 +150,8 @@ class HiveLocalDataSource {
         } catch (e, st) {
           // ignore: avoid_print
           print(
-            '⚠️ [HIVE_TASK_PARSE_ERROR] Failed to parse task schedule from Hive: $e\n$st',
+            '⚠️ [HIVE_TASK_PARSE_ERROR] Failed to parse task schedule from '
+            'Hive: $e\n$st',
           );
         }
       }
@@ -157,7 +170,8 @@ class HiveLocalDataSource {
         } catch (e, st) {
           // ignore: avoid_print
           print(
-            '⚠️ [HIVE_INSTANCE_PARSE_ERROR] Failed to parse task instance from Hive: $e\n$st',
+            '⚠️ [HIVE_INSTANCE_PARSE_ERROR] Failed to parse task instance '
+            'from Hive: $e\n$st',
           );
         }
       }
@@ -259,6 +273,10 @@ class HiveLocalDataSource {
     return data['value'] == true;
   }
 
+  @visibleForTesting
+  TaskSchedule taskScheduleFromJson(Map<String, dynamic> data) =>
+      _taskScheduleFromJson(data);
+
   TaskSchedule _taskScheduleFromJson(Map<String, dynamic> data) {
     final schedulesRaw = data['schedules'] as List<dynamic>? ?? [];
     final schedules = schedulesRaw
@@ -274,7 +292,7 @@ class HiveLocalDataSource {
 
     final preferredByRaw = data['preferredBy'] as Map? ?? {};
     final preferredBy = preferredByRaw.map(
-      (k, v) => MapEntry(k.toString(), v as bool),
+      (k, v) => MapEntry(k.toString(), v == true),
     );
 
     final priorityStr = data['priority'] as String? ?? 'medium';
@@ -397,10 +415,80 @@ class HiveLocalDataSource {
       assignedUserId: data['assignedUserId'] as String?,
       completedByUserId: data['completedByUserId'] as String?,
       completedAt: completedAt,
-      status: data['status'] as String? ?? 'pending',
+      status: TaskStatus.fromString(data['status'] as String?),
       hasPendingWrites: false,
       isFromCache: true,
       updatedAt: updatedAt ?? DateTime.now(),
     );
+  }
+
+  Map<String, dynamic> exportRawState() {
+    final tasksList = <Map<String, dynamic>>[];
+    if (_tasksBox != null && _tasksBox!.isOpen) {
+      for (final map in _tasksBox!.values) {
+        try {
+          tasksList.add(Map<String, dynamic>.from(map));
+        } catch (e, stackTrace) {
+          debugPrint('Error exporting raw task map: $e\n$stackTrace');
+        }
+      }
+    } else {
+      for (final task in _memTasks.values) {
+        final data = task.toFirestore();
+        data['id'] = task.id;
+        tasksList.add(data);
+      }
+    }
+
+    final instancesList = <Map<String, dynamic>>[];
+    if (_instancesBox != null && _instancesBox!.isOpen) {
+      for (final map in _instancesBox!.values) {
+        try {
+          instancesList.add(Map<String, dynamic>.from(map));
+        } catch (e, stackTrace) {
+          debugPrint('Error exporting raw instance map: $e\n$stackTrace');
+        }
+      }
+    } else {
+      for (final instance in _memInstances.values) {
+        final data = instance.toFirestore();
+        data['id'] = instance.id;
+        instancesList.add(data);
+      }
+    }
+
+    Map<String, dynamic> settingsMap = {};
+    if (_settingsBox != null && _settingsBox!.isOpen) {
+      try {
+        final raw = _settingsBox!.get('agile');
+        if (raw != null) {
+          settingsMap = Map<String, dynamic>.from(raw);
+        } else {
+          settingsMap = {..._memSettings.toJson(), ..._memRawSettings};
+        }
+      } catch (e, stackTrace) {
+        debugPrint('Error exporting raw settings map: $e\n$stackTrace');
+        settingsMap = {..._memSettings.toJson(), ..._memRawSettings};
+      }
+    } else {
+      settingsMap = {..._memSettings.toJson(), ..._memRawSettings};
+    }
+
+    return {
+      'inMemoryFallback': isFallbackInMemoryMode,
+      'tasks': tasksList,
+      'instances': instancesList,
+      'syncMeta': {
+        'dirty_tasks': getDirtyTaskIds(),
+        'migration_completed': isMigrationCompleted(),
+      },
+      'settings': settingsMap,
+    };
+  }
+
+  Future<void> dispose() async {
+    await _tasksSubject.close();
+    await _instancesSubject.close();
+    await _settingsSubject.close();
   }
 }

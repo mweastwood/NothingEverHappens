@@ -32,76 +32,6 @@ void main() {
   late MockTaskRepository mockTaskRepository;
   late BehaviorSubject<List<TaskSchedule>> tasksSubject;
   late BehaviorSubject<List<TaskInstance>> instancesSubject;
-  StreamSubscription<List<TaskSchedule>>? tasksSub;
-  VoidCallback? clockListener;
-
-  List<TaskInstance> mockInstancesFromSchedules(
-    List<TaskSchedule> schedules,
-    DateTime todayDate,
-  ) {
-    final today = CivilDay.fromDateTime(todayDate);
-    final List<TaskInstance> list = [];
-    for (final task in schedules) {
-      final baseTaskId = task.id.startsWith('S-')
-          ? task.id.substring(2)
-          : task.id;
-      for (int i = 0; i < task.schedules.length; i++) {
-        final s = task.schedules[i];
-        if (s is OneOffSchedule) {
-          final startsDate = s.date.addDays(s.startRelativeTime.dayOffset);
-          if (!today.isBefore(startsDate)) {
-            list.add(
-              TaskInstance(
-                id: task.schedules.length <= 1
-                    ? 'I-${baseTaskId}_${s.date}'
-                    : 'I-${baseTaskId}_${s.date}_$i',
-                scheduleId: task.id,
-                ruleId: s.id,
-                title: task.title,
-                description: task.description,
-                scheduledDate: s.date,
-                startRelativeTime: s.startRelativeTime,
-                dueRelativeTime: s.dueRelativeTime,
-                isFamily: task.isFamily,
-                priority: task.priority,
-                cycleId: task.cycleId,
-                assignedUserId: task.assignedUserId,
-                status: 'pending',
-              ),
-            );
-          }
-        } else if (s is DailySchedule) {
-          if (!today.isBefore(s.startDate)) {
-            list.add(
-              TaskInstance(
-                id: task.schedules.length <= 1
-                    ? 'I-${baseTaskId}_$today'
-                    : 'I-${baseTaskId}_${today}_$i',
-                scheduleId: task.id,
-                ruleId: s.id,
-                title: task.title,
-                description: task.description,
-                scheduledDate: today,
-                startRelativeTime: s.startRelativeTime,
-                dueRelativeTime: s.dueRelativeTime,
-                isFamily: task.isFamily,
-                priority: task.priority,
-                cycleId: task.cycleId,
-                assignedUserId: task.assignedUserId,
-                status: 'pending',
-              ),
-            );
-          }
-        }
-      }
-    }
-    return list;
-  }
-
-  void updateInstances() {
-    final list = mockInstancesFromSchedules(tasksSubject.value, AppClock.now);
-    instancesSubject.add(list);
-  }
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
@@ -128,15 +58,29 @@ void main() {
         ],
       ),
     ];
+    final initialInstances = [
+      TaskInstance(
+        id: 'I-1_2024-01-01',
+        scheduleId: '1',
+        ruleId: initialTasks[0].schedules[0].id,
+        title: 'Mock TaskSchedule',
+        description: 'Mock Description',
+        scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.pending,
+      ),
+    ];
     tasksSubject = BehaviorSubject<List<TaskSchedule>>(sync: true)
       ..add(initialTasks);
     instancesSubject = BehaviorSubject<List<TaskInstance>>(sync: true)
-      ..add(mockInstancesFromSchedules(initialTasks, AppClock.now));
-
-    // Listen to changes to auto-update instances
-    tasksSub = tasksSubject.listen((_) => updateInstances());
-    clockListener = () => updateInstances();
-    AppClock.timeNotifier.addListener(clockListener!);
+      ..add(initialInstances);
 
     // Default stubbing
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
@@ -151,15 +95,27 @@ void main() {
       final task = invocation.positionalArguments.first as TaskSchedule;
       final currentTasks = tasksSubject.value;
       tasksSubject.add([...currentTasks, task]);
+
+      final currentInstances = instancesSubject.value;
+      instancesSubject.add([
+        ...currentInstances,
+        TaskInstance(
+          id: 'I-${task.id}_2026-03-08',
+          scheduleId: task.id,
+          ruleId: task.schedules.first.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: task.schedules.first.startRelativeTime,
+          dueRelativeTime: task.schedules.first.dueRelativeTime,
+          status: TaskStatus.pending,
+        ),
+      ]);
     });
   });
 
   tearDown(() {
-    tasksSub?.cancel();
-    if (clockListener != null) {
-      AppClock.timeNotifier.removeListener(clockListener!);
-    }
-    tasksSub?.cancel();
+    tasksSubject.close();
     instancesSubject.close();
   });
 
@@ -189,6 +145,7 @@ void main() {
     AppConfig.environment = AppEnvironment
         .prod; // Hide dev clock banner/bottom sheet from blocking hits
     AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+    addTearDown(AppClock.reset);
 
     await tester.pumpWidget(createScreen());
     await tester.pumpAndSettle();
@@ -304,6 +261,7 @@ void main() {
     'Completing a recurring task advances its schedule and does not reappear on screen',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      addTearDown(AppClock.reset);
 
       final recurringTask = TaskSchedule(
         id: 'recur-1',
@@ -326,6 +284,25 @@ void main() {
       );
 
       tasksSubject.add([recurringTask]);
+      instancesSubject.add([
+        TaskInstance(
+          id: 'I-recur-1_2026-03-08',
+          scheduleId: 'recur-1',
+          ruleId: recurringTask.schedules.first.id,
+          title: 'Daily Repeating TaskSchedule',
+          description: 'Do daily',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        ),
+      ]);
 
       when(
         mockTaskRepository.completeTaskInstance('I-recur-1_2026-03-08'),
@@ -350,6 +327,7 @@ void main() {
           ],
         );
         tasksSubject.add([advancedTask]);
+        instancesSubject.add([]);
         return null;
       });
 
@@ -373,8 +351,6 @@ void main() {
       await tester.pumpWidget(createScreen());
       await tester.pumpAndSettle();
       robot.expectGone();
-
-      AppClock.reset();
     },
   );
 
@@ -382,6 +358,7 @@ void main() {
     'TaskSchedule list screen filters out tasks scheduled in the future',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      addTearDown(AppClock.reset);
 
       final todayTask = TaskSchedule(
         id: 'today-task',
@@ -422,6 +399,42 @@ void main() {
       );
 
       tasksSubject.add([todayTask, tomorrowTask]);
+      instancesSubject.add([
+        TaskInstance(
+          id: 'I-today-task_2026-03-08',
+          scheduleId: 'today-task',
+          ruleId: todayTask.schedules.first.id,
+          title: 'Today TaskSchedule',
+          description: 'Due today',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        ),
+        TaskInstance(
+          id: 'I-tomorrow-task_2026-03-09',
+          scheduleId: 'tomorrow-task',
+          ruleId: tomorrowTask.schedules.first.id,
+          title: 'Tomorrow TaskSchedule',
+          description: 'Due tomorrow',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 9),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        ),
+      ]);
 
       await tester.pumpWidget(createScreen());
       await tester.pumpAndSettle();
@@ -431,8 +444,6 @@ void main() {
 
       // Tomorrow's task should be filtered out
       expect(find.text('Tomorrow TaskSchedule'), findsNothing);
-
-      AppClock.reset();
     },
   );
 
@@ -440,6 +451,7 @@ void main() {
     'TaskSchedule list screen shows one-off tasks starting today but due in the future',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      addTearDown(AppClock.reset);
 
       final activeOneOffTask = TaskSchedule(
         id: 'active-one-off',
@@ -461,14 +473,31 @@ void main() {
       );
 
       tasksSubject.add([activeOneOffTask]);
+      instancesSubject.add([
+        TaskInstance(
+          id: 'I-active-one-off_2026-03-09',
+          scheduleId: 'active-one-off',
+          ruleId: activeOneOffTask.schedules.first.id,
+          title: 'Active One-Off',
+          description: 'Starts today, due tomorrow',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 9),
+          startRelativeTime: const RelativeTime(
+            dayOffset: -1,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        ),
+      ]);
 
       await tester.pumpWidget(createScreen());
       await tester.pumpAndSettle();
 
       // Since it starts today (March 8), it should be shown
       expect(find.text('Active One-Off'), findsOneWidget);
-
-      AppClock.reset();
     },
   );
 
@@ -476,6 +505,7 @@ void main() {
     'TaskSchedule list screen hides one-off tasks due today but snoozed/starting in the future',
     (WidgetTester tester) async {
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+      addTearDown(AppClock.reset);
 
       final snoozedOneOffTask = TaskSchedule(
         id: 'snoozed-one-off',
@@ -497,14 +527,31 @@ void main() {
       );
 
       tasksSubject.add([snoozedOneOffTask]);
+      instancesSubject.add([
+        TaskInstance(
+          id: 'I-snoozed-one-off_2026-03-08',
+          scheduleId: 'snoozed-one-off',
+          ruleId: snoozedOneOffTask.schedules.first.id,
+          title: 'Snoozed One-Off',
+          description: 'Due today, starts tomorrow (snoozed)',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 1,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        ),
+      ]);
 
       await tester.pumpWidget(createScreen());
       await tester.pumpAndSettle();
 
       // Since it is snoozed until tomorrow (March 9), it should NOT be shown today
       expect(find.text('Snoozed One-Off'), findsNothing);
-
-      AppClock.reset();
     },
   );
 
@@ -512,6 +559,7 @@ void main() {
     WidgetTester tester,
   ) async {
     AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+    addTearDown(AppClock.reset);
 
     final futureTodayTask = TaskSchedule(
       id: 'future-today-task',
@@ -533,14 +581,31 @@ void main() {
     );
 
     tasksSubject.add([futureTodayTask]);
+    instancesSubject.add([
+      TaskInstance(
+        id: 'I-future-today-task_2026-03-08',
+        scheduleId: 'future-today-task',
+        ruleId: futureTodayTask.schedules.first.id,
+        title: 'Future Today Task',
+        description: 'Starts at 10 AM',
+        scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 10, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.pending,
+      ),
+    ]);
 
     await tester.pumpWidget(createScreen());
     await tester.pumpAndSettle();
 
     // Since it starts at 10:00 AM and mock time is 9:00 AM, it should NOT be shown
     expect(find.text('Future Today Task'), findsNothing);
-
-    AppClock.reset();
   });
 
   testWidgets(
@@ -585,12 +650,67 @@ void main() {
       );
 
       tasksSubject.add([task1, task2]);
+      instancesSubject.add([
+        TaskInstance(
+          id: 'I-1_2024-01-01',
+          scheduleId: '1',
+          ruleId: task1.schedules.first.id,
+          title: 'TaskSchedule 1',
+          description: 'Desc 1',
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        ),
+        TaskInstance(
+          id: 'I-2_2024-01-01',
+          scheduleId: '2',
+          ruleId: task2.schedules.first.id,
+          title: 'TaskSchedule 2',
+          description: 'Desc 2',
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        ),
+      ]);
 
       // Simulate deletion when completeTask is called
       when(
         mockTaskRepository.completeTaskInstance('I-1_2024-01-01'),
       ).thenAnswer((_) async {
         tasksSubject.add([task2]); // Remove task 1
+        instancesSubject.add([
+          TaskInstance(
+            id: 'I-2_2024-01-01',
+            scheduleId: '2',
+            ruleId: task2.schedules.first.id,
+            title: 'TaskSchedule 2',
+            description: 'Desc 2',
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+        ]);
         return null;
       });
 
@@ -663,6 +783,7 @@ void main() {
 
   testGoldens('TaskListScreen - Shows Undo SnackBar', (tester) async {
     AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+    addTearDown(AppClock.reset);
 
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
@@ -701,7 +822,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([task]);
@@ -717,7 +838,7 @@ void main() {
     when(mockTaskRepository.completeTaskInstance(any)).thenAnswer((_) async {
       // Optimistically remove the instance to mimic Firestore latency compensation
       instancesSubject.add([]);
-      return instance.copyWith(status: 'completed');
+      return instance.copyWith(status: TaskStatus.completed);
     });
 
     await tester.pumpWidgetBuilder(
@@ -744,12 +865,11 @@ void main() {
     expect(find.text('Undo'), findsOneWidget);
 
     await screenMatchesGolden(tester, 'task_list_screen_with_snackbar');
-
-    AppClock.reset();
   });
 
   testGoldens('TaskListScreen - Search Active with Results', (tester) async {
     AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+    addTearDown(AppClock.reset);
 
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
@@ -788,7 +908,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
@@ -820,14 +940,13 @@ void main() {
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'task_list_screen_search_results');
-
-    AppClock.reset();
   });
 
   testGoldens('TaskListScreen - Search Active No Results Fallback', (
     tester,
   ) async {
     AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+    addTearDown(AppClock.reset);
 
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
@@ -859,8 +978,6 @@ void main() {
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'task_list_screen_search_no_results');
-
-    AppClock.reset();
   });
 
   testWidgets('TaskListScreen search filters by title and description', (
@@ -868,6 +985,7 @@ void main() {
   ) async {
     // Set mock time
     AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+    addTearDown(AppClock.reset);
 
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
@@ -925,7 +1043,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     final inst2 = TaskInstance(
@@ -943,7 +1061,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
@@ -1024,8 +1142,6 @@ void main() {
     // Verify search field is cleared and both tasks are back
     expect(find.text('Water the Houseplants'), findsOneWidget);
     expect(find.text('Buy Groceries'), findsOneWidget);
-
-    AppClock.reset();
   });
 
   testWidgets('pressing slash key focuses the search input', (
@@ -1196,7 +1312,7 @@ void main() {
         scheduledDate: taskDate,
         startRelativeTime: relativeStart,
         dueRelativeTime: relativeDue,
-        status: 'pending',
+        status: TaskStatus.pending,
       );
       final instancesSubj = BehaviorSubject<List<TaskInstance>>.seeded([
         futureInstance,
@@ -1277,7 +1393,7 @@ void main() {
       scheduledDate: taskDate,
       startRelativeTime: relativeStart,
       dueRelativeTime: relativeDue,
-      status: 'pending',
+      status: TaskStatus.pending,
     );
     final instancesSubj = BehaviorSubject<List<TaskInstance>>.seeded([
       futureInstance,
@@ -1318,6 +1434,7 @@ void main() {
 
     final now = DateTime(2026, 6, 22, 12, 0);
     AppClock.setMockTime(now);
+    addTearDown(AppClock.reset);
     final taskDate = CivilDay.fromDateTime(now);
 
     // B: Title Apple, Priority low, Start offset 1 hour, Due offset 2 hours
@@ -1499,8 +1616,6 @@ void main() {
       tester.widget<TaskWidget>(textFinder.at(2)).instance.title,
       'Banana',
     );
-
-    AppClock.reset();
   });
 
   testWidgets(
@@ -1514,6 +1629,7 @@ void main() {
       AppClock.setMockTime(
         DateTime(2026, 7, 1, 9, 0),
       ); // Wednesday (2026-07-01)
+      addTearDown(AppClock.reset);
 
       final settingsSubject = BehaviorSubject<UserSettings>.seeded(
         const UserSettings(

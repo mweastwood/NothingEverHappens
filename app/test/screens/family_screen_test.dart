@@ -5,6 +5,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
+import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/screens/family_screen.dart';
 import 'package:nothing_ever_happens/logic/subscription_service.dart';
@@ -236,7 +237,7 @@ void main() {
       familyId: 'fam-123',
       familyName: 'The Simpsons',
       toEmail: userEmail,
-      role: 'non-parent',
+      role: FamilyRole.nonParent,
     );
 
     await tester.pumpWidgetBuilder(
@@ -465,7 +466,7 @@ void main() {
         familyId: 'fam-999',
         familyName: 'The Addams',
         toEmail: userEmail,
-        role: 'non-parent',
+        role: FamilyRole.nonParent,
       );
 
       await tester.pumpWidget(buildTestWidget(tier: SubscriptionTier.free));
@@ -501,7 +502,7 @@ void main() {
       familyId: 'fam-999',
       familyName: 'The Addams',
       toEmail: userEmail,
-      role: 'non-parent',
+      role: FamilyRole.nonParent,
     );
 
     await tester.pumpWidgetBuilder(

@@ -509,6 +509,7 @@ void main() {
         // Set mock clock to Monday
         final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
         AppClock.setMockTime(mondayDateTime);
+        addTearDown(AppClock.reset);
 
         // Save to database
         await repository.addTaskSchedule(task);
@@ -517,6 +518,7 @@ void main() {
         // Set AppClock to Tuesday 10:00 AM - past due time of Monday (17:00), but before Tuesday (17:00)
         final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
         AppClock.setMockTime(tuesdayDateTime);
+        addTearDown(AppClock.reset);
 
         // Get tasks stream and wait for auto-process check to trigger
         await repository.getTasks().first;
@@ -546,8 +548,6 @@ void main() {
               d.data()['scheduledDate']['day'] == 26,
         );
         expect(tuesdayInst.data()['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -602,12 +602,14 @@ void main() {
         // Set mock clock to Monday
         final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
         AppClock.setMockTime(mondayDateTime);
+        addTearDown(AppClock.reset);
 
         await repository.addTaskSchedule(mixedTask);
         await Future.delayed(Duration.zero);
 
         final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
         AppClock.setMockTime(tuesdayDateTime);
+        addTearDown(AppClock.reset);
 
         await repository.getTasks().first;
         await Future.delayed(Duration.zero);
@@ -638,8 +640,6 @@ void main() {
               d.data()['scheduledDate']['day'] == 26,
         );
         expect(tuesdayDaily.data()['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -695,6 +695,7 @@ void main() {
         // Set mock clock to Thursday June 18th 10:00 PM
         final thurs10pm = DateTime(2026, 6, 18, 22, 0);
         AppClock.setMockTime(thurs10pm);
+        addTearDown(AppClock.reset);
 
         await repository.addTaskSchedule(task);
         await Future.delayed(
@@ -728,6 +729,7 @@ void main() {
         // Move to Friday June 19th 12:05 AM (past midnight, but BEFORE due time 2:00 AM)
         final fri1205am = DateTime(2026, 6, 19, 0, 5);
         AppClock.setMockTime(fri1205am);
+        addTearDown(AppClock.reset);
 
         // Trigger missed policies check
         await repository.getTasks().first;
@@ -758,6 +760,7 @@ void main() {
         // Move to Friday June 19th 2:05 AM (AFTER due time 2:00 AM)
         final fri205am = DateTime(2026, 6, 19, 2, 5);
         AppClock.setMockTime(fri205am);
+        addTearDown(AppClock.reset);
 
         // Trigger missed policies check
         await repository.getTasks().first;
@@ -784,8 +787,6 @@ void main() {
               d.data()['scheduledDate']['day'] == 19,
         );
         expect(sched1NextDaySpawned.data()['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -825,6 +826,7 @@ void main() {
 
         // Set mock clock to Monday at 10:00 AM (pending)
         AppClock.setMockTime(DateTime(2026, 5, 25, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
@@ -843,6 +845,7 @@ void main() {
 
         // Move time to 6:00 PM (past due time of 5:00 PM, but within 3-hour grace period)
         AppClock.setMockTime(DateTime(2026, 5, 25, 18, 0));
+        addTearDown(AppClock.reset);
         await repository.getTasks().first; // trigger evaluation
         await Future.delayed(Duration.zero);
 
@@ -861,6 +864,7 @@ void main() {
 
         // Move time to 8:05 PM (past 3-hour grace period)
         AppClock.setMockTime(DateTime(2026, 5, 25, 20, 5));
+        addTearDown(AppClock.reset);
         await repository.getTasks().first; // trigger evaluation
         await Future.delayed(Duration.zero);
 
@@ -876,8 +880,6 @@ void main() {
               d.data()['scheduledDate']['day'] == 25,
         );
         expect(instExpired.data()['status'], 'skipped');
-
-        AppClock.reset();
       },
     );
 
@@ -917,6 +919,7 @@ void main() {
         // Set mock clock to Monday
         final mondayDateTime = DateTime(2026, 5, 25, 10, 0);
         AppClock.setMockTime(mondayDateTime);
+        addTearDown(AppClock.reset);
 
         // Save master task to database
         await repository.addTaskSchedule(task);
@@ -925,6 +928,7 @@ void main() {
         // Set AppClock to Wednesday (May 27)
         final wednesdayDateTime = DateTime(2026, 5, 27, 10, 0);
         AppClock.setMockTime(wednesdayDateTime);
+        addTearDown(AppClock.reset);
 
         // Fetch tasks list (triggers spawning check in getTasks stream)
         await repository.getTasks().first;
@@ -959,8 +963,6 @@ void main() {
           updatedMaster.lastSpawnedDate,
           const CivilDay(year: 2026, month: 5, day: 27),
         );
-
-        AppClock.reset();
       },
     );
   });
@@ -1022,6 +1024,7 @@ void main() {
 
         // Complete on Monday, June 1 (Both Daily and Weekly occur)
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        addTearDown(AppClock.reset);
         var state = taskList.complete(task.id);
         var updated = state.activeTasks.first;
 
@@ -1038,6 +1041,7 @@ void main() {
 
         // Complete on Tuesday, June 2 (Neither occurs)
         AppClock.setMockTime(DateTime(2026, 6, 2, 12, 0));
+        addTearDown(AppClock.reset);
         state = state.complete(task.id);
         updated = state.activeTasks.first;
 
@@ -1053,6 +1057,7 @@ void main() {
 
         // Complete on Wednesday, June 3 (Both occur)
         AppClock.setMockTime(DateTime(2026, 6, 3, 12, 0));
+        addTearDown(AppClock.reset);
         state = state.complete(task.id);
         updated = state.activeTasks.first;
 
@@ -1066,8 +1071,6 @@ void main() {
           (updated.schedules[1] as WeeklySchedule).startDate,
           const CivilDay(year: 2026, month: 6, day: 8),
         );
-
-        AppClock.reset();
       },
     );
 
@@ -1115,6 +1118,7 @@ void main() {
 
         // Overdue complete on Tuesday, June 9 (Daily was due June 1, 4, 7. Monthly is due June 15)
         AppClock.setMockTime(DateTime(2026, 6, 9, 12, 0));
+        addTearDown(AppClock.reset);
         final state = taskList.complete(task.id);
         final updated = state.activeTasks.first;
 
@@ -1128,8 +1132,6 @@ void main() {
           (updated.schedules[1] as MonthlySchedule).startDate,
           const CivilDay(year: 2026, month: 6, day: 1),
         );
-
-        AppClock.reset();
       },
     );
 
@@ -1159,6 +1161,7 @@ void main() {
         // Complete on Friday, Dec 25, 2026 (Both Weekly and Yearly occur!)
         // Dec 25, 2026 is indeed a Friday.
         AppClock.setMockTime(DateTime(2026, 12, 25, 12, 0));
+        addTearDown(AppClock.reset);
         final state = taskList.complete(task.id);
         final updated = state.activeTasks.first;
 
@@ -1172,8 +1175,6 @@ void main() {
           (updated.schedules[1] as YearlySchedule).startDate,
           const CivilDay(year: 2027, month: 12, day: 25),
         );
-
-        AppClock.reset();
       },
     );
 
@@ -1205,6 +1206,7 @@ void main() {
 
         // Complete on June 1, 2026
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        addTearDown(AppClock.reset);
         final state = taskList.complete(task.id);
         final updated = state.activeTasks.first;
 
@@ -1230,8 +1232,6 @@ void main() {
           (updated.schedules[3] as YearlySchedule).startDate,
           const CivilDay(year: 2026, month: 6, day: 1),
         ); // Yearly NOT advanced (first occurrence Dec 25 is in future)
-
-        AppClock.reset();
       },
     );
 
@@ -1264,6 +1264,7 @@ void main() {
 
         // Complete first slot on Monday, June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        addTearDown(AppClock.reset);
         var state = taskList.complete(task.id);
         var updated = state.activeTasks.first;
 
@@ -1292,8 +1293,6 @@ void main() {
           (updated.schedules[1] as WeeklySchedule).startDate,
           const CivilDay(year: 2026, month: 6, day: 3),
         );
-
-        AppClock.reset();
       },
     );
 
@@ -1321,6 +1320,7 @@ void main() {
 
         // Add task on Mon June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
@@ -1365,8 +1365,6 @@ void main() {
           ),
           isTrue,
         );
-
-        AppClock.reset();
       },
     );
 
@@ -1403,11 +1401,13 @@ void main() {
 
         // Add task on Mon June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Mock time to Tue June 9. Mon June 8 Weekly is missed, and June 1 Weekly & Monthly are missed.
         AppClock.setMockTime(DateTime(2026, 6, 9, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.getTasks().first;
         await Future.delayed(Duration.zero);
 
@@ -1468,8 +1468,6 @@ void main() {
         );
         expect(weeklyJune15.data()['status'], 'pending');
         expect(monthlyJuly1.data()['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -1497,11 +1495,13 @@ void main() {
 
         // Add task on June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Mock time to July 16 (45 days later)
         AppClock.setMockTime(DateTime(2026, 7, 16, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.getTasks().first;
         await Future.delayed(Duration.zero);
 
@@ -1528,8 +1528,6 @@ void main() {
           pendingCount,
           0,
         ); // July 16 is not spawned yet due to the 30-day backfill cap
-
-        AppClock.reset();
       },
     );
 
@@ -1557,11 +1555,13 @@ void main() {
 
         // Add task on Mon June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
         // Mock time to Wed June 3. Daily should have instances for June 1, 2, 3. Weekly should have instance for June 3.
         AppClock.setMockTime(DateTime(2026, 6, 3, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.getTasks().first;
         await Future.delayed(Duration.zero);
 
@@ -1636,8 +1636,6 @@ void main() {
           ),
           isTrue,
         );
-
-        AppClock.reset();
       },
     );
 
@@ -1668,6 +1666,7 @@ void main() {
 
         // Add task on Mon June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
@@ -1676,6 +1675,7 @@ void main() {
         // Daily occurrences: June 1, 2, 3.
         // Weekly occurrences: June 3.
         AppClock.setMockTime(DateTime(2026, 6, 3, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.getTasks().first;
         await Future.delayed(Duration.zero);
 
@@ -1784,8 +1784,6 @@ void main() {
           ),
           isTrue,
         );
-
-        AppClock.reset();
       },
     );
 
@@ -1813,6 +1811,7 @@ void main() {
 
         // Add task on Mon June 1
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
@@ -1838,6 +1837,7 @@ void main() {
 
         // Fast-forward to June 3
         AppClock.setMockTime(DateTime(2026, 6, 3, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.triggerMissedPolicyProcessing();
         await Future.delayed(Duration.zero);
 
@@ -1863,8 +1863,6 @@ void main() {
           ),
           isTrue,
         );
-
-        AppClock.reset();
       },
     );
 
@@ -2094,6 +2092,7 @@ void main() {
         );
 
         AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
@@ -2108,8 +2107,6 @@ void main() {
         expect(instSnap.data()['scheduledDate']['year'], 2026);
         expect(instSnap.data()['scheduledDate']['month'], 5);
         expect(instSnap.data()['scheduledDate']['day'], 25);
-
-        AppClock.reset();
       });
 
       test(
@@ -2148,6 +2145,7 @@ void main() {
 
           // Monday May 25, 9:00 AM - initial spawned
           AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
+          addTearDown(AppClock.reset);
           await repository.addTaskSchedule(task);
           await Future.delayed(Duration.zero);
 
@@ -2163,6 +2161,7 @@ void main() {
           // User completes it on Wednesday May 27 at 2:00 PM
           final completionTime = DateTime(2026, 5, 27, 14, 0);
           AppClock.setMockTime(completionTime);
+          addTearDown(AppClock.reset);
 
           await repository.completeTaskInstance(firstInst.id);
           await Future.delayed(Duration.zero);
@@ -2180,6 +2179,7 @@ void main() {
 
           // Fast forward to Saturday May 30 at 2:00 PM (14:00) when it is due
           AppClock.setMockTime(DateTime(2026, 5, 30, 14, 0));
+          addTearDown(AppClock.reset);
           await repository.triggerMissedPolicyProcessing();
           await Future.delayed(Duration.zero);
 
@@ -2203,8 +2203,6 @@ void main() {
           // Verify dueRelativeTime maintains original duration of 8 hours (10:00 AM -> 6:00 PM)
           expect(nextSnap.data()['dueRelativeTime']['hour'], 18);
           expect(nextSnap.data()['dueRelativeTime']['minute'], 0);
-
-          AppClock.reset();
         },
       );
 
@@ -2244,6 +2242,7 @@ void main() {
         );
 
         AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
         await Future.delayed(Duration.zero);
 
@@ -2256,6 +2255,7 @@ void main() {
 
         // Fast forward past due time (5:00 PM) and grace period (1 hour) to 7:00 PM
         AppClock.setMockTime(DateTime(2026, 5, 25, 19, 0));
+        addTearDown(AppClock.reset);
         await repository.getTasks().first; // trigger evaluation
         await Future.delayed(Duration.zero);
 
@@ -2267,8 +2267,6 @@ void main() {
             .doc(firstInst.id)
             .get();
         expect(instSnap.data()!['status'], 'pending');
-
-        AppClock.reset();
       });
 
       test(
@@ -2298,6 +2296,7 @@ void main() {
           );
 
           AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
+          addTearDown(AppClock.reset);
           await repository.addTaskSchedule(task);
           await Future.delayed(Duration.zero);
 
@@ -2313,11 +2312,13 @@ void main() {
           // Complete the first instance
           final completionTime = DateTime(2026, 5, 25, 11, 0);
           AppClock.setMockTime(completionTime);
+          addTearDown(AppClock.reset);
           await repository.completeTaskInstance(firstInst.id);
           await Future.delayed(Duration.zero);
 
           // Fast forward to May 28 at 12:00 PM (noon) when it is due
           AppClock.setMockTime(DateTime(2026, 5, 28, 12, 0));
+          addTearDown(AppClock.reset);
           await repository.triggerMissedPolicyProcessing();
           await Future.delayed(Duration.zero);
 
@@ -2343,6 +2344,7 @@ void main() {
 
           // 1. Time is before completionTime + 3 days (e.g. May 27)
           AppClock.setMockTime(DateTime(2026, 5, 27, 12, 0));
+          addTearDown(AppClock.reset);
           await repository.getTasks().first; // trigger evaluation
           await Future.delayed(Duration.zero);
 
@@ -2361,6 +2363,7 @@ void main() {
 
           // 2. Time is on or after completionTime + 3 days (e.g. May 28, 12:00 PM)
           AppClock.setMockTime(DateTime(2026, 5, 28, 12, 0));
+          addTearDown(AppClock.reset);
           await repository.getTasks().first; // trigger evaluation
           await Future.delayed(Duration.zero);
 
@@ -2376,8 +2379,6 @@ void main() {
                 d.data()['status'] == 'pending',
           );
           expect(existsOn28Day28, isTrue);
-
-          AppClock.reset();
         },
       );
     });

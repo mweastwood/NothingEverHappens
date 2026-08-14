@@ -466,6 +466,28 @@ class AppLocalizationsEs extends AppLocalizations {
       'Mostrar la fecha del último spawn en cada tarjeta de programación de tareas para depuración.';
 
   @override
+  String get debugDiagnosticsSectionTitle => 'Depuración y diagnósticos';
+
+  @override
+  String get debugDiagnosticsSectionHelper =>
+      'Exportar el estado local y remoto completo de la aplicación en formato JSON estructurado para depuración con LLM o soporte.';
+
+  @override
+  String get exportDebugStateButton =>
+      'Exportar estado de depuración (JSON para LLM)';
+
+  @override
+  String get debugStateCopiedToClipboard =>
+      'JSON de estado de depuración copiado al portapapeles.';
+
+  @override
+  String get debugStateShareSubject => 'Exportación de estado de depuración';
+
+  @override
+  String get debugStateShareText =>
+      'Exportación JSON del estado de depuración para NothingEverHappens.';
+
+  @override
   String get pendingBadge => 'Pendiente';
 
   @override

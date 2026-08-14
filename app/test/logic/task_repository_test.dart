@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -12,8 +13,10 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
+import 'package:nothing_ever_happens/logic/task_spawner_engine.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
+import 'package:rxdart/rxdart.dart';
 
 Future<String> _findInstanceId(
   FakeFirebaseFirestore firestore,
@@ -151,7 +154,8 @@ void main() {
       'deleteTask removes a task, returns deleted data, and restore restores it',
       () async {
         await repository.addTaskSchedule(testTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         final instanceId = await findInstanceId(
           testTask.id,
@@ -227,7 +231,8 @@ void main() {
 
     test('completeTask completes the instance', () async {
       await repository.addTaskSchedule(testTask);
-      await Future.delayed(Duration.zero);
+      // Yield to allow Firestore mock batches to complete
+      await Future(() {});
 
       final instanceId = await findInstanceId(
         testTask.id,
@@ -248,7 +253,8 @@ void main() {
 
     test('dismissTaskInstance dismisses the instance', () async {
       await repository.addTaskSchedule(testTask);
-      await Future.delayed(Duration.zero);
+      // Yield to allow Firestore mock batches to complete
+      await Future(() {});
 
       final instanceId = await findInstanceId(
         testTask.id,
@@ -264,7 +270,7 @@ void main() {
           .get();
 
       expect(instanceSnapshot.exists, isTrue);
-      expect(instanceSnapshot.data()!['status'], 'dismissed');
+      expect(instanceSnapshot.data()!['status'], 'skipped');
       expect(instanceSnapshot.data()!['completedByUserId'], userId);
       expect(instanceSnapshot.data()!['completedAt'], isNotNull);
     });
@@ -285,8 +291,10 @@ void main() {
         );
 
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        addTearDown(AppClock.reset);
         await repository.addTaskSchedule(recurringTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         final instanceId = await findInstanceId(
           recurringTask.id,
@@ -351,8 +359,6 @@ void main() {
           (d) => d.data()['scheduledDate']['day'] == 12,
         );
         expect(hasJune12, isFalse);
-
-        AppClock.reset();
       },
     );
 
@@ -360,7 +366,8 @@ void main() {
       'undoResolveTaskInstance reverts dismissed instance to pending',
       () async {
         await repository.addTaskSchedule(testTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         final instanceId = await findInstanceId(
           testTask.id,
@@ -420,7 +427,8 @@ void main() {
         addTearDown(AppClock.reset);
 
         await repository.addTaskSchedule(dailyTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         final instanceId = await findInstanceId(
           dailyTask.id,
@@ -432,7 +440,7 @@ void main() {
 
         expect(resolved, isNotNull);
         expect(resolved!.id, instanceId);
-        expect(resolved.status, 'completed');
+        expect(resolved.status, TaskStatus.completed);
         expect(resolved.completedAt, isNotNull);
         expect(resolved.completedByUserId, userId);
 
@@ -450,7 +458,8 @@ void main() {
           ],
         );
         await repository.addTaskSchedule(dailyTask2);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         final instanceId2 = await findInstanceId(
           dailyTask2.id,
@@ -461,7 +470,7 @@ void main() {
         );
 
         expect(resolvedDismissed, isNotNull);
-        expect(resolvedDismissed!.status, 'dismissed');
+        expect(resolvedDismissed!.status, TaskStatus.skipped);
         expect(resolvedDismissed.completedAt, isNotNull);
       },
     );
@@ -493,7 +502,8 @@ void main() {
         );
 
         await repository.addTaskSchedule(weeklyTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         // Now edit it to add a monthly schedule
         final updatedTaskSchedules = [
@@ -522,7 +532,8 @@ void main() {
         );
 
         await repository.updateTaskSchedule(modification);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         // Check tasks
         final tasksSnap = await firestore
@@ -712,7 +723,8 @@ void main() {
       addTearDown(AppClock.reset);
 
       await repository.addTaskSchedule(notifTask);
-      await Future.delayed(Duration.zero);
+      // Yield to allow Firestore mock batches to complete
+      await Future(() {});
       expect(
         notificationService.scheduledTasks.containsKey(notifTask.id),
         isTrue,
@@ -735,6 +747,7 @@ void main() {
       () async {
         // Set mock time to June 1, 2026
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        addTearDown(AppClock.reset);
 
         final stackTask = TaskSchedule(
           id: 'task-stack-id',
@@ -751,7 +764,8 @@ void main() {
         );
 
         await repository.addTaskSchedule(stackTask);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         // Spawns instance for June 1 (startDate) and June 2 (since N=1)
         final instanceId = await findInstanceId(
@@ -793,8 +807,10 @@ void main() {
 
         // Fast-forward to June 2
         AppClock.setMockTime(DateTime(2026, 6, 2, 12, 0));
+        addTearDown(AppClock.reset);
         await repository.triggerMissedPolicyProcessing();
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Under queue model, now that June 1 is completed and June 2 is the next/current, June 3 should be spawned.
         final june3InstanceId = await findInstanceId(
@@ -809,8 +825,6 @@ void main() {
             .get();
         expect(june3Snapshot.exists, isTrue);
         expect(june3Snapshot.data()!['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -819,6 +833,7 @@ void main() {
       () async {
         // Set mock time to June 1, 2026
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'early-comp-task',
@@ -839,7 +854,8 @@ void main() {
         );
 
         await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
+        // Yield to allow Firestore mock batches to complete
+        await Future(() {});
 
         // Under N=1 queue, June 3 instance is spawned immediately on June 1 as a future occurrence.
         final instanceId = await findInstanceId(
@@ -882,8 +898,6 @@ void main() {
             .get();
         expect(nextSnapshotBefore.exists, isTrue);
         expect(nextSnapshotBefore.data()!['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -936,7 +950,8 @@ void main() {
             .set(taskB.toFirestore());
 
         // Wait a moment for the streams and background futures to complete.
-        await Future.delayed(const Duration(milliseconds: 500));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify if instances for both Task A and Task B were spawned.
         final instancesSnapshot = await firestore
@@ -967,6 +982,7 @@ void main() {
       () async {
         final mockTime = DateTime(2026, 6, 22, 10, 0, 0);
         AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'future-repeating-task',
@@ -994,7 +1010,8 @@ void main() {
         await repository.addTaskSchedule(task);
 
         // Wait a moment for background processing
-        await Future.delayed(const Duration(milliseconds: 200));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         final instanceId = await findInstanceId(
           task.id,
@@ -1011,7 +1028,6 @@ void main() {
         expect(instanceSnapshot.data()!['status'], equals('pending'));
 
         await subscription.cancel();
-        AppClock.reset();
       },
     );
 
@@ -1020,6 +1036,7 @@ void main() {
       () async {
         final mockTime = DateTime(2026, 6, 22, 10, 0, 0);
         AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'edit-repeating-task',
@@ -1045,7 +1062,8 @@ void main() {
         final subscription = repository.getTasks().listen((_) {});
 
         await repository.addTaskSchedule(task);
-        await Future.delayed(const Duration(milliseconds: 200));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify instance is spawned for today
         final instanceId = await findInstanceId(
@@ -1100,7 +1118,8 @@ void main() {
         );
 
         await repository.updateTaskSchedule(modification);
-        await Future.delayed(const Duration(milliseconds: 200));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify if new instance is spawned for today (with new UUID since it was recreated)
         final newInstanceId = await findInstanceId(
@@ -1121,7 +1140,6 @@ void main() {
         );
 
         await subscription.cancel();
-        AppClock.reset();
       },
     );
 
@@ -1129,6 +1147,7 @@ void main() {
       'regression: completing a recurring task advances lastSpawnedDate to the newly spawned instance date',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 22, 10, 0));
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'complete-last-spawned-advance',
@@ -1163,7 +1182,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         );
         await firestore
             .collection('users')
@@ -1175,7 +1194,8 @@ void main() {
         final subscription = repository.getTasks().listen((_) {});
 
         await repository.completeTaskInstance(instanceId);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         final updatedDoc = await firestore
             .collection('users')
@@ -1206,8 +1226,10 @@ void main() {
 
         // Fast-forward to Thursday 6/25
         AppClock.setMockTime(DateTime(2026, 6, 25, 10, 0));
+        addTearDown(AppClock.reset);
         await repository.triggerMissedPolicyProcessing();
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Now, the task's lastSpawnedDate should be advanced to 6/25 since June 25 is now in the past/today
         final finalDoc = await firestore
@@ -1223,7 +1245,6 @@ void main() {
         );
 
         await subscription.cancel();
-        AppClock.reset();
       },
     );
 
@@ -1231,6 +1252,7 @@ void main() {
       'regression: undoing a recurring task resolution does not revert lastSpawnedDate under queue model',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 22, 10, 0));
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'undo-last-spawned-revert',
@@ -1264,7 +1286,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'completed',
+          status: TaskStatus.completed,
           completedAt: DateTime(2026, 6, 22, 10, 0),
           completedByUserId: userId,
         );
@@ -1292,7 +1314,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         );
         await firestore
             .collection('users')
@@ -1304,7 +1326,8 @@ void main() {
         final subscription = repository.getTasks().listen((_) {});
 
         await repository.undoResolveTaskInstance(instance);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         final updatedDoc = await firestore
             .collection('users')
@@ -1321,7 +1344,6 @@ void main() {
         );
 
         await subscription.cancel();
-        AppClock.reset();
       },
     );
 
@@ -1329,6 +1351,7 @@ void main() {
       'unit: queue-based spawning logic maintains N future instances',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0)); // Monday June 22
+        addTearDown(AppClock.reset);
 
         // Task with daily schedule (every day)
         final dailyTask = TaskSchedule(
@@ -1344,7 +1367,8 @@ void main() {
         );
 
         await repository.addTaskSchedule(dailyTask);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Under N=1 model, both June 22 and June 23 are spawned immediately
         final june22Id = await findInstanceId(
@@ -1376,7 +1400,8 @@ void main() {
 
         // Complete June 22
         await repository.completeTaskInstance(june22Id);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Completing June 22 advances the latest uncompleted to June 23.
         // The queue (N=1) now needs June 24 to be spawned.
@@ -1392,8 +1417,6 @@ void main() {
             .get();
         expect(snapJune24.exists, isTrue);
         expect(snapJune24.data()!['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -1401,6 +1424,7 @@ void main() {
       'unit: editing a schedule deletes old future instances and recreates them',
       () async {
         AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0)); // Monday June 22
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'edit-cleanup-task',
@@ -1417,7 +1441,8 @@ void main() {
         );
 
         await repository.addTaskSchedule(task);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // The June 25 instance is spawned immediately (since N=1 and Thursday June 25 is the next occurrence)
         final oldFutureId = await findInstanceId(
@@ -1461,7 +1486,8 @@ void main() {
         );
 
         await repository.updateTaskSchedule(modification);
-        await Future.delayed(const Duration(milliseconds: 200));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify the old June 25 instance is deleted
         final snapOldDeleted = await firestore
@@ -1485,8 +1511,6 @@ void main() {
             .get();
         expect(snapNewFuture.exists, isTrue);
         expect(snapNewFuture.data()!['status'], 'pending');
-
-        AppClock.reset();
       },
     );
 
@@ -1495,6 +1519,7 @@ void main() {
       () async {
         final mockTime = DateTime(2026, 6, 23, 10, 0, 0); // Today is June 23
         AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
 
         final task = TaskSchedule(
           id: 'late-completion-bug',
@@ -1541,7 +1566,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         );
         await firestore
             .collection('users')
@@ -1553,14 +1578,17 @@ void main() {
         // Complete the June 22 instance on June 23 (today)
         // June 23's instance has not been spawned yet, and the stream listener is not active yet.
         await repository.completeTaskInstance(instanceId22);
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         final subscription = repository.getTasks().listen((_) {});
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Now run missed policy processing to see if June 23's instance spawns
         await repository.triggerMissedPolicyProcessing();
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify that today's instance (June 23) was spawned
         final instsAfter = await firestore
@@ -1584,7 +1612,6 @@ void main() {
         );
 
         await subscription.cancel();
-        AppClock.reset();
       },
     );
 
@@ -1593,6 +1620,7 @@ void main() {
       () async {
         final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
         AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
 
         final firestore = FakeFirebaseFirestore();
 
@@ -1651,7 +1679,8 @@ void main() {
         addTearDown(subscription.cancel);
 
         // Let the stream listener trigger the initial pass
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify that 5 future instances have been created (for June 24, July 1, 8, 15, 22)
         final instsAfter5 = await firestore
@@ -1684,7 +1713,8 @@ void main() {
         await repository.updateTaskSchedule(modification);
 
         // Let the repository process and spawn
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Yield event loop to allow background streams and futures to complete
+        await Future(() {});
 
         // Verify that 2 future instances have been created (for June 24 and July 24; August 24 is outside the 30-day window)
         final instsAfter3 = await firestore
@@ -1711,8 +1741,6 @@ void main() {
         expect(hasJune24, isTrue);
         expect(hasJuly24, isTrue);
         expect(instsAfter3.docs.length, 2);
-
-        AppClock.reset();
       },
     );
 
@@ -1763,7 +1791,8 @@ void main() {
           final tasksFuture2 = repository.addTaskSchedule(dailyTask);
 
           await Future.wait([tasksFuture1, tasksFuture2]);
-          await Future.delayed(const Duration(milliseconds: 200));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
 
           final insts = await firestore
               .collection('users')
@@ -1819,7 +1848,8 @@ void main() {
 
           // Trigger evaluation
           await repository.addTaskSchedule(dailyTask);
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
 
           // Get the spawned instances
           final userDocRef = firestore.collection('users').doc(userId);
@@ -1836,18 +1866,21 @@ void main() {
           // 1. If we evaluate immediately (under 2 seconds), write tracker cache is still fresh.
           // It injects a virtual instance, so the evaluator thinks it still exists and does NOT re-spawn it.
           await repository.triggerMissedPolicyProcessing();
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
 
           final instsSnap2 = await userDocRef.collection('instances').get();
           expect(instsSnap2.docs.length, 10); // Still 10 (not re-spawned)
 
           // 2. Advance the clock past 2 seconds (e.g. 3 seconds)
           AppClock.setMockTime(mockTime.add(const Duration(seconds: 3)));
+          addTearDown(AppClock.reset);
 
           // Evaluate again. The tracker entry has expired, so it is ignored.
           // The evaluator sees the database is missing the instance, and re-spawns it!
           await repository.triggerMissedPolicyProcessing();
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
 
           final instsSnap3 = await userDocRef.collection('instances').get();
           expect(instsSnap3.docs.length, 11); // Re-spawned successfully!
@@ -1926,7 +1959,8 @@ void main() {
           );
 
           await repository.addTaskSchedule(task);
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
 
           // Fetch the spawned family instances
           final familyInsts = await firestore
@@ -1942,7 +1976,7 @@ void main() {
           // Complete the family instance
           final completed = await repository.completeTaskInstance(instId);
           expect(completed, isNotNull);
-          expect(completed?.status, 'completed');
+          expect(completed?.status, TaskStatus.completed);
 
           // Should have spawned next occurrence in families collection
           final familyInstsAfter = await firestore
@@ -1982,7 +2016,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
 
           await firestore
@@ -1997,7 +2031,7 @@ void main() {
             'orphan-inst-1',
           );
           expect(completed, isNotNull);
-          expect(completed?.status, 'completed');
+          expect(completed?.status, TaskStatus.completed);
 
           // Verify updated status in Firestore
           final docSnap = await firestore
@@ -2024,7 +2058,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           );
           await firestore
               .collection('users')
@@ -2037,7 +2071,7 @@ void main() {
             'orphan-inst-2',
           );
           expect(dismissed, isNotNull);
-          expect(dismissed?.status, 'dismissed');
+          expect(dismissed?.status, TaskStatus.skipped);
 
           final docSnap2 = await firestore
               .collection('users')
@@ -2045,7 +2079,7 @@ void main() {
               .collection('instances')
               .doc('orphan-inst-2')
               .get();
-          expect(docSnap2.data()?['status'], 'dismissed');
+          expect(docSnap2.data()?['status'], 'skipped');
         },
       );
     });
@@ -2056,6 +2090,7 @@ void main() {
         () async {
           final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
           AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
 
           final firestore = FakeFirebaseFirestore();
 
@@ -2110,7 +2145,8 @@ void main() {
           addTearDown(subscription.cancel);
 
           // Wait for microtask & initial stream emission
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Yield event loop to allow background streams and futures to complete
+          await Future(() {});
           expect(receivedLists.isNotEmpty, isTrue);
           expect(receivedLists.first.first.id, 'S-web-stream-test-task');
 
@@ -2121,15 +2157,709 @@ void main() {
               .collection('instances')
               .get();
           expect(instances.docs.isNotEmpty, isTrue);
+        },
+      );
+
+      test('coalesces concurrent missed-policy triggers and processes queued '
+          'tasks sequentially', () async {
+        final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
+        AppClock.setMockTime(mockTime);
+
+        final notificationService = ControlledNotificationService();
+        notificationService.prepareTask('S-queue-test-task-1');
+        notificationService.prepareTask('S-queue-test-task-2');
+        notificationService.prepareTask('S-queue-test-task-3');
+
+        final firestore = FakeFirebaseFirestore();
+        final repository = TaskRepository(
+          firestore: firestore,
+          userId: 'test-user-id',
+          notificationService: notificationService,
+        );
+
+        final task1 = TaskSchedule(
+          id: 'queue-test-task-1',
+          title: 'Daily Task 1',
+          description: 'Queue stability check 1',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 23),
+              interval: 1,
+            ),
+          ],
+        );
+
+        final task2 = TaskSchedule(
+          id: 'queue-test-task-2',
+          title: 'Daily Task 2',
+          description: 'Queue stability check 2',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 23),
+              interval: 1,
+            ),
+          ],
+        );
+
+        final task3 = TaskSchedule(
+          id: 'queue-test-task-3',
+          title: 'Daily Task 3',
+          description: 'Queue stability check 3',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 6, day: 23),
+              interval: 1,
+            ),
+          ],
+        );
+
+        // Launch task1, task2, task3 additions.
+        // Each pauses in scheduleNotifications awaiting controlled
+        // completers.
+        final future1 = repository.addTaskSchedule(task1);
+        final future2 = repository.addTaskSchedule(task2);
+        final future3 = repository.addTaskSchedule(task3);
+
+        // Unblock task1 so it enters _checkAndProcessMissedPolicies and
+        // starts active processing loop.
+        notificationService.completeTask('S-queue-test-task-1');
+        await Future(() {});
+
+        // Now task1 policy processing is actively in-flight
+        // (_activeProcessingFuture != null).
+        // Unblock task2 and task3 additions while task1 processing is
+        // actively in-flight.
+        notificationService.completeTask('S-queue-test-task-2');
+        notificationService.completeTask('S-queue-test-task-3');
+        await Future(() {});
+
+        await Future.wait([future1, future2, future3]);
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        final instances = await firestore
+            .collection('users')
+            .doc('test-user-id')
+            .collection('instances')
+            .get();
+
+        final taskIds = instances.docs
+            .map((doc) => doc.data()['scheduleId'] as String)
+            .toSet();
+
+        expect(
+          taskIds,
+          containsAll([
+            'S-queue-test-task-1',
+            'S-queue-test-task-2',
+            'S-queue-test-task-3',
+          ]),
+        );
+
+        AppClock.reset();
+      });
+
+      test(
+        'empty trigger call awaits in-flight active processing future',
+        () async {
+          final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(mockTime);
+
+          final firestore = FakeFirebaseFirestore();
+          final repository = TaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+          );
+
+          final task = TaskSchedule(
+            id: 'empty-trigger-task',
+            title: 'Empty Trigger Task',
+            description: 'Check empty trigger await',
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 23),
+                interval: 1,
+              ),
+            ],
+          );
+
+          await repository.addTaskSchedule(task);
+
+          // Launch concurrent triggerMissedPolicyProcessing calls
+          final triggerFuture1 = repository.triggerMissedPolicyProcessing();
+          final triggerFuture2 = repository.triggerMissedPolicyProcessing();
+
+          await Future.wait([triggerFuture1, triggerFuture2]);
+
+          final instances = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .get();
+          expect(instances.docs, isNotEmpty);
+
+          AppClock.reset();
+        },
+      );
+
+      test(
+        'updateTaskSchedule updates _cachedTasksMap and processes policies on '
+        'non-schedule changes (e.g. estimatedDuration)',
+        () async {
+          final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
+          AppClock.setMockTime(mockTime);
+
+          final firestore = FakeFirebaseFirestore();
+          final repository = TaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+          );
+
+          // Task A: high priority, 6 hours duration
+          final taskA = TaskSchedule(
+            id: 'task-a',
+            title: 'Task A',
+            description: 'Long high priority task',
+            priority: TaskPriority.high,
+            estimatedDuration: const Duration(hours: 6),
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 8, day: 10),
+                interval: 1,
+              ),
+            ],
+          );
+
+          // Task B: low priority, skipIfNoCapacity=true, 4 hours duration
+          final taskB = TaskSchedule(
+            id: 'task-b',
+            title: 'Task B',
+            description: 'Capacity-dependent low priority task',
+            priority: TaskPriority.low,
+            skipIfNoCapacity: true,
+            estimatedDuration: const Duration(hours: 4),
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 8, day: 10),
+                interval: 1,
+              ),
+            ],
+          );
+
+          await repository.addTaskSchedule(taskA);
+          await repository.addTaskSchedule(taskB);
+          await Future(() {});
+
+          // TaskA (6h) + TaskB (4h) = 10h > 8h default capacity limit.
+          // Task B should be skipped.
+          final instanceBId = await _findInstanceId(
+            firestore,
+            'test-user-id',
+            taskB.id,
+            const CivilDay(year: 2026, month: 8, day: 10),
+          );
+          final instanceBSnap = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .doc(instanceBId)
+              .get();
+          expect(instanceBSnap.data()!['status'], 'skipped');
+
+          // Non-schedule update: reduce Task A's estimated duration from 6h
+          // to 2h.
+          final modA = taskA.edit(
+            newTitle: taskA.title,
+            newDescription: taskA.description,
+            newSchedules: taskA.schedules,
+            newEstimatedDuration: const Duration(hours: 2),
+            newMissedPolicy: taskA.missedPolicy,
+            newIsMaster: taskA.isMaster,
+            newLastSpawnedDate: taskA.lastSpawnedDate,
+            newIsFamily: taskA.isFamily,
+            newPriority: taskA.priority,
+          );
+
+          await repository.updateTaskSchedule(modA);
+          await Future(() {});
+
+          // TaskA (2h) + TaskB (4h) = 6h <= 8h. Task B now fits within capacity!
+          final instanceBSnapUpdated = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .doc(instanceBId)
+              .get();
+          expect(instanceBSnapUpdated.data()!['status'], 'pending');
+
+          AppClock.reset();
+        },
+      );
+
+      test(
+        'updateTaskSchedule re-evaluates dependent tasks when priority changes',
+        () async {
+          final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
+          AppClock.setMockTime(mockTime);
+
+          final firestore = FakeFirebaseFirestore();
+          final repository = TaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+          );
+
+          // Task A: high priority, skipIfNoCapacity=true, 6 hours
+          final taskA = TaskSchedule(
+            id: 'task-a-prio',
+            title: 'Task A Priority',
+            description: 'High priority task',
+            priority: TaskPriority.high,
+            skipIfNoCapacity: true,
+            estimatedDuration: const Duration(hours: 6),
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 8, day: 10),
+                interval: 1,
+              ),
+            ],
+          );
+
+          // Task B: medium priority, skipIfNoCapacity=true, 6 hours
+          final taskB = TaskSchedule(
+            id: 'task-b-prio',
+            title: 'Task B Priority',
+            description: 'Medium priority task',
+            priority: TaskPriority.medium,
+            skipIfNoCapacity: true,
+            estimatedDuration: const Duration(hours: 6),
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 8, day: 10),
+                interval: 1,
+              ),
+            ],
+          );
+
+          await repository.addTaskSchedule(taskA);
+          await repository.addTaskSchedule(taskB);
+          await Future(() {});
+
+          // Task A (6h High) takes capacity. Task B (6h Medium) exceeds 8h limit -> skipped.
+          final instanceBId = await _findInstanceId(
+            firestore,
+            'test-user-id',
+            taskB.id,
+            const CivilDay(year: 2026, month: 8, day: 10),
+          );
+          final instanceBSnap = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .doc(instanceBId)
+              .get();
+          expect(instanceBSnap.data()!['status'], 'skipped');
+
+          // Reduce Task A's priority to low within the 2-second debounce window
+          final modA = taskA.edit(
+            newTitle: taskA.title,
+            newDescription: taskA.description,
+            newSchedules: taskA.schedules,
+            newEstimatedDuration: taskA.estimatedDuration,
+            newMissedPolicy: taskA.missedPolicy,
+            newIsMaster: taskA.isMaster,
+            newLastSpawnedDate: taskA.lastSpawnedDate,
+            newIsFamily: taskA.isFamily,
+            newPriority: TaskPriority.low,
+          );
+
+          await repository.updateTaskSchedule(modA);
+          await Future(() {});
+
+          // Task B (Medium) now has higher priority than Task A (Low), so Task B gets capacity!
+          final instanceBSnapUpdated = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .doc(instanceBId)
+              .get();
+          expect(instanceBSnapUpdated.data()!['status'], 'pending');
+
+          AppClock.reset();
+        },
+      );
+
+      test('computeScheduleSignature includes assignedUserId', () {
+        final task1 = TaskSchedule(
+          id: 'sig-task-1',
+          title: 'Sig Task 1',
+          description: 'Sig task signature check 1',
+          assignedUserId: 'user-a',
+        );
+        final task2 = TaskSchedule(
+          id: 'sig-task-1',
+          title: 'Sig Task 1',
+          description: 'Sig task signature check 2',
+          assignedUserId: 'user-b',
+        );
+
+        final sig1 = TaskSpawnerEngine.computeScheduleSignature(task1);
+        final sig2 = TaskSpawnerEngine.computeScheduleSignature(task2);
+
+        expect(sig1, contains('"assignedUserId":"user-a"'));
+        expect(sig2, contains('"assignedUserId":"user-b"'));
+        expect(sig1, isNot(equals(sig2)));
+      });
+
+      test(
+        'deleteTaskSchedule cleans up queued and last processed tasks',
+        () async {
+          final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(mockTime);
+
+          final firestore = FakeFirebaseFirestore();
+          final repository = TaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+          );
+
+          final task = TaskSchedule(
+            id: 'del-task',
+            title: 'Delete Clean Task',
+            description: 'Delete clean task check',
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 23),
+                interval: 1,
+              ),
+            ],
+          );
+
+          await repository.addTaskSchedule(task);
+          final result = await repository.deleteTaskSchedule('del-task');
+          expect(result, isNotNull);
+
+          AppClock.reset();
+        },
+      );
+
+      test(
+        'deleteTaskSchedule triggers capacity re-evaluation when _cachedTasksMap is not pre-cached',
+        () async {
+          final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(mockTime);
+
+          final firestore = FakeFirebaseFirestore();
+
+          await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('settings')
+              .doc('agile')
+              .set({'dailyCapacityHours': 1.0, 'enableCapacityLimits': true});
+
+          final taskA = TaskSchedule(
+            id: 'task-del-a',
+            title: 'Task A',
+            description: 'Capacity task A to delete',
+            priority: TaskPriority.high,
+            skipIfNoCapacity: true,
+            estimatedDuration: const Duration(minutes: 60),
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 23),
+                interval: 1,
+              ),
+            ],
+          );
+
+          final taskB = TaskSchedule(
+            id: 'task-del-b',
+            title: 'Task B',
+            description: 'Capacity task B remaining',
+            priority: TaskPriority.medium,
+            skipIfNoCapacity: true,
+            estimatedDuration: const Duration(minutes: 60),
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 23),
+                interval: 1,
+              ),
+            ],
+          );
+
+          final repo1 = TaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+          );
+          await repo1.addTaskSchedule(taskA);
+          await repo1.addTaskSchedule(taskB);
+          await Future(() {});
+
+          // Fresh repository without pre-cached _cachedTasksMap
+          final repo2 = TaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+          );
+
+          final result = await repo2.deleteTaskSchedule('task-del-a');
+          expect(result, isNotNull);
+
+          final bInstances = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .where('scheduleId', isEqualTo: taskB.id)
+              .get();
+          expect(bInstances.docs, isNotEmpty);
+          expect(bInstances.docs.first.data()['status'], equals('pending'));
+
+          AppClock.reset();
+        },
+      );
+
+      test(
+        'queued force run during in-flight processing clears last processed tasks within loop',
+        () async {
+          final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(mockTime);
+
+          final notificationService = ControlledNotificationService();
+          notificationService.prepareTask('S-force-run-task-1');
+
+          final firestore = FakeFirebaseFirestore();
+          final repository = TaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+            notificationService: notificationService,
+          );
+
+          final task1 = TaskSchedule(
+            id: 'force-run-task-1',
+            title: 'Force Run Task 1',
+            description: 'Force run task check',
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 23),
+                interval: 1,
+              ),
+            ],
+          );
+
+          final addFuture = repository.addTaskSchedule(task1);
+
+          // Trigger forced missed policy processing while task1 addition is paused
+          final forceFuture = repository.triggerMissedPolicyProcessing();
+
+          // Unblock task1 so active processing loop consumes queued force run
+          notificationService.completeTask('S-force-run-task-1');
+
+          await addFuture;
+          await forceFuture;
+
+          final instances = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('instances')
+              .get();
+          expect(instances.docs, isNotEmpty);
+
+          AppClock.reset();
+        },
+      );
+
+      test(
+        'addTaskSchedule persists task schedule before missed policy processing and executes postProcess callbacks',
+        () async {
+          final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
+          AppClock.setMockTime(mockTime);
+
+          final taskA = TaskSchedule(
+            id: 'S-order-test-1',
+            title: 'Order Task 1',
+            description: 'Order Task 1',
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 8, day: 10),
+                interval: 1,
+              ),
+            ],
+          );
+
+          final taskB = TaskSchedule(
+            id: 'S-order-test-2',
+            title: 'Order Task 2',
+            description: 'Order Task 2',
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 8, day: 10),
+                interval: 1,
+              ),
+            ],
+          );
+
+          await Future.wait([
+            repository.addTaskSchedule(taskA),
+            repository.addTaskSchedule(taskB),
+          ]);
+
+          final tasksSnap = await firestore
+              .collection('users')
+              .doc('test-user-id')
+              .collection('tasks')
+              .get();
+
+          final ids = tasksSnap.docs.map((d) => d.id).toSet();
+          expect(ids, containsAll(['S-order-test-1', 'S-order-test-2']));
 
           AppClock.reset();
         },
       );
     });
   });
+
+  group('plannedMinutesPerDayProvider', () {
+    testWidgets(
+      'correctly aggregates planned minutes per day filtering out skipped instances',
+      (tester) async {
+        final day1 = const CivilDay(year: 2026, month: 8, day: 14);
+        final day2 = const CivilDay(year: 2026, month: 8, day: 15);
+
+        final schedule1 = TaskSchedule(
+          id: 'S-schedule-1',
+          title: 'Task 1',
+          description: '60 mins',
+          estimatedDuration: const Duration(minutes: 60),
+          schedules: [],
+        );
+
+        final schedule2 = TaskSchedule(
+          id: 'S-schedule-2',
+          title: 'Task 2',
+          description: '30 mins',
+          estimatedDuration: const Duration(minutes: 30),
+          schedules: [],
+        );
+
+        final inst1 = TaskInstance(
+          id: 'i-1',
+          scheduleId: 'S-schedule-1',
+          ruleId: 'r-1',
+          title: 'Inst 1',
+          description: '',
+          scheduledDate: day1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final inst2 = TaskInstance(
+          id: 'i-2',
+          scheduleId: 'S-schedule-2',
+          ruleId: 'r-2',
+          title: 'Inst 2',
+          description: '',
+          scheduledDate: day1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final inst3Skipped = TaskInstance(
+          id: 'i-3',
+          scheduleId: 'S-schedule-1',
+          ruleId: 'r-1',
+          title: 'Inst 3',
+          description: '',
+          scheduledDate: day2,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.skipped,
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          schedule1,
+          schedule2,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          inst1,
+          inst2,
+          inst3Skipped,
+        ]);
+
+        late Map<CivilDay, double> planned;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+              authStateProvider.overrideWith((ref) => Stream.value(null)),
+            ],
+            child: Consumer(
+              builder: (context, ref, child) {
+                planned = ref.watch(plannedMinutesPerDayProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(planned[day1], equals(90.0));
+        expect(planned[day2], isNull);
+
+        await tasksSubject.close();
+        await instancesSubject.close();
+      },
+    );
+  });
 }
 
 class FakeUser extends Fake implements User {
   @override
   String get uid => 'test-user-id';
+}
+
+class ControlledNotificationService implements NotificationService {
+  final Map<String, Completer<void>> _completers = {};
+
+  void prepareTask(String taskId) {
+    _completers[taskId] = Completer<void>();
+  }
+
+  void completeTask(String taskId) {
+    _completers[taskId]?.complete();
+  }
+
+  @override
+  Future<void> scheduleNotifications(TaskSchedule task) async {
+    final completer = _completers[task.id] ?? _completers['S-${task.id}'];
+    if (completer != null) {
+      await completer.future;
+    }
+  }
+
+  @override
+  Future<void> cancelNotifications(String taskId) async {}
+
+  @override
+  Future<void> dispose() async {}
 }
