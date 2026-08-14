@@ -410,7 +410,7 @@ void main() {
             action.instancesToSpawn
                 .firstWhere((x) => x.scheduledDate.day == 17)
                 .status,
-            'pending',
+            TaskStatus.pending,
           );
 
           // June 18 and June 19 have started but are not oldest, so they should be skipped (not spawned)
@@ -423,7 +423,7 @@ void main() {
             action.instancesToSpawn
                 .firstWhere((x) => x.scheduledDate.day == 20)
                 .status,
-            'pending',
+            TaskStatus.pending,
           );
         },
       );
@@ -559,13 +559,13 @@ void main() {
             action.instancesToSpawn
                 .firstWhere((x) => x.scheduledDate.day == 19)
                 .status,
-            'pending',
+            TaskStatus.pending,
           );
           expect(
             action.instancesToSpawn
                 .firstWhere((x) => x.scheduledDate.day == 20)
                 .status,
-            'pending',
+            TaskStatus.pending,
           );
         },
       );
