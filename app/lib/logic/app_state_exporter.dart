@@ -605,9 +605,10 @@ class AppStateExporter {
         if (!kIsWeb) {
           try {
             final RenderBox? box = context.findRenderObject() as RenderBox?;
-            final Rect sharePositionOrigin = (box != null && box.hasSize)
-                ? (box.localToGlobal(Offset.zero) & box.size)
-                : Rect.fromLTWH(
+            final Rect sharePositionOrigin =
+                (box != null && box.attached && box.hasSize)
+                    ? (box.localToGlobal(Offset.zero) & box.size)
+                    : Rect.fromLTWH(
                     0,
                     0,
                     MediaQuery.maybeOf(context)?.size.width ?? 400,

@@ -207,7 +207,7 @@ void main() {
     'SettingsScreen triggers export debug state when export button is tapped',
     (WidgetTester tester) async {
       when(
-        mockExporter.shareDebugState(argThat(isNotNull) as BuildContext),
+        mockExporter.shareDebugState(any),
       ).thenAnswer((_) async {});
 
       await tester.pumpWidget(buildTestWidget());
@@ -222,7 +222,7 @@ void main() {
       await tester.pumpAndSettle();
 
       verify(
-        mockExporter.shareDebugState(argThat(isNotNull) as BuildContext),
+        mockExporter.shareDebugState(any),
       ).called(1);
     },
   );
