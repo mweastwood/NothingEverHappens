@@ -12,6 +12,7 @@ import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {
   final fb_auth.User? _mockUser;
@@ -247,6 +248,33 @@ void main() {
     );
 
     test(
+      'sanitizeForJson preserves parent PII and email flags when recursing into nested maps',
+      () {
+        final exporter = AppStateExporter(hiveDataSource: localDataSource);
+
+        final rawData = {
+          'member': {
+            'nickname': 'SuperAlice',
+            'details': 'Private user details',
+          },
+          'profile': {
+            'userBio': 'Personal description',
+          },
+          'emailContainer': {
+            'value': 'nested_contact@example.com',
+          },
+        };
+
+        final sanitized = exporter.sanitizeForJson(rawData);
+
+        expect(sanitized['member']['nickname'], 'S***');
+        expect(sanitized['member']['details'], 'P***');
+        expect(sanitized['profile']['userBio'], 'P***');
+        expect(sanitized['emailContainer']['value'], 'n***@example.com');
+      },
+    );
+
+    test(
       'exportStateRaw falls back to local settings/state for familyId when userProfileDoc query fails',
       () async {
         final fakeFirestore = FakeFirebaseFirestore();
@@ -375,6 +403,7 @@ void main() {
 
         expect(raw['exportMetadata'], isNotNull);
         expect(raw['exportMetadata']['platform'], isNotNull);
+        expect(raw['exportMetadata']['appVersion'], AppVersion.display);
 
         final localState = raw['localHiveState'];
         expect(localState['inMemoryFallback'], isTrue);
