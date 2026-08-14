@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -452,6 +451,7 @@ class AppStateExporter {
     }
 
     dialogContextCompleter.future.then((dialogCtx) {
+      if (!dialogCtx.mounted) return;
       if (isDismissed) {
         popDialog(dialogCtx);
       }
@@ -478,6 +478,7 @@ class AppStateExporter {
       isDismissed = true;
       if (dialogContextCompleter.isCompleted) {
         final dialogCtx = await dialogContextCompleter.future;
+        if (!dialogCtx.mounted) return;
         popDialog(dialogCtx);
       }
     }
