@@ -476,39 +476,36 @@ void main() {
       },
     );
 
-    test(
-      'updateAppLaunchUrl modifies appLaunchUrl and generates correct '
-      'changes map',
-      () {
-        final task = TaskSchedule(
-          id: 't1',
-          title: 'TaskSchedule 1',
-          description: '',
-          schedules: [
-            OneOffSchedule(
-              date: const CivilDay(year: 2026, month: 6, day: 1),
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
+    test('updateAppLaunchUrl modifies appLaunchUrl and generates correct '
+        'changes map', () {
+      final task = TaskSchedule(
+        id: 't1',
+        title: 'TaskSchedule 1',
+        description: '',
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
             ),
-          ],
-        );
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
 
-        final result = task.updateAppLaunchUrl('https://example.com/app');
-        expect(result.newTask.appLaunchUrl, 'https://example.com/app');
-        expect(result.changes['appLaunchUrl'], 'https://example.com/app');
+      final result = task.updateAppLaunchUrl('https://example.com/app');
+      expect(result.newTask.appLaunchUrl, 'https://example.com/app');
+      expect(result.changes['appLaunchUrl'], 'https://example.com/app');
 
-        // Test clearing appLaunchUrl
-        final resultClear = result.newTask.updateAppLaunchUrl(null);
-        expect(resultClear.newTask.appLaunchUrl, isNull);
-        expect(resultClear.changes['appLaunchUrl'], isNull);
-      },
-    );
+      // Test clearing appLaunchUrl
+      final resultClear = result.newTask.updateAppLaunchUrl(null);
+      expect(resultClear.newTask.appLaunchUrl, isNull);
+      expect(resultClear.changes['appLaunchUrl'], isNull);
+    });
 
     test(
       'updatePreferredBy modifies preferredBy map and generates correct update delta',
