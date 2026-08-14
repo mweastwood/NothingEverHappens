@@ -613,8 +613,8 @@ class AppStateExporter {
             );
             final Rect sharePositionOrigin =
                 (box != null && box.attached && box.hasSize)
-                    ? (box.localToGlobal(Offset.zero) & box.size)
-                    : fallbackRect;
+                ? (box.localToGlobal(Offset.zero) & box.size)
+                : fallbackRect;
 
             final tempDir = await getTemporaryDirectory();
             final filePath = '${tempDir.path}/$fileName';
