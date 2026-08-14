@@ -179,11 +179,15 @@ void main() {
         'inviterId': 'user-456',
         'inviteeId': 'user-789',
         'userId': 'user-000',
+        'uid': 'user-321',
+        'uids': ['user-321', 'user-654'],
         'member_id': 'user-111',
         'memberIds': ['user_123', 'user_456'],
         'member_ids': ['user_789', 'user_000'],
         'member': {
           'id': 'u123',
+          'uid': 'u123_uid',
+          'memberUid': 'm_uid_456',
           'role': 'admin',
           'status': 'active',
           'displayName': 'Eve Member',
@@ -220,11 +224,15 @@ void main() {
       expect(sanitized['inviterId'], 'user-456');
       expect(sanitized['inviteeId'], 'user-789');
       expect(sanitized['userId'], 'user-000');
+      expect(sanitized['uid'], 'user-321');
+      expect(sanitized['uids'], ['user-321', 'user-654']);
       expect(sanitized['member_id'], 'user-111');
       expect(sanitized['memberIds'], ['user_123', 'user_456']);
       expect(sanitized['member_ids'], ['user_789', 'user_000']);
 
       expect(sanitized['member']['id'], 'u123');
+      expect(sanitized['member']['uid'], 'u123_uid');
+      expect(sanitized['member']['memberUid'], 'm_uid_456');
       expect(sanitized['member']['role'], 'admin');
       expect(sanitized['member']['status'], 'active');
       expect(sanitized['member']['displayName'], 'E***');

@@ -73,6 +73,8 @@ class AppStateExporter {
     if (lowerKey.contains('email')) return false;
     if (lowerKey == 'id' ||
         lowerKey == 'ids' ||
+        lowerKey == 'uid' ||
+        lowerKey == 'uids' ||
         lowerKey == 'role' ||
         lowerKey == 'status') {
       return true;
@@ -80,10 +82,19 @@ class AppStateExporter {
     if (lowerKey.endsWith('_id') ||
         lowerKey.endsWith('_ids') ||
         lowerKey.endsWith('-id') ||
-        lowerKey.endsWith('-ids')) {
+        lowerKey.endsWith('-ids') ||
+        lowerKey.endsWith('_uid') ||
+        lowerKey.endsWith('_uids') ||
+        lowerKey.endsWith('-uid') ||
+        lowerKey.endsWith('-uids')) {
       return true;
     }
-    if (key.endsWith('Id') || key.endsWith('Ids')) {
+    if (key.endsWith('Id') ||
+        key.endsWith('Ids') ||
+        key.endsWith('ID') ||
+        key.endsWith('IDS') ||
+        key.endsWith('Uid') ||
+        key.endsWith('Uids')) {
       return true;
     }
     return false;
@@ -537,10 +548,10 @@ class AppStateExporter {
 
     void popDialog(BuildContext ctx) {
       if (!isPopped && ctx.mounted) {
-        isPopped = true;
         final navigator = Navigator.of(ctx, rootNavigator: true);
         final route = ModalRoute.of(ctx);
         if (navigator.canPop() && (route == null || route.isCurrent)) {
+          isPopped = true;
           navigator.pop();
         }
       }
@@ -628,6 +639,7 @@ class AppStateExporter {
         }
 
         if (!shared) {
+          if (!context.mounted) return;
           await Clipboard.setData(ClipboardData(text: jsonString));
           if (!context.mounted) return;
           ScaffoldMessenger.maybeOf(context)?.showSnackBar(
