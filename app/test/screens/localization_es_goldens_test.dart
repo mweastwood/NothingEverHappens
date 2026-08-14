@@ -24,6 +24,7 @@ import 'package:nothing_ever_happens/screens/settings_screen.dart';
 import 'package:nothing_ever_happens/screens/home_screen.dart';
 import 'package:nothing_ever_happens/screens/create_task_screen.dart';
 import 'package:nothing_ever_happens/logic/subscription_service.dart';
+import 'package:nothing_ever_happens/logic/app_state_exporter.dart';
 import 'package:nothing_ever_happens/screens/help_screen.dart';
 
 @GenerateNiceMocks([
@@ -33,10 +34,22 @@ import 'package:nothing_ever_happens/screens/help_screen.dart';
 ])
 import 'localization_es_goldens_test.mocks.dart';
 
+class MockAppStateExporter extends Mock implements AppStateExporter {
+  @override
+  Future<void> shareDebugState(BuildContext? context) =>
+      (super.noSuchMethod(
+            Invocation.method(#shareDebugState, [context]),
+            returnValue: Future<void>.value(),
+            returnValueForMissingStub: Future<void>.value(),
+          )
+          as Future<void>);
+}
+
 void main() {
   late MockAuthRepository mockAuthRepository;
   late MockTaskRepository mockTaskRepository;
   late MockUserSettingsRepository mockUserSettingsRepository;
+  late MockAppStateExporter mockAppStateExporter;
 
   late BehaviorSubject<List<TaskSchedule>> tasksSubject;
   late BehaviorSubject<List<TaskInstance>> instancesSubject;
@@ -52,6 +65,7 @@ void main() {
     mockAuthRepository = MockAuthRepository();
     mockTaskRepository = MockTaskRepository();
     mockUserSettingsRepository = MockUserSettingsRepository();
+    mockAppStateExporter = MockAppStateExporter();
 
     tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([]);
     instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([]);
@@ -108,6 +122,7 @@ void main() {
           userSettingsRepositoryProvider.overrideWithValue(
             mockUserSettingsRepository,
           ),
+          appStateExporterProvider.overrideWithValue(mockAppStateExporter),
           authStateProvider.overrideWith((ref) => Stream.value(null)),
         ],
         child: const SettingsScreen(),

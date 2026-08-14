@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../logic/user_settings.dart';
-import '../logic/user_settings_repository.dart';
+
+import '../logic/app_state_exporter.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/user_settings.dart';
+import '../logic/user_settings_repository.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -169,6 +171,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     secondary: const Icon(Icons.bug_report_outlined, size: 28),
                   ),
                 ),
+                const SizedBox(height: 16),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.bug_report_outlined, size: 28),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                context.l10n.debugDiagnosticsSectionTitle,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          context.l10n.debugDiagnosticsSectionHelper,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          key: const Key('export_debug_state_button'),
+                          onPressed: () {
+                            ref
+                                .read(appStateExporterProvider)
+                                .shareDebugState(context);
+                          },
+                          icon: const Icon(Icons.ios_share),
+                          label: Text(context.l10n.exportDebugStateButton),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
                   key: const Key('save_settings_button'),
