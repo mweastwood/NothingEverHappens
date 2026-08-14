@@ -1,9 +1,11 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
+
 import 'relative_time.dart';
 import 'app_clock.dart';
 import 'civil_day.dart';
@@ -144,9 +146,6 @@ class TaskRepository {
   /// Timeout for fetching family ID from the network.
   static const Duration _familyIdFetchTimeout = Duration(seconds: 2);
 
-  /// Debounce duration to prevent redundant processing of the same task.
-  static const Duration _taskDebounceDuration = Duration(seconds: 2);
-
   /// Expiration duration for recently spawned virtual instances.
   static const Duration _spawnedInstanceCacheDuration = Duration(seconds: 2);
 
@@ -156,7 +155,11 @@ class TaskRepository {
   final FirebaseFirestore _firestore;
   final String _userId;
   final NotificationService? _notificationService;
-  Future<void>? _processingFuture;
+  Future<void>? _activeProcessingFuture;
+  bool _hasQueuedForceRun = false;
+  final List<Future<void> Function()> _queuedPostProcessCallbacks = [];
+  final Map<String, TaskSchedule> _queuedTasksMap = {};
+  final Map<String, TaskSchedule> _cachedTasksMap = {};
   Timer? _triggerTimer;
   DateTime? _scheduledTriggerTime;
   final Map<String, ({DateTime processedAt, String signature})>
@@ -297,25 +300,59 @@ class TaskRepository {
   }
 
   Future<TaskSchedule?> _fetchTask(String id) async {
-    // Try personal first
-    final personalDoc = await _tasksRef.doc(id).get();
-    if (personalDoc.exists) return personalDoc.data();
+    final searchIds = [
+      id,
+      if (!id.startsWith('S-')) 'S-$id',
+      if (id.startsWith('S-')) id.substring(2),
+    ];
+    for (final searchId in searchIds) {
+      final cached = _cachedTasksMap[searchId];
+      if (cached != null) return cached;
+    }
 
-    // If not found, check family collection
-    final familyId = await _getFamilyId();
-    if (familyId != null && familyId.isNotEmpty) {
-      final familyDoc = await _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('tasks')
-          .doc(id)
-          .withConverter<TaskSchedule>(
-            fromFirestore: (snapshot, _) =>
-                TaskSchedule.fromFirestore(snapshot),
-            toFirestore: (task, _) => task.toFirestore(),
-          )
-          .get();
-      if (familyDoc.exists) return familyDoc.data();
+    for (final searchId in searchIds) {
+      // Try raw personal doc fetch first
+      try {
+        final rawDoc = await _firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('tasks')
+            .doc(searchId)
+            .get();
+        if (rawDoc.exists && rawDoc.data() != null) {
+          final t = TaskSchedule.fromFirestore(rawDoc);
+          _cachedTasksMap[t.id] = t;
+          return t;
+        }
+      } catch (_) {}
+
+      // Try personal via converter
+      try {
+        final personalDoc = await _tasksRef.doc(searchId).get();
+        if (personalDoc.exists && personalDoc.data() != null) {
+          final t = personalDoc.data()!;
+          _cachedTasksMap[t.id] = t;
+          return t;
+        }
+      } catch (_) {}
+
+      // Check family collection
+      final familyId = await _getFamilyId();
+      if (familyId != null && familyId.isNotEmpty) {
+        try {
+          final familyDoc = await _firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(searchId)
+              .get();
+          if (familyDoc.exists && familyDoc.data() != null) {
+            final t = TaskSchedule.fromFirestore(familyDoc);
+            _cachedTasksMap[t.id] = t;
+            return t;
+          }
+        } catch (_) {}
+      }
     }
     return null;
   }
@@ -469,32 +506,78 @@ class TaskRepository {
         });
   }
 
-  void _checkAndProcessMissedPolicies(List<TaskSchedule> tasks) {
-    _processingFuture = (_processingFuture ?? Future<void>.value()).then(
-      (_) => _doProcessMissedPolicies(tasks),
-    );
+  Future<void> _checkAndProcessMissedPolicies(
+    List<TaskSchedule> tasks, {
+    bool forceRun = false,
+    Future<void> Function()? postProcess,
+  }) async {
+    for (final task in tasks) {
+      _queuedTasksMap[task.id] = task;
+      _cachedTasksMap[task.id] = task;
+    }
+    if (forceRun) {
+      _hasQueuedForceRun = true;
+    }
+    if (postProcess != null) {
+      _queuedPostProcessCallbacks.add(postProcess);
+    }
+    while (_activeProcessingFuture != null ||
+        _hasQueuedForceRun ||
+        _queuedTasksMap.isNotEmpty ||
+        _queuedPostProcessCallbacks.isNotEmpty) {
+      if (_activeProcessingFuture != null) {
+        await _activeProcessingFuture;
+      } else {
+        final runForce = _hasQueuedForceRun || forceRun;
+        _hasQueuedForceRun = false;
+        forceRun = false;
+        _activeProcessingFuture = _processQueue(forceRun: runForce);
+        await _activeProcessingFuture;
+      }
+    }
+  }
+
+  Future<void> _processQueue({bool forceRun = false}) async {
+    try {
+      bool firstRun = forceRun;
+      while (firstRun ||
+          _hasQueuedForceRun ||
+          _queuedTasksMap.isNotEmpty ||
+          _queuedPostProcessCallbacks.isNotEmpty) {
+        firstRun = false;
+        _hasQueuedForceRun = false;
+        final tasksToProcess = _queuedTasksMap.values.toList();
+        _queuedTasksMap.clear();
+
+        final callbacksToRun = List<Future<void> Function()>.from(
+          _queuedPostProcessCallbacks,
+        );
+        _queuedPostProcessCallbacks.clear();
+
+        try {
+          await _doProcessMissedPolicies(tasksToProcess);
+        } catch (e) {
+          // ignore: avoid_print
+          print('Error in auto-processing missed policies loop: $e');
+        }
+
+        for (final cb in callbacksToRun) {
+          try {
+            await cb();
+          } catch (e) {
+            // ignore: avoid_print
+            print('Error in postProcess callback: $e');
+          }
+        }
+      }
+    } finally {
+      _activeProcessingFuture = null;
+    }
   }
 
   Future<void> _doProcessMissedPolicies(List<TaskSchedule> tasks) async {
     try {
       final now = AppClock.now;
-
-      final filteredTasks = tasks.where((task) {
-        final lastProcessed = _lastProcessedTasks[task.id];
-        if (lastProcessed != null) {
-          final signature = _getScheduleSignature(task);
-          if (lastProcessed.signature == signature &&
-              now.difference(lastProcessed.processedAt).abs() <
-                  _taskDebounceDuration) {
-            return false;
-          }
-        }
-        return true;
-      }).toList();
-
-      if (filteredTasks.isEmpty) {
-        return;
-      }
 
       final familyId = await _getFamilyId();
       final cutoffDate = AppClock.now.subtract(
@@ -533,8 +616,35 @@ class TaskRepository {
           .get();
       final userSettings = UserSettings.fromJson(settingsSnapshot.data() ?? {});
 
-      // Build lookup map for durations directly from passed tasks list
-      final taskMap = {for (final t in tasks) t.id: t};
+      final personalTasksSnap = await _tasksRef.get();
+      final freshTasksMap = <String, TaskSchedule>{};
+      for (final doc in personalTasksSnap.docs) {
+        freshTasksMap[doc.id] = doc.data();
+      }
+      if (familyId != null && familyId.isNotEmpty) {
+        final familyTasksRef = _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .withConverter<TaskSchedule>(
+              fromFirestore: (snapshot, _) =>
+                  TaskSchedule.fromFirestore(snapshot),
+              toFirestore: (task, _) => task.toFirestore(),
+            );
+        final familyTasksSnap = await familyTasksRef.get();
+        for (final doc in familyTasksSnap.docs) {
+          freshTasksMap[doc.id] = doc.data();
+        }
+      }
+      _cachedTasksMap.addAll(freshTasksMap);
+
+      // Build lookup map for durations using cached tasks
+      // (overlaying currently passed tasks)
+      final taskMap = Map<String, TaskSchedule>.from(_cachedTasksMap);
+      for (final t in tasks) {
+        taskMap[t.id] = t;
+        _cachedTasksMap[t.id] = t;
+      }
 
       // Calculate planned hours per date
       final Map<CivilDay, double> dayPlannedHours = {};
@@ -542,7 +652,7 @@ class TaskRepository {
         if (inst.status != TaskStatus.skipped &&
             inst.status != TaskStatus.failed) {
           final t = taskMap[inst.scheduleId];
-          if (t != null && t.estimatedDuration != null) {
+          if (t != null && t.estimatedDuration != null && !t.skipIfNoCapacity) {
             final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
             dayPlannedHours[inst.scheduledDate] =
                 (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
@@ -572,9 +682,15 @@ class TaskRepository {
         });
       }
 
+      final tasksToEvaluate = taskMap.values.toList();
+
+      if (tasksToEvaluate.isEmpty) {
+        return;
+      }
+
       // Prioritize capacity-dependent tasks by Priority (High > Medium > Low)
       // If priority is equal, prioritize (evaluate first) the least recently completed task.
-      filteredTasks.sort((a, b) {
+      tasksToEvaluate.sort((a, b) {
         final pCompare = b.priority.index.compareTo(a.priority.index);
         if (pCompare != 0) return pCompare;
 
@@ -592,7 +708,7 @@ class TaskRepository {
       bool hasChanges = false;
       final List<DateTime> allTriggerTimes = [];
 
-      for (final task in filteredTasks) {
+      for (final task in tasksToEvaluate) {
         _lastProcessedTasks[task.id] = (
           processedAt: now,
           signature: _getScheduleSignature(task),
@@ -662,35 +778,16 @@ class TaskRepository {
           now,
           userSettings: userSettings,
           dayPlannedHours: dayPlannedHours,
-          applyCapacityLimits: task.assignedUserId == _userId,
+          applyCapacityLimits:
+              task.assignedUserId == null || task.assignedUserId == _userId,
         );
 
         for (final inst in action.instancesToUpdate) {
           batch.set(_instanceRefFor(inst, familyId), inst);
           hasChanges = true;
-          // Update in-memory collections so subsequent evaluations see it
           final idx = allInstances.indexWhere((x) => x.id == inst.id);
           if (idx >= 0) {
-            final oldInst = allInstances[idx];
-            if (oldInst.status != TaskStatus.skipped &&
-                oldInst.status != TaskStatus.failed) {
-              final t = taskMap[oldInst.scheduleId];
-              if (t != null && t.estimatedDuration != null) {
-                final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
-                dayPlannedHours[oldInst.scheduledDate] =
-                    (dayPlannedHours[oldInst.scheduledDate] ?? 0.0) - hours;
-              }
-            }
             allInstances[idx] = inst;
-            if (inst.status != TaskStatus.skipped &&
-                inst.status != TaskStatus.failed) {
-              final t = taskMap[inst.scheduleId];
-              if (t != null && t.estimatedDuration != null) {
-                final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
-                dayPlannedHours[inst.scheduledDate] =
-                    (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-              }
-            }
           }
         }
 
@@ -699,17 +796,7 @@ class TaskRepository {
           _spawnedInstancesCache['${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}'] =
               now;
           hasChanges = true;
-          // Add to in-memory collections so subsequent evaluations see it
           allInstances.add(inst);
-          if (inst.status != TaskStatus.skipped &&
-              inst.status != TaskStatus.failed) {
-            final t = taskMap[inst.scheduleId];
-            if (t != null && t.estimatedDuration != null) {
-              final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
-              dayPlannedHours[inst.scheduledDate] =
-                  (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-            }
-          }
         }
 
         for (final instId in action.instancesToDelete) {
@@ -720,16 +807,17 @@ class TaskRepository {
           final isFamily = task.isFamily;
           batch.delete(_instanceRefForId(instId, isFamily, familyId));
           hasChanges = true;
-          // Remove from in-memory collections so subsequent evaluations see it
           allInstances.removeWhere((x) => x.id == instId);
-          if (inst.status != TaskStatus.skipped &&
-              inst.status != TaskStatus.failed) {
-            final t = taskMap[inst.scheduleId];
-            if (t != null && t.estimatedDuration != null) {
-              final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
-              dayPlannedHours[inst.scheduledDate] =
-                  (dayPlannedHours[inst.scheduledDate] ?? 0.0) - hours;
-            }
+        }
+
+        final activeInstances = allInstances.where(
+          (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+        );
+        for (final inst in activeInstances) {
+          if (task.estimatedDuration != null) {
+            final hours = task.estimatedDuration!.inMinutes / _minutesPerHour;
+            dayPlannedHours[inst.scheduledDate] =
+                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
           }
         }
 
@@ -778,11 +866,12 @@ class TaskRepository {
   }
 
   Future<void> triggerMissedPolicyProcessing() async {
+    if (_activeProcessingFuture != null) {
+      await _activeProcessingFuture;
+    }
     try {
-      _lastProcessedTasks.clear();
       final familyId = await _getFamilyId();
-      final personalTasksSnap = await _tasksRef.get();
-      final List<TaskSchedule> allTasks = personalTasksSnap.docs
+      final List<TaskSchedule> allTasks = (await _tasksRef.get()).docs
           .map((d) => d.data())
           .toList();
 
@@ -800,7 +889,7 @@ class TaskRepository {
         allTasks.addAll(familyTasksSnap.docs.map((d) => d.data()));
       }
 
-      _checkAndProcessMissedPolicies(allTasks);
+      await _checkAndProcessMissedPolicies(allTasks, forceRun: true);
     } catch (e) {
       // ignore: avoid_print
       print('Error in triggering missed policy processing: $e');
@@ -810,13 +899,12 @@ class TaskRepository {
   Future<void> addTaskSchedule(TaskSchedule task) async {
     final familyId = await _getFamilyId();
     final batch = _firestore.batch();
-
     batch.set(_taskRefFor(task, familyId), task);
-
     await batch.commit();
     await _notificationService?.scheduleNotifications(task);
 
-    _checkAndProcessMissedPolicies([task]);
+    _cachedTasksMap[task.id] = task;
+    await _checkAndProcessMissedPolicies([task]);
   }
 
   Future<void> updateTaskSchedule(TaskModification modification) async {
@@ -932,9 +1020,8 @@ class TaskRepository {
     await batch.commit();
     await _notificationService?.scheduleNotifications(newTask);
 
-    if (schedulesChanged || changes.containsKey('futureInstancesCount')) {
-      _checkAndProcessMissedPolicies([newTask]);
-    }
+    _cachedTasksMap[newTask.id] = newTask;
+    await _checkAndProcessMissedPolicies([newTask]);
   }
 
   Future<({TaskSchedule task, List<TaskInstance> pendingInstances})?>
@@ -942,6 +1029,7 @@ class TaskRepository {
     final task = await _fetchTask(id);
     if (task == null) return null;
 
+    final targetId = task.id;
     final familyId = await _getFamilyId();
     final batch = _firestore.batch();
 
@@ -950,7 +1038,7 @@ class TaskRepository {
     final List<TaskInstance> pendingInstances = [];
 
     final personalInstances = await _instancesRef
-        .where('scheduleId', isEqualTo: id)
+        .where('scheduleId', isEqualTo: targetId)
         .get();
     for (final doc in personalInstances.docs) {
       if (doc.data().status == TaskStatus.pending) {
@@ -964,7 +1052,7 @@ class TaskRepository {
           .collection('families')
           .doc(familyId)
           .collection('instances')
-          .where('scheduleId', isEqualTo: id)
+          .where('scheduleId', isEqualTo: targetId)
           .withConverter<TaskInstance>(
             fromFirestore: (snapshot, _) =>
                 TaskInstance.fromFirestore(snapshot),
@@ -980,8 +1068,19 @@ class TaskRepository {
     }
 
     await batch.commit();
+    await _notificationService?.cancelNotifications(targetId);
     await _notificationService?.cancelNotifications(id);
-    _spawnedInstancesCache.removeWhere((key, value) => key.startsWith('$id:'));
+    _spawnedInstancesCache.removeWhere(
+      (key, value) => key.startsWith('$targetId:') || key.startsWith('$id:'),
+    );
+    _lastProcessedTasks.remove(targetId);
+    _lastProcessedTasks.remove(id);
+    _queuedTasksMap.remove(targetId);
+    _queuedTasksMap.remove(id);
+    _cachedTasksMap.remove(targetId);
+    _cachedTasksMap.remove(id);
+
+    await triggerMissedPolicyProcessing();
 
     return (task: task, pendingInstances: pendingInstances);
   }
@@ -1001,6 +1100,9 @@ class TaskRepository {
 
     await batch.commit();
     await _notificationService?.scheduleNotifications(task);
+
+    _cachedTasksMap[task.id] = task;
+    await _checkAndProcessMissedPolicies([task]);
   }
 
   Future<TaskInstance?> completeTaskInstance(String id) async {

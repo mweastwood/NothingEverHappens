@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'task_schedule.dart';
 import 'task_instance.dart';
 import 'scheduler_engine.dart';
@@ -35,12 +36,17 @@ class TaskSpawnerEngine {
     );
   }
 
-  /// Generates a hash signature for a task's schedule configuration.
+  /// Generates a hash signature for a task's schedule configuration and policy fields.
   static String computeScheduleSignature(TaskSchedule task) {
     final rulesJson = task.schedules.map((s) => s.toJson()).toList();
     return jsonEncode({
       'rules': rulesJson,
       'futureInstancesCount': task.futureInstancesCount,
+      'estimatedDuration': task.estimatedDuration?.inMinutes,
+      'priority': task.priority.name,
+      'skipIfNoCapacity': task.skipIfNoCapacity,
+      'missedPolicy': task.missedPolicy.name,
+      'assignedUserId': task.assignedUserId,
     });
   }
 }
