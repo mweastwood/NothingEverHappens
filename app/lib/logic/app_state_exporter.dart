@@ -12,7 +12,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-import 'utils/app_version.dart';
 import 'auth_repository.dart';
 import 'civil_day.dart';
 import 'error_handler.dart';
@@ -20,6 +19,7 @@ import 'hive_local_data_source.dart';
 import 'l10n_extension.dart';
 import 'relative_time.dart';
 import 'task_repository.dart';
+import 'utils/app_version.dart';
 
 final appStateExporterProvider = Provider<AppStateExporter>((ref) {
   final firestore = ref.watch(firestoreProvider);
