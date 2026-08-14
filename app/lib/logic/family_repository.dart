@@ -16,34 +16,32 @@ final familyRepositoryProvider = Provider<FamilyRepository?>((ref) {
 
 final familyProfileStreamProvider =
     StreamProvider.autoDispose<DocumentSnapshot<Map<String, dynamic>>?>((ref) {
-  final familyRepo = ref.watch(familyRepositoryProvider);
-  if (familyRepo == null) return Stream.value(null);
-  return familyRepo.getProfile();
-});
+      final familyRepo = ref.watch(familyRepositoryProvider);
+      if (familyRepo == null) return Stream.value(null);
+      return familyRepo.getProfile();
+    });
 
 final pendingInvitesStreamProvider =
     StreamProvider.autoDispose<List<FamilyInvite>>((ref) {
-  final familyRepo = ref.watch(familyRepositoryProvider);
-  if (familyRepo == null) return Stream.value([]);
-  return familyRepo.getPendingInvites();
-});
+      final familyRepo = ref.watch(familyRepositoryProvider);
+      if (familyRepo == null) return Stream.value([]);
+      return familyRepo.getPendingInvites();
+    });
 
-final familyStreamProvider =
-    StreamProvider.autoDispose.family<Family?, String>((ref, familyId) {
-  final familyRepo = ref.watch(familyRepositoryProvider);
-  if (familyRepo == null) return Stream.value(null);
-  return familyRepo.getFamily(familyId);
-});
+final familyStreamProvider = StreamProvider.autoDispose.family<Family?, String>(
+  (ref, familyId) {
+    final familyRepo = ref.watch(familyRepositoryProvider);
+    if (familyRepo == null) return Stream.value(null);
+    return familyRepo.getFamily(familyId);
+  },
+);
 
-final outstandingInvitesStreamProvider =
-    StreamProvider.autoDispose.family<List<FamilyInvite>, String>((
-  ref,
-  familyId,
-) {
-  final familyRepo = ref.watch(familyRepositoryProvider);
-  if (familyRepo == null) return Stream.value([]);
-  return familyRepo.getOutstandingFamilyInvites(familyId);
-});
+final outstandingInvitesStreamProvider = StreamProvider.autoDispose
+    .family<List<FamilyInvite>, String>((ref, familyId) {
+      final familyRepo = ref.watch(familyRepositoryProvider);
+      if (familyRepo == null) return Stream.value([]);
+      return familyRepo.getOutstandingFamilyInvites(familyId);
+    });
 
 class FamilyRepository {
   final FirebaseFirestore _firestore;
@@ -56,10 +54,10 @@ class FamilyRepository {
     required String userId,
     String? userEmail,
     String? userDisplayName,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _userId = userId,
-        _userEmail = userEmail,
-        _userDisplayName = userDisplayName;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _userId = userId,
+       _userEmail = userEmail,
+       _userDisplayName = userDisplayName;
 
   Stream<DocumentSnapshot<Map<String, dynamic>>> getProfile() {
     return _firestore.collection('users').doc(_userId).snapshots();
@@ -67,11 +65,9 @@ class FamilyRepository {
 
   Stream<Family?> getFamily(String familyId) {
     if (familyId.isEmpty) return Stream.value(null);
-    return _firestore
-        .collection('families')
-        .doc(familyId)
-        .snapshots()
-        .map((snapshot) {
+    return _firestore.collection('families').doc(familyId).snapshots().map((
+      snapshot,
+    ) {
       if (!snapshot.exists || snapshot.data() == null) return null;
       return Family.fromJson(snapshot.data()!, snapshot.id);
     });
@@ -85,10 +81,10 @@ class FamilyRepository {
         .where('status', isEqualTo: FamilyInviteStatus.pending.toJson())
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => FamilyInvite.fromJson(doc.data(), doc.id))
-          .toList();
-    });
+          return snapshot.docs
+              .map((doc) => FamilyInvite.fromJson(doc.data(), doc.id))
+              .toList();
+        });
   }
 
   Future<void> createFamily(String name) async {
@@ -189,10 +185,10 @@ class FamilyRepository {
         .where('status', isEqualTo: FamilyInviteStatus.pending.toJson())
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => FamilyInvite.fromJson(doc.data(), doc.id))
-          .toList();
-    });
+          return snapshot.docs
+              .map((doc) => FamilyInvite.fromJson(doc.data(), doc.id))
+              .toList();
+        });
   }
 
   Future<void> revokeInvite(String inviteId) async {
@@ -281,4 +277,3 @@ class FamilyRepository {
     await batch.commit();
   }
 }
-

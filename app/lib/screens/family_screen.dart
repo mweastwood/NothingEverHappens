@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../logic/family.dart';
 import '../logic/family_repository.dart';
 import '../logic/error_handler.dart';
@@ -252,11 +251,8 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     final profileAsync = ref.watch(familyProfileStreamProvider);
 
     return profileAsync.when(
-      error: (error, stackTrace) => Center(
-        child: Text(
-          '${context.l10n.errorOccurred}: $error',
-        ),
-      ),
+      error: (error, stackTrace) =>
+          Center(child: Text('${context.l10n.errorOccurred}: $error')),
       loading: () => const Center(child: CircularProgressIndicator()),
       data: (profileSnapshot) {
         final profileData = profileSnapshot?.data() ?? {};
@@ -274,11 +270,8 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
         final invitesAsync = ref.watch(pendingInvitesStreamProvider);
 
         return invitesAsync.when(
-          error: (error, stackTrace) => Center(
-            child: Text(
-              '${context.l10n.errorOccurred}: $error',
-            ),
-          ),
+          error: (error, stackTrace) =>
+              Center(child: Text('${context.l10n.errorOccurred}: $error')),
           loading: () => const Center(child: CircularProgressIndicator()),
           data: (invites) {
             if (invites.isNotEmpty) {
@@ -424,9 +417,8 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     final familyAsync = ref.watch(familyStreamProvider(familyId));
 
     return familyAsync.when(
-      error: (error, stackTrace) => Center(
-        child: Text('${context.l10n.errorOccurred}: $error'),
-      ),
+      error: (error, stackTrace) =>
+          Center(child: Text('${context.l10n.errorOccurred}: $error')),
       loading: () => const Center(child: CircularProgressIndicator()),
       data: (family) {
         if (family == null) {
