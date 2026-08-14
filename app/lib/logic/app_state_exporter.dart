@@ -20,16 +20,17 @@ import 'hive_local_data_source.dart';
 import 'l10n_extension.dart';
 import 'relative_time.dart';
 import 'task_repository.dart';
-import 'utils/app_version.dart';
 
 final appStateExporterProvider = Provider<AppStateExporter>((ref) {
   final firestore = ref.watch(firestoreProvider);
   final authRepo = ref.watch(authRepositoryProvider);
   final hiveDataSource = ref.watch(hiveLocalDataSourceProvider);
+  final errorHandler = ref.watch(errorHandlerProvider);
   return AppStateExporter(
     firestore: firestore,
     authRepository: authRepo,
     hiveDataSource: hiveDataSource,
+    errorHandler: errorHandler,
   );
 });
 
@@ -37,14 +38,17 @@ class AppStateExporter {
   final FirebaseFirestore? _firestore;
   final AuthRepository? _authRepository;
   final HiveLocalDataSource _hiveDataSource;
+  final ErrorHandler? _errorHandler;
 
   AppStateExporter({
     FirebaseFirestore? firestore,
     AuthRepository? authRepository,
     required HiveLocalDataSource hiveDataSource,
-  }) : _firestore = firestore,
-       _authRepository = authRepository,
-       _hiveDataSource = hiveDataSource;
+    ErrorHandler? errorHandler,
+  })  : _firestore = firestore,
+        _authRepository = authRepository,
+        _hiveDataSource = hiveDataSource,
+        _errorHandler = errorHandler;
 
   static String? maskEmail(String? email) {
     if (email == null) return null;
@@ -65,20 +69,30 @@ class AppStateExporter {
     return '${trimmed[0]}***';
   }
 
-  static bool _isNonPiiKey(String lowerKey) {
+  static bool _isNonPiiKey(String key) {
+    final lowerKey = key.toLowerCase();
     if (lowerKey.contains('email')) return false;
-    return lowerKey == 'id' ||
+    if (lowerKey == 'id' ||
         lowerKey == 'ids' ||
-        lowerKey.endsWith('id') ||
-        lowerKey.endsWith('_id') ||
-        lowerKey.endsWith('ids') ||
-        lowerKey.endsWith('_ids') ||
         lowerKey == 'role' ||
-        lowerKey == 'status';
+        lowerKey == 'status') {
+      return true;
+    }
+    if (lowerKey.endsWith('_id') ||
+        lowerKey.endsWith('_ids') ||
+        lowerKey.endsWith('-id') ||
+        lowerKey.endsWith('-ids')) {
+      return true;
+    }
+    if (key.endsWith('Id') || key.endsWith('Ids')) {
+      return true;
+    }
+    return false;
   }
 
-  static bool _isPiiKey(String lowerKey) {
-    if (_isNonPiiKey(lowerKey)) return false;
+  static bool _isPiiKey(String key) {
+    if (_isNonPiiKey(key)) return false;
+    final lowerKey = key.toLowerCase();
     const piiKeywords = [
       'displayname',
       'display_name',
@@ -175,7 +189,7 @@ class AppStateExporter {
               remoteFirebaseState['userProfileDoc'] = userProfileData;
             }
           } catch (e) {
-            errors.add('userProfileDoc: ');
+            errors.add('userProfileDoc: $e');
           }
         }(),
         () async {
@@ -189,7 +203,7 @@ class AppStateExporter {
               remoteFirebaseState['settingsDoc'] = settingsSnap.data();
             }
           } catch (e) {
-            errors.add('settingsDoc: ');
+            errors.add('settingsDoc: $e');
           }
         }(),
         () async {
@@ -203,7 +217,7 @@ class AppStateExporter {
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
           } catch (e) {
-            errors.add('tasks: ');
+            errors.add('tasks: $e');
           }
         }(),
         () async {
@@ -217,7 +231,7 @@ class AppStateExporter {
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
           } catch (e) {
-            errors.add('instances: ');
+            errors.add('instances: $e');
           }
         }(),
       ];
@@ -235,7 +249,7 @@ class AppStateExporter {
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
           } catch (e) {
-            errors.add('invites: ');
+            errors.add('invites: $e');
           }
         }());
       }
@@ -266,7 +280,7 @@ class AppStateExporter {
                 };
               }
             } catch (e) {
-              errors.add('familyDoc: ');
+              errors.add('familyDoc: $e');
             }
           }(),
           () async {
@@ -280,7 +294,7 @@ class AppStateExporter {
                   .map((doc) => {'id': doc.id, ...doc.data()})
                   .toList();
             } catch (e) {
-              errors.add('familyTasks: ');
+              errors.add('familyTasks: $e');
             }
           }(),
           () async {
@@ -295,7 +309,7 @@ class AppStateExporter {
                   .map((doc) => {'id': doc.id, ...doc.data()})
                   .toList();
             } catch (e) {
-              errors.add('familyInstances: ');
+              errors.add('familyInstances: $e');
             }
           }(),
         ];
@@ -386,7 +400,7 @@ class AppStateExporter {
         final lowerKey = keyStr.toLowerCase();
         final entryIsEmailKey = isEmailKey || lowerKey.contains('email');
         final entryIsPiiKey =
-            !_isNonPiiKey(lowerKey) && (isPiiKey || _isPiiKey(lowerKey));
+            !_isNonPiiKey(keyStr) && (isPiiKey || _isPiiKey(keyStr));
         result[keyStr] = sanitizeForJson(
           v,
           isEmailKey: entryIsEmailKey,
@@ -535,7 +549,7 @@ class AppStateExporter {
       }
     } catch (e, stackTrace) {
       if (!context.mounted) return;
-      final errorHandler = ErrorHandler();
+      final errorHandler = _errorHandler ?? ErrorHandler();
       final report = errorHandler.report(e, stackTrace: stackTrace);
       errorHandler.showErrorDialog(context, report);
     }

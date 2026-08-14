@@ -280,6 +280,39 @@ void main() {
     );
 
     test(
+      'sanitizeForJson masks dictionary words ending in id inside PII maps '
+      'without falsely matching non-PII key filter',
+      () {
+        final exporter = AppStateExporter(hiveDataSource: localDataSource);
+
+        final rawData = {
+          'member': {
+            'id': 'u123',
+            'memberId': 'm456',
+            'user_id': 'u789',
+            'android': 'device_info',
+            'paid': 'subscription_status',
+            'grid': 'grid_layout_data',
+            'liquid': 'fluid_asset_data',
+          },
+        };
+
+        final sanitized = exporter.sanitizeForJson(rawData);
+
+        // Standard ID keys are preserved
+        expect(sanitized['member']['id'], 'u123');
+        expect(sanitized['member']['memberId'], 'm456');
+        expect(sanitized['member']['user_id'], 'u789');
+
+        // Words ending in 'id' inside PII maps are masked as PII
+        expect(sanitized['member']['android'], 'd***');
+        expect(sanitized['member']['paid'], 's***');
+        expect(sanitized['member']['grid'], 'g***');
+        expect(sanitized['member']['liquid'], 'f***');
+      },
+    );
+
+    test(
       'sanitizeForJson preserves parent PII and email flags '
       'when recursing into nested maps',
       () {
