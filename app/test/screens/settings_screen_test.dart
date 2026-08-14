@@ -20,10 +20,11 @@ class MockAppStateExporter extends Mock implements AppStateExporter {
   @override
   Future<void> shareDebugState(BuildContext context) =>
       (super.noSuchMethod(
-        Invocation.method(#shareDebugState, [context]),
-        returnValue: Future<void>.value(),
-        returnValueForMissingStub: Future<void>.value(),
-      ) as Future<void>);
+            Invocation.method(#shareDebugState, [context]),
+            returnValue: Future<void>.value(),
+            returnValueForMissingStub: Future<void>.value(),
+          )
+          as Future<void>);
 }
 
 void main() {

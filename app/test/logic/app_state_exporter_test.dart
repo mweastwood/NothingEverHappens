@@ -1,9 +1,10 @@
 import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:mockito/mockito.dart';
 import 'package:nothing_ever_happens/logic/app_state_exporter.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
@@ -209,6 +210,10 @@ void main() {
               'displayName': 'Frank Member',
             }
           ],
+          'members': {
+            'user-123': 'admin',
+            'user-456': 'owner',
+          },
         };
 
         final sanitized = exporter.sanitizeForJson(rawData);
@@ -243,11 +248,15 @@ void main() {
         expect(sanitized['membersList'][0]['role'], 'owner');
         expect(sanitized['membersList'][0]['status'], 'active');
         expect(sanitized['membersList'][0]['displayName'], 'F***');
+
+        expect(sanitized['members']['user-123'], 'admin');
+        expect(sanitized['members']['user-456'], 'owner');
       },
     );
 
     test(
-      'sanitizeForJson masks child properties of parent PII maps while keeping non-PII keys unmasked',
+      'sanitizeForJson masks child properties of parent PII maps '
+      'while keeping non-PII keys unmasked',
       () {
         final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
@@ -270,7 +279,8 @@ void main() {
     );
 
     test(
-      'exportStateRaw falls back to local settings/state for familyId when userProfileDoc query fails',
+      'exportStateRaw falls back to local settings/state for familyId '
+      'when userProfileDoc query fails',
       () async {
         final fakeFirestore = FakeFirebaseFirestore();
         final mockUser = MockUser();
@@ -452,13 +462,15 @@ void main() {
     });
 
     test(
-      'exportStateRaw keeps isOffline false when partial query error occurs online',
+      'exportStateRaw keeps isOffline false '
+      'when partial query error occurs online',
       () async {
         final fakeFirestore = FakeFirebaseFirestore();
         final mockUser = MockUser();
         final mockAuthRepo = MockAuthRepository(mockUser);
 
-        // Populate basic user doc so Firestore is initialized & user is authenticated
+        // Populate basic user doc so Firestore is initialized & user is
+        // authenticated
         await fakeFirestore.collection('users').doc('user-123').set({
           'displayName': 'Test User',
           'email': 'test@example.com',

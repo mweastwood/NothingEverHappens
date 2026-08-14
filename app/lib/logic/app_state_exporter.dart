@@ -41,9 +41,9 @@ class AppStateExporter {
     FirebaseFirestore? firestore,
     AuthRepository? authRepository,
     required HiveLocalDataSource hiveDataSource,
-  })  : _firestore = firestore,
-        _authRepository = authRepository,
-        _hiveDataSource = hiveDataSource;
+  }) : _firestore = firestore,
+       _authRepository = authRepository,
+       _hiveDataSource = hiveDataSource;
 
   static String? maskEmail(String? email) {
     if (email == null) return null;
@@ -106,11 +106,10 @@ class AppStateExporter {
       'recipient',
       'inviter',
       'invitee',
-      'member',
       'profile',
     ];
     if (piiKeywords.any((k) => lowerKey.contains(k))) return true;
-    if (lowerKey == 'name') return true;
+    if (lowerKey == 'name' || lowerKey == 'member') return true;
     return false;
   }
 
@@ -248,8 +247,7 @@ class AppStateExporter {
       if (familyId == null || familyId.isEmpty) {
         final localSettings =
             localHiveState['settings'] as Map<String, dynamic>?;
-        familyId = (localSettings?['familyId'] ?? localHiveState['familyId'])
-            as String?;
+        familyId = localSettings?['familyId'] as String?;
       }
 
       if (familyId != null && familyId.isNotEmpty) {
@@ -542,4 +540,3 @@ class AppStateExporter {
     }
   }
 }
-
