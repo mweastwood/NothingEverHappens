@@ -558,5 +558,48 @@ void main() {
         expect(find.byType(CircularProgressIndicator), findsNothing);
       },
     );
+
+    test('sanitizeForJson flags members key for PII sanitization while preserving roles', () {
+      final exporter = AppStateExporter(hiveDataSource: localDataSource);
+
+      final rawData = {
+        'members': {
+          'user-123': {
+            'displayName': 'Secret Member',
+            'email': 'secret@example.com',
+            'role': 'parent',
+          },
+        },
+      };
+
+      final sanitized = exporter.sanitizeForJson(rawData);
+      expect(sanitized['members']['user-123']['displayName'], 'S***');
+      expect(sanitized['members']['user-123']['email'], 's***@example.com');
+      expect(sanitized['members']['user-123']['role'], 'parent');
+    });
+
+    test('sanitizeForJson recursively routes CivilDay, RelativeTime, TimeOfDay', () {
+      final exporter = AppStateExporter(hiveDataSource: localDataSource);
+
+      final civilDay = const CivilDay(year: 2026, month: 8, day: 14);
+      final relativeTime = const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 10, minute: 15),
+      );
+      const timeOfDay = TimeOfDay(hour: 12, minute: 30);
+
+      final sanitizedCivilDay = exporter.sanitizeForJson(civilDay);
+      final sanitizedRelativeTime = exporter.sanitizeForJson(relativeTime);
+      final sanitizedTimeOfDay = exporter.sanitizeForJson(timeOfDay);
+
+      expect(sanitizedCivilDay, {'year': 2026, 'month': 8, 'day': 14});
+      expect(sanitizedRelativeTime, {
+        'dayOffset': 0,
+        'hour': 10,
+        'minute': 15,
+      });
+      expect(sanitizedTimeOfDay, {'hour': 12, 'minute': 30});
+    });
   });
 }
+

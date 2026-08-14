@@ -123,8 +123,30 @@ class AppStateExporter {
       'profile',
     ];
     if (piiKeywords.any((k) => lowerKey.contains(k))) return true;
-    if (lowerKey == 'name' || lowerKey == 'member') return true;
+    if (lowerKey == 'name' || lowerKey == 'member' || lowerKey == 'members') {
+      return true;
+    }
     return false;
+  }
+
+  static bool _isRoleOrStatusValue(String value) {
+    final lower = value.trim().toLowerCase();
+    const roleAndStatusValues = {
+      'admin',
+      'owner',
+      'member',
+      'parent',
+      'non-parent',
+      'viewer',
+      'editor',
+      'creator',
+      'active',
+      'pending',
+      'accepted',
+      'declined',
+      'inactive',
+    };
+    return roleAndStatusValues.contains(lower);
   }
 
   Future<Map<String, dynamic>> exportStateRaw() async {
@@ -176,8 +198,36 @@ class AppStateExporter {
           : 'Firestore instance not available';
     } else {
       final List<String> errors = [];
+      bool networkErrorOccurred = false;
       final userDocRef = _firestore.collection('users').doc(uid);
       final String? email = user?.email;
+
+      bool isNetworkOrTimeoutError(dynamic e) {
+        if (e is TimeoutException || e is SocketException) return true;
+        if (e is FirebaseException) {
+          final code = e.code.toLowerCase();
+          final message = (e.message ?? '').toLowerCase();
+          if (code == 'unavailable' ||
+              code == 'network-request-failed' ||
+              code == 'deadline-exceeded' ||
+              code == 'unknown') {
+            return true;
+          }
+          if (message.contains('offline') ||
+              message.contains('network') ||
+              message.contains('unavailable') ||
+              message.contains('timed out') ||
+              message.contains('timeout')) {
+            return true;
+          }
+        }
+        final str = e.toString().toLowerCase();
+        return str.contains('timeout') ||
+            str.contains('network') ||
+            str.contains('offline') ||
+            str.contains('unavailable') ||
+            str.contains('socketexception');
+      }
 
       final phase1Futures = <Future<void>>[
         () async {
@@ -190,6 +240,9 @@ class AppStateExporter {
               remoteFirebaseState['userProfileDoc'] = userProfileData;
             }
           } catch (e) {
+            if (isNetworkOrTimeoutError(e)) {
+              networkErrorOccurred = true;
+            }
             errors.add('userProfileDoc: $e');
           }
         }(),
@@ -204,6 +257,9 @@ class AppStateExporter {
               remoteFirebaseState['settingsDoc'] = settingsSnap.data();
             }
           } catch (e) {
+            if (isNetworkOrTimeoutError(e)) {
+              networkErrorOccurred = true;
+            }
             errors.add('settingsDoc: $e');
           }
         }(),
@@ -218,6 +274,9 @@ class AppStateExporter {
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
           } catch (e) {
+            if (isNetworkOrTimeoutError(e)) {
+              networkErrorOccurred = true;
+            }
             errors.add('tasks: $e');
           }
         }(),
@@ -232,6 +291,9 @@ class AppStateExporter {
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
           } catch (e) {
+            if (isNetworkOrTimeoutError(e)) {
+              networkErrorOccurred = true;
+            }
             errors.add('instances: $e');
           }
         }(),
@@ -250,6 +312,9 @@ class AppStateExporter {
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
           } catch (e) {
+            if (isNetworkOrTimeoutError(e)) {
+              networkErrorOccurred = true;
+            }
             errors.add('invites: $e');
           }
         }());
@@ -282,6 +347,9 @@ class AppStateExporter {
                 };
               }
             } catch (e) {
+              if (isNetworkOrTimeoutError(e)) {
+                networkErrorOccurred = true;
+              }
               errors.add('familyDoc: $e');
             }
           }(),
@@ -296,6 +364,9 @@ class AppStateExporter {
                   .map((doc) => {'id': doc.id, ...doc.data()})
                   .toList();
             } catch (e) {
+              if (isNetworkOrTimeoutError(e)) {
+                networkErrorOccurred = true;
+              }
               errors.add('familyTasks: $e');
             }
           }(),
@@ -310,6 +381,9 @@ class AppStateExporter {
                   .map((doc) => {'id': doc.id, ...doc.data()})
                   .toList();
             } catch (e) {
+              if (isNetworkOrTimeoutError(e)) {
+                networkErrorOccurred = true;
+              }
               errors.add('familyInstances: $e');
             }
           }(),
@@ -321,6 +395,9 @@ class AppStateExporter {
       if (errors.isNotEmpty) {
         remoteFirebaseState['status'] = 'error';
         remoteFirebaseState['errorMessage'] = errors.join('; ');
+        if (networkErrorOccurred || errors.length >= phase1Futures.length) {
+          isOffline = true;
+        }
       }
     }
 
@@ -354,7 +431,10 @@ class AppStateExporter {
 
     if (value is String) {
       if (isEmailKey) return maskEmail(value);
-      if (isPiiKey) return maskPii(value);
+      if (isPiiKey) {
+        if (_isRoleOrStatusValue(value)) return value;
+        return maskPii(value);
+      }
       return value;
     }
 
@@ -371,15 +451,27 @@ class AppStateExporter {
     }
 
     if (value is CivilDay) {
-      return value.toJson();
+      return sanitizeForJson(
+        value.toJson(),
+        isEmailKey: isEmailKey,
+        isPiiKey: isPiiKey,
+      );
     }
 
     if (value is RelativeTime) {
-      return value.toJson();
+      return sanitizeForJson(
+        value.toJson(),
+        isEmailKey: isEmailKey,
+        isPiiKey: isPiiKey,
+      );
     }
 
     if (value is TimeOfDay) {
-      return {'hour': value.hour, 'minute': value.minute};
+      return sanitizeForJson(
+        {'hour': value.hour, 'minute': value.minute},
+        isEmailKey: isEmailKey,
+        isPiiKey: isPiiKey,
+      );
     }
 
     if (value is Enum) {
@@ -391,7 +483,11 @@ class AppStateExporter {
     }
 
     if (value is GeoPoint) {
-      return {'latitude': value.latitude, 'longitude': value.longitude};
+      return sanitizeForJson(
+        {'latitude': value.latitude, 'longitude': value.longitude},
+        isEmailKey: isEmailKey,
+        isPiiKey: isPiiKey,
+      );
     }
 
     if (value is Map) {
@@ -453,7 +549,9 @@ class AppStateExporter {
     dialogContextCompleter.future.then((dialogCtx) {
       if (!dialogCtx.mounted) return;
       if (isDismissed) {
-        popDialog(dialogCtx);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          popDialog(dialogCtx);
+        });
       }
     });
 
