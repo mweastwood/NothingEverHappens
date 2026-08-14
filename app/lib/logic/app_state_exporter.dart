@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'utils/app_version.dart';
 import 'auth_repository.dart';
 import 'civil_day.dart';
 import 'error_handler.dart';
@@ -162,6 +163,7 @@ class AppStateExporter {
     } else {
       final List<String> errors = [];
       final userDocRef = _firestore.collection('users').doc(uid);
+      final String? email = user?.email;
 
       final phase1Futures = <Future<void>>[
         () async {
@@ -173,7 +175,7 @@ class AppStateExporter {
               remoteFirebaseState['userProfileDoc'] = userProfileData;
             }
           } catch (e) {
-            errors.add('userProfileDoc: $e');
+            errors.add('userProfileDoc: ');
           }
         }(),
         () async {
@@ -187,7 +189,7 @@ class AppStateExporter {
               remoteFirebaseState['settingsDoc'] = settingsSnap.data();
             }
           } catch (e) {
-            errors.add('settingsDoc: $e');
+            errors.add('settingsDoc: ');
           }
         }(),
         () async {
@@ -201,7 +203,7 @@ class AppStateExporter {
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
           } catch (e) {
-            errors.add('tasks: $e');
+            errors.add('tasks: ');
           }
         }(),
         () async {
@@ -215,12 +217,11 @@ class AppStateExporter {
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
           } catch (e) {
-            errors.add('instances: $e');
+            errors.add('instances: ');
           }
         }(),
       ];
 
-      final String? email = user?.email;
       if (email != null && email.isNotEmpty) {
         phase1Futures.add(() async {
           try {
@@ -234,7 +235,7 @@ class AppStateExporter {
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
           } catch (e) {
-            errors.add('invites: $e');
+            errors.add('invites: ');
           }
         }());
       }
@@ -265,7 +266,7 @@ class AppStateExporter {
                 };
               }
             } catch (e) {
-              errors.add('familyDoc: $e');
+              errors.add('familyDoc: ');
             }
           }(),
           () async {
@@ -279,7 +280,7 @@ class AppStateExporter {
                   .map((doc) => {'id': doc.id, ...doc.data()})
                   .toList();
             } catch (e) {
-              errors.add('familyTasks: $e');
+              errors.add('familyTasks: ');
             }
           }(),
           () async {
@@ -294,7 +295,7 @@ class AppStateExporter {
                   .map((doc) => {'id': doc.id, ...doc.data()})
                   .toList();
             } catch (e) {
-              errors.add('familyInstances: $e');
+              errors.add('familyInstances: ');
             }
           }(),
         ];
