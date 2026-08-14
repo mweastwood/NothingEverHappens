@@ -1853,7 +1853,9 @@ void main() {
           // Move time to 8:05 PM (past 3-hour grace period)
           final pastGrace = DateTime(2026, 5, 25, 20, 5);
 
-          action = const SchedulerEngine().evaluate(task, [mondayInst], pastGrace);
+          action = const SchedulerEngine().evaluate(task, [
+            mondayInst,
+          ], pastGrace);
           expect(action.instancesToUpdate, hasLength(1));
           expect(action.instancesToUpdate.first.status, TaskStatus.skipped);
         },

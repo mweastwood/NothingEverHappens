@@ -102,7 +102,6 @@ abstract class TaskScheduleRule {
   /// before [today] (completed), otherwise returns `this` unchanged.
   /// For recurring schedules: advances to the next occurrence after [today].
   TaskScheduleRule? advanceAfterCompletion(CivilDay today);
-
   Map<String, dynamic> toJson();
 
   factory TaskScheduleRule.fromJson(Map<String, dynamic> json) {
