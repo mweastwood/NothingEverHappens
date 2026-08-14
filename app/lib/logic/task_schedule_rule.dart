@@ -831,6 +831,14 @@ class MonthlySchedule extends TaskScheduleRule {
   CivilDay? _occurrenceInMonth(int year, int month) {
     if (dayOfMonth != null) {
       if (dayOfMonth! > 0) {
+        final lastDayOfMonth = DateTime.utc(
+          year,
+          month + 1,
+          1,
+        ).subtract(const Duration(days: 1)).day;
+        if (dayOfMonth! > lastDayOfMonth) {
+          return null;
+        }
         return CivilDay(year: year, month: month, day: dayOfMonth!);
       } else {
         final nextMonthUtc = DateTime.utc(year, month + 1, 1);
@@ -1080,15 +1088,14 @@ class YearlySchedule extends TaskScheduleRule {
     return yearsDiff >= 0 && yearsDiff % interval == 0;
   }
 
-  bool _isLeapYear(int year) {
-    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-  }
-
   CivilDay? _occurrenceInYear(int year) {
-    if (month == 2 && day == 29) {
-      if (!_isLeapYear(year)) {
-        return null;
-      }
+    final lastDayOfMonth = DateTime.utc(
+      year,
+      month + 1,
+      1,
+    ).subtract(const Duration(days: 1)).day;
+    if (day > lastDayOfMonth) {
+      return null;
     }
     return CivilDay(year: year, month: month, day: day);
   }

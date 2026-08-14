@@ -823,6 +823,72 @@ void main() {
         );
       },
     );
+    test(
+      'YearlySchedule nextOccurrenceAfter throws for non-existent dates (e.g. June 31)',
+      () {
+        // June has only 30 days — day 31 never exists.
+        final schedule = YearlySchedule(
+          startDate: const CivilDay(year: 2024, month: 6, day: 30),
+          interval: 1,
+          month: 6,
+          day: 31,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
+
+        // _occurrenceInYear returns null every year, so nextOccurrenceAfter throws
+        expect(
+          () => schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2024, month: 1, day: 1),
+          ),
+          throwsException,
+        );
+
+        // occursOn is always false since the date never exists
+        expect(
+          schedule.occursOn(const CivilDay(year: 2025, month: 6, day: 30)),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'MonthlySchedule nextOccurrenceAfter skips months where dayOfMonth exceeds month length',
+      () {
+        // dayOfMonth=28 is always valid (all months have at least 28 days)
+        final schedule = MonthlySchedule(
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          dayOfMonth: 28,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
+
+        // January has 31 days — day 28 is valid
+        expect(
+          schedule.occursOn(const CivilDay(year: 2024, month: 1, day: 28)),
+          isTrue,
+        );
+        // February 2024 (leap year) — day 28 is valid
+        expect(
+          schedule.occursOn(const CivilDay(year: 2024, month: 2, day: 28)),
+          isTrue,
+        );
+        // After Jan 28 2024, next valid occurrence is Feb 28
+        expect(
+          schedule.nextOccurrenceAfter(
+            const CivilDay(year: 2024, month: 1, day: 28),
+          ),
+          const CivilDay(year: 2024, month: 2, day: 28),
+        );
+
+        // April has 30 days — occursOn April 28 is true
+        expect(
+          schedule.occursOn(const CivilDay(year: 2024, month: 4, day: 28)),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('CompletionRelativePolicy Sync Tests', () {
