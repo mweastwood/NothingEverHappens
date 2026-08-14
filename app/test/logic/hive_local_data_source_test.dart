@@ -182,7 +182,7 @@ void main() {
       };
 
       final task = dataSource.taskScheduleFromJson(rawTaskMap);
-      expect(task.id, 'task-non-bool');
+      expect(task.id, 'S-task-non-bool');
       expect(task.preferredBy['user1'], true);
       expect(task.preferredBy['user2'], false);
       expect(task.preferredBy['user3'], false);
