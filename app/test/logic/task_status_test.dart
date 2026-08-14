@@ -12,10 +12,13 @@ void main() {
       expect(TaskStatus.fromString('skipped'), TaskStatus.skipped);
     });
 
-    test('parses legacy dismissed status to skipped for backward compatibility', () {
-      expect(TaskStatus.fromString('dismissed'), TaskStatus.skipped);
-      expect(TaskStatus.fromString('DISMISSED'), TaskStatus.skipped);
-    });
+    test(
+      'parses legacy dismissed status to skipped for backward compatibility',
+      () {
+        expect(TaskStatus.fromString('dismissed'), TaskStatus.skipped);
+        expect(TaskStatus.fromString('DISMISSED'), TaskStatus.skipped);
+      },
+    );
 
     test('parses failed correctly', () {
       expect(TaskStatus.fromString('failed'), TaskStatus.failed);

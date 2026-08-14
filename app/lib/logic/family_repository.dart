@@ -132,7 +132,7 @@ class FamilyRepository {
 
     batch.set(_firestore.collection('users').doc(_userId), {
       'familyId': invite.familyId,
-      'familyRole': invite.role,
+      'familyRole': invite.role.toJson(),
     }, SetOptions(merge: true));
 
     batch.update(_firestore.collection('invites').doc(invite.id), {
