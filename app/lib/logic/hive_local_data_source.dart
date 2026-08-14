@@ -415,7 +415,7 @@ class HiveLocalDataSource {
       assignedUserId: data['assignedUserId'] as String?,
       completedByUserId: data['completedByUserId'] as String?,
       completedAt: completedAt,
-      status: data['status'] as String? ?? 'pending',
+      status: TaskStatus.fromString(data['status'] as String?),
       hasPendingWrites: false,
       isFromCache: true,
       updatedAt: updatedAt ?? DateTime.now(),

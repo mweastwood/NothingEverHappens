@@ -55,7 +55,7 @@ void main() {
         scheduledDate: CivilDay(year: 2026, month: 10, day: 24),
         startRelativeTime: startRel,
         dueRelativeTime: dueRel,
-        status: 'completed',
+        status: TaskStatus.completed,
         completedAt: DateTime(2026, 10, 24, 11, 30),
       ),
       // Skipped instance
@@ -68,7 +68,7 @@ void main() {
         scheduledDate: CivilDay(year: 2026, month: 10, day: 23),
         startRelativeTime: startRel,
         dueRelativeTime: dueRel,
-        status: 'skipped',
+        status: TaskStatus.skipped,
       ),
       // Missed instance (past due)
       TaskInstance(
@@ -80,7 +80,7 @@ void main() {
         scheduledDate: CivilDay(year: 2026, month: 10, day: 22),
         startRelativeTime: startRel,
         dueRelativeTime: dueRel,
-        status: 'pending',
+        status: TaskStatus.pending,
       ),
       // Active instance (started but not yet past due)
       TaskInstance(
@@ -92,7 +92,7 @@ void main() {
         scheduledDate: CivilDay(year: 2026, month: 10, day: 26),
         startRelativeTime: startRel,
         dueRelativeTime: dueRel,
-        status: 'pending',
+        status: TaskStatus.pending,
       ),
     ];
 

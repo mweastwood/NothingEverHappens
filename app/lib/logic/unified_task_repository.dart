@@ -80,7 +80,7 @@ class UnifiedTaskRepository extends TaskRepository {
     if (changes.containsKey('schedules')) {
       final instances = _localDataSource
           .getInstances()
-          .where((i) => i.scheduleId == t.id && i.status == 'pending')
+          .where((i) => i.scheduleId == t.id && i.status == TaskStatus.pending)
           .toList();
       for (final inst in instances) {
         await _localDataSource.deleteInstance(inst.id);
@@ -89,7 +89,7 @@ class UnifiedTaskRepository extends TaskRepository {
     } else {
       final instances = _localDataSource
           .getInstances()
-          .where((i) => i.scheduleId == t.id && i.status == 'pending')
+          .where((i) => i.scheduleId == t.id && i.status == TaskStatus.pending)
           .toList();
       for (final inst in instances) {
         final updatedInst = inst.copyWith(
@@ -130,7 +130,7 @@ class UnifiedTaskRepository extends TaskRepository {
         .where((i) => i.scheduleId == id)
         .toList();
     for (final inst in instances) {
-      if (inst.status == 'pending') {
+      if (inst.status == TaskStatus.pending) {
         pendingInstances.add(inst);
         await _localDataSource.deleteInstance(inst.id);
         await _localDataSource.markDirty(inst.id);
@@ -150,7 +150,7 @@ class UnifiedTaskRepository extends TaskRepository {
     if (instance == null) return null;
 
     final completedInstance = instance.copyWith(
-      status: 'completed',
+      status: TaskStatus.completed,
       completedByUserId: userId,
       completedAt: AppClock.now,
       updatedAt: DateTime.now(),
@@ -193,7 +193,7 @@ class UnifiedTaskRepository extends TaskRepository {
     if (instance == null) return null;
 
     final dismissedInstance = instance.copyWith(
-      status: 'dismissed',
+      status: TaskStatus.skipped,
       completedByUserId: userId,
       completedAt: AppClock.now,
       updatedAt: DateTime.now(),
@@ -230,7 +230,7 @@ class UnifiedTaskRepository extends TaskRepository {
   @override
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
     final pendingInstance = resolvedInstance.copyWith(
-      status: 'pending',
+      status: TaskStatus.pending,
       clearCompletedByUserId: true,
       clearCompletedAt: true,
       updatedAt: DateTime.now(),
@@ -277,7 +277,8 @@ class UnifiedTaskRepository extends TaskRepository {
 
       final Map<CivilDay, double> dayPlannedHours = {};
       for (final inst in allInstances) {
-        if (inst.status != 'skipped' && inst.status != 'failed') {
+        if (inst.status != TaskStatus.skipped &&
+            inst.status != TaskStatus.failed) {
           final t = tasks.where((ts) => ts.id == inst.scheduleId).firstOrNull;
           if (t != null && t.estimatedDuration != null) {
             final hours = t.estimatedDuration!.inMinutes / 60.0;

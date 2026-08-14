@@ -74,7 +74,7 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        status: 'pending',
+        status: TaskStatus.pending,
       ),
     ];
     tasksSubject = BehaviorSubject<List<TaskSchedule>>(sync: true)
@@ -108,7 +108,7 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
           startRelativeTime: task.schedules.first.startRelativeTime,
           dueRelativeTime: task.schedules.first.dueRelativeTime,
-          status: 'pending',
+          status: TaskStatus.pending,
         ),
       ]);
     });
@@ -300,7 +300,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         ),
       ]);
 
@@ -415,7 +415,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         ),
         TaskInstance(
           id: 'I-tomorrow-task_2026-03-09',
@@ -432,7 +432,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         ),
       ]);
 
@@ -489,7 +489,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         ),
       ]);
 
@@ -543,7 +543,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         ),
       ]);
 
@@ -597,7 +597,7 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        status: 'pending',
+        status: TaskStatus.pending,
       ),
     ]);
 
@@ -666,7 +666,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         ),
         TaskInstance(
           id: 'I-2_2024-01-01',
@@ -683,7 +683,7 @@ void main() {
             dayOffset: 0,
             time: TimeOfDay(hour: 17, minute: 0),
           ),
-          status: 'pending',
+          status: TaskStatus.pending,
         ),
       ]);
 
@@ -708,7 +708,7 @@ void main() {
               dayOffset: 0,
               time: TimeOfDay(hour: 17, minute: 0),
             ),
-            status: 'pending',
+            status: TaskStatus.pending,
           ),
         ]);
         return null;
@@ -822,7 +822,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([task]);
@@ -838,7 +838,7 @@ void main() {
     when(mockTaskRepository.completeTaskInstance(any)).thenAnswer((_) async {
       // Optimistically remove the instance to mimic Firestore latency compensation
       instancesSubject.add([]);
-      return instance.copyWith(status: 'completed');
+      return instance.copyWith(status: TaskStatus.completed);
     });
 
     await tester.pumpWidgetBuilder(
@@ -908,7 +908,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
@@ -1043,7 +1043,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     final inst2 = TaskInstance(
@@ -1061,7 +1061,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     when(mockAuthRepository.signOut()).thenAnswer((_) async {});
@@ -1312,7 +1312,7 @@ void main() {
         scheduledDate: taskDate,
         startRelativeTime: relativeStart,
         dueRelativeTime: relativeDue,
-        status: 'pending',
+        status: TaskStatus.pending,
       );
       final instancesSubj = BehaviorSubject<List<TaskInstance>>.seeded([
         futureInstance,
@@ -1393,7 +1393,7 @@ void main() {
       scheduledDate: taskDate,
       startRelativeTime: relativeStart,
       dueRelativeTime: relativeDue,
-      status: 'pending',
+      status: TaskStatus.pending,
     );
     final instancesSubj = BehaviorSubject<List<TaskInstance>>.seeded([
       futureInstance,

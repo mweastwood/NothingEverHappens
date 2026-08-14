@@ -9,7 +9,7 @@ class FamilyMemberTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final memberIsParent = member.role == 'parent';
+    final memberIsParent = member.role == FamilyRole.parent;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(

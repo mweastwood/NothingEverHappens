@@ -332,7 +332,7 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        status: 'pending',
+        status: TaskStatus.pending,
       );
 
       final instance2 = TaskInstance(
@@ -350,7 +350,7 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        status: 'pending',
+        status: TaskStatus.pending,
       );
 
       tasksSubject.add([schedule1, schedule2]);
@@ -405,7 +405,7 @@ void main() {
         dayOffset: 0,
         time: TimeOfDay(hour: 17, minute: 0),
       ),
-      status: 'pending',
+      status: TaskStatus.pending,
     );
 
     tasksSubject.add([schedule1]);

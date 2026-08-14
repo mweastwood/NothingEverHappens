@@ -539,7 +539,8 @@ class TaskRepository {
       // Calculate planned hours per date
       final Map<CivilDay, double> dayPlannedHours = {};
       for (final inst in allInstances) {
-        if (inst.status != 'skipped' && inst.status != 'failed') {
+        if (inst.status != TaskStatus.skipped &&
+            inst.status != TaskStatus.failed) {
           final t = taskMap[inst.scheduleId];
           if (t != null && t.estimatedDuration != null) {
             final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
@@ -555,7 +556,8 @@ class TaskRepository {
           final completed = allInstances
               .where(
                 (inst) =>
-                    inst.scheduleId == task.id && inst.status == 'completed',
+                    inst.scheduleId == task.id &&
+                    inst.status == TaskStatus.completed,
               )
               .toList();
           if (completed.isEmpty) {
@@ -642,7 +644,7 @@ class TaskRepository {
                         dayOffset: 0,
                         time: const TimeOfDay(hour: 17, minute: 0),
                       ),
-                      status: 'pending',
+                      status: TaskStatus.pending,
                     ),
                   );
                 }
@@ -670,7 +672,8 @@ class TaskRepository {
           final idx = allInstances.indexWhere((x) => x.id == inst.id);
           if (idx >= 0) {
             final oldInst = allInstances[idx];
-            if (oldInst.status != 'skipped' && oldInst.status != 'failed') {
+            if (oldInst.status != TaskStatus.skipped &&
+                oldInst.status != TaskStatus.failed) {
               final t = taskMap[oldInst.scheduleId];
               if (t != null && t.estimatedDuration != null) {
                 final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
@@ -679,7 +682,8 @@ class TaskRepository {
               }
             }
             allInstances[idx] = inst;
-            if (inst.status != 'skipped' && inst.status != 'failed') {
+            if (inst.status != TaskStatus.skipped &&
+                inst.status != TaskStatus.failed) {
               final t = taskMap[inst.scheduleId];
               if (t != null && t.estimatedDuration != null) {
                 final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
@@ -697,7 +701,8 @@ class TaskRepository {
           hasChanges = true;
           // Add to in-memory collections so subsequent evaluations see it
           allInstances.add(inst);
-          if (inst.status != 'skipped' && inst.status != 'failed') {
+          if (inst.status != TaskStatus.skipped &&
+              inst.status != TaskStatus.failed) {
             final t = taskMap[inst.scheduleId];
             if (t != null && t.estimatedDuration != null) {
               final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
@@ -717,7 +722,8 @@ class TaskRepository {
           hasChanges = true;
           // Remove from in-memory collections so subsequent evaluations see it
           allInstances.removeWhere((x) => x.id == instId);
-          if (inst.status != 'skipped' && inst.status != 'failed') {
+          if (inst.status != TaskStatus.skipped &&
+              inst.status != TaskStatus.failed) {
             final t = taskMap[inst.scheduleId];
             if (t != null && t.estimatedDuration != null) {
               final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
@@ -877,7 +883,7 @@ class TaskRepository {
 
     final personalSnap = results[0];
     for (final doc in personalSnap.docs) {
-      if (doc.data().status == 'pending') {
+      if (doc.data().status == TaskStatus.pending) {
         personalPending.add(doc);
       }
     }
@@ -885,7 +891,7 @@ class TaskRepository {
     if (familySnapFuture != null) {
       final familySnap = results[1];
       for (final doc in familySnap.docs) {
-        if (doc.data().status == 'pending') {
+        if (doc.data().status == TaskStatus.pending) {
           familyPending.add(doc);
         }
       }
@@ -947,7 +953,7 @@ class TaskRepository {
         .where('scheduleId', isEqualTo: id)
         .get();
     for (final doc in personalInstances.docs) {
-      if (doc.data().status == 'pending') {
+      if (doc.data().status == TaskStatus.pending) {
         pendingInstances.add(doc.data());
         batch.delete(doc.reference);
       }
@@ -966,7 +972,7 @@ class TaskRepository {
           )
           .get();
       for (final doc in familyInstances.docs) {
-        if (doc.data().status == 'pending') {
+        if (doc.data().status == TaskStatus.pending) {
           pendingInstances.add(doc.data());
           batch.delete(doc.reference);
         }
@@ -1009,7 +1015,7 @@ class TaskRepository {
     final batch = _firestore.batch();
 
     final completedInstance = instance.copyWith(
-      status: 'completed',
+      status: TaskStatus.completed,
       completedByUserId: _userId,
       completedAt: now,
     );
@@ -1053,7 +1059,7 @@ class TaskRepository {
     final batch = _firestore.batch();
 
     final dismissedInstance = instance.copyWith(
-      status: 'dismissed',
+      status: TaskStatus.skipped,
       completedByUserId: _userId,
       completedAt: now,
     );
@@ -1093,7 +1099,7 @@ class TaskRepository {
     final now = resolvedInstance.completedAt ?? AppClock.now;
 
     final pendingInstance = resolvedInstance.copyWith(
-      status: 'pending',
+      status: TaskStatus.pending,
       clearCompletedByUserId: true,
       clearCompletedAt: true,
     );

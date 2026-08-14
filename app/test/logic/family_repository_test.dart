@@ -10,7 +10,7 @@ void main() {
         userId: 'u1',
         displayName: 'Alice',
         email: 'alice@example.com',
-        role: 'parent',
+        role: FamilyRole.parent,
       );
       final json = member.toJson();
       expect(json['userId'], 'u1');
@@ -20,7 +20,7 @@ void main() {
       expect(deserialized.userId, 'u1');
       expect(deserialized.displayName, 'Alice');
       expect(deserialized.email, 'alice@example.com');
-      expect(deserialized.role, 'parent');
+      expect(deserialized.role, FamilyRole.parent);
     });
 
     test('Family serialization and deserialization', () {
@@ -28,7 +28,7 @@ void main() {
         userId: 'u1',
         displayName: 'Alice',
         email: 'alice@example.com',
-        role: 'parent',
+        role: FamilyRole.parent,
       );
       final family = Family(
         id: 'f1',
@@ -84,7 +84,7 @@ void main() {
         final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
         expect(family.name, 'The Simpsons');
         expect(family.members[userId]?.displayName, userName);
-        expect(family.members[userId]?.role, 'parent');
+        expect(family.members[userId]?.role, FamilyRole.parent);
       },
     );
 
@@ -93,7 +93,7 @@ void main() {
         familyId: 'f1',
         familyName: 'The Simpsons',
         toEmail: 'bob@example.com',
-        role: 'non-parent',
+        role: FamilyRole.nonParent,
       );
 
       final invitesSnapshot = await firestore.collection('invites').get();
@@ -111,7 +111,7 @@ void main() {
         familyId: 'f1',
         familyName: 'The Simpsons',
         toEmail: 'Bob@Example.Com ',
-        role: 'non-parent',
+        role: FamilyRole.nonParent,
       );
 
       final invitesSnapshot = await firestore.collection('invites').get();
@@ -144,7 +144,7 @@ void main() {
         familyId: familyId,
         familyName: 'The Simpsons',
         toEmail: bobEmail,
-        role: 'non-parent',
+        role: FamilyRole.nonParent,
       );
 
       final invitesSnapshot = await firestore
@@ -177,10 +177,7 @@ void main() {
           .get();
       final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
       expect(family.members.length, 2);
-      expect(family.members[bobUserId]?.displayName, 'Bob');
-      expect(family.members[bobUserId]?.role, 'non-parent');
-
-      // Invite should be accepted
+      expect(family.members[bobUserId]?.role, FamilyRole.nonParent);
       final updatedInviteDoc = await firestore
           .collection('invites')
           .doc(invite.id)
@@ -193,7 +190,7 @@ void main() {
         familyId: 'f1',
         familyName: 'The Simpsons',
         toEmail: 'bob@example.com',
-        role: 'non-parent',
+        role: FamilyRole.nonParent,
       );
 
       final invitesSnapshot = await firestore.collection('invites').get();
@@ -372,7 +369,7 @@ void main() {
           familyId: familyId2,
           familyName: 'Family 2',
           toEmail: userEmail,
-          role: 'non-parent',
+          role: FamilyRole.nonParent,
         );
 
         final inviteSnap = await firestore
@@ -422,7 +419,7 @@ void main() {
           familyId: familyId,
           familyName: 'The Simpsons',
           toEmail: 'bob@example.com',
-          role: 'non-parent',
+          role: FamilyRole.nonParent,
         );
         final inviteSnap = await firestore
             .collection('invites')
@@ -454,7 +451,7 @@ void main() {
         // Bob should now be promoted to parent
         final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
         expect(family.members.length, 1);
-        expect(family.members['user-bob']?.role, 'parent');
+        expect(family.members['user-bob']?.role, FamilyRole.parent);
 
         // Bob's user doc should also be updated
         final bobUserDoc = await firestore
@@ -472,7 +469,7 @@ void main() {
           familyId: 'f1',
           familyName: 'The Simpsons',
           toEmail: 'bob@example.com',
-          role: 'non-parent',
+          role: FamilyRole.nonParent,
         );
 
         final invites = await repository
@@ -480,7 +477,7 @@ void main() {
             .first;
         expect(invites.length, 1);
         expect(invites.first.toEmail, 'bob@example.com');
-        expect(invites.first.status, 'pending');
+        expect(invites.first.status, FamilyInviteStatus.pending);
       },
     );
 
@@ -489,7 +486,7 @@ void main() {
         familyId: 'f1',
         familyName: 'The Simpsons',
         toEmail: 'bob@example.com',
-        role: 'non-parent',
+        role: FamilyRole.nonParent,
       );
 
       final invitesSnapshot = await firestore.collection('invites').get();

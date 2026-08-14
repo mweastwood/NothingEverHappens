@@ -1,3 +1,4 @@
+import 'package:nothing_ever_happens/logic/family_role.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -738,7 +739,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         final familyId = profileData['familyId'] as String? ?? '';
         final familyRole = profileData['familyRole'] as String? ?? '';
         final inFamily = familyId.isNotEmpty;
-        final isParent = familyRole == 'parent';
+        final isParent = familyRole == FamilyRole.parent.value;
 
         final isEditingFamilyTask = widget.taskToEdit?.isFamily ?? false;
         final hasEditPermission = !isEditingFamilyTask || isParent;

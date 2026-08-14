@@ -49,7 +49,7 @@ class FamilyRepository {
     return _firestore
         .collection('invites')
         .where('toEmail', isEqualTo: _userEmail.trim().toLowerCase())
-        .where('status', isEqualTo: 'pending')
+        .where('status', isEqualTo: FamilyInviteStatus.pending.toJson())
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
@@ -66,7 +66,7 @@ class FamilyRepository {
       userId: _userId,
       displayName: _userDisplayName ?? _userEmail ?? 'Parent',
       email: _userEmail?.trim().toLowerCase() ?? '',
-      role: 'parent',
+      role: FamilyRole.parent,
     );
 
     final family = Family(
@@ -79,7 +79,7 @@ class FamilyRepository {
     batch.set(familyRef, family.toJson());
     batch.set(_firestore.collection('users').doc(_userId), {
       'familyId': familyId,
-      'familyRole': 'parent',
+      'familyRole': FamilyRole.parent.toJson(),
     }, SetOptions(merge: true));
 
     await batch.commit();
@@ -89,7 +89,7 @@ class FamilyRepository {
     required String familyId,
     required String familyName,
     required String toEmail,
-    required String role,
+    required FamilyRole role,
   }) async {
     final inviteRef = _firestore.collection('invites').doc();
     final invite = FamilyInvite(
@@ -100,7 +100,7 @@ class FamilyRepository {
       fromName: _userDisplayName ?? _userEmail ?? 'Parent',
       toEmail: toEmail.trim().toLowerCase(),
       role: role,
-      status: 'pending',
+      status: FamilyInviteStatus.pending,
       createdAt: DateTime.now(),
     );
 
@@ -132,11 +132,11 @@ class FamilyRepository {
 
     batch.set(_firestore.collection('users').doc(_userId), {
       'familyId': invite.familyId,
-      'familyRole': invite.role,
+      'familyRole': invite.role.toJson(),
     }, SetOptions(merge: true));
 
     batch.update(_firestore.collection('invites').doc(invite.id), {
-      'status': 'accepted',
+      'status': FamilyInviteStatus.accepted.toJson(),
     });
 
     await batch.commit();
@@ -144,7 +144,7 @@ class FamilyRepository {
 
   Future<void> declineInvite(FamilyInvite invite) async {
     await _firestore.collection('invites').doc(invite.id).update({
-      'status': 'declined',
+      'status': FamilyInviteStatus.declined.toJson(),
     });
   }
 
@@ -153,7 +153,7 @@ class FamilyRepository {
     return _firestore
         .collection('invites')
         .where('familyId', isEqualTo: familyId)
-        .where('status', isEqualTo: 'pending')
+        .where('status', isEqualTo: FamilyInviteStatus.pending.toJson())
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
@@ -221,17 +221,17 @@ class FamilyRepository {
         batch.update(familyRef, {'members.$_userId': FieldValue.delete()});
 
         final currentMember = members[_userId];
-        if (currentMember?.role == 'parent') {
+        if (currentMember?.role == FamilyRole.parent) {
           final hasOtherParent = remainingMembers.any(
-            (m) => m.role == 'parent',
+            (m) => m.role == FamilyRole.parent,
           );
           if (!hasOtherParent && remainingMembers.isNotEmpty) {
             final nextParent = remainingMembers.first;
             batch.update(familyRef, {
-              'members.${nextParent.userId}.role': 'parent',
+              'members.${nextParent.userId}.role': FamilyRole.parent.toJson(),
             });
             batch.set(_firestore.collection('users').doc(nextParent.userId), {
-              'familyRole': 'parent',
+              'familyRole': FamilyRole.parent.toJson(),
             }, SetOptions(merge: true));
           }
         }

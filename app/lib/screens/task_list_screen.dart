@@ -153,7 +153,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               inst.scheduledDate,
             );
             final isFuture = AppClock.now.isBefore(startDateTime);
-            final isPending = inst.status == 'pending' && !isFuture;
+            final isPending = inst.status == TaskStatus.pending && !isFuture;
             if (!isPending) return false;
             if (searchQuery.isEmpty) return true;
 

@@ -70,7 +70,7 @@ class SchedulerEngine {
                 priority: task.priority,
                 cycleId: task.cycleId,
                 assignedUserId: task.assignedUserId,
-                status: 'pending',
+                status: TaskStatus.pending,
               ),
             );
           }
@@ -90,7 +90,8 @@ class SchedulerEngine {
         // Exclude the current task's own existing active instances from tempPlannedHours
         // to avoid self-counting during evaluation.
         for (final inst in taskInstances) {
-          if (inst.status != 'skipped' && inst.status != 'failed') {
+          if (inst.status != TaskStatus.skipped &&
+              inst.status != TaskStatus.failed) {
             final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
             tempPlannedHours[inst.scheduledDate] = (planned - taskDuration)
                 .clamp(0.0, double.infinity);
@@ -101,7 +102,8 @@ class SchedulerEngine {
         for (final inst in taskInstances) {
           final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
           final isFuture = now.isBefore(start);
-          if ((inst.status == 'pending' || inst.status == 'skipped') &&
+          if ((inst.status == TaskStatus.pending ||
+                  inst.status == TaskStatus.skipped) &&
               isFuture) {
             final capacity =
                 userSettings?.getCapacityForDate(
@@ -111,12 +113,12 @@ class SchedulerEngine {
             final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
             if (capacity - planned < taskDuration) {
-              if (inst.status == 'pending') {
-                finalToUpdate.add(inst.copyWith(status: 'skipped'));
+              if (inst.status == TaskStatus.pending) {
+                finalToUpdate.add(inst.copyWith(status: TaskStatus.skipped));
               }
             } else {
-              if (inst.status == 'skipped') {
-                finalToUpdate.add(inst.copyWith(status: 'pending'));
+              if (inst.status == TaskStatus.skipped) {
+                finalToUpdate.add(inst.copyWith(status: TaskStatus.pending));
               }
               tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
             }
@@ -125,7 +127,7 @@ class SchedulerEngine {
 
         // 2. Process newly spawned instances
         for (final inst in toSpawn) {
-          if (inst.status == 'pending' &&
+          if (inst.status == TaskStatus.pending &&
               inst.scheduledDate.compareTo(today) >= 0) {
             final capacity =
                 userSettings?.getCapacityForDate(
@@ -135,7 +137,7 @@ class SchedulerEngine {
             final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
             if (capacity - planned < taskDuration) {
-              finalToSpawn.add(inst.copyWith(status: 'skipped'));
+              finalToSpawn.add(inst.copyWith(status: TaskStatus.skipped));
             } else {
               finalToSpawn.add(inst);
               tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
@@ -152,8 +154,8 @@ class SchedulerEngine {
               inst.scheduledDate,
             );
             final isFuture = now.isBefore(start);
-            if (inst.status == 'skipped' && isFuture) {
-              finalToUpdate.add(inst.copyWith(status: 'pending'));
+            if (inst.status == TaskStatus.skipped && isFuture) {
+              finalToUpdate.add(inst.copyWith(status: TaskStatus.pending));
             }
           }
         }
@@ -181,7 +183,7 @@ class SchedulerEngine {
             .where((inst) => _isInstanceForRule(inst, s, task))
             .toList();
         final pendingForSchedule = ruleInstances
-            .where((inst) => inst.status == 'pending')
+            .where((inst) => inst.status == TaskStatus.pending)
             .toList();
 
         if (pendingForSchedule.isEmpty) {
@@ -190,7 +192,9 @@ class SchedulerEngine {
             dateToSpawn = s.scheduledDate;
           } else {
             final resolved =
-                ruleInstances.where((inst) => inst.status != 'pending').toList()
+                ruleInstances
+                    .where((inst) => inst.status != TaskStatus.pending)
+                    .toList()
                   ..sort(
                     (a, b) =>
                         (b.completedAt ??
@@ -242,7 +246,7 @@ class SchedulerEngine {
                 priority: task.priority,
                 cycleId: task.cycleId,
                 assignedUserId: task.assignedUserId,
-                status: 'pending',
+                status: TaskStatus.pending,
               ),
             );
           }
@@ -253,7 +257,9 @@ class SchedulerEngine {
             .where((inst) => _isInstanceForRule(inst, s, task))
             .toList();
         final pending =
-            ruleInstances.where((inst) => inst.status == 'pending').toList()
+            ruleInstances
+                .where((inst) => inst.status == TaskStatus.pending)
+                .toList()
               ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
         // 1. Determine the initial baseDate
@@ -262,7 +268,9 @@ class SchedulerEngine {
           initialBaseDate = pending.first.scheduledDate;
         } else {
           final resolved =
-              ruleInstances.where((inst) => inst.status != 'pending').toList()
+              ruleInstances
+                  .where((inst) => inst.status != TaskStatus.pending)
+                  .toList()
                 ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
           if (resolved.isNotEmpty) {
             final nextOcc = s.nextOccurrenceAfter(resolved.first.scheduledDate);
@@ -334,7 +342,7 @@ class SchedulerEngine {
             if (current.compareTo(today) > 0) {
               final existing = workingInstances[current];
               final isResolved =
-                  existing != null && existing.status != 'pending';
+                  existing != null && existing.status != TaskStatus.pending;
               if (!isResolved) {
                 targetDates.add(current);
                 spawnedFutureCount++;
@@ -365,7 +373,7 @@ class SchedulerEngine {
                 priority: task.priority,
                 cycleId: task.cycleId,
                 assignedUserId: task.assignedUserId,
-                status: 'pending',
+                status: TaskStatus.pending,
               );
             }
           }
@@ -378,17 +386,19 @@ class SchedulerEngine {
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
               final isOriginalResolved = ruleInstances.any(
-                (x) => x.id == inst.id && x.status != 'pending',
+                (x) => x.id == inst.id && x.status != TaskStatus.pending,
               );
               if (!isOriginalResolved) {
-                workingInstances[date] = inst.copyWith(status: 'pending');
+                workingInstances[date] = inst.copyWith(
+                  status: TaskStatus.pending,
+                );
               }
             }
           } else if (policy == MissedPolicy.autoDismiss) {
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
               final isOriginalResolved = ruleInstances.any(
-                (x) => x.id == inst.id && x.status != 'pending',
+                (x) => x.id == inst.id && x.status != TaskStatus.pending,
               );
               if (isOriginalResolved) continue;
 
@@ -396,10 +406,12 @@ class SchedulerEngine {
                 inst,
                 now,
               );
-              final nextStatus = isExpired ? 'skipped' : 'pending';
+              var nextStatus = isExpired
+                  ? TaskStatus.skipped
+                  : TaskStatus.pending;
               if (inst.status != nextStatus) {
                 workingInstances[date] = inst.copyWith(status: nextStatus);
-                if (nextStatus == 'skipped') {
+                if (nextStatus == TaskStatus.skipped) {
                   hasNewSkipped = true;
                 }
               }
@@ -418,20 +430,20 @@ class SchedulerEngine {
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
               final isOriginalResolved = ruleInstances.any(
-                (x) => x.id == inst.id && x.status != 'pending',
+                (x) => x.id == inst.id && x.status != TaskStatus.pending,
               );
               if (isOriginalResolved) continue;
 
-              final String nextStatus;
+              final TaskStatus nextStatus;
               if (latestStartedDate == null ||
                   date.compareTo(latestStartedDate) >= 0) {
-                nextStatus = 'pending';
+                nextStatus = TaskStatus.pending;
               } else {
-                nextStatus = 'skipped';
+                nextStatus = TaskStatus.skipped;
               }
               if (inst.status != nextStatus) {
                 workingInstances[date] = inst.copyWith(status: nextStatus);
-                if (nextStatus == 'skipped') {
+                if (nextStatus == TaskStatus.skipped) {
                   hasNewSkipped = true;
                 }
               }
@@ -450,21 +462,21 @@ class SchedulerEngine {
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
               final isOriginalResolved = ruleInstances.any(
-                (x) => x.id == inst.id && x.status != 'pending',
+                (x) => x.id == inst.id && x.status != TaskStatus.pending,
               );
               if (isOriginalResolved) continue;
 
-              final String nextStatus;
+              final TaskStatus nextStatus;
               if (!now.isBefore(inst.startRelativeTime.referenceTo(date))) {
                 nextStatus = date == earliestStartedDate
-                    ? 'pending'
-                    : 'skipped';
+                    ? TaskStatus.pending
+                    : TaskStatus.skipped;
               } else {
-                nextStatus = 'pending';
+                nextStatus = TaskStatus.pending;
               }
               if (inst.status != nextStatus) {
                 workingInstances[date] = inst.copyWith(status: nextStatus);
-                if (nextStatus == 'skipped') {
+                if (nextStatus == TaskStatus.skipped) {
                   hasNewSkipped = true;
                 }
               }
@@ -477,7 +489,7 @@ class SchedulerEngine {
                 workingInstances.values
                     .where(
                       (inst) =>
-                          inst.status == 'pending' &&
+                          inst.status == TaskStatus.pending &&
                           inst.scheduledDate.compareTo(maxEvaluationDate) <= 0,
                     )
                     .toList()
@@ -524,7 +536,7 @@ class SchedulerEngine {
             final isSkipOrOlderNewer =
                 (s.missedOccurrencePolicy.policy == MissedPolicy.preferNewer ||
                 s.missedOccurrencePolicy.policy == MissedPolicy.preferOlder);
-            if (inst.status == 'skipped' && isSkipOrOlderNewer) {
+            if (inst.status == TaskStatus.skipped && isSkipOrOlderNewer) {
               // Do not spawn!
             } else {
               toSpawn.add(inst);
@@ -552,7 +564,7 @@ class SchedulerEngine {
       ...toSpawn,
     ];
     for (final inst in allCurrentInstances) {
-      if (inst.status == 'pending') {
+      if (inst.status == TaskStatus.pending) {
         final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
         final due = inst.dueRelativeTime.referenceTo(inst.scheduledDate);
         if (start.isAfter(now)) triggerTimes.add(start);
@@ -594,7 +606,8 @@ class SchedulerEngine {
       // Exclude the current task's own existing active instances from tempPlannedHours
       // to avoid self-counting during evaluation.
       for (final inst in taskInstances) {
-        if (inst.status != 'skipped' && inst.status != 'failed') {
+        if (inst.status != TaskStatus.skipped &&
+            inst.status != TaskStatus.failed) {
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
           tempPlannedHours[inst.scheduledDate] = (planned - taskDuration).clamp(
             0.0,
@@ -607,7 +620,8 @@ class SchedulerEngine {
       for (final inst in taskInstances) {
         final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
         final isFuture = now.isBefore(start);
-        if ((inst.status == 'pending' || inst.status == 'skipped') &&
+        if ((inst.status == TaskStatus.pending ||
+                inst.status == TaskStatus.skipped) &&
             isFuture) {
           final isMarkedForDelete = toDelete.contains(inst.id);
           final isMarkedForUpdate = toUpdate.any((x) => x.id == inst.id);
@@ -621,25 +635,25 @@ class SchedulerEngine {
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
           if (capacity - planned < taskDuration) {
-            if (inst.status == 'pending') {
+            if (inst.status == TaskStatus.pending) {
               if (isMarkedForUpdate) {
                 final idx = finalToUpdate.indexWhere((x) => x.id == inst.id);
                 finalToUpdate[idx] = finalToUpdate[idx].copyWith(
-                  status: 'skipped',
+                  status: TaskStatus.skipped,
                 );
               } else {
-                finalToUpdate.add(inst.copyWith(status: 'skipped'));
+                finalToUpdate.add(inst.copyWith(status: TaskStatus.skipped));
               }
             }
           } else {
-            if (inst.status == 'skipped') {
+            if (inst.status == TaskStatus.skipped) {
               if (isMarkedForUpdate) {
                 final idx = finalToUpdate.indexWhere((x) => x.id == inst.id);
                 finalToUpdate[idx] = finalToUpdate[idx].copyWith(
-                  status: 'pending',
+                  status: TaskStatus.pending,
                 );
               } else {
-                finalToUpdate.add(inst.copyWith(status: 'pending'));
+                finalToUpdate.add(inst.copyWith(status: TaskStatus.pending));
               }
             }
             tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
@@ -649,7 +663,7 @@ class SchedulerEngine {
 
       // 2. Process toSpawn instances
       for (final inst in toSpawn) {
-        if (inst.status == 'pending' &&
+        if (inst.status == TaskStatus.pending &&
             inst.scheduledDate.compareTo(today) >= 0) {
           final capacity =
               userSettings?.getCapacityForDate(
@@ -659,7 +673,7 @@ class SchedulerEngine {
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
           if (capacity - planned < taskDuration) {
-            finalToSpawn.add(inst.copyWith(status: 'skipped'));
+            finalToSpawn.add(inst.copyWith(status: TaskStatus.skipped));
           } else {
             finalToSpawn.add(inst);
             tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
@@ -674,7 +688,7 @@ class SchedulerEngine {
         final inst = finalToUpdate[i];
         final wasProcessed = taskInstances.any((x) => x.id == inst.id);
         if (!wasProcessed &&
-            inst.status == 'pending' &&
+            inst.status == TaskStatus.pending &&
             inst.scheduledDate.compareTo(today) >= 0) {
           final capacity =
               userSettings?.getCapacityForDate(
@@ -684,7 +698,7 @@ class SchedulerEngine {
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
           if (capacity - planned < taskDuration) {
-            finalToUpdate[i] = inst.copyWith(status: 'skipped');
+            finalToUpdate[i] = inst.copyWith(status: TaskStatus.skipped);
           } else {
             tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
           }
@@ -696,17 +710,17 @@ class SchedulerEngine {
         for (final inst in taskInstances) {
           final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
           final isFuture = now.isBefore(start);
-          if (inst.status == 'skipped' && isFuture) {
+          if (inst.status == TaskStatus.skipped && isFuture) {
             final isMarkedForDelete = toDelete.contains(inst.id);
             if (isMarkedForDelete) continue;
             final isMarkedForUpdate = finalToUpdate.any((x) => x.id == inst.id);
             if (isMarkedForUpdate) {
               final idx = finalToUpdate.indexWhere((x) => x.id == inst.id);
               finalToUpdate[idx] = finalToUpdate[idx].copyWith(
-                status: 'pending',
+                status: TaskStatus.pending,
               );
             } else {
-              finalToUpdate.add(inst.copyWith(status: 'pending'));
+              finalToUpdate.add(inst.copyWith(status: TaskStatus.pending));
             }
           }
         }
@@ -816,7 +830,7 @@ class SchedulerEngine {
         priority: task.priority,
         cycleId: task.cycleId,
         assignedUserId: task.assignedUserId,
-        status: 'pending',
+        status: TaskStatus.pending,
       );
     } else {
       // Find the latest uncompleted instance of this rule (excluding the completedInstance)
@@ -826,7 +840,7 @@ class SchedulerEngine {
                 (inst) =>
                     inst.ruleId == rule.id &&
                     inst.id != completedInstance.id &&
-                    inst.status == 'pending',
+                    inst.status == TaskStatus.pending,
               )
               .toList()
             ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
@@ -852,7 +866,7 @@ class SchedulerEngine {
           priority: task.priority,
           cycleId: task.cycleId,
           assignedUserId: task.assignedUserId,
-          status: 'pending',
+          status: TaskStatus.pending,
         );
       }
     }
@@ -871,7 +885,10 @@ class SchedulerEngine {
 
     final ruleInstances =
         taskInstances
-            .where((inst) => inst.ruleId == rule.id && inst.status == 'pending')
+            .where(
+              (inst) =>
+                  inst.ruleId == rule.id && inst.status == TaskStatus.pending,
+            )
             .toList()
           ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
     if (ruleInstances.isNotEmpty) {

@@ -14,7 +14,7 @@ class FamilyOutstandingInviteTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inviteIsParent = invite.role == 'parent';
+    final inviteIsParent = invite.role == FamilyRole.parent;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(

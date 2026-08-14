@@ -58,7 +58,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   }
 
   Future<void> _inviteMember(FamilyRepository repository, Family family) async {
-    final result = await showDialog<Map<String, String>>(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => const _InviteMemberDialog(),
     );
@@ -72,7 +72,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           familyId: family.id,
           familyName: family.name,
           toEmail: result['email']!,
-          role: result['role']!,
+          role: result['role'] as FamilyRole,
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -443,7 +443,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final isParent = familyRole == 'parent';
+        final isParent = familyRole == FamilyRole.parent.value;
 
         return ListView(
           padding: const EdgeInsets.all(16.0),
@@ -731,7 +731,7 @@ class _InviteMemberDialog extends StatefulWidget {
 class _InviteMemberDialogState extends State<_InviteMemberDialog> {
   late final TextEditingController _emailController;
   final _formKey = GlobalKey<FormState>();
-  String _selectedRole = 'non-parent';
+  FamilyRole _selectedRole = FamilyRole.nonParent;
 
   @override
   void initState() {
@@ -774,7 +774,7 @@ class _InviteMemberDialogState extends State<_InviteMemberDialog> {
               },
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
+            DropdownButtonFormField<FamilyRole>(
               key: const Key('invite_role_dropdown'),
               initialValue: _selectedRole,
               decoration: InputDecoration(
@@ -783,11 +783,11 @@ class _InviteMemberDialogState extends State<_InviteMemberDialog> {
               ),
               items: [
                 DropdownMenuItem(
-                  value: 'parent',
+                  value: FamilyRole.parent,
                   child: Text(context.l10n.parentRole),
                 ),
                 DropdownMenuItem(
-                  value: 'non-parent',
+                  value: FamilyRole.nonParent,
                   child: Text(context.l10n.nonParentRole),
                 ),
               ],

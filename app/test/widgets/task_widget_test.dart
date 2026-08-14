@@ -62,7 +62,7 @@ void main() {
       priority: task.priority,
       cycleId: task.cycleId,
       assignedUserId: task.assignedUserId,
-      status: 'pending',
+      status: TaskStatus.pending,
     );
   }
 
@@ -90,7 +90,7 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        status: 'completed',
+        status: TaskStatus.completed,
       );
     });
     when(mockTaskRepository.dismissTaskInstance(any)).thenAnswer((
@@ -112,7 +112,7 @@ void main() {
           dayOffset: 0,
           time: TimeOfDay(hour: 17, minute: 0),
         ),
-        status: 'dismissed',
+        status: TaskStatus.skipped,
       );
     });
     when(
@@ -1041,7 +1041,7 @@ void main() {
       // captured, causing undoResolveTaskInstance to compute the wrong
       // refDate and fail to delete the next spawned occurrence.
       final resolvedInstance = createInstanceFor(testTask).copyWith(
-        status: 'dismissed',
+        status: TaskStatus.skipped,
         completedByUserId: 'user-1',
         completedAt: DateTime(2026, 6, 18, 9, 0),
       );
@@ -1077,7 +1077,7 @@ void main() {
         capturedInstance!.completedAt,
         equals(resolvedInstance.completedAt),
       );
-      expect(capturedInstance!.status, equals('dismissed'));
+      expect(capturedInstance!.status, equals(TaskStatus.skipped));
     },
   );
 
@@ -1086,7 +1086,7 @@ void main() {
     (tester) async {
       // Same regression test for the complete (LTR) swipe direction.
       final resolvedInstance = createInstanceFor(testTask).copyWith(
-        status: 'completed',
+        status: TaskStatus.completed,
         completedByUserId: 'user-1',
         completedAt: DateTime(2026, 6, 18, 9, 0),
       );
@@ -1121,7 +1121,7 @@ void main() {
         capturedInstance!.completedAt,
         equals(resolvedInstance.completedAt),
       );
-      expect(capturedInstance!.status, equals('completed'));
+      expect(capturedInstance!.status, equals(TaskStatus.completed));
     },
   );
 
