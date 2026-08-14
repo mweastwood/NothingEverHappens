@@ -522,32 +522,29 @@ void main() {
       expect(deletedInviteDoc.exists, isFalse);
     });
 
-    test(
-      'getProfile emits FamilyProfile when user document data exists '
-      'or changes in Firestore',
-      () async {
-        final profileStream = repository.getProfile();
+    test('getProfile emits FamilyProfile when user document data exists '
+        'or changes in Firestore', () async {
+      final profileStream = repository.getProfile();
 
-        final expectation = expectLater(
-          profileStream,
-          emitsInOrder([
-            const FamilyProfile(familyId: '', familyRole: ''),
-            const FamilyProfile(familyId: 'fam-1', familyRole: 'parent'),
-            const FamilyProfile(familyId: 'fam-1', familyRole: 'non-parent'),
-          ]),
-        );
+      final expectation = expectLater(
+        profileStream,
+        emitsInOrder([
+          const FamilyProfile(familyId: '', familyRole: ''),
+          const FamilyProfile(familyId: 'fam-1', familyRole: 'parent'),
+          const FamilyProfile(familyId: 'fam-1', familyRole: 'non-parent'),
+        ]),
+      );
 
-        await firestore.collection('users').doc(userId).set({
-          'familyId': 'fam-1',
-          'familyRole': 'parent',
-        });
+      await firestore.collection('users').doc(userId).set({
+        'familyId': 'fam-1',
+        'familyRole': 'parent',
+      });
 
-        await firestore.collection('users').doc(userId).update({
-          'familyRole': 'non-parent',
-        });
+      await firestore.collection('users').doc(userId).update({
+        'familyRole': 'non-parent',
+      });
 
-        await expectation;
-      },
-    );
+      await expectation;
+    });
   });
 }

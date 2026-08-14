@@ -14,12 +14,13 @@ final familyRepositoryProvider = Provider<FamilyRepository?>((ref) {
   );
 });
 
-final familyProfileStreamProvider =
-    StreamProvider.autoDispose<FamilyProfile?>((ref) {
-      final familyRepo = ref.watch(familyRepositoryProvider);
-      if (familyRepo == null) return Stream.value(null);
-      return familyRepo.getProfile();
-    });
+final familyProfileStreamProvider = StreamProvider.autoDispose<FamilyProfile?>((
+  ref,
+) {
+  final familyRepo = ref.watch(familyRepositoryProvider);
+  if (familyRepo == null) return Stream.value(null);
+  return familyRepo.getProfile();
+});
 
 final pendingInvitesStreamProvider =
     StreamProvider.autoDispose<List<FamilyInvite>>((ref) {
