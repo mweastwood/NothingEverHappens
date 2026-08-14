@@ -44,10 +44,10 @@ class AppStateExporter {
     AuthRepository? authRepository,
     required HiveLocalDataSource hiveDataSource,
     ErrorHandler? errorHandler,
-  }) : _firestore = firestore,
-       _authRepository = authRepository,
-       _hiveDataSource = hiveDataSource,
-       _errorHandler = errorHandler;
+  })  : _firestore = firestore,
+        _authRepository = authRepository,
+        _hiveDataSource = hiveDataSource,
+        _errorHandler = errorHandler;
 
   static String? maskEmail(String? email) {
     if (email == null) return null;
@@ -609,11 +609,11 @@ class AppStateExporter {
                 (box != null && box.attached && box.hasSize)
                     ? (box.localToGlobal(Offset.zero) & box.size)
                     : Rect.fromLTWH(
-                    0,
-                    0,
-                    MediaQuery.maybeOf(context)?.size.width ?? 400,
-                    (MediaQuery.maybeOf(context)?.size.height ?? 800) / 2,
-                  );
+                        0,
+                        0,
+                        MediaQuery.maybeOf(context)?.size.width ?? 400,
+                        (MediaQuery.maybeOf(context)?.size.height ?? 800) / 2,
+                      );
 
             final tempDir = await getTemporaryDirectory();
             final filePath = '${tempDir.path}/$fileName';

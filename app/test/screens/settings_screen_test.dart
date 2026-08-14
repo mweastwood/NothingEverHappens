@@ -20,11 +20,10 @@ class MockAppStateExporter extends Mock implements AppStateExporter {
   @override
   Future<void> shareDebugState(BuildContext context) =>
       (super.noSuchMethod(
-            Invocation.method(#shareDebugState, [context]),
-            returnValue: Future<void>.value(),
-            returnValueForMissingStub: Future<void>.value(),
-          )
-          as Future<void>);
+        Invocation.method(#shareDebugState, [context]),
+        returnValue: Future<void>.value(),
+        returnValueForMissingStub: Future<void>.value(),
+      ) as Future<void>);
 }
 
 void main() {
@@ -189,26 +188,25 @@ void main() {
     },
   );
 
-  testWidgets('SettingsScreen renders export debug state button', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(buildTestWidget());
-    await tester.pumpAndSettle();
+  testWidgets(
+    'SettingsScreen renders export debug state button',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
 
-    final exportButtonFinder = find.byKey(
-      const Key('export_debug_state_button'),
-    );
-    expect(exportButtonFinder, findsOneWidget);
-    expect(find.text('Debug & Diagnostics'), findsOneWidget);
-    expect(find.text('Export Debug State (LLM JSON)'), findsOneWidget);
-  });
+      final exportButtonFinder = find.byKey(
+        const Key('export_debug_state_button'),
+      );
+      expect(exportButtonFinder, findsOneWidget);
+      expect(find.text('Debug & Diagnostics'), findsOneWidget);
+      expect(find.text('Export Debug State (LLM JSON)'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'SettingsScreen triggers export debug state when export button is tapped',
     (WidgetTester tester) async {
-      when(
-        mockExporter.shareDebugState(any),
-      ).thenAnswer((_) async {});
+      when(mockExporter.shareDebugState(any)).thenAnswer((_) async {});
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -221,9 +219,7 @@ void main() {
       await tester.tap(exportButtonFinder);
       await tester.pumpAndSettle();
 
-      verify(
-        mockExporter.shareDebugState(any),
-      ).called(1);
+      verify(mockExporter.shareDebugState(any)).called(1);
     },
   );
 }
