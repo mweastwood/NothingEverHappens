@@ -1911,5 +1911,160 @@ void main() {
         },
       );
     });
+
+    group('Custom generateId callback', () {
+      test('evaluate() utilizes custom generateId for OneOffSchedule', () {
+        final engine = SchedulerEngine(generateId: () => 'custom-oneoff-id');
+        final task = TaskSchedule(
+          id: 'oneoff-custom',
+          title: 'One Off Custom ID Task',
+          description: 'A custom id test task',
+          schedules: [OneOffSchedule(date: today)],
+        );
+
+        final action = engine.evaluate(task, [], now);
+
+        expect(action.instancesToSpawn, hasLength(1));
+        expect(action.instancesToSpawn.first.id, 'custom-oneoff-id');
+      });
+
+      test('evaluate() utilizes custom generateId for FixedCalendarPolicy', () {
+        var idCounter = 1;
+        final engine = SchedulerEngine(
+          generateId: () => 'custom-fixed-${idCounter++}',
+        );
+        final task = TaskSchedule(
+          id: 'fixed-custom',
+          title: 'Fixed Custom ID Task',
+          description: 'A custom id test task',
+          schedules: [DailySchedule(startDate: today, interval: 1)],
+        );
+
+        final action = engine.evaluate(task, [], now, futureInstancesCount: 2);
+
+        // Today + 2 future lookaheads
+        expect(action.instancesToSpawn, hasLength(3));
+        expect(
+          action.instancesToSpawn.map((inst) => inst.id).toList(),
+          equals(['custom-fixed-1', 'custom-fixed-2', 'custom-fixed-3']),
+        );
+      });
+
+      test(
+        'evaluate() utilizes custom generateId for CompletionRelativePolicy',
+        () {
+          final engine = SchedulerEngine(
+            generateId: () => 'custom-relative-id',
+          );
+          final task = TaskSchedule(
+            id: 'relative-custom',
+            title: 'Relative Custom ID Task',
+            description: 'A custom id test task',
+            schedules: [
+              DailySchedule(
+                startDate: today,
+                interval: 1,
+                schedulingPolicy: const CompletionRelativePolicy(
+                  interval: Duration(days: 1),
+                  targetTime: TimeOfDay(hour: 9, minute: 0),
+                ),
+              ),
+            ],
+          );
+
+          final action = engine.evaluate(task, [], now);
+
+          expect(action.instancesToSpawn, hasLength(1));
+          expect(action.instancesToSpawn.first.id, 'custom-relative-id');
+        },
+      );
+
+      test(
+        'getNextOccurrenceToSpawn() utilizes custom generateId for FixedCalendarPolicy',
+        () {
+          final engine = SchedulerEngine(
+            generateId: () => 'custom-next-fixed-id',
+          );
+          final dailyRule = DailySchedule(startDate: today, interval: 1);
+          final task = TaskSchedule(
+            id: 'fixed-next-task',
+            title: 'Fixed Next Task',
+            description: 'A custom id test task',
+            schedules: [dailyRule],
+          );
+
+          final completedInstance = TaskInstance(
+            id: 'completed-fixed-1',
+            scheduleId: task.id,
+            ruleId: dailyRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: dailyRule.startRelativeTime,
+            dueRelativeTime: dailyRule.dueRelativeTime,
+            status: TaskStatus.completed,
+            completedAt: now,
+          );
+
+          final nextInstance = engine.getNextOccurrenceToSpawn(
+            task,
+            completedInstance,
+            now,
+            [completedInstance],
+          );
+
+          expect(nextInstance, isNotNull);
+          expect(nextInstance!.id, 'custom-next-fixed-id');
+          expect(nextInstance.scheduledDate, today.addDays(1));
+        },
+      );
+
+      test(
+        'getNextOccurrenceToSpawn() utilizes custom generateId for CompletionRelativePolicy',
+        () {
+          final engine = SchedulerEngine(
+            generateId: () => 'custom-next-relative-id',
+          );
+          final crRule = DailySchedule(
+            startDate: today,
+            interval: 1,
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 2),
+              targetTime: TimeOfDay(hour: 9, minute: 0),
+            ),
+          );
+          final task = TaskSchedule(
+            id: 'relative-next-task',
+            title: 'Relative Next Task',
+            description: 'A custom id test task',
+            schedules: [crRule],
+          );
+
+          final completedInstance = TaskInstance(
+            id: 'completed-relative-1',
+            scheduleId: task.id,
+            ruleId: crRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: crRule.startRelativeTime,
+            dueRelativeTime: crRule.dueRelativeTime,
+            status: TaskStatus.completed,
+            completedAt: now,
+          );
+
+          final nextInstance = engine.getNextOccurrenceToSpawn(
+            task,
+            completedInstance,
+            now,
+            [completedInstance],
+          );
+
+          expect(nextInstance, isNotNull);
+          expect(nextInstance!.id, 'custom-next-relative-id');
+          expect(nextInstance.scheduledDate, today.addDays(2));
+        },
+      );
+    });
   });
 }
