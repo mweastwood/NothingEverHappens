@@ -30,6 +30,7 @@ class HiveLocalDataSource {
   final Map<String, TaskInstance> _memInstances = {};
   final Map<String, dynamic> _memMeta = {};
   UserSettings _memSettings = const UserSettings(hoursAvailable: 8.0);
+  Map<String, dynamic> _memRawSettings = {};
 
   final _tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded(const []);
   final _instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded(
@@ -132,6 +133,13 @@ class HiveLocalDataSource {
     _emitSettings();
   }
 
+  Future<void> saveRawSettings(Map<String, dynamic> settings) async {
+    _memRawSettings = Map<String, dynamic>.from(settings);
+    if (_settingsBox != null && _settingsBox!.isOpen) {
+      await _settingsBox!.put('agile', settings);
+    }
+  }
+
   List<TaskSchedule> getTasks() {
     if (_tasksBox != null && _tasksBox!.isOpen) {
       final list = <TaskSchedule>[];
@@ -162,8 +170,8 @@ class HiveLocalDataSource {
         } catch (e, st) {
           // ignore: avoid_print
           print(
-            '⚠️ [HIVE_INSTANCE_PARSE_ERROR] Failed to parse task instance from '
-            'Hive: $e\n$st',
+            '⚠️ [HIVE_INSTANCE_PARSE_ERROR] Failed to parse task instance '
+            'from Hive: $e\n$st',
           );
         }
       }
@@ -452,14 +460,14 @@ class HiveLocalDataSource {
         if (raw != null) {
           settingsMap = Map<String, dynamic>.from(raw);
         } else {
-          settingsMap = _memSettings.toJson();
+          settingsMap = {..._memSettings.toJson(), ..._memRawSettings};
         }
       } catch (e, stackTrace) {
         debugPrint('Error exporting raw settings map: $e\n$stackTrace');
-        settingsMap = _memSettings.toJson();
+        settingsMap = {..._memSettings.toJson(), ..._memRawSettings};
       }
     } else {
-      settingsMap = _memSettings.toJson();
+      settingsMap = {..._memSettings.toJson(), ..._memRawSettings};
     }
 
     return {

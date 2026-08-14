@@ -326,11 +326,10 @@ void main() {
       final mockUser = MockUser();
       final mockAuthRepo = MockAuthRepository(mockUser);
 
-      await localDataSource.saveSettings(
-        const UserSettings(hoursAvailable: 8.0),
-      );
-      localDataSource.exportRawState()['settings']['familyId'] =
-          'fallback-fam-123';
+      await localDataSource.saveRawSettings({
+        'hoursAvailable': 8.0,
+        'familyId': 'fallback-fam-123',
+      });
 
       await fakeFirestore.collection('families').doc('fallback-fam-123').set({
         'name': 'Fallback Family Name',
@@ -559,7 +558,10 @@ void main() {
       },
     );
 
-    test('sanitizeForJson flags members key for PII sanitization while preserving roles', () {
+    test(
+      'sanitizeForJson flags members key for PII sanitization while '
+      'preserving roles',
+      () {
       final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
       final rawData = {
@@ -578,7 +580,9 @@ void main() {
       expect(sanitized['members']['user-123']['role'], 'parent');
     });
 
-    test('sanitizeForJson recursively routes CivilDay, RelativeTime, TimeOfDay', () {
+    test(
+      'sanitizeForJson recursively routes CivilDay, RelativeTime, TimeOfDay',
+      () {
       final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
       final civilDay = const CivilDay(year: 2026, month: 8, day: 14);
@@ -602,4 +606,3 @@ void main() {
     });
   });
 }
-

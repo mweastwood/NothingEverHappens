@@ -574,11 +574,9 @@ class AppStateExporter {
     Future<void> dismissProgressDialog() async {
       if (isDismissed) return;
       isDismissed = true;
-      if (dialogContextCompleter.isCompleted) {
-        final dialogCtx = await dialogContextCompleter.future;
-        if (!dialogCtx.mounted) return;
-        popDialog(dialogCtx);
-      }
+      final dialogCtx = await dialogContextCompleter.future;
+      if (!dialogCtx.mounted) return;
+      popDialog(dialogCtx);
     }
 
     try {
