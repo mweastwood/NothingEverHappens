@@ -661,7 +661,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                 ) !=
                 null) ...[
               IconButton(
-                key: const Key('open_duolingo_button'),
+                key: const Key('open_app_url_button'),
                 icon: const Icon(Icons.open_in_new, size: 20),
                 tooltip: 'Open link',
                 onPressed: () async {
@@ -669,9 +669,17 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                     title: widget.instance.title,
                     appLaunchUrl: widget.schedule?.appLaunchUrl,
                   )!;
-                  final url = Uri.parse(urlStr);
                   try {
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                    final url = Uri.parse(urlStr);
+                    final launched = await launchUrl(
+                      url,
+                      mode: LaunchMode.externalApplication,
+                    );
+                    if (!launched && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not open link: $urlStr')),
+                      );
+                    }
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(

@@ -57,22 +57,41 @@ void main() {
           );
 
           expect(
-            TaskIntegration.resolveLaunchUrl(
-              title: null,
-              appLaunchUrl: null,
-            ),
+            TaskIntegration.resolveLaunchUrl(title: null, appLaunchUrl: null),
             isNull,
           );
         },
       );
 
-      test('falls back to title check when appLaunchUrl is empty string', () {
+      test('trims whitespace from appLaunchUrl', () {
         final result = TaskIntegration.resolveLaunchUrl(
-          title: 'Duolingo Spanish',
-          appLaunchUrl: '',
+          title: 'Custom Task',
+          appLaunchUrl: '   https://example.com/custom   ',
         );
-        expect(result, 'https://www.duolingo.com');
+        expect(result, 'https://example.com/custom');
       });
+
+      test(
+        'falls back to title check when appLaunchUrl is whitespace-only string',
+        () {
+          final result = TaskIntegration.resolveLaunchUrl(
+            title: 'Duolingo Spanish',
+            appLaunchUrl: '   ',
+          );
+          expect(result, 'https://www.duolingo.com');
+        },
+      );
+
+      test(
+        'returns null when appLaunchUrl is whitespace-only and title does not match',
+        () {
+          final result = TaskIntegration.resolveLaunchUrl(
+            title: 'Read a book',
+            appLaunchUrl: '   \t\n  ',
+          );
+          expect(result, isNull);
+        },
+      );
     });
   });
 }

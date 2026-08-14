@@ -69,6 +69,8 @@ void main() {
   }
 
   final List<Map<String, dynamic>> clipboardStore = [];
+  bool mockUrlLaunchResult = true;
+  bool mockUrlLaunchThrows = false;
 
   setUp(() {
     mockTaskRepository = MockTaskRepository();
@@ -122,6 +124,8 @@ void main() {
     ).thenAnswer((_) async {});
 
     clipboardStore.clear();
+    mockUrlLaunchResult = true;
+    mockUrlLaunchThrows = false;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (
           MethodCall methodCall,
@@ -135,11 +139,36 @@ void main() {
           }
           return null;
         });
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/url_launcher'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'launch') {
+              if (mockUrlLaunchThrows) {
+                throw PlatformException(
+                  code: 'LAUNCH_ERROR',
+                  message: 'Platform launch failed',
+                );
+              }
+              return mockUrlLaunchResult;
+            }
+            if (methodCall.method == 'canLaunch') {
+              return true;
+            }
+            return null;
+          },
+        );
   });
 
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/url_launcher'),
+          null,
+        );
   });
 
   Widget createWidget(TaskSchedule task) {
@@ -374,7 +403,7 @@ void main() {
 
       await tester.pumpWidget(createWidget(customUrlTask));
 
-      expect(find.byKey(const Key('open_duolingo_button')), findsOneWidget);
+      expect(find.byKey(const Key('open_app_url_button')), findsOneWidget);
     },
   );
 
@@ -1329,7 +1358,7 @@ void main() {
       await tester.pumpWidget(createWidget(duolingoTask));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('open_duolingo_button')), findsOneWidget);
+      expect(find.byKey(const Key('open_app_url_button')), findsOneWidget);
 
       final normalTask = TaskSchedule(
         id: 'S-normal',
@@ -1355,7 +1384,7 @@ void main() {
       await tester.pumpWidget(createWidget(normalTask));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('open_duolingo_button')), findsNothing);
+      expect(find.byKey(const Key('open_app_url_button')), findsNothing);
     },
   );
 
@@ -1409,4 +1438,86 @@ void main() {
       matchesGoldenFile('goldens/task_widget_duolingo.png'),
     );
   });
+
+  testWidgets(
+    'TaskWidget displays error SnackBar when launchUrl returns false',
+    (tester) async {
+      mockUrlLaunchResult = false;
+
+      final taskWithUrl = TaskSchedule(
+        id: 'S-url-test',
+        title: 'Task with Launch Link',
+        description: 'Testing launch failure',
+        appLaunchUrl: 'https://example.com/app',
+        schedules: [
+          OneOffSchedule(
+            id: 'R-url-test',
+            scheduleId: 'S-url-test',
+            date: const CivilDay(year: 2026, month: 7, day: 4),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(createWidget(taskWithUrl));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('open_app_url_button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Could not open link: https://example.com/app'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'TaskWidget displays error SnackBar when launchUrl throws an exception',
+    (tester) async {
+      mockUrlLaunchThrows = true;
+
+      final taskWithUrl = TaskSchedule(
+        id: 'S-url-test-throw',
+        title: 'Task with Throwing Launch Link',
+        description: 'Testing launch exception',
+        appLaunchUrl: 'https://example.com/app',
+        schedules: [
+          OneOffSchedule(
+            id: 'R-url-test-throw',
+            scheduleId: 'S-url-test-throw',
+            date: const CivilDay(year: 2026, month: 7, day: 4),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(createWidget(taskWithUrl));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('open_app_url_button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Could not open link: PlatformException(LAUNCH_ERROR, Platform launch failed, null, null)',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 }
