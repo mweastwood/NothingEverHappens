@@ -4,6 +4,35 @@ export 'family_invite_status.dart';
 export 'family_role.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+class FamilyProfile {
+  final String familyId;
+  final String familyRole;
+
+  const FamilyProfile({required this.familyId, required this.familyRole});
+
+  factory FamilyProfile.fromJson(Map<String, dynamic> json) {
+    return FamilyProfile(
+      familyId: json['familyId'] as String? ?? '',
+      familyRole: json['familyRole'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'familyId': familyId, 'familyRole': familyRole};
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is FamilyProfile &&
+        other.familyId == familyId &&
+        other.familyRole == familyRole;
+  }
+
+  @override
+  int get hashCode => Object.hash(familyId, familyRole);
+}
+
 class FamilyMember {
   final String userId;
   final String displayName;

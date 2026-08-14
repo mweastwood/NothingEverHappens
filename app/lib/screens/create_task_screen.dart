@@ -1,4 +1,3 @@
-import 'package:nothing_ever_happens/logic/family_role.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,8 +8,8 @@ import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
-import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import '../logic/family_repository.dart';
+import '../logic/family.dart';
 import '../logic/undo_notifier.dart';
 import '../widgets/undo_snackbar.dart';
 
@@ -732,12 +731,13 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             ?.where((inst) => inst.scheduleId == _taskScheduleId)
             .toList() ??
         const <TaskInstance>[];
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<FamilyProfile>(
       stream: familyRepo?.getProfile() ?? const Stream.empty(),
       builder: (context, snapshot) {
-        final profileData = snapshot.data?.data() ?? {};
-        final familyId = profileData['familyId'] as String? ?? '';
-        final familyRole = profileData['familyRole'] as String? ?? '';
+        final profile =
+            snapshot.data ?? const FamilyProfile(familyId: '', familyRole: '');
+        final familyId = profile.familyId;
+        final familyRole = profile.familyRole;
         final inFamily = familyId.isNotEmpty;
         final isParent = familyRole == FamilyRole.parent.value;
 

@@ -44,6 +44,26 @@ void main() {
       expect(deserialized.name, 'The Simpsons');
       expect(deserialized.members['u1']?.displayName, 'Alice');
     });
+
+    test('FamilyProfile serialization and deserialization', () {
+      final profile = const FamilyProfile(
+        familyId: 'fam-123',
+        familyRole: 'parent',
+      );
+      final json = profile.toJson();
+      expect(json['familyId'], 'fam-123');
+      expect(json['familyRole'], 'parent');
+
+      final deserialized = FamilyProfile.fromJson(json);
+      expect(deserialized.familyId, 'fam-123');
+      expect(deserialized.familyRole, 'parent');
+      expect(deserialized, equals(profile));
+      expect(deserialized.hashCode, equals(profile.hashCode));
+
+      final emptyProfile = FamilyProfile.fromJson({});
+      expect(emptyProfile.familyId, '');
+      expect(emptyProfile.familyRole, '');
+    });
   });
 
   group('FamilyRepository Unit Tests', () {
@@ -500,6 +520,31 @@ void main() {
           .doc(inviteId)
           .get();
       expect(deletedInviteDoc.exists, isFalse);
+    });
+
+    test('getProfile emits FamilyProfile when user document data exists '
+        'or changes in Firestore', () async {
+      final profileStream = repository.getProfile();
+
+      final expectation = expectLater(
+        profileStream,
+        emitsInOrder([
+          const FamilyProfile(familyId: '', familyRole: ''),
+          const FamilyProfile(familyId: 'fam-1', familyRole: 'parent'),
+          const FamilyProfile(familyId: 'fam-1', familyRole: 'non-parent'),
+        ]),
+      );
+
+      await firestore.collection('users').doc(userId).set({
+        'familyId': 'fam-1',
+        'familyRole': 'parent',
+      });
+
+      await firestore.collection('users').doc(userId).update({
+        'familyRole': 'non-parent',
+      });
+
+      await expectation;
     });
   });
 }
