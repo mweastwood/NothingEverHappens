@@ -1263,4 +1263,307 @@ void main() {
       },
     );
   });
+
+  group('advanceAfterCompletion Tests across all TaskScheduleRule subclasses', () {
+    test(
+      'OneOffSchedule advanceAfterCompletion returns null when completed on or before today, and returns this when future',
+      () {
+        final past = OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 8, day: 10),
+        );
+        final todaySchedule = OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 8, day: 14),
+        );
+        final future = OneOffSchedule(
+          date: const CivilDay(year: 2026, month: 8, day: 20),
+        );
+
+        const today = CivilDay(year: 2026, month: 8, day: 14);
+
+        expect(past.advanceAfterCompletion(today), isNull);
+        expect(todaySchedule.advanceAfterCompletion(today), isNull);
+        expect(future.advanceAfterCompletion(today), same(future));
+      },
+    );
+
+    test(
+      'DailySchedule advanceAfterCompletion advances to next occurrence or returns this if future',
+      () {
+        const today = CivilDay(year: 2026, month: 8, day: 14);
+
+        // Daily interval = 1, completed today
+        final daily1 = DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 14),
+          interval: 1,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
+        final advancedDaily1 =
+            daily1.advanceAfterCompletion(today) as DailySchedule?;
+        expect(advancedDaily1, isNotNull);
+        expect(
+          advancedDaily1!.startDate,
+          const CivilDay(year: 2026, month: 8, day: 15),
+        );
+        expect(advancedDaily1.interval, 1);
+        expect(advancedDaily1.startRelativeTime, testStart);
+        expect(advancedDaily1.dueRelativeTime, testDue);
+
+        // Daily interval = 3, completed today
+        final daily3 = DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 14),
+          interval: 3,
+        );
+        final advancedDaily3 =
+            daily3.advanceAfterCompletion(today) as DailySchedule?;
+        expect(advancedDaily3, isNotNull);
+        expect(
+          advancedDaily3!.startDate,
+          const CivilDay(year: 2026, month: 8, day: 17),
+        );
+
+        // Overdue daily schedule (startDate in past)
+        final pastDaily = DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 8),
+          interval: 2,
+        );
+        final advancedPastDaily =
+            pastDaily.advanceAfterCompletion(today) as DailySchedule?;
+        expect(advancedPastDaily, isNotNull);
+        expect(
+          advancedPastDaily!.startDate,
+          const CivilDay(year: 2026, month: 8, day: 16),
+        );
+
+        // Future daily schedule (startDate > today)
+        final futureDaily = DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 20),
+          interval: 1,
+        );
+        expect(futureDaily.advanceAfterCompletion(today), same(futureDaily));
+      },
+    );
+
+    test(
+      'WeeklySchedule advanceAfterCompletion advances to next weekday in schedule or returns this if future',
+      () {
+        // August 10, 2026 is a Monday (1), August 12 is Wed (3), August 14 is Fri (5)
+        final weekly = WeeklySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 1,
+          daysOfWeek: const {1, 3, 5},
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
+
+        // Completed on Monday Aug 10 -> advances to Wednesday Aug 12
+        final monComplete =
+            weekly.advanceAfterCompletion(
+                  const CivilDay(year: 2026, month: 8, day: 10),
+                )
+                as WeeklySchedule?;
+        expect(monComplete, isNotNull);
+        expect(
+          monComplete!.startDate,
+          const CivilDay(year: 2026, month: 8, day: 12),
+        );
+        expect(monComplete.daysOfWeek, const {1, 3, 5});
+        expect(monComplete.interval, 1);
+
+        // Completed on Friday Aug 14 -> advances to Monday Aug 17
+        final friComplete =
+            weekly.advanceAfterCompletion(
+                  const CivilDay(year: 2026, month: 8, day: 14),
+                )
+                as WeeklySchedule?;
+        expect(friComplete, isNotNull);
+        expect(
+          friComplete!.startDate,
+          const CivilDay(year: 2026, month: 8, day: 17),
+        );
+
+        // Future weekly schedule
+        final futureWeekly = WeeklySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 24),
+          interval: 1,
+          daysOfWeek: const {1},
+        );
+        expect(
+          futureWeekly.advanceAfterCompletion(
+            const CivilDay(year: 2026, month: 8, day: 14),
+          ),
+          same(futureWeekly),
+        );
+      },
+    );
+
+    test(
+      'MonthlySchedule advanceAfterCompletion advances monthly occurrences properly',
+      () {
+        // Fixed dayOfMonth = 15, interval = 1
+        final monthlyDay15 = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 15),
+          interval: 1,
+          dayOfMonth: 15,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
+        final advancedMonthly1 =
+            monthlyDay15.advanceAfterCompletion(
+                  const CivilDay(year: 2026, month: 1, day: 15),
+                )
+                as MonthlySchedule?;
+        expect(advancedMonthly1, isNotNull);
+        expect(
+          advancedMonthly1!.startDate,
+          const CivilDay(year: 2026, month: 2, day: 15),
+        );
+        expect(advancedMonthly1.dayOfMonth, 15);
+        expect(advancedMonthly1.interval, 1);
+
+        // Fixed dayOfMonth = 15, interval = 2
+        final monthlyInterval2 = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 15),
+          interval: 2,
+          dayOfMonth: 15,
+        );
+        final advancedMonthly2 =
+            monthlyInterval2.advanceAfterCompletion(
+                  const CivilDay(year: 2026, month: 1, day: 15),
+                )
+                as MonthlySchedule?;
+        expect(advancedMonthly2, isNotNull);
+        expect(
+          advancedMonthly2!.startDate,
+          const CivilDay(year: 2026, month: 3, day: 15),
+        );
+
+        // Negative dayOfMonth = -1 (last day of month)
+        final monthlyLastDay = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 31),
+          interval: 1,
+          dayOfMonth: -1,
+        );
+        final advancedLastDay =
+            monthlyLastDay.advanceAfterCompletion(
+                  const CivilDay(year: 2026, month: 1, day: 31),
+                )
+                as MonthlySchedule?;
+        expect(advancedLastDay, isNotNull);
+        expect(
+          advancedLastDay!.startDate,
+          const CivilDay(year: 2026, month: 2, day: 28),
+        );
+
+        // Nth day of week: 2nd Tuesday (in Jan 2026: Jan 13, in Feb 2026: Feb 10)
+        final monthlyNthWeekday = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 1, day: 13),
+          interval: 1,
+          dayOfWeek: 2,
+          occurrence: 2,
+        );
+        final advancedNthWeekday =
+            monthlyNthWeekday.advanceAfterCompletion(
+                  const CivilDay(year: 2026, month: 1, day: 13),
+                )
+                as MonthlySchedule?;
+        expect(advancedNthWeekday, isNotNull);
+        expect(
+          advancedNthWeekday!.startDate,
+          const CivilDay(year: 2026, month: 2, day: 10),
+        );
+
+        // Future monthly schedule
+        final futureMonthly = MonthlySchedule(
+          startDate: const CivilDay(year: 2026, month: 10, day: 15),
+          interval: 1,
+          dayOfMonth: 15,
+        );
+        expect(
+          futureMonthly.advanceAfterCompletion(
+            const CivilDay(year: 2026, month: 8, day: 14),
+          ),
+          same(futureMonthly),
+        );
+      },
+    );
+
+    test(
+      'YearlySchedule advanceAfterCompletion advances yearly occurrences properly',
+      () {
+        // Annual Oct 24, interval = 1
+        final yearly1 = YearlySchedule(
+          startDate: const CivilDay(year: 2026, month: 10, day: 24),
+          interval: 1,
+          month: 10,
+          day: 24,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
+        final advancedYearly1 =
+            yearly1.advanceAfterCompletion(
+                  const CivilDay(year: 2026, month: 10, day: 24),
+                )
+                as YearlySchedule?;
+        expect(advancedYearly1, isNotNull);
+        expect(
+          advancedYearly1!.startDate,
+          const CivilDay(year: 2027, month: 10, day: 24),
+        );
+        expect(advancedYearly1.month, 10);
+        expect(advancedYearly1.day, 24);
+        expect(advancedYearly1.interval, 1);
+
+        // Multi-year Oct 24, interval = 3
+        final yearly3 = YearlySchedule(
+          startDate: const CivilDay(year: 2026, month: 10, day: 24),
+          interval: 3,
+          month: 10,
+          day: 24,
+        );
+        final advancedYearly3 =
+            yearly3.advanceAfterCompletion(
+                  const CivilDay(year: 2026, month: 10, day: 24),
+                )
+                as YearlySchedule?;
+        expect(advancedYearly3, isNotNull);
+        expect(
+          advancedYearly3!.startDate,
+          const CivilDay(year: 2029, month: 10, day: 24),
+        );
+
+        // Leap day Feb 29
+        final yearlyLeap = YearlySchedule(
+          startDate: const CivilDay(year: 2024, month: 2, day: 29),
+          interval: 1,
+          month: 2,
+          day: 29,
+        );
+        final advancedLeap =
+            yearlyLeap.advanceAfterCompletion(
+                  const CivilDay(year: 2024, month: 2, day: 29),
+                )
+                as YearlySchedule?;
+        expect(advancedLeap, isNotNull);
+        expect(
+          advancedLeap!.startDate,
+          const CivilDay(year: 2028, month: 2, day: 29),
+        );
+
+        // Future yearly schedule
+        final futureYearly = YearlySchedule(
+          startDate: const CivilDay(year: 2027, month: 5, day: 1),
+          interval: 1,
+          month: 5,
+          day: 1,
+        );
+        expect(
+          futureYearly.advanceAfterCompletion(
+            const CivilDay(year: 2026, month: 8, day: 14),
+          ),
+          same(futureYearly),
+        );
+      },
+    );
+  });
 }

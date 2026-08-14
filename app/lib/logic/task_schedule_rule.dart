@@ -95,9 +95,6 @@ abstract class TaskScheduleRule {
     MissedOccurrencePolicy? missedOccurrencePolicy,
   });
 
-  /// Checks if this rule has the same recurrence pattern as [other].
-  bool hasSameRecurrence(TaskScheduleRule other);
-
   /// Returns the next schedule rule after completing on or before [today],
   /// or `null` if this rule should be removed (e.g., a completed one-off).
   ///
@@ -275,12 +272,6 @@ class OneOffSchedule extends TaskScheduleRule {
             .map((t) => t.toJson())
             .toList(),
     };
-  }
-
-  @override
-  bool hasSameRecurrence(TaskScheduleRule other) {
-    if (other is! OneOffSchedule) return false;
-    return date == other.date;
   }
 }
 
@@ -477,12 +468,6 @@ class DailySchedule extends TaskScheduleRule {
             .map((t) => t.toJson())
             .toList(),
     };
-  }
-
-  @override
-  bool hasSameRecurrence(TaskScheduleRule other) {
-    if (other is! DailySchedule) return false;
-    return interval == other.interval;
   }
 }
 
@@ -743,14 +728,6 @@ class WeeklySchedule extends TaskScheduleRule {
             .map((t) => t.toJson())
             .toList(),
     };
-  }
-
-  @override
-  bool hasSameRecurrence(TaskScheduleRule other) {
-    if (other is! WeeklySchedule) return false;
-    if (interval != other.interval) return false;
-    return daysOfWeek.length == other.daysOfWeek.length &&
-        daysOfWeek.containsAll(other.daysOfWeek);
   }
 }
 
