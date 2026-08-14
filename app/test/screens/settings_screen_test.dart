@@ -18,7 +18,7 @@ import 'settings_screen_test.mocks.dart';
 
 class MockAppStateExporter extends Mock implements AppStateExporter {
   @override
-  Future<void> shareDebugState(BuildContext context) =>
+  Future<void> shareDebugState(BuildContext? context) =>
       (super.noSuchMethod(
             Invocation.method(#shareDebugState, [context]),
             returnValue: Future<void>.value(),
@@ -206,9 +206,7 @@ void main() {
   testWidgets(
     'SettingsScreen triggers export debug state when export button is tapped',
     (WidgetTester tester) async {
-      when(
-        mockExporter.shareDebugState(argThat(isNotNull) as BuildContext),
-      ).thenAnswer((_) async {});
+      when(mockExporter.shareDebugState(any)).thenAnswer((_) async {});
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -221,9 +219,7 @@ void main() {
       await tester.tap(exportButtonFinder);
       await tester.pumpAndSettle();
 
-      verify(
-        mockExporter.shareDebugState(argThat(isNotNull) as BuildContext),
-      ).called(1);
+      verify(mockExporter.shareDebugState(any)).called(1);
     },
   );
 }
