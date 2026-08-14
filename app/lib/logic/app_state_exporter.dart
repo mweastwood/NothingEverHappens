@@ -45,10 +45,10 @@ class AppStateExporter {
     AuthRepository? authRepository,
     required HiveLocalDataSource hiveDataSource,
     ErrorHandler? errorHandler,
-  })  : _firestore = firestore,
-        _authRepository = authRepository,
-        _hiveDataSource = hiveDataSource,
-        _errorHandler = errorHandler;
+  }) : _firestore = firestore,
+       _authRepository = authRepository,
+       _hiveDataSource = hiveDataSource,
+       _errorHandler = errorHandler;
 
   static String? maskEmail(String? email) {
     if (email == null) return null;
@@ -148,8 +148,9 @@ class AppStateExporter {
         'isAnonymous': user.isAnonymous,
         'emailVerified': user.emailVerified,
         'creationTime': user.metadata.creationTime?.toUtc().toIso8601String(),
-        'lastSignInTime':
-            user.metadata.lastSignInTime?.toUtc().toIso8601String(),
+        'lastSignInTime': user.metadata.lastSignInTime
+            ?.toUtc()
+            .toIso8601String(),
       };
     }
 
@@ -182,8 +183,9 @@ class AppStateExporter {
       final phase1Futures = <Future<void>>[
         () async {
           try {
-            final userDocSnap =
-                await userDocRef.get().timeout(const Duration(seconds: 5));
+            final userDocSnap = await userDocRef.get().timeout(
+              const Duration(seconds: 5),
+            );
             final userProfileData = userDocSnap.data();
             if (userDocSnap.exists && userProfileData != null) {
               remoteFirebaseState['userProfileDoc'] = userProfileData;
@@ -271,8 +273,9 @@ class AppStateExporter {
         final phase2Futures = <Future<void>>[
           () async {
             try {
-              final familySnap =
-                  await familyRef.get().timeout(const Duration(seconds: 5));
+              final familySnap = await familyRef.get().timeout(
+                const Duration(seconds: 5),
+              );
               if (familySnap.exists && familySnap.data() != null) {
                 remoteFirebaseState['familyDoc'] = {
                   'id': familySnap.id,
@@ -304,8 +307,7 @@ class AppStateExporter {
                   .limit(500)
                   .get()
                   .timeout(const Duration(seconds: 5));
-              remoteFirebaseState['familyInstances'] = familyInstancesQuery
-                  .docs
+              remoteFirebaseState['familyInstances'] = familyInstancesQuery.docs
                   .map((doc) => {'id': doc.id, ...doc.data()})
                   .toList();
             } catch (e) {
@@ -413,22 +415,15 @@ class AppStateExporter {
     if (value is Iterable) {
       return value
           .map(
-            (e) => sanitizeForJson(
-              e,
-              isEmailKey: isEmailKey,
-              isPiiKey: isPiiKey,
-            ),
+            (e) =>
+                sanitizeForJson(e, isEmailKey: isEmailKey, isPiiKey: isPiiKey),
           )
           .toList();
     }
 
     try {
       final dynamic json = (value as dynamic).toJson();
-      return sanitizeForJson(
-        json,
-        isEmailKey: isEmailKey,
-        isPiiKey: isPiiKey,
-      );
+      return sanitizeForJson(json, isEmailKey: isEmailKey, isPiiKey: isPiiKey);
     } catch (_) {
       final str = value.toString();
       if (isEmailKey) return maskEmail(str);
@@ -539,9 +534,7 @@ class AppStateExporter {
           await Clipboard.setData(ClipboardData(text: jsonString));
           if (!context.mounted) return;
           ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.debugStateCopiedToClipboard),
-            ),
+            SnackBar(content: Text(context.l10n.debugStateCopiedToClipboard)),
           );
         }
       } finally {

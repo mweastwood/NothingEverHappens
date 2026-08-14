@@ -84,302 +84,278 @@ void main() {
     test(
       'sanitizeForJson converts complex types and masks email and PII fields',
       () {
+        final exporter = AppStateExporter(hiveDataSource: localDataSource);
+
+        final now = DateTime.utc(2026, 8, 12, 5, 0, 0);
+        final timestamp = Timestamp.fromDate(now);
+        final civilDay = const CivilDay(year: 2026, month: 8, day: 12);
+        final relativeTime = const RelativeTime(
+          dayOffset: 1,
+          time: TimeOfDay(hour: 14, minute: 30),
+        );
+        final duration = const Duration(minutes: 45);
+
+        final rawData = {
+          'dateTime': now,
+          'timestamp': timestamp,
+          'civilDay': civilDay,
+          'relativeTime': relativeTime,
+          'duration': duration,
+          'priority': TaskPriority.high,
+          'email': 'user@example.com',
+          'toEmail': 'invitee@example.com',
+          'fromEmail': 'inviter@example.com',
+          'emails': ['one@example.com', 'two@example.com'],
+          'primary_email': 'primary@example.com',
+          'email_address': 'address@example.com',
+          'displayName': 'John Doe',
+          'phoneNumber': '+15551234567',
+          'phoneNumbers': ['+15551234567', '+15559876543'],
+          'photoURL': 'https://example.com/avatar.png',
+          'title': 'Secret task',
+          'description': 'Sensitive details',
+          'notes': 'Private notes',
+          'bio': 'Developer bio',
+          'bios': ['First bio', 'Second bio'],
+          'sender': 'Alice Sender',
+          'recipient': 'Bob Recipient',
+          'inviter': 'Charlie Inviter',
+          'invitee': 'David Invitee',
+          'member': 'Eve Member',
+          'nestedMap': {
+            'list': [now, timestamp, civilDay],
+            'userEmail': 'nested@example.com',
+            'comment': 'Private comment',
+          },
+        };
+
+        final sanitized = exporter.sanitizeForJson(rawData);
+        expect(sanitized, isA<Map<String, dynamic>>());
+        expect(sanitized['dateTime'], '2026-08-12T05:00:00.000Z');
+        expect(sanitized['timestamp'], '2026-08-12T05:00:00.000Z');
+        expect(sanitized['civilDay'], {'year': 2026, 'month': 8, 'day': 12});
+        expect(sanitized['relativeTime'], {
+          'dayOffset': 1,
+          'hour': 14,
+          'minute': 30,
+        });
+        expect(sanitized['duration'], 2700000);
+        expect(sanitized['priority'], 'high');
+        expect(sanitized['email'], 'u***@example.com');
+        expect(sanitized['toEmail'], 'i***@example.com');
+        expect(sanitized['fromEmail'], 'i***@example.com');
+        expect(sanitized['emails'], ['o***@example.com', 't***@example.com']);
+        expect(sanitized['primary_email'], 'p***@example.com');
+        expect(sanitized['email_address'], 'a***@example.com');
+        expect(sanitized['displayName'], 'J***');
+        expect(sanitized['phoneNumber'], '+***');
+        expect(sanitized['phoneNumbers'], ['+***', '+***']);
+        expect(sanitized['photoURL'], 'h***');
+        expect(sanitized['title'], 'Secret task');
+        expect(sanitized['description'], 'Sensitive details');
+        expect(sanitized['notes'], 'Private notes');
+        expect(sanitized['bio'], 'D***');
+        expect(sanitized['bios'], ['F***', 'S***']);
+        expect(sanitized['sender'], 'A***');
+        expect(sanitized['recipient'], 'B***');
+        expect(sanitized['inviter'], 'C***');
+        expect(sanitized['invitee'], 'D***');
+        expect(sanitized['member'], 'E***');
+        expect(sanitized['nestedMap']['userEmail'], 'n***@example.com');
+        expect(sanitized['nestedMap']['comment'], 'Private comment');
+
+        final jsonString = jsonEncode(sanitized);
+        expect(jsonString, isNotEmpty);
+      },
+    );
+
+    test('sanitizeForJson preserves object IDs, roles, and status fields '
+        'inside nested member or invite objects', () {
       final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
-      final now = DateTime.utc(2026, 8, 12, 5, 0, 0);
-      final timestamp = Timestamp.fromDate(now);
-      final civilDay = const CivilDay(year: 2026, month: 8, day: 12);
-      final relativeTime = const RelativeTime(
-        dayOffset: 1,
-        time: TimeOfDay(hour: 14, minute: 30),
-      );
-      final duration = const Duration(minutes: 45);
+      final rawData = {
+        'memberId': 'user-123',
+        'inviterId': 'user-456',
+        'inviteeId': 'user-789',
+        'userId': 'user-000',
+        'member_id': 'user-111',
+        'memberIds': ['user_123', 'user_456'],
+        'member_ids': ['user_789', 'user_000'],
+        'member': {
+          'id': 'u123',
+          'role': 'admin',
+          'status': 'active',
+          'displayName': 'Eve Member',
+          'joinedAt': DateTime.utc(2026, 1, 1),
+        },
+        'inviter': {
+          'id': 'u456',
+          'role': 'member',
+          'status': 'pending',
+          'email': 'inviter@example.com',
+          'name': 'Charlie Inviter',
+        },
+        'invitee': {
+          'id': 'u789',
+          'role': 'viewer',
+          'status': 'accepted',
+          'email': 'invitee@example.com',
+          'name': 'David Invitee',
+        },
+        'membersList': [
+          {
+            'id': 'u999',
+            'role': 'owner',
+            'status': 'active',
+            'displayName': 'Frank Member',
+          },
+        ],
+        'members': {'user-123': 'admin', 'user-456': 'owner'},
+      };
+
+      final sanitized = exporter.sanitizeForJson(rawData);
+
+      expect(sanitized['memberId'], 'user-123');
+      expect(sanitized['inviterId'], 'user-456');
+      expect(sanitized['inviteeId'], 'user-789');
+      expect(sanitized['userId'], 'user-000');
+      expect(sanitized['member_id'], 'user-111');
+      expect(sanitized['memberIds'], ['user_123', 'user_456']);
+      expect(sanitized['member_ids'], ['user_789', 'user_000']);
+
+      expect(sanitized['member']['id'], 'u123');
+      expect(sanitized['member']['role'], 'admin');
+      expect(sanitized['member']['status'], 'active');
+      expect(sanitized['member']['displayName'], 'E***');
+      expect(sanitized['member']['joinedAt'], '2026-01-01T00:00:00.000Z');
+
+      expect(sanitized['inviter']['id'], 'u456');
+      expect(sanitized['inviter']['role'], 'member');
+      expect(sanitized['inviter']['status'], 'pending');
+      expect(sanitized['inviter']['email'], 'i***@example.com');
+      expect(sanitized['inviter']['name'], 'C***');
+
+      expect(sanitized['invitee']['id'], 'u789');
+      expect(sanitized['invitee']['role'], 'viewer');
+      expect(sanitized['invitee']['status'], 'accepted');
+      expect(sanitized['invitee']['email'], 'i***@example.com');
+      expect(sanitized['invitee']['name'], 'D***');
+
+      expect(sanitized['membersList'][0]['id'], 'u999');
+      expect(sanitized['membersList'][0]['role'], 'owner');
+      expect(sanitized['membersList'][0]['status'], 'active');
+      expect(sanitized['membersList'][0]['displayName'], 'F***');
+
+      expect(sanitized['members']['user-123'], 'admin');
+      expect(sanitized['members']['user-456'], 'owner');
+    });
+
+    test('sanitizeForJson masks child properties of parent PII maps '
+        'while keeping non-PII keys unmasked', () {
+      final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
       final rawData = {
-        'dateTime': now,
-        'timestamp': timestamp,
-        'civilDay': civilDay,
-        'relativeTime': relativeTime,
-        'duration': duration,
-        'priority': TaskPriority.high,
-        'email': 'user@example.com',
-        'toEmail': 'invitee@example.com',
-        'fromEmail': 'inviter@example.com',
-        'emails': ['one@example.com', 'two@example.com'],
-        'primary_email': 'primary@example.com',
-        'email_address': 'address@example.com',
-        'displayName': 'John Doe',
-        'phoneNumber': '+15551234567',
-        'phoneNumbers': ['+15551234567', '+15559876543'],
-        'photoURL': 'https://example.com/avatar.png',
-        'title': 'Secret task',
-        'description': 'Sensitive details',
-        'notes': 'Private notes',
-        'bio': 'Developer bio',
-        'bios': ['First bio', 'Second bio'],
-        'sender': 'Alice Sender',
-        'recipient': 'Bob Recipient',
-        'inviter': 'Charlie Inviter',
-        'invitee': 'David Invitee',
-        'member': 'Eve Member',
-        'nestedMap': {
-          'list': [now, timestamp, civilDay],
-          'userEmail': 'nested@example.com',
-          'comment': 'Private comment',
+        'profile': {
+          'id': 'p123',
+          'nickname': 'Johnny',
+          'bio': 'Software developer',
+          'details': 'Hidden info',
         },
       };
 
       final sanitized = exporter.sanitizeForJson(rawData);
-      expect(sanitized, isA<Map<String, dynamic>>());
-      expect(sanitized['dateTime'], '2026-08-12T05:00:00.000Z');
-      expect(sanitized['timestamp'], '2026-08-12T05:00:00.000Z');
-      expect(sanitized['civilDay'], {'year': 2026, 'month': 8, 'day': 12});
-      expect(sanitized['relativeTime'], {
-        'dayOffset': 1,
-        'hour': 14,
-        'minute': 30,
-      });
-      expect(sanitized['duration'], 2700000);
-      expect(sanitized['priority'], 'high');
-      expect(sanitized['email'], 'u***@example.com');
-      expect(sanitized['toEmail'], 'i***@example.com');
-      expect(sanitized['fromEmail'], 'i***@example.com');
-      expect(sanitized['emails'], ['o***@example.com', 't***@example.com']);
-      expect(sanitized['primary_email'], 'p***@example.com');
-      expect(sanitized['email_address'], 'a***@example.com');
-      expect(sanitized['displayName'], 'J***');
-      expect(sanitized['phoneNumber'], '+***');
-      expect(sanitized['phoneNumbers'], ['+***', '+***']);
-      expect(sanitized['photoURL'], 'h***');
-      expect(sanitized['title'], 'Secret task');
-      expect(sanitized['description'], 'Sensitive details');
-      expect(sanitized['notes'], 'Private notes');
-      expect(sanitized['bio'], 'D***');
-      expect(sanitized['bios'], ['F***', 'S***']);
-      expect(sanitized['sender'], 'A***');
-      expect(sanitized['recipient'], 'B***');
-      expect(sanitized['inviter'], 'C***');
-      expect(sanitized['invitee'], 'D***');
-      expect(sanitized['member'], 'E***');
-      expect(sanitized['nestedMap']['userEmail'], 'n***@example.com');
-      expect(sanitized['nestedMap']['comment'], 'Private comment');
 
-      final jsonString = jsonEncode(sanitized);
-      expect(jsonString, isNotEmpty);
+      expect(sanitized['profile']['id'], 'p123');
+      expect(sanitized['profile']['nickname'], 'J***');
+      expect(sanitized['profile']['bio'], 'S***');
+      expect(sanitized['profile']['details'], 'H***');
     });
 
-    test(
-      'sanitizeForJson preserves object IDs, roles, and status fields '
-      'inside nested member or invite objects',
-      () {
-        final exporter = AppStateExporter(hiveDataSource: localDataSource);
+    test('sanitizeForJson masks dictionary words ending in id inside PII maps '
+        'without falsely matching non-PII key filter', () {
+      final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
-        final rawData = {
-          'memberId': 'user-123',
-          'inviterId': 'user-456',
-          'inviteeId': 'user-789',
-          'userId': 'user-000',
-          'member_id': 'user-111',
-          'memberIds': ['user_123', 'user_456'],
-          'member_ids': ['user_789', 'user_000'],
-          'member': {
-            'id': 'u123',
-            'role': 'admin',
-            'status': 'active',
-            'displayName': 'Eve Member',
-            'joinedAt': DateTime.utc(2026, 1, 1),
-          },
-          'inviter': {
-            'id': 'u456',
-            'role': 'member',
-            'status': 'pending',
-            'email': 'inviter@example.com',
-            'name': 'Charlie Inviter',
-          },
-          'invitee': {
-            'id': 'u789',
-            'role': 'viewer',
-            'status': 'accepted',
-            'email': 'invitee@example.com',
-            'name': 'David Invitee',
-          },
-          'membersList': [
-            {
-              'id': 'u999',
-              'role': 'owner',
-              'status': 'active',
-              'displayName': 'Frank Member',
-            }
-          ],
-          'members': {
-            'user-123': 'admin',
-            'user-456': 'owner',
-          },
-        };
+      final rawData = {
+        'member': {
+          'id': 'u123',
+          'memberId': 'm456',
+          'user_id': 'u789',
+          'android': 'device_info',
+          'paid': 'subscription_status',
+          'grid': 'grid_layout_data',
+          'liquid': 'fluid_asset_data',
+        },
+      };
 
-        final sanitized = exporter.sanitizeForJson(rawData);
+      final sanitized = exporter.sanitizeForJson(rawData);
 
-        expect(sanitized['memberId'], 'user-123');
-        expect(sanitized['inviterId'], 'user-456');
-        expect(sanitized['inviteeId'], 'user-789');
-        expect(sanitized['userId'], 'user-000');
-        expect(sanitized['member_id'], 'user-111');
-        expect(sanitized['memberIds'], ['user_123', 'user_456']);
-        expect(sanitized['member_ids'], ['user_789', 'user_000']);
+      // Standard ID keys are preserved
+      expect(sanitized['member']['id'], 'u123');
+      expect(sanitized['member']['memberId'], 'm456');
+      expect(sanitized['member']['user_id'], 'u789');
 
-        expect(sanitized['member']['id'], 'u123');
-        expect(sanitized['member']['role'], 'admin');
-        expect(sanitized['member']['status'], 'active');
-        expect(sanitized['member']['displayName'], 'E***');
-        expect(sanitized['member']['joinedAt'], '2026-01-01T00:00:00.000Z');
+      // Words ending in 'id' inside PII maps are masked as PII
+      expect(sanitized['member']['android'], 'd***');
+      expect(sanitized['member']['paid'], 's***');
+      expect(sanitized['member']['grid'], 'g***');
+      expect(sanitized['member']['liquid'], 'f***');
+    });
 
-        expect(sanitized['inviter']['id'], 'u456');
-        expect(sanitized['inviter']['role'], 'member');
-        expect(sanitized['inviter']['status'], 'pending');
-        expect(sanitized['inviter']['email'], 'i***@example.com');
-        expect(sanitized['inviter']['name'], 'C***');
+    test('sanitizeForJson preserves parent PII and email flags '
+        'when recursing into nested maps', () {
+      final exporter = AppStateExporter(hiveDataSource: localDataSource);
 
-        expect(sanitized['invitee']['id'], 'u789');
-        expect(sanitized['invitee']['role'], 'viewer');
-        expect(sanitized['invitee']['status'], 'accepted');
-        expect(sanitized['invitee']['email'], 'i***@example.com');
-        expect(sanitized['invitee']['name'], 'D***');
+      final rawData = {
+        'member': {'nickname': 'SuperAlice', 'details': 'Private user details'},
+        'profile': {'userBio': 'Personal description'},
+        'emailContainer': {'value': 'nested_contact@example.com'},
+      };
 
-        expect(sanitized['membersList'][0]['id'], 'u999');
-        expect(sanitized['membersList'][0]['role'], 'owner');
-        expect(sanitized['membersList'][0]['status'], 'active');
-        expect(sanitized['membersList'][0]['displayName'], 'F***');
+      final sanitized = exporter.sanitizeForJson(rawData);
 
-        expect(sanitized['members']['user-123'], 'admin');
-        expect(sanitized['members']['user-456'], 'owner');
-      },
-    );
+      expect(sanitized['member']['nickname'], 'S***');
+      expect(sanitized['member']['details'], 'P***');
+      expect(sanitized['profile']['userBio'], 'P***');
+      expect(sanitized['emailContainer']['value'], 'n***@example.com');
+    });
 
-    test(
-      'sanitizeForJson masks child properties of parent PII maps '
-      'while keeping non-PII keys unmasked',
-      () {
-        final exporter = AppStateExporter(hiveDataSource: localDataSource);
+    test('exportStateRaw falls back to local settings/state for familyId '
+        'when userProfileDoc query fails', () async {
+      final fakeFirestore = FakeFirebaseFirestore();
+      final mockUser = MockUser();
+      final mockAuthRepo = MockAuthRepository(mockUser);
 
-        final rawData = {
-          'profile': {
-            'id': 'p123',
-            'nickname': 'Johnny',
-            'bio': 'Software developer',
-            'details': 'Hidden info',
-          },
-        };
+      await localDataSource.saveSettings(
+        const UserSettings(hoursAvailable: 8.0),
+      );
+      localDataSource.exportRawState()['settings']['familyId'] =
+          'fallback-fam-123';
 
-        final sanitized = exporter.sanitizeForJson(rawData);
+      await fakeFirestore.collection('families').doc('fallback-fam-123').set({
+        'name': 'Fallback Family Name',
+      });
+      await fakeFirestore
+          .collection('families')
+          .doc('fallback-fam-123')
+          .collection('tasks')
+          .doc('ftask-1')
+          .set({'title': 'Fallback Task'});
 
-        expect(sanitized['profile']['id'], 'p123');
-        expect(sanitized['profile']['nickname'], 'J***');
-        expect(sanitized['profile']['bio'], 'S***');
-        expect(sanitized['profile']['details'], 'H***');
-      },
-    );
+      final exporter = AppStateExporter(
+        firestore: fakeFirestore,
+        authRepository: mockAuthRepo,
+        hiveDataSource: localDataSource,
+      );
 
-    test(
-      'sanitizeForJson masks dictionary words ending in id inside PII maps '
-      'without falsely matching non-PII key filter',
-      () {
-        final exporter = AppStateExporter(hiveDataSource: localDataSource);
+      final raw = await exporter.exportStateRaw();
+      final remoteState = raw['remoteFirebaseState'];
 
-        final rawData = {
-          'member': {
-            'id': 'u123',
-            'memberId': 'm456',
-            'user_id': 'u789',
-            'android': 'device_info',
-            'paid': 'subscription_status',
-            'grid': 'grid_layout_data',
-            'liquid': 'fluid_asset_data',
-          },
-        };
-
-        final sanitized = exporter.sanitizeForJson(rawData);
-
-        // Standard ID keys are preserved
-        expect(sanitized['member']['id'], 'u123');
-        expect(sanitized['member']['memberId'], 'm456');
-        expect(sanitized['member']['user_id'], 'u789');
-
-        // Words ending in 'id' inside PII maps are masked as PII
-        expect(sanitized['member']['android'], 'd***');
-        expect(sanitized['member']['paid'], 's***');
-        expect(sanitized['member']['grid'], 'g***');
-        expect(sanitized['member']['liquid'], 'f***');
-      },
-    );
-
-    test(
-      'sanitizeForJson preserves parent PII and email flags '
-      'when recursing into nested maps',
-      () {
-        final exporter = AppStateExporter(hiveDataSource: localDataSource);
-
-        final rawData = {
-          'member': {
-            'nickname': 'SuperAlice',
-            'details': 'Private user details',
-          },
-          'profile': {
-            'userBio': 'Personal description',
-          },
-          'emailContainer': {
-            'value': 'nested_contact@example.com',
-          },
-        };
-
-        final sanitized = exporter.sanitizeForJson(rawData);
-
-        expect(sanitized['member']['nickname'], 'S***');
-        expect(sanitized['member']['details'], 'P***');
-        expect(sanitized['profile']['userBio'], 'P***');
-        expect(sanitized['emailContainer']['value'], 'n***@example.com');
-      },
-    );
-
-    test(
-      'exportStateRaw falls back to local settings/state for familyId '
-      'when userProfileDoc query fails',
-      () async {
-        final fakeFirestore = FakeFirebaseFirestore();
-        final mockUser = MockUser();
-        final mockAuthRepo = MockAuthRepository(mockUser);
-
-        await localDataSource.saveSettings(
-          const UserSettings(hoursAvailable: 8.0),
-        );
-        localDataSource.exportRawState()['settings']['familyId'] =
-            'fallback-fam-123';
-
-        await fakeFirestore.collection('families').doc('fallback-fam-123').set({
-          'name': 'Fallback Family Name',
-        });
-        await fakeFirestore
-            .collection('families')
-            .doc('fallback-fam-123')
-            .collection('tasks')
-            .doc('ftask-1')
-            .set({'title': 'Fallback Task'});
-
-        final exporter = AppStateExporter(
-          firestore: fakeFirestore,
-          authRepository: mockAuthRepo,
-          hiveDataSource: localDataSource,
-        );
-
-        final raw = await exporter.exportStateRaw();
-        final remoteState = raw['remoteFirebaseState'];
-
-        expect(remoteState['familyDoc'], isNotNull);
-        expect(remoteState['familyDoc']['id'], 'fallback-fam-123');
-        expect(remoteState['familyDoc']['name'], 'F***');
-        expect(remoteState['familyTasks'], hasLength(1));
-        expect(remoteState['familyTasks'][0]['id'], 'ftask-1');
-      },
-    );
+      expect(remoteState['familyDoc'], isNotNull);
+      expect(remoteState['familyDoc']['id'], 'fallback-fam-123');
+      expect(remoteState['familyDoc']['name'], 'F***');
+      expect(remoteState['familyTasks'], hasLength(1));
+      expect(remoteState['familyTasks'][0]['id'], 'ftask-1');
+    });
 
     test(
       'exportStateRaw assembles Hive and FakeFirestore state correctly',
@@ -524,35 +500,32 @@ void main() {
       expect(decoded['exportMetadata'], isNotNull);
     });
 
-    test(
-      'exportStateRaw keeps isOffline false '
-      'when partial query error occurs online',
-      () async {
-        final fakeFirestore = FakeFirebaseFirestore();
-        final mockUser = MockUser();
-        final mockAuthRepo = MockAuthRepository(mockUser);
+    test('exportStateRaw keeps isOffline false '
+        'when partial query error occurs online', () async {
+      final fakeFirestore = FakeFirebaseFirestore();
+      final mockUser = MockUser();
+      final mockAuthRepo = MockAuthRepository(mockUser);
 
-        // Populate basic user doc so Firestore is initialized & user is
-        // authenticated
-        await fakeFirestore.collection('users').doc('user-123').set({
-          'displayName': 'Test User',
-          'email': 'test@example.com',
-        });
+      // Populate basic user doc so Firestore is initialized & user is
+      // authenticated
+      await fakeFirestore.collection('users').doc('user-123').set({
+        'displayName': 'Test User',
+        'email': 'test@example.com',
+      });
 
-        final exporter = AppStateExporter(
-          firestore: fakeFirestore,
-          authRepository: mockAuthRepo,
-          hiveDataSource: localDataSource,
-        );
+      final exporter = AppStateExporter(
+        firestore: fakeFirestore,
+        authRepository: mockAuthRepo,
+        hiveDataSource: localDataSource,
+      );
 
-        final raw = await exporter.exportStateRaw();
-        final exportMeta = raw['exportMetadata'];
-        final remoteState = raw['remoteFirebaseState'];
+      final raw = await exporter.exportStateRaw();
+      final exportMeta = raw['exportMetadata'];
+      final remoteState = raw['remoteFirebaseState'];
 
-        expect(exportMeta['isOffline'], isFalse);
-        expect(remoteState['status'], 'success');
-      },
-    );
+      expect(exportMeta['isOffline'], isFalse);
+      expect(remoteState['status'], 'success');
+    });
 
     testWidgets(
       'shareDebugState completes fast without 2-second timeout delay',

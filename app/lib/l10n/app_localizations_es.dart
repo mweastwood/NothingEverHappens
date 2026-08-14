@@ -481,8 +481,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'JSON de estado de depuración copiado al portapapeles.';
 
   @override
-  String get debugStateShareSubject =>
-      'Exportación de estado de depuración';
+  String get debugStateShareSubject => 'Exportación de estado de depuración';
 
   @override
   String get debugStateShareText =>

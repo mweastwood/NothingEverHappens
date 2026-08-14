@@ -89,10 +89,7 @@ void main() {
     await tester.tap(saveButtonFinder);
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Please enter a number between 0 and 24'),
-      findsOneWidget,
-    );
+    expect(find.text('Please enter a number between 0 and 24'), findsOneWidget);
     verifyNever(mockRepository.updateSettings(any));
   });
 
@@ -145,9 +142,7 @@ void main() {
     await screenMatchesGolden(tester, 'settings_screen_validation_error');
   });
 
-  testGoldens('SettingsScreen with all options enabled golden', (
-    tester,
-  ) async {
+  testGoldens('SettingsScreen with all options enabled golden', (tester) async {
     settingsSubject.add(
       const UserSettings(hoursAvailable: 8.0, showLastSpawnedDate: true),
     );
@@ -194,20 +189,19 @@ void main() {
     },
   );
 
-  testWidgets(
-    'SettingsScreen renders export debug state button',
-    (WidgetTester tester) async {
-      await tester.pumpWidget(buildTestWidget());
-      await tester.pumpAndSettle();
+  testWidgets('SettingsScreen renders export debug state button', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
 
-      final exportButtonFinder = find.byKey(
-        const Key('export_debug_state_button'),
-      );
-      expect(exportButtonFinder, findsOneWidget);
-      expect(find.text('Debug & Diagnostics'), findsOneWidget);
-      expect(find.text('Export Debug State (LLM JSON)'), findsOneWidget);
-    },
-  );
+    final exportButtonFinder = find.byKey(
+      const Key('export_debug_state_button'),
+    );
+    expect(exportButtonFinder, findsOneWidget);
+    expect(find.text('Debug & Diagnostics'), findsOneWidget);
+    expect(find.text('Export Debug State (LLM JSON)'), findsOneWidget);
+  });
 
   testWidgets(
     'SettingsScreen triggers export debug state when export button is tapped',
