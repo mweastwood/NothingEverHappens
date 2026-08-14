@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/gestures.dart';
@@ -15,6 +16,7 @@ import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
+
 import '../test_helper.dart';
 
 import 'package:nothing_ever_happens/widgets/fun_check_button.dart';
@@ -196,13 +198,9 @@ void main() {
     await tester.tap(find.byType(FunCheckButton));
     await tester.pump(); // Start confetti
 
-    // Wait for confetti delay (500ms) plus buffer
-    await tester.pump(const Duration(milliseconds: 510));
-    await tester.pump(); // Start ticker
-
-    // Wait for animation (200ms) plus buffer
-    await tester.pump(const Duration(milliseconds: 210));
-    await tester.pump(); // Ensure listener executes
+    // Wait for confetti delay (500ms), then settle collapse animation
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
 
     verify(
       mockTaskRepository.completeTaskInstance('I-${testTask.id}_2024-01-01'),
@@ -432,17 +430,11 @@ void main() {
     await tester.tap(find.byKey(const Key('delete_task_button')));
     await tester.pump(); // Register tap
 
-    // Wait for first Future.delayed (350ms) in FunDeleteButton
+    // Advance through FunDeleteButton delay (350ms) and _handleDeletion delay
+    // (400ms), then settle collapse animation
     await tester.pump(const Duration(milliseconds: 350));
-    await tester.pump(); // Trigger _handleDeletion()
-
-    // Wait for second Future.delayed (400ms) in _handleDeletion()
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump(); // Trigger _controller.forward()
-
-    // Wait for collapse animation (200ms) to complete
-    await tester.pump(const Duration(milliseconds: 210));
-    await tester.pump(); // Allow completion listener to run
+    await tester.pumpAndSettle();
 
     // Verify repository dismissTaskInstance is called
     verify(
