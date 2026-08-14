@@ -92,6 +92,9 @@ abstract class TaskScheduleRule {
     MissedOccurrencePolicy? missedOccurrencePolicy,
   });
 
+  /// Checks if this rule has the same recurrence pattern as [other].
+  bool hasSameRecurrence(TaskScheduleRule other);
+
   Map<String, dynamic> toJson();
 
   factory TaskScheduleRule.fromJson(Map<String, dynamic> json) {
@@ -229,6 +232,12 @@ class OneOffSchedule extends TaskScheduleRule {
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! OneOffSchedule) return false;
+    return date == other.date;
   }
 
   @override
@@ -404,6 +413,12 @@ class DailySchedule extends TaskScheduleRule {
   }
 
   @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! DailySchedule) return false;
+    return interval == other.interval;
+  }
+
+  @override
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -533,20 +548,58 @@ class WeeklySchedule extends TaskScheduleRule {
 
   @override
   CivilDay? nextOccurrenceAfter(CivilDay date) {
-    var current = date;
-    for (int i = 0; i < 365 * 10; i++) {
-      final currentUtc = DateTime.utc(current.year, current.month, current.day);
-      final nextUtc = currentUtc.add(const Duration(days: 1));
-      current = CivilDay(
-        year: nextUtc.year,
-        month: nextUtc.month,
-        day: nextUtc.day,
-      );
-      if (occursOn(current)) {
-        return current;
+    if (daysOfWeek.isEmpty) {
+      throw Exception('No occurrence found within 10 years');
+    }
+
+    final startUtc = startDate.toUtcDateTime();
+    final refUtc = date.toUtcDateTime();
+
+    // The occurrence must be strictly after `date` and on or after `startDate`
+    final nextDayUtc = refUtc.add(const Duration(days: 1));
+    final minDateUtc = nextDayUtc.isBefore(startUtc) ? startUtc : nextDayUtc;
+
+    final startOfWeekForStart = startUtc.subtract(
+      Duration(days: startUtc.weekday - 1),
+    );
+    final startOfWeekForMin = minDateUtc.subtract(
+      Duration(days: minDateUtc.weekday - 1),
+    );
+
+    final daysDiff = startOfWeekForMin.difference(startOfWeekForStart).inDays;
+    final weeksDiff = daysDiff ~/ 7;
+    final k = weeksDiff % interval;
+
+    final sortedDays = daysOfWeek.toList()..sort();
+
+    if (k == 0) {
+      // In an active week: check if there is an occurrence on or after minDateUtc
+      for (final w in sortedDays) {
+        final candUtc = startOfWeekForMin.add(Duration(days: w - 1));
+        if (!candUtc.isBefore(minDateUtc)) {
+          return CivilDay(
+            year: candUtc.year,
+            month: candUtc.month,
+            day: candUtc.day,
+          );
+        }
       }
     }
-    throw Exception('No occurrence found within 10 years');
+
+    // Otherwise (or if all active days in current week have passed), jump to next active week
+    final weeksToJump = k == 0 ? interval : (interval - k);
+    final nextActiveWeekStart = startOfWeekForMin.add(
+      Duration(days: weeksToJump * 7),
+    );
+    final firstDayInNextWeek = nextActiveWeekStart.add(
+      Duration(days: sortedDays.first - 1),
+    );
+
+    return CivilDay(
+      year: firstDayInNextWeek.year,
+      month: firstDayInNextWeek.month,
+      day: firstDayInNextWeek.day,
+    );
   }
 
   @override
@@ -597,6 +650,14 @@ class WeeklySchedule extends TaskScheduleRule {
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! WeeklySchedule) return false;
+    if (interval != other.interval) return false;
+    if (daysOfWeek.length != other.daysOfWeek.length) return false;
+    return daysOfWeek.every(other.daysOfWeek.contains);
   }
 
   @override
@@ -767,20 +828,76 @@ class MonthlySchedule extends TaskScheduleRule {
     return false;
   }
 
+  CivilDay? _occurrenceInMonth(int year, int month) {
+    if (dayOfMonth != null) {
+      if (dayOfMonth! > 0) {
+        final lastDayOfMonth = DateTime.utc(
+          year,
+          month + 1,
+          1,
+        ).subtract(const Duration(days: 1)).day;
+        if (dayOfMonth! > lastDayOfMonth) {
+          return null;
+        }
+        return CivilDay(year: year, month: month, day: dayOfMonth!);
+      } else {
+        final nextMonthUtc = DateTime.utc(year, month + 1, 1);
+        final lastDayOfMonth = nextMonthUtc
+            .subtract(const Duration(days: 1))
+            .day;
+        final targetDay = lastDayOfMonth + dayOfMonth! + 1;
+        return CivilDay(year: year, month: month, day: targetDay);
+      }
+    } else if (dayOfWeek != null && occurrence != null) {
+      final nextMonthUtc = DateTime.utc(year, month + 1, 1);
+      final lastDayOfMonth = nextMonthUtc.subtract(const Duration(days: 1)).day;
+
+      if (occurrence! > 0) {
+        final firstDayWeekday = DateTime.utc(year, month, 1).weekday;
+        final firstOccurrenceDay = 1 + ((dayOfWeek! - firstDayWeekday + 7) % 7);
+        final targetDay = firstOccurrenceDay + (occurrence! - 1) * 7;
+        if (targetDay <= lastDayOfMonth) {
+          return CivilDay(year: year, month: month, day: targetDay);
+        }
+        return null;
+      } else if (occurrence == -1) {
+        final lastDayWeekday = DateTime.utc(
+          year,
+          month,
+          lastDayOfMonth,
+        ).weekday;
+        final targetDay =
+            lastDayOfMonth - ((lastDayWeekday - dayOfWeek! + 7) % 7);
+        return CivilDay(year: year, month: month, day: targetDay);
+      }
+    }
+    return null;
+  }
+
   @override
   CivilDay? nextOccurrenceAfter(CivilDay date) {
-    var current = date;
-    // Iterate day-by-day up to 10 years to find the next occurrence
-    for (int i = 0; i < 365 * 10; i++) {
-      final currentUtc = DateTime.utc(current.year, current.month, current.day);
-      final nextUtc = currentUtc.add(const Duration(days: 1));
-      current = CivilDay(
-        year: nextUtc.year,
-        month: nextUtc.month,
-        day: nextUtc.day,
-      );
-      if (occursOn(current)) {
-        return current;
+    final startTotalMonths = startDate.year * 12 + (startDate.month - 1);
+    final refTotalMonths = date.year * 12 + (date.month - 1);
+
+    int cycle;
+    if (refTotalMonths < startTotalMonths) {
+      cycle = 0;
+    } else {
+      final monthsDiff = refTotalMonths - startTotalMonths;
+      cycle = monthsDiff ~/ interval;
+    }
+
+    // Search up to 10 years (120 months)
+    for (int i = 0; i < 120; i++, cycle++) {
+      final targetTotalMonths = startTotalMonths + cycle * interval;
+      final targetYear = targetTotalMonths ~/ 12;
+      final targetMonth = (targetTotalMonths % 12) + 1;
+
+      final occurrenceDay = _occurrenceInMonth(targetYear, targetMonth);
+      if (occurrenceDay == null) continue;
+
+      if (occurrenceDay.isAfter(date) && !occurrenceDay.isBefore(startDate)) {
+        return occurrenceDay;
       }
     }
     throw Exception('No occurrence found within 10 years');
@@ -838,6 +955,16 @@ class MonthlySchedule extends TaskScheduleRule {
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! MonthlySchedule) return false;
+    if (interval != other.interval) return false;
+    if (dayOfMonth != other.dayOfMonth) return false;
+    if (dayOfWeek != other.dayOfWeek) return false;
+    if (occurrence != other.occurrence) return false;
+    return true;
   }
 
   @override
@@ -961,20 +1088,36 @@ class YearlySchedule extends TaskScheduleRule {
     return yearsDiff >= 0 && yearsDiff % interval == 0;
   }
 
+  CivilDay? _occurrenceInYear(int year) {
+    final lastDayOfMonth = DateTime.utc(
+      year,
+      month + 1,
+      1,
+    ).subtract(const Duration(days: 1)).day;
+    if (day > lastDayOfMonth) {
+      return null;
+    }
+    return CivilDay(year: year, month: month, day: day);
+  }
+
   @override
   CivilDay? nextOccurrenceAfter(CivilDay date) {
-    var current = date;
-    // Iterate day-by-day up to 20 years to find the next occurrence
-    for (int i = 0; i < 365 * 20; i++) {
-      final currentUtc = DateTime.utc(current.year, current.month, current.day);
-      final nextUtc = currentUtc.add(const Duration(days: 1));
-      current = CivilDay(
-        year: nextUtc.year,
-        month: nextUtc.month,
-        day: nextUtc.day,
-      );
-      if (occursOn(current)) {
-        return current;
+    int cycle;
+    if (date.year < startDate.year) {
+      cycle = 0;
+    } else {
+      final yearsDiff = date.year - startDate.year;
+      cycle = yearsDiff ~/ interval;
+    }
+
+    // Search up to 100 cycles
+    for (int i = 0; i < 100; i++, cycle++) {
+      final targetYear = startDate.year + cycle * interval;
+      final occurrenceDay = _occurrenceInYear(targetYear);
+      if (occurrenceDay == null) continue;
+
+      if (occurrenceDay.isAfter(date) && !occurrenceDay.isBefore(startDate)) {
+        return occurrenceDay;
       }
     }
     throw Exception('No occurrence found within 20 years');
@@ -1030,6 +1173,15 @@ class YearlySchedule extends TaskScheduleRule {
       missedOccurrencePolicy:
           missedOccurrencePolicy ?? this.missedOccurrencePolicy,
     );
+  }
+
+  @override
+  bool hasSameRecurrence(TaskScheduleRule other) {
+    if (other is! YearlySchedule) return false;
+    if (interval != other.interval) return false;
+    if (month != other.month) return false;
+    if (day != other.day) return false;
+    return true;
   }
 
   @override
