@@ -16,6 +16,7 @@ import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_spawner_engine.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
+import 'package:rxdart/rxdart.dart';
 
 Future<String> _findInstanceId(
   FakeFirebaseFirestore firestore,
@@ -2713,6 +2714,122 @@ void main() {
         },
       );
     });
+  });
+
+  group('plannedMinutesPerDayProvider', () {
+    testWidgets(
+      'correctly aggregates planned minutes per day filtering out skipped instances',
+      (tester) async {
+        final day1 = const CivilDay(year: 2026, month: 8, day: 14);
+        final day2 = const CivilDay(year: 2026, month: 8, day: 15);
+
+        final schedule1 = TaskSchedule(
+          id: 'S-schedule-1',
+          title: 'Task 1',
+          description: '60 mins',
+          estimatedDuration: const Duration(minutes: 60),
+          schedules: [],
+        );
+
+        final schedule2 = TaskSchedule(
+          id: 'S-schedule-2',
+          title: 'Task 2',
+          description: '30 mins',
+          estimatedDuration: const Duration(minutes: 30),
+          schedules: [],
+        );
+
+        final inst1 = TaskInstance(
+          id: 'i-1',
+          scheduleId: 'S-schedule-1',
+          ruleId: 'r-1',
+          title: 'Inst 1',
+          description: '',
+          scheduledDate: day1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final inst2 = TaskInstance(
+          id: 'i-2',
+          scheduleId: 'S-schedule-2',
+          ruleId: 'r-2',
+          title: 'Inst 2',
+          description: '',
+          scheduledDate: day1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final inst3Skipped = TaskInstance(
+          id: 'i-3',
+          scheduleId: 'S-schedule-1',
+          ruleId: 'r-1',
+          title: 'Inst 3',
+          description: '',
+          scheduledDate: day2,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.skipped,
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          schedule1,
+          schedule2,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          inst1,
+          inst2,
+          inst3Skipped,
+        ]);
+
+        late Map<CivilDay, double> planned;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+              authStateProvider.overrideWith((ref) => Stream.value(null)),
+            ],
+            child: Consumer(
+              builder: (context, ref, child) {
+                planned = ref.watch(plannedMinutesPerDayProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(planned[day1], equals(90.0));
+        expect(planned[day2], isNull);
+
+        await tasksSubject.close();
+        await instancesSubject.close();
+      },
+    );
   });
 }
 

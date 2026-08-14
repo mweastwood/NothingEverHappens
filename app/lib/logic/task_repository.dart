@@ -149,8 +149,7 @@ final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {
 
   for (final inst in instances) {
     if (inst.status != TaskStatus.skipped) {
-      if (inst.assignedUserId != null &&
-          inst.assignedUserId != currentUserId) {
+      if (inst.assignedUserId != null && inst.assignedUserId != currentUserId) {
         continue;
       }
       final schedule = scheduleMap[inst.scheduleId];

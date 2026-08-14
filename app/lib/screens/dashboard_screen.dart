@@ -6,10 +6,7 @@ import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/civil_day.dart';
-import '../logic/task_instance.dart';
-import '../logic/task_schedule.dart';
 import '../logic/task_repository.dart';
-import '../logic/auth_repository.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -62,7 +59,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final settingsVal = ref.watch(userSettingsProvider);
     final schedulesVal = ref.watch(taskSchedulesProvider);
     final instancesVal = ref.watch(taskInstancesProvider);
-    final currentUserId = ref.watch(authStateProvider).value?.uid;
 
     if (settingsVal.isLoading ||
         schedulesVal.isLoading ||
