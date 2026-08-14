@@ -1470,12 +1470,12 @@ void main() {
       );
 
       test(
-        'does not count the task\'s own existing pending instances against capacity (prevents feedback loop / oscillation)',
+        'skips existing pending instance when prior tasks exceed capacity, and keeps pending when capacity is available',
         () {
           final task = TaskSchedule(
-            id: 'cap-self-exclude',
-            title: 'Self Exclude Task',
-            description: 'Capacity self-exclusion',
+            id: 'cap-check',
+            title: 'Capacity Check Task',
+            description: 'Capacity evaluation',
             estimatedDuration: const Duration(hours: 5),
             skipIfNoCapacity: true,
             schedules: [OneOffSchedule(date: today.addDays(1))],
@@ -1484,10 +1484,10 @@ void main() {
           final existingInst = TaskInstance(
             id: 'inst-pending-tomorrow',
             scheduleId:
-                'S-cap-self-exclude', // TaskSchedule automatically prepends 'S-'
+                'S-cap-check', // TaskSchedule automatically prepends 'S-'
             ruleId: task.schedules.first.id,
-            title: 'Self Exclude Task',
-            description: 'Capacity self-exclusion',
+            title: 'Capacity Check Task',
+            description: 'Capacity evaluation',
             scheduledDate: today.addDays(1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
@@ -1501,20 +1501,34 @@ void main() {
           );
 
           final userSettings = UserSettings(hoursAvailable: 8.0);
-          final dayPlannedHours = {
-            today.addDays(1): 5.0,
-          }; // Consumed fully by this task's own pending instance
 
-          final action = SchedulerEngine.evaluate(
+          // Scenario 1: Prior tasks already planned 5.0 hours on that day (8 - 5 = 3 available < 5 task duration)
+          final actionExceeded = SchedulerEngine.evaluate(
             task,
             [existingInst],
             now,
             userSettings: userSettings,
-            dayPlannedHours: dayPlannedHours,
+            dayPlannedHours: {today.addDays(1): 5.0},
           );
 
-          // It should NOT update the status to skipped because its own 5 hours are excluded from the planned hours calculation.
-          expect(action.instancesToUpdate, isEmpty);
+          // Expect the existing instance to be updated to skipped because capacity was exceeded by prior tasks.
+          expect(actionExceeded.instancesToUpdate, hasLength(1));
+          expect(
+            actionExceeded.instancesToUpdate.first.status,
+            TaskStatus.skipped,
+          );
+
+          // Scenario 2: Prior tasks only planned 2.0 hours (8 - 2 = 6 available >= 5 task duration)
+          final actionAvailable = SchedulerEngine.evaluate(
+            task,
+            [existingInst],
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: {today.addDays(1): 2.0},
+          );
+
+          // Instance stays pending, so no updates needed.
+          expect(actionAvailable.instancesToUpdate, isEmpty);
         },
       );
     });

@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/task_sync_service.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
@@ -9,7 +10,6 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
 import 'package:nothing_ever_happens/logic/task_spawner_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
 
 class UnifiedTaskRepository extends TaskRepository {
@@ -17,7 +17,9 @@ class UnifiedTaskRepository extends TaskRepository {
   final TaskSyncService _syncService;
   final FirebaseFirestore? _rawFirestore;
 
-  bool _isProcessingMissedPolicies = false;
+  Future<void>? _activeProcessingFuture;
+  bool _hasQueuedProcessing = false;
+  final List<Future<void> Function()> _queuedPostProcessCallbacks = [];
 
   UnifiedTaskRepository({
     required HiveLocalDataSource localDataSource,
@@ -67,7 +69,7 @@ class UnifiedTaskRepository extends TaskRepository {
     await _localDataSource.saveTask(t);
     await _localDataSource.markDirty(t.id);
     _syncService.sync();
-    triggerMissedPolicyProcessing();
+    await triggerMissedPolicyProcessing();
   }
 
   @override
@@ -109,7 +111,7 @@ class UnifiedTaskRepository extends TaskRepository {
     }
 
     _syncService.sync();
-    triggerMissedPolicyProcessing();
+    await triggerMissedPolicyProcessing();
   }
 
   @override
@@ -138,6 +140,7 @@ class UnifiedTaskRepository extends TaskRepository {
     }
 
     _syncService.sync();
+    await triggerMissedPolicyProcessing();
     return (task: task, pendingInstances: pendingInstances);
   }
 
@@ -263,85 +266,188 @@ class UnifiedTaskRepository extends TaskRepository {
   }
 
   @override
-  Future<void> triggerMissedPolicyProcessing() async {
-    if (_isProcessingMissedPolicies) return;
-    _isProcessingMissedPolicies = true;
+  Future<void> triggerMissedPolicyProcessing({
+    Future<void> Function()? postProcess,
+  }) async {
+    if (postProcess != null) {
+      _queuedPostProcessCallbacks.add(postProcess);
+    }
+    while (true) {
+      final active = _activeProcessingFuture;
+      if (active != null) {
+        _hasQueuedProcessing = true;
+        await active;
+        if (!_hasQueuedProcessing && _queuedPostProcessCallbacks.isEmpty) {
+          return;
+        }
+        continue;
+      }
 
+      _activeProcessingFuture = _processQueue();
+      await _activeProcessingFuture;
+      if (!_hasQueuedProcessing && _queuedPostProcessCallbacks.isEmpty) {
+        return;
+      }
+    }
+  }
+
+  Future<void> _processQueue() async {
     try {
-      final now = AppClock.now;
-      final tasks = _localDataSource.getTasks();
-      final allInstances = _localDataSource.getInstances();
-      final userSettings = const UserSettings(
-        hoursAvailable: 8,
-      ); // Default fallback if no settings
+      do {
+        _hasQueuedProcessing = false;
+        final callbacksToRun = List<Future<void> Function()>.from(
+          _queuedPostProcessCallbacks,
+        );
+        _queuedPostProcessCallbacks.clear();
 
-      final Map<CivilDay, double> dayPlannedHours = {};
-      for (final inst in allInstances) {
-        if (inst.status != TaskStatus.skipped &&
-            inst.status != TaskStatus.failed) {
-          final t = tasks.where((ts) => ts.id == inst.scheduleId).firstOrNull;
-          if (t != null && t.estimatedDuration != null) {
-            final hours = t.estimatedDuration!.inMinutes / 60.0;
-            dayPlannedHours[inst.scheduledDate] =
-                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+        try {
+          await _doProcessMissedPolicies();
+        } catch (e) {
+          // ignore: avoid_print
+          print('Error in auto-processing missed policies loop: $e');
+        }
+
+        for (final cb in callbacksToRun) {
+          try {
+            await cb();
+          } catch (e) {
+            // ignore: avoid_print
+            print('Error in postProcess callback: $e');
           }
         }
-      }
-
-      bool hasChanges = false;
-
-      final Map<String, List<TaskInstance>> instancesByScheduleId = {};
-      for (final inst in allInstances) {
-        instancesByScheduleId.putIfAbsent(inst.scheduleId, () => []).add(inst);
-      }
-
-      for (final task in tasks) {
-        final taskInstances = instancesByScheduleId[task.id] ?? [];
-
-        final action = SchedulerEngine.evaluate(
-          task,
-          taskInstances,
-          now,
-          userSettings: userSettings,
-          dayPlannedHours: dayPlannedHours,
-          applyCapacityLimits: task.assignedUserId == userId,
-        );
-
-        for (final inst in action.instancesToUpdate) {
-          final updatedInst = inst.copyWith(updatedAt: DateTime.now());
-          await _localDataSource.saveInstance(updatedInst);
-          await _localDataSource.markDirty(updatedInst.id);
-          hasChanges = true;
-        }
-
-        for (final inst in action.instancesToSpawn) {
-          final newInst = inst.copyWith(updatedAt: DateTime.now());
-          await _localDataSource.saveInstance(newInst);
-          await _localDataSource.markDirty(newInst.id);
-          hasChanges = true;
-        }
-
-        for (final instId in action.instancesToDelete) {
-          await _localDataSource.deleteInstance(instId);
-          await _localDataSource.markDirty(instId);
-          hasChanges = true;
-        }
-
-        if (action.updatedSchedule != null) {
-          final updatedTask = action.updatedSchedule!.copyWith(
-            updatedAt: DateTime.now(),
-          );
-          await _localDataSource.saveTask(updatedTask);
-          await _localDataSource.markDirty(updatedTask.id);
-          hasChanges = true;
-        }
-      }
-
-      if (hasChanges) {
-        _syncService.sync();
-      }
+      } while (_hasQueuedProcessing || _queuedPostProcessCallbacks.isNotEmpty);
     } finally {
-      _isProcessingMissedPolicies = false;
+      _activeProcessingFuture = null;
+    }
+  }
+
+  Future<void> _doProcessMissedPolicies() async {
+    final now = AppClock.now;
+    final tasks = _localDataSource.getTasks();
+    final allInstances = _localDataSource.getInstances();
+    final userSettings = _localDataSource.getSettings();
+
+    final Map<CivilDay, double> dayPlannedHours = {};
+    for (final inst in allInstances) {
+      if (inst.status != TaskStatus.skipped &&
+          inst.status != TaskStatus.failed) {
+        final t = tasks.where((ts) => ts.id == inst.scheduleId).firstOrNull;
+        if (t != null && t.estimatedDuration != null && !t.skipIfNoCapacity) {
+          final hours = t.estimatedDuration!.inMinutes / 60.0;
+          dayPlannedHours[inst.scheduledDate] =
+              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+        }
+      }
+    }
+
+    final Map<String, DateTime> lastCompletionCache = {};
+    DateTime getLastCompletionTime(TaskSchedule task) {
+      return lastCompletionCache.putIfAbsent(task.id, () {
+        final completed = allInstances
+            .where(
+              (inst) =>
+                  inst.scheduleId == task.id &&
+                  inst.status == TaskStatus.completed,
+            )
+            .toList();
+        if (completed.isEmpty) {
+          return DateTime.fromMillisecondsSinceEpoch(0);
+        }
+        return completed
+            .map(
+              (inst) =>
+                  inst.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+            )
+            .reduce((a, b) => a.isAfter(b) ? a : b);
+      });
+    }
+
+    final tasksToEvaluate = List<TaskSchedule>.from(tasks);
+    tasksToEvaluate.sort((a, b) {
+      final pCompare = b.priority.index.compareTo(a.priority.index);
+      if (pCompare != 0) return pCompare;
+
+      if (a.skipIfNoCapacity && b.skipIfNoCapacity) {
+        final aTime = getLastCompletionTime(a);
+        final bTime = getLastCompletionTime(b);
+        final timeCompare = aTime.compareTo(bTime);
+        if (timeCompare != 0) return timeCompare;
+      }
+
+      return a.id.compareTo(b.id);
+    });
+
+    bool hasChanges = false;
+
+    final Map<String, List<TaskInstance>> instancesByScheduleId = {};
+    for (final inst in allInstances) {
+      instancesByScheduleId.putIfAbsent(inst.scheduleId, () => []).add(inst);
+    }
+
+    for (final task in tasksToEvaluate) {
+      final taskInstances = instancesByScheduleId[task.id] ?? [];
+
+      final action = SchedulerEngine.evaluate(
+        task,
+        taskInstances,
+        now,
+        userSettings: userSettings,
+        dayPlannedHours: dayPlannedHours,
+        applyCapacityLimits:
+            task.assignedUserId == null || task.assignedUserId == userId,
+      );
+
+      for (final inst in action.instancesToUpdate) {
+        final updatedInst = inst.copyWith(updatedAt: DateTime.now());
+        await _localDataSource.saveInstance(updatedInst);
+        await _localDataSource.markDirty(updatedInst.id);
+        hasChanges = true;
+
+        final idx = allInstances.indexWhere((x) => x.id == inst.id);
+        if (idx >= 0) {
+          allInstances[idx] = updatedInst;
+        }
+      }
+
+      for (final inst in action.instancesToSpawn) {
+        final newInst = inst.copyWith(updatedAt: DateTime.now());
+        await _localDataSource.saveInstance(newInst);
+        await _localDataSource.markDirty(newInst.id);
+        hasChanges = true;
+
+        allInstances.add(newInst);
+      }
+
+      for (final instId in action.instancesToDelete) {
+        await _localDataSource.deleteInstance(instId);
+        await _localDataSource.markDirty(instId);
+        hasChanges = true;
+        allInstances.removeWhere((x) => x.id == instId);
+      }
+
+      final activeInstances = allInstances.where(
+        (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+      );
+      for (final inst in activeInstances) {
+        if (task.estimatedDuration != null && task.skipIfNoCapacity) {
+          final hours = task.estimatedDuration!.inMinutes / 60.0;
+          dayPlannedHours[inst.scheduledDate] =
+              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+        }
+      }
+
+      if (action.updatedSchedule != null) {
+        final updatedTask = action.updatedSchedule!.copyWith(
+          updatedAt: DateTime.now(),
+        );
+        await _localDataSource.saveTask(updatedTask);
+        await _localDataSource.markDirty(updatedTask.id);
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      _syncService.sync();
     }
   }
 }

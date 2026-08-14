@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'civil_day.dart';
 import 'task_schedule.dart';
 import 'task_instance.dart';
@@ -86,17 +87,6 @@ class SchedulerEngine {
         final Map<CivilDay, double> tempPlannedHours = dayPlannedHours != null
             ? Map.from(dayPlannedHours)
             : {};
-
-        // Exclude the current task's own existing active instances from tempPlannedHours
-        // to avoid self-counting during evaluation.
-        for (final inst in taskInstances) {
-          if (inst.status != TaskStatus.skipped &&
-              inst.status != TaskStatus.failed) {
-            final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
-            tempPlannedHours[inst.scheduledDate] = (planned - taskDuration)
-                .clamp(0.0, double.infinity);
-          }
-        }
 
         // 1. Process existing one-off instances in the DB (support skipping and revival)
         for (final inst in taskInstances) {
@@ -602,19 +592,6 @@ class SchedulerEngine {
       final Map<CivilDay, double> tempPlannedHours = dayPlannedHours != null
           ? Map.from(dayPlannedHours)
           : {};
-
-      // Exclude the current task's own existing active instances from tempPlannedHours
-      // to avoid self-counting during evaluation.
-      for (final inst in taskInstances) {
-        if (inst.status != TaskStatus.skipped &&
-            inst.status != TaskStatus.failed) {
-          final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
-          tempPlannedHours[inst.scheduledDate] = (planned - taskDuration).clamp(
-            0.0,
-            double.infinity,
-          );
-        }
-      }
 
       // 1. Process instances already in the DB that are pending or skipped (support skipping and revival)
       for (final inst in taskInstances) {
