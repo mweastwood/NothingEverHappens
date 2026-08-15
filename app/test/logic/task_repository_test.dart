@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../test_factories.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,23 +59,19 @@ void main() {
     Future<String> findInstanceId(String taskId, CivilDay date) =>
         _findInstanceId(firestore, userId, taskId, date);
 
-    final testTask = TaskSchedule(
+    final testTask = TestTaskFactory.createOneOff(
       id: 'task-1',
       title: 'Test TaskSchedule',
       description: 'Test Description',
-      schedules: [
-        OneOffSchedule(
-          date: const CivilDay(year: 2024, month: 1, day: 1),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-        ),
-      ],
+      date: const CivilDay(year: 2024, month: 1, day: 1),
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
     );
 
     test('addTask adds a task to Firestore', () async {
@@ -99,24 +96,20 @@ void main() {
           'familyId': 'fam-123',
         });
 
-        final familyTask = TaskSchedule(
+        final familyTask = TestTaskFactory.createOneOff(
           id: 'family-task-1',
           title: 'Family Task',
           description: 'Shared Family Task',
           isFamily: true,
-          schedules: [
-            OneOffSchedule(
-              date: const CivilDay(year: 2026, month: 8, day: 3),
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 10, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 18, minute: 0),
-              ),
-            ),
-          ],
+          date: const CivilDay(year: 2026, month: 8, day: 3),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 18, minute: 0),
+          ),
         );
 
         final stream = repository.getTasks();
@@ -278,16 +271,12 @@ void main() {
     test(
       'undoResolveTaskInstance reverts completed instance to pending and deletes next spawned',
       () async {
-        final recurringTask = TaskSchedule(
+        final recurringTask = TestTaskFactory.createDaily(
           id: 'task-recur',
           title: 'Daily Task',
           description: 'Test description',
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 6, day: 1),
-              interval: 1,
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 1),
+          interval: 1,
         );
 
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
@@ -411,16 +400,12 @@ void main() {
         // undoResolveTaskInstance. The pending instance has completedAt==null,
         // so undoResolveTaskInstance would fall back to AppClock.now and could
         // compute the wrong refDate, deleting the wrong next spawned instance.
-        final dailyTask = TaskSchedule(
+        final dailyTask = TestTaskFactory.createDaily(
           id: 'task-daily',
           title: 'Daily Task',
           description: 'desc',
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 6, day: 1),
-              interval: 1,
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 1),
+          interval: 1,
         );
 
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
@@ -446,16 +431,12 @@ void main() {
 
         // dismissTaskInstance must also return the resolved instance
         // (create a separate task to test the dismiss path)
-        final dailyTask2 = TaskSchedule(
+        final dailyTask2 = TestTaskFactory.createDaily(
           id: 'task-daily-2',
           title: 'Daily Task 2',
           description: 'desc',
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 6, day: 1),
-              interval: 1,
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 1),
+          interval: 1,
         );
         await repository.addTaskSchedule(dailyTask2);
         // Yield to allow Firestore mock batches to complete
@@ -483,22 +464,12 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 15, 9, 0));
         addTearDown(AppClock.reset);
 
-        final weeklyTask = TaskSchedule(
+        final weeklyTask = TestTaskFactory.createWeekly(
           id: 'task-weekly',
           title: 'Weekly Task',
           description: 'Weekly Description',
-          missedPolicy: MissedPolicy.stack,
-          schedules: [
-            WeeklySchedule(
-              startDate: const CivilDay(
-                year: 2026,
-                month: 6,
-                day: 15,
-              ), // a Monday
-              interval: 1,
-              daysOfWeek: {1}, // Monday
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 15),
+          daysOfWeek: {1},
         );
 
         await repository.addTaskSchedule(weeklyTask);
@@ -613,26 +584,22 @@ void main() {
     Future<String> findInstanceId(String taskId, CivilDay date) =>
         _findInstanceId(firestore, userId, taskId, date);
 
-    final notifTask = TaskSchedule(
+    final notifTask = TestTaskFactory.createDaily(
       id: 'notif-task-1',
       title: 'Notify Me',
       description: 'Check notifications',
-      schedules: [
-        DailySchedule(
-          startDate: const CivilDay(year: 2024, month: 1, day: 1),
-          interval: 1,
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
-          notificationRelativeTimes: const [
-            RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 45)),
-          ],
-        ),
+      startDate: const CivilDay(year: 2024, month: 1, day: 1),
+      interval: 1,
+      startRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 9, minute: 0),
+      ),
+      dueRelativeTime: const RelativeTime(
+        dayOffset: 0,
+        time: TimeOfDay(hour: 17, minute: 0),
+      ),
+      notificationRelativeTimes: const [
+        RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 45)),
       ],
     );
 
@@ -657,26 +624,22 @@ void main() {
     test('updateTask updates scheduled notifications', () async {
       await repository.addTaskSchedule(notifTask);
 
-      final updatedTask = TaskSchedule(
+      final updatedTask = TestTaskFactory.createDaily(
         id: notifTask.id,
         title: 'Notify Me (Updated)',
         description: notifTask.description,
-        schedules: [
-          DailySchedule(
-            startDate: const CivilDay(year: 2024, month: 1, day: 1),
-            interval: 1,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
-            ),
-            notificationRelativeTimes: const [
-              RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 30)),
-            ],
-          ),
+        startDate: const CivilDay(year: 2024, month: 1, day: 1),
+        interval: 1,
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        notificationRelativeTimes: const [
+          RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 30)),
         ],
       );
 
@@ -749,18 +712,13 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
         addTearDown(AppClock.reset);
 
-        final stackTask = TaskSchedule(
+        final stackTask = TestTaskFactory.createDaily(
           id: 'task-stack-id',
           title: 'Stack Task',
           description: 'Test description',
-          missedPolicy: MissedPolicy.stack,
           isMaster: true,
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 6, day: 1),
-              interval: 1,
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 1),
+          interval: 1,
         );
 
         await repository.addTaskSchedule(stackTask);
@@ -835,22 +793,12 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
         addTearDown(AppClock.reset);
 
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createWeekly(
           id: 'early-comp-task',
           title: 'Early Completion Task',
           description: 'Test description',
-          missedPolicy: MissedPolicy.stack,
-          schedules: [
-            WeeklySchedule(
-              startDate: const CivilDay(
-                year: 2026,
-                month: 6,
-                day: 3,
-              ), // Wednesday June 3
-              interval: 1,
-              daysOfWeek: const {3},
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 3),
+          daysOfWeek: const {3},
         );
 
         await repository.addTaskSchedule(task);
@@ -904,30 +852,20 @@ void main() {
     test(
       'regression: concurrent/rapid stream emissions do not skip spawning tasks',
       () async {
-        final taskA = TaskSchedule(
+        final taskA = TestTaskFactory.createDaily(
           id: 'task-a',
           title: 'Task A',
           description: 'Desc A',
-          lastSpawnedDate: null,
-          schedules: [
-            DailySchedule(
-              startDate: CivilDay.fromDateTime(AppClock.now),
-              interval: 1,
-            ),
-          ],
+          startDate: CivilDay.fromDateTime(AppClock.now),
+          interval: 1,
         );
 
-        final taskB = TaskSchedule(
+        final taskB = TestTaskFactory.createDaily(
           id: 'task-b',
           title: 'Task B',
           description: 'Desc B',
-          lastSpawnedDate: null,
-          schedules: [
-            DailySchedule(
-              startDate: CivilDay.fromDateTime(AppClock.now),
-              interval: 1,
-            ),
-          ],
+          startDate: CivilDay.fromDateTime(AppClock.now),
+          interval: 1,
         );
 
         // Start listening to the tasks stream to activate the auto missed policy processing.
@@ -984,25 +922,19 @@ void main() {
         AppClock.setMockTime(mockTime);
         addTearDown(AppClock.reset);
 
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createDaily(
           id: 'future-repeating-task',
           title: 'Future Repeating Task',
           description: 'Desc',
-          lastSpawnedDate: CivilDay(year: 2026, month: 6, day: 21), // yesterday
-          schedules: [
-            DailySchedule(
-              startDate: CivilDay(year: 2026, month: 6, day: 22), // today
-              interval: 1,
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 10, minute: 1), // 1 minute in future
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 11, minute: 0),
-              ),
-            ),
-          ],
+          startDate: CivilDay(year: 2026, month: 6, day: 22),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 1), // 1 minute in future
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 11, minute: 0),
+          ),
         );
 
         final subscription = repository.getTasks().listen((_) {});
@@ -1038,25 +970,19 @@ void main() {
         AppClock.setMockTime(mockTime);
         addTearDown(AppClock.reset);
 
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createDaily(
           id: 'edit-repeating-task',
           title: 'Edit Repeating Task',
           description: 'Desc',
-          lastSpawnedDate: CivilDay(year: 2026, month: 6, day: 21), // yesterday
-          schedules: [
-            DailySchedule(
-              startDate: CivilDay(year: 2026, month: 6, day: 22), // today
-              interval: 1,
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 10, minute: 1),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 11, minute: 0),
-              ),
-            ),
-          ],
+          startDate: CivilDay(year: 2026, month: 6, day: 22),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 1),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 11, minute: 0),
+          ),
         );
 
         final subscription = repository.getTasks().listen((_) {});
@@ -1149,18 +1075,13 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 22, 10, 0));
         addTearDown(AppClock.reset);
 
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createWeekly(
           id: 'complete-last-spawned-advance',
           title: 'Weekly Task',
           description: 'Weekly task description',
-          lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 22),
-          schedules: [
-            WeeklySchedule(
-              startDate: const CivilDay(year: 2026, month: 6, day: 22),
-              interval: 1,
-              daysOfWeek: const {4}, // Thursday
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 22),
+          interval: 1,
+          daysOfWeek: const {4},
         );
 
         await repository.addTaskSchedule(task);
@@ -1254,18 +1175,14 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 22, 10, 0));
         addTearDown(AppClock.reset);
 
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createWeekly(
           id: 'undo-last-spawned-revert',
           title: 'Weekly Task Revert',
           description: 'Weekly task description',
+          startDate: const CivilDay(year: 2026, month: 6, day: 22),
+          interval: 1,
+          daysOfWeek: const {4},
           lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 25),
-          schedules: [
-            WeeklySchedule(
-              startDate: const CivilDay(year: 2026, month: 6, day: 22),
-              interval: 1,
-              daysOfWeek: const {4}, // Thursday
-            ),
-          ],
         );
 
         await repository.addTaskSchedule(task);
@@ -1354,16 +1271,12 @@ void main() {
         addTearDown(AppClock.reset);
 
         // Task with daily schedule (every day)
-        final dailyTask = TaskSchedule(
+        final dailyTask = TestTaskFactory.createDaily(
           id: 'queue-test-daily',
           title: 'Daily Queue Task',
           description: 'Desc',
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 6, day: 22),
-              interval: 1,
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 22),
+          interval: 1,
         );
 
         await repository.addTaskSchedule(dailyTask);
@@ -1426,18 +1339,13 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 22, 12, 0)); // Monday June 22
         addTearDown(AppClock.reset);
 
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createWeekly(
           id: 'edit-cleanup-task',
           title: 'Legacy Task',
           description: 'Weekly task description',
-          lastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 22),
-          schedules: [
-            WeeklySchedule(
-              startDate: const CivilDay(year: 2026, month: 6, day: 22),
-              interval: 1,
-              daysOfWeek: const {4}, // Thursday June 25
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 22),
+          interval: 1,
+          daysOfWeek: const {4},
         );
 
         await repository.addTaskSchedule(task);
@@ -1521,25 +1429,11 @@ void main() {
         AppClock.setMockTime(mockTime);
         addTearDown(AppClock.reset);
 
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createDaily(
           id: 'late-completion-bug',
           title: 'Daily Task',
           description: 'Desc',
-          lastSpawnedDate: const CivilDay(
-            year: 2026,
-            month: 6,
-            day: 21,
-          ), // spawned up to June 21
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(
-                year: 2026,
-                month: 6,
-                day: 22,
-              ), // started June 22
-              interval: 1,
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 22),
         );
 
         await firestore
@@ -1625,18 +1519,13 @@ void main() {
         final firestore = FakeFirebaseFirestore();
 
         // Add a weekly task schedule to firestore (should spawn 5 instances under Weekly rule)
-        final task = TaskSchedule(
+        final task = TestTaskFactory.createWeekly(
           id: 'settings-reactive-task',
           title: 'Weekly Task',
           description: 'Desc',
-          lastSpawnedDate: null,
-          schedules: [
-            WeeklySchedule(
-              startDate: const CivilDay(year: 2026, month: 6, day: 24),
-              interval: 1,
-              daysOfWeek: {3},
-            ),
-          ],
+          startDate: const CivilDay(year: 2026, month: 6, day: 24),
+          interval: 1,
+          daysOfWeek: {3},
         );
 
         await firestore
@@ -1752,16 +1641,12 @@ void main() {
           AppClock.setMockTime(mockTime);
           addTearDown(AppClock.reset);
 
-          final dailyTask = TaskSchedule(
+          final dailyTask = TestTaskFactory.createDaily(
             id: 'tracker-duplicate-test',
             title: 'Daily Task',
             description: 'desc',
-            schedules: [
-              DailySchedule(
-                startDate: const CivilDay(year: 2026, month: 6, day: 23),
-                interval: 1,
-              ),
-            ],
+            startDate: const CivilDay(year: 2026, month: 6, day: 23),
+            interval: 1,
           );
 
           final firestore = FakeFirebaseFirestore();
@@ -1812,16 +1697,12 @@ void main() {
           AppClock.setMockTime(mockTime);
           addTearDown(AppClock.reset);
 
-          final dailyTask = TaskSchedule(
+          final dailyTask = TestTaskFactory.createDaily(
             id: 'ttl-test-task',
             title: 'Daily Task',
             description: 'desc',
-            schedules: [
-              DailySchedule(
-                startDate: const CivilDay(year: 2026, month: 6, day: 23),
-                interval: 1,
-              ),
-            ],
+            startDate: const CivilDay(year: 2026, month: 6, day: 23),
+            interval: 1,
           );
 
           final firestore = FakeFirebaseFirestore();
@@ -1941,21 +1822,14 @@ void main() {
             userId: 'test-user-id',
           );
 
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'family-task-1',
             title: 'Family Trash Chores',
             description: 'Take out the trash',
             assignedUserId: 'test-user-id',
             isFamily: true,
-            schedules: [
-              DailySchedule(
-                id: 'rule-daily-family',
-                scheduleId: 'family-task-1',
-                startDate: const CivilDay(year: 2026, month: 6, day: 23),
-                interval: 1,
-              ),
-            ],
-            missedPolicy: MissedPolicy.stack,
+            startDate: const CivilDay(year: 2026, month: 6, day: 23),
+            interval: 1,
           );
 
           await repository.addTaskSchedule(task);
@@ -2094,16 +1968,12 @@ void main() {
 
           final firestore = FakeFirebaseFirestore();
 
-          final task = TaskSchedule(
+          final task = TestTaskFactory.createDaily(
             id: 'web-stream-test-task',
             title: 'Daily Task',
             description: 'Web stream stability check',
-            schedules: [
-              DailySchedule(
-                startDate: const CivilDay(year: 2026, month: 6, day: 23),
-                interval: 1,
-              ),
-            ],
+            startDate: const CivilDay(year: 2026, month: 6, day: 23),
+            interval: 1,
           );
 
           await firestore
