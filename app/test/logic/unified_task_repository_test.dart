@@ -473,4 +473,73 @@ void main() {
     await repository.triggerMissedPolicyProcessing();
     expect(localDataSource.getSettings().hoursAvailable, equals(4.0));
   });
+
+  test(
+    'completing a recurring task instance does not create duplicate occurrences across evaluation passes',
+    () async {
+      final mockTime = DateTime(2026, 8, 15, 10, 0, 0);
+      AppClock.setMockTime(mockTime);
+
+      final task = TaskSchedule(
+        id: 'U-recurring-test',
+        title: 'Weigh myself',
+        description: 'Daily recurring schedule',
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 15),
+            interval: 1,
+          ),
+        ],
+        updatedAt: DateTime.now(),
+      );
+
+      await repository.addTaskSchedule(task);
+
+      // Initial state: 1 today + 10 future instances = 11 pending instances
+      var instances = localDataSource
+          .getInstances()
+          .where((i) => i.scheduleId == 'S-U-recurring-test')
+          .toList();
+      expect(instances.length, equals(11));
+
+      final todayInstance = instances.firstWhere(
+        (i) => i.scheduledDate == const CivilDay(year: 2026, month: 8, day: 15),
+      );
+
+      // Complete today's instance
+      await repository.completeTaskInstance(todayInstance.id);
+
+      // Trigger missed policy processing evaluation passes
+      await repository.triggerMissedPolicyProcessing();
+      await repository.triggerMissedPolicyProcessing();
+
+      instances = localDataSource
+          .getInstances()
+          .where((i) => i.scheduleId == 'S-U-recurring-test')
+          .toList();
+
+      final pendingInstances = instances
+          .where((i) => i.status == TaskStatus.pending)
+          .toList();
+      final completedInstances = instances
+          .where((i) => i.status == TaskStatus.completed)
+          .toList();
+
+      expect(completedInstances.length, equals(1));
+      expect(pendingInstances.length, equals(10));
+
+      // Verify no duplicate scheduledDate entries across all instances
+      final dateSet = <CivilDay>{};
+      for (final inst in instances) {
+        expect(
+          dateSet.contains(inst.scheduledDate),
+          isFalse,
+          reason: 'Duplicate instance found for date: ${inst.scheduledDate}',
+        );
+        dateSet.add(inst.scheduledDate);
+      }
+
+      AppClock.reset();
+    },
+  );
 }

@@ -122,6 +122,35 @@ class SchedulerEngine {
     );
   }
 
+  static TaskInstance _selectCanonicalInstance(List<TaskInstance> instances) {
+    assert(instances.isNotEmpty);
+    if (instances.length == 1) return instances.first;
+
+    final sorted = List<TaskInstance>.from(instances);
+    sorted.sort((a, b) {
+      int score(TaskInstance inst) {
+        if (inst.status == TaskStatus.completed || inst.completedAt != null) {
+          return 2;
+        }
+        if (inst.status != TaskStatus.pending) {
+          return 1;
+        }
+        return 0;
+      }
+
+      final scoreA = score(a);
+      final scoreB = score(b);
+      if (scoreA != scoreB) {
+        return scoreB.compareTo(scoreA);
+      }
+      final timeComp = b.updatedAt.compareTo(a.updatedAt);
+      if (timeComp != 0) return timeComp;
+      return b.id.compareTo(a.id);
+    });
+
+    return sorted.first;
+  }
+
   ({
     List<TaskInstance> toUpdate,
     List<TaskInstance> toSpawn,
@@ -148,17 +177,49 @@ class SchedulerEngine {
         final ruleInstances = taskInstances
             .where((inst) => _isInstanceForRule(inst, s, task))
             .toList();
-        final pendingForSchedule = ruleInstances
-            .where((inst) => inst.status == TaskStatus.pending)
-            .toList();
+
+        final Map<CivilDay, List<TaskInstance>> instancesByDate = {};
+        for (final inst in ruleInstances) {
+          instancesByDate.putIfAbsent(inst.scheduledDate, () => []).add(inst);
+        }
+
+        final List<TaskInstance> canonicalInstances = [];
+        for (final entry in instancesByDate.entries) {
+          final insts = entry.value;
+          if (insts.length > 1) {
+            final canonical = _selectCanonicalInstance(insts);
+            canonicalInstances.add(canonical);
+            for (final inst in insts) {
+              if (inst.id != canonical.id && !toDelete.contains(inst.id)) {
+                toDelete.add(inst.id);
+              }
+            }
+          } else {
+            canonicalInstances.add(insts.first);
+          }
+        }
+
+        final pendingForSchedule =
+            canonicalInstances
+                .where((inst) => inst.status == TaskStatus.pending)
+                .toList()
+              ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+        if (pendingForSchedule.length > 1) {
+          for (int p = 1; p < pendingForSchedule.length; p++) {
+            if (!toDelete.contains(pendingForSchedule[p].id)) {
+              toDelete.add(pendingForSchedule[p].id);
+            }
+          }
+        }
 
         if (pendingForSchedule.isEmpty) {
           CivilDay? dateToSpawn;
-          if (ruleInstances.isEmpty) {
+          if (canonicalInstances.isEmpty) {
             dateToSpawn = s.scheduledDate;
           } else {
             final resolved =
-                ruleInstances
+                canonicalInstances
                     .where((inst) => inst.status != TaskStatus.pending)
                     .toList()
                   ..sort(
@@ -222,8 +283,32 @@ class SchedulerEngine {
         final ruleInstances = taskInstances
             .where((inst) => _isInstanceForRule(inst, s, task))
             .toList();
+
+        final Map<CivilDay, List<TaskInstance>> instancesByDate = {};
+        for (final inst in ruleInstances) {
+          instancesByDate.putIfAbsent(inst.scheduledDate, () => []).add(inst);
+        }
+
+        final Map<CivilDay, TaskInstance> workingInstances = {};
+        for (final entry in instancesByDate.entries) {
+          final date = entry.key;
+          final insts = entry.value;
+          if (insts.length > 1) {
+            final canonical = _selectCanonicalInstance(insts);
+            workingInstances[date] = canonical;
+            for (final inst in insts) {
+              if (inst.id != canonical.id && !toDelete.contains(inst.id)) {
+                toDelete.add(inst.id);
+              }
+            }
+          } else {
+            workingInstances[date] = insts.first;
+          }
+        }
+
+        final canonicalInstances = workingInstances.values.toList();
         final pending =
-            ruleInstances
+            canonicalInstances
                 .where((inst) => inst.status == TaskStatus.pending)
                 .toList()
               ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
@@ -234,7 +319,7 @@ class SchedulerEngine {
           initialBaseDate = pending.first.scheduledDate;
         } else {
           final resolved =
-              ruleInstances
+              canonicalInstances
                   .where((inst) => inst.status != TaskStatus.pending)
                   .toList()
                 ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
@@ -253,13 +338,6 @@ class SchedulerEngine {
         }
 
         final maxEvaluationDate = initialBaseDate.addDays(maxEvaluationDays);
-
-        // Keep a set/list of all instances for this rule (both existing DB ones and candidates we spawn)
-        // We will update their statuses as we loop.
-        final Map<CivilDay, TaskInstance> workingInstances = {};
-        for (final inst in ruleInstances) {
-          workingInstances[inst.scheduledDate] = inst;
-        }
 
         // Loop to maintain the queue of N future pending instances
         var currentBaseDate = initialBaseDate;
@@ -351,7 +429,7 @@ class SchedulerEngine {
           if (policy == MissedPolicy.stack) {
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
-              final isOriginalResolved = ruleInstances.any(
+              final isOriginalResolved = canonicalInstances.any(
                 (x) => x.id == inst.id && x.status != TaskStatus.pending,
               );
               if (!isOriginalResolved) {
@@ -363,7 +441,7 @@ class SchedulerEngine {
           } else if (policy == MissedPolicy.autoDismiss) {
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
-              final isOriginalResolved = ruleInstances.any(
+              final isOriginalResolved = canonicalInstances.any(
                 (x) => x.id == inst.id && x.status != TaskStatus.pending,
               );
               if (isOriginalResolved) continue;
@@ -395,7 +473,7 @@ class SchedulerEngine {
 
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
-              final isOriginalResolved = ruleInstances.any(
+              final isOriginalResolved = canonicalInstances.any(
                 (x) => x.id == inst.id && x.status != TaskStatus.pending,
               );
               if (isOriginalResolved) continue;
@@ -427,7 +505,7 @@ class SchedulerEngine {
 
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
-              final isOriginalResolved = ruleInstances.any(
+              final isOriginalResolved = canonicalInstances.any(
                 (x) => x.id == inst.id && x.status != TaskStatus.pending,
               );
               if (isOriginalResolved) continue;
@@ -492,9 +570,9 @@ class SchedulerEngine {
             }
           }
 
-          final existsInDb = ruleInstances.any((x) => x.id == inst.id);
+          final existsInDb = canonicalInstances.any((x) => x.id == inst.id);
           if (existsInDb) {
-            final orig = ruleInstances.firstWhere((x) => x.id == inst.id);
+            final orig = canonicalInstances.firstWhere((x) => x.id == inst.id);
             if (orig.status != inst.status) {
               toUpdate.add(inst);
             }
@@ -517,7 +595,9 @@ class SchedulerEngine {
         for (final inst in pending) {
           if (inst.scheduledDate.compareTo(today) > 0 &&
               !futureTargetDates.contains(inst.scheduledDate)) {
-            toDelete.add(inst.id);
+            if (!toDelete.contains(inst.id)) {
+              toDelete.add(inst.id);
+            }
           }
         }
       }
