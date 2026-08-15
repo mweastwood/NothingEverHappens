@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:nothing_ever_happens/main.dart';
+import 'app_logger.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => AuthRepository(),
+  (ref) => AuthRepository(logger: ref.watch(appLoggerProvider)),
 );
 
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -15,10 +16,15 @@ final authStateProvider = StreamProvider<User?>((ref) {
 class AuthRepository {
   final FirebaseAuth _firebaseAuth;
   final GoogleSignIn _googleSignIn;
+  final AppLogger? _logger;
 
-  AuthRepository({FirebaseAuth? firebaseAuth, GoogleSignIn? googleSignIn})
-    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-      _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
+  AuthRepository({
+    FirebaseAuth? firebaseAuth,
+    GoogleSignIn? googleSignIn,
+    AppLogger? logger,
+  }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+       _googleSignIn = googleSignIn ?? GoogleSignIn.instance,
+       _logger = logger;
 
   bool _googleSignInInitialized = false;
 
@@ -28,11 +34,12 @@ class AuthRepository {
 
   Future<User?> signInWithGoogle() async {
     try {
+      final User? user;
       if (kIsWeb) {
         // On Web, use the FirebaseAuth popup directly
         final UserCredential userCredential = await _firebaseAuth
             .signInWithPopup(GoogleAuthProvider());
-        return userCredential.user;
+        user = userCredential.user;
       } else {
         if (!_googleSignInInitialized) {
           final String serverClientId =
@@ -57,9 +64,16 @@ class AuthRepository {
 
         final UserCredential userCredential = await _firebaseAuth
             .signInWithCredential(credential);
-        return userCredential.user;
+        user = userCredential.user;
       }
+      _logger?.info(
+        'auth',
+        'Google sign-in succeeded',
+        data: {'uid': user?.uid},
+      );
+      return user;
     } catch (e) {
+      _logger?.error('auth', 'Google sign-in failed', error: e);
       if (!kIsWeb &&
           e is GoogleSignInException &&
           e.code == GoogleSignInExceptionCode.canceled) {
@@ -91,14 +105,21 @@ class AuthRepository {
     try {
       final UserCredential userCredential = await _firebaseAuth
           .signInAnonymously();
+      _logger?.info(
+        'auth',
+        'Anonymous sign-in succeeded',
+        data: {'uid': userCredential.user?.uid},
+      );
       return userCredential.user;
     } catch (e) {
+      _logger?.error('auth', 'Anonymous sign-in failed', error: e);
       debugPrint('Error signing in anonymously: $e');
       rethrow;
     }
   }
 
   Future<void> signOut() async {
+    _logger?.info('auth', 'User signing out');
     await _firebaseAuth.signOut();
     if (!kIsWeb) {
       await _googleSignIn.signOut();

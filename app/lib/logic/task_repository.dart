@@ -20,6 +20,7 @@ import 'unified_task_repository.dart';
 import 'hive_local_data_source.dart';
 import 'task_sync_service.dart';
 import 'error_handler.dart';
+import 'app_logger.dart';
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
   final VoidCallback onResume;
@@ -61,6 +62,7 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
     userId: user.uid,
     notificationService: ref.watch(notificationServiceProvider),
     errorHandler: ref.read(errorHandlerProvider),
+    logger: ref.watch(appLoggerProvider),
   );
 
   // Re-evaluate schedules when the mock clock advances in dev/test
@@ -205,12 +207,14 @@ class TaskRepository {
   static const int _instanceQueryCutoffDays = 90;
 
   String get userId => _userId;
+  final AppLogger? logger;
 
   TaskRepository({
     FirebaseFirestore? firestore,
     required String userId,
     NotificationService? notificationService,
     this.errorHandler,
+    this.logger,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _userId = userId,
        _notificationService = notificationService;

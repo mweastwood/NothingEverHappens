@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'app_logger.dart';
 import 'auth_repository.dart';
 import 'civil_day.dart';
 import 'error_handler.dart';
@@ -29,11 +30,13 @@ final appStateExporterProvider = Provider<AppStateExporter>((ref) {
   final authRepo = ref.watch(authRepositoryProvider);
   final hiveDataSource = ref.watch(hiveLocalDataSourceProvider);
   final errorHandler = ref.watch(errorHandlerProvider);
+  final logger = ref.watch(appLoggerProvider);
   return AppStateExporter(
     firestore: firestore,
     authRepository: authRepo,
     hiveDataSource: hiveDataSource,
     errorHandler: errorHandler,
+    logger: logger,
   );
 });
 
@@ -43,6 +46,7 @@ class AppStateExporter {
   final HiveLocalDataSource _hiveDataSource;
   final ErrorHandler? _errorHandler;
   final FileSaver? _fileSaver;
+  final AppLogger? _logger;
 
   AppStateExporter({
     FirebaseFirestore? firestore,
@@ -50,11 +54,13 @@ class AppStateExporter {
     required HiveLocalDataSource hiveDataSource,
     ErrorHandler? errorHandler,
     FileSaver? fileSaver,
+    AppLogger? logger,
   }) : _firestore = firestore,
        _authRepository = authRepository,
        _hiveDataSource = hiveDataSource,
        _errorHandler = errorHandler,
-       _fileSaver = fileSaver;
+       _fileSaver = fileSaver,
+       _logger = logger;
 
   static String? maskEmail(String? email) {
     if (email == null) return null;
@@ -421,11 +427,16 @@ class AppStateExporter {
 
     exportMetadata['isOffline'] = isOffline;
 
+    final eventLogs = (_logger?.getEvents() ?? [])
+        .map((e) => e.toJson())
+        .toList();
+
     final rawMap = {
       'exportMetadata': exportMetadata,
       'auth': authState,
       'localHiveState': localHiveState,
       'remoteFirebaseState': remoteFirebaseState,
+      'eventLogs': eventLogs,
     };
 
     return sanitizeForJson(rawMap) as Map<String, dynamic>;
@@ -548,6 +559,8 @@ class AppStateExporter {
   Future<void> shareDebugState(BuildContext context) async {
     if (!context.mounted) return;
 
+    _logger?.info('export', 'Debug state export initiated');
+
     final Completer<BuildContext> dialogContextCompleter =
         Completer<BuildContext>();
     bool isDismissed = false;
@@ -600,6 +613,7 @@ class AppStateExporter {
     try {
       try {
         final jsonString = await exportStateJson(pretty: true);
+        _logger?.info('export', 'Debug state export completed');
         await dismissProgressDialog();
 
         if (!context.mounted) return;
