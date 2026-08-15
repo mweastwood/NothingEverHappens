@@ -21,6 +21,7 @@ import 'relative_time.dart';
 import 'task_repository.dart';
 import 'utils/app_version.dart';
 import 'utils/file_downloader/file_downloader.dart';
+import 'firestore_extensions.dart';
 
 typedef FileSaver =
     FutureOr<void> Function(String content, String fileName, {String mimeType});
@@ -256,8 +257,8 @@ class AppStateExporter {
       final phase1Futures = <Future<void>>[
         () async {
           try {
-            final userDocSnap = await userDocRef.get().timeout(
-              const Duration(seconds: 5),
+            final userDocSnap = await userDocRef.safeGet(
+              timeout: const Duration(seconds: 5),
             );
             final userProfileData = userDocSnap.data();
             if (userDocSnap.exists && userProfileData != null) {
@@ -275,8 +276,7 @@ class AppStateExporter {
             final settingsSnap = await userDocRef
                 .collection('settings')
                 .doc('agile')
-                .get()
-                .timeout(const Duration(seconds: 5));
+                .safeGet(timeout: const Duration(seconds: 5));
             if (settingsSnap.exists && settingsSnap.data() != null) {
               remoteFirebaseState['settingsDoc'] = settingsSnap.data();
             }
@@ -292,8 +292,7 @@ class AppStateExporter {
             final tasksQuery = await userDocRef
                 .collection('tasks')
                 .limit(500)
-                .get()
-                .timeout(const Duration(seconds: 5));
+                .safeGet(timeout: const Duration(seconds: 5));
             remoteFirebaseState['tasks'] = tasksQuery.docs
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
@@ -309,8 +308,7 @@ class AppStateExporter {
             final instancesQuery = await userDocRef
                 .collection('instances')
                 .limit(500)
-                .get()
-                .timeout(const Duration(seconds: 5));
+                .safeGet(timeout: const Duration(seconds: 5));
             remoteFirebaseState['instances'] = instancesQuery.docs
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
@@ -330,8 +328,7 @@ class AppStateExporter {
                 .collection('invites')
                 .where('toEmail', isEqualTo: email.trim().toLowerCase())
                 .limit(500)
-                .get()
-                .timeout(const Duration(seconds: 5));
+                .safeGet(timeout: const Duration(seconds: 5));
             remoteFirebaseState['invites'] = invitesQuery.docs
                 .map((doc) => {'id': doc.id, ...doc.data()})
                 .toList();
@@ -361,8 +358,8 @@ class AppStateExporter {
         final phase2Futures = <Future<void>>[
           () async {
             try {
-              final familySnap = await familyRef.get().timeout(
-                const Duration(seconds: 5),
+              final familySnap = await familyRef.safeGet(
+                timeout: const Duration(seconds: 5),
               );
               if (familySnap.exists && familySnap.data() != null) {
                 remoteFirebaseState['familyDoc'] = {
@@ -382,8 +379,7 @@ class AppStateExporter {
               final familyTasksQuery = await familyRef
                   .collection('tasks')
                   .limit(500)
-                  .get()
-                  .timeout(const Duration(seconds: 5));
+                  .safeGet(timeout: const Duration(seconds: 5));
               remoteFirebaseState['familyTasks'] = familyTasksQuery.docs
                   .map((doc) => {'id': doc.id, ...doc.data()})
                   .toList();
@@ -399,8 +395,7 @@ class AppStateExporter {
               final familyInstancesQuery = await familyRef
                   .collection('instances')
                   .limit(500)
-                  .get()
-                  .timeout(const Duration(seconds: 5));
+                  .safeGet(timeout: const Duration(seconds: 5));
               remoteFirebaseState['familyInstances'] = familyInstancesQuery.docs
                   .map((doc) => {'id': doc.id, ...doc.data()})
                   .toList();
