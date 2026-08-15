@@ -3,6 +3,7 @@ import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
+import 'package:nothing_ever_happens/logic/firestore_extensions.dart';
 
 class InitialFirebaseMigrationService {
   static final Map<String, Future<void>> _inFlightMigrations = {};
@@ -48,7 +49,10 @@ class InitialFirebaseMigrationService {
         'Initial Firebase migration started',
         data: {'force': force},
       );
-      final userDoc = await _firestore.collection('users').doc(_userId).get();
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(_userId)
+          .safeGet();
       final familyId = userDoc.data()?['familyId'] as String?;
 
       final List<TaskSchedule> tasksToMigrate = [];
@@ -59,7 +63,7 @@ class InitialFirebaseMigrationService {
           .collection('users')
           .doc(_userId)
           .collection('tasks')
-          .get();
+          .safeGet();
       tasksToMigrate.addAll(
         personalTasksSnap.docs.map((doc) => TaskSchedule.fromFirestore(doc)),
       );
@@ -69,7 +73,7 @@ class InitialFirebaseMigrationService {
           .collection('users')
           .doc(_userId)
           .collection('instances')
-          .get();
+          .safeGet();
       instancesToMigrate.addAll(
         personalInstancesSnap.docs.map(
           (doc) => TaskInstance.fromFirestore(doc),
@@ -82,7 +86,7 @@ class InitialFirebaseMigrationService {
             .collection('families')
             .doc(familyId)
             .collection('tasks')
-            .get();
+            .safeGet();
         tasksToMigrate.addAll(
           familyTasksSnap.docs.map((doc) => TaskSchedule.fromFirestore(doc)),
         );
@@ -91,7 +95,7 @@ class InitialFirebaseMigrationService {
             .collection('families')
             .doc(familyId)
             .collection('instances')
-            .get();
+            .safeGet();
         instancesToMigrate.addAll(
           familyInstancesSnap.docs.map(
             (doc) => TaskInstance.fromFirestore(doc),
