@@ -22,6 +22,28 @@ class SchedulerAction {
   });
 }
 
+class SchedulerEvaluationContext {
+  final TaskSchedule task;
+  final List<TaskInstance> taskInstances;
+  final DateTime now;
+  final CivilDay today;
+  final UserSettings? userSettings;
+  final Map<CivilDay, double>? dayPlannedHours;
+  final bool applyCapacityLimits;
+  final int? futureInstancesCount;
+
+  const SchedulerEvaluationContext({
+    required this.task,
+    required this.taskInstances,
+    required this.now,
+    required this.today,
+    this.userSettings,
+    this.dayPlannedHours,
+    this.applyCapacityLimits = true,
+    this.futureInstancesCount,
+  });
+}
+
 class SchedulerEngine {
   /// Maximum number of days into the future to evaluate schedule rules.
   static const int maxEvaluationDays = 30;
@@ -46,123 +68,73 @@ class SchedulerEngine {
     bool applyCapacityLimits = true,
   }) {
     final today = CivilDay.fromDateTime(now);
+    final context = SchedulerEvaluationContext(
+      task: task,
+      taskInstances: taskInstances,
+      now: now,
+      today: today,
+      userSettings: userSettings,
+      dayPlannedHours: dayPlannedHours,
+      applyCapacityLimits: applyCapacityLimits,
+      futureInstancesCount: futureInstancesCount,
+    );
+
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
 
     if (!isRecurring) {
-      // One-Off Schedule: Ensure an instance exists for each OneOffSchedule in the task.
-      final List<TaskInstance> toSpawn = [];
-      for (int i = 0; i < task.schedules.length; i++) {
-        final s = task.schedules[i];
-        if (s is OneOffSchedule) {
-          final exists = taskInstances.any(
-            (inst) =>
-                _isInstanceForRule(inst, s, task) &&
-                inst.scheduledDate == s.scheduledDate,
-          );
-          if (!exists) {
-            toSpawn.add(
-              TaskInstance(
-                id: generateId(),
-                scheduleId: task.id,
-                ruleId: s.id,
-                title: task.title,
-                description: task.description,
-                scheduledDate: s.scheduledDate,
-                startRelativeTime: s.startRelativeTime,
-                dueRelativeTime: s.dueRelativeTime,
-                notificationRelativeTimes: s.notificationRelativeTimes,
-                isFamily: task.isFamily,
-                priority: task.priority,
-                cycleId: task.cycleId,
-                assignedUserId: task.assignedUserId,
-                status: TaskStatus.pending,
-              ),
-            );
-          }
-        }
-      }
-      final List<TaskInstance> finalToSpawn = [];
-      final List<TaskInstance> finalToUpdate = [];
-
-      if (task.skipIfNoCapacity && applyCapacityLimits) {
-        final double taskDuration =
-            (task.estimatedDuration ?? const Duration()).inMinutes /
-            minutesPerHour;
-        final Map<CivilDay, double> tempPlannedHours = dayPlannedHours != null
-            ? Map.from(dayPlannedHours)
-            : {};
-
-        // 1. Process existing one-off instances in the DB (support skipping and revival)
-        for (final inst in taskInstances) {
-          final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
-          final isFuture = now.isBefore(start);
-          if ((inst.status == TaskStatus.pending ||
-                  inst.status == TaskStatus.skipped) &&
-              isFuture) {
-            final capacity =
-                userSettings?.getCapacityForDate(
-                  inst.scheduledDate.toDateTime(),
-                ) ??
-                defaultDailyCapacityHours;
-            final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
-
-            if (capacity - planned < taskDuration) {
-              if (inst.status == TaskStatus.pending) {
-                finalToUpdate.add(inst.copyWith(status: TaskStatus.skipped));
-              }
-            } else {
-              if (inst.status == TaskStatus.skipped) {
-                finalToUpdate.add(inst.copyWith(status: TaskStatus.pending));
-              }
-              tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
-            }
-          }
-        }
-
-        // 2. Process newly spawned instances
-        for (final inst in toSpawn) {
-          if (inst.status == TaskStatus.pending &&
-              inst.scheduledDate.compareTo(today) >= 0) {
-            final capacity =
-                userSettings?.getCapacityForDate(
-                  inst.scheduledDate.toDateTime(),
-                ) ??
-                defaultDailyCapacityHours;
-            final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
-
-            if (capacity - planned < taskDuration) {
-              finalToSpawn.add(inst.copyWith(status: TaskStatus.skipped));
-            } else {
-              finalToSpawn.add(inst);
-              tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
-            }
-          } else {
-            finalToSpawn.add(inst);
-          }
-        }
-      } else {
-        // If skipIfNoCapacity is false and applyCapacityLimits is true, revive any skipped instances back to pending
-        if (!task.skipIfNoCapacity && applyCapacityLimits) {
-          for (final inst in taskInstances) {
-            final start = inst.startRelativeTime.referenceTo(
-              inst.scheduledDate,
-            );
-            final isFuture = now.isBefore(start);
-            if (inst.status == TaskStatus.skipped && isFuture) {
-              finalToUpdate.add(inst.copyWith(status: TaskStatus.pending));
-            }
-          }
-        }
-        finalToSpawn.addAll(toSpawn);
-      }
-
-      return SchedulerAction(
-        instancesToSpawn: finalToSpawn,
-        instancesToUpdate: finalToUpdate,
-      );
+      return _evaluateOneOff(context);
     }
 
-    // Recurring Schedule
+    final recurringResult = _evaluateRecurringRules(context);
+    final List<TaskInstance> toUpdate = recurringResult.toUpdate;
+    final List<TaskInstance> toSpawn = recurringResult.toSpawn;
+    final List<String> toDelete = recurringResult.toDelete;
+    final CivilDay? maxSpawned = recurringResult.maxSpawned;
+
+    TaskSchedule? updatedSchedule;
+    if (maxSpawned != null &&
+        (task.lastSpawnedDate == null ||
+            maxSpawned.compareTo(task.lastSpawnedDate!) > 0)) {
+      updatedSchedule = task.copyWith(lastSpawnedDate: maxSpawned);
+    }
+
+    final capacityResult = _applyCapacityLimits(
+      context,
+      toSpawn: toSpawn,
+      toUpdate: toUpdate,
+      toDelete: toDelete,
+    );
+    final finalToSpawn = capacityResult.finalToSpawn;
+    final finalToUpdate = capacityResult.finalToUpdate;
+
+    final uniqueTriggerTimes = _calculateTriggerTimes(
+      context,
+      toSpawn: finalToSpawn,
+      toUpdate: finalToUpdate,
+    );
+
+    return SchedulerAction(
+      instancesToUpdate: finalToUpdate,
+      instancesToSpawn: finalToSpawn,
+      instancesToDelete: toDelete,
+      updatedSchedule: updatedSchedule,
+      triggerTimes: uniqueTriggerTimes,
+    );
+  }
+
+  ({
+    List<TaskInstance> toUpdate,
+    List<TaskInstance> toSpawn,
+    List<String> toDelete,
+    CivilDay? maxSpawned,
+  })
+  _evaluateRecurringRules(SchedulerEvaluationContext context) {
+    final task = context.task;
+    final taskInstances = context.taskInstances;
+    final now = context.now;
+    final today = context.today;
+    final futureInstancesCount = context.futureInstancesCount;
+
     final List<TaskInstance> toUpdate = [];
     final List<TaskInstance> toSpawn = [];
     final List<String> toDelete = [];
@@ -400,7 +372,7 @@ class SchedulerEngine {
                 inst,
                 now,
               );
-              var nextStatus = isExpired
+              final nextStatus = isExpired
                   ? TaskStatus.skipped
                   : TaskStatus.pending;
               if (inst.status != nextStatus) {
@@ -551,40 +523,28 @@ class SchedulerEngine {
       }
     }
 
-    // Calculate critical times
-    final List<DateTime> triggerTimes = [];
-    final allCurrentInstances = [
-      ...taskInstances.where((inst) => inst.scheduleId == task.id),
-      ...toSpawn,
-    ];
-    for (final inst in allCurrentInstances) {
-      if (inst.status == TaskStatus.pending) {
-        final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
-        final due = inst.dueRelativeTime.referenceTo(inst.scheduledDate);
-        if (start.isAfter(now)) triggerTimes.add(start);
-        if (due.isAfter(now)) triggerTimes.add(due);
+    return (
+      toUpdate: toUpdate,
+      toSpawn: toSpawn,
+      toDelete: toDelete,
+      maxSpawned: maxSpawned,
+    );
+  }
 
-        final ruleIndex = _ruleIndexOfInstance(task, inst);
-        if (ruleIndex >= 0 && ruleIndex < task.schedules.length) {
-          final rule = task.schedules[ruleIndex];
-          if (rule.missedOccurrencePolicy.policy == MissedPolicy.autoDismiss) {
-            final exp = rule.missedOccurrencePolicy.calculateExpiration(due);
-            if (exp != null && exp.isAfter(now)) {
-              triggerTimes.add(exp);
-            }
-          }
-        }
-      }
-    }
-    triggerTimes.sort();
-    final uniqueTriggerTimes = triggerTimes.toSet().toList();
-
-    TaskSchedule? updatedSchedule;
-    if (maxSpawned != null &&
-        (task.lastSpawnedDate == null ||
-            maxSpawned.compareTo(task.lastSpawnedDate!) > 0)) {
-      updatedSchedule = task.copyWith(lastSpawnedDate: maxSpawned);
-    }
+  ({List<TaskInstance> finalToSpawn, List<TaskInstance> finalToUpdate})
+  _applyCapacityLimits(
+    SchedulerEvaluationContext context, {
+    required List<TaskInstance> toSpawn,
+    List<TaskInstance> toUpdate = const [],
+    List<String> toDelete = const [],
+  }) {
+    final task = context.task;
+    final taskInstances = context.taskInstances;
+    final now = context.now;
+    final today = context.today;
+    final userSettings = context.userSettings;
+    final dayPlannedHours = context.dayPlannedHours;
+    final applyCapacityLimits = context.applyCapacityLimits;
 
     final List<TaskInstance> finalToSpawn = [];
     final List<TaskInstance> finalToUpdate = List.from(toUpdate);
@@ -601,13 +561,19 @@ class SchedulerEngine {
       for (final inst in taskInstances) {
         final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
         final isFuture = now.isBefore(start);
-        if ((inst.status == TaskStatus.pending ||
-                inst.status == TaskStatus.skipped) &&
-            isFuture) {
-          final isMarkedForDelete = toDelete.contains(inst.id);
-          final isMarkedForUpdate = toUpdate.any((x) => x.id == inst.id);
-          if (isMarkedForDelete) continue;
 
+        final isMarkedForDelete = toDelete.contains(inst.id);
+        final isMarkedForUpdate = finalToUpdate.any((x) => x.id == inst.id);
+        if (isMarkedForDelete) continue;
+
+        final effectiveInst = isMarkedForUpdate
+            ? finalToUpdate.firstWhere((x) => x.id == inst.id)
+            : inst;
+        final effectiveStatus = effectiveInst.status;
+
+        if ((effectiveStatus == TaskStatus.pending ||
+                effectiveStatus == TaskStatus.skipped) &&
+            isFuture) {
           final capacity =
               userSettings?.getCapacityForDate(
                 inst.scheduledDate.toDateTime(),
@@ -616,28 +582,29 @@ class SchedulerEngine {
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
           if (capacity - planned < taskDuration) {
-            if (inst.status == TaskStatus.pending) {
+            if (effectiveStatus == TaskStatus.pending) {
               if (isMarkedForUpdate) {
                 final idx = finalToUpdate.indexWhere((x) => x.id == inst.id);
-                finalToUpdate[idx] = finalToUpdate[idx].copyWith(
-                  status: TaskStatus.skipped,
-                );
+                if (inst.status == TaskStatus.skipped) {
+                  finalToUpdate.removeAt(idx);
+                } else {
+                  finalToUpdate[idx] = finalToUpdate[idx].copyWith(
+                    status: TaskStatus.skipped,
+                  );
+                }
               } else {
                 finalToUpdate.add(inst.copyWith(status: TaskStatus.skipped));
               }
             }
           } else {
-            if (inst.status == TaskStatus.skipped) {
-              if (isMarkedForUpdate) {
-                final idx = finalToUpdate.indexWhere((x) => x.id == inst.id);
-                finalToUpdate[idx] = finalToUpdate[idx].copyWith(
-                  status: TaskStatus.pending,
-                );
-              } else {
+            if (effectiveStatus == TaskStatus.skipped) {
+              if (!isMarkedForUpdate) {
                 finalToUpdate.add(inst.copyWith(status: TaskStatus.pending));
+                tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
               }
+            } else if (effectiveStatus == TaskStatus.pending) {
+              tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
             }
-            tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
           }
         }
       }
@@ -709,12 +676,97 @@ class SchedulerEngine {
       finalToSpawn.addAll(toSpawn);
     }
 
+    return (finalToSpawn: finalToSpawn, finalToUpdate: finalToUpdate);
+  }
+
+  List<DateTime> _calculateTriggerTimes(
+    SchedulerEvaluationContext context, {
+    required List<TaskInstance> toSpawn,
+    List<TaskInstance> toUpdate = const [],
+  }) {
+    final task = context.task;
+    final taskInstances = context.taskInstances;
+    final now = context.now;
+
+    final List<DateTime> triggerTimes = [];
+    final updatedMap = {for (final inst in toUpdate) inst.id: inst};
+    final effectiveExistingInstances = taskInstances
+        .where((inst) => inst.scheduleId == task.id)
+        .map((inst) => updatedMap[inst.id] ?? inst);
+
+    final allCurrentInstances = [...effectiveExistingInstances, ...toSpawn];
+    for (final inst in allCurrentInstances) {
+      if (inst.status == TaskStatus.pending) {
+        final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
+        final due = inst.dueRelativeTime.referenceTo(inst.scheduledDate);
+        if (start.isAfter(now)) triggerTimes.add(start);
+        if (due.isAfter(now)) triggerTimes.add(due);
+
+        final ruleIndex = _ruleIndexOfInstance(task, inst);
+        if (ruleIndex >= 0 && ruleIndex < task.schedules.length) {
+          final rule = task.schedules[ruleIndex];
+          if (rule.missedOccurrencePolicy.policy == MissedPolicy.autoDismiss) {
+            final exp = rule.missedOccurrencePolicy.calculateExpiration(due);
+            if (exp != null && exp.isAfter(now)) {
+              triggerTimes.add(exp);
+            }
+          }
+        }
+      }
+    }
+    triggerTimes.sort();
+    return triggerTimes.toSet().toList();
+  }
+
+  SchedulerAction _evaluateOneOff(SchedulerEvaluationContext context) {
+    final task = context.task;
+    final taskInstances = context.taskInstances;
+
+    // One-Off Schedule: Ensure an instance exists for each OneOffSchedule in the task.
+    final List<TaskInstance> toSpawn = [];
+    for (int i = 0; i < task.schedules.length; i++) {
+      final s = task.schedules[i];
+      if (s is OneOffSchedule) {
+        final exists = taskInstances.any(
+          (inst) =>
+              _isInstanceForRule(inst, s, task) &&
+              inst.scheduledDate == s.scheduledDate,
+        );
+        if (!exists) {
+          toSpawn.add(
+            TaskInstance(
+              id: generateId(),
+              scheduleId: task.id,
+              ruleId: s.id,
+              title: task.title,
+              description: task.description,
+              scheduledDate: s.scheduledDate,
+              startRelativeTime: s.startRelativeTime,
+              dueRelativeTime: s.dueRelativeTime,
+              notificationRelativeTimes: s.notificationRelativeTimes,
+              isFamily: task.isFamily,
+              priority: task.priority,
+              cycleId: task.cycleId,
+              assignedUserId: task.assignedUserId,
+              status: TaskStatus.pending,
+            ),
+          );
+        }
+      }
+    }
+
+    final capacityResult = _applyCapacityLimits(context, toSpawn: toSpawn);
+
+    final triggerTimes = _calculateTriggerTimes(
+      context,
+      toSpawn: capacityResult.finalToSpawn,
+      toUpdate: capacityResult.finalToUpdate,
+    );
+
     return SchedulerAction(
-      instancesToUpdate: finalToUpdate,
-      instancesToSpawn: finalToSpawn,
-      instancesToDelete: toDelete,
-      updatedSchedule: updatedSchedule,
-      triggerTimes: uniqueTriggerTimes,
+      instancesToSpawn: capacityResult.finalToSpawn,
+      instancesToUpdate: capacityResult.finalToUpdate,
+      triggerTimes: triggerTimes,
     );
   }
 

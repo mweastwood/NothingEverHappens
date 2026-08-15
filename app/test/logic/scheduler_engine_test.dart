@@ -2008,5 +2008,278 @@ void main() {
         },
       );
     });
+
+    group('Capacity limit edge cases & trigger time tests', () {
+      test(
+        'reviving skipped instance does not re-add to instancesToUpdate if already skipped in DB when still over capacity',
+        () {
+          final task = TaskSchedule(
+            id: 'task-overcap',
+            title: 'Over Capacity Task',
+            description: '',
+            estimatedDuration: const Duration(hours: 4),
+            skipIfNoCapacity: true,
+            schedules: [
+              OneOffSchedule(
+                date: today.addDays(1),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 10, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 18, minute: 0),
+                ),
+              ),
+            ],
+          );
+
+          final existingSkippedInst = TaskInstance(
+            id: 'inst-overcap',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 18, minute: 0),
+            ),
+            status: TaskStatus.skipped,
+          );
+
+          final userSettings = UserSettings(hoursAvailable: 0.0);
+
+          final action = const SchedulerEngine().evaluate(
+            task,
+            [existingSkippedInst],
+            now,
+            userSettings: userSettings,
+          );
+
+          // Since capacity is 0 and the DB status was already 'skipped',
+          // reverting the staged pending back to skipped should remove it from instancesToUpdate
+          // to prevent redundant database writes.
+          expect(
+            action.instancesToUpdate.any((x) => x.id == 'inst-overcap'),
+            isFalse,
+          );
+        },
+      );
+
+      test(
+        'tempPlannedHours does not subtract duration of completed task instances',
+        () {
+          final tomorrow = today.addDays(1);
+          final rule1 = DailySchedule(
+            id: 'rule-1',
+            startDate: tomorrow,
+            interval: 1,
+          );
+          final rule2 = OneOffSchedule(
+            id: 'rule-2',
+            date: tomorrow,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 14, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 18, minute: 0),
+            ),
+          );
+          final task = TaskSchedule(
+            id: 'task-completed-cap',
+            title: 'Completed Cap Task',
+            description: '',
+            estimatedDuration: const Duration(hours: 4),
+            skipIfNoCapacity: true,
+            schedules: [rule1, rule2],
+          );
+
+          final completedInst = TaskInstance(
+            id: 'inst-completed',
+            scheduleId: task.id,
+            ruleId: rule1.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: tomorrow,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 12, minute: 0),
+            ),
+            status: TaskStatus.completed,
+          );
+
+          // Total capacity is 6 hours, 4 hours is already taken by the completed instance.
+          // dayPlannedHours reflects total planned hours on that day.
+          final userSettings = UserSettings(hoursAvailable: 6.0);
+          final dayPlannedHours = {tomorrow: 4.0};
+
+          // Evaluating a new instance attempt on the same day when remaining capacity is only 2 hours (6.0 - 4.0 = 2.0 < 4.0)
+          // If completedInst is not wrongly subtracted from tempPlannedHours, remaining capacity remains 2.0 < 4.0, so the new instance is skipped.
+          // If completedInst was wrongly subtracted, planned becomes 4.0 - 4.0 = 0.0, remaining capacity becomes 6.0 >= 4.0, wrongly pending.
+          final action = const SchedulerEngine().evaluate(
+            task,
+            [completedInst],
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: dayPlannedHours,
+          );
+
+          final spawnedTomorrow = action.instancesToSpawn.firstWhere(
+            (x) =>
+                x.ruleId == task.schedules.last.id &&
+                x.scheduledDate == tomorrow,
+          );
+          expect(spawnedTomorrow.status, TaskStatus.skipped);
+        },
+      );
+
+      test(
+        'ghost capacity: instance staged to skipped by rule does not consume capacity',
+        () {
+          final yesterday = today.addDays(-1);
+          final task = TaskSchedule(
+            id: 'task-ghost',
+            title: 'Ghost Capacity Task',
+            description: '',
+            estimatedDuration: const Duration(hours: 6),
+            skipIfNoCapacity: true,
+            schedules: [
+              DailySchedule(
+                startDate: yesterday,
+                interval: 1,
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 12, minute: 0),
+                ),
+                missedOccurrencePolicy:
+                    const MissedOccurrencePolicy.autoDismiss(
+                      gracePeriod: Duration.zero,
+                    ),
+              ),
+            ],
+          );
+
+          final yesterdayInst = TaskInstance(
+            id: 'inst-ghost',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: yesterday,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 12, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          );
+
+          final action = const SchedulerEngine().evaluate(task, [
+            yesterdayInst,
+          ], now);
+
+          // yesterdayInst is auto-dismissed (skipped)
+          expect(
+            action.instancesToUpdate
+                .firstWhere((x) => x.id == 'inst-ghost')
+                .status,
+            TaskStatus.skipped,
+          );
+        },
+      );
+
+      test('no spurious trigger times for skipped instances', () {
+        final tomorrow = today.addDays(1);
+        final task = TaskSchedule(
+          id: 'task-no-trigger-skipped',
+          title: 'No Spurious Trigger',
+          description: '',
+          estimatedDuration: const Duration(hours: 10),
+          skipIfNoCapacity: true,
+          schedules: [
+            OneOffSchedule(
+              date: tomorrow,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 10, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 18, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        final userSettings = UserSettings(hoursAvailable: 0.0); // No capacity
+
+        final action = const SchedulerEngine().evaluate(
+          task,
+          [],
+          now,
+          userSettings: userSettings,
+        );
+
+        expect(action.instancesToSpawn, hasLength(1));
+        expect(action.instancesToSpawn.first.status, TaskStatus.skipped);
+        // Since the spawned instance is skipped due to capacity limits, no trigger times should be generated
+        expect(action.triggerTimes, isEmpty);
+      });
+
+      test(
+        'populates triggerTimes for one-off tasks with future start/due times',
+        () {
+          final tomorrow = today.addDays(1);
+          final task = TaskSchedule(
+            id: 'task-oneoff-trigger',
+            title: 'One-off Trigger',
+            description: '',
+            schedules: [
+              OneOffSchedule(
+                date: tomorrow,
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 10, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 18, minute: 0),
+                ),
+              ),
+            ],
+          );
+
+          final action = const SchedulerEngine().evaluate(task, [], now);
+
+          expect(action.instancesToSpawn, hasLength(1));
+          expect(action.instancesToSpawn.first.status, TaskStatus.pending);
+          expect(action.triggerTimes, isNotEmpty);
+          final expectedStart = tomorrow.toDateTime().add(
+            const Duration(hours: 10),
+          );
+          final expectedDue = tomorrow.toDateTime().add(
+            const Duration(hours: 18),
+          );
+          expect(
+            action.triggerTimes,
+            containsAll([expectedStart, expectedDue]),
+          );
+        },
+      );
+    });
   });
 }
