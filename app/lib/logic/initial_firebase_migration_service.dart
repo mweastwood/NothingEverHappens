@@ -100,6 +100,7 @@ class InitialFirebaseMigrationService {
       _logger?.error('sync', 'Initial Firebase migration failed', error: e);
       // ignore: avoid_print
       print('Migration failed: $e');
+      rethrow;
     }
   }
 }
