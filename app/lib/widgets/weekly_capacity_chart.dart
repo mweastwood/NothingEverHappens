@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../logic/app_clock.dart';
+import '../logic/utils/format_utils.dart';
 
 class DailyCapacityData {
   final DateTime date;
@@ -27,31 +29,17 @@ class WeeklyCapacityChart extends StatelessWidget {
     required this.onEditDefaultCapacity,
   });
 
-  String _formatDuration(double hours) {
-    final totalMinutes = (hours * 60).round();
-    final h = totalMinutes ~/ 60;
-    final m = totalMinutes % 60;
-    if (h > 0 && m > 0) {
-      return '${h}h ${m}m';
-    } else if (h > 0) {
-      return '${h}h';
-    } else {
-      return '${m}m';
-    }
-  }
-
   String _formatForecastLabel(double plannedHours, double capacityHours) {
     if (plannedHours == 0) {
-      return _formatDuration(capacityHours);
+      return formatDurationHours(capacityHours);
     }
-    return '${_formatDuration(plannedHours)}/${_formatDuration(capacityHours)}';
+    return '${formatDurationHours(plannedHours)}/${formatDurationHours(capacityHours)}';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final today =
-        DateTime.now(); // or AppClock.now but we can use day comparison
+    final today = AppClock.now;
 
     double peakValue = 0.0;
     for (final data in daysData) {
