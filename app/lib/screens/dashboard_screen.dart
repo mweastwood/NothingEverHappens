@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/app_clock.dart';
@@ -7,6 +6,8 @@ import '../logic/user_settings_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/civil_day.dart';
 import '../logic/task_repository.dart';
+import '../logic/utils/format_utils.dart';
+import '../widgets/weekly_capacity_chart.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -28,29 +29,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         settings.copyWith(lastCapacityConfirmedWeek: weekId),
       );
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Weekly capacity confirmed successfully')),
+        const SnackBar(content: Text('Weekly capacity confirmed successfully')),
       );
     }
-  }
-
-  String _formatDuration(double hours) {
-    final totalMinutes = (hours * 60).round();
-    final h = totalMinutes ~/ 60;
-    final m = totalMinutes % 60;
-    if (h > 0 && m > 0) {
-      return '${h}h ${m}m';
-    } else if (h > 0) {
-      return '${h}h';
-    } else {
-      return '${m}m';
-    }
-  }
-
-  String _formatForecastLabel(double plannedHours, double capacityHours) {
-    if (plannedHours == 0) {
-      return _formatDuration(capacityHours);
-    }
-    return '${_formatDuration(plannedHours)}/${_formatDuration(capacityHours)}';
   }
 
   @override
@@ -160,319 +141,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ],
 
             // Weekly Capacity Graph Card
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              color: theme.colorScheme.surfaceContainerLow,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Weekly Capacity Forecast',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Tap a bar to override capacity for that specific calendar day.',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          key: const Key('edit_default_capacity_button'),
-                          icon: const Icon(Icons.edit_outlined),
-                          onPressed: () => _showDefaultCapacityTemplateDialog(
-                            context,
-                            settings,
-                          ),
-                          tooltip: 'Edit Default Capacity Template',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Builder(
-                      builder: (context) {
-                        double peakValue = 0.0;
-                        for (final date in upcomingDays) {
-                          final capacity = settings.getCapacityForDate(date);
-                          final day = CivilDay.fromDateTime(date);
-                          final plannedMinutes =
-                              plannedMinutesPerDay[day] ?? 0.0;
-                          final plannedHours = plannedMinutes / 60.0;
-                          if (capacity > peakValue) {
-                            peakValue = capacity;
-                          }
-                          if (plannedHours > peakValue) {
-                            peakValue = plannedHours;
-                          }
-                        }
-                        final double scaleMax = peakValue > 0 ? peakValue : 8.0;
+            Builder(
+              builder: (context) {
+                final daysData = upcomingDays.map((date) {
+                  final capacity = settings.getCapacityForDate(date);
+                  final day = CivilDay.fromDateTime(date);
+                  final plannedMinutes = plannedMinutesPerDay[day] ?? 0.0;
+                  final dateStr =
+                      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                  final isOverridden =
+                      settings.dailyCapacityOverrides?.containsKey(dateStr) ??
+                      false;
+                  return DailyCapacityData(
+                    date: date,
+                    capacityHours: capacity,
+                    plannedMinutes: plannedMinutes,
+                    isOverridden: isOverridden,
+                  );
+                }).toList();
 
-                        return SizedBox(
-                          height: 180,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: upcomingDays.map((date) {
-                              final capacity = settings.getCapacityForDate(
-                                date,
-                              );
-                              final dateStr =
-                                  '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-                              final isOverridden =
-                                  settings.dailyCapacityOverrides?.containsKey(
-                                    dateStr,
-                                  ) ??
-                                  false;
-                              final isToday =
-                                  date.day == today.day &&
-                                  date.month == today.month &&
-                                  date.year == today.year;
-
-                              final day = CivilDay.fromDateTime(date);
-                              final plannedMinutes =
-                                  plannedMinutesPerDay[day] ?? 0.0;
-                              final capacityMinutes = capacity * 60.0;
-
-                              final double barHeight = capacity > 0
-                                  ? (capacity / scaleMax * 120.0).clamp(
-                                      8.0,
-                                      120.0,
-                                    )
-                                  : 0.0;
-                              final double fillHeight = plannedMinutes > 0
-                                  ? (plannedMinutes / 60.0 / scaleMax * 120.0)
-                                        .clamp(8.0, 120.0)
-                                  : 0.0;
-
-                              final List<String> weekdays = [
-                                'Mon',
-                                'Tue',
-                                'Wed',
-                                'Thu',
-                                'Fri',
-                                'Sat',
-                                'Sun',
-                              ];
-                              final dayLabel = weekdays[date.weekday - 1];
-
-                              return Expanded(
-                                child: GestureDetector(
-                                  key: Key('capacity_bar_$dateStr'),
-                                  onTap: () => _showEditCapacityDialog(
-                                    context,
-                                    settings,
-                                    date,
-                                    isOverride: true,
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      SizedBox(
-                                        height: 14,
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Text(
-                                            _formatForecastLabel(
-                                              plannedMinutes / 60.0,
-                                              capacity,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                            style: theme.textTheme.bodySmall
-                                                ?.copyWith(
-                                                  fontSize: 9,
-                                                  fontWeight: isToday
-                                                      ? FontWeight.bold
-                                                      : FontWeight.normal,
-                                                ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      SizedBox(
-                                        height: 120,
-                                        child: Stack(
-                                          alignment: Alignment.bottomCenter,
-                                          children: [
-                                            // Solid fill (planned tasks)
-                                            if (fillHeight > 0)
-                                              Container(
-                                                height: fillHeight,
-                                                margin:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 4,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors:
-                                                        plannedMinutes >
-                                                            capacityMinutes
-                                                        ? [
-                                                            theme
-                                                                .colorScheme
-                                                                .error,
-                                                            theme
-                                                                .colorScheme
-                                                                .error
-                                                                .withValues(
-                                                                  alpha: 0.7,
-                                                                ),
-                                                          ]
-                                                        : isOverridden
-                                                        ? [
-                                                            theme
-                                                                .colorScheme
-                                                                .tertiary,
-                                                            theme
-                                                                .colorScheme
-                                                                .tertiary
-                                                                .withValues(
-                                                                  alpha: 0.7,
-                                                                ),
-                                                          ]
-                                                        : [
-                                                            theme
-                                                                .colorScheme
-                                                                .primary,
-                                                            theme
-                                                                .colorScheme
-                                                                .primary
-                                                                .withValues(
-                                                                  alpha: 0.7,
-                                                                ),
-                                                          ],
-                                                    begin:
-                                                        Alignment.bottomCenter,
-                                                    end: Alignment.topCenter,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(6),
-                                                ),
-                                              ),
-                                            // Dashed outline (capacity)
-                                            if (barHeight > 0)
-                                              Container(
-                                                height: barHeight,
-                                                width: double.infinity,
-                                                margin:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 4,
-                                                    ),
-                                                child: CustomPaint(
-                                                  painter: DashedRectPainter(
-                                                    color: isToday
-                                                        ? theme
-                                                              .colorScheme
-                                                              .onSurface
-                                                        : isOverridden
-                                                        ? theme
-                                                              .colorScheme
-                                                              .tertiary
-                                                        : theme
-                                                              .colorScheme
-                                                              .primary,
-                                                    strokeWidth: 2.0,
-                                                    borderRadius: 6.0,
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        dayLabel,
-                                        style: theme.textTheme.labelSmall
-                                            ?.copyWith(
-                                              fontWeight: isToday
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                              color: isToday
-                                                  ? theme.colorScheme.primary
-                                                  : theme.colorScheme.onSurface,
-                                            ),
-                                      ),
-                                      Text(
-                                        '${date.day}',
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              fontSize: 10,
-                                              fontWeight: isToday
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 12,
-                          child: CustomPaint(
-                            painter: DashedRectPainter(
-                              color: theme.colorScheme.outlineVariant,
-                              strokeWidth: 1.5,
-                              borderRadius: 3.0,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Capacity',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        Container(
-                          width: 16,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Planned Work',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                return WeeklyCapacityChart(
+                  daysData: daysData,
+                  onDayTap: (date) => _showEditCapacityDialog(
+                    context,
+                    settings,
+                    date,
+                    isOverride: true,
+                  ),
+                  onEditDefaultCapacity: () =>
+                      _showDefaultCapacityTemplateDialog(context, settings),
+                );
+              },
             ),
             const SizedBox(height: 16),
 
@@ -836,7 +535,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                _formatDuration(defaultCapacity),
+                                formatDurationHours(defaultCapacity),
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -871,64 +570,5 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
       },
     );
-  }
-}
-
-class DashedRectPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-  final double gap;
-  final double dashLength;
-  final double borderRadius;
-
-  DashedRectPainter({
-    required this.color,
-    this.strokeWidth = 1.0,
-    this.gap = 4.0,
-    this.dashLength = 4.0,
-    this.borderRadius = 6.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, 0, size.width, size.height),
-          Radius.circular(borderRadius),
-        ),
-      );
-
-    final dashPath = Path();
-    for (final PathMetric metric in path.computeMetrics()) {
-      double distance = 0.0;
-      while (distance < metric.length) {
-        final double length = dashLength;
-        dashPath.addPath(
-          metric.extractPath(
-            distance,
-            (distance + length).clamp(0.0, metric.length),
-          ),
-          Offset.zero,
-        );
-        distance += length + gap;
-      }
-    }
-
-    canvas.drawPath(dashPath, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant DashedRectPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.strokeWidth != strokeWidth ||
-        oldDelegate.gap != gap ||
-        oldDelegate.dashLength != dashLength ||
-        oldDelegate.borderRadius != borderRadius;
   }
 }
