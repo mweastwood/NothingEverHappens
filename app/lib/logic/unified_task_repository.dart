@@ -46,12 +46,17 @@ class UnifiedTaskRepository extends TaskRepository {
       migrationService
           .migrateIfNeeded()
           .then((_) {
-            triggerMissedPolicyProcessing();
+            if (_localDataSource.isMigrationCompleted()) {
+              _syncService.startListeningToRemote();
+              triggerMissedPolicyProcessing();
+            }
           })
           .catchError((e) {
             // ignore: avoid_print
             print('Initial migration error: $e');
           });
+    } else if (_localDataSource.isMigrationCompleted() && userId.isNotEmpty) {
+      _syncService.startListeningToRemote();
     }
   }
 
@@ -257,6 +262,12 @@ class UnifiedTaskRepository extends TaskRepository {
   Future<void> triggerMissedPolicyProcessing({
     Future<void> Function()? postProcess,
   }) async {
+    if (!_localDataSource.isMigrationCompleted()) {
+      if (postProcess != null) {
+        await postProcess();
+      }
+      return;
+    }
     if (postProcess != null) {
       _queuedPostProcessCallbacks.add(postProcess);
     }

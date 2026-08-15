@@ -32,7 +32,7 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  intl: ^0.20.3
+  intl: ^0.20.2
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -74,8 +74,8 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   golden_toolkit: ^0.15.0
-  mockito: ^5.8.1
-  build_runner: ^2.16.0
+  mockito: ^5.7.0
+  build_runner: 2.15.1
   flutter_launcher_icons: ^0.14.3
 
 # For information on the generic Dart part of this file, see the

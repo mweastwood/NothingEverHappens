@@ -56,8 +56,10 @@ class TaskSyncService {
        _localDataSource = localDataSource,
        _userId = userId,
        _isActivePremium = isActivePremium {
-    if (_isActivePremium && _userId.isNotEmpty) {
-      _startListeningToRemote();
+    if (_isActivePremium &&
+        _userId.isNotEmpty &&
+        _localDataSource.isMigrationCompleted()) {
+      startListeningToRemote();
     }
   }
 
@@ -66,7 +68,11 @@ class TaskSyncService {
     _instancesSub?.cancel();
   }
 
-  void _startListeningToRemote() {
+  void startListeningToRemote() {
+    if (!_isActivePremium || _userId.isEmpty) return;
+    if (_tasksSub != null && _instancesSub != null) return;
+    _tasksSub?.cancel();
+    _instancesSub?.cancel();
     _tasksSub = _firestore
         .collection('users')
         .doc(_userId)
@@ -170,7 +176,12 @@ class TaskSyncService {
   }
 
   Future<void> sync() async {
-    if (!_isActivePremium || _userId.isEmpty || _isSyncing) return;
+    if (!_isActivePremium ||
+        _userId.isEmpty ||
+        _isSyncing ||
+        !_localDataSource.isMigrationCompleted()) {
+      return;
+    }
     _isSyncing = true;
 
     try {

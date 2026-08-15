@@ -34,6 +34,7 @@ void main() {
 
     localDataSource = HiveLocalDataSource();
     await localDataSource.init();
+    await localDataSource.setMigrationCompleted(true);
     firestore = FakeFirebaseFirestore();
   });
 
@@ -72,6 +73,40 @@ void main() {
         .get();
     expect(docSnap.exists, false);
   });
+
+  test(
+    'Unmigrated user (isMigrationCompleted == false) does not sync to remote',
+    () async {
+      await localDataSource.setMigrationCompleted(false);
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      final task = TaskSchedule(
+        id: 'S-unmigrated',
+        title: 'Unmigrated Task',
+        description: 'Desc',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      await localDataSource.saveTask(task);
+      await localDataSource.markDirty('S-unmigrated');
+
+      await service.sync();
+
+      final docSnap = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-unmigrated')
+          .get();
+      expect(docSnap.exists, false);
+    },
+  );
 
   test('Subscribed User bi-directional sync', () async {
     final service = TaskSyncService(
@@ -399,6 +434,9 @@ void main() {
 }
 
 class _FailingHiveLocalDataSource extends HiveLocalDataSource {
+  @override
+  bool isMigrationCompleted() => true;
+
   @override
   List<String> getDirtyTaskIds() {
     throw Exception('Simulated local data source failure');
