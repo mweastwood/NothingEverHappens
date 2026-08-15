@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
@@ -38,7 +39,11 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
 final firestoreProvider = Provider<FirebaseFirestore?>((ref) {
   try {
     if (Firebase.apps.isEmpty) return null;
-    return FirebaseFirestore.instance;
+    final firestore = FirebaseFirestore.instance;
+    if (kIsWeb) {
+      firestore.settings = const Settings(persistenceEnabled: false);
+    }
+    return firestore;
   } catch (e, st) {
     // Expected during tests or initialization if Firebase is not initialized
     ref.read(errorHandlerProvider).report(e, stackTrace: st);
