@@ -27,6 +27,7 @@ class UnifiedTaskRepository extends TaskRepository {
     required super.userId,
     super.firestore,
     super.notificationService,
+    super.errorHandler,
   }) : _localDataSource = localDataSource,
        _syncService = syncService,
        _rawFirestore = firestore {

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/subscription_service.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:nothing_ever_happens/logic/error_handler.dart';
 
 final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
   final firestore = ref.watch(firestoreProvider) ?? FirebaseFirestore.instance;
@@ -19,6 +20,7 @@ final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
     localDataSource: localDataSource,
     userId: user?.uid ?? '',
     isActivePremium: subscriptionState.isActivePremium,
+    errorHandler: ref.read(errorHandlerProvider),
   );
 
   ref.onDispose(() {
@@ -33,6 +35,7 @@ class TaskSyncService {
   final HiveLocalDataSource _localDataSource;
   final String _userId;
   final bool _isActivePremium;
+  final ErrorHandler? errorHandler;
 
   StreamSubscription? _tasksSub;
   StreamSubscription? _instancesSub;
@@ -44,6 +47,7 @@ class TaskSyncService {
     required HiveLocalDataSource localDataSource,
     required String userId,
     required bool isActivePremium,
+    this.errorHandler,
   }) : _firestore = firestore,
        _localDataSource = localDataSource,
        _userId = userId,
@@ -175,7 +179,8 @@ class TaskSyncService {
         }
         await _localDataSource.clearDirty(taskId);
       }
-    } catch (e) {
+    } catch (e, st) {
+      errorHandler?.report(e, stackTrace: st);
       // ignore: avoid_print
       print('Sync failed: $e');
     } finally {

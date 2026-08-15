@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../test_factories.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
@@ -17,6 +18,7 @@ import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_spawner_engine.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
+import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:rxdart/rxdart.dart';
 
 Future<String> _findInstanceId(
@@ -2700,7 +2702,37 @@ void main() {
         await instancesSubject.close();
       },
     );
+
+    test(
+      'reports errors to ErrorHandler during triggerMissedPolicyProcessing',
+      () async {
+        final errorHandler = ErrorHandler();
+        final repo = TaskRepository(
+          firestore: _ThrowingFirestore(),
+          userId: 'test-user-id',
+          errorHandler: errorHandler,
+        );
+        addTearDown(() => repo.dispose());
+
+        await repo.triggerMissedPolicyProcessing();
+
+        expect(errorHandler.history.isNotEmpty, true);
+        expect(
+          errorHandler.history.any(
+            (r) => r.error.toString().contains('Simulated firestore failure'),
+          ),
+          true,
+        );
+      },
+    );
   });
+}
+
+class _ThrowingFirestore extends Fake implements FirebaseFirestore {
+  @override
+  CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
+    throw Exception('Simulated firestore failure');
+  }
 }
 
 class FakeUser extends Fake implements User {

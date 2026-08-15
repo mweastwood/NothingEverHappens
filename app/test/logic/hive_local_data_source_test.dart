@@ -8,6 +8,7 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/error_handler.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -190,4 +191,34 @@ void main() {
       expect(task.preferredBy['user5'], false);
     },
   );
+
+  test('HiveLocalDataSource reports parsing errors to ErrorHandler', () async {
+    final errorHandler = ErrorHandler();
+    final customDataSource = HiveLocalDataSource(errorHandler: errorHandler);
+    await customDataSource.init();
+
+    // 1. Corrupt settings in settingsBox
+    final settingsBox = Hive.box<Map>('settingsBox');
+    await settingsBox.put('agile', {'hoursAvailable': 'invalid_double'});
+    final settings = customDataSource.getSettings();
+    expect(settings.hoursAvailable, 8.0);
+    expect(errorHandler.history.isNotEmpty, true);
+
+    // 2. Corrupt task in tasksBox
+    final tasksBox = Hive.box<Map>('tasksBox');
+    await tasksBox.put('corrupt-task', {'id': 123, 'schedules': 'invalid'});
+    final tasks = customDataSource.getTasks();
+    expect(tasks.isEmpty, true);
+    expect(errorHandler.history.length >= 2, true);
+
+    // 3. Corrupt instance in instancesBox
+    final instancesBox = Hive.box<Map>('instancesBox');
+    await instancesBox.put('corrupt-inst', {
+      'id': 456,
+      'scheduledDate': 'invalid',
+    });
+    final instances = customDataSource.getInstances();
+    expect(instances.isEmpty, true);
+    expect(errorHandler.history.length >= 3, true);
+  });
 }

@@ -3,6 +3,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/task_sync_service.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -208,4 +209,35 @@ void main() {
     );
     expect(localTask.title, 'Remote Title');
   });
+
+  test(
+    'TaskSyncService reports errors to ErrorHandler during failed sync',
+    () async {
+      final errorHandler = ErrorHandler();
+      final failingLocalDataSource = _FailingHiveLocalDataSource();
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: failingLocalDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+        errorHandler: errorHandler,
+      );
+      addTearDown(() => service.dispose());
+
+      await service.sync();
+
+      expect(errorHandler.history.isNotEmpty, true);
+      expect(
+        errorHandler.history.first.error.toString(),
+        contains('Simulated local data source failure'),
+      );
+    },
+  );
+}
+
+class _FailingHiveLocalDataSource extends HiveLocalDataSource {
+  @override
+  List<String> getDirtyTaskIds() {
+    throw Exception('Simulated local data source failure');
+  }
 }

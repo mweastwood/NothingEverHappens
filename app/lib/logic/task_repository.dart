@@ -19,6 +19,7 @@ import 'user_settings.dart';
 import 'unified_task_repository.dart';
 import 'hive_local_data_source.dart';
 import 'task_sync_service.dart';
+import 'error_handler.dart';
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
   final VoidCallback onResume;
@@ -37,7 +38,9 @@ final firestoreProvider = Provider<FirebaseFirestore?>((ref) {
   try {
     if (Firebase.apps.isEmpty) return null;
     return FirebaseFirestore.instance;
-  } catch (_) {
+  } catch (e, st) {
+    // Expected during tests or initialization if Firebase is not initialized
+    ref.read(errorHandlerProvider).report(e, stackTrace: st);
     return null;
   }
 });
@@ -57,6 +60,7 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
     firestore: firestore,
     userId: user.uid,
     notificationService: ref.watch(notificationServiceProvider),
+    errorHandler: ref.read(errorHandlerProvider),
   );
 
   // Re-evaluate schedules when the mock clock advances in dev/test
@@ -75,7 +79,9 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
       },
     );
     WidgetsBinding.instance.addObserver(lifecycleObserver);
-  } catch (_) {
+  } catch (e, st) {
+    // Expected in test environments without WidgetsBinding
+    ref.read(errorHandlerProvider).report(e, stackTrace: st);
     lifecycleObserver = null;
   }
 
@@ -95,7 +101,10 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
     if (lifecycleObserver != null) {
       try {
         WidgetsBinding.instance.removeObserver(lifecycleObserver);
-      } catch (_) {}
+      } catch (e, st) {
+        // Ignore unregister errors on dispose, but log them
+        ref.read(errorHandlerProvider).report(e, stackTrace: st);
+      }
     }
     dayChangeTimer.cancel();
   });
@@ -180,6 +189,7 @@ class TaskRepository {
   final FirebaseFirestore _firestore;
   final String _userId;
   final NotificationService? _notificationService;
+  final ErrorHandler? errorHandler;
   Future<void>? _activeProcessingFuture;
   bool _hasQueuedForceRun = false;
   final List<Future<void> Function()> _queuedPostProcessCallbacks = [];
@@ -200,6 +210,7 @@ class TaskRepository {
     FirebaseFirestore? firestore,
     required String userId,
     NotificationService? notificationService,
+    this.errorHandler,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _userId = userId,
        _notificationService = notificationService;
@@ -263,7 +274,9 @@ class TaskRepository {
       _cachedFamilyId = userDoc.data()?['familyId'] as String?;
       _lastFamilyIdCheck = DateTime.now();
       return _cachedFamilyId;
-    } catch (_) {
+    } catch (e, st) {
+      // Expected if offline, fallback to cache
+      errorHandler?.report(e, stackTrace: st);
       try {
         final cacheDoc = await _firestore
             .collection('users')
@@ -272,7 +285,8 @@ class TaskRepository {
         _cachedFamilyId = cacheDoc.data()?['familyId'] as String?;
         _lastFamilyIdCheck = DateTime.now();
         return _cachedFamilyId;
-      } catch (_) {
+      } catch (e2, st2) {
+        errorHandler?.report(e2, stackTrace: st2);
         return _cachedFamilyId;
       }
     }
@@ -581,7 +595,8 @@ class TaskRepository {
 
         try {
           await _doProcessMissedPolicies(tasksToProcess);
-        } catch (e) {
+        } catch (e, st) {
+          errorHandler?.report(e, stackTrace: st);
           // ignore: avoid_print
           print('Error in auto-processing missed policies loop: $e');
         }
@@ -589,7 +604,8 @@ class TaskRepository {
         for (final cb in callbacksToRun) {
           try {
             await cb();
-          } catch (e) {
+          } catch (e, st) {
+            errorHandler?.report(e, stackTrace: st);
             // ignore: avoid_print
             print('Error in postProcess callback: $e');
           }
@@ -870,7 +886,8 @@ class TaskRepository {
       if (nextTrigger.millisecondsSinceEpoch > 0) {
         _scheduleTriggerTimer(nextTrigger);
       }
-    } catch (e) {
+    } catch (e, st) {
+      errorHandler?.report(e, stackTrace: st);
       // ignore: avoid_print
       print('Error in auto-processing missed policies: $e');
     }
@@ -915,7 +932,8 @@ class TaskRepository {
       }
 
       await _checkAndProcessMissedPolicies(allTasks, forceRun: true);
-    } catch (e) {
+    } catch (e, st) {
+      errorHandler?.report(e, stackTrace: st);
       // ignore: avoid_print
       print('Error in triggering missed policy processing: $e');
     }
