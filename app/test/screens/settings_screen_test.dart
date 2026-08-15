@@ -6,6 +6,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:nothing_ever_happens/logic/app_state_exporter.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/screens/settings_screen.dart';
@@ -27,15 +28,28 @@ class MockAppStateExporter extends Mock implements AppStateExporter {
           as Future<void>);
 }
 
+class MockTaskRepository extends Mock implements TaskRepository {
+  @override
+  Future<void> resetLocalDataAndResync() =>
+      (super.noSuchMethod(
+            Invocation.method(#resetLocalDataAndResync, []),
+            returnValue: Future<void>.value(),
+            returnValueForMissingStub: Future<void>.value(),
+          )
+          as Future<void>);
+}
+
 void main() {
   late MockUserSettingsRepository mockRepository;
   late MockAppStateExporter mockExporter;
+  late MockTaskRepository mockTaskRepository;
   late ErrorHandler errorHandler;
   late BehaviorSubject<UserSettings> settingsSubject;
 
   setUp(() {
     mockRepository = MockUserSettingsRepository();
     mockExporter = MockAppStateExporter();
+    mockTaskRepository = MockTaskRepository();
     errorHandler = ErrorHandler();
     settingsSubject = BehaviorSubject<UserSettings>.seeded(
       const UserSettings(hoursAvailable: 8.0),
@@ -50,12 +64,16 @@ void main() {
     settingsSubject.close();
   });
 
-  Widget buildTestWidget() {
+  Widget buildTestWidget({bool hasSuspectedStaleData = false}) {
     return ProviderScope(
       overrides: [
         userSettingsRepositoryProvider.overrideWithValue(mockRepository),
         errorHandlerProvider.overrideWithValue(errorHandler),
         appStateExporterProvider.overrideWithValue(mockExporter),
+        taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        hasSuspectedStaleDataProvider.overrideWith(
+          (_) => Stream.value(hasSuspectedStaleData),
+        ),
       ],
       child: buildTestableWidget(child: const SettingsScreen()),
     );
@@ -86,6 +104,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final saveButtonFinder = find.byKey(const Key('save_settings_button'));
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pumpAndSettle();
     await tester.tap(saveButtonFinder);
     await tester.pumpAndSettle();
 
@@ -106,6 +126,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final saveButtonFinder = find.byKey(const Key('save_settings_button'));
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pumpAndSettle();
     await tester.tap(saveButtonFinder);
     await tester.pumpAndSettle();
 
@@ -119,7 +141,7 @@ void main() {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(400, 800),
+      surfaceSize: const Size(400, 1000),
     );
     await screenMatchesGolden(tester, 'settings_screen_initial');
   });
@@ -128,7 +150,7 @@ void main() {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(400, 800),
+      surfaceSize: const Size(400, 1000),
     );
 
     final textFieldFinder = find.byKey(const Key('hours_available_field'));
@@ -150,7 +172,7 @@ void main() {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(400, 800),
+      surfaceSize: const Size(400, 1000),
     );
     await screenMatchesGolden(tester, 'settings_screen_all_enabled');
   });
@@ -178,6 +200,8 @@ void main() {
       expect(updatedSwitch.value, isTrue);
 
       final saveButtonFinder = find.byKey(const Key('save_settings_button'));
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.pumpAndSettle();
       await tester.tap(saveButtonFinder);
       await tester.pumpAndSettle();
 
@@ -220,6 +244,90 @@ void main() {
       await tester.pumpAndSettle();
 
       verify(mockExporter.shareDebugState(any)).called(1);
+    },
+  );
+
+  testWidgets(
+    'SettingsScreen renders Data Synchronization card and disables reset button when data is healthy',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(buildTestWidget(hasSuspectedStaleData: false));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Data Synchronization'), findsOneWidget);
+      expect(
+        find.text('Local data is in sync with cloud storage.'),
+        findsOneWidget,
+      );
+
+      final resetButtonFinder = find.byKey(
+        const Key('reset_local_data_button'),
+      );
+      expect(resetButtonFinder, findsOneWidget);
+
+      final FilledButton button = tester.widget(resetButtonFinder);
+      expect(button.onPressed, isNull);
+    },
+  );
+
+  testWidgets(
+    'SettingsScreen enables reset button and shows warning when stale data is suspected',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(buildTestWidget(hasSuspectedStaleData: true));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Data Synchronization'), findsOneWidget);
+      expect(
+        find.text(
+          'Stale or unmigrated local data detected. Reset to re-sync from cloud.',
+        ),
+        findsOneWidget,
+      );
+
+      final resetButtonFinder = find.byKey(
+        const Key('reset_local_data_button'),
+      );
+      expect(resetButtonFinder, findsOneWidget);
+
+      final FilledButton button = tester.widget(resetButtonFinder);
+      expect(button.onPressed, isNotNull);
+    },
+  );
+
+  testWidgets(
+    'SettingsScreen shows confirmation dialog and resets data when confirmed',
+    (WidgetTester tester) async {
+      when(
+        mockTaskRepository.resetLocalDataAndResync(),
+      ).thenAnswer((_) async {});
+
+      await tester.pumpWidget(buildTestWidget(hasSuspectedStaleData: true));
+      await tester.pumpAndSettle();
+
+      final resetButtonFinder = find.byKey(
+        const Key('reset_local_data_button'),
+      );
+      await tester.tap(resetButtonFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Reset Local Data?'), findsOneWidget);
+      expect(
+        find.text(
+          'This will clear local storage and re-download all your tasks from cloud storage.',
+        ),
+        findsOneWidget,
+      );
+
+      final confirmButtonFinder = find.byKey(
+        const Key('confirm_reset_local_data_button'),
+      );
+      await tester.tap(confirmButtonFinder);
+      await tester.pumpAndSettle();
+
+      verify(mockTaskRepository.resetLocalDataAndResync()).called(1);
+      expect(
+        find.text('Local data reset and synchronized from cloud successfully.'),
+        findsOneWidget,
+      );
     },
   );
 }

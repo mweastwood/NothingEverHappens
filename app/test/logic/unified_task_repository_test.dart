@@ -40,6 +40,7 @@ void main() {
 
     localDataSource = HiveLocalDataSource();
     await localDataSource.init();
+    await localDataSource.setMigrationCompleted(true);
     firestore = FakeFirebaseFirestore();
 
     syncService = TaskSyncService(
@@ -540,6 +541,47 @@ void main() {
       }
 
       AppClock.reset();
+    },
+  );
+
+  test(
+    'resetLocalDataAndResync clears stale local data and re-migrates from cloud',
+    () async {
+      // 1. Populate Firestore with cloud task
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-remote')
+          .set({
+            'id': 'S-remote',
+            'title': 'Remote Cloud Task',
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+
+      // 2. Put stale local task and dirty task in local storage
+      final staleTask = TaskSchedule(
+        id: 'S-stale',
+        title: 'Stale Local Task',
+        description: 'Stale',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      await localDataSource.saveTask(staleTask);
+      await localDataSource.markDirty('S-stale');
+
+      expect(localDataSource.getTasks().any((t) => t.id == 'S-stale'), isTrue);
+      expect(localDataSource.getDirtyTaskIds(), contains('S-stale'));
+
+      // 3. Trigger reset & resync
+      await repository.resetLocalDataAndResync();
+
+      // 4. Verify local DB now has remote task and no stale/dirty artifacts
+      final tasks = localDataSource.getTasks();
+      expect(tasks.any((t) => t.id == 'S-stale'), isFalse);
+      expect(tasks.any((t) => t.id == 'S-remote'), isTrue);
+      expect(localDataSource.getDirtyTaskIds().isEmpty, isTrue);
+      expect(localDataSource.isMigrationCompleted(), isTrue);
     },
   );
 }

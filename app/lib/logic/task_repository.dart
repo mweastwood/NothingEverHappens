@@ -175,6 +175,23 @@ final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {
   return plannedMinutesPerDay;
 });
 
+final hasSuspectedStaleDataProvider = StreamProvider<bool>((ref) {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null || user.uid.isEmpty) return Stream.value(false);
+
+  final localDataSource = ref.watch(hiveLocalDataSourceProvider);
+  return Rx.combineLatest3<bool, List<TaskSchedule>, List<TaskInstance>, bool>(
+    localDataSource.watchMigrationCompleted(),
+    localDataSource.watchTasks(),
+    localDataSource.watchInstances(),
+    (isMigrated, tasks, instances) {
+      if (!isMigrated) return true;
+      if (tasks.isNotEmpty && instances.isEmpty) return true;
+      return false;
+    },
+  );
+});
+
 class TaskRepository {
   /// Cache duration for family ID to avoid excessive DB reads.
   static const Duration _familyIdCacheDuration = Duration(seconds: 15);
@@ -218,6 +235,8 @@ class TaskRepository {
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _userId = userId,
        _notificationService = notificationService;
+
+  Future<void> resetLocalDataAndResync() async {}
 
   void dispose() {
     _triggerTimer?.cancel();

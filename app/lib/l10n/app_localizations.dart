@@ -926,6 +926,54 @@ abstract class AppLocalizations {
   /// **'Debug app state JSON export for NothingEverHappens.'**
   String get debugStateShareText;
 
+  /// No description provided for @dataSyncSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Data Synchronization'**
+  String get dataSyncSectionTitle;
+
+  /// No description provided for @dataSyncHealthyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Local data is in sync with cloud storage.'**
+  String get dataSyncHealthyHelper;
+
+  /// No description provided for @staleDataDetectedWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Stale or unmigrated local data detected. Reset to re-sync from cloud.'**
+  String get staleDataDetectedWarning;
+
+  /// No description provided for @resetLocalDataButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Local Data & Re-sync'**
+  String get resetLocalDataButton;
+
+  /// No description provided for @resetLocalDataConfirmationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Local Data?'**
+  String get resetLocalDataConfirmationTitle;
+
+  /// No description provided for @resetLocalDataConfirmationMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will clear local storage and re-download all your tasks from cloud storage.'**
+  String get resetLocalDataConfirmationMessage;
+
+  /// No description provided for @resetLocalDataSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Local data reset and synchronized from cloud successfully.'**
+  String get resetLocalDataSuccess;
+
+  /// No description provided for @resetLocalDataFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to re-sync from cloud: '**
+  String get resetLocalDataFailed;
+
   /// No description provided for @pendingBadge.
   ///
   /// In en, this message translates to:
