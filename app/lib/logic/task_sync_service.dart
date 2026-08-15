@@ -125,17 +125,44 @@ class TaskSyncService {
     final localInsts = _localDataSource.getInstances();
     final localInstIndex = localInsts.indexWhere((i) => i.id == remoteInst.id);
 
-    if (localInstIndex == -1) {
-      await _localDataSource.saveInstance(remoteInst);
+    if (localInstIndex != -1) {
+      final localInst = localInsts[localInstIndex];
+      if (localInst.updatedAt.isAfter(remoteInst.updatedAt)) {
+        await _pushInstanceToRemote(localInst);
+      } else {
+        await _localDataSource.saveInstance(remoteInst);
+      }
       return;
     }
 
-    final localInst = localInsts[localInstIndex];
-    if (localInst.updatedAt.isAfter(remoteInst.updatedAt)) {
-      await _pushInstanceToRemote(localInst);
-    } else {
-      await _localDataSource.saveInstance(remoteInst);
+    final localSlotIndex = localInsts.indexWhere(
+      (i) =>
+          i.scheduleId == remoteInst.scheduleId &&
+          i.ruleId == remoteInst.ruleId &&
+          i.scheduledDate == remoteInst.scheduledDate,
+    );
+
+    if (localSlotIndex != -1) {
+      final localInst = localInsts[localSlotIndex];
+      if (localInst.updatedAt.isAfter(remoteInst.updatedAt)) {
+        // Local wins
+        await _localDataSource.markDirty(localInst.id);
+        await _pushInstanceToRemote(localInst);
+        await _firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('instances')
+            .doc(remoteInst.id)
+            .delete();
+      } else {
+        // Remote wins (or equal)
+        await _localDataSource.deleteInstance(localInst.id);
+        await _localDataSource.saveInstance(remoteInst);
+      }
+      return;
     }
+
+    await _localDataSource.saveInstance(remoteInst);
   }
 
   Future<void> sync() async {

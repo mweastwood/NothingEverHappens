@@ -2281,5 +2281,135 @@ void main() {
         },
       );
     });
+
+    group('Duplicate Instance Pruning and Deduplication', () {
+      test(
+        'prunes duplicate instances for the same scheduledDate and keeps resolved instance',
+        () {
+          final scheduleRule = DailySchedule(startDate: today, interval: 1);
+          final task = TaskSchedule(
+            id: 'task-dedup-1',
+            title: 'Daily Dedup Task',
+            description: 'Test',
+            schedules: [scheduleRule],
+            updatedAt: now,
+          );
+
+          final completedInstance = TaskInstance(
+            id: 'inst-completed-1',
+            scheduleId: task.id,
+            ruleId: scheduleRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.completed,
+            completedAt: now.subtract(const Duration(hours: 1)),
+            updatedAt: now.subtract(const Duration(hours: 1)),
+          );
+
+          final pendingInstance = TaskInstance(
+            id: 'inst-pending-1',
+            scheduleId: task.id,
+            ruleId: scheduleRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+            updatedAt: now,
+          );
+
+          final action = const SchedulerEngine().evaluate(task, [
+            completedInstance,
+            pendingInstance,
+          ], now);
+
+          expect(action.instancesToDelete, contains('inst-pending-1'));
+          expect(action.instancesToDelete, isNot(contains('inst-completed-1')));
+          expect(
+            action.instancesToSpawn.any((i) => i.scheduledDate == today),
+            isFalse,
+          );
+        },
+      );
+
+      test(
+        'prunes duplicate pending instances for the same scheduledDate and keeps newest updatedAt',
+        () {
+          final scheduleRule = DailySchedule(startDate: today, interval: 1);
+          final task = TaskSchedule(
+            id: 'task-dedup-2',
+            title: 'Daily Pending Dedup Task',
+            description: 'Test',
+            schedules: [scheduleRule],
+            updatedAt: now,
+          );
+
+          final olderPending = TaskInstance(
+            id: 'inst-older-pending',
+            scheduleId: task.id,
+            ruleId: scheduleRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+            updatedAt: now.subtract(const Duration(hours: 2)),
+          );
+
+          final newerPending = TaskInstance(
+            id: 'inst-newer-pending',
+            scheduleId: task.id,
+            ruleId: scheduleRule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+            updatedAt: now.subtract(const Duration(hours: 1)),
+          );
+
+          final action = const SchedulerEngine().evaluate(task, [
+            olderPending,
+            newerPending,
+          ], now);
+
+          expect(action.instancesToDelete, contains('inst-older-pending'));
+          expect(
+            action.instancesToDelete,
+            isNot(contains('inst-newer-pending')),
+          );
+        },
+      );
+    });
   });
 }

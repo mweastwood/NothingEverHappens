@@ -162,28 +162,6 @@ class UnifiedTaskRepository extends TaskRepository {
     await _localDataSource.saveInstance(completedInstance);
     await _localDataSource.markDirty(completedInstance.id);
 
-    final task = _localDataSource
-        .getTasks()
-        .where((t) => t.id == instance.scheduleId)
-        .firstOrNull;
-    if (task != null && task.schedules.any((s) => s is! OneOffSchedule)) {
-      final instances = _localDataSource
-          .getInstances()
-          .where((i) => i.scheduleId == task.id)
-          .toList();
-      final nextInst = TaskSpawnerEngine.calculateNextOccurrence(
-        task: task,
-        completedInstance: completedInstance,
-        completionTime: AppClock.now,
-        existingInstances: instances,
-      );
-      if (nextInst != null) {
-        final nextInstToSave = nextInst.copyWith(updatedAt: DateTime.now());
-        await _localDataSource.saveInstance(nextInstToSave);
-        await _localDataSource.markDirty(nextInstToSave.id);
-      }
-    }
-
     _syncService.sync();
     return completedInstance;
   }
@@ -204,28 +182,6 @@ class UnifiedTaskRepository extends TaskRepository {
     );
     await _localDataSource.saveInstance(dismissedInstance);
     await _localDataSource.markDirty(dismissedInstance.id);
-
-    final task = _localDataSource
-        .getTasks()
-        .where((t) => t.id == instance.scheduleId)
-        .firstOrNull;
-    if (task != null && task.schedules.any((s) => s is! OneOffSchedule)) {
-      final instances = _localDataSource
-          .getInstances()
-          .where((i) => i.scheduleId == task.id)
-          .toList();
-      final nextInst = TaskSpawnerEngine.calculateNextOccurrence(
-        task: task,
-        completedInstance: dismissedInstance,
-        completionTime: AppClock.now,
-        existingInstances: instances,
-      );
-      if (nextInst != null) {
-        final nextInstToSave = nextInst.copyWith(updatedAt: DateTime.now());
-        await _localDataSource.saveInstance(nextInstToSave);
-        await _localDataSource.markDirty(nextInstToSave.id);
-      }
-    }
 
     _syncService.sync();
     return dismissedInstance;
