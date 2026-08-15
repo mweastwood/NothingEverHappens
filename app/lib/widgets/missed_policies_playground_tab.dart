@@ -162,7 +162,7 @@ class _MissedPoliciesPlaygroundTabState
       }
     }
 
-    final action = SchedulerEngine.evaluate(
+    final action = const SchedulerEngine().evaluate(
       _taskSchedule,
       _taskInstances,
       _simulatedNow,

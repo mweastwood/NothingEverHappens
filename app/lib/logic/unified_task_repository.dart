@@ -387,7 +387,7 @@ class UnifiedTaskRepository extends TaskRepository {
     for (final task in tasksToEvaluate) {
       final taskInstances = instancesByScheduleId[task.id] ?? [];
 
-      final action = SchedulerEngine.evaluate(
+      final action = const SchedulerEngine().evaluate(
         task,
         taskInstances,
         now,

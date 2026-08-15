@@ -32,7 +32,11 @@ class SchedulerEngine {
   /// Conversion factor for minutes to hours.
   static const double minutesPerHour = 60.0;
 
-  static SchedulerAction evaluate(
+  final String Function() generateId;
+  const SchedulerEngine({String Function()? generateId})
+    : generateId = generateId ?? TaskInstance.generateId;
+
+  SchedulerAction evaluate(
     TaskSchedule task,
     List<TaskInstance> taskInstances,
     DateTime now, {
@@ -58,7 +62,7 @@ class SchedulerEngine {
           if (!exists) {
             toSpawn.add(
               TaskInstance(
-                id: TaskInstance.generateId(),
+                id: generateId(),
                 scheduleId: task.id,
                 ruleId: s.id,
                 title: task.title,
@@ -205,7 +209,7 @@ class SchedulerEngine {
           }
 
           if (dateToSpawn != null) {
-            final instId = TaskInstance.generateId();
+            final instId = generateId();
             final startRelative = RelativeTime(
               dayOffset: 0,
               time: policy.targetTime,
@@ -348,7 +352,7 @@ class SchedulerEngine {
 
           for (final date in targetDates) {
             if (!workingInstances.containsKey(date)) {
-              final instId = TaskInstance.generateId();
+              final instId = generateId();
               workingInstances[date] = TaskInstance(
                 id: instId,
                 scheduleId: task.id,
@@ -714,7 +718,7 @@ class SchedulerEngine {
     );
   }
 
-  static RelativeTime _shiftRelativeToStart(
+  RelativeTime _shiftRelativeToStart(
     RelativeTime targetRel,
     TaskScheduleRule rule,
     CompletionRelativePolicy policy,
@@ -744,7 +748,7 @@ class SchedulerEngine {
     );
   }
 
-  static RelativeTime _getCompletionRelativeDue(
+  RelativeTime _getCompletionRelativeDue(
     TaskScheduleRule rule,
     CompletionRelativePolicy policy,
     CivilDay newScheduledDate,
@@ -757,7 +761,7 @@ class SchedulerEngine {
     );
   }
 
-  static List<RelativeTime> _getCompletionRelativeNotifications(
+  List<RelativeTime> _getCompletionRelativeNotifications(
     TaskScheduleRule rule,
     CompletionRelativePolicy policy,
     CivilDay newScheduledDate,
@@ -770,7 +774,7 @@ class SchedulerEngine {
         .toList();
   }
 
-  static TaskInstance? getNextOccurrenceToSpawn(
+  TaskInstance? getNextOccurrenceToSpawn(
     TaskSchedule task,
     TaskInstance completedInstance,
     DateTime now,
@@ -783,7 +787,7 @@ class SchedulerEngine {
     if (rule.schedulingPolicy is CompletionRelativePolicy) {
       final policy = rule.schedulingPolicy as CompletionRelativePolicy;
       final nextDate = CivilDay.fromDateTime(now.add(policy.interval));
-      final nextInstId = TaskInstance.generateId();
+      final nextInstId = generateId();
 
       final startRelative = RelativeTime(dayOffset: 0, time: policy.targetTime);
       final dueRelative = _getCompletionRelativeDue(rule, policy, nextDate);
@@ -828,7 +832,7 @@ class SchedulerEngine {
 
       final nextDate = rule.nextOccurrenceAfter(baseDate);
       if (nextDate != null) {
-        final nextInstId = TaskInstance.generateId();
+        final nextInstId = generateId();
         return TaskInstance(
           id: nextInstId,
           scheduleId: task.id,
@@ -850,7 +854,7 @@ class SchedulerEngine {
     return null;
   }
 
-  static String? getNextOccurrenceIdToDelete(
+  String? getNextOccurrenceIdToDelete(
     TaskSchedule task,
     TaskInstance completedInstance,
     DateTime now,
@@ -874,7 +878,7 @@ class SchedulerEngine {
     return null;
   }
 
-  static bool _isInstanceForRule(
+  bool _isInstanceForRule(
     TaskInstance inst,
     TaskScheduleRule s,
     TaskSchedule task,
@@ -887,7 +891,7 @@ class SchedulerEngine {
     return false;
   }
 
-  static int _ruleIndexOfInstance(TaskSchedule task, TaskInstance instance) {
+  int _ruleIndexOfInstance(TaskSchedule task, TaskInstance instance) {
     if (task.schedules.length <= 1) return 0;
     for (int i = 0; i < task.schedules.length; i++) {
       if (task.schedules[i].id == instance.ruleId) {
