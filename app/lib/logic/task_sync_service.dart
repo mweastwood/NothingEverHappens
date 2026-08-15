@@ -73,43 +73,90 @@ class TaskSyncService {
     if (_tasksSub != null && _instancesSub != null) return;
     _tasksSub?.cancel();
     _instancesSub?.cancel();
+
+    logger?.info(
+      'sync',
+      'Starting remote listeners for tasks and instances',
+      data: {'userId': _userId},
+    );
+
     _tasksSub = _firestore
         .collection('users')
         .doc(_userId)
         .collection('tasks')
         .snapshots()
-        .listen((snapshot) {
-          for (final change in snapshot.docChanges) {
-            if (change.type == DocumentChangeType.added ||
-                change.type == DocumentChangeType.modified) {
-              if (change.doc.data() != null) {
-                _handleRemoteTaskUpdate(TaskSchedule.fromFirestore(change.doc));
+        .listen(
+          (snapshot) {
+            logger?.debug(
+              'sync',
+              'Received remote tasks snapshot',
+              data: {
+                'docsCount': snapshot.docs.length,
+                'changesCount': snapshot.docChanges.length,
+              },
+            );
+            for (final change in snapshot.docChanges) {
+              if (change.type == DocumentChangeType.added ||
+                  change.type == DocumentChangeType.modified) {
+                if (change.doc.data() != null) {
+                  _handleRemoteTaskUpdate(
+                    TaskSchedule.fromFirestore(change.doc),
+                  );
+                }
+              } else if (change.type == DocumentChangeType.removed) {
+                _localDataSource.deleteTask(change.doc.id);
               }
-            } else if (change.type == DocumentChangeType.removed) {
-              _localDataSource.deleteTask(change.doc.id);
             }
-          }
-        });
+          },
+          onError: (e, st) {
+            logger?.error(
+              'sync',
+              'Remote tasks stream error',
+              error: e,
+              stackTrace: st,
+            );
+            errorHandler?.report(e, stackTrace: st);
+          },
+        );
 
     _instancesSub = _firestore
         .collection('users')
         .doc(_userId)
         .collection('instances')
         .snapshots()
-        .listen((snapshot) {
-          for (final change in snapshot.docChanges) {
-            if (change.type == DocumentChangeType.added ||
-                change.type == DocumentChangeType.modified) {
-              if (change.doc.data() != null) {
-                _handleRemoteInstanceUpdate(
-                  TaskInstance.fromFirestore(change.doc),
-                );
+        .listen(
+          (snapshot) {
+            logger?.debug(
+              'sync',
+              'Received remote instances snapshot',
+              data: {
+                'docsCount': snapshot.docs.length,
+                'changesCount': snapshot.docChanges.length,
+              },
+            );
+            for (final change in snapshot.docChanges) {
+              if (change.type == DocumentChangeType.added ||
+                  change.type == DocumentChangeType.modified) {
+                if (change.doc.data() != null) {
+                  _handleRemoteInstanceUpdate(
+                    TaskInstance.fromFirestore(change.doc),
+                  );
+                }
+              } else if (change.type == DocumentChangeType.removed) {
+                _localDataSource.deleteInstance(change.doc.id);
               }
-            } else if (change.type == DocumentChangeType.removed) {
-              _localDataSource.deleteInstance(change.doc.id);
             }
-          }
-        });
+          },
+          onError: (e, st) {
+            logger?.error(
+              'sync',
+              'Remote instances stream error',
+              error: e,
+              stackTrace: st,
+            );
+            errorHandler?.report(e, stackTrace: st);
+          },
+        );
   }
 
   Future<void> _handleRemoteTaskUpdate(TaskSchedule remoteTask) async {

@@ -422,6 +422,157 @@ class AppStateExporter {
 
     exportMetadata['isOffline'] = isOffline;
 
+    final Map<String, dynamic> diagnostics = {
+      'timestamp': DateTime.now().toUtc().toIso8601String(),
+      'platform': kIsWeb ? 'web' : Platform.operatingSystem,
+    };
+
+    // 1. Auth Diagnostics
+    final authDiagnostics = <String, dynamic>{
+      'hasUser': user != null,
+      'uid': uid,
+      'emailVerified': user?.emailVerified,
+      'isAnonymous': user?.isAnonymous,
+    };
+    if (user != null) {
+      final tokenWatch = Stopwatch()..start();
+      try {
+        final token = await user.getIdToken(false);
+        authDiagnostics['cachedToken'] = {
+          'success': true,
+          'durationMs': tokenWatch.elapsedMilliseconds,
+          'tokenPresent': token != null && token.isNotEmpty,
+        };
+      } catch (e) {
+        authDiagnostics['cachedToken'] = {
+          'success': false,
+          'durationMs': tokenWatch.elapsedMilliseconds,
+          'error': e.toString(),
+        };
+      }
+
+      final forceTokenWatch = Stopwatch()..start();
+      try {
+        final refreshedToken = await user.getIdToken(true);
+        authDiagnostics['refreshedToken'] = {
+          'success': true,
+          'durationMs': forceTokenWatch.elapsedMilliseconds,
+          'tokenPresent': refreshedToken != null && refreshedToken.isNotEmpty,
+        };
+      } catch (e) {
+        authDiagnostics['refreshedToken'] = {
+          'success': false,
+          'durationMs': forceTokenWatch.elapsedMilliseconds,
+          'error': e.toString(),
+        };
+      }
+
+      try {
+        final tokenResult = await user.getIdTokenResult(false);
+        authDiagnostics['tokenResult'] = {
+          'issuedAt': tokenResult.issuedAtTime?.toUtc().toIso8601String(),
+          'expirationTime': tokenResult.expirationTime
+              ?.toUtc()
+              .toIso8601String(),
+          'authTime': tokenResult.authTime?.toUtc().toIso8601String(),
+          'signInProvider': tokenResult.signInProvider,
+        };
+      } catch (e) {
+        authDiagnostics['tokenResult'] = {'error': e.toString()};
+      }
+    }
+    diagnostics['auth'] = authDiagnostics;
+
+    // 2. Firestore Connectivity Probes
+    if (_firestore != null && uid != null && uid.isNotEmpty) {
+      final firestoreProbes = <String, dynamic>{};
+      final userDocRef = _firestore.collection('users').doc(uid);
+
+      // Probe A: Server get()
+      final serverGetWatch = Stopwatch()..start();
+      try {
+        final snap = await userDocRef
+            .get(const GetOptions(source: Source.server))
+            .timeout(const Duration(seconds: 4));
+        firestoreProbes['serverGet'] = {
+          'success': true,
+          'durationMs': serverGetWatch.elapsedMilliseconds,
+          'exists': snap.exists,
+        };
+      } catch (e) {
+        firestoreProbes['serverGet'] = {
+          'success': false,
+          'durationMs': serverGetWatch.elapsedMilliseconds,
+          'error': e.toString(),
+          'errorType': e.runtimeType.toString(),
+        };
+      }
+
+      // Probe B: Cache get()
+      final cacheGetWatch = Stopwatch()..start();
+      try {
+        final snap = await userDocRef
+            .get(const GetOptions(source: Source.cache))
+            .timeout(const Duration(seconds: 4));
+        firestoreProbes['cacheGet'] = {
+          'success': true,
+          'durationMs': cacheGetWatch.elapsedMilliseconds,
+          'exists': snap.exists,
+        };
+      } catch (e) {
+        firestoreProbes['cacheGet'] = {
+          'success': false,
+          'durationMs': cacheGetWatch.elapsedMilliseconds,
+          'error': e.toString(),
+          'errorType': e.runtimeType.toString(),
+        };
+      }
+
+      // Probe C: snapshots().first
+      final streamWatch = Stopwatch()..start();
+      try {
+        final snap = await userDocRef.snapshots().first.timeout(
+          const Duration(seconds: 4),
+        );
+        firestoreProbes['snapshotStream'] = {
+          'success': true,
+          'durationMs': streamWatch.elapsedMilliseconds,
+          'exists': snap.exists,
+        };
+      } catch (e) {
+        firestoreProbes['snapshotStream'] = {
+          'success': false,
+          'durationMs': streamWatch.elapsedMilliseconds,
+          'error': e.toString(),
+          'errorType': e.runtimeType.toString(),
+        };
+      }
+
+      // Probe D: Query test
+      final queryWatch = Stopwatch()..start();
+      try {
+        final qSnap = await userDocRef
+            .collection('tasks')
+            .limit(1)
+            .get(const GetOptions(source: Source.server))
+            .timeout(const Duration(seconds: 4));
+        firestoreProbes['serverQuery'] = {
+          'success': true,
+          'durationMs': queryWatch.elapsedMilliseconds,
+          'docsCount': qSnap.docs.length,
+        };
+      } catch (e) {
+        firestoreProbes['serverQuery'] = {
+          'success': false,
+          'durationMs': queryWatch.elapsedMilliseconds,
+          'error': e.toString(),
+          'errorType': e.runtimeType.toString(),
+        };
+      }
+
+      diagnostics['firestoreProbes'] = firestoreProbes;
+    }
+
     final eventLogs = (_logger?.getEvents() ?? [])
         .map((e) => e.toJson())
         .toList();
@@ -431,6 +582,7 @@ class AppStateExporter {
       'auth': authState,
       'localHiveState': localHiveState,
       'remoteFirebaseState': remoteFirebaseState,
+      'diagnostics': diagnostics,
       'eventLogs': eventLogs,
     };
 

@@ -475,6 +475,10 @@ void main() {
         expect(remoteState['familyTasks'][0]['id'], 'ftask-1');
         expect(remoteState['familyInstances'], hasLength(1));
         expect(remoteState['familyInstances'][0]['id'], 'finst-1');
+
+        expect(raw['diagnostics'], isNotNull);
+        expect(raw['diagnostics']['auth'], isNotNull);
+        expect(raw['diagnostics']['firestoreProbes'], isNotNull);
       },
     );
 
