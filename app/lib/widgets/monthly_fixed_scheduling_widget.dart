@@ -6,8 +6,10 @@ import '../logic/missed_occurrence_policy.dart';
 import '../logic/l10n_extension.dart';
 import 'interval_stepper.dart';
 import 'date_stepper.dart';
-import 'relative_time_widget.dart';
-import 'missed_occurrence_policy_selector.dart';
+
+import 'schedule_timing_section.dart';
+import 'notification_config_section.dart';
+import 'missed_occurrence_policy_section.dart';
 
 class MonthlyFixedSchedulingWidget extends StatefulWidget {
   final CivilDay startDate;
@@ -316,136 +318,27 @@ class _MonthlyFixedSchedulingWidgetState
         ),
         const SizedBox(height: 20),
 
-        // Start
-        Text(
-          l10n.startLabel,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.bold,
-          ),
+        ScheduleTimingSection(
+          startController: _startController,
+          dueController: _dueController,
+          keyPrefix: 'monthly_fixed',
         ),
-        const SizedBox(height: 8),
-        RelativeTimeWidget(
-          key: const Key('monthly_fixed_start_relative_time_picker'),
-          constraint: RelativeTimeConstraint.unconstrained,
-          controller: _startController,
+        NotificationConfigSection(
+          showNotification: widget.showNotification,
+          notificationEnabled: notificationEnabled,
+          readOnly: widget.readOnly,
+          notificationController: _notificationController,
+          onNotificationRelativeTimeChanged:
+              widget.onNotificationRelativeTimeChanged,
+          keyPrefix: 'monthly_fixed',
         ),
-        const SizedBox(height: 6),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.help_outline,
-              size: 14,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                l10n.taskAppearanceHelpText,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
+        MissedOccurrencePolicySection(
+          showMissedPolicy: widget.showMissedPolicy,
+          missedOccurrencePolicy: widget.missedOccurrencePolicy,
+          onMissedOccurrencePolicyChanged:
+              widget.onMissedOccurrencePolicyChanged,
+          keyPrefix: 'monthly_fixed',
         ),
-        const SizedBox(height: 20),
-
-        // Due
-        Text(
-          l10n.dueWithoutColon,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        RelativeTimeWidget(
-          key: const Key('monthly_fixed_due_relative_time_picker'),
-          constraint: RelativeTimeConstraint.unconstrained,
-          controller: _dueController,
-        ),
-        const SizedBox(height: 6),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.help_outline,
-              size: 14,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                l10n.dueDescription,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        // Notifications
-        if (widget.showNotification) ...[
-          const SizedBox(height: 16),
-          const Divider(),
-          CheckboxListTile(
-            key: const Key('monthly_fixed_notification_checkbox'),
-            title: Text(
-              l10n.enableNotificationReminderLabel,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            value: notificationEnabled,
-            onChanged: widget.readOnly
-                ? null
-                : (enabled) {
-                    if (enabled == true) {
-                      widget.onNotificationRelativeTimeChanged(
-                        _notificationController.value,
-                      );
-                    } else {
-                      widget.onNotificationRelativeTimeChanged(null);
-                    }
-                  },
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-          ),
-          if (notificationEnabled) ...[
-            Text(
-              l10n.notificationWindowLabel,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            RelativeTimeWidget(
-              key: const Key('monthly_fixed_notification_relative_time_picker'),
-              constraint: RelativeTimeConstraint.unconstrained,
-              controller: _notificationController,
-            ),
-          ],
-        ],
-
-        // Missed occurrence policy selector
-        if (widget.showMissedPolicy &&
-            widget.missedOccurrencePolicy != null &&
-            widget.onMissedOccurrencePolicyChanged != null) ...[
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 12),
-          MissedOccurrencePolicySelector(
-            key: const Key('monthly_fixed_missed_policy'),
-            policy: widget.missedOccurrencePolicy!,
-            onChanged: widget.onMissedOccurrencePolicyChanged!,
-          ),
-        ],
       ],
     );
   }
