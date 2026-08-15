@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/app_state_exporter.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
+import '../logic/task_repository.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
 
@@ -18,6 +19,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _hoursController = TextEditingController();
   bool _isSaving = false;
+  bool _isResetting = false;
   bool _isInitialized = false;
   bool _showLastSpawnedDate = false;
 
@@ -25,6 +27,60 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void dispose() {
     _hoursController.dispose();
     super.dispose();
+  }
+
+  Future<void> _confirmAndResetLocalData() async {
+    final l10n = context.l10n;
+    final shouldReset = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.resetLocalDataConfirmationTitle),
+        content: Text(l10n.resetLocalDataConfirmationMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              MaterialLocalizations.of(dialogContext).cancelButtonLabel,
+            ),
+          ),
+          FilledButton(
+            key: const Key('confirm_reset_local_data_button'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.resetLocalDataButton),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldReset == true && mounted) {
+      setState(() {
+        _isResetting = true;
+      });
+
+      try {
+        final taskRepo = ref.read(taskRepositoryProvider);
+        if (taskRepo != null) {
+          await taskRepo.resetLocalDataAndResync();
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.resetLocalDataSuccess)));
+        }
+      } catch (e, stackTrace) {
+        if (mounted) {
+          final errorHandler = ref.read(errorHandlerProvider);
+          final report = errorHandler.report(e, stackTrace: stackTrace);
+          errorHandler.showErrorDialog(context, report);
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isResetting = false;
+          });
+        }
+      }
+    }
   }
 
   Future<void> _saveSettings(
@@ -212,6 +268,75 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ],
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                Builder(
+                  builder: (context) {
+                    final hasSuspectedStaleData =
+                        ref.watch(hasSuspectedStaleDataProvider).valueOrNull ??
+                        false;
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  hasSuspectedStaleData
+                                      ? Icons.sync_problem_outlined
+                                      : Icons.sync_outlined,
+                                  size: 28,
+                                  color: hasSuspectedStaleData
+                                      ? Theme.of(context).colorScheme.error
+                                      : null,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    context.l10n.dataSyncSectionTitle,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              hasSuspectedStaleData
+                                  ? context.l10n.staleDataDetectedWarning
+                                  : context.l10n.dataSyncHealthyHelper,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: hasSuspectedStaleData
+                                    ? Theme.of(context).colorScheme.error
+                                    : Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            FilledButton.tonalIcon(
+                              key: const Key('reset_local_data_button'),
+                              onPressed: hasSuspectedStaleData && !_isResetting
+                                  ? _confirmAndResetLocalData
+                                  : null,
+                              icon: _isResetting
+                                  ? const SizedBox(
+                                      height: 18,
+                                      width: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.refresh),
+                              label: Text(context.l10n.resetLocalDataButton),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 24),

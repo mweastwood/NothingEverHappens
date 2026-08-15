@@ -61,6 +61,21 @@ class UnifiedTaskRepository extends TaskRepository {
   }
 
   @override
+  Future<void> resetLocalDataAndResync() async {
+    final migrationService = InitialFirebaseMigrationService(
+      firestore: _rawFirestore,
+      localDataSource: _localDataSource,
+      userId: userId,
+      logger: logger,
+    );
+    await migrationService.migrateIfNeeded(force: true);
+    if (_localDataSource.isMigrationCompleted()) {
+      _syncService.startListeningToRemote();
+      await triggerMissedPolicyProcessing();
+    }
+  }
+
+  @override
   Stream<List<TaskSchedule>> getTasks() {
     scheduleMicrotask(() => triggerMissedPolicyProcessing());
     return _localDataSource.watchTasks();

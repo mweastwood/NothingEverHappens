@@ -5,6 +5,8 @@ import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 
 class InitialFirebaseMigrationService {
+  static final Map<String, Future<void>> _inFlightMigrations = {};
+
   final FirebaseFirestore _firestore;
   final HiveLocalDataSource _localDataSource;
   final String _userId;
@@ -20,13 +22,32 @@ class InitialFirebaseMigrationService {
        _userId = userId,
        _logger = logger;
 
-  Future<void> migrateIfNeeded() async {
-    if (_localDataSource.isMigrationCompleted()) {
+  Future<void> migrateIfNeeded({bool force = false}) async {
+    if (!force && _localDataSource.isMigrationCompleted()) {
       return;
     }
 
+    final inFlight = _inFlightMigrations[_userId];
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final future = _doMigrate(force: force);
+    _inFlightMigrations[_userId] = future;
     try {
-      _logger?.info('sync', 'Initial Firebase migration started');
+      await future;
+    } finally {
+      _inFlightMigrations.remove(_userId);
+    }
+  }
+
+  Future<void> _doMigrate({bool force = false}) async {
+    try {
+      _logger?.info(
+        'sync',
+        'Initial Firebase migration started',
+        data: {'force': force},
+      );
       final userDoc = await _firestore.collection('users').doc(_userId).get();
       final familyId = userDoc.data()?['familyId'] as String?;
 
@@ -78,7 +99,12 @@ class InitialFirebaseMigrationService {
         );
       }
 
-      // Save all to Hive
+      // Clean slate: clear any existing local tasks/instances and dirty queues
+      // before populating from Firestore to eliminate stale offline artifacts.
+      await _localDataSource.clearAllTasksAndInstances();
+      await _localDataSource.clearAllDirty();
+
+      // Save all fresh items to Hive
       for (final task in tasksToMigrate) {
         await _localDataSource.saveTask(task);
       }
@@ -94,6 +120,7 @@ class InitialFirebaseMigrationService {
         data: {
           'tasksCount': tasksToMigrate.length,
           'instancesCount': instancesToMigrate.length,
+          'force': force,
         },
       );
     } catch (e) {

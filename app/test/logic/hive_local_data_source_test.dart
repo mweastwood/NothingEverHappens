@@ -221,4 +221,76 @@ void main() {
     expect(instances.isEmpty, true);
     expect(errorHandler.history.length >= 3, true);
   });
+
+  test(
+    'clearAllTasksAndInstances, clearAllDirty, and resetAllData work correctly',
+    () async {
+      final task = TaskSchedule(
+        id: 'S-clear-test',
+        title: 'Clear Test',
+        description: 'Desc',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      final instance = TaskInstance(
+        id: 'I-clear-test',
+        scheduleId: 'S-clear-test',
+        ruleId: 'rule1',
+        title: 'Clear Inst',
+        description: 'Desc',
+        scheduledDate: CivilDay(year: 2026, month: 8, day: 15),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        updatedAt: DateTime.now(),
+      );
+
+      await dataSource.saveTask(task);
+      await dataSource.saveInstance(instance);
+      await dataSource.markDirty('S-clear-test');
+      await dataSource.setMigrationCompleted(true);
+
+      expect(dataSource.getTasks().length, 1);
+      expect(dataSource.getInstances().length, 1);
+      expect(dataSource.getDirtyTaskIds().length, 1);
+      expect(dataSource.isMigrationCompleted(), true);
+
+      await dataSource.clearAllTasksAndInstances();
+      expect(dataSource.getTasks().isEmpty, true);
+      expect(dataSource.getInstances().isEmpty, true);
+      expect(dataSource.getDirtyTaskIds().length, 1);
+
+      await dataSource.clearAllDirty();
+      expect(dataSource.getDirtyTaskIds().isEmpty, true);
+
+      await dataSource.saveTask(task);
+      await dataSource.markDirty('S-clear-test');
+      expect(dataSource.getTasks().length, 1);
+
+      await dataSource.resetAllData();
+      expect(dataSource.getTasks().isEmpty, true);
+      expect(dataSource.getInstances().isEmpty, true);
+      expect(dataSource.getDirtyTaskIds().isEmpty, true);
+      expect(dataSource.isMigrationCompleted(), false);
+    },
+  );
+
+  test('watchMigrationCompleted emits reactive updates', () async {
+    final emissions = <bool>[];
+    final sub = dataSource.watchMigrationCompleted().listen(emissions.add);
+
+    await dataSource.setMigrationCompleted(true);
+    await dataSource.setMigrationCompleted(false);
+    await dataSource.setMigrationCompleted(true);
+
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    expect(emissions, containsAllInOrder([false, true, false, true]));
+    await sub.cancel();
+  });
 }

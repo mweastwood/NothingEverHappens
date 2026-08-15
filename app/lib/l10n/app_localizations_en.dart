@@ -487,6 +487,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'Debug app state JSON export for NothingEverHappens.';
 
   @override
+  String get dataSyncSectionTitle => 'Data Synchronization';
+
+  @override
+  String get dataSyncHealthyHelper =>
+      'Local data is in sync with cloud storage.';
+
+  @override
+  String get staleDataDetectedWarning =>
+      'Stale or unmigrated local data detected. Reset to re-sync from cloud.';
+
+  @override
+  String get resetLocalDataButton => 'Reset Local Data & Re-sync';
+
+  @override
+  String get resetLocalDataConfirmationTitle => 'Reset Local Data?';
+
+  @override
+  String get resetLocalDataConfirmationMessage =>
+      'This will clear local storage and re-download all your tasks from cloud storage.';
+
+  @override
+  String get resetLocalDataSuccess =>
+      'Local data reset and synchronized from cloud successfully.';
+
+  @override
+  String get resetLocalDataFailed => 'Failed to re-sync from cloud: ';
+
+  @override
   String get pendingBadge => 'Pending';
 
   @override

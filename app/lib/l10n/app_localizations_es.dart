@@ -488,6 +488,35 @@ class AppLocalizationsEs extends AppLocalizations {
       'Exportación JSON del estado de depuración para NothingEverHappens.';
 
   @override
+  String get dataSyncSectionTitle => 'Sincronización de datos';
+
+  @override
+  String get dataSyncHealthyHelper =>
+      'Los datos locales están sincronizados con la nube.';
+
+  @override
+  String get staleDataDetectedWarning =>
+      'Se detectaron datos locales desactualizados o no migrados. Restablece para sincronizar desde la nube.';
+
+  @override
+  String get resetLocalDataButton =>
+      'Restablecer datos locales y resincronizar';
+
+  @override
+  String get resetLocalDataConfirmationTitle => '¿Restablecer datos locales?';
+
+  @override
+  String get resetLocalDataConfirmationMessage =>
+      'Esto borrará el almacenamiento local y volverá a descargar todas tus tareas desde la nube.';
+
+  @override
+  String get resetLocalDataSuccess =>
+      'Datos locales restablecidos y sincronizados desde la nube con éxito.';
+
+  @override
+  String get resetLocalDataFailed => 'Error al resincronizar desde la nube: ';
+
+  @override
   String get pendingBadge => 'Pendiente';
 
   @override

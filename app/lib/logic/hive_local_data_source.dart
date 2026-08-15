@@ -49,6 +49,7 @@ class HiveLocalDataSource {
   final _settingsSubject = BehaviorSubject<UserSettings>.seeded(
     const UserSettings(hoursAvailable: 8.0),
   );
+  final _migrationCompletedSubject = BehaviorSubject<bool>.seeded(false);
 
   bool isFallbackInMemoryMode = false;
 
@@ -97,27 +98,42 @@ class HiveLocalDataSource {
     _emitTasks();
     _emitInstances();
     _emitSettings();
+    _emitSyncMeta();
 
     _tasksBox?.watch().listen((_) => _emitTasks());
     _instancesBox?.watch().listen((_) => _emitInstances());
     _settingsBox?.watch().listen((_) => _emitSettings());
+    _syncMetaBox?.watch().listen((_) => _emitSyncMeta());
   }
 
   void _emitTasks() {
-    _tasksSubject.add(getTasks());
+    if (!_tasksSubject.isClosed) {
+      _tasksSubject.add(getTasks());
+    }
   }
 
   void _emitInstances() {
-    _instancesSubject.add(getInstances());
+    if (!_instancesSubject.isClosed) {
+      _instancesSubject.add(getInstances());
+    }
   }
 
   void _emitSettings() {
-    _settingsSubject.add(getSettings());
+    if (!_settingsSubject.isClosed) {
+      _settingsSubject.add(getSettings());
+    }
+  }
+
+  void _emitSyncMeta() {
+    if (!_migrationCompletedSubject.isClosed) {
+      _migrationCompletedSubject.add(isMigrationCompleted());
+    }
   }
 
   Stream<List<TaskSchedule>> watchTasks() => _tasksSubject.stream;
   Stream<List<TaskInstance>> watchInstances() => _instancesSubject.stream;
   Stream<UserSettings> watchSettings() => _settingsSubject.stream;
+  Stream<bool> watchMigrationCompleted() => _migrationCompletedSubject.stream;
 
   UserSettings getSettings() {
     if (_settingsBox != null && _settingsBox!.isOpen) {
@@ -273,12 +289,39 @@ class HiveLocalDataSource {
     }
   }
 
+  Future<void> clearAllTasksAndInstances() async {
+    _memTasks.clear();
+    _memInstances.clear();
+    if (_tasksBox != null && _tasksBox!.isOpen) {
+      await _tasksBox!.clear();
+    }
+    if (_instancesBox != null && _instancesBox!.isOpen) {
+      await _instancesBox!.clear();
+    }
+    _emitTasks();
+    _emitInstances();
+  }
+
+  Future<void> clearAllDirty() async {
+    _memMeta['dirty_tasks'] = {'list': <String>[]};
+    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+      await _syncMetaBox!.put('dirty_tasks', {'list': <String>[]});
+    }
+  }
+
+  Future<void> resetAllData() async {
+    await clearAllTasksAndInstances();
+    await clearAllDirty();
+    await setMigrationCompleted(false);
+  }
+
   Future<void> setMigrationCompleted(bool completed) async {
     if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
       await _syncMetaBox!.put('migration_completed', {'value': completed});
     } else {
       _memMeta['migration_completed'] = {'value': completed};
     }
+    _emitSyncMeta();
   }
 
   bool isMigrationCompleted() {
