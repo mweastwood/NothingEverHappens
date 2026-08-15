@@ -355,7 +355,7 @@ class _YearlyFixedSchedulingWidgetState
         ScheduleTimingSection(
           startController: _startController,
           dueController: _dueController,
-          startKeyPrefix: 'yearly_fixed',
+          keyPrefix: 'yearly_fixed',
         ),
         NotificationConfigSection(
           showNotification: widget.showNotification,

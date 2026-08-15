@@ -6,13 +6,13 @@ import 'relative_time_widget.dart';
 class ScheduleTimingSection extends StatelessWidget {
   final ValueNotifier<RelativeTime> startController;
   final ValueNotifier<RelativeTime> dueController;
-  final String startKeyPrefix;
+  final String keyPrefix;
 
   const ScheduleTimingSection({
     super.key,
     required this.startController,
     required this.dueController,
-    required this.startKeyPrefix,
+    required this.keyPrefix,
   });
 
   @override
@@ -33,7 +33,7 @@ class ScheduleTimingSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         RelativeTimeWidget(
-          key: Key('${startKeyPrefix}_start_relative_time_picker'),
+          key: Key('${keyPrefix}_start_relative_time_picker'),
           constraint: RelativeTimeConstraint.unconstrained,
           controller: startController,
         ),
@@ -70,7 +70,7 @@ class ScheduleTimingSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         RelativeTimeWidget(
-          key: Key('${startKeyPrefix}_due_relative_time_picker'),
+          key: Key('${keyPrefix}_due_relative_time_picker'),
           constraint: RelativeTimeConstraint.unconstrained,
           controller: dueController,
         ),

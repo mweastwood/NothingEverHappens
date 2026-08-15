@@ -320,7 +320,7 @@ class _WeeklyFixedSchedulingWidgetState
         ScheduleTimingSection(
           startController: _startController,
           dueController: _dueController,
-          startKeyPrefix: 'weekly_fixed',
+          keyPrefix: 'weekly_fixed',
         ),
         NotificationConfigSection(
           showNotification: widget.showNotification,
@@ -498,7 +498,7 @@ class _WeeklyCompletionRelativeSchedulingWidgetState
         ScheduleTimingSection(
           startController: _startController,
           dueController: _dueController,
-          startKeyPrefix: 'weekly_completion',
+          keyPrefix: 'weekly_completion',
         ),
         NotificationConfigSection(
           showNotification: widget.showNotification,

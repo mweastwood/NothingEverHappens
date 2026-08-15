@@ -321,7 +321,7 @@ class _MonthlyFixedSchedulingWidgetState
         ScheduleTimingSection(
           startController: _startController,
           dueController: _dueController,
-          startKeyPrefix: 'monthly_fixed',
+          keyPrefix: 'monthly_fixed',
         ),
         NotificationConfigSection(
           showNotification: widget.showNotification,
