@@ -19,6 +19,10 @@ import 'l10n_extension.dart';
 import 'relative_time.dart';
 import 'task_repository.dart';
 import 'utils/app_version.dart';
+import 'utils/file_downloader/file_downloader.dart';
+
+typedef FileSaver =
+    FutureOr<void> Function(String content, String fileName, {String mimeType});
 
 final appStateExporterProvider = Provider<AppStateExporter>((ref) {
   final firestore = ref.watch(firestoreProvider);
@@ -38,16 +42,19 @@ class AppStateExporter {
   final AuthRepository? _authRepository;
   final HiveLocalDataSource _hiveDataSource;
   final ErrorHandler? _errorHandler;
+  final FileSaver? _fileSaver;
 
   AppStateExporter({
     FirebaseFirestore? firestore,
     AuthRepository? authRepository,
     required HiveLocalDataSource hiveDataSource,
     ErrorHandler? errorHandler,
+    FileSaver? fileSaver,
   }) : _firestore = firestore,
        _authRepository = authRepository,
        _hiveDataSource = hiveDataSource,
-       _errorHandler = errorHandler;
+       _errorHandler = errorHandler,
+       _fileSaver = fileSaver;
 
   static String? maskEmail(String? email) {
     if (email == null) return null;
@@ -601,8 +608,22 @@ class AppStateExporter {
         final fileName = 'debug_app_state_$timestamp.json';
 
         bool shared = false;
-
-        if (!kIsWeb) {
+        if (kIsWeb || _fileSaver != null) {
+          try {
+            if (_fileSaver != null) {
+              await _fileSaver(
+                jsonString,
+                fileName,
+                mimeType: 'application/json',
+              );
+            } else {
+              downloadFile(jsonString, fileName, mimeType: 'application/json');
+            }
+            shared = true;
+          } catch (e) {
+            debugPrint('Web download failed, falling back to clipboard: $e');
+          }
+        } else {
           try {
             final RenderBox? box = context.findRenderObject() as RenderBox?;
             final fallbackRect = Rect.fromLTWH(
