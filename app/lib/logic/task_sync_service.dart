@@ -8,6 +8,7 @@ import 'package:nothing_ever_happens/logic/subscription_service.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/app_logger.dart';
 
 final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
   final firestore = ref.watch(firestoreProvider) ?? FirebaseFirestore.instance;
@@ -21,6 +22,7 @@ final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
     userId: user?.uid ?? '',
     isActivePremium: subscriptionState.isActivePremium,
     errorHandler: ref.read(errorHandlerProvider),
+    logger: ref.watch(appLoggerProvider),
   );
 
   ref.onDispose(() {
@@ -36,6 +38,7 @@ class TaskSyncService {
   final String _userId;
   final bool _isActivePremium;
   final ErrorHandler? errorHandler;
+  final AppLogger? logger;
 
   StreamSubscription? _tasksSub;
   StreamSubscription? _instancesSub;
@@ -48,6 +51,7 @@ class TaskSyncService {
     required String userId,
     required bool isActivePremium,
     this.errorHandler,
+    this.logger,
   }) : _firestore = firestore,
        _localDataSource = localDataSource,
        _userId = userId,
@@ -171,6 +175,11 @@ class TaskSyncService {
 
     try {
       final dirtyTaskIds = _localDataSource.getDirtyTaskIds();
+      logger?.debug(
+        'sync',
+        'Firestore sync started',
+        data: {'dirtyCount': dirtyTaskIds.length},
+      );
       final localTasks = _localDataSource.getTasks();
       final localInstances = _localDataSource.getInstances();
 
@@ -206,7 +215,9 @@ class TaskSyncService {
         }
         await _localDataSource.clearDirty(taskId);
       }
+      logger?.info('sync', 'Firestore sync completed successfully');
     } catch (e, st) {
+      logger?.error('sync', 'Firestore sync failed', error: e, stackTrace: st);
       errorHandler?.report(e, stackTrace: st);
       // ignore: avoid_print
       print('Sync failed: $e');

@@ -28,6 +28,7 @@ class UnifiedTaskRepository extends TaskRepository {
     super.firestore,
     super.notificationService,
     super.errorHandler,
+    super.logger,
   }) : _localDataSource = localDataSource,
        _syncService = syncService,
        _rawFirestore = firestore {
@@ -40,6 +41,7 @@ class UnifiedTaskRepository extends TaskRepository {
         firestore: _rawFirestore,
         localDataSource: _localDataSource,
         userId: userId,
+        logger: logger,
       );
       migrationService
           .migrateIfNeeded()
@@ -69,6 +71,11 @@ class UnifiedTaskRepository extends TaskRepository {
     final t = task.copyWith(updatedAt: DateTime.now());
     await _localDataSource.saveTask(t);
     await _localDataSource.markDirty(t.id);
+    logger?.info(
+      'task',
+      'Task created: ${t.id}',
+      data: {'taskId': t.id, 'title': t.title},
+    );
     _syncService.sync();
     await triggerMissedPolicyProcessing();
   }
@@ -78,6 +85,11 @@ class UnifiedTaskRepository extends TaskRepository {
     final t = modification.newTask.copyWith(updatedAt: DateTime.now());
     await _localDataSource.saveTask(t);
     await _localDataSource.markDirty(t.id);
+    logger?.info(
+      'task',
+      'Task updated: ${t.id}',
+      data: {'taskId': t.id, 'title': t.title},
+    );
 
     final changes = modification.changes;
     if (changes.containsKey('schedules')) {
@@ -126,6 +138,7 @@ class UnifiedTaskRepository extends TaskRepository {
 
     await _localDataSource.deleteTask(id);
     await _localDataSource.markDirty(id);
+    logger?.info('task', 'Task deleted: $id', data: {'taskId': id});
 
     final pendingInstances = <TaskInstance>[];
     final instances = _localDataSource
@@ -161,6 +174,11 @@ class UnifiedTaskRepository extends TaskRepository {
     );
     await _localDataSource.saveInstance(completedInstance);
     await _localDataSource.markDirty(completedInstance.id);
+    logger?.info(
+      'task',
+      'Task instance completed: $id',
+      data: {'instanceId': id, 'scheduleId': instance.scheduleId},
+    );
 
     _syncService.sync();
     return completedInstance;
@@ -182,6 +200,11 @@ class UnifiedTaskRepository extends TaskRepository {
     );
     await _localDataSource.saveInstance(dismissedInstance);
     await _localDataSource.markDirty(dismissedInstance.id);
+    logger?.info(
+      'task',
+      'Task instance dismissed: $id',
+      data: {'instanceId': id, 'scheduleId': instance.scheduleId},
+    );
 
     _syncService.sync();
     return dismissedInstance;
@@ -197,6 +220,14 @@ class UnifiedTaskRepository extends TaskRepository {
     );
     await _localDataSource.saveInstance(pendingInstance);
     await _localDataSource.markDirty(pendingInstance.id);
+    logger?.info(
+      'task',
+      'Task instance status undone: ${resolvedInstance.id}',
+      data: {
+        'instanceId': resolvedInstance.id,
+        'scheduleId': resolvedInstance.scheduleId,
+      },
+    );
 
     final task = _localDataSource
         .getTasks()
@@ -402,6 +433,12 @@ class UnifiedTaskRepository extends TaskRepository {
         hasChanges = true;
       }
     }
+
+    logger?.debug(
+      'scheduler',
+      'Scheduler cycle evaluated ${tasksToEvaluate.length} tasks',
+      data: {'taskCount': tasksToEvaluate.length, 'hasChanges': hasChanges},
+    );
 
     if (hasChanges) {
       _syncService.sync();

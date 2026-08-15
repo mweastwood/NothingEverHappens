@@ -8,10 +8,14 @@ import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:rxdart/rxdart.dart';
 
 final hiveLocalDataSourceProvider = Provider<HiveLocalDataSource>((ref) {
-  final ds = HiveLocalDataSource(errorHandler: ref.read(errorHandlerProvider));
+  final ds = HiveLocalDataSource(
+    errorHandler: ref.read(errorHandlerProvider),
+    logger: ref.watch(appLoggerProvider),
+  );
   ref.onDispose(() => ds.dispose());
   return ds;
 });
@@ -23,13 +27,14 @@ class HiveLocalDataSource {
   static const String _settingsBoxName = 'settingsBox';
 
   final ErrorHandler? errorHandler;
+  final AppLogger? logger;
 
   Box<Map>? _tasksBox;
   Box<Map>? _instancesBox;
   Box<Map>? _syncMetaBox;
   Box<Map>? _settingsBox;
 
-  HiveLocalDataSource({this.errorHandler});
+  HiveLocalDataSource({this.errorHandler, this.logger});
 
   final Map<String, TaskSchedule> _memTasks = {};
   final Map<String, TaskInstance> _memInstances = {};

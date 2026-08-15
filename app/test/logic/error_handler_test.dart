@@ -2,13 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/app_logger.dart';
 
 void main() {
   group('ErrorHandler Unit Tests', () {
     late ErrorHandler errorHandler;
+    late AppLogger logger;
 
     setUp(() {
-      errorHandler = ErrorHandler();
+      logger = AppLogger();
+      errorHandler = ErrorHandler(logger: logger);
     });
 
     test('generates ERR_ suffix for generic Exception', () {
@@ -69,6 +72,24 @@ void main() {
       final report2 = errorHandler.report('Error B');
 
       expect(report1.code, isNot(report2.code));
+    });
+
+    test('ErrorHandler.report logs structured error event into AppLogger', () {
+      final testError = StateError('Unhandled state test');
+      final testStackTrace = StackTrace.current;
+
+      final report = errorHandler.report(testError, stackTrace: testStackTrace);
+
+      final events = logger.getEvents();
+      expect(events.length, 1);
+      final loggedEvent = events.first;
+
+      expect(loggedEvent.level, LogLevel.error);
+      expect(loggedEvent.category, 'error_handler');
+      expect(loggedEvent.message, 'Error reported: ${report.code}');
+      expect(loggedEvent.data, {'errorCode': report.code});
+      expect(loggedEvent.error, testError);
+      expect(loggedEvent.stackTrace, testStackTrace.toString());
     });
   });
 }

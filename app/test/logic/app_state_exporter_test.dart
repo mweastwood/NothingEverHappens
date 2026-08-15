@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:nothing_ever_happens/logic/app_state_exporter.dart';
+import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
@@ -614,7 +615,6 @@ void main() {
         expect(sanitizedTimeOfDay, {'hour': 12, 'minute': 30});
       },
     );
-
     test('downloadFile platform stub executes safely', () {
       expect(
         () => downloadFile(
@@ -718,6 +718,111 @@ void main() {
         final decoded = jsonDecode(copiedText);
         expect(decoded['exportMetadata'], isNotNull);
         expect(find.byType(SnackBar), findsOneWidget);
+      },
+    );
+
+    test('exportStateRaw includes eventLogs from injected AppLogger', () async {
+      final logger = AppLogger();
+      logger.info(
+        'auth',
+        'User signed in',
+        data: {'userId': 'user-123', 'method': 'google'},
+      );
+      logger.error(
+        'sync',
+        'Sync failed',
+        data: {'dirtyCount': 2},
+        error: 'NetworkException',
+      );
+
+      final exporter = AppStateExporter(
+        firestore: null,
+        hiveDataSource: localDataSource,
+        logger: logger,
+      );
+
+      final rawState = await exporter.exportStateRaw();
+      expect(rawState.containsKey('eventLogs'), isTrue);
+
+      final eventLogs = rawState['eventLogs'] as List<dynamic>;
+      expect(eventLogs.length, 2);
+
+      expect(eventLogs[0]['level'], 'info');
+      expect(eventLogs[0]['category'], 'auth');
+      expect(eventLogs[0]['message'], 'User signed in');
+      expect(eventLogs[0]['data'], {'userId': 'user-123', 'method': 'google'});
+
+      expect(eventLogs[1]['level'], 'error');
+      expect(eventLogs[1]['category'], 'sync');
+      expect(eventLogs[1]['message'], 'Sync failed');
+      expect(eventLogs[1]['data'], {'dirtyCount': 2});
+      expect(eventLogs[1]['error'], 'NetworkException');
+    });
+
+    test('exportStateRaw sanitizes PII in eventLogs data payloads', () async {
+      final logger = AppLogger();
+      logger.info(
+        'auth',
+        'User profile updated',
+        data: {
+          'email': 'sensitive_user@example.com',
+          'displayName': 'John Doe',
+          'phoneNumber': '+15551234567',
+          'taskId': 'T-100',
+        },
+      );
+
+      final exporter = AppStateExporter(
+        firestore: null,
+        hiveDataSource: localDataSource,
+        logger: logger,
+      );
+
+      final rawState = await exporter.exportStateRaw();
+      final eventLogs = rawState['eventLogs'] as List<dynamic>;
+      expect(eventLogs.length, 1);
+
+      final logData = eventLogs[0]['data'] as Map<String, dynamic>;
+      expect(logData['email'], 's***@example.com');
+      expect(logData['displayName'], 'J***');
+      expect(logData['phoneNumber'], '+***');
+      expect(logData['taskId'], 'T-100');
+    });
+
+    testWidgets(
+      'shareDebugState logs export initiated and completed events into AppLogger',
+      (WidgetTester tester) async {
+        final logger = AppLogger();
+        final exporter = AppStateExporter(
+          firestore: null,
+          hiveDataSource: localDataSource,
+          logger: logger,
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  return ElevatedButton(
+                    onPressed: () => exporter.shareDebugState(context),
+                    child: const Text('Export'),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byType(ElevatedButton));
+        await tester.pumpAndSettle();
+
+        final events = logger.getEvents();
+        expect(events.length, 2);
+        expect(events[0].category, 'export');
+        expect(events[0].message, 'Debug state export initiated');
+        expect(events[1].category, 'export');
+        expect(events[1].message, 'Debug state export completed');
       },
     );
   });
