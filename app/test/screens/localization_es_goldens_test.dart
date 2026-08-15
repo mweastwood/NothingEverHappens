@@ -128,7 +128,7 @@ void main() {
         child: const SettingsScreen(),
       ),
       wrapper: buildEsWrapper,
-      surfaceSize: const Size(400, 800),
+      surfaceSize: const Size(400, 1000),
     );
 
     await screenMatchesGolden(tester, 'settings_screen_es');
