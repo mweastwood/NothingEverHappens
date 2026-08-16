@@ -1052,6 +1052,42 @@ abstract class AppLocalizations {
   /// **'Non-Parent'**
   String get nonParentRole;
 
+  /// No description provided for @changeRoleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Role'**
+  String get changeRoleTitle;
+
+  /// No description provided for @changeRoleButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Role'**
+  String get changeRoleButton;
+
+  /// No description provided for @changeRoleDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Member Role'**
+  String get changeRoleDialogTitle;
+
+  /// No description provided for @changeRoleDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a new role for {name}.'**
+  String changeRoleDescription(String name);
+
+  /// No description provided for @cannotDemoteOnlyParent.
+  ///
+  /// In en, this message translates to:
+  /// **'A family must have at least one parent.'**
+  String get cannotDemoteOnlyParent;
+
+  /// No description provided for @roleUpdatedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated role for {name}'**
+  String roleUpdatedSuccess(String name);
+
   /// No description provided for @pendingInvitesHeader.
   ///
   /// In en, this message translates to:

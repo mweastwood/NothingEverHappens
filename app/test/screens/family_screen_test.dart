@@ -711,4 +711,139 @@ void main() {
       expect(find.text('Leave Family?'), findsOneWidget);
     },
   );
+
+  testWidgets('parent can change member role from non-parent to parent', (
+    WidgetTester tester,
+  ) async {
+    const familyId = 'fam-1';
+    await firestore.collection('users').doc(userId).set({
+      'familyId': familyId,
+      'familyRole': 'parent',
+    });
+    await firestore.collection('users').doc('user-2').set({
+      'familyId': familyId,
+      'familyRole': 'non-parent',
+    });
+    await firestore.collection('families').doc(familyId).set({
+      'name': 'The Simpsons',
+      'members': {
+        userId: {
+          'userId': userId,
+          'displayName': userName,
+          'email': userEmail,
+          'role': 'parent',
+        },
+        'user-2': {
+          'userId': 'user-2',
+          'displayName': 'Bob',
+          'email': 'bob@example.com',
+          'role': 'non-parent',
+        },
+      },
+    });
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    // Verify edit button is visible for member
+    expect(find.byKey(const Key('edit_role_button_user-2')), findsOneWidget);
+
+    // Tap edit role button
+    await tester.tap(find.byKey(const Key('edit_role_button_user-2')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Change Member Role'), findsOneWidget);
+
+    // Change dropdown to Parent
+    await tester.tap(find.byKey(const Key('change_role_dropdown')));
+    await tester.pumpAndSettle();
+
+    // Select parent from dropdown items (last one in list/popup)
+    await tester.tap(find.text('Parent').last);
+    await tester.pumpAndSettle();
+
+    // Confirm
+    await tester.tap(find.byKey(const Key('confirm_change_role_button')));
+    await tester.pumpAndSettle();
+
+    // Verify Firestore was updated
+    final familyDoc = await firestore
+        .collection('families')
+        .doc(familyId)
+        .get();
+    expect(familyDoc.data()?['members']['user-2']['role'], 'parent');
+
+    final user2Doc = await firestore.collection('users').doc('user-2').get();
+    expect(user2Doc.data()?['familyRole'], 'parent');
+  });
+
+  testWidgets('non-parent does not see edit role buttons', (
+    WidgetTester tester,
+  ) async {
+    const familyId = 'fam-1';
+    await firestore.collection('users').doc(userId).set({
+      'familyId': familyId,
+      'familyRole': 'non-parent',
+    });
+    await firestore.collection('families').doc(familyId).set({
+      'name': 'The Simpsons',
+      'members': {
+        userId: {
+          'userId': userId,
+          'displayName': userName,
+          'email': userEmail,
+          'role': 'non-parent',
+        },
+        'user-2': {
+          'userId': 'user-2',
+          'displayName': 'Bob',
+          'email': 'bob@example.com',
+          'role': 'parent',
+        },
+      },
+    });
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('edit_role_button_user-2')), findsNothing);
+    expect(find.byKey(Key('edit_role_button_$userId')), findsNothing);
+  });
+
+  testWidgets('change role dialog warns when user is the only parent', (
+    WidgetTester tester,
+  ) async {
+    const familyId = 'fam-1';
+    await firestore.collection('users').doc(userId).set({
+      'familyId': familyId,
+      'familyRole': 'parent',
+    });
+    await firestore.collection('families').doc(familyId).set({
+      'name': 'The Simpsons',
+      'members': {
+        userId: {
+          'userId': userId,
+          'displayName': userName,
+          'email': userEmail,
+          'role': 'parent',
+        },
+        'user-2': {
+          'userId': 'user-2',
+          'displayName': 'Bob',
+          'email': 'bob@example.com',
+          'role': 'non-parent',
+        },
+      },
+    });
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    // Tap edit role on sole parent (Alice / user-1)
+    await tester.tap(find.byKey(Key('edit_role_button_$userId')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Change Member Role'), findsOneWidget);
+    expect(find.text('A family must have at least one parent.'), findsWidgets);
+  });
 }

@@ -182,6 +182,23 @@ class FamilyRepository {
     });
   }
 
+  Future<void> updateMemberRole({
+    required String familyId,
+    required String memberUserId,
+    required FamilyRole newRole,
+  }) async {
+    final familyRef = _firestore.collection('families').doc(familyId);
+    final batch = _firestore.batch();
+
+    batch.update(familyRef, {'members.$memberUserId.role': newRole.toJson()});
+
+    batch.set(_firestore.collection('users').doc(memberUserId), {
+      'familyRole': newRole.toJson(),
+    }, SetOptions(merge: true));
+
+    await batch.commit();
+  }
+
   Stream<List<FamilyInvite>> getOutstandingFamilyInvites(String familyId) {
     if (familyId.isEmpty) return Stream.value([]);
     return _firestore
@@ -264,9 +281,11 @@ class FamilyRepository {
             batch.update(familyRef, {
               'members.${nextParent.userId}.role': FamilyRole.parent.toJson(),
             });
-            batch.set(_firestore.collection('users').doc(nextParent.userId), {
-              'familyRole': FamilyRole.parent.toJson(),
-            }, SetOptions(merge: true));
+            batch.set(
+              _firestore.collection('users').doc(nextParent.userId),
+              {'familyRole': FamilyRole.parent.toJson()},
+              SetOptions(merge: true),
+            );
           }
         }
       }

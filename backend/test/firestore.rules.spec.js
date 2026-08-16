@@ -42,12 +42,37 @@ describe('Firestore Security Rules', () => {
       await assertSucceeds(db.collection('users').doc('alice').get());
     });
 
-    it('denies a user from writing to another user\'s profile', async () => {
+    it('denies a user from writing to another user\'s profile if not in same family or not a parent', async () => {
       const aliceContext = testEnv.authenticatedContext('alice');
       const db = aliceContext.firestore();
 
       await assertFails(db.collection('users').doc('bob').set({
         displayName: 'Bob Clone'
+      }));
+    });
+
+    it('allows a family parent to update a member\'s profile in the same family', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' },
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+        await db.collection('users').doc('bob').set({
+          displayName: 'Bob',
+          familyId: 'fam-1',
+          familyRole: 'non-parent'
+        });
+      });
+
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const db = aliceContext.firestore();
+
+      await assertSucceeds(db.collection('users').doc('bob').update({
+        familyRole: 'parent'
       }));
     });
   });
