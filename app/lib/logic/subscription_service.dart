@@ -6,6 +6,8 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_repository.dart';
 import 'task_repository.dart';
+import 'app_logger.dart' hide LogLevel;
+import 'error_handler.dart';
 
 enum SubscriptionTier { free, standard, family }
 
@@ -172,37 +174,78 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
   void listenToUserSubscriptionInFirestore(String uid) {
     if (_firestore == null) return;
     _firestoreSub?.cancel();
-    _firestoreSub = _firestore.collection('users').doc(uid).snapshots().listen((
-      doc,
-    ) {
-      if (doc.exists) {
-        final data = doc.data();
-        final tierStr = data?['subscriptionTier'] as String?;
-        final familyId = data?['familyId'] as String? ?? '';
-        SubscriptionTier detectedTier = SubscriptionTier.free;
-        if (tierStr == 'family' || familyId.isNotEmpty) {
-          detectedTier = SubscriptionTier.family;
-        } else if (tierStr == 'standard') {
-          detectedTier = SubscriptionTier.standard;
-        }
-        _setSubscriptionState(SubscriptionState(tier: detectedTier));
-      } else {
-        _setSubscriptionState(
-          const SubscriptionState(tier: SubscriptionTier.free),
+    final logger = _ref.read(appLoggerProvider);
+    logger.info(
+      'subscription',
+      'Listening to user subscription in Firestore',
+      data: {'uid': uid},
+    );
+
+    _firestoreSub = _firestore
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .listen(
+          (doc) {
+            if (doc.exists) {
+              final data = doc.data();
+              final tierStr = data?['subscriptionTier'] as String?;
+              final familyId = data?['familyId'] as String? ?? '';
+              SubscriptionTier detectedTier = SubscriptionTier.free;
+              if (tierStr == 'family' || familyId.isNotEmpty) {
+                detectedTier = SubscriptionTier.family;
+              } else if (tierStr == 'standard') {
+                detectedTier = SubscriptionTier.standard;
+              }
+              logger.info(
+                'subscription',
+                'Subscription document snapshot received',
+                data: {'tier': detectedTier.name, 'familyId': familyId},
+              );
+              _setSubscriptionState(SubscriptionState(tier: detectedTier));
+            } else {
+              logger.info(
+                'subscription',
+                'Subscription document does not exist, defaulting to free tier',
+              );
+              _setSubscriptionState(
+                const SubscriptionState(tier: SubscriptionTier.free),
+              );
+            }
+          },
+          onError: (e, st) {
+            logger.error(
+              'subscription',
+              'Subscription snapshot stream error',
+              error: e,
+              stackTrace: st,
+            );
+            _ref.read(errorHandlerProvider).report(e, stackTrace: st);
+          },
         );
-      }
-    });
   }
 
   Future<void> _syncTierToFirestore(SubscriptionTier tier) async {
     if (_firestore == null) return;
     final user = _ref.read(authRepositoryProvider).currentUser;
     if (user != null) {
+      final logger = _ref.read(appLoggerProvider);
       try {
         await _firestore.collection('users').doc(user.uid).set({
           'subscriptionTier': tier.name,
         }, SetOptions(merge: true));
-      } catch (e) {
+        logger.info(
+          'subscription',
+          'Synced subscription tier to Firestore',
+          data: {'tier': tier.name},
+        );
+      } catch (e, st) {
+        logger.error(
+          'subscription',
+          'Error syncing subscription tier to Firestore',
+          error: e,
+          stackTrace: st,
+        );
         debugPrint("Error syncing subscription tier to Firestore: $e");
       }
     }
