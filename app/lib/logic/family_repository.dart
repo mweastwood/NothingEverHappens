@@ -5,21 +5,29 @@ import 'auth_repository.dart';
 import 'family.dart';
 
 final familyRepositoryProvider = Provider<FamilyRepository?>((ref) {
-  final user = ref.watch(authStateProvider).value;
-  if (user == null) return null;
-  return FamilyRepository(
-    userId: user.uid,
-    userEmail: user.email,
-    userDisplayName: user.displayName,
-  );
+  try {
+    final user = ref.watch(authStateProvider).value;
+    if (user == null) return null;
+    return FamilyRepository(
+      userId: user.uid,
+      userEmail: user.email,
+      userDisplayName: user.displayName,
+    );
+  } catch (_) {
+    return null;
+  }
 });
 
 final familyProfileStreamProvider = StreamProvider.autoDispose<FamilyProfile?>((
   ref,
 ) {
-  final familyRepo = ref.watch(familyRepositoryProvider);
-  if (familyRepo == null) return Stream.value(null);
-  return familyRepo.getProfile();
+  try {
+    final familyRepo = ref.watch(familyRepositoryProvider);
+    if (familyRepo == null) return Stream.value(null);
+    return familyRepo.getProfile();
+  } catch (_) {
+    return Stream.value(null);
+  }
 });
 
 final pendingInvitesStreamProvider =

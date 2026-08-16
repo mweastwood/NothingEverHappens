@@ -6,6 +6,8 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
+import 'package:nothing_ever_happens/logic/family.dart';
+import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/widgets/schedule_card.dart';
 import '../test_helper.dart';
 
@@ -220,6 +222,77 @@ void main() {
     });
 
     testWidgets(
+      'hides delete button for family task when user is a non-parent',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              familyProfileStreamProvider.overrideWith(
+                (ref) => Stream.value(
+                  const FamilyProfile(
+                    familyId: 'fam1',
+                    familyRole: 'non-parent',
+                  ),
+                ),
+              ),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: ScheduleCard(
+                    task: familyTask,
+                    onEdit: () {},
+                    onDelete: () {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.pump();
+        expect(
+          find.byKey(const Key('delete_schedule_button_S-3')),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets('shows delete button for family task when user is a parent', (
+      tester,
+    ) async {
+      bool deleteTapped = false;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            familyProfileStreamProvider.overrideWith(
+              (ref) => Stream.value(
+                const FamilyProfile(familyId: 'fam1', familyRole: 'parent'),
+              ),
+            ),
+          ],
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ScheduleCard(
+                  task: familyTask,
+                  onEdit: () {},
+                  onDelete: () => deleteTapped = true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      final deleteButton = find.byKey(const Key('delete_schedule_button_S-3'));
+      expect(deleteButton, findsOneWidget);
+      await tester.tap(deleteButton);
+      expect(deleteTapped, isTrue);
+    });
+
+    testWidgets(
       'renders family badge and assignee badge when isFamily is true and assigned',
       (tester) async {
         await tester.pumpWidget(
@@ -309,6 +382,11 @@ void main() {
               userNameProvider(
                 'user-bob',
               ).overrideWith((ref) => Future.value('Bob')),
+              familyProfileStreamProvider.overrideWith(
+                (ref) => Stream.value(
+                  const FamilyProfile(familyId: 'fam1', familyRole: 'parent'),
+                ),
+              ),
             ],
             child: l10nMaterialAppWrapper()(child),
           ),

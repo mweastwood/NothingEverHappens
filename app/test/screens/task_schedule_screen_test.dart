@@ -19,6 +19,8 @@ import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
+import 'package:nothing_ever_happens/logic/family.dart';
+import 'package:nothing_ever_happens/logic/family_repository.dart';
 
 import 'task_list_screen_test.mocks.dart';
 
@@ -436,6 +438,11 @@ void main() {
             userNameProvider(
               'user-alice',
             ).overrideWith((ref) => Future.value('Alice')),
+            familyProfileStreamProvider.overrideWith(
+              (ref) => Stream.value(
+                const FamilyProfile(familyId: 'fam1', familyRole: 'parent'),
+              ),
+            ),
           ],
           child: MediaQuery(
             data: const MediaQueryData(
@@ -587,6 +594,98 @@ void main() {
 
       // Verify restoreTaskSchedule is called
       verify(mockTaskRepository.restoreTaskSchedule(dailyTask, any)).called(1);
+    },
+  );
+
+  testWidgets(
+    'TaskScheduleScreen hides delete button for family task when user is a non-parent',
+    (WidgetTester tester) async {
+      final familyTask = TaskSchedule(
+        id: 'family-task-1',
+        title: 'Family Cleaning',
+        description: 'Clean together',
+        isFamily: true,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 7, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 30),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([familyTask]);
+
+      await tester.pumpWidget(
+        createScreen(
+          overrides: [
+            familyProfileStreamProvider.overrideWith(
+              (ref) => Stream.value(
+                const FamilyProfile(familyId: 'fam1', familyRole: 'non-parent'),
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('delete_schedule_button_S-family-task-1')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'TaskScheduleScreen shows delete button for family task when user is a parent',
+    (WidgetTester tester) async {
+      final familyTask = TaskSchedule(
+        id: 'family-task-2',
+        title: 'Family Cleaning',
+        description: 'Clean together',
+        isFamily: true,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 7, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 30),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([familyTask]);
+
+      await tester.pumpWidget(
+        createScreen(
+          overrides: [
+            familyProfileStreamProvider.overrideWith(
+              (ref) => Stream.value(
+                const FamilyProfile(familyId: 'fam1', familyRole: 'parent'),
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('delete_schedule_button_S-family-task-2')),
+        findsOneWidget,
+      );
     },
   );
 
