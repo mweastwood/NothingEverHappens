@@ -332,6 +332,44 @@ class HiveLocalDataSource {
     return data['value'] == true;
   }
 
+  int getAppLaunchCount() {
+    final data = _syncMetaBox != null && _syncMetaBox!.isOpen
+        ? _syncMetaBox!.get('app_launch_count')
+        : _memMeta['app_launch_count'];
+    if (data == null) return 0;
+    return (data['count'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<int> incrementAppLaunchCount() async {
+    final current = getAppLaunchCount();
+    final next = current + 1;
+    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+      await _syncMetaBox!.put('app_launch_count', {'count': next});
+    } else {
+      _memMeta['app_launch_count'] = {'count': next};
+    }
+    return next;
+  }
+
+  int getTasksCompletedCount() {
+    final data = _syncMetaBox != null && _syncMetaBox!.isOpen
+        ? _syncMetaBox!.get('tasks_completed_count')
+        : _memMeta['tasks_completed_count'];
+    if (data == null) return 0;
+    return (data['count'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<int> incrementTasksCompletedCount() async {
+    final current = getTasksCompletedCount();
+    final next = current + 1;
+    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+      await _syncMetaBox!.put('tasks_completed_count', {'count': next});
+    } else {
+      _memMeta['tasks_completed_count'] = {'count': next};
+    }
+    return next;
+  }
+
   @visibleForTesting
   TaskSchedule taskScheduleFromJson(Map<String, dynamic> data) =>
       _taskScheduleFromJson(data);

@@ -4,15 +4,18 @@ import 'user_settings.dart';
 import 'auth_repository.dart';
 import 'task_repository.dart';
 import 'hive_local_data_source.dart';
+import 'telemetry_service.dart';
 
 final userSettingsRepositoryProvider = Provider<UserSettingsRepository?>((ref) {
   final firestore = ref.watch(firestoreProvider);
   final hiveDataSource = ref.watch(hiveLocalDataSourceProvider);
   final user = ref.watch(authStateProvider).value;
+  final telemetryService = ref.watch(telemetryServiceProvider);
   return UserSettingsRepository(
     firestore: firestore,
     userId: user?.uid ?? '',
     localDataSource: hiveDataSource,
+    telemetryService: telemetryService,
   );
 });
 
@@ -20,14 +23,17 @@ class UserSettingsRepository {
   final FirebaseFirestore? _firestore;
   final String _userId;
   final HiveLocalDataSource _localDataSource;
+  final TelemetryService? _telemetryService;
 
   UserSettingsRepository({
     FirebaseFirestore? firestore,
     required String userId,
     required HiveLocalDataSource localDataSource,
+    TelemetryService? telemetryService,
   }) : _firestore = firestore,
        _userId = userId,
-       _localDataSource = localDataSource;
+       _localDataSource = localDataSource,
+       _telemetryService = telemetryService;
 
   DocumentReference<UserSettings>? _settingsRefForUser(String userId) {
     if (_firestore == null || userId.isEmpty) return null;
@@ -49,6 +55,7 @@ class UserSettingsRepository {
 
   Future<void> updateSettings(UserSettings settings) async {
     await _localDataSource.saveSettings(settings);
+    await _telemetryService?.setTelemetryEnabled(settings.telemetryEnabled);
     final ref = _settingsRefForUser(_userId);
     if (ref != null) {
       try {

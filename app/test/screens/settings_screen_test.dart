@@ -104,9 +104,20 @@ void main() {
     await tester.pumpAndSettle();
 
     final saveButtonFinder = find.byKey(const Key('save_settings_button'));
-    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.scrollUntilVisible(
+      saveButtonFinder,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(saveButtonFinder);
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      textFieldFinder,
+      -300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Please enter a number between 0 and 24'), findsOneWidget);
@@ -126,7 +137,11 @@ void main() {
     await tester.pumpAndSettle();
 
     final saveButtonFinder = find.byKey(const Key('save_settings_button'));
-    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.scrollUntilVisible(
+      saveButtonFinder,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(saveButtonFinder);
     await tester.pumpAndSettle();
@@ -200,7 +215,11 @@ void main() {
       expect(updatedSwitch.value, isTrue);
 
       final saveButtonFinder = find.byKey(const Key('save_settings_button'));
-      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.scrollUntilVisible(
+        saveButtonFinder,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(saveButtonFinder);
       await tester.pumpAndSettle();
@@ -208,6 +227,34 @@ void main() {
       verify(
         mockRepository.updateSettings(
           const UserSettings(hoursAvailable: 8.0, showLastSpawnedDate: true),
+        ),
+      ).called(1);
+    },
+  );
+
+  testWidgets(
+    'SettingsScreen updates and saves telemetry opt-out switch correctly',
+    (WidgetTester tester) async {
+      when(mockRepository.updateSettings(any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      final switchFinder = find.byKey(const Key('telemetry_opt_out_switch'));
+      expect(switchFinder, findsOneWidget);
+
+      final SwitchListTile switchListTile = tester.widget(switchFinder);
+      expect(switchListTile.value, isTrue);
+
+      await tester.tap(switchFinder);
+      await tester.pumpAndSettle();
+
+      final SwitchListTile updatedSwitch = tester.widget(switchFinder);
+      expect(updatedSwitch.value, isFalse);
+
+      verify(
+        mockRepository.updateSettings(
+          const UserSettings(hoursAvailable: 8.0, telemetryEnabled: false),
         ),
       ).called(1);
     },

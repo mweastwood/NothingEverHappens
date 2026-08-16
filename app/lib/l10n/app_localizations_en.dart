@@ -1648,4 +1648,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get skipIfNoCapacityHelper =>
       'Skip this task occurrence if daily available capacity is exceeded';
+
+  @override
+  String get telemetrySettingTitle => 'Anonymous Usage Telemetry';
+
+  @override
+  String get telemetrySettingSubtitle =>
+      'Help improve the app by sharing anonymous usage statistics and app metrics.';
 }

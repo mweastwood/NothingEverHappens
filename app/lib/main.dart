@@ -1,4 +1,6 @@
+import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -14,6 +16,8 @@ import 'logic/task_repository.dart';
 import 'logic/notification_service.dart';
 import 'l10n/app_localizations.dart';
 import 'logic/hive_local_data_source.dart';
+import 'logic/telemetry_service.dart';
+import 'logic/utils/app_version.dart';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -76,6 +80,29 @@ Future<void> main() async {
     await hiveDataSource.init();
   } catch (e) {
     debugPrint("Hive initialization error: $e");
+  }
+
+  try {
+    final launchCount = await hiveDataSource.incrementAppLaunchCount();
+    final platform = kIsWeb ? 'web' : Platform.operatingSystem;
+    final appVersion = AppVersion.current;
+    final settings = hiveDataSource.getSettings();
+
+    if (Firebase.apps.isNotEmpty) {
+      final telemetryService = FirebaseTelemetryService(
+        analytics: FirebaseAnalytics.instance,
+        enabled: settings.telemetryEnabled,
+        defaultPlatform: platform,
+        defaultAppVersion: appVersion,
+      );
+      await telemetryService.logAppLaunch(
+        platform: platform,
+        appVersion: appVersion,
+        launchCount: launchCount,
+      );
+    }
+  } catch (e) {
+    debugPrint("Telemetry app launch error: $e");
   }
 
   mainCommon(hiveDataSource);

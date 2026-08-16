@@ -601,5 +601,7 @@
   "futureTabLabel": "Futuras",
   "noCurrentOccurrencesPlaceholder": "No hay ocurrencias activas.",
   "skipIfNoCapacityLabel": "Omitir si se supera la capacidad",
-  "skipIfNoCapacityHelper": "Omitir esta ocurrencia de la tarea si se supera la capacidad diaria disponible"
+  "skipIfNoCapacityHelper": "Omitir esta ocurrencia de la tarea si se supera la capacidad diaria disponible",
+  "telemetrySettingTitle": "Telemetría de uso anónimo",
+  "telemetrySettingSubtitle": "Ayuda a mejorar la aplicación compartiendo estadísticas anónimas de uso y métricas."
 }

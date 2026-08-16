@@ -11,11 +11,13 @@ import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
 import 'package:nothing_ever_happens/logic/task_spawner_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
+import 'package:nothing_ever_happens/logic/telemetry_service.dart';
 
 class UnifiedTaskRepository extends TaskRepository {
   final HiveLocalDataSource _localDataSource;
   final TaskSyncService _syncService;
   final FirebaseFirestore? _rawFirestore;
+  final TelemetryService? _telemetryService;
 
   Future<void>? _activeProcessingFuture;
   bool _hasQueuedProcessing = false;
@@ -29,9 +31,11 @@ class UnifiedTaskRepository extends TaskRepository {
     super.notificationService,
     super.errorHandler,
     super.logger,
+    TelemetryService? telemetryService,
   }) : _localDataSource = localDataSource,
        _syncService = syncService,
-       _rawFirestore = firestore {
+       _rawFirestore = firestore,
+       _telemetryService = telemetryService {
     _initMigration();
   }
 
@@ -194,6 +198,13 @@ class UnifiedTaskRepository extends TaskRepository {
     );
     await _localDataSource.saveInstance(completedInstance);
     await _localDataSource.markDirty(completedInstance.id);
+    final totalCompleted = await _localDataSource
+        .incrementTasksCompletedCount();
+    await _telemetryService?.logTaskCompleted(
+      taskId: id,
+      scheduleId: instance.scheduleId,
+      totalCompletedCount: totalCompleted,
+    );
     logger?.info(
       'task',
       'Task instance completed: $id',

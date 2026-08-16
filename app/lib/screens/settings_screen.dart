@@ -22,6 +22,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isResetting = false;
   bool _isInitialized = false;
   bool _showLastSpawnedDate = false;
+  bool _telemetryEnabled = true;
 
   @override
   void dispose() {
@@ -98,6 +99,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         final updatedSettings = currentSettings.copyWith(
           hoursAvailable: hours,
           showLastSpawnedDate: _showLastSpawnedDate,
+          telemetryEnabled: _telemetryEnabled,
         );
 
         await repository
@@ -158,6 +160,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           if (!_isInitialized) {
             _hoursController.text = settings.hoursAvailable.toString();
             _showLastSpawnedDate = settings.showLastSpawnedDate;
+            _telemetryEnabled = settings.telemetryEnabled;
             _isInitialized = true;
           }
 
@@ -225,6 +228,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       });
                     },
                     secondary: const Icon(Icons.bug_report_outlined, size: 28),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: SwitchListTile(
+                    key: const Key('telemetry_opt_out_switch'),
+                    title: Text(context.l10n.telemetrySettingTitle),
+                    subtitle: Text(context.l10n.telemetrySettingSubtitle),
+                    value: _telemetryEnabled,
+                    onChanged: (val) {
+                      setState(() {
+                        _telemetryEnabled = val;
+                      });
+                      final updated = settings.copyWith(
+                        hoursAvailable:
+                            double.tryParse(_hoursController.text.trim()) ??
+                            settings.hoursAvailable,
+                        showLastSpawnedDate: _showLastSpawnedDate,
+                        telemetryEnabled: val,
+                      );
+                      settingsRepository.updateSettings(updated);
+                    },
+                    secondary: const Icon(Icons.analytics_outlined, size: 28),
                   ),
                 ),
                 const SizedBox(height: 16),
