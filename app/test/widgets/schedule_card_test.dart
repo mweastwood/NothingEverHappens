@@ -56,6 +56,53 @@ void main() {
       ],
     );
 
+    final familyTask = TaskSchedule(
+      id: 'S-3',
+      title: 'Family Chore',
+      description: 'Family chore description',
+      isFamily: true,
+      schedules: [
+        DailySchedule(
+          id: 'R-3',
+          scheduleId: 'S-3',
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 8, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+        ),
+      ],
+    );
+
+    final familyTaskWithAssignee = TaskSchedule(
+      id: 'S-4',
+      title: 'Assigned Family Chore',
+      description: 'Family chore assigned to a member',
+      isFamily: true,
+      assignedUserId: 'user-bob',
+      schedules: [
+        DailySchedule(
+          id: 'R-4',
+          scheduleId: 'S-4',
+          startDate: const CivilDay(year: 2024, month: 1, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 8, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+        ),
+      ],
+    );
+
     testWidgets('renders daily task details and triggers actions', (
       tester,
     ) async {
@@ -175,30 +222,6 @@ void main() {
     testWidgets(
       'renders family badge and assignee badge when isFamily is true and assigned',
       (tester) async {
-        final familyTaskWithAssignee = TaskSchedule(
-          id: 'S-3',
-          title: 'Family Chore',
-          description: 'Family chore description',
-          isFamily: true,
-          assignedUserId: 'user-bob',
-          schedules: [
-            DailySchedule(
-              id: 'R-3',
-              scheduleId: 'S-3',
-              startDate: const CivilDay(year: 2024, month: 1, day: 1),
-              interval: 1,
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 8, minute: 0),
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
-            ),
-          ],
-        );
-
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
@@ -221,7 +244,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Family Chore'), findsOneWidget);
+        expect(find.text('Assigned Family Chore'), findsOneWidget);
         expect(find.text('Family'), findsOneWidget);
         expect(find.byIcon(Icons.people_alt), findsOneWidget);
         expect(find.text('Assigned to Bob'), findsOneWidget);
@@ -255,7 +278,7 @@ void main() {
     });
 
     testGoldens(
-      'ScheduleCard renders correctly across different schedule types',
+      'ScheduleCard renders correctly across different schedule types and family badges',
       (tester) async {
         final builder = GoldenBuilder.column()
           ..addScenario(
@@ -265,13 +288,31 @@ void main() {
           ..addScenario(
             'Weekly Schedule',
             ScheduleCard(task: weeklyTask, onEdit: () {}, onDelete: () {}),
+          )
+          ..addScenario(
+            'Family Schedule',
+            ScheduleCard(task: familyTask, onEdit: () {}, onDelete: () {}),
+          )
+          ..addScenario(
+            'Family Schedule with Assignee',
+            ScheduleCard(
+              task: familyTaskWithAssignee,
+              onEdit: () {},
+              onDelete: () {},
+            ),
           );
 
         await tester.pumpWidgetBuilder(
           builder.build(),
-          wrapper: (child) =>
-              ProviderScope(child: l10nMaterialAppWrapper()(child)),
-          surfaceSize: const Size(600, 1000),
+          wrapper: (child) => ProviderScope(
+            overrides: [
+              userNameProvider(
+                'user-bob',
+              ).overrideWith((ref) => Future.value('Bob')),
+            ],
+            child: l10nMaterialAppWrapper()(child),
+          ),
+          surfaceSize: const Size(600, 1800),
         );
 
         await screenMatchesGolden(tester, 'schedule_card_golden');

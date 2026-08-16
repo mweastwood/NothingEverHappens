@@ -353,6 +353,109 @@ void main() {
     await screenMatchesGolden(tester, 'task_schedule_screen_populated');
   });
 
+  testGoldens(
+    'TaskScheduleScreen populated with family tasks and assignees golden',
+    (tester) async {
+      final mockAuthRepository = MockAuthRepository();
+      final mockTaskRepository = MockTaskRepository();
+
+      final familyTask = TaskSchedule(
+        id: '1',
+        title: 'Family Groceries',
+        description: 'Buy vegetables and fruits for the week',
+        isFamily: true,
+        schedules: [
+          WeeklySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            daysOfWeek: const {6},
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 11, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final assignedFamilyTask = TaskSchedule(
+        id: '2',
+        title: 'Take Out Trash',
+        description: 'Empty all trash bins and take bins to curb',
+        isFamily: true,
+        assignedUserId: 'user-alice',
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 19, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 20, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final personalTask = TaskSchedule(
+        id: '3',
+        title: 'Read Book',
+        description: 'Read 30 pages of current book',
+        isFamily: false,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 21, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 22, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      when(mockTaskRepository.getTasks()).thenAnswer(
+        (_) => Stream.value([familyTask, assignedFamilyTask, personalTask]),
+      );
+
+      await tester.pumpWidgetBuilder(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userNameProvider(
+              'user-alice',
+            ).overrideWith((ref) => Future.value('Alice')),
+          ],
+          child: MediaQuery(
+            data: const MediaQueryData(
+              padding: EdgeInsets.zero,
+              viewPadding: EdgeInsets.zero,
+              viewInsets: EdgeInsets.zero,
+            ),
+            child: const Scaffold(body: TaskScheduleScreen()),
+          ),
+        ),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(400, 800),
+      );
+
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'task_schedule_screen_family_tasks');
+    },
+  );
+
   testWidgets(
     'TaskScheduleScreen delete button opens confirmation dialog and deletes task',
     (WidgetTester tester) async {
