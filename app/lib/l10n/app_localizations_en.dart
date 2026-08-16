@@ -235,6 +235,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteButton => 'Delete';
 
   @override
+  String get copyScheduleTooltip => 'Copy Schedule';
+
+  @override
   String get editScheduleTooltip => 'Edit Schedule';
 
   @override

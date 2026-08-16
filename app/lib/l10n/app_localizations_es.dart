@@ -235,6 +235,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get deleteButton => 'Eliminar';
 
   @override
+  String get copyScheduleTooltip => 'Copiar horario';
+
+  @override
   String get editScheduleTooltip => 'Editar Calendario';
 
   @override

@@ -1409,5 +1409,89 @@ void main() {
         expect(find.byType(MissedOccurrencePolicySelector), findsNothing);
       },
     );
+
+    testWidgets(
+      'CreateTaskScreen pre-populates all fields and clones schedules with new IDs when taskToDuplicate is provided',
+      (WidgetTester tester) async {
+        final mockRepository = MockTaskRepository();
+        final existingTask = TaskSchedule(
+          id: 'original-task-id',
+          title: 'Existing Task Title',
+          description: 'Existing Description',
+          priority: TaskPriority.high,
+          estimatedDuration: const Duration(minutes: 45),
+          isFamily: false,
+          skipIfNoCapacity: true,
+          schedules: [
+            DailySchedule(
+              id: 'daily-rule-id',
+              scheduleId: 'original-task-id',
+              startDate: const CivilDay(year: 2026, month: 7, day: 1),
+              interval: 2,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 8, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 30),
+              ),
+            ),
+          ],
+        );
+
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        TaskSchedule? createdTask;
+        when(mockRepository.addTaskSchedule(any)).thenAnswer((
+          invocation,
+        ) async {
+          createdTask = invocation.positionalArguments[0] as TaskSchedule;
+        });
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: CreateTaskScreen(taskToDuplicate: existingTask),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify title in app bar shows New Task rather than Edit Task
+        expect(find.text('New Task'), findsOneWidget);
+
+        // Verify pre-populated values
+        expect(find.text('Existing Task Title'), findsOneWidget);
+        expect(find.text('Existing Description'), findsOneWidget);
+        expect(find.text('45'), findsOneWidget);
+
+        // Tap Save
+        final saveButton = find.text('Save');
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        verify(mockRepository.addTaskSchedule(any)).called(1);
+        verifyNever(mockRepository.updateTaskSchedule(any));
+
+        expect(createdTask, isNotNull);
+        expect(createdTask!.id, isNot(equals('original-task-id')));
+        expect(createdTask!.title, 'Existing Task Title');
+        expect(createdTask!.description, 'Existing Description');
+        expect(createdTask!.priority, TaskPriority.high);
+        expect(createdTask!.estimatedDuration, const Duration(minutes: 45));
+        expect(createdTask!.skipIfNoCapacity, isTrue);
+        expect(createdTask!.schedules.length, 1);
+        expect(createdTask!.schedules.first.id, isNot(equals('daily-rule-id')));
+        expect(createdTask!.schedules.first.scheduleId, createdTask!.id);
+      },
+    );
   });
 }
