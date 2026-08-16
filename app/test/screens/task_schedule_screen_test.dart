@@ -438,6 +438,11 @@ void main() {
             userNameProvider(
               'user-alice',
             ).overrideWith((ref) => Future.value('Alice')),
+            familyProfileStreamProvider.overrideWith(
+              (ref) => Stream.value(
+                const FamilyProfile(familyId: 'fam1', familyRole: 'parent'),
+              ),
+            ),
           ],
           child: MediaQuery(
             data: const MediaQueryData(
