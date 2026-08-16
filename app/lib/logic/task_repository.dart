@@ -165,20 +165,35 @@ final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {
   final schedules = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
   final currentUserId = ref.watch(authStateProvider).valueOrNull?.uid;
 
-  final scheduleMap = {for (final s in schedules) s.id: s};
+  final today = CivilDay.fromDateTime(AppClock.now);
+  final startHorizon = today.addDays(-14);
+  final endHorizon = today.addDays(60);
+
+  final durationMap = <String, double>{};
+  for (final s in schedules) {
+    if (s.estimatedDuration != null) {
+      durationMap[s.id] = s.estimatedDuration!.inMinutes.toDouble();
+    }
+  }
+
   final plannedMinutesPerDay = <CivilDay, double>{};
 
   for (final inst in instances) {
-    if (inst.status != TaskStatus.skipped) {
-      if (inst.assignedUserId != null && inst.assignedUserId != currentUserId) {
-        continue;
-      }
-      final schedule = scheduleMap[inst.scheduleId];
-      if (schedule != null && schedule.estimatedDuration != null) {
-        final mins = schedule.estimatedDuration!.inMinutes.toDouble();
-        plannedMinutesPerDay[inst.scheduledDate] =
-            (plannedMinutesPerDay[inst.scheduledDate] ?? 0.0) + mins;
-      }
+    if (inst.status == TaskStatus.skipped) continue;
+    if (inst.assignedUserId != null && inst.assignedUserId != currentUserId) {
+      continue;
+    }
+
+    final scheduledDate = inst.scheduledDate;
+    if (scheduledDate.isBefore(startHorizon) ||
+        scheduledDate.isAfter(endHorizon)) {
+      continue;
+    }
+
+    final durationMins = durationMap[inst.scheduleId];
+    if (durationMins != null) {
+      plannedMinutesPerDay[scheduledDate] =
+          (plannedMinutesPerDay[scheduledDate] ?? 0.0) + durationMins;
     }
   }
 
