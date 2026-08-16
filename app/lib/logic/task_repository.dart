@@ -42,7 +42,10 @@ final firestoreProvider = Provider<FirebaseFirestore?>((ref) {
     if (Firebase.apps.isEmpty) return null;
     final firestore = FirebaseFirestore.instance;
     if (kIsWeb) {
-      firestore.settings = const Settings(persistenceEnabled: false);
+      firestore.settings = const Settings(
+        persistenceEnabled: false,
+        webExperimentalAutoDetectLongPolling: true,
+      );
     }
     return firestore;
   } catch (e, st) {

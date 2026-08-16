@@ -53,6 +53,7 @@ Future<void> main() async {
     if (kIsWeb) {
       FirebaseFirestore.instance.settings = const Settings(
         persistenceEnabled: false,
+        webExperimentalAutoDetectLongPolling: true,
       );
     }
   } catch (e) {
