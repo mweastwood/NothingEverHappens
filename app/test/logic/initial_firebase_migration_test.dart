@@ -1,3 +1,5 @@
+// ignore_for_file: subtype_of_sealed_class
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -7,6 +9,9 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -240,4 +245,293 @@ void main() {
       expect(tasks.first.id, 'S-fresh');
     },
   );
+
+  test(
+    'Migration bounds instances to 90-day cutoffDate for personal and family instances',
+    () async {
+      final now = DateTime(2026, 8, 15, 12, 0);
+      AppClock.setMockTime(now);
+      addTearDown(AppClock.reset);
+
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam1',
+      });
+
+      // Personal tasks
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-1')
+          .set({
+            'id': 'S-1',
+            'title': 'User Task',
+            'updatedAt': now.toIso8601String(),
+          });
+
+      // Personal instances: 10 days old (within 90d) and 100 days old (outside 90d)
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc('I-recent')
+          .set({
+            'id': 'I-recent',
+            'scheduleId': 'S-1',
+            'title': 'Recent Personal Instance',
+            'updatedAt': now.subtract(const Duration(days: 10)),
+          });
+
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc('I-old')
+          .set({
+            'id': 'I-old',
+            'scheduleId': 'S-1',
+            'title': 'Old Personal Instance',
+            'updatedAt': now.subtract(const Duration(days: 100)),
+          });
+
+      // Family instances: 20 days old (within 90d) and 120 days old (outside 90d)
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('instances')
+          .doc('I-fam-recent')
+          .set({
+            'id': 'I-fam-recent',
+            'scheduleId': 'S-1',
+            'title': 'Recent Family Instance',
+            'updatedAt': now.subtract(const Duration(days: 20)),
+          });
+
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('instances')
+          .doc('I-fam-old')
+          .set({
+            'id': 'I-fam-old',
+            'scheduleId': 'S-1',
+            'title': 'Old Family Instance',
+            'updatedAt': now.subtract(const Duration(days: 120)),
+          });
+
+      final service = InitialFirebaseMigrationService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+      );
+
+      await service.migrateIfNeeded();
+
+      final instances = localDataSource.getInstances();
+      final instanceIds = instances.map((i) => i.id).toSet();
+
+      expect(instanceIds, contains('I-recent'));
+      expect(instanceIds, contains('I-fam-recent'));
+      expect(instanceIds, isNot(contains('I-old')));
+      expect(instanceIds, isNot(contains('I-fam-old')));
+    },
+  );
+
+  test(
+    'Migration falls back to limit(300) when cutoffDate query fails on personal and family instances',
+    () async {
+      final failingFirestore = _FailingWhereFirestore();
+      final logger = AppLogger(capacity: 20);
+
+      await failingFirestore.collection('users').doc('user1').set({
+        'familyId': 'fam1',
+      });
+
+      await failingFirestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-1')
+          .set({
+            'id': 'S-1',
+            'title': 'Personal Task',
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+
+      await failingFirestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc('I-personal-fallback')
+          .set({
+            'id': 'I-personal-fallback',
+            'scheduleId': 'S-1',
+            'title': 'Fallback Personal Instance',
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+
+      await failingFirestore
+          .collection('families')
+          .doc('fam1')
+          .collection('tasks')
+          .doc('S-fam-1')
+          .set({
+            'id': 'S-fam-1',
+            'title': 'Family Task',
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+
+      await failingFirestore
+          .collection('families')
+          .doc('fam1')
+          .collection('instances')
+          .doc('I-family-fallback')
+          .set({
+            'id': 'I-family-fallback',
+            'scheduleId': 'S-fam-1',
+            'title': 'Fallback Family Instance',
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+
+      final service = InitialFirebaseMigrationService(
+        firestore: failingFirestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        logger: logger,
+      );
+
+      await service.migrateIfNeeded();
+
+      expect(localDataSource.isMigrationCompleted(), true);
+
+      final instances = localDataSource.getInstances();
+      final instanceIds = instances.map((i) => i.id).toSet();
+      expect(instanceIds, contains('I-personal-fallback'));
+      expect(instanceIds, contains('I-family-fallback'));
+
+      final warningMessages = logger
+          .getEvents()
+          .where((e) => e.level == LogLevel.warning)
+          .map((e) => e.message)
+          .toList();
+
+      expect(
+        warningMessages,
+        contains(
+          'Failed to query instances with cutoffDate, falling back to limit(300)',
+        ),
+      );
+      expect(
+        warningMessages,
+        contains(
+          'Failed to query family instances with cutoffDate, falling back to limit(300)',
+        ),
+      );
+    },
+  );
+}
+
+class _FailingWhereFirestore extends FakeFirebaseFirestore {
+  @override
+  CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
+    return _FailingWhereCollectionReference(super.collection(collectionPath));
+  }
+}
+
+class _FailingWhereCollectionReference extends Fake
+    implements CollectionReference<Map<String, dynamic>> {
+  final CollectionReference<Map<String, dynamic>> _delegate;
+  _FailingWhereCollectionReference(this._delegate);
+
+  @override
+  DocumentReference<Map<String, dynamic>> doc([String? path]) {
+    return _FailingWhereDocumentReference(_delegate.doc(path));
+  }
+
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> get([GetOptions? options]) =>
+      _delegate.get(options);
+
+  @override
+  Stream<QuerySnapshot<Map<String, dynamic>>> snapshots({
+    bool includeMetadataChanges = false,
+    ListenSource source = ListenSource.defaultSource,
+  }) => _delegate.snapshots(
+    includeMetadataChanges: includeMetadataChanges,
+    source: source,
+  );
+
+  @override
+  Query<Map<String, dynamic>> limit(int limit) => _delegate.limit(limit);
+
+  @override
+  Query<Map<String, dynamic>> where(
+    Object field, {
+    Object? isEqualTo,
+    Object? isNotEqualTo,
+    Object? isLessThan,
+    Object? isLessThanOrEqualTo,
+    Object? isGreaterThan,
+    Object? isGreaterThanOrEqualTo,
+    Object? arrayContains,
+    Iterable<Object?>? arrayContainsAny,
+    Iterable<Object?>? whereIn,
+    Iterable<Object?>? whereNotIn,
+    bool? isNull,
+  }) {
+    if (field == 'updatedAt') {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'failed-precondition',
+        message: 'The query requires an index.',
+      );
+    }
+    return _delegate.where(
+      field,
+      isEqualTo: isEqualTo,
+      isNotEqualTo: isNotEqualTo,
+      isLessThan: isLessThan,
+      isLessThanOrEqualTo: isLessThanOrEqualTo,
+      isGreaterThan: isGreaterThan,
+      isGreaterThanOrEqualTo: isGreaterThanOrEqualTo,
+      arrayContains: arrayContains,
+      arrayContainsAny: arrayContainsAny,
+      whereIn: whereIn,
+      whereNotIn: whereNotIn,
+      isNull: isNull,
+    );
+  }
+}
+
+class _FailingWhereDocumentReference extends Fake
+    implements DocumentReference<Map<String, dynamic>> {
+  final DocumentReference<Map<String, dynamic>> _delegate;
+  _FailingWhereDocumentReference(this._delegate);
+
+  @override
+  String get id => _delegate.id;
+
+  @override
+  CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
+    return _FailingWhereCollectionReference(
+      _delegate.collection(collectionPath),
+    );
+  }
+
+  @override
+  Future<DocumentSnapshot<Map<String, dynamic>>> get([GetOptions? options]) =>
+      _delegate.get(options);
+
+  @override
+  Stream<DocumentSnapshot<Map<String, dynamic>>> snapshots({
+    bool includeMetadataChanges = false,
+    ListenSource source = ListenSource.defaultSource,
+  }) => _delegate.snapshots(
+    includeMetadataChanges: includeMetadataChanges,
+    source: source,
+  );
+
+  @override
+  Future<void> set(Map<String, dynamic> data, [SetOptions? options]) =>
+      _delegate.set(data, options);
 }

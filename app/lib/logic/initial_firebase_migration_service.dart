@@ -155,6 +155,11 @@ class InitialFirebaseMigrationService {
               .where('updatedAt', isGreaterThan: cutoffDate)
               .safeGet(timeout: const Duration(seconds: 15));
         } catch (e) {
+          _logger?.warning(
+            'sync',
+            'Failed to query family instances with cutoffDate, falling back to limit(300)',
+            error: e,
+          );
           familyInstancesSnap = await _firestore
               .collection('families')
               .doc(familyId)
