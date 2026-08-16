@@ -681,4 +681,34 @@ void main() {
       expect(find.textContaining('Failed to fetch invites'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'renders error and leave family button when family document is null instead of spinning indefinitely',
+    (WidgetTester tester) async {
+      final familyId = 'fam-missing-123';
+      await firestore.collection('users').doc(userId).set({
+        'familyId': familyId,
+        'familyRole': 'non-parent',
+      });
+
+      // We do NOT create the family document in families collection,
+      // simulating a missing/deleted family.
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Error Occurred'), findsOneWidget);
+      expect(
+        find.byKey(const Key('leave_missing_family_button')),
+        findsOneWidget,
+      );
+
+      // Tap leave family button
+      await tester.tap(find.byKey(const Key('leave_missing_family_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Leave Family?'), findsOneWidget);
+    },
+  );
 }

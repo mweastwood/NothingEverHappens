@@ -109,11 +109,11 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
   }
 
   Future<void> _identifyUser(String uid) async {
-    if (kIsWeb) {
-      // Web listens to Firestore document updates (written by webhook)
-      listenToUserSubscriptionInFirestore(uid);
-      return;
-    }
+    // Listen to user document in Firestore on all platforms so family members
+    // and webhook updates are reflected.
+    listenToUserSubscriptionInFirestore(uid);
+
+    if (kIsWeb) return;
 
     try {
       final result = await Purchases.logIn(uid);
@@ -124,24 +124,8 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
   }
 
   void _setSubscriptionState(SubscriptionState newState) {
-    if (state.tier != newState.tier || !state.isActivePremium) {
+    if (state.tier != newState.tier) {
       state = newState;
-      _updateFirestoreNetworkState(newState.tier);
-    }
-  }
-
-  void _updateFirestoreNetworkState(SubscriptionTier tier) {
-    final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
-    if (isTest || _firestore == null) return;
-
-    if (tier == SubscriptionTier.free) {
-      _firestore.disableNetwork().catchError((e) {
-        debugPrint("Error disabling Firestore network: $e");
-      });
-    } else {
-      _firestore.enableNetwork().catchError((e) {
-        debugPrint("Error enabling Firestore network: $e");
-      });
     }
   }
 
@@ -167,9 +151,20 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
       detectedTier = SubscriptionTier.standard;
     }
 
+    // If RevenueCat returns free tier, but the user is recognized as a family
+    // plan member via Firestore, preserve the family tier.
+    if (detectedTier == SubscriptionTier.free && state.isFamilyPlan) {
+      return;
+    }
+
     _setSubscriptionState(SubscriptionState(tier: detectedTier));
-    _syncTierToFirestore(detectedTier);
+    if (detectedTier != SubscriptionTier.free) {
+      _syncTierToFirestore(detectedTier);
+    }
   }
+
+  @visibleForTesting
+  void updateEntitlements(CustomerInfo info) => _updateEntitlements(info);
 
   void listenToUserSubscriptionInFirestore(String uid) {
     if (_firestore == null) return;
