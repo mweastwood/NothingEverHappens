@@ -316,4 +316,30 @@ void main() {
     expect(emissions, containsAllInOrder([false, true, false, true]));
     await sub.cancel();
   });
+
+  test('dispose closes all streams and stream controllers', () async {
+    bool tasksDone = false;
+    bool instancesDone = false;
+    bool settingsDone = false;
+    bool migrationDone = false;
+
+    dataSource.watchTasks().listen(null, onDone: () => tasksDone = true);
+    dataSource.watchInstances().listen(
+      null,
+      onDone: () => instancesDone = true,
+    );
+    dataSource.watchSettings().listen(null, onDone: () => settingsDone = true);
+    dataSource.watchMigrationCompleted().listen(
+      null,
+      onDone: () => migrationDone = true,
+    );
+
+    await dataSource.dispose();
+    await pumpEventQueue();
+
+    expect(tasksDone, isTrue);
+    expect(instancesDone, isTrue);
+    expect(settingsDone, isTrue);
+    expect(migrationDone, isTrue);
+  });
 }
