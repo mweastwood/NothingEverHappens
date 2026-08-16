@@ -69,7 +69,11 @@ class TaskSyncService {
   }
 
   void startListeningToRemote() {
-    if (!_isActivePremium || _userId.isEmpty) return;
+    if (!_isActivePremium ||
+        _userId.isEmpty ||
+        !_localDataSource.isMigrationCompleted()) {
+      return;
+    }
     if (_tasksSub != null && _instancesSub != null) return;
     _tasksSub?.cancel();
     _instancesSub?.cancel();

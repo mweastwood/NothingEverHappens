@@ -108,6 +108,46 @@ void main() {
     },
   );
 
+  test(
+    'startListeningToRemote does not attach listeners when isMigrationCompleted is false',
+    () async {
+      await localDataSource.setMigrationCompleted(false);
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      service.startListeningToRemote();
+
+      // Remote update in Firestore should not be copied to Hive because listeners are not active
+      final remoteTask = TaskSchedule(
+        id: 'S-remote-unmigrated',
+        title: 'Remote Task',
+        description: 'Desc',
+        schedules: [],
+        updatedAt: DateTime(2026, 8, 4, 10, 0),
+      );
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-remote-unmigrated')
+          .set(remoteTask.toFirestore());
+
+      // Give stream time to process if it were active
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final localTask = localDataSource
+          .getTasks()
+          .where((t) => t.id == 'S-remote-unmigrated')
+          .firstOrNull;
+      expect(localTask, isNull);
+    },
+  );
+
   test('Subscribed User bi-directional sync', () async {
     final service = TaskSyncService(
       firestore: firestore,
