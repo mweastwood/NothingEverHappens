@@ -191,6 +191,26 @@ class UnifiedTaskRepository extends TaskRepository {
   }
 
   @override
+  Future<void> restoreTaskSchedule(
+    TaskSchedule task,
+    List<TaskInstance> pendingInstances,
+  ) async {
+    await _localDataSource.saveTask(task);
+    await _localDataSource.markDirty(task.id);
+    for (final inst in pendingInstances) {
+      await _localDataSource.saveInstance(inst);
+      await _localDataSource.markDirty(inst.id);
+    }
+    logger?.info(
+      'task',
+      'Task restored: ${task.id}',
+      data: {'taskId': task.id, 'title': task.title},
+    );
+    _syncService.sync();
+    await triggerMissedPolicyProcessing();
+  }
+
+  @override
   Future<TaskInstance?> completeTaskInstance(String id) async {
     final instance = _localDataSource
         .getInstances()

@@ -511,49 +511,63 @@ class TaskSyncService {
       final familyId = await _getFamilyId();
 
       for (final taskId in dirtyTaskIds) {
-        if (taskId.startsWith('S-')) {
-          final task = tasksMap[taskId];
-          if (task != null) {
-            await _pushTaskToRemote(task);
-          } else {
-            // Deleted locally, remove from remote
-            if (familyId != null && familyId.isNotEmpty) {
+        try {
+          if (taskId.startsWith('S-')) {
+            final task = tasksMap[taskId];
+            if (task != null) {
+              await _pushTaskToRemote(task);
+            } else {
+              // Deleted locally, remove from remote
+              if (familyId != null && familyId.isNotEmpty) {
+                await _firestore
+                    .collection('families')
+                    .doc(familyId)
+                    .collection('tasks')
+                    .doc(taskId)
+                    .delete();
+              }
               await _firestore
-                  .collection('families')
-                  .doc(familyId)
+                  .collection('users')
+                  .doc(_userId)
                   .collection('tasks')
                   .doc(taskId)
                   .delete();
             }
-            await _firestore
-                .collection('users')
-                .doc(_userId)
-                .collection('tasks')
-                .doc(taskId)
-                .delete();
-          }
-        } else if (taskId.startsWith('I-')) {
-          final inst = instancesMap[taskId];
-          if (inst != null) {
-            await _pushInstanceToRemote(inst);
-          } else {
-            if (familyId != null && familyId.isNotEmpty) {
+          } else if (taskId.startsWith('I-')) {
+            final inst = instancesMap[taskId];
+            if (inst != null) {
+              await _pushInstanceToRemote(inst);
+            } else {
+              if (familyId != null && familyId.isNotEmpty) {
+                await _firestore
+                    .collection('families')
+                    .doc(familyId)
+                    .collection('instances')
+                    .doc(taskId)
+                    .delete();
+              }
               await _firestore
-                  .collection('families')
-                  .doc(familyId)
+                  .collection('users')
+                  .doc(_userId)
                   .collection('instances')
                   .doc(taskId)
                   .delete();
             }
-            await _firestore
-                .collection('users')
-                .doc(_userId)
-                .collection('instances')
-                .doc(taskId)
-                .delete();
+          }
+          await _localDataSource.clearDirty(taskId);
+        } catch (e, st) {
+          logger?.error(
+            'sync',
+            'Failed to sync dirty item $taskId',
+            error: e,
+            stackTrace: st,
+          );
+          if (e is FirebaseException && e.code == 'permission-denied') {
+            await _localDataSource.clearDirty(taskId);
+          } else {
+            rethrow;
           }
         }
-        await _localDataSource.clearDirty(taskId);
       }
       logger?.info('sync', 'Firestore sync completed successfully');
     } catch (e, st) {

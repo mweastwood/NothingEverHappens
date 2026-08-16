@@ -18,6 +18,7 @@ import '../widgets/sort_bar.dart';
 import '../widgets/unsynced_banner.dart';
 import '../logic/subscription_service.dart';
 import '../logic/user_profile_provider.dart';
+import '../logic/family_repository.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -369,6 +370,8 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     final schedulesVal = ref.watch(taskSchedulesProvider);
     final settingsVal = ref.watch(userSettingsProvider);
     final settingsRepository = ref.watch(userSettingsRepositoryProvider);
+    final familyProfileVal = ref.watch(familyProfileStreamProvider);
+    final isParent = familyProfileVal.value?.familyRole == 'parent';
     final searchQuery = ref
         .watch(scheduleSearchQueryProvider)
         .trim()
@@ -481,6 +484,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                   theme,
                                   taskRepository,
                                   showLastSpawnedDate,
+                                  isParent,
                                 );
                               },
                             ),
@@ -578,7 +582,10 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     ThemeData theme,
     TaskRepository repository,
     bool showLastSpawnedDate,
+    bool isParent,
   ) {
+    final canDelete = !task.isFamily || isParent;
+
     String formatDuration(Duration duration) {
       final minutes = duration.inMinutes;
       if (minutes <= 0) return '';
@@ -655,18 +662,19 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                     });
                   },
                 ),
-                IconButton(
-                  key: Key('delete_schedule_button_${task.id}'),
-                  icon: Icon(
-                    Icons.delete_outline,
-                    color: theme.colorScheme.error,
-                    size: 20,
+                if (canDelete)
+                  IconButton(
+                    key: Key('delete_schedule_button_${task.id}'),
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: theme.colorScheme.error,
+                      size: 20,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: context.l10n.deleteTaskTooltip,
+                    onPressed: () =>
+                        _confirmDelete(context, ref, repository, task),
                   ),
-                  visualDensity: VisualDensity.compact,
-                  tooltip: context.l10n.deleteTaskTooltip,
-                  onPressed: () =>
-                      _confirmDelete(context, ref, repository, task),
-                ),
               ],
             ),
           ),
@@ -959,6 +967,10 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     TaskRepository repository,
     TaskSchedule task,
   ) {
+    final familyProfile = ref.read(familyProfileStreamProvider).value;
+    final isParent = familyProfile?.familyRole == 'parent';
+    if (task.isFamily && !isParent) return;
+
     showDialog(
       context: context,
       builder: (dialogContext) {

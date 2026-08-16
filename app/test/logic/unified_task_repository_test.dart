@@ -128,6 +128,47 @@ void main() {
   });
 
   test(
+    'restoreTaskSchedule restores task and pending instances to localDataSource and marks dirty',
+    () async {
+      final task = TaskSchedule(
+        id: 'S-restore',
+        title: 'Restore Task',
+        description: 'Desc restore',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      final instance = TaskInstance(
+        id: 'I-restore',
+        scheduleId: 'S-restore',
+        ruleId: 'R-restore',
+        title: 'Restore Instance',
+        description: 'Desc',
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.pending,
+        updatedAt: DateTime.now(),
+      );
+
+      await repository.restoreTaskSchedule(task, [instance]);
+
+      final tasks = localDataSource.getTasks();
+      expect(tasks.any((t) => t.id == 'S-restore'), true);
+      final instances = localDataSource.getInstances();
+      expect(instances.any((i) => i.id == 'I-restore'), true);
+      final dirty = localDataSource.getDirtyTaskIds();
+      expect(dirty.contains('S-restore'), true);
+      expect(dirty.contains('I-restore'), true);
+    },
+  );
+
+  test(
     'coalesces concurrent missed-policy triggers on UnifiedTaskRepository',
     () async {
       final task1 = TaskSchedule(

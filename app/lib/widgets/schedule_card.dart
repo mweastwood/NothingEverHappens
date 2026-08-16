@@ -7,6 +7,7 @@ import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/subscription_service.dart';
 import '../logic/user_profile_provider.dart';
+import '../logic/family_repository.dart';
 
 class ScheduleCard extends ConsumerWidget {
   final TaskSchedule task;
@@ -70,6 +71,10 @@ class ScheduleCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final familyProfile = ref.watch(familyProfileStreamProvider).value;
+    final isParent = familyProfile?.familyRole == 'parent';
+    final canDelete = !task.isFamily || isParent;
+
     final schedule = task.schedules.isNotEmpty
         ? task.schedules[task.activeOccurrenceIndex < task.schedules.length
               ? task.activeOccurrenceIndex
@@ -237,15 +242,16 @@ class ScheduleCard extends ConsumerWidget {
                       tooltip: context.l10n.editScheduleTooltip,
                       onPressed: onEdit,
                     ),
-                    IconButton(
-                      key: Key('delete_schedule_button_${task.id}'),
-                      icon: Icon(
-                        Icons.delete,
-                        color: Theme.of(context).colorScheme.error,
+                    if (canDelete)
+                      IconButton(
+                        key: Key('delete_schedule_button_${task.id}'),
+                        icon: Icon(
+                          Icons.delete,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        tooltip: context.l10n.deleteTaskTooltip,
+                        onPressed: onDelete,
                       ),
-                      tooltip: context.l10n.deleteTaskTooltip,
-                      onPressed: onDelete,
-                    ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
