@@ -4,9 +4,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:nothing_ever_happens/main.dart';
 import 'app_logger.dart';
+import 'hive_local_data_source.dart';
+import 'notification_service.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => AuthRepository(logger: ref.watch(appLoggerProvider)),
+  (ref) => AuthRepository(
+    logger: ref.watch(appLoggerProvider),
+    localDataSource: ref.watch(hiveLocalDataSourceProvider),
+    notificationService: ref.watch(notificationServiceProvider),
+  ),
 );
 
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -17,14 +23,20 @@ class AuthRepository {
   final FirebaseAuth _firebaseAuth;
   final GoogleSignIn _googleSignIn;
   final AppLogger? _logger;
+  final HiveLocalDataSource? _localDataSource;
+  final NotificationService? _notificationService;
 
   AuthRepository({
     FirebaseAuth? firebaseAuth,
     GoogleSignIn? googleSignIn,
     AppLogger? logger,
+    HiveLocalDataSource? localDataSource,
+    NotificationService? notificationService,
   }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
        _googleSignIn = googleSignIn ?? GoogleSignIn.instance,
-       _logger = logger;
+       _logger = logger,
+       _localDataSource = localDataSource,
+       _notificationService = notificationService;
 
   bool _googleSignInInitialized = false;
 
@@ -124,5 +136,7 @@ class AuthRepository {
     if (!kIsWeb) {
       await _googleSignIn.signOut();
     }
+    await _localDataSource?.resetAllData();
+    await _notificationService?.cancelAllNotifications();
   }
 }

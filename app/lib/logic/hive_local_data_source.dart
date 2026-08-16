@@ -313,6 +313,37 @@ class HiveLocalDataSource {
     await clearAllTasksAndInstances();
     await clearAllDirty();
     await setMigrationCompleted(false);
+    await setActiveUserId(null);
+    if (_settingsBox != null && _settingsBox!.isOpen) {
+      await _settingsBox!.clear();
+    }
+    _memSettings = const UserSettings(hoursAvailable: 8.0);
+    _memRawSettings = {};
+    _emitSettings();
+  }
+
+  String? getActiveUserId() {
+    final data = _syncMetaBox != null && _syncMetaBox!.isOpen
+        ? _syncMetaBox!.get('active_user_id')
+        : _memMeta['active_user_id'];
+    if (data == null) return null;
+    return data['userId'] as String?;
+  }
+
+  Future<void> setActiveUserId(String? userId) async {
+    if (userId == null) {
+      if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+        await _syncMetaBox!.delete('active_user_id');
+      } else {
+        _memMeta.remove('active_user_id');
+      }
+    } else {
+      if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+        await _syncMetaBox!.put('active_user_id', {'userId': userId});
+      } else {
+        _memMeta['active_user_id'] = {'userId': userId};
+      }
+    }
   }
 
   Future<void> setMigrationCompleted(bool completed) async {

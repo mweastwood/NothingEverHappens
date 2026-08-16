@@ -47,6 +47,21 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
           as String);
 
   @override
+  _i4.Future<void> resetLocalDataAndResync() =>
+      (super.noSuchMethod(
+            Invocation.method(#resetLocalDataAndResync, []),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
   _i4.Stream<List<_i5.TaskSchedule>> getPersonalTasksForUser(String? userId) =>
       (super.noSuchMethod(
             Invocation.method(#getPersonalTasksForUser, [userId]),

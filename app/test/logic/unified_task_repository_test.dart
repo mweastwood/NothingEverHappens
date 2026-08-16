@@ -638,6 +638,70 @@ void main() {
       expect(loggedCompletedCount, initialCount + 1);
     },
   );
+
+  test(
+    'Account switch: initializing repository for different user clears old user tasks and loads new user tasks',
+    () async {
+      // 1. Setup User 1 tasks locally
+      final user1Task = TaskSchedule(
+        id: 'S-user1-task',
+        title: 'User 1 Secret Task',
+        description: 'User 1 Private Info',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      await localDataSource.saveTask(user1Task);
+      await localDataSource.setActiveUserId('user1');
+      await localDataSource.setMigrationCompleted(true);
+
+      expect(
+        localDataSource.getTasks().any((t) => t.id == 'S-user1-task'),
+        true,
+      );
+
+      // 2. Setup User 2 tasks in Firestore
+      await firestore
+          .collection('users')
+          .doc('user2')
+          .collection('tasks')
+          .doc('S-user2-task')
+          .set({
+            'id': 'S-user2-task',
+            'title': 'User 2 Fresh Task',
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+
+      final syncServiceUser2 = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user2',
+        isActivePremium: false,
+      );
+
+      // 3. Initialize repository for User 2
+      final repoUser2 = UnifiedTaskRepository(
+        localDataSource: localDataSource,
+        syncService: syncServiceUser2,
+        firestore: firestore,
+        userId: 'user2',
+      );
+
+      // Wait for initial migration to complete
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final tasksStream = repoUser2.getTasks();
+      final tasks = await tasksStream.first;
+
+      // User 1 tasks MUST NOT be present
+      expect(tasks.any((t) => t.id == 'S-user1-task'), false);
+
+      // User 2 tasks MUST be present
+      expect(tasks.any((t) => t.id == 'S-user2-task'), true);
+      expect(localDataSource.getActiveUserId(), 'user2');
+
+      syncServiceUser2.dispose();
+    },
+  );
 }
 
 class _TestTelemetryService extends NoOpTelemetryService {

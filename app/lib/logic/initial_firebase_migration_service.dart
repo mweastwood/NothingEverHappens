@@ -25,7 +25,12 @@ class InitialFirebaseMigrationService {
        _logger = logger;
 
   Future<void> migrateIfNeeded({bool force = false}) async {
-    if (!force && _localDataSource.isMigrationCompleted()) {
+    final activeUser = _localDataSource.getActiveUserId();
+    final isDifferentUser =
+        activeUser != null && activeUser.isNotEmpty && activeUser != _userId;
+    final shouldForce = force || isDifferentUser;
+
+    if (!shouldForce && _localDataSource.isMigrationCompleted()) {
       return;
     }
 
@@ -34,7 +39,7 @@ class InitialFirebaseMigrationService {
       return inFlight;
     }
 
-    final future = _doMigrate(force: force);
+    final future = _doMigrate(force: shouldForce);
     _inFlightMigrations[_userId] = future;
     try {
       await future;
@@ -207,6 +212,7 @@ class InitialFirebaseMigrationService {
         await _localDataSource.saveInstance(instance);
       }
 
+      await _localDataSource.setActiveUserId(_userId);
       await _localDataSource.setMigrationCompleted(true);
       _logger?.info(
         'sync',

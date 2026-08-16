@@ -55,6 +55,15 @@ class MockAuthRepository extends _i1.Mock implements _i2.AuthRepository {
           as _i3.Future<_i4.User?>);
 
   @override
+  _i3.Future<_i4.User?> signInAnonymously() =>
+      (super.noSuchMethod(
+            Invocation.method(#signInAnonymously, []),
+            returnValue: _i3.Future<_i4.User?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.User?>.value(),
+          )
+          as _i3.Future<_i4.User?>);
+
+  @override
   _i3.Future<void> signOut() =>
       (super.noSuchMethod(
             Invocation.method(#signOut, []),
@@ -82,6 +91,21 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
             ),
           )
           as String);
+
+  @override
+  _i3.Future<void> resetLocalDataAndResync() =>
+      (super.noSuchMethod(
+            Invocation.method(#resetLocalDataAndResync, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
 
   @override
   _i3.Stream<List<_i7.TaskSchedule>> getPersonalTasksForUser(String? userId) =>
@@ -246,15 +270,6 @@ class MockUserSettingsRepository extends _i1.Mock
   _i3.Stream<_i11.UserSettings> getSettings() =>
       (super.noSuchMethod(
             Invocation.method(#getSettings, []),
-            returnValue: _i3.Stream<_i11.UserSettings>.empty(),
-            returnValueForMissingStub: _i3.Stream<_i11.UserSettings>.empty(),
-          )
-          as _i3.Stream<_i11.UserSettings>);
-
-  @override
-  _i3.Stream<_i11.UserSettings> getSettingsForUser(String? userId) =>
-      (super.noSuchMethod(
-            Invocation.method(#getSettingsForUser, [userId]),
             returnValue: _i3.Stream<_i11.UserSettings>.empty(),
             returnValueForMissingStub: _i3.Stream<_i11.UserSettings>.empty(),
           )

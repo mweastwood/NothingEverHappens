@@ -14,20 +14,44 @@ import 'package:nothing_ever_happens/main.dart';
   MockSpec<GoogleSignInAccount>(),
   MockSpec<GoogleSignInAuthentication>(),
 ])
+import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
+import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'auth_repository_test.mocks.dart';
+
+class _FakeHiveLocalDataSource extends Fake implements HiveLocalDataSource {
+  bool resetCalled = false;
+  @override
+  Future<void> resetAllData() async {
+    resetCalled = true;
+  }
+}
+
+class _FakeNotificationService extends Fake implements NotificationService {
+  bool cancelAllCalled = false;
+  @override
+  Future<void> cancelAllNotifications() async {
+    cancelAllCalled = true;
+  }
+}
 
 void main() {
   group('AuthRepository', () {
     late MockFirebaseAuth mockFirebaseAuth;
     late MockGoogleSignIn mockGoogleSignIn;
+    late _FakeHiveLocalDataSource fakeLocalDataSource;
+    late _FakeNotificationService fakeNotificationService;
     late AuthRepository authRepository;
 
     setUp(() {
       mockFirebaseAuth = MockFirebaseAuth();
       mockGoogleSignIn = MockGoogleSignIn();
+      fakeLocalDataSource = _FakeHiveLocalDataSource();
+      fakeNotificationService = _FakeNotificationService();
       authRepository = AuthRepository(
         firebaseAuth: mockFirebaseAuth,
         googleSignIn: mockGoogleSignIn,
+        localDataSource: fakeLocalDataSource,
+        notificationService: fakeNotificationService,
       );
       // Reset environment to dev for each test
       AppConfig.environment = AppEnvironment.dev;
@@ -48,15 +72,20 @@ void main() {
       expect(authRepository.authStateChanges, stream);
     });
 
-    test('signOut signs out of both firebaseAuth and googleSignIn', () async {
-      when(mockFirebaseAuth.signOut()).thenAnswer((_) async {});
-      when(mockGoogleSignIn.signOut()).thenAnswer((_) async {});
+    test(
+      'signOut signs out of firebaseAuth, googleSignIn, and clears local data & notifications',
+      () async {
+        when(mockFirebaseAuth.signOut()).thenAnswer((_) async {});
+        when(mockGoogleSignIn.signOut()).thenAnswer((_) async {});
 
-      await authRepository.signOut();
+        await authRepository.signOut();
 
-      verify(mockFirebaseAuth.signOut()).called(1);
-      verify(mockGoogleSignIn.signOut()).called(1);
-    });
+        verify(mockFirebaseAuth.signOut()).called(1);
+        verify(mockGoogleSignIn.signOut()).called(1);
+        expect(fakeLocalDataSource.resetCalled, true);
+        expect(fakeNotificationService.cancelAllCalled, true);
+      },
+    );
 
     test('signInWithGoogle success on Mobile flow', () async {
       final mockGoogleUser = MockGoogleSignInAccount();

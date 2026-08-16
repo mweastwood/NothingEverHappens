@@ -120,6 +120,54 @@ void main() {
   });
 
   test(
+    'Migration runs and forces wipe if active_user_id belongs to a different user even if migration_completed is true',
+    () async {
+      // User 1 data in local data source
+      final user1Task = TaskSchedule(
+        id: 'S-user1',
+        title: 'User 1 Task',
+        description: 'User 1 Desc',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      await localDataSource.saveTask(user1Task);
+      await localDataSource.setActiveUserId('user1');
+      await localDataSource.setMigrationCompleted(true);
+
+      expect(localDataSource.getTasks().length, 1);
+      expect(localDataSource.getActiveUserId(), 'user1');
+      expect(localDataSource.isMigrationCompleted(), true);
+
+      // User 2 data in Firestore
+      await firestore
+          .collection('users')
+          .doc('user2')
+          .collection('tasks')
+          .doc('S-user2')
+          .set({
+            'id': 'S-user2',
+            'title': 'User 2 Task',
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+
+      final serviceUser2 = InitialFirebaseMigrationService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user2',
+      );
+
+      await serviceUser2.migrateIfNeeded();
+
+      final tasks = localDataSource.getTasks();
+      expect(tasks.length, 1);
+      expect(tasks.first.id, 'S-user2');
+      expect(tasks.first.title, 'User 2 Task');
+      expect(localDataSource.getActiveUserId(), 'user2');
+      expect(localDataSource.isMigrationCompleted(), true);
+    },
+  );
+
+  test(
     'Migration performs clean slate wipe of stale local data before saving',
     () async {
       // 1. Pre-populate local storage with stale offline artifacts and dirty queue
