@@ -1446,7 +1446,9 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         TaskSchedule? createdTask;
-        when(mockRepository.addTaskSchedule(any)).thenAnswer((invocation) async {
+        when(mockRepository.addTaskSchedule(any)).thenAnswer((
+          invocation,
+        ) async {
           createdTask = invocation.positionalArguments[0] as TaskSchedule;
         });
 

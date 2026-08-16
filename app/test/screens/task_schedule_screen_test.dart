@@ -868,7 +868,9 @@ void main() {
       tasksSubject.add([dailyTask]);
 
       TaskSchedule? savedTask;
-      when(mockTaskRepository.addTaskSchedule(any)).thenAnswer((invocation) async {
+      when(mockTaskRepository.addTaskSchedule(any)).thenAnswer((
+        invocation,
+      ) async {
         savedTask = invocation.positionalArguments[0] as TaskSchedule;
       });
 

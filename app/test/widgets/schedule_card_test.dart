@@ -168,10 +168,7 @@ void main() {
         ),
       );
 
-      expect(
-        find.byKey(const Key('copy_schedule_button_S-1')),
-        findsNothing,
-      );
+      expect(find.byKey(const Key('copy_schedule_button_S-1')), findsNothing);
     });
 
     testGoldens(
