@@ -24,7 +24,11 @@ service cloud.firestore {
     // User Profile: Users can read/write their own profile, and family members can read
     match /users/{userId} {
       allow read: if isUser(userId) || areInSameFamily(userId);
-      allow write: if isUser(userId);
+      allow write: if isUser(userId) || (
+        resource != null &&
+        resource.data.familyId != null &&
+        isParentOfFamily(resource.data.familyId)
+      );
 
       // Private Tasks: Users can read/write their own tasks, and family members can read
       match /tasks/{taskId} {

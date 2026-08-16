@@ -554,6 +554,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nonParentRole => 'Non-Parent';
 
   @override
+  String get changeRoleTitle => 'Change Role';
+
+  @override
+  String get changeRoleButton => 'Change Role';
+
+  @override
+  String get changeRoleDialogTitle => 'Change Member Role';
+
+  @override
+  String changeRoleDescription(String name) {
+    return 'Select a new role for $name.';
+  }
+
+  @override
+  String get cannotDemoteOnlyParent =>
+      'A family must have at least one parent.';
+
+  @override
+  String roleUpdatedSuccess(String name) {
+    return 'Updated role for $name';
+  }
+
+  @override
   String get pendingInvitesHeader => 'Pending Invites';
 
   @override

@@ -565,5 +565,47 @@ void main() {
 
       await expectation;
     });
+
+    test(
+      'updateMemberRole updates family member role and user document',
+      () async {
+        await firestore.collection('families').doc('fam-1').set({
+          'name': 'The Simpsons',
+          'members': {
+            'user-1': {
+              'userId': 'user-1',
+              'displayName': 'Alice',
+              'email': 'alice@example.com',
+              'role': 'parent',
+            },
+            'user-2': {
+              'userId': 'user-2',
+              'displayName': 'Bob',
+              'email': 'bob@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+        await firestore.collection('users').doc('user-2').set({
+          'familyId': 'fam-1',
+          'familyRole': 'non-parent',
+        });
+
+        await repository.updateMemberRole(
+          familyId: 'fam-1',
+          memberUserId: 'user-2',
+          newRole: FamilyRole.parent,
+        );
+
+        final familyDoc = await firestore
+            .collection('families')
+            .doc('fam-1')
+            .get();
+        expect(familyDoc.data()?['members']['user-2']['role'], 'parent');
+
+        final userDoc = await firestore.collection('users').doc('user-2').get();
+        expect(userDoc.data()?['familyRole'], 'parent');
+      },
+    );
   });
 }

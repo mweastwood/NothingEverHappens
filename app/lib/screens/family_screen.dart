@@ -226,6 +226,57 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     }
   }
 
+  Future<void> _changeMemberRole(
+    FamilyRepository repository,
+    Family family,
+    FamilyMember member,
+  ) async {
+    final parentCount = family.members.values
+        .where((m) => m.role == FamilyRole.parent)
+        .length;
+    final isOnlyParent = member.role == FamilyRole.parent && parentCount <= 1;
+
+    final newRole = await showDialog<FamilyRole>(
+      context: context,
+      builder: (context) =>
+          _ChangeRoleDialog(member: member, isOnlyParent: isOnlyParent),
+    );
+
+    if (newRole != null && newRole != member.role && mounted) {
+      setState(() {
+        _isProcessing = true;
+      });
+      try {
+        await repository.updateMemberRole(
+          familyId: family.id,
+          memberUserId: member.userId,
+          newRole: newRole,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                context.l10n.roleUpdatedSuccess(member.displayName),
+              ),
+            ),
+          );
+        }
+      } catch (e, stackTrace) {
+        if (mounted) {
+          final errorHandler = ref.read(errorHandlerProvider);
+          final report = errorHandler.report(e, stackTrace: stackTrace);
+          errorHandler.showErrorDialog(context, report);
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final subscription = ref.watch(subscriptionServiceProvider);
@@ -524,7 +575,13 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
             ),
             const SizedBox(height: 8),
             ...family.members.values.map((member) {
-              return FamilyMemberTile(member: member);
+              return FamilyMemberTile(
+                member: member,
+                isCurrentParent: isParent,
+                onEditRole: isParent
+                    ? () => _changeMemberRole(repository, family, member)
+                    : null,
+              );
             }),
             if (isParent) ...[
               const SizedBox(height: 24),
@@ -827,6 +884,93 @@ class _InviteMemberDialogState extends State<_InviteMemberDialog> {
                 'role': _selectedRole,
               });
             }
+          },
+          child: Text(context.l10n.saveButton),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChangeRoleDialog extends StatefulWidget {
+  final FamilyMember member;
+  final bool isOnlyParent;
+
+  const _ChangeRoleDialog({required this.member, required this.isOnlyParent});
+
+  @override
+  State<_ChangeRoleDialog> createState() => _ChangeRoleDialogState();
+}
+
+class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
+  late FamilyRole _selectedRole;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedRole = widget.member.role;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isOnlyParent = widget.isOnlyParent;
+
+    return AlertDialog(
+      title: Text(context.l10n.changeRoleDialogTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(context.l10n.changeRoleDescription(widget.member.displayName)),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<FamilyRole>(
+            key: const Key('change_role_dropdown'),
+            isExpanded: true,
+            initialValue: _selectedRole,
+            decoration: InputDecoration(
+              labelText: context.l10n.inviteMemberRoleLabel,
+              border: const OutlineInputBorder(),
+            ),
+            items: [
+              DropdownMenuItem(
+                value: FamilyRole.parent,
+                child: Text(context.l10n.parentRole),
+              ),
+              DropdownMenuItem(
+                value: FamilyRole.nonParent,
+                enabled: !isOnlyParent,
+                child: Text(context.l10n.nonParentRole),
+              ),
+            ],
+            onChanged: (val) {
+              if (val != null) {
+                setState(() {
+                  _selectedRole = val;
+                });
+              }
+            },
+          ),
+          if (isOnlyParent) ...[
+            const SizedBox(height: 8),
+            Text(
+              context.l10n.cannotDemoteOnlyParent,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.cancelButton),
+        ),
+        ElevatedButton(
+          key: const Key('confirm_change_role_button'),
+          onPressed: () {
+            Navigator.pop(context, _selectedRole);
           },
           child: Text(context.l10n.saveButton),
         ),

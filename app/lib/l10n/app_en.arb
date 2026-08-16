@@ -281,6 +281,26 @@
   "inviteMemberRoleLabel": "Role",
   "parentRole": "Parent",
   "nonParentRole": "Non-Parent",
+  "changeRoleTitle": "Change Role",
+  "changeRoleButton": "Change Role",
+  "changeRoleDialogTitle": "Change Member Role",
+  "changeRoleDescription": "Select a new role for {name}.",
+  "@changeRoleDescription": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotDemoteOnlyParent": "A family must have at least one parent.",
+  "roleUpdatedSuccess": "Updated role for {name}",
+  "@roleUpdatedSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "pendingInvitesHeader": "Pending Invites",
   "acceptInviteButton": "Accept",
   "declineInviteButton": "Decline",
