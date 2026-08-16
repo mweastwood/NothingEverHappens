@@ -8,6 +8,7 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 
 void main() {
@@ -270,13 +271,35 @@ void main() {
 
       await dataSource.saveTask(task);
       await dataSource.markDirty('S-clear-test');
+      await dataSource.setActiveUserId('user-abc');
+      await dataSource.saveSettings(const UserSettings(hoursAvailable: 4.5));
       expect(dataSource.getTasks().length, 1);
+      expect(dataSource.getActiveUserId(), 'user-abc');
+      expect(dataSource.getSettings().hoursAvailable, 4.5);
 
       await dataSource.resetAllData();
       expect(dataSource.getTasks().isEmpty, true);
       expect(dataSource.getInstances().isEmpty, true);
       expect(dataSource.getDirtyTaskIds().isEmpty, true);
       expect(dataSource.isMigrationCompleted(), false);
+      expect(dataSource.getActiveUserId(), isNull);
+      expect(dataSource.getSettings().hoursAvailable, 8.0);
+    },
+  );
+
+  test(
+    'getActiveUserId and setActiveUserId persist and clear correctly',
+    () async {
+      expect(dataSource.getActiveUserId(), isNull);
+
+      await dataSource.setActiveUserId('user-123');
+      expect(dataSource.getActiveUserId(), 'user-123');
+
+      await dataSource.setActiveUserId('user-456');
+      expect(dataSource.getActiveUserId(), 'user-456');
+
+      await dataSource.setActiveUserId(null);
+      expect(dataSource.getActiveUserId(), isNull);
     },
   );
 

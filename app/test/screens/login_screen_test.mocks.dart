@@ -47,6 +47,15 @@ class MockAuthRepository extends _i1.Mock implements _i2.AuthRepository {
           as _i3.Future<_i4.User?>);
 
   @override
+  _i3.Future<_i4.User?> signInAnonymously() =>
+      (super.noSuchMethod(
+            Invocation.method(#signInAnonymously, []),
+            returnValue: _i3.Future<_i4.User?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.User?>.value(),
+          )
+          as _i3.Future<_i4.User?>);
+
+  @override
   _i3.Future<void> signOut() =>
       (super.noSuchMethod(
             Invocation.method(#signOut, []),

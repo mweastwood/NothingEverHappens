@@ -21,6 +21,7 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 abstract class NotificationService {
   Future<void> scheduleNotifications(TaskSchedule task);
   Future<void> cancelNotifications(String taskId);
+  Future<void> cancelAllNotifications();
   Future<void> dispose();
 }
 
@@ -218,6 +219,28 @@ class PlatformNotificationService implements NotificationService {
     }
   }
 
+  @override
+  Future<void> cancelAllNotifications() async {
+    if (_isDisposed || _runId != _currentRunId) return;
+
+    debugPrint('PlatformNotificationService: Cancelling all notifications');
+
+    if (kIsWeb) {
+      for (final timers in _webTimers.values) {
+        for (final timer in timers) {
+          timer.cancel();
+        }
+      }
+      _webTimers.clear();
+    } else {
+      try {
+        await _plugin.cancelAll();
+      } catch (e) {
+        debugPrint('Failed to cancel all platform notifications: $e');
+      }
+    }
+  }
+
   DateTime _calculateNextNotificationDateTimeForNotif(
     TaskSchedule task,
     TaskScheduleRule s,
@@ -295,6 +318,12 @@ class LoggingNotificationService implements NotificationService {
   Future<void> cancelNotifications(String taskId) async {
     _scheduledTasks.remove(taskId);
     debugPrint('Cancelling all notifications for task ID: $taskId');
+  }
+
+  @override
+  Future<void> cancelAllNotifications() async {
+    clear();
+    debugPrint('Cancelling all logging notifications');
   }
 
   /// Clears all scheduled tasks in memory.

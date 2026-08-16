@@ -40,7 +40,15 @@ class UnifiedTaskRepository extends TaskRepository {
   }
 
   void _initMigration() {
-    if (!_localDataSource.isMigrationCompleted() && userId.isNotEmpty) {
+    if (userId.isEmpty) return;
+
+    final activeUserId = _localDataSource.getActiveUserId();
+    final isDifferentUser =
+        activeUserId != null &&
+        activeUserId.isNotEmpty &&
+        activeUserId != userId;
+
+    if (isDifferentUser || !_localDataSource.isMigrationCompleted()) {
       final migrationService = InitialFirebaseMigrationService(
         firestore: _rawFirestore,
         localDataSource: _localDataSource,
@@ -48,7 +56,7 @@ class UnifiedTaskRepository extends TaskRepository {
         logger: logger,
       );
       migrationService
-          .migrateIfNeeded()
+          .migrateIfNeeded(force: isDifferentUser)
           .then((_) {
             if (_localDataSource.isMigrationCompleted()) {
               _syncService.startListeningToRemote();
@@ -59,7 +67,7 @@ class UnifiedTaskRepository extends TaskRepository {
             // ignore: avoid_print
             print('Initial migration error: $e');
           });
-    } else if (_localDataSource.isMigrationCompleted() && userId.isNotEmpty) {
+    } else if (_localDataSource.isMigrationCompleted()) {
       _syncService.startListeningToRemote();
     }
   }

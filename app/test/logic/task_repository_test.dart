@@ -2763,5 +2763,8 @@ class ControlledNotificationService implements NotificationService {
   Future<void> cancelNotifications(String taskId) async {}
 
   @override
+  Future<void> cancelAllNotifications() async {}
+
+  @override
   Future<void> dispose() async {}
 }
