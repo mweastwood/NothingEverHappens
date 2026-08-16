@@ -27,24 +27,21 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   bool _isSaving = false;
 
   static const List<String> _commonUnits = [
-    'cups',
     'cup',
     'tbsp',
     'tsp',
-    'g',
-    'kg',
     'oz',
     'lb',
-    'lbs',
+    'g',
+    'kg',
     'ml',
     'l',
     'piece',
-    'pieces',
     'clove',
-    'cloves',
     'pinch',
     'can',
     'pkg',
+    'slice',
   ];
 
   @override
@@ -62,7 +59,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
     } else {
       // Add default empty ingredient & step
       _ingredients.add(
-        const RecipeIngredient(id: '1', name: '', quantity: 1.0, unit: 'cups'),
+        const RecipeIngredient(id: '1', name: '', quantity: 1.0, unit: 'cup'),
       );
       _prepSteps.add(
         const RecipeStep(stepNumber: 1, instruction: '', estimatedMinutes: 5),
@@ -303,7 +300,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                       id: const Uuid().v4(),
                       name: '',
                       quantity: 1.0,
-                      unit: 'cups',
+                      unit: 'cup',
                     ),
                   );
                 });
@@ -370,6 +367,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                       fieldViewBuilder:
                           (context, controller, focusNode, onFieldSubmitted) {
                             return TextFormField(
+                              key: const Key('ingredient_unit_field'),
                               controller: controller,
                               focusNode: focusNode,
                               decoration: const InputDecoration(

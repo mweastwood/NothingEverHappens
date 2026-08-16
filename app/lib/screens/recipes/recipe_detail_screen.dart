@@ -212,7 +212,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   targetSystem: _unitSystem,
                 );
 
-                final qtyStr = UnitConverter.formatQuantity(converted.quantity);
+                final formatted = UnitConverter.formatQuantityAndUnit(
+                  converted.quantity,
+                  converted.unit,
+                );
 
                 return ListTile(
                   leading: const Icon(Icons.check_box_outline_blank, size: 20),
@@ -221,7 +224,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                   trailing: Text(
-                    '$qtyStr ${converted.unit}'.trim(),
+                    formatted,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.primary,

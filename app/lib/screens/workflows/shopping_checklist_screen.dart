@@ -191,7 +191,10 @@ class _ShoppingChecklistScreenState
         ..._items.asMap().entries.map((entry) {
           final index = entry.key;
           final item = entry.value;
-          final qtyStr = UnitConverter.formatQuantity(item.quantity);
+          final qtyAndUnit = UnitConverter.formatQuantityAndUnit(
+            item.quantity,
+            item.unit,
+          );
 
           return Card(
             margin: const EdgeInsets.only(bottom: 8),
@@ -205,7 +208,7 @@ class _ShoppingChecklistScreenState
                       : null,
                 ),
               ),
-              subtitle: Text('$qtyStr ${item.unit}'.trim()),
+              subtitle: Text(qtyAndUnit),
               secondary: Icon(
                 item.isPantryOwned
                     ? Icons.inventory
@@ -272,7 +275,10 @@ class _ShoppingChecklistScreenState
               else
                 ...toBuyItems.map((item) {
                   final index = _items.indexWhere((x) => x.id == item.id);
-                  final qtyStr = UnitConverter.formatQuantity(item.quantity);
+                  final qtyAndUnit = UnitConverter.formatQuantityAndUnit(
+                    item.quantity,
+                    item.unit,
+                  );
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -294,7 +300,7 @@ class _ShoppingChecklistScreenState
                               : FontWeight.bold,
                         ),
                       ),
-                      subtitle: Text('$qtyStr ${item.unit}'.trim()),
+                      subtitle: Text(qtyAndUnit),
                       secondary: Icon(
                         item.isBought
                             ? Icons.check_circle

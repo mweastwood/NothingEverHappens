@@ -57,6 +57,51 @@ class UnitConverter {
     'pounds': 453.592,
   };
 
+  static const Map<String, String> _singularToPlural = {
+    'cup': 'cups',
+    'clove': 'cloves',
+    'piece': 'pieces',
+    'can': 'cans',
+    'pinch': 'pinches',
+    'slice': 'slices',
+    'stalk': 'stalks',
+    'bunch': 'bunches',
+    'head': 'heads',
+    'sprig': 'sprigs',
+    'dash': 'dashes',
+    'package': 'packages',
+    'pkg': 'pkgs',
+    'pound': 'pounds',
+    'lb': 'lbs',
+    'tablespoon': 'tablespoons',
+    'teaspoon': 'teaspoons',
+    'fluid ounce': 'fluid ounces',
+    'pint': 'pints',
+    'quart': 'quarts',
+    'gallon': 'gallons',
+    'gram': 'grams',
+    'kilogram': 'kilograms',
+    'milliliter': 'milliliters',
+    'liter': 'liters',
+    'ounce': 'ounces',
+    'item': 'items',
+  };
+
+  static final Map<String, String> _pluralToSingular = {
+    for (final entry in _singularToPlural.entries) entry.value: entry.key,
+  };
+
+  static const Set<String> _invariableUnits = {
+    'g',
+    'kg',
+    'ml',
+    'l',
+    'tbsp',
+    'tsp',
+    'oz',
+    'fl oz',
+  };
+
   static bool isVolume(String unit) =>
       _volumeToMl.containsKey(unit.toLowerCase().trim());
 
@@ -90,14 +135,18 @@ class UnitConverter {
       'tablespoons',
       'fl oz',
       'fluid ounce',
+      'fluid ounces',
       'cup',
       'cups',
       'pt',
       'pint',
+      'pints',
       'qt',
       'quart',
+      'quarts',
       'gal',
       'gallon',
+      'gallons',
       'oz',
       'ounce',
       'ounces',
@@ -109,6 +158,79 @@ class UnitConverter {
       return UnitSystem.imperial;
     }
     return null;
+  }
+
+  /// Formats a unit as singular or plural based on the quantity.
+  static String formatUnit(String unit, double quantity) {
+    final trimmed = unit.trim();
+    if (trimmed.isEmpty) return unit;
+
+    final lower = trimmed.toLowerCase();
+
+    // Invariable abbreviations & metric symbols
+    if (_invariableUnits.contains(lower)) {
+      return trimmed;
+    }
+
+    final isPlural = quantity != 1.0;
+
+    if (isPlural) {
+      if (_singularToPlural.containsKey(lower)) {
+        return _matchCase(trimmed, _singularToPlural[lower]!);
+      }
+      if (_pluralToSingular.containsKey(lower)) {
+        return trimmed;
+      }
+      // Heuristic fallback for plurals
+      if (lower.endsWith('s')) {
+        return trimmed;
+      }
+      if (lower.endsWith('ch') ||
+          lower.endsWith('sh') ||
+          lower.endsWith('x') ||
+          lower.endsWith('z')) {
+        return _matchCase(trimmed, '${trimmed}es');
+      }
+      return _matchCase(trimmed, '${trimmed}s');
+    } else {
+      // Singular (quantity == 1.0)
+      if (_pluralToSingular.containsKey(lower)) {
+        return _matchCase(trimmed, _pluralToSingular[lower]!);
+      }
+      if (_singularToPlural.containsKey(lower)) {
+        return trimmed;
+      }
+      // Heuristic fallback for singulars
+      if (lower.endsWith('ches') ||
+          lower.endsWith('shes') ||
+          lower.endsWith('xes') ||
+          lower.endsWith('zes')) {
+        return trimmed.substring(0, trimmed.length - 2);
+      }
+      if (lower.endsWith('s') && !lower.endsWith('ss') && lower.length > 1) {
+        return trimmed.substring(0, trimmed.length - 1);
+      }
+      return trimmed;
+    }
+  }
+
+  /// Convenience helper to format quantity and unit together.
+  static String formatQuantityAndUnit(double quantity, String unit) {
+    final qtyStr = formatQuantity(quantity);
+    final formattedUnit = formatUnit(unit, quantity);
+    if (qtyStr.isEmpty) return formattedUnit;
+    if (formattedUnit.isEmpty) return qtyStr;
+    return '$qtyStr $formattedUnit';
+  }
+
+  static String _matchCase(String original, String target) {
+    if (original.isEmpty || target.isEmpty) return target;
+    if (original == original.toUpperCase()) return target.toUpperCase();
+    if (original[0] == original[0].toUpperCase() &&
+        original.substring(1) == original.substring(1).toLowerCase()) {
+      return target[0].toUpperCase() + target.substring(1);
+    }
+    return target;
   }
 
   /// Converts a quantity and unit to the target unit system.
@@ -123,28 +245,35 @@ class UnitConverter {
       final ml = quantity * _volumeToMl[cleanUnit]!;
       if (targetSystem == UnitSystem.metric) {
         if (ml >= 1000) {
-          return ConvertedQuantity(quantity: ml / 1000.0, unit: 'l');
+          final lVal = ml / 1000.0;
+          return ConvertedQuantity(
+            quantity: lVal,
+            unit: formatUnit('l', lVal),
+          );
         }
-        return ConvertedQuantity(quantity: ml, unit: 'ml');
+        return ConvertedQuantity(
+          quantity: ml,
+          unit: formatUnit('ml', ml),
+        );
       } else {
         // Imperial
         if (ml < 15) {
           final tsps = ml / _volumeToMl['tsp']!;
           return ConvertedQuantity(
             quantity: tsps,
-            unit: tsps == 1 ? 'tsp' : 'tsps',
+            unit: formatUnit('tsp', tsps),
           );
         } else if (ml < 60) {
           final tbsps = ml / _volumeToMl['tbsp']!;
           return ConvertedQuantity(
             quantity: tbsps,
-            unit: tbsps == 1 ? 'tbsp' : 'tbsps',
+            unit: formatUnit('tbsp', tbsps),
           );
         } else {
           final cups = ml / _volumeToMl['cup']!;
           return ConvertedQuantity(
             quantity: cups,
-            unit: cups == 1 ? 'cup' : 'cups',
+            unit: formatUnit('cup', cups),
           );
         }
       }
@@ -152,26 +281,39 @@ class UnitConverter {
       final grams = quantity * _massToGrams[cleanUnit]!;
       if (targetSystem == UnitSystem.metric) {
         if (grams >= 1000) {
-          return ConvertedQuantity(quantity: grams / 1000.0, unit: 'kg');
+          final kgVal = grams / 1000.0;
+          return ConvertedQuantity(
+            quantity: kgVal,
+            unit: formatUnit('kg', kgVal),
+          );
         }
-        return ConvertedQuantity(quantity: grams, unit: 'g');
+        return ConvertedQuantity(
+          quantity: grams,
+          unit: formatUnit('g', grams),
+        );
       } else {
         // Imperial
         if (grams >= 453.592) {
           final lbs = grams / _massToGrams['lb']!;
           return ConvertedQuantity(
             quantity: lbs,
-            unit: lbs == 1 ? 'lb' : 'lbs',
+            unit: formatUnit('lb', lbs),
           );
         } else {
           final oz = grams / _massToGrams['oz']!;
-          return ConvertedQuantity(quantity: oz, unit: oz == 1 ? 'oz' : 'oz');
+          return ConvertedQuantity(
+            quantity: oz,
+            unit: formatUnit('oz', oz),
+          );
         }
       }
     }
 
     // Unconvertible (e.g. piece, clove, pinch)
-    return ConvertedQuantity(quantity: quantity, unit: unit);
+    return ConvertedQuantity(
+      quantity: quantity,
+      unit: formatUnit(unit, quantity),
+    );
   }
 
   /// Scales an ingredient for target servings.
