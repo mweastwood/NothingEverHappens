@@ -618,5 +618,6 @@ class HiveLocalDataSource {
     await _tasksSubject.close();
     await _instancesSubject.close();
     await _settingsSubject.close();
+    await _migrationCompletedSubject.close();
   }
 }
