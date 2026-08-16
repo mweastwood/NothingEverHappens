@@ -17,6 +17,7 @@ import '../logic/sort_helper.dart';
 import '../widgets/sort_bar.dart';
 import '../widgets/unsynced_banner.dart';
 import '../logic/subscription_service.dart';
+import '../logic/user_profile_provider.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -532,6 +533,45 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     );
   }
 
+  Widget _buildBadge(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.4 : 0.25),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTaskCard(
     BuildContext context,
     TaskSchedule task,
@@ -630,6 +670,39 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
               ],
             ),
           ),
+          if (task.isFamily)
+            Padding(
+              padding: const EdgeInsets.only(
+                left: 12.0,
+                right: 12.0,
+                bottom: 8.0,
+              ),
+              child: Wrap(
+                spacing: 6.0,
+                runSpacing: 6.0,
+                children: [
+                  _buildBadge(
+                    context,
+                    icon: Icons.people_alt,
+                    label: context.l10n.familyTab,
+                    color: theme.colorScheme.primary,
+                  ),
+                  if (task.assignedUserId != null)
+                    _buildBadge(
+                      context,
+                      icon: Icons.assignment_ind,
+                      label: ref
+                          .watch(userNameProvider(task.assignedUserId!))
+                          .when(
+                            data: (name) => context.l10n.assignedTo(name),
+                            loading: () => context.l10n.loadingBadge,
+                            error: (_, _) => context.l10n.assignedBadge,
+                          ),
+                      color: theme.colorScheme.primary,
+                    ),
+                ],
+              ),
+            ),
           if (task.description.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.only(

@@ -5,6 +5,7 @@ import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
 import 'package:nothing_ever_happens/widgets/schedule_card.dart';
 import '../test_helper.dart';
 
@@ -169,6 +170,88 @@ void main() {
       );
 
       expect(find.byKey(const Key('copy_schedule_button_S-1')), findsNothing);
+    });
+
+    testWidgets(
+      'renders family badge and assignee badge when isFamily is true and assigned',
+      (tester) async {
+        final familyTaskWithAssignee = TaskSchedule(
+          id: 'S-3',
+          title: 'Family Chore',
+          description: 'Family chore description',
+          isFamily: true,
+          assignedUserId: 'user-bob',
+          schedules: [
+            DailySchedule(
+              id: 'R-3',
+              scheduleId: 'S-3',
+              startDate: const CivilDay(year: 2024, month: 1, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 8, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              userNameProvider(
+                'user-bob',
+              ).overrideWith((ref) => Future.value('Bob')),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: ScheduleCard(
+                    task: familyTaskWithAssignee,
+                    onEdit: () {},
+                    onDelete: () {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Family Chore'), findsOneWidget);
+        expect(find.text('Family'), findsOneWidget);
+        expect(find.byIcon(Icons.people_alt), findsOneWidget);
+        expect(find.text('Assigned to Bob'), findsOneWidget);
+        expect(find.byIcon(Icons.assignment_ind), findsOneWidget);
+      },
+    );
+
+    testWidgets('does not render family badge when isFamily is false', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ScheduleCard(
+                  task: dailyTask, // isFamily is false by default
+                  onEdit: () {},
+                  onDelete: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Family'), findsNothing);
+      expect(find.byIcon(Icons.people_alt), findsNothing);
+      expect(find.byIcon(Icons.assignment_ind), findsNothing);
     });
 
     testGoldens(

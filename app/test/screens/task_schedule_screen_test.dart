@@ -18,6 +18,7 @@ import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
 
 import 'task_list_screen_test.mocks.dart';
 
@@ -41,11 +42,12 @@ void main() {
     tasksSubject.close();
   });
 
-  Widget createScreen() {
+  Widget createScreen({List<Override> overrides = const []}) {
     return ProviderScope(
       overrides: [
         authRepositoryProvider.overrideWithValue(mockAuthRepository),
         taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ...overrides,
       ],
       child: buildTestableWidget(
         child: const Scaffold(body: TaskScheduleScreen()),
@@ -146,6 +148,111 @@ void main() {
     expect(find.text('9:00 AM -- 5:00 PM'), findsOneWidget);
     expect(find.text('10:30 AM -- 12:00 PM'), findsOneWidget);
   });
+
+  testWidgets(
+    'TaskScheduleScreen displays family badge for family tasks and hides for personal tasks',
+    (WidgetTester tester) async {
+      final familyTask = TaskSchedule(
+        id: '1',
+        title: 'Family Task',
+        description: 'Family task description',
+        isFamily: true,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final personalTask = TaskSchedule(
+        id: '2',
+        title: 'Personal Task',
+        description: 'Personal task description',
+        isFamily: false,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([familyTask, personalTask]);
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Family Task'), findsOneWidget);
+      expect(find.text('Personal Task'), findsOneWidget);
+
+      // Verify Family badge appears once (for the family task only)
+      expect(find.text('Family'), findsOneWidget);
+      expect(find.byIcon(Icons.people_alt), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'TaskScheduleScreen displays assignee badge when isFamily is true and assignedUserId is set',
+    (WidgetTester tester) async {
+      final familyTaskWithAssignee = TaskSchedule(
+        id: '1',
+        title: 'Family Task With Assignee',
+        description: 'Assigned family task description',
+        isFamily: true,
+        assignedUserId: 'user-alice',
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([familyTaskWithAssignee]);
+
+      await tester.pumpWidget(
+        createScreen(
+          overrides: [
+            userNameProvider(
+              'user-alice',
+            ).overrideWith((ref) => Future.value('Alice')),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Family Task With Assignee'), findsOneWidget);
+      expect(find.text('Family'), findsOneWidget);
+      expect(find.byIcon(Icons.people_alt), findsOneWidget);
+      expect(find.text('Assigned to Alice'), findsOneWidget);
+      expect(find.byIcon(Icons.assignment_ind), findsOneWidget);
+    },
+  );
 
   testGoldens('TaskScheduleScreen empty state golden', (tester) async {
     final mockAuthRepository = MockAuthRepository();
