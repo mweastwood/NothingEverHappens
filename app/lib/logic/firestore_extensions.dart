@@ -24,7 +24,7 @@ extension FirestoreDocFetchExtension<T> on DocumentReference<T> {
   /// instead, so [options] is not applicable and is ignored.
   Future<DocumentSnapshot<T>> safeGet({
     GetOptions? options,
-    Duration timeout = const Duration(seconds: 10),
+    Duration timeout = const Duration(seconds: 15),
   }) async {
     if (_isWeb) {
       return snapshots().timeout(timeout).first;
@@ -50,7 +50,7 @@ extension FirestoreQueryFetchExtension<T> on Query<T> {
   /// instead, so [options] is not applicable and is ignored.
   Future<QuerySnapshot<T>> safeGet({
     GetOptions? options,
-    Duration timeout = const Duration(seconds: 10),
+    Duration timeout = const Duration(seconds: 15),
   }) async {
     if (_isWeb) {
       return snapshots().timeout(timeout).first;

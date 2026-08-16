@@ -4,6 +4,7 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:nothing_ever_happens/logic/firestore_extensions.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 
 class InitialFirebaseMigrationService {
   static final Map<String, Future<void>> _inFlightMigrations = {};
@@ -91,14 +92,33 @@ class InitialFirebaseMigrationService {
         },
       );
 
-      // Get personal instances
+      // Get personal instances (bounded to recent instances within 90 days or limit to prevent massive payload timeouts)
       _logger?.debug('sync', '[Migration 3/5] Fetching personal instances...');
       final instanceStepWatch = Stopwatch()..start();
-      final personalInstancesSnap = await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('instances')
-          .safeGet();
+      final cutoffDate = AppClock.now.subtract(const Duration(days: 90));
+
+      QuerySnapshot<Map<String, dynamic>> personalInstancesSnap;
+      try {
+        personalInstancesSnap = await _firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('instances')
+            .where('updatedAt', isGreaterThan: cutoffDate)
+            .safeGet(timeout: const Duration(seconds: 15));
+      } catch (e) {
+        _logger?.warning(
+          'sync',
+          'Failed to query instances with cutoffDate, falling back to limit(300)',
+          error: e,
+        );
+        personalInstancesSnap = await _firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('instances')
+            .limit(300)
+            .safeGet(timeout: const Duration(seconds: 15));
+      }
+
       instancesToMigrate.addAll(
         personalInstancesSnap.docs.map(
           (doc) => TaskInstance.fromFirestore(doc),
@@ -121,16 +141,28 @@ class InitialFirebaseMigrationService {
             .collection('families')
             .doc(familyId)
             .collection('tasks')
-            .safeGet();
+            .safeGet(timeout: const Duration(seconds: 15));
         tasksToMigrate.addAll(
           familyTasksSnap.docs.map((doc) => TaskSchedule.fromFirestore(doc)),
         );
 
-        final familyInstancesSnap = await _firestore
-            .collection('families')
-            .doc(familyId)
-            .collection('instances')
-            .safeGet();
+        QuerySnapshot<Map<String, dynamic>> familyInstancesSnap;
+        try {
+          familyInstancesSnap = await _firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .where('updatedAt', isGreaterThan: cutoffDate)
+              .safeGet(timeout: const Duration(seconds: 15));
+        } catch (e) {
+          familyInstancesSnap = await _firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .limit(300)
+              .safeGet(timeout: const Duration(seconds: 15));
+        }
+
         instancesToMigrate.addAll(
           familyInstancesSnap.docs.map(
             (doc) => TaskInstance.fromFirestore(doc),
