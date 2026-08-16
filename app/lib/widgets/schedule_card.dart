@@ -6,6 +6,7 @@ import '../logic/l10n_extension.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/subscription_service.dart';
+import '../logic/user_profile_provider.dart';
 
 class ScheduleCard extends ConsumerWidget {
   final TaskSchedule task;
@@ -26,6 +27,45 @@ class ScheduleCard extends ConsumerWidget {
     final period = time.period == DayPeriod.am ? 'AM' : 'PM';
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute $period';
+  }
+
+  Widget _buildBadge(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.4 : 0.25),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -237,6 +277,34 @@ class ScheduleCard extends ConsumerWidget {
                 ),
               ],
             ),
+            if (task.isFamily) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6.0,
+                runSpacing: 6.0,
+                children: [
+                  _buildBadge(
+                    context,
+                    icon: Icons.people_alt,
+                    label: context.l10n.familyTab,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  if (task.assignedUserId != null)
+                    _buildBadge(
+                      context,
+                      icon: Icons.assignment_ind,
+                      label: ref
+                          .watch(userNameProvider(task.assignedUserId!))
+                          .when(
+                            data: (name) => context.l10n.assignedTo(name),
+                            loading: () => context.l10n.loadingBadge,
+                            error: (_, _) => context.l10n.assignedBadge,
+                          ),
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                ],
+              ),
+            ],
             if (task.description.isNotEmpty) ...[
               const SizedBox(height: 8),
               MarkdownBody(data: task.description, selectable: true),
