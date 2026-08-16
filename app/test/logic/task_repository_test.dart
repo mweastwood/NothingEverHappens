@@ -2592,6 +2592,10 @@ void main() {
     testWidgets(
       'correctly aggregates planned minutes per day filtering out skipped instances',
       (tester) async {
+        final baseDate = DateTime(2026, 8, 16);
+        AppClock.setMockTime(baseDate);
+        addTearDown(AppClock.reset);
+
         final day1 = const CivilDay(year: 2026, month: 8, day: 14);
         final day2 = const CivilDay(year: 2026, month: 8, day: 15);
 
@@ -2703,6 +2707,227 @@ void main() {
       },
     );
 
+    testWidgets(
+      'filters out instances outside active planning horizon (-14 to +60 days)',
+      (tester) async {
+        final baseDate = DateTime(2026, 8, 16);
+        AppClock.setMockTime(baseDate);
+        addTearDown(AppClock.reset);
+
+        final today = CivilDay.fromDateTime(baseDate);
+        final dayPastInside = today.addDays(-14);
+        final dayPastOutside = today.addDays(-15);
+        final dayFutureInside = today.addDays(60);
+        final dayFutureOutside = today.addDays(61);
+
+        final schedule = TaskSchedule(
+          id: 'S-horizon-schedule',
+          title: 'Horizon Task',
+          description: '45 mins',
+          estimatedDuration: const Duration(minutes: 45),
+          schedules: [],
+        );
+
+        TaskInstance makeInstance(String id, CivilDay day) => TaskInstance(
+          id: id,
+          scheduleId: schedule.id,
+          ruleId: 'r-1',
+          title: 'Inst $id',
+          description: '',
+          scheduledDate: day,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          schedule,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          makeInstance('i-past-in', dayPastInside),
+          makeInstance('i-past-out', dayPastOutside),
+          makeInstance('i-future-in', dayFutureInside),
+          makeInstance('i-future-out', dayFutureOutside),
+        ]);
+
+        late Map<CivilDay, double> planned;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+              authStateProvider.overrideWith((ref) => Stream.value(null)),
+            ],
+            child: Consumer(
+              builder: (context, ref, child) {
+                planned = ref.watch(plannedMinutesPerDayProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(planned[dayPastInside], equals(45.0));
+        expect(planned[dayPastOutside], isNull);
+        expect(planned[dayFutureInside], equals(45.0));
+        expect(planned[dayFutureOutside], isNull);
+
+        await tasksSubject.close();
+        await instancesSubject.close();
+      },
+    );
+
+    testWidgets(
+      'filters instances by assignedUserId and handles null durations gracefully',
+      (tester) async {
+        final baseDate = DateTime(2026, 8, 16);
+        AppClock.setMockTime(baseDate);
+        addTearDown(AppClock.reset);
+
+        final day = const CivilDay(year: 2026, month: 8, day: 16);
+
+        final scheduleWithDuration = TaskSchedule(
+          id: 'S-with-duration',
+          title: 'With Duration',
+          description: '',
+          estimatedDuration: const Duration(minutes: 50),
+          schedules: [],
+        );
+
+        final scheduleNoDuration = TaskSchedule(
+          id: 'S-no-duration',
+          title: 'No Duration',
+          description: '',
+          estimatedDuration: null,
+          schedules: [],
+        );
+
+        final instCurrentUser = TaskInstance(
+          id: 'i-user-current',
+          scheduleId: scheduleWithDuration.id,
+          ruleId: 'r-1',
+          title: 'My Task',
+          description: '',
+          assignedUserId: 'test-user-id',
+          scheduledDate: day,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final instOtherUser = TaskInstance(
+          id: 'i-user-other',
+          scheduleId: scheduleWithDuration.id,
+          ruleId: 'r-1',
+          title: 'Other Task',
+          description: '',
+          assignedUserId: 'user-999',
+          scheduledDate: day,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final instUnassigned = TaskInstance(
+          id: 'i-unassigned',
+          scheduleId: scheduleWithDuration.id,
+          ruleId: 'r-1',
+          title: 'Unassigned Task',
+          description: '',
+          assignedUserId: null,
+          scheduledDate: day,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final instNullDuration = TaskInstance(
+          id: 'i-null-dur',
+          scheduleId: scheduleNoDuration.id,
+          ruleId: 'r-1',
+          title: 'Null Duration Task',
+          description: '',
+          assignedUserId: 'test-user-id',
+          scheduledDate: day,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          scheduleWithDuration,
+          scheduleNoDuration,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          instCurrentUser,
+          instOtherUser,
+          instUnassigned,
+          instNullDuration,
+        ]);
+
+        late Map<CivilDay, double> planned;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+              authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
+            ],
+            child: Consumer(
+              builder: (context, ref, child) {
+                planned = ref.watch(plannedMinutesPerDayProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // 50 (instCurrentUser) + 50 (instUnassigned) = 100
+        expect(planned[day], equals(100.0));
+
+        await tasksSubject.close();
+        await instancesSubject.close();
+      },
+    );
+  });
+
+  group('triggerMissedPolicyProcessing', () {
     test(
       'reports errors to ErrorHandler during triggerMissedPolicyProcessing',
       () async {
