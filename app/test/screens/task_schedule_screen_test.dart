@@ -9,6 +9,7 @@ import '../test_helper.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
+import 'package:nothing_ever_happens/screens/create_task_screen.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -798,6 +799,115 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('lastSpawnedDate:'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'TaskScheduleScreen copy button renders with proper tooltip and key',
+    (WidgetTester tester) async {
+      final dailyTask = TaskSchedule(
+        id: 'task-copy-1',
+        title: 'Daily Workout',
+        description: 'Workout every morning',
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 7, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([dailyTask]);
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      final copyButtonKey = const Key('copy_schedule_button_S-task-copy-1');
+      expect(find.byKey(copyButtonKey), findsOneWidget);
+
+      final iconButton = tester.widget<IconButton>(find.byKey(copyButtonKey));
+      expect(iconButton.tooltip, 'Copy Schedule');
+    },
+  );
+
+  testWidgets(
+    'TaskScheduleScreen tapping copy button opens CreateTaskScreen pre-populated under a new ID and saves new task',
+    (WidgetTester tester) async {
+      final dailyTask = TaskSchedule(
+        id: 'task-copy-2',
+        title: 'Water Plants',
+        description: 'Water indoor and balcony plants',
+        priority: TaskPriority.high,
+        estimatedDuration: const Duration(minutes: 25),
+        schedules: [
+          DailySchedule(
+            id: 'R-water-orig',
+            scheduleId: 'S-task-copy-2',
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 3,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([dailyTask]);
+
+      TaskSchedule? savedTask;
+      when(mockTaskRepository.addTaskSchedule(any)).thenAnswer((invocation) async {
+        savedTask = invocation.positionalArguments[0] as TaskSchedule;
+      });
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      // Tap copy button
+      final copyButtonKey = const Key('copy_schedule_button_S-task-copy-2');
+      await tester.tap(find.byKey(copyButtonKey));
+      await tester.pumpAndSettle();
+
+      // Verify CreateTaskScreen is opened
+      expect(find.byType(CreateTaskScreen), findsOneWidget);
+
+      // Verify pre-populated fields
+      expect(find.text('Water Plants'), findsOneWidget);
+      expect(find.text('Water indoor and balcony plants'), findsOneWidget);
+      expect(find.text('25'), findsOneWidget);
+
+      // Save task
+      final saveButton = find.text('Save');
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+
+      // Verify addTaskSchedule called with new TaskSchedule without mutating original
+      verify(mockTaskRepository.addTaskSchedule(any)).called(1);
+      verifyNever(mockTaskRepository.updateTaskSchedule(any));
+
+      expect(savedTask, isNotNull);
+      expect(savedTask!.id, isNot(equals('S-task-copy-2')));
+      expect(savedTask!.title, 'Water Plants');
+      expect(savedTask!.description, 'Water indoor and balcony plants');
+      expect(savedTask!.priority, TaskPriority.high);
+      expect(savedTask!.estimatedDuration, const Duration(minutes: 25));
+      expect(savedTask!.schedules.length, 1);
+      expect(savedTask!.schedules.first.id, isNot(equals('R-water-orig')));
+      expect(savedTask!.schedules.first.scheduleId, savedTask!.id);
+      expect((savedTask!.schedules.first as DailySchedule).interval, 3);
     },
   );
 

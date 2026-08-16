@@ -102,6 +102,7 @@
   "deleteTaskConfirmBody": "¿Estás seguro de que quieres eliminar \"{title}\"? Esta acción eliminará permanentemente la tarea.",
   "cancelButton": "Cancelar",
   "deleteButton": "Eliminar",
+  "copyScheduleTooltip": "Copiar horario",
   "editScheduleTooltip": "Editar Calendario",
   "deleteTaskTooltip": "Eliminar Tarea",
   "dailyRecurrence": "Diario",

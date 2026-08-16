@@ -118,6 +118,7 @@
   },
   "cancelButton": "Cancel",
   "deleteButton": "Delete",
+  "copyScheduleTooltip": "Copy Schedule",
   "editScheduleTooltip": "Edit Schedule",
   "deleteTaskTooltip": "Delete Task",
   "dailyRecurrence": "Daily",

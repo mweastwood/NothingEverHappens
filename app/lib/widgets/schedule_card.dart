@@ -11,12 +11,14 @@ class ScheduleCard extends ConsumerWidget {
   final TaskSchedule task;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onCopy;
 
   const ScheduleCard({
     super.key,
     required this.task,
     required this.onEdit,
     required this.onDelete,
+    this.onCopy,
   });
 
   String _formatTimeOfDay(TimeOfDay time) {
@@ -182,6 +184,13 @@ class ScheduleCard extends ConsumerWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (onCopy != null)
+                      IconButton(
+                        key: Key('copy_schedule_button_${task.id}'),
+                        icon: const Icon(Icons.copy_outlined),
+                        tooltip: context.l10n.copyScheduleTooltip,
+                        onPressed: onCopy,
+                      ),
                     IconButton(
                       key: Key('edit_schedule_button_${task.id}'),
                       icon: const Icon(Icons.edit_calendar),

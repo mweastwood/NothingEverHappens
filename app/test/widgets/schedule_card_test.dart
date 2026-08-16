@@ -116,6 +116,64 @@ void main() {
       expect(find.text('10:30 AM - 12:00 PM'), findsOneWidget);
     });
 
+    testWidgets(
+      'renders copy button when onCopy is provided and triggers action',
+      (tester) async {
+        bool copyTapped = false;
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: ScheduleCard(
+                    task: dailyTask,
+                    onEdit: () {},
+                    onDelete: () {},
+                    onCopy: () => copyTapped = true,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final copyButton = find.byKey(const Key('copy_schedule_button_S-1'));
+        expect(copyButton, findsOneWidget);
+
+        final iconButton = tester.widget<IconButton>(copyButton);
+        expect(iconButton.tooltip, 'Copy Schedule');
+
+        await tester.tap(copyButton);
+        expect(copyTapped, isTrue);
+      },
+    );
+
+    testWidgets('does not render copy button when onCopy is null', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ScheduleCard(
+                  task: dailyTask,
+                  onEdit: () {},
+                  onDelete: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const Key('copy_schedule_button_S-1')),
+        findsNothing,
+      );
+    });
+
     testGoldens(
       'ScheduleCard renders correctly across different schedule types',
       (tester) async {

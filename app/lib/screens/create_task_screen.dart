@@ -27,11 +27,13 @@ class CreateTaskScreen extends ConsumerStatefulWidget {
   static bool debugDisableAnimations = false;
 
   final TaskSchedule? taskToEdit;
+  final TaskSchedule? taskToDuplicate;
   final bool defaultToRepeating;
 
   const CreateTaskScreen({
     super.key,
     this.taskToEdit,
+    this.taskToDuplicate,
     this.defaultToRepeating = false,
   });
 
@@ -92,6 +94,32 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             .toString();
       }
       _schedules = List.from(task.schedules);
+      if (_schedules.isNotEmpty) {
+        _expandedScheduleIndex = 0;
+      }
+    } else if (widget.taskToDuplicate != null) {
+      final task = widget.taskToDuplicate!;
+      _taskScheduleId = TaskSchedule.generateId();
+      _titleController.text = task.title;
+      _descriptionController.text = task.description;
+      _isFamily = task.isFamily;
+      _priority = task.priority;
+      _cycleId = task.cycleId;
+      _preferredBy = Map<String, bool>.from(task.preferredBy);
+      _assignedUserId = task.assignedUserId;
+      _skipIfNoCapacity = task.skipIfNoCapacity;
+      if (task.estimatedDuration != null) {
+        _estimatedDurationController.text = task.estimatedDuration!.inMinutes
+            .toString();
+      }
+      _schedules = task.schedules
+          .map(
+            (s) => s.copyWithTiming(
+              id: TaskScheduleRule.generateId(),
+              scheduleId: _taskScheduleId,
+            ),
+          )
+          .toList();
       if (_schedules.isNotEmpty) {
         _expandedScheduleIndex = 0;
       }

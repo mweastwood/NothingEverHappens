@@ -579,6 +579,21 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                   ),
                 ),
                 IconButton(
+                  key: Key('copy_schedule_button_${task.id}'),
+                  icon: const Icon(Icons.copy_outlined, size: 20),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: context.l10n.copyScheduleTooltip,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            CreateTaskScreen(taskToDuplicate: task),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
                   key: Key('edit_schedule_button_${task.id}'),
                   icon: const Icon(Icons.edit_calendar_outlined, size: 20),
                   visualDensity: VisualDensity.compact,
