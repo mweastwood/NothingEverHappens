@@ -29,12 +29,14 @@ class CreateTaskScreen extends ConsumerStatefulWidget {
   final TaskSchedule? taskToEdit;
   final TaskSchedule? taskToDuplicate;
   final bool defaultToRepeating;
+  final bool isPracticeTask;
 
   const CreateTaskScreen({
     super.key,
     this.taskToEdit,
     this.taskToDuplicate,
     this.defaultToRepeating = false,
+    this.isPracticeTask = false,
   });
 
   @override
@@ -74,6 +76,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   String? _assignedUserId;
   bool _skipIfNoCapacity = false;
 
+  // Workflow properties
+  bool _isMealWorkflow = false;
+  TimeOfDay _selectTime = const TimeOfDay(hour: 10, minute: 0);
+  TimeOfDay _shopTime = const TimeOfDay(hour: 16, minute: 0);
+  TimeOfDay _prepTime = const TimeOfDay(hour: 18, minute: 30);
+
   @override
   void initState() {
     super.initState();
@@ -89,6 +97,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       _preferredBy = Map<String, bool>.from(task.preferredBy);
       _assignedUserId = task.assignedUserId;
       _skipIfNoCapacity = task.skipIfNoCapacity;
+      _isMealWorkflow = task.workflowType == 'mealWorkflow';
+      if (task.mealWorkflowConfig != null) {
+        _selectTime = task.mealWorkflowConfig!.selectTime.time;
+        _shopTime = task.mealWorkflowConfig!.shopTime.time;
+        _prepTime = task.mealWorkflowConfig!.prepTime.time;
+      }
       if (task.estimatedDuration != null) {
         _estimatedDurationController.text = task.estimatedDuration!.inMinutes
             .toString();
@@ -252,6 +266,14 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         final firstLegacyPolicy =
             firstRepeating?.missedOccurrencePolicy.policy ?? MissedPolicy.stack;
 
+        final mealWorkflowConfig = _isMealWorkflow
+            ? MealWorkflowConfig(
+                selectTime: RelativeTime(dayOffset: 0, time: _selectTime),
+                shopTime: RelativeTime(dayOffset: 0, time: _shopTime),
+                prepTime: RelativeTime(dayOffset: 0, time: _prepTime),
+              )
+            : null;
+
         final newTask = TaskSchedule(
           id: _taskScheduleId,
           title: _titleController.text,
@@ -274,6 +296,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           preferredBy: _preferredBy,
           assignedUserId: _assignedUserId,
           skipIfNoCapacity: _skipIfNoCapacity,
+          workflowType: _isMealWorkflow ? 'mealWorkflow' : null,
+          mealWorkflowConfig: mealWorkflowConfig,
         );
 
         final repository = ref.read(taskRepositoryProvider);
@@ -304,6 +328,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               newCycleId: _cycleId,
               newPreferredBy: _preferredBy,
               newAssignedUserId: _assignedUserId,
+              newWorkflowType: _isMealWorkflow ? 'mealWorkflow' : null,
+              newMealWorkflowConfig: mealWorkflowConfig,
               newSkipIfNoCapacity: _skipIfNoCapacity,
             );
             await repository
@@ -662,6 +688,195 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     );
   }
 
+  Widget _buildWorkflowCard(BuildContext context, bool readOnly) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+        color: theme.colorScheme.surfaceContainerLow,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 20,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Task Workflow',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: [
+                  StandardChoiceChip(
+                    key: const Key('workflow_standard_chip'),
+                    label: 'Standard Task',
+                    selected: !_isMealWorkflow,
+                    onSelected: readOnly
+                        ? null
+                        : (selected) {
+                            if (selected) {
+                              setState(() => _isMealWorkflow = false);
+                            }
+                          },
+                  ),
+                  StandardChoiceChip(
+                    key: const Key('workflow_meal_chip'),
+                    label: 'Meal Planning Workflow',
+                    selected: _isMealWorkflow,
+                    onSelected: readOnly
+                        ? null
+                        : (selected) {
+                            if (selected) {
+                              setState(() {
+                                _isMealWorkflow = true;
+                                if (_titleController.text.trim().isEmpty) {
+                                  _titleController.text = 'Dinner';
+                                }
+                              });
+                            }
+                          },
+                  ),
+                ],
+              ),
+              if (_isMealWorkflow) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Coordinates dinner across 3 stages: selecting a recipe, checking shopping list, and cooking instructions.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Stage Target Times',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: readOnly
+                            ? null
+                            : () async {
+                                final t = await showTimePicker(
+                                  context: context,
+                                  initialTime: _selectTime,
+                                );
+                                if (t != null) {
+                                  setState(() => _selectTime = t);
+                                }
+                              },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              '1. Select',
+                              style: TextStyle(fontSize: 10),
+                            ),
+                            Text(
+                              _selectTime.format(context),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: readOnly
+                            ? null
+                            : () async {
+                                final t = await showTimePicker(
+                                  context: context,
+                                  initialTime: _shopTime,
+                                );
+                                if (t != null) {
+                                  setState(() => _shopTime = t);
+                                }
+                              },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              '2. Shop',
+                              style: TextStyle(fontSize: 10),
+                            ),
+                            Text(
+                              _shopTime.format(context),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: readOnly
+                            ? null
+                            : () async {
+                                final t = await showTimePicker(
+                                  context: context,
+                                  initialTime: _prepTime,
+                                );
+                                if (t != null) {
+                                  setState(() => _prepTime = t);
+                                }
+                              },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              '3. Prep',
+                              style: TextStyle(fontSize: 10),
+                            ),
+                            Text(
+                              _prepTime.format(context),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildScheduleSection(
     BuildContext context,
     bool readOnly,
@@ -868,6 +1083,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                   final isDesktop = constraints.maxWidth >= 800;
 
                   final detailsCard = _buildDetailsCard(context, readOnly);
+                  final workflowCard = _buildWorkflowCard(context, readOnly);
                   final scheduleSection = _buildScheduleSection(
                     context,
                     readOnly,
@@ -916,6 +1132,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                     children: [
                                       detailsCard,
                                       const SizedBox(height: 16),
+                                      workflowCard,
+                                      const SizedBox(height: 16),
                                       Row(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
@@ -951,6 +1169,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       detailsCard,
+                                      const SizedBox(height: 16),
+                                      workflowCard,
                                       const SizedBox(height: 16),
                                       scheduleSection,
                                       const SizedBox(height: 16),

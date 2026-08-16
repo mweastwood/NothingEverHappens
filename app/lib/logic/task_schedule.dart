@@ -7,12 +7,14 @@ import 'task_priority.dart';
 import 'task_schedule_rule.dart';
 import 'scheduling_policy.dart';
 import 'missed_occurrence_policy.dart';
+import 'workflows/task_workflow.dart';
 
 export 'task_priority.dart';
 export 'daily_occurrence_time.dart';
 export 'task_schedule_rule.dart';
 export 'scheduling_policy.dart';
 export 'missed_occurrence_policy.dart';
+export 'workflows/task_workflow.dart';
 
 /// Result of a task update operation.
 typedef TaskModification = ({
@@ -87,6 +89,12 @@ class TaskSchedule {
   /// Optional URL to open when interacting with this task (e.g. for app integrations like Duolingo).
   final String? appLaunchUrl;
 
+  /// Optional workflow type (e.g. 'mealWorkflow').
+  final String? workflowType;
+
+  /// Optional configuration for meal planning workflow.
+  final MealWorkflowConfig? mealWorkflowConfig;
+
   /// Whether this task should be skipped if daily capacity is exceeded.
   final bool skipIfNoCapacity;
 
@@ -140,6 +148,8 @@ class TaskSchedule {
     this.preferredBy = const {},
     this.assignedUserId,
     this.appLaunchUrl,
+    this.workflowType,
+    this.mealWorkflowConfig,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
     MissedPolicy? missedPolicy,
@@ -235,6 +245,13 @@ class TaskSchedule {
       }
     }
 
+    final workflowType = data['workflowType'] as String?;
+    final mealWorkflowConfig = data['mealWorkflowConfig'] != null
+        ? MealWorkflowConfig.fromJson(
+            Map<String, dynamic>.from(data['mealWorkflowConfig'] as Map),
+          )
+        : null;
+
     return TaskSchedule(
       id: snapshot.id,
       title: data['title'] as String? ?? 'Untitled',
@@ -253,6 +270,8 @@ class TaskSchedule {
       preferredBy: preferredBy,
       assignedUserId: assignedUserId,
       appLaunchUrl: appLaunchUrl,
+      workflowType: workflowType,
+      mealWorkflowConfig: mealWorkflowConfig,
       skipIfNoCapacity: skipIfNoCapacity,
       hasPendingWrites: snapshot.metadata.hasPendingWrites,
       isFromCache: snapshot.metadata.isFromCache,
@@ -276,6 +295,9 @@ class TaskSchedule {
       'preferredBy': preferredBy,
       if (assignedUserId != null) 'assignedUserId': assignedUserId,
       if (appLaunchUrl != null) 'appLaunchUrl': appLaunchUrl,
+      if (workflowType != null) 'workflowType': workflowType,
+      if (mealWorkflowConfig != null)
+        'mealWorkflowConfig': mealWorkflowConfig!.toJson(),
       'futureInstancesCount': futureInstancesCount,
       'skipIfNoCapacity': skipIfNoCapacity,
       'updatedAt': updatedAt,
@@ -296,6 +318,8 @@ class TaskSchedule {
     Map<String, bool>? newPreferredBy,
     String? newAssignedUserId,
     String? newAppLaunchUrl,
+    String? newWorkflowType,
+    MealWorkflowConfig? newMealWorkflowConfig,
     SchedulingPolicy? newSchedulingPolicy,
     MissedOccurrencePolicy? newMissedOccurrencePolicy,
     bool? newSkipIfNoCapacity,
@@ -347,6 +371,10 @@ class TaskSchedule {
       clearAssignedUserId: newAssignedUserId == null,
       appLaunchUrl: newAppLaunchUrl,
       clearAppLaunchUrl: newAppLaunchUrl == null,
+      workflowType: newWorkflowType,
+      clearWorkflowType: newWorkflowType == null,
+      mealWorkflowConfig: newMealWorkflowConfig,
+      clearMealWorkflowConfig: newMealWorkflowConfig == null,
       skipIfNoCapacity: resolvedSkip,
     );
 
@@ -412,6 +440,14 @@ class TaskSchedule {
 
     if (appLaunchUrl != newAppLaunchUrl) {
       changes['appLaunchUrl'] = newAppLaunchUrl;
+    }
+
+    if (newWorkflowType != workflowType) {
+      changes['workflowType'] = newWorkflowType;
+    }
+
+    if (newMealWorkflowConfig != mealWorkflowConfig) {
+      changes['mealWorkflowConfig'] = newMealWorkflowConfig?.toJson();
     }
 
     if (newTask.futureInstancesCount != futureInstancesCount) {
@@ -542,6 +578,10 @@ class TaskSchedule {
     bool clearAssignedUserId = false,
     String? appLaunchUrl,
     bool clearAppLaunchUrl = false,
+    String? workflowType,
+    bool clearWorkflowType = false,
+    MealWorkflowConfig? mealWorkflowConfig,
+    bool clearMealWorkflowConfig = false,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
     DateTime? updatedAt,
@@ -567,6 +607,10 @@ class TaskSchedule {
       clearAssignedUserId: clearAssignedUserId,
       appLaunchUrl: appLaunchUrl,
       clearAppLaunchUrl: clearAppLaunchUrl,
+      workflowType: workflowType,
+      clearWorkflowType: clearWorkflowType,
+      mealWorkflowConfig: mealWorkflowConfig,
+      clearMealWorkflowConfig: clearMealWorkflowConfig,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
       updatedAt: updatedAt,
@@ -594,6 +638,10 @@ class TaskSchedule {
     bool clearAssignedUserId = false,
     String? appLaunchUrl,
     bool clearAppLaunchUrl = false,
+    String? workflowType,
+    bool clearWorkflowType = false,
+    MealWorkflowConfig? mealWorkflowConfig,
+    bool clearMealWorkflowConfig = false,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
     bool? skipIfNoCapacity,
@@ -646,6 +694,12 @@ class TaskSchedule {
       appLaunchUrl: clearAppLaunchUrl
           ? null
           : (appLaunchUrl ?? this.appLaunchUrl),
+      workflowType: clearWorkflowType
+          ? null
+          : (workflowType ?? this.workflowType),
+      mealWorkflowConfig: clearMealWorkflowConfig
+          ? null
+          : (mealWorkflowConfig ?? this.mealWorkflowConfig),
       skipIfNoCapacity: skipIfNoCapacity ?? this.skipIfNoCapacity,
       hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
       isFromCache: isFromCache ?? this.isFromCache,

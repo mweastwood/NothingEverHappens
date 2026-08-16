@@ -1658,4 +1658,65 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get telemetrySettingSubtitle =>
       'Help improve the app by sharing anonymous usage statistics and app metrics.';
+
+  @override
+  String get recipesTitle => 'Recipes';
+
+  @override
+  String get recipeLibrary => 'Recipe Library';
+
+  @override
+  String get noRecipesFound => 'No recipes found';
+
+  @override
+  String get addRecipe => 'Add Recipe';
+
+  @override
+  String get editRecipe => 'Edit Recipe';
+
+  @override
+  String get deleteRecipe => 'Delete Recipe';
+
+  @override
+  String get servings => 'Servings';
+
+  @override
+  String get ingredients => 'Ingredients';
+
+  @override
+  String get prepInstructions => 'Prep Instructions';
+
+  @override
+  String get cookInstructions => 'Cook Instructions';
+
+  @override
+  String get startCooking => 'Start Cooking';
+
+  @override
+  String get cookingMode => 'Cooking Mode';
+
+  @override
+  String get stepTimer => 'Step Timer';
+
+  @override
+  String get finishCooking => 'Finish Cooking';
+
+  @override
+  String get selectMeal => 'Select Meal';
+
+  @override
+  String get shoppingList => 'Shopping List';
+
+  @override
+  String get pantryCheck => 'Pantry Check';
+
+  @override
+  String get storeChecklist => 'Store Checklist';
+
+  @override
+  String get mealWorkflow => 'Meal Planning Workflow';
+
+  @override
+  String get mealWorkflowDesc =>
+      'Plan dinners with recipe selection, dynamic shopping list, and prep tasks.';
 }

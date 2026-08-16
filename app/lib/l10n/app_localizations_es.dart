@@ -1674,4 +1674,65 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get telemetrySettingSubtitle =>
       'Ayuda a mejorar la aplicación compartiendo estadísticas anónimas de uso y métricas.';
+
+  @override
+  String get recipesTitle => 'Recetas';
+
+  @override
+  String get recipeLibrary => 'Recetario';
+
+  @override
+  String get noRecipesFound => 'No se encontraron recetas';
+
+  @override
+  String get addRecipe => 'Añadir Receta';
+
+  @override
+  String get editRecipe => 'Editar Receta';
+
+  @override
+  String get deleteRecipe => 'Eliminar Receta';
+
+  @override
+  String get servings => 'Porciones';
+
+  @override
+  String get ingredients => 'Ingredientes';
+
+  @override
+  String get prepInstructions => 'Instrucciones de Preparación';
+
+  @override
+  String get cookInstructions => 'Instrucciones de Cocción';
+
+  @override
+  String get startCooking => 'Empezar a Cocinar';
+
+  @override
+  String get cookingMode => 'Modo Cocina';
+
+  @override
+  String get stepTimer => 'Temporizador de Paso';
+
+  @override
+  String get finishCooking => 'Finalizar Cocina';
+
+  @override
+  String get selectMeal => 'Elegir Comida';
+
+  @override
+  String get shoppingList => 'Lista de Compras';
+
+  @override
+  String get pantryCheck => 'Revisión de Despensa';
+
+  @override
+  String get storeChecklist => 'Lista del Supermercado';
+
+  @override
+  String get mealWorkflow => 'Flujo de Planificación de Comidas';
+
+  @override
+  String get mealWorkflowDesc =>
+      'Planifica cenas con selección de recetas, lista de compras dinámica y tareas de preparación.';
 }

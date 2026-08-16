@@ -10,6 +10,8 @@ import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 
+import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
+
 final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
   final firestore = ref.watch(firestoreProvider) ?? FirebaseFirestore.instance;
   final localDataSource = ref.watch(hiveLocalDataSourceProvider);
@@ -42,9 +44,11 @@ class TaskSyncService {
 
   StreamSubscription? _tasksSub;
   StreamSubscription? _instancesSub;
+  StreamSubscription? _recipesSub;
   StreamSubscription? _userDocSub;
   StreamSubscription? _familyTasksSub;
   StreamSubscription? _familyInstancesSub;
+  StreamSubscription? _familyRecipesSub;
   String? _familyId;
 
   bool _isSyncing = false;
@@ -70,9 +74,11 @@ class TaskSyncService {
   void dispose() {
     _tasksSub?.cancel();
     _instancesSub?.cancel();
+    _recipesSub?.cancel();
     _userDocSub?.cancel();
     _familyTasksSub?.cancel();
     _familyInstancesSub?.cancel();
+    _familyRecipesSub?.cancel();
   }
 
   void startListeningToRemote() {
@@ -84,13 +90,15 @@ class TaskSyncService {
     if (_tasksSub != null && _instancesSub != null) return;
     _tasksSub?.cancel();
     _instancesSub?.cancel();
+    _recipesSub?.cancel();
     _userDocSub?.cancel();
     _familyTasksSub?.cancel();
     _familyInstancesSub?.cancel();
+    _familyRecipesSub?.cancel();
 
     logger?.info(
       'sync',
-      'Starting remote listeners for tasks and instances',
+      'Starting remote listeners for tasks, instances and recipes',
       data: {'userId': _userId},
     );
 
@@ -210,6 +218,54 @@ class TaskSyncService {
             errorHandler?.report(e, stackTrace: st);
           },
         );
+
+    _recipesSub = _firestore
+        .collection('users')
+        .doc(_userId)
+        .collection('recipes')
+        .snapshots()
+        .listen(
+          (snapshot) {
+            for (final change in snapshot.docChanges) {
+              if (change.type == DocumentChangeType.added ||
+                  change.type == DocumentChangeType.modified) {
+                if (change.doc.data() != null) {
+                  final remoteRecipe = Recipe.fromFirestore(change.doc);
+                  final localRecipe = _localDataSource
+                      .getRecipes()
+                      .where((r) => r.id == remoteRecipe.id)
+                      .firstOrNull;
+                  if (localRecipe == null ||
+                      remoteRecipe.updatedAt.isAfter(localRecipe.updatedAt)) {
+                    _localDataSource.saveRecipe(
+                      remoteRecipe.copyWith(
+                        hasPendingWrites: false,
+                        isFromCache: false,
+                      ),
+                    );
+                  }
+                }
+              } else if (change.type == DocumentChangeType.removed) {
+                final localRecipe = _localDataSource
+                    .getRecipes()
+                    .where((r) => r.id == change.doc.id)
+                    .firstOrNull;
+                if (localRecipe == null || !localRecipe.isFamily) {
+                  _localDataSource.deleteRecipe(change.doc.id);
+                }
+              }
+            }
+          },
+          onError: (e, st) {
+            logger?.error(
+              'sync',
+              'Remote recipes stream error',
+              error: e,
+              stackTrace: st,
+            );
+            errorHandler?.report(e, stackTrace: st);
+          },
+        );
   }
 
   void _startListeningToFamilyRemote(String familyId) {
@@ -296,6 +352,48 @@ class TaskSyncService {
             logger?.error(
               'sync',
               'Remote family instances stream error',
+              error: e,
+              stackTrace: st,
+            );
+            errorHandler?.report(e, stackTrace: st);
+          },
+        );
+
+    _familyRecipesSub = _firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('recipes')
+        .snapshots()
+        .listen(
+          (snapshot) {
+            for (final change in snapshot.docChanges) {
+              if (change.type == DocumentChangeType.added ||
+                  change.type == DocumentChangeType.modified) {
+                if (change.doc.data() != null) {
+                  final remoteRecipe = Recipe.fromFirestore(change.doc);
+                  final localRecipe = _localDataSource
+                      .getRecipes()
+                      .where((r) => r.id == remoteRecipe.id)
+                      .firstOrNull;
+                  if (localRecipe == null ||
+                      remoteRecipe.updatedAt.isAfter(localRecipe.updatedAt)) {
+                    _localDataSource.saveRecipe(
+                      remoteRecipe.copyWith(
+                        hasPendingWrites: false,
+                        isFromCache: false,
+                      ),
+                    );
+                  }
+                }
+              } else if (change.type == DocumentChangeType.removed) {
+                _localDataSource.deleteRecipe(change.doc.id);
+              }
+            }
+          },
+          onError: (e, st) {
+            logger?.error(
+              'sync',
+              'Remote family recipes stream error',
               error: e,
               stackTrace: st,
             );
