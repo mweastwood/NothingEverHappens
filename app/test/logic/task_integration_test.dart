@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/task_integration.dart';
 
@@ -12,30 +13,103 @@ void main() {
         expect(result, 'https://example.com/custom');
       });
 
-      test('prioritizes explicit appLaunchUrl over title substring match', () {
-        final result = TaskIntegration.resolveLaunchUrl(
-          title: 'Duolingo French',
-          appLaunchUrl: 'https://custom.duolingo.com/lesson',
-        );
-        expect(result, 'https://custom.duolingo.com/lesson');
-      });
+      test(
+        'prioritizes explicit appLaunchUrl over title substring match across platforms',
+        () {
+          final resultWeb = TaskIntegration.resolveLaunchUrl(
+            title: 'Duolingo French',
+            appLaunchUrl: 'https://custom.duolingo.com/lesson',
+            isWeb: true,
+          );
+          expect(resultWeb, 'https://custom.duolingo.com/lesson');
 
-      test('fallback to Duolingo URL when title contains duolingo', () {
+          final resultAndroid = TaskIntegration.resolveLaunchUrl(
+            title: 'Duolingo French',
+            appLaunchUrl: 'https://custom.duolingo.com/lesson',
+            isWeb: false,
+            platform: TargetPlatform.android,
+          );
+          expect(resultAndroid, 'https://custom.duolingo.com/lesson');
+
+          final resultIOS = TaskIntegration.resolveLaunchUrl(
+            title: 'Duolingo French',
+            appLaunchUrl: 'https://custom.duolingo.com/lesson',
+            isWeb: false,
+            platform: TargetPlatform.iOS,
+          );
+          expect(resultIOS, 'https://custom.duolingo.com/lesson');
+        },
+      );
+
+      test(
+        'returns https://www.duolingo.com/lesson on web when title contains duolingo',
+        () {
+          final resultLower = TaskIntegration.resolveLaunchUrl(
+            title: 'practice duolingo today',
+            isWeb: true,
+          );
+          expect(resultLower, 'https://www.duolingo.com/lesson');
+
+          final resultUpper = TaskIntegration.resolveLaunchUrl(
+            title: 'DUOLINGO LESSON',
+            isWeb: true,
+          );
+          expect(resultUpper, 'https://www.duolingo.com/lesson');
+
+          final resultMixed = TaskIntegration.resolveLaunchUrl(
+            title: 'Complete Duolingo Streak',
+            isWeb: true,
+          );
+          expect(resultMixed, 'https://www.duolingo.com/lesson');
+        },
+      );
+
+      test('returns duolingo:// on Android when title contains duolingo', () {
         final resultLower = TaskIntegration.resolveLaunchUrl(
           title: 'practice duolingo today',
+          isWeb: false,
+          platform: TargetPlatform.android,
         );
-        expect(resultLower, 'https://www.duolingo.com');
+        expect(resultLower, 'duolingo://');
 
         final resultUpper = TaskIntegration.resolveLaunchUrl(
           title: 'DUOLINGO LESSON',
+          isWeb: false,
+          platform: TargetPlatform.android,
         );
-        expect(resultUpper, 'https://www.duolingo.com');
+        expect(resultUpper, 'duolingo://');
 
         final resultMixed = TaskIntegration.resolveLaunchUrl(
           title: 'Complete Duolingo Streak',
+          isWeb: false,
+          platform: TargetPlatform.android,
         );
-        expect(resultMixed, 'https://www.duolingo.com');
+        expect(resultMixed, 'duolingo://');
       });
+
+      test(
+        'returns https://www.duolingo.com/lesson on other non-web platforms',
+        () {
+          for (final platform in [
+            TargetPlatform.iOS,
+            TargetPlatform.macOS,
+            TargetPlatform.windows,
+            TargetPlatform.linux,
+            TargetPlatform.fuchsia,
+          ]) {
+            final result = TaskIntegration.resolveLaunchUrl(
+              title: 'Duolingo Streak',
+              isWeb: false,
+              platform: platform,
+            );
+            expect(
+              result,
+              'https://www.duolingo.com/lesson',
+              reason: 'Failed for platform: $platform',
+            );
+          }
+        },
+      );
 
       test(
         'returns null when appLaunchUrl is null/empty and title does not match',
@@ -60,6 +134,15 @@ void main() {
             TaskIntegration.resolveLaunchUrl(title: null, appLaunchUrl: null),
             isNull,
           );
+
+          expect(
+            TaskIntegration.resolveLaunchUrl(
+              title: 'Read a book',
+              isWeb: false,
+              platform: TargetPlatform.android,
+            ),
+            isNull,
+          );
         },
       );
 
@@ -72,13 +155,22 @@ void main() {
       });
 
       test(
-        'falls back to title check when appLaunchUrl is whitespace-only string',
+        'falls back to platform-specific Duolingo check when appLaunchUrl is whitespace-only string',
         () {
-          final result = TaskIntegration.resolveLaunchUrl(
+          final resultWeb = TaskIntegration.resolveLaunchUrl(
             title: 'Duolingo Spanish',
             appLaunchUrl: '   ',
+            isWeb: true,
           );
-          expect(result, 'https://www.duolingo.com');
+          expect(resultWeb, 'https://www.duolingo.com/lesson');
+
+          final resultAndroid = TaskIntegration.resolveLaunchUrl(
+            title: 'Duolingo Spanish',
+            appLaunchUrl: '   ',
+            isWeb: false,
+            platform: TargetPlatform.android,
+          );
+          expect(resultAndroid, 'duolingo://');
         },
       );
 
