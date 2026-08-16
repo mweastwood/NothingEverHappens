@@ -483,6 +483,25 @@ void main() {
     );
 
     test(
+      'leaveFamily completes successfully and cleans up user profile when family document does not exist',
+      () async {
+        await firestore.collection('users').doc(userId).set({
+          'familyId': 'non-existent-family-id',
+          'familyRole': 'parent',
+        });
+
+        await repository.leaveFamily('non-existent-family-id');
+
+        final updatedUserDoc = await firestore
+            .collection('users')
+            .doc(userId)
+            .get();
+        expect(updatedUserDoc.data()?['familyId'], isNull);
+        expect(updatedUserDoc.data()?['familyRole'], isNull);
+      },
+    );
+
+    test(
       'getOutstandingFamilyInvites returns pending invites for the family',
       () async {
         await repository.inviteMember(

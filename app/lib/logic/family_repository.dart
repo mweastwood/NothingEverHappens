@@ -270,8 +270,6 @@ class FamilyRepository {
           }
         }
       }
-    } else {
-      batch.update(familyRef, {'members.$_userId': FieldValue.delete()});
     }
 
     batch.set(_firestore.collection('users').doc(_userId), {
