@@ -685,6 +685,370 @@ void main() {
       expect(instDoc.exists, isFalse);
     },
   );
+
+  test(
+    'Converting family task to personal deletes from families/{familyId} and sets in users/{userId}',
+    () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam1',
+      });
+
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      // Start with a family task and instance in remote
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('tasks')
+          .doc('S-fam-to-pers')
+          .set({
+            'id': 'S-fam-to-pers',
+            'title': 'Family Task',
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('instances')
+          .doc('I-fam-to-pers')
+          .set({
+            'id': 'I-fam-to-pers',
+            'scheduleId': 'S-fam-to-pers',
+            'title': 'Family Task Instance',
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
+
+      // Allow listeners to catch up
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Parent user changes task and instance to personal (isFamily = false)
+      final updatedTask = TaskSchedule(
+        id: 'S-fam-to-pers',
+        title: 'Now Personal Task',
+        description: 'Desc',
+        isFamily: false,
+        schedules: [],
+        updatedAt: DateTime(2026, 8, 16, 11, 0),
+      );
+      final updatedInst = TaskInstance(
+        id: 'I-fam-to-pers',
+        scheduleId: 'S-fam-to-pers',
+        ruleId: 'R-1',
+        title: 'Now Personal Task Instance',
+        description: 'Desc',
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 23, minute: 0),
+        ),
+        isFamily: false,
+        status: TaskStatus.pending,
+        updatedAt: DateTime(2026, 8, 16, 11, 0),
+      );
+
+      await localDataSource.saveTask(updatedTask);
+      await localDataSource.saveInstance(updatedInst);
+      await localDataSource.markDirty('S-fam-to-pers');
+      await localDataSource.markDirty('I-fam-to-pers');
+
+      await service.sync();
+
+      // Verify task and instance exist in user collection
+      final userTaskDoc = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-fam-to-pers')
+          .get();
+      expect(userTaskDoc.exists, isTrue);
+      expect(userTaskDoc.data()?['isFamily'], isFalse);
+      expect(userTaskDoc.data()?['title'], 'Now Personal Task');
+
+      final userInstDoc = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc('I-fam-to-pers')
+          .get();
+      expect(userInstDoc.exists, isTrue);
+      expect(userInstDoc.data()?['isFamily'], isFalse);
+
+      // Verify task and instance are DELETED from family collection
+      final famTaskDoc = await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('tasks')
+          .doc('S-fam-to-pers')
+          .get();
+      expect(famTaskDoc.exists, isFalse);
+
+      final famInstDoc = await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('instances')
+          .doc('I-fam-to-pers')
+          .get();
+      expect(famInstDoc.exists, isFalse);
+    },
+  );
+
+  test(
+    'Converting personal task to family deletes from users/{userId} and sets in families/{familyId}',
+    () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam1',
+      });
+
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      // Start with a personal task and instance in remote
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-pers-to-fam')
+          .set({
+            'id': 'S-pers-to-fam',
+            'title': 'Personal Task',
+            'isFamily': false,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc('I-pers-to-fam')
+          .set({
+            'id': 'I-pers-to-fam',
+            'scheduleId': 'S-pers-to-fam',
+            'title': 'Personal Task Instance',
+            'isFamily': false,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
+
+      // Allow listeners to catch up
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // User changes task and instance to family (isFamily = true)
+      final updatedTask = TaskSchedule(
+        id: 'S-pers-to-fam',
+        title: 'Now Family Task',
+        description: 'Desc',
+        isFamily: true,
+        schedules: [],
+        updatedAt: DateTime(2026, 8, 16, 11, 0),
+      );
+      final updatedInst = TaskInstance(
+        id: 'I-pers-to-fam',
+        scheduleId: 'S-pers-to-fam',
+        ruleId: 'R-1',
+        title: 'Now Family Task Instance',
+        description: 'Desc',
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 23, minute: 0),
+        ),
+        isFamily: true,
+        status: TaskStatus.pending,
+        updatedAt: DateTime(2026, 8, 16, 11, 0),
+      );
+
+      await localDataSource.saveTask(updatedTask);
+      await localDataSource.saveInstance(updatedInst);
+      await localDataSource.markDirty('S-pers-to-fam');
+      await localDataSource.markDirty('I-pers-to-fam');
+
+      await service.sync();
+
+      // Verify task and instance exist in family collection
+      final famTaskDoc = await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('tasks')
+          .doc('S-pers-to-fam')
+          .get();
+      expect(famTaskDoc.exists, isTrue);
+      expect(famTaskDoc.data()?['isFamily'], isTrue);
+      expect(famTaskDoc.data()?['title'], 'Now Family Task');
+
+      final famInstDoc = await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('instances')
+          .doc('I-pers-to-fam')
+          .get();
+      expect(famInstDoc.exists, isTrue);
+      expect(famInstDoc.data()?['isFamily'], isTrue);
+
+      // Verify task and instance are DELETED from user collection
+      final userTaskDoc = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-pers-to-fam')
+          .get();
+      expect(userTaskDoc.exists, isFalse);
+
+      final userInstDoc = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc('I-pers-to-fam')
+          .get();
+      expect(userInstDoc.exists, isFalse);
+    },
+  );
+
+  test(
+    'Parent listener does not delete local personal task when family doc is removed',
+    () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam1',
+      });
+
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      // Prepopulate a family task in remote
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('tasks')
+          .doc('S-kitchen')
+          .set({
+            'id': 'S-kitchen',
+            'title': 'Clean the Kitchen',
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(
+        localDataSource.getTasks().any((t) => t.id == 'S-kitchen'),
+        isTrue,
+      );
+
+      // Parent converts Clean the Kitchen to personal locally
+      final convertedTask = TaskSchedule(
+        id: 'S-kitchen',
+        title: 'Clean the Kitchen',
+        description: 'Personal now',
+        isFamily: false,
+        schedules: [],
+        updatedAt: DateTime(2026, 8, 16, 11, 35),
+      );
+      await localDataSource.saveTask(convertedTask);
+      await localDataSource.markDirty('S-kitchen');
+
+      // Parent syncs: pushes to users/user1/tasks and deletes from families/fam1/tasks
+      await service.sync();
+
+      // Allow listeners to process the remote family deletion
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Parent still retains the task locally as personal
+      expect(
+        localDataSource.getTasks().any((t) => t.id == 'S-kitchen'),
+        isTrue,
+      );
+      expect(
+        localDataSource
+            .getTasks()
+            .firstWhere((t) => t.id == 'S-kitchen')
+            .isFamily,
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'Member listener deletes local family task when family doc is removed',
+    () async {
+      await firestore.collection('users').doc('user2').set({
+        'familyId': 'fam1',
+        'familyRole': 'non-parent',
+      });
+
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user2',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      // Prepopulate a family task in remote
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('tasks')
+          .doc('S-kitchen-fam')
+          .set({
+            'id': 'S-kitchen-fam',
+            'title': 'Clean the Kitchen',
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(
+        localDataSource.getTasks().any((t) => t.id == 'S-kitchen-fam'),
+        isTrue,
+      );
+      expect(
+        localDataSource
+            .getTasks()
+            .firstWhere((t) => t.id == 'S-kitchen-fam')
+            .isFamily,
+        isTrue,
+      );
+
+      // Now simulate the family task being deleted from remote (e.g. parent converted it to personal)
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('tasks')
+          .doc('S-kitchen-fam')
+          .delete();
+
+      // Allow member listener to process the remote family deletion
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Member should have had the task removed from local storage
+      expect(
+        localDataSource.getTasks().any((t) => t.id == 'S-kitchen-fam'),
+        isFalse,
+      );
+    },
+  );
 }
 
 class _FailingHiveLocalDataSource extends HiveLocalDataSource {
