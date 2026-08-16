@@ -146,6 +146,8 @@ class TaskInstance {
         updatedAt = DateTime.parse(updatedAtRaw);
       } else if (updatedAtRaw is int) {
         updatedAt = DateTime.fromMillisecondsSinceEpoch(updatedAtRaw);
+      } else if (updatedAtRaw is DateTime) {
+        updatedAt = updatedAtRaw;
       }
     }
 

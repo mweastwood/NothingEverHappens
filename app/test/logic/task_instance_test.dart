@@ -271,5 +271,41 @@ void main() {
       expect(updated.completedAt, isNull);
       expect(updated.status, TaskStatus.completed);
     });
+
+    test(
+      'deserializes updatedAt from various formats and defaults when null',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final refTimestamp = firestore.collection('instances').doc('inst-ts');
+        final refString = firestore.collection('instances').doc('inst-str');
+        final refInt = firestore.collection('instances').doc('inst-int');
+        final refNull = firestore.collection('instances').doc('inst-null');
+
+        final time = DateTime(2026, 8, 16, 12, 0);
+
+        await refTimestamp.set({'updatedAt': Timestamp.fromDate(time)});
+        await refString.set({'updatedAt': time.toIso8601String()});
+        await refInt.set({'updatedAt': time.millisecondsSinceEpoch});
+        await refNull.set({'title': 'No updatedAt'});
+
+        final snapTs = await refTimestamp.get();
+        final snapStr = await refString.get();
+        final snapInt = await refInt.get();
+        final snapNull = await refNull.get();
+
+        final instTs = TaskInstance.fromFirestore(snapTs);
+        final instStr = TaskInstance.fromFirestore(snapStr);
+        final instInt = TaskInstance.fromFirestore(snapInt);
+        final instNull = TaskInstance.fromFirestore(snapNull);
+
+        expect(instTs.updatedAt, time);
+        expect(instStr.updatedAt, time);
+        expect(instInt.updatedAt, time);
+        expect(instNull.updatedAt, isNotNull);
+
+        final toFirestoreMap = instNull.toFirestore();
+        expect(toFirestoreMap['updatedAt'], isNotNull);
+      },
+    );
   });
 }
