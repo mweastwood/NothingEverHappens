@@ -5,6 +5,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/subscription_service.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:mockito/mockito.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 
@@ -138,6 +139,60 @@ void main() {
           'familyRole': 'non-parent',
         });
         await Future.delayed(Duration.zero);
+        expect(service.state.tier, SubscriptionTier.family);
+        expect(service.state.isFamilyPlan, isTrue);
+      },
+    );
+
+    test(
+      'preserves family tier when RevenueCat returns free tier for user in family',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            firestoreProvider.overrideWithValue(fakeFirestore),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        late Ref ref;
+        container.read(
+          Provider((r) {
+            ref = r;
+            return null;
+          }),
+        );
+
+        final service = TestSubscriptionService(ref, firestore: fakeFirestore);
+
+        service.triggerListenToFirestore('test-user-123');
+        await Future.delayed(Duration.zero);
+
+        await fakeFirestore.collection('users').doc('test-user-123').set({
+          'familyId': 'fam-abc-123',
+          'familyRole': 'non-parent',
+        });
+        await Future.delayed(Duration.zero);
+        expect(service.state.isFamilyPlan, isTrue);
+
+        // Simulate RevenueCat update with no active entitlements (free)
+        final emptyInfo = CustomerInfo.fromJson({
+          'entitlements': {'all': {}, 'active': {}},
+          'allPurchaseDates': {},
+          'allExpirationDates': {},
+          'allPurchasedProductIdentifiers': [],
+          'activeSubscriptions': [],
+          'latestExpirationDate': null,
+          'firstSeen': '2026-01-01T00:00:00Z',
+          'originalAppUserId': 'test-user-123',
+          'requestDate': '2026-01-01T00:00:00Z',
+          'originalPurchaseDate': null,
+          'originalApplicationVersion': null,
+          'managementURL': null,
+          'nonSubscriptionTransactions': [],
+        });
+
+        service.updateEntitlements(emptyInfo);
         expect(service.state.tier, SubscriptionTier.family);
         expect(service.state.isFamilyPlan, isTrue);
       },

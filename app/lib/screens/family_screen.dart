@@ -421,7 +421,34 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
       loading: () => const Center(child: CircularProgressIndicator()),
       data: (family) {
         if (family == null) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    context.l10n.errorOccurred,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    key: const Key('leave_missing_family_button'),
+                    onPressed: () => _leaveFamily(repository, familyId),
+                    icon: const Icon(Icons.exit_to_app),
+                    label: Text(context.l10n.leaveFamilyButton),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
         final isParent = familyRole == FamilyRole.parent.value;
