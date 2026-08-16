@@ -80,74 +80,80 @@ void main() {
       expect((imperial.quantity - 2.20).abs() < 0.1, isTrue);
     });
 
-    test('convert leaves non-convertible units untouched but pluralizes properly', () {
-      final res3 = UnitConverter.convert(
-        quantity: 3.0,
-        unit: 'clove',
-        targetSystem: UnitSystem.metric,
-      );
-      expect(res3.quantity, 3.0);
-      expect(res3.unit, 'cloves');
+    test(
+      'convert leaves non-convertible units untouched but pluralizes properly',
+      () {
+        final res3 = UnitConverter.convert(
+          quantity: 3.0,
+          unit: 'clove',
+          targetSystem: UnitSystem.metric,
+        );
+        expect(res3.quantity, 3.0);
+        expect(res3.unit, 'cloves');
 
-      final res1 = UnitConverter.convert(
-        quantity: 1.0,
-        unit: 'cloves',
-        targetSystem: UnitSystem.metric,
-      );
-      expect(res1.quantity, 1.0);
-      expect(res1.unit, 'clove');
-    });
+        final res1 = UnitConverter.convert(
+          quantity: 1.0,
+          unit: 'cloves',
+          targetSystem: UnitSystem.metric,
+        );
+        expect(res1.quantity, 1.0);
+        expect(res1.unit, 'clove');
+      },
+    );
 
-    test('formatUnit handles singular vs plural for standard countable units', () {
-      // cup / cups
-      expect(UnitConverter.formatUnit('cup', 1.0), 'cup');
-      expect(UnitConverter.formatUnit('cups', 1.0), 'cup');
-      expect(UnitConverter.formatUnit('cup', 2.0), 'cups');
-      expect(UnitConverter.formatUnit('cups', 2.0), 'cups');
-      expect(UnitConverter.formatUnit('cup', 0.5), 'cups');
-      expect(UnitConverter.formatUnit('cup', 0.0), 'cups');
+    test(
+      'formatUnit handles singular vs plural for standard countable units',
+      () {
+        // cup / cups
+        expect(UnitConverter.formatUnit('cup', 1.0), 'cup');
+        expect(UnitConverter.formatUnit('cups', 1.0), 'cup');
+        expect(UnitConverter.formatUnit('cup', 2.0), 'cups');
+        expect(UnitConverter.formatUnit('cups', 2.0), 'cups');
+        expect(UnitConverter.formatUnit('cup', 0.5), 'cups');
+        expect(UnitConverter.formatUnit('cup', 0.0), 'cups');
 
-      // clove / cloves
-      expect(UnitConverter.formatUnit('clove', 1.0), 'clove');
-      expect(UnitConverter.formatUnit('cloves', 1.0), 'clove');
-      expect(UnitConverter.formatUnit('clove', 3.0), 'cloves');
-      expect(UnitConverter.formatUnit('cloves', 3.0), 'cloves');
+        // clove / cloves
+        expect(UnitConverter.formatUnit('clove', 1.0), 'clove');
+        expect(UnitConverter.formatUnit('cloves', 1.0), 'clove');
+        expect(UnitConverter.formatUnit('clove', 3.0), 'cloves');
+        expect(UnitConverter.formatUnit('cloves', 3.0), 'cloves');
 
-      // piece / pieces
-      expect(UnitConverter.formatUnit('piece', 1.0), 'piece');
-      expect(UnitConverter.formatUnit('pieces', 1.0), 'piece');
-      expect(UnitConverter.formatUnit('piece', 4.0), 'pieces');
-      expect(UnitConverter.formatUnit('pieces', 4.0), 'pieces');
+        // piece / pieces
+        expect(UnitConverter.formatUnit('piece', 1.0), 'piece');
+        expect(UnitConverter.formatUnit('pieces', 1.0), 'piece');
+        expect(UnitConverter.formatUnit('piece', 4.0), 'pieces');
+        expect(UnitConverter.formatUnit('pieces', 4.0), 'pieces');
 
-      // pinch / pinches
-      expect(UnitConverter.formatUnit('pinch', 1.0), 'pinch');
-      expect(UnitConverter.formatUnit('pinches', 1.0), 'pinch');
-      expect(UnitConverter.formatUnit('pinch', 2.0), 'pinches');
-      expect(UnitConverter.formatUnit('pinches', 2.0), 'pinches');
+        // pinch / pinches
+        expect(UnitConverter.formatUnit('pinch', 1.0), 'pinch');
+        expect(UnitConverter.formatUnit('pinches', 1.0), 'pinch');
+        expect(UnitConverter.formatUnit('pinch', 2.0), 'pinches');
+        expect(UnitConverter.formatUnit('pinches', 2.0), 'pinches');
 
-      // can / cans
-      expect(UnitConverter.formatUnit('can', 1.0), 'can');
-      expect(UnitConverter.formatUnit('can', 2.0), 'cans');
+        // can / cans
+        expect(UnitConverter.formatUnit('can', 1.0), 'can');
+        expect(UnitConverter.formatUnit('can', 2.0), 'cans');
 
-      // slice / slices
-      expect(UnitConverter.formatUnit('slice', 1.0), 'slice');
-      expect(UnitConverter.formatUnit('slice', 2.0), 'slices');
+        // slice / slices
+        expect(UnitConverter.formatUnit('slice', 1.0), 'slice');
+        expect(UnitConverter.formatUnit('slice', 2.0), 'slices');
 
-      // pound / pounds
-      expect(UnitConverter.formatUnit('pound', 1.0), 'pound');
-      expect(UnitConverter.formatUnit('pound', 2.0), 'pounds');
+        // pound / pounds
+        expect(UnitConverter.formatUnit('pound', 1.0), 'pound');
+        expect(UnitConverter.formatUnit('pound', 2.0), 'pounds');
 
-      // lb / lbs
-      expect(UnitConverter.formatUnit('lb', 1.0), 'lb');
-      expect(UnitConverter.formatUnit('lbs', 1.0), 'lb');
-      expect(UnitConverter.formatUnit('lb', 2.0), 'lbs');
-      expect(UnitConverter.formatUnit('lbs', 2.0), 'lbs');
-      expect(UnitConverter.formatUnit('lb', 0.5), 'lbs');
+        // lb / lbs
+        expect(UnitConverter.formatUnit('lb', 1.0), 'lb');
+        expect(UnitConverter.formatUnit('lbs', 1.0), 'lb');
+        expect(UnitConverter.formatUnit('lb', 2.0), 'lbs');
+        expect(UnitConverter.formatUnit('lbs', 2.0), 'lbs');
+        expect(UnitConverter.formatUnit('lb', 0.5), 'lbs');
 
-      // pkg / pkgs
-      expect(UnitConverter.formatUnit('pkg', 1.0), 'pkg');
-      expect(UnitConverter.formatUnit('pkg', 2.0), 'pkgs');
-    });
+        // pkg / pkgs
+        expect(UnitConverter.formatUnit('pkg', 1.0), 'pkg');
+        expect(UnitConverter.formatUnit('pkg', 2.0), 'pkgs');
+      },
+    );
 
     test('formatUnit preserves invariant units and metric symbols', () {
       for (final qty in [1.0, 2.0, 0.5]) {

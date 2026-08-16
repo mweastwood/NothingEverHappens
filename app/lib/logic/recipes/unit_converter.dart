@@ -246,15 +246,9 @@ class UnitConverter {
       if (targetSystem == UnitSystem.metric) {
         if (ml >= 1000) {
           final lVal = ml / 1000.0;
-          return ConvertedQuantity(
-            quantity: lVal,
-            unit: formatUnit('l', lVal),
-          );
+          return ConvertedQuantity(quantity: lVal, unit: formatUnit('l', lVal));
         }
-        return ConvertedQuantity(
-          quantity: ml,
-          unit: formatUnit('ml', ml),
-        );
+        return ConvertedQuantity(quantity: ml, unit: formatUnit('ml', ml));
       } else {
         // Imperial
         if (ml < 15) {
@@ -287,24 +281,15 @@ class UnitConverter {
             unit: formatUnit('kg', kgVal),
           );
         }
-        return ConvertedQuantity(
-          quantity: grams,
-          unit: formatUnit('g', grams),
-        );
+        return ConvertedQuantity(quantity: grams, unit: formatUnit('g', grams));
       } else {
         // Imperial
         if (grams >= 453.592) {
           final lbs = grams / _massToGrams['lb']!;
-          return ConvertedQuantity(
-            quantity: lbs,
-            unit: formatUnit('lb', lbs),
-          );
+          return ConvertedQuantity(quantity: lbs, unit: formatUnit('lb', lbs));
         } else {
           final oz = grams / _massToGrams['oz']!;
-          return ConvertedQuantity(
-            quantity: oz,
-            unit: formatUnit('oz', oz),
-          );
+          return ConvertedQuantity(quantity: oz, unit: formatUnit('oz', oz));
         }
       }
     }
