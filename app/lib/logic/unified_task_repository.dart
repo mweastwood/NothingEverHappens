@@ -224,6 +224,17 @@ class UnifiedTaskRepository extends TaskRepository {
   }
 
   @override
+  Future<void> saveTaskInstance(TaskInstance instance) async {
+    final updated = instance.copyWith(
+      hasPendingWrites: true,
+      updatedAt: DateTime.now(),
+    );
+    await _localDataSource.saveInstance(updated);
+    await _localDataSource.markDirty(updated.id);
+    _syncService.sync();
+  }
+
+  @override
   Future<TaskInstance?> dismissTaskInstance(String id) async {
     final instance = _localDataSource
         .getInstances()

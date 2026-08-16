@@ -6,6 +6,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
@@ -25,6 +26,7 @@ class HiveLocalDataSource {
   static const String _instancesBoxName = 'instancesBox';
   static const String _syncMetaBoxName = 'syncMetaBox';
   static const String _settingsBoxName = 'settingsBox';
+  static const String _recipesBoxName = 'recipesBox';
 
   final ErrorHandler? errorHandler;
   final AppLogger? logger;
@@ -33,11 +35,13 @@ class HiveLocalDataSource {
   Box<Map>? _instancesBox;
   Box<Map>? _syncMetaBox;
   Box<Map>? _settingsBox;
+  Box<Map>? _recipesBox;
 
   HiveLocalDataSource({this.errorHandler, this.logger});
 
   final Map<String, TaskSchedule> _memTasks = {};
   final Map<String, TaskInstance> _memInstances = {};
+  final Map<String, Recipe> _memRecipes = {};
   final Map<String, dynamic> _memMeta = {};
   UserSettings _memSettings = const UserSettings(hoursAvailable: 8.0);
   Map<String, dynamic> _memRawSettings = {};
@@ -46,6 +50,7 @@ class HiveLocalDataSource {
   final _instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded(
     const [],
   );
+  final _recipesSubject = BehaviorSubject<List<Recipe>>.seeded(const []);
   final _settingsSubject = BehaviorSubject<UserSettings>.seeded(
     const UserSettings(hoursAvailable: 8.0),
   );
@@ -85,6 +90,7 @@ class HiveLocalDataSource {
       _instancesBox = await _openBoxSafely(_instancesBoxName);
       _syncMetaBox = await _openBoxSafely(_syncMetaBoxName);
       _settingsBox = await _openBoxSafely(_settingsBoxName);
+      _recipesBox = await _openBoxSafely(_recipesBoxName);
     } catch (e, st) {
       isFallbackInMemoryMode = true;
       errorHandler?.report(e, stackTrace: st);
@@ -97,11 +103,13 @@ class HiveLocalDataSource {
 
     _emitTasks();
     _emitInstances();
+    _emitRecipes();
     _emitSettings();
     _emitSyncMeta();
 
     _tasksBox?.watch().listen((_) => _emitTasks());
     _instancesBox?.watch().listen((_) => _emitInstances());
+    _recipesBox?.watch().listen((_) => _emitRecipes());
     _settingsBox?.watch().listen((_) => _emitSettings());
     _syncMetaBox?.watch().listen((_) => _emitSyncMeta());
   }
@@ -115,6 +123,12 @@ class HiveLocalDataSource {
   void _emitInstances() {
     if (!_instancesSubject.isClosed) {
       _instancesSubject.add(getInstances());
+    }
+  }
+
+  void _emitRecipes() {
+    if (!_recipesSubject.isClosed) {
+      _recipesSubject.add(getRecipes());
     }
   }
 
@@ -132,6 +146,7 @@ class HiveLocalDataSource {
 
   Stream<List<TaskSchedule>> watchTasks() => _tasksSubject.stream;
   Stream<List<TaskInstance>> watchInstances() => _instancesSubject.stream;
+  Stream<List<Recipe>> watchRecipes() => _recipesSubject.stream;
   Stream<UserSettings> watchSettings() => _settingsSubject.stream;
   Stream<bool> watchMigrationCompleted() => _migrationCompletedSubject.stream;
 
@@ -258,6 +273,48 @@ class HiveLocalDataSource {
     _emitInstances();
   }
 
+  List<Recipe> getRecipes() {
+    if (_recipesBox != null && _recipesBox!.isOpen) {
+      final list = <Recipe>[];
+      for (final map in _recipesBox!.values) {
+        try {
+          final data = Map<String, dynamic>.from(map);
+          list.add(_recipeFromJson(data));
+        } catch (e, st) {
+          errorHandler?.report(e, stackTrace: st);
+          // ignore: avoid_print
+          print(
+            '⚠️ [HIVE_RECIPE_PARSE_ERROR] Failed to parse recipe from '
+            'Hive: $e\n$st',
+          );
+        }
+      }
+      return list;
+    }
+    return _memRecipes.values.toList();
+  }
+
+  Recipe _recipeFromJson(Map<String, dynamic> data) {
+    return Recipe.fromJson(data);
+  }
+
+  Future<void> saveRecipe(Recipe recipe) async {
+    _memRecipes[recipe.id] = recipe;
+    if (_recipesBox != null && _recipesBox!.isOpen) {
+      final data = recipe.toJson();
+      await _recipesBox!.put(recipe.id, data);
+    }
+    _emitRecipes();
+  }
+
+  Future<void> deleteRecipe(String id) async {
+    _memRecipes.remove(id);
+    if (_recipesBox != null && _recipesBox!.isOpen) {
+      await _recipesBox!.delete(id);
+    }
+    _emitRecipes();
+  }
+
   Future<void> markDirty(String id) async {
     final dirtyList = getDirtyTaskIds();
     if (!dirtyList.contains(id)) {
@@ -292,14 +349,19 @@ class HiveLocalDataSource {
   Future<void> clearAllTasksAndInstances() async {
     _memTasks.clear();
     _memInstances.clear();
+    _memRecipes.clear();
     if (_tasksBox != null && _tasksBox!.isOpen) {
       await _tasksBox!.clear();
     }
     if (_instancesBox != null && _instancesBox!.isOpen) {
       await _instancesBox!.clear();
     }
+    if (_recipesBox != null && _recipesBox!.isOpen) {
+      await _recipesBox!.clear();
+    }
     _emitTasks();
     _emitInstances();
+    _emitRecipes();
   }
 
   Future<void> clearAllDirty() async {
@@ -441,6 +503,13 @@ class HiveLocalDataSource {
       }
     }
 
+    final workflowType = data['workflowType'] as String?;
+    final mealWorkflowConfig = data['mealWorkflowConfig'] != null
+        ? MealWorkflowConfig.fromJson(
+            Map<String, dynamic>.from(data['mealWorkflowConfig'] as Map),
+          )
+        : null;
+
     return TaskSchedule(
       id: data['id'] as String,
       title: data['title'] as String? ?? 'Untitled',
@@ -458,6 +527,8 @@ class HiveLocalDataSource {
       cycleId: data['cycleId'] as String?,
       preferredBy: preferredBy,
       assignedUserId: data['assignedUserId'] as String?,
+      workflowType: workflowType,
+      mealWorkflowConfig: mealWorkflowConfig,
       skipIfNoCapacity: data['skipIfNoCapacity'] as bool? ?? false,
       hasPendingWrites: false,
       isFromCache: true,
@@ -527,6 +598,13 @@ class HiveLocalDataSource {
       }
     }
 
+    final workflowPayloadRaw = data['workflowPayload'] as Map?;
+    final workflowPayload = workflowPayloadRaw != null
+        ? WorkflowInstancePayload.fromJson(
+            Map<String, dynamic>.from(workflowPayloadRaw),
+          )
+        : null;
+
     return TaskInstance(
       id: data['id'] as String,
       scheduleId: data['scheduleId'] as String? ?? '',
@@ -544,6 +622,7 @@ class HiveLocalDataSource {
       completedByUserId: data['completedByUserId'] as String?,
       completedAt: completedAt,
       status: TaskStatus.fromString(data['status'] as String?),
+      workflowPayload: workflowPayload,
       hasPendingWrites: false,
       isFromCache: true,
       updatedAt: updatedAt ?? DateTime.now(),
@@ -602,10 +681,27 @@ class HiveLocalDataSource {
       settingsMap = {..._memSettings.toJson(), ..._memRawSettings};
     }
 
+    final recipesList = <Map<String, dynamic>>[];
+    if (_recipesBox != null && _recipesBox!.isOpen) {
+      for (final map in _recipesBox!.values) {
+        try {
+          recipesList.add(Map<String, dynamic>.from(map));
+        } catch (e, stackTrace) {
+          debugPrint('Error exporting raw recipe map: $e\n$stackTrace');
+        }
+      }
+    } else {
+      for (final recipe in _memRecipes.values) {
+        final data = recipe.toJson();
+        recipesList.add(data);
+      }
+    }
+
     return {
       'inMemoryFallback': isFallbackInMemoryMode,
       'tasks': tasksList,
       'instances': instancesList,
+      'recipes': recipesList,
       'syncMeta': {
         'dirty_tasks': getDirtyTaskIds(),
         'migration_completed': isMigrationCompleted(),
@@ -617,6 +713,7 @@ class HiveLocalDataSource {
   Future<void> dispose() async {
     await _tasksSubject.close();
     await _instancesSubject.close();
+    await _recipesSubject.close();
     await _settingsSubject.close();
     await _migrationCompletedSubject.close();
   }

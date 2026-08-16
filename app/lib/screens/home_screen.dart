@@ -12,6 +12,7 @@ import 'settings_screen.dart';
 import 'subscription_screen.dart';
 import 'family_screen.dart';
 import 'help_screen.dart';
+import 'recipes/recipe_list_screen.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/utils/app_version.dart';
 
@@ -133,6 +134,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
             ),
+          ),
+          ListTile(
+            key: const Key('drawer_recipes_tile'),
+            leading: const Icon(Icons.restaurant_menu),
+            title: const Text('Recipes'),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RecipeListScreen(),
+                ),
+              );
+            },
           ),
           ListTile(
             key: const Key('drawer_settings_tile'),

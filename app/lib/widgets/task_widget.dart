@@ -20,6 +20,10 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../logic/subscription_service.dart';
+import '../logic/recipes/recipe_repository.dart';
+import '../screens/workflows/meal_selection_dialog.dart';
+import '../screens/workflows/shopping_checklist_screen.dart';
+import '../screens/recipes/cooking_mode_screen.dart';
 
 class TaskWidget extends ConsumerStatefulWidget {
   final TaskInstance instance;
@@ -160,6 +164,78 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         _controller.forward();
       }
     });
+  }
+
+  void _handleWorkflowTap() {
+    final payload = widget.instance.workflowPayload;
+    if (payload == null) return;
+
+    if (payload.stage == WorkflowStage.selectMeal) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MealSelectionDialog(
+            instance: widget.instance,
+            schedule: widget.schedule,
+          ),
+        ),
+      );
+    } else if (payload.stage == WorkflowStage.shoppingList) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              ShoppingChecklistScreen(instance: widget.instance),
+        ),
+      );
+    } else if (payload.stage == WorkflowStage.prepDinner) {
+      if (payload.recipeId != null) {
+        final recipe = ref
+            .read(recipeRepositoryProvider)
+            .getRecipeById(payload.recipeId!);
+        if (recipe != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CookingModeScreen(
+                recipe: recipe,
+                servings: payload.targetServings ?? recipe.servings,
+                onCompleteCooking: _handleCompletion,
+              ),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Widget? _buildWorkflowBadge(BuildContext context) {
+    final payload = widget.instance.workflowPayload;
+    if (payload == null) return null;
+
+    if (payload.stage == WorkflowStage.selectMeal) {
+      return _buildBadge(
+        context,
+        icon: Icons.restaurant_menu,
+        label: 'Plan Dinner',
+        color: Colors.orange.shade700,
+      );
+    } else if (payload.stage == WorkflowStage.shoppingList) {
+      return _buildBadge(
+        context,
+        icon: Icons.shopping_cart_outlined,
+        label: 'Shopping List',
+        color: Colors.teal.shade700,
+      );
+    } else if (payload.stage == WorkflowStage.prepDinner) {
+      return _buildBadge(
+        context,
+        icon: Icons.soup_kitchen,
+        label: 'Dinner Prep',
+        color: Colors.purple.shade700,
+      );
+    }
+    return null;
   }
 
   String _formatDuration(Duration duration) {
@@ -520,6 +596,9 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         );
       },
       child: ListTile(
+        onTap: widget.instance.workflowPayload != null
+            ? _handleWorkflowTap
+            : null,
         onLongPress: _isMouse
             ? null
             : () async {
@@ -590,6 +669,9 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               spacing: 6.0,
               runSpacing: 6.0,
               children: [
+                // Workflow Stage Badge
+                if (_buildWorkflowBadge(context) != null)
+                  _buildWorkflowBadge(context)!,
                 // Due Date Badge
                 _buildDueDateBadge(context),
                 // Pending Badge

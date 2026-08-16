@@ -5,7 +5,9 @@ import 'civil_day.dart';
 import 'relative_time.dart';
 import 'task_priority.dart';
 import 'task_status.dart';
+import 'workflows/task_workflow.dart';
 export 'task_status.dart';
+export 'workflows/task_workflow.dart';
 
 class TaskInstance {
   static String generateId() => 'I-${const Uuid().v4()}';
@@ -26,6 +28,7 @@ class TaskInstance {
   final String? completedByUserId;
   final DateTime? completedAt;
   final TaskStatus status;
+  final WorkflowInstancePayload? workflowPayload;
 
   /// Whether this instance document has pending local writes that have not yet synced to Firestore server.
   final bool hasPendingWrites;
@@ -53,6 +56,7 @@ class TaskInstance {
     this.completedByUserId,
     this.completedAt,
     this.status = TaskStatus.pending,
+    this.workflowPayload,
     this.hasPendingWrites = false,
     this.isFromCache = false,
     DateTime? updatedAt,
@@ -151,6 +155,13 @@ class TaskInstance {
       }
     }
 
+    final workflowPayloadRaw = data['workflowPayload'] as Map?;
+    final workflowPayload = workflowPayloadRaw != null
+        ? WorkflowInstancePayload.fromJson(
+            Map<String, dynamic>.from(workflowPayloadRaw),
+          )
+        : null;
+
     return TaskInstance(
       id: snapshot.id,
       scheduleId: scheduleId,
@@ -168,6 +179,7 @@ class TaskInstance {
       completedByUserId: completedByUserId,
       completedAt: completedAt,
       status: status,
+      workflowPayload: workflowPayload,
       hasPendingWrites: snapshot.metadata.hasPendingWrites,
       isFromCache: snapshot.metadata.isFromCache,
       updatedAt: updatedAt,
@@ -193,6 +205,7 @@ class TaskInstance {
       if (assignedUserId != null) 'assignedUserId': assignedUserId,
       if (completedByUserId != null) 'completedByUserId': completedByUserId,
       if (completedAt != null) 'completedAt': completedAt,
+      if (workflowPayload != null) 'workflowPayload': workflowPayload!.toJson(),
       'status': status.toJson(),
       'updatedAt': updatedAt,
     };
@@ -217,6 +230,8 @@ class TaskInstance {
     DateTime? completedAt,
     bool clearCompletedAt = false,
     TaskStatus? status,
+    WorkflowInstancePayload? workflowPayload,
+    bool clearWorkflowPayload = false,
     bool? hasPendingWrites,
     bool? isFromCache,
     DateTime? updatedAt,
@@ -244,6 +259,9 @@ class TaskInstance {
           : (completedByUserId ?? this.completedByUserId),
       completedAt: clearCompletedAt ? null : (completedAt ?? this.completedAt),
       status: status ?? this.status,
+      workflowPayload: clearWorkflowPayload
+          ? null
+          : (workflowPayload ?? this.workflowPayload),
       hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
       isFromCache: isFromCache ?? this.isFromCache,
       updatedAt: updatedAt ?? this.updatedAt,

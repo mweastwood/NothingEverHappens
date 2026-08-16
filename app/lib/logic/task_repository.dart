@@ -1240,6 +1240,11 @@ class TaskRepository {
     return completedInstance;
   }
 
+  Future<void> saveTaskInstance(TaskInstance instance) async {
+    final familyId = await _getFamilyId();
+    await _instanceRefFor(instance, familyId).set(instance);
+  }
+
   Future<TaskInstance?> dismissTaskInstance(String id) async {
     final instance = await _fetchInstance(id);
     if (instance == null) return null;

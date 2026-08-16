@@ -403,6 +403,23 @@ class SchedulerEngine {
           for (final date in targetDates) {
             if (!workingInstances.containsKey(date)) {
               final instId = generateId();
+              RelativeTime startRelative = s.startRelativeTime;
+              RelativeTime dueRelative = s.dueRelativeTime;
+              WorkflowInstancePayload? workflowPayload;
+
+              if (task.workflowType == 'mealWorkflow') {
+                final cfg =
+                    task.mealWorkflowConfig ?? const MealWorkflowConfig();
+                startRelative = cfg.selectTime;
+                dueRelative = cfg.selectTime;
+                workflowPayload = WorkflowInstancePayload(
+                  workflowType: 'mealWorkflow',
+                  stage: WorkflowStage.selectMeal,
+                  workflowGroupId:
+                      '${task.id}-${date.year}-${date.month}-${date.day}',
+                );
+              }
+
               workingInstances[date] = TaskInstance(
                 id: instId,
                 scheduleId: task.id,
@@ -410,13 +427,14 @@ class SchedulerEngine {
                 title: task.title,
                 description: task.description,
                 scheduledDate: date,
-                startRelativeTime: s.startRelativeTime,
-                dueRelativeTime: s.dueRelativeTime,
+                startRelativeTime: startRelative,
+                dueRelativeTime: dueRelative,
                 notificationRelativeTimes: s.notificationRelativeTimes,
                 isFamily: task.isFamily,
                 priority: task.priority,
                 cycleId: task.cycleId,
                 assignedUserId: task.assignedUserId,
+                workflowPayload: workflowPayload,
                 status: TaskStatus.pending,
               );
             }

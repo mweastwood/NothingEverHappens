@@ -2863,6 +2863,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Help improve the app by sharing anonymous usage statistics and app metrics.'**
   String get telemetrySettingSubtitle;
+
+  /// No description provided for @recipesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipes'**
+  String get recipesTitle;
+
+  /// No description provided for @recipeLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipe Library'**
+  String get recipeLibrary;
+
+  /// No description provided for @noRecipesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No recipes found'**
+  String get noRecipesFound;
+
+  /// No description provided for @addRecipe.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Recipe'**
+  String get addRecipe;
+
+  /// No description provided for @editRecipe.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Recipe'**
+  String get editRecipe;
+
+  /// No description provided for @deleteRecipe.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Recipe'**
+  String get deleteRecipe;
+
+  /// No description provided for @servings.
+  ///
+  /// In en, this message translates to:
+  /// **'Servings'**
+  String get servings;
+
+  /// No description provided for @ingredients.
+  ///
+  /// In en, this message translates to:
+  /// **'Ingredients'**
+  String get ingredients;
+
+  /// No description provided for @prepInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Prep Instructions'**
+  String get prepInstructions;
+
+  /// No description provided for @cookInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Cook Instructions'**
+  String get cookInstructions;
+
+  /// No description provided for @startCooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Cooking'**
+  String get startCooking;
+
+  /// No description provided for @cookingMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Cooking Mode'**
+  String get cookingMode;
+
+  /// No description provided for @stepTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Step Timer'**
+  String get stepTimer;
+
+  /// No description provided for @finishCooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish Cooking'**
+  String get finishCooking;
+
+  /// No description provided for @selectMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Meal'**
+  String get selectMeal;
+
+  /// No description provided for @shoppingList.
+  ///
+  /// In en, this message translates to:
+  /// **'Shopping List'**
+  String get shoppingList;
+
+  /// No description provided for @pantryCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Pantry Check'**
+  String get pantryCheck;
+
+  /// No description provided for @storeChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Store Checklist'**
+  String get storeChecklist;
+
+  /// No description provided for @mealWorkflow.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal Planning Workflow'**
+  String get mealWorkflow;
+
+  /// No description provided for @mealWorkflowDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan dinners with recipe selection, dynamic shopping list, and prep tasks.'**
+  String get mealWorkflowDesc;
 }
 
 class _AppLocalizationsDelegate
