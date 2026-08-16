@@ -145,7 +145,13 @@ class TaskSyncService {
                   );
                 }
               } else if (change.type == DocumentChangeType.removed) {
-                _localDataSource.deleteTask(change.doc.id);
+                final localTask = _localDataSource
+                    .getTasks()
+                    .where((t) => t.id == change.doc.id)
+                    .firstOrNull;
+                if (localTask == null || !localTask.isFamily) {
+                  _localDataSource.deleteTask(change.doc.id);
+                }
               }
             }
           },
@@ -184,7 +190,13 @@ class TaskSyncService {
                   );
                 }
               } else if (change.type == DocumentChangeType.removed) {
-                _localDataSource.deleteInstance(change.doc.id);
+                final localInst = _localDataSource
+                    .getInstances()
+                    .where((i) => i.id == change.doc.id)
+                    .firstOrNull;
+                if (localInst == null || !localInst.isFamily) {
+                  _localDataSource.deleteInstance(change.doc.id);
+                }
               }
             }
           },
@@ -225,7 +237,13 @@ class TaskSyncService {
                   );
                 }
               } else if (change.type == DocumentChangeType.removed) {
-                _localDataSource.deleteTask(change.doc.id);
+                final localTask = _localDataSource
+                    .getTasks()
+                    .where((t) => t.id == change.doc.id)
+                    .firstOrNull;
+                if (localTask == null || localTask.isFamily) {
+                  _localDataSource.deleteTask(change.doc.id);
+                }
               }
             }
           },
@@ -264,7 +282,13 @@ class TaskSyncService {
                   );
                 }
               } else if (change.type == DocumentChangeType.removed) {
-                _localDataSource.deleteInstance(change.doc.id);
+                final localInst = _localDataSource
+                    .getInstances()
+                    .where((i) => i.id == change.doc.id)
+                    .firstOrNull;
+                if (localInst == null || localInst.isFamily) {
+                  _localDataSource.deleteInstance(change.doc.id);
+                }
               }
             }
           },
@@ -453,6 +477,12 @@ class TaskSyncService {
           .collection('tasks')
           .doc(task.id)
           .set(task.toFirestore());
+      await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('tasks')
+          .doc(task.id)
+          .delete();
     } else {
       await _firestore
           .collection('users')
@@ -460,6 +490,14 @@ class TaskSyncService {
           .collection('tasks')
           .doc(task.id)
           .set(task.toFirestore());
+      if (familyId != null && familyId.isNotEmpty) {
+        await _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .doc(task.id)
+            .delete();
+      }
     }
   }
 
@@ -472,6 +510,12 @@ class TaskSyncService {
           .collection('instances')
           .doc(inst.id)
           .set(inst.toFirestore());
+      await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('instances')
+          .doc(inst.id)
+          .delete();
     } else {
       await _firestore
           .collection('users')
@@ -479,6 +523,14 @@ class TaskSyncService {
           .collection('instances')
           .doc(inst.id)
           .set(inst.toFirestore());
+      if (familyId != null && familyId.isNotEmpty) {
+        await _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances')
+            .doc(inst.id)
+            .delete();
+      }
     }
   }
 }
