@@ -10,6 +10,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:nothing_ever_happens/logic/telemetry_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'dart:io';
@@ -584,4 +585,83 @@ void main() {
       expect(localDataSource.isMigrationCompleted(), isTrue);
     },
   );
+
+  test(
+    'completeTaskInstance increments completed count and triggers telemetry',
+    () async {
+      String? loggedTaskId;
+      String? loggedScheduleId;
+      int? loggedCompletedCount;
+
+      final fakeTelemetry = _TestTelemetryService(
+        onTaskCompleted: ({scheduleId, taskId, totalCompletedCount}) async {
+          loggedTaskId = taskId;
+          loggedScheduleId = scheduleId;
+          loggedCompletedCount = totalCompletedCount;
+        },
+      );
+
+      final repoWithTelemetry = UnifiedTaskRepository(
+        localDataSource: localDataSource,
+        syncService: syncService,
+        firestore: firestore,
+        userId: 'user1',
+        telemetryService: fakeTelemetry,
+      );
+
+      final instance = TaskInstance(
+        id: 'I-telem-1',
+        scheduleId: 'S-telem-1',
+        ruleId: 'R-1',
+        title: 'Telemetry Task',
+        description: 'Testing telemetry on completion',
+        scheduledDate: CivilDay(year: 2026, month: 8, day: 10),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        updatedAt: DateTime.now(),
+        status: TaskStatus.pending,
+      );
+      await localDataSource.saveInstance(instance);
+
+      final initialCount = localDataSource.getTasksCompletedCount();
+      await repoWithTelemetry.completeTaskInstance('I-telem-1');
+
+      expect(localDataSource.getTasksCompletedCount(), initialCount + 1);
+      expect(loggedTaskId, 'I-telem-1');
+      expect(loggedScheduleId, 'S-telem-1');
+      expect(loggedCompletedCount, initialCount + 1);
+    },
+  );
+}
+
+class _TestTelemetryService extends NoOpTelemetryService {
+  final Future<void> Function({
+    String? taskId,
+    String? scheduleId,
+    int? totalCompletedCount,
+  })?
+  onTaskCompleted;
+
+  _TestTelemetryService({this.onTaskCompleted});
+
+  @override
+  Future<void> logTaskCompleted({
+    String? taskId,
+    String? scheduleId,
+    int? totalCompletedCount,
+  }) async {
+    if (onTaskCompleted != null) {
+      await onTaskCompleted!(
+        taskId: taskId,
+        scheduleId: scheduleId,
+        totalCompletedCount: totalCompletedCount,
+      );
+    }
+  }
 }

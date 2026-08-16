@@ -11,6 +11,7 @@ class UserSettings {
   final String? lastCapacityConfirmedWeek;
   final bool showTaskListSortBar;
   final bool showScheduleListSortBar;
+  final bool telemetryEnabled;
 
   const UserSettings({
     required this.hoursAvailable,
@@ -22,6 +23,7 @@ class UserSettings {
     this.lastCapacityConfirmedWeek,
     this.showTaskListSortBar = true,
     this.showScheduleListSortBar = true,
+    this.telemetryEnabled = true,
   });
 
   double getCapacityForDate(DateTime date) {
@@ -109,6 +111,7 @@ class UserSettings {
       lastCapacityConfirmedWeek: json['lastCapacityConfirmedWeek'] as String?,
       showTaskListSortBar: json['showTaskListSortBar'] as bool? ?? true,
       showScheduleListSortBar: json['showScheduleListSortBar'] as bool? ?? true,
+      telemetryEnabled: json['telemetryEnabled'] as bool? ?? true,
     );
   }
 
@@ -135,6 +138,7 @@ class UserSettings {
         'lastCapacityConfirmedWeek': lastCapacityConfirmedWeek,
       'showTaskListSortBar': showTaskListSortBar,
       'showScheduleListSortBar': showScheduleListSortBar,
+      'telemetryEnabled': telemetryEnabled,
     };
   }
 
@@ -148,6 +152,7 @@ class UserSettings {
     String? lastCapacityConfirmedWeek,
     bool? showTaskListSortBar,
     bool? showScheduleListSortBar,
+    bool? telemetryEnabled,
   }) {
     return UserSettings(
       hoursAvailable: hoursAvailable ?? this.hoursAvailable,
@@ -164,6 +169,7 @@ class UserSettings {
       showTaskListSortBar: showTaskListSortBar ?? this.showTaskListSortBar,
       showScheduleListSortBar:
           showScheduleListSortBar ?? this.showScheduleListSortBar,
+      telemetryEnabled: telemetryEnabled ?? this.telemetryEnabled,
     );
   }
 
@@ -180,7 +186,8 @@ class UserSettings {
         mapEquals(dailyCapacityOverrides, other.dailyCapacityOverrides) &&
         lastCapacityConfirmedWeek == other.lastCapacityConfirmedWeek &&
         showTaskListSortBar == other.showTaskListSortBar &&
-        showScheduleListSortBar == other.showScheduleListSortBar;
+        showScheduleListSortBar == other.showScheduleListSortBar &&
+        telemetryEnabled == other.telemetryEnabled;
   }
 
   @override
@@ -194,5 +201,6 @@ class UserSettings {
     lastCapacityConfirmedWeek,
     showTaskListSortBar,
     showScheduleListSortBar,
+    telemetryEnabled,
   );
 }

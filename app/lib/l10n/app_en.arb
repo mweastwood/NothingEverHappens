@@ -998,5 +998,7 @@
   "futureTabLabel": "Future",
   "noCurrentOccurrencesPlaceholder": "No active occurrences.",
   "skipIfNoCapacityLabel": "Skip if capacity is exceeded",
-  "skipIfNoCapacityHelper": "Skip this task occurrence if daily available capacity is exceeded"
+  "skipIfNoCapacityHelper": "Skip this task occurrence if daily available capacity is exceeded",
+  "telemetrySettingTitle": "Anonymous Usage Telemetry",
+  "telemetrySettingSubtitle": "Help improve the app by sharing anonymous usage statistics and app metrics."
 }

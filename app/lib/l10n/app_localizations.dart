@@ -2845,6 +2845,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skip this task occurrence if daily available capacity is exceeded'**
   String get skipIfNoCapacityHelper;
+
+  /// No description provided for @telemetrySettingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Anonymous Usage Telemetry'**
+  String get telemetrySettingTitle;
+
+  /// No description provided for @telemetrySettingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help improve the app by sharing anonymous usage statistics and app metrics.'**
+  String get telemetrySettingSubtitle;
 }
 
 class _AppLocalizationsDelegate

@@ -7,6 +7,7 @@ import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
+import 'package:nothing_ever_happens/logic/telemetry_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -115,6 +116,7 @@ void main() {
         showLastSpawnedDate: true,
         showTaskListSortBar: false,
         showScheduleListSortBar: true,
+        telemetryEnabled: true,
         taskListSort: [(column: 'priority', ascending: false)],
         scheduleListSort: [(column: 'next_due', ascending: true)],
       );
@@ -129,6 +131,7 @@ void main() {
         ],
         'showTaskListSortBar': false,
         'showScheduleListSortBar': true,
+        'telemetryEnabled': true,
       });
     });
 
@@ -297,11 +300,34 @@ void main() {
         'showLastSpawnedDate': true,
         'showTaskListSortBar': true,
         'showScheduleListSortBar': true,
+        'telemetryEnabled': true,
       });
 
       final settingsFromRepository = await repository.getSettings().first;
       expect(settingsFromRepository.hoursAvailable, 15.0);
       expect(settingsFromRepository.showLastSpawnedDate, isTrue);
+      expect(settingsFromRepository.telemetryEnabled, isTrue);
     });
+
+    test(
+      'updateSettings synchronizes telemetry enabled state to TelemetryService',
+      () async {
+        final fakeTelemetry = NoOpTelemetryService(enabled: true);
+        final repoWithTelemetry = UserSettingsRepository(
+          firestore: firestore,
+          userId: userId,
+          localDataSource: localDataSource,
+          telemetryService: fakeTelemetry,
+        );
+
+        expect(fakeTelemetry.isEnabled, isTrue);
+
+        await repoWithTelemetry.updateSettings(
+          const UserSettings(hoursAvailable: 8.0, telemetryEnabled: false),
+        );
+
+        expect(fakeTelemetry.isEnabled, isFalse);
+      },
+    );
   });
 }

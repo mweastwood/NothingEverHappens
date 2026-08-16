@@ -22,6 +22,7 @@ import 'hive_local_data_source.dart';
 import 'task_sync_service.dart';
 import 'error_handler.dart';
 import 'app_logger.dart';
+import 'telemetry_service.dart';
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
   final VoidCallback onResume;
@@ -68,6 +69,7 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
     notificationService: ref.watch(notificationServiceProvider),
     errorHandler: ref.read(errorHandlerProvider),
     logger: ref.watch(appLoggerProvider),
+    telemetryService: ref.watch(telemetryServiceProvider),
   );
 
   // Re-evaluate schedules when the mock clock advances in dev/test
