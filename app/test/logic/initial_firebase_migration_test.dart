@@ -477,6 +477,76 @@ void main() {
       );
     },
   );
+
+  test(
+    'Migration successfully migrates legacy personal and family instances without updatedAt',
+    () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam1',
+      });
+
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-personal')
+          .set({'id': 'S-personal', 'title': 'Personal Task'});
+
+      // Legacy instance with NO updatedAt field
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc('I-legacy-personal')
+          .set({
+            'id': 'I-legacy-personal',
+            'scheduleId': 'S-personal',
+            'title': 'Legacy Personal Instance',
+            'isFamily': false,
+          });
+
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('tasks')
+          .doc('S-family')
+          .set({'id': 'S-family', 'title': 'Family Task', 'isFamily': true});
+
+      // Legacy family instance with NO updatedAt field
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('instances')
+          .doc('I-legacy-family')
+          .set({
+            'id': 'I-legacy-family',
+            'scheduleId': 'S-family',
+            'title': 'Legacy Family Instance',
+            'isFamily': true,
+          });
+
+      final service = InitialFirebaseMigrationService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+      );
+
+      await service.migrateIfNeeded();
+
+      expect(localDataSource.isMigrationCompleted(), true);
+
+      final instances = localDataSource.getInstances();
+      final instanceIds = instances.map((i) => i.id).toSet();
+      expect(instanceIds, contains('I-legacy-personal'));
+      expect(instanceIds, contains('I-legacy-family'));
+
+      final legacyFamilyInst = instances.firstWhere(
+        (i) => i.id == 'I-legacy-family',
+      );
+      expect(legacyFamilyInst.isFamily, true);
+      expect(legacyFamilyInst.title, 'Legacy Family Instance');
+    },
+  );
 }
 
 class _FailingWhereFirestore extends FakeFirebaseFirestore {

@@ -110,6 +110,17 @@ class InitialFirebaseMigrationService {
             .collection('instances')
             .where('updatedAt', isGreaterThan: cutoffDate)
             .safeGet(timeout: const Duration(seconds: 15));
+        if (personalInstancesSnap.docs.isEmpty) {
+          final fallbackSnap = await _firestore
+              .collection('users')
+              .doc(_userId)
+              .collection('instances')
+              .limit(300)
+              .safeGet(timeout: const Duration(seconds: 15));
+          if (fallbackSnap.docs.isNotEmpty) {
+            personalInstancesSnap = fallbackSnap;
+          }
+        }
       } catch (e) {
         _logger?.warning(
           'sync',
@@ -159,6 +170,17 @@ class InitialFirebaseMigrationService {
               .collection('instances')
               .where('updatedAt', isGreaterThan: cutoffDate)
               .safeGet(timeout: const Duration(seconds: 15));
+          if (familyInstancesSnap.docs.isEmpty) {
+            final fallbackSnap = await _firestore
+                .collection('families')
+                .doc(familyId)
+                .collection('instances')
+                .limit(300)
+                .safeGet(timeout: const Duration(seconds: 15));
+            if (fallbackSnap.docs.isNotEmpty) {
+              familyInstancesSnap = fallbackSnap;
+            }
+          }
         } catch (e) {
           _logger?.warning(
             'sync',

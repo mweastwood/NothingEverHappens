@@ -42,6 +42,10 @@ class TaskSyncService {
 
   StreamSubscription? _tasksSub;
   StreamSubscription? _instancesSub;
+  StreamSubscription? _userDocSub;
+  StreamSubscription? _familyTasksSub;
+  StreamSubscription? _familyInstancesSub;
+  String? _familyId;
 
   bool _isSyncing = false;
 
@@ -66,6 +70,9 @@ class TaskSyncService {
   void dispose() {
     _tasksSub?.cancel();
     _instancesSub?.cancel();
+    _userDocSub?.cancel();
+    _familyTasksSub?.cancel();
+    _familyInstancesSub?.cancel();
   }
 
   void startListeningToRemote() {
@@ -77,12 +84,42 @@ class TaskSyncService {
     if (_tasksSub != null && _instancesSub != null) return;
     _tasksSub?.cancel();
     _instancesSub?.cancel();
+    _userDocSub?.cancel();
+    _familyTasksSub?.cancel();
+    _familyInstancesSub?.cancel();
 
     logger?.info(
       'sync',
       'Starting remote listeners for tasks and instances',
       data: {'userId': _userId},
     );
+
+    _userDocSub = _firestore
+        .collection('users')
+        .doc(_userId)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            final newFamilyId = snapshot.data()?['familyId'] as String?;
+            if (newFamilyId != _familyId) {
+              _familyId = newFamilyId;
+              _familyTasksSub?.cancel();
+              _familyInstancesSub?.cancel();
+              if (_familyId != null && _familyId!.isNotEmpty) {
+                _startListeningToFamilyRemote(_familyId!);
+              }
+            }
+          },
+          onError: (e, st) {
+            logger?.error(
+              'sync',
+              'User doc stream error',
+              error: e,
+              stackTrace: st,
+            );
+            errorHandler?.report(e, stackTrace: st);
+          },
+        );
 
     _tasksSub = _firestore
         .collection('users')
@@ -163,6 +200,98 @@ class TaskSyncService {
         );
   }
 
+  void _startListeningToFamilyRemote(String familyId) {
+    _familyTasksSub = _firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('tasks')
+        .snapshots()
+        .listen(
+          (snapshot) {
+            logger?.debug(
+              'sync',
+              'Received remote family tasks snapshot',
+              data: {
+                'docsCount': snapshot.docs.length,
+                'changesCount': snapshot.docChanges.length,
+              },
+            );
+            for (final change in snapshot.docChanges) {
+              if (change.type == DocumentChangeType.added ||
+                  change.type == DocumentChangeType.modified) {
+                if (change.doc.data() != null) {
+                  _handleRemoteTaskUpdate(
+                    TaskSchedule.fromFirestore(change.doc),
+                  );
+                }
+              } else if (change.type == DocumentChangeType.removed) {
+                _localDataSource.deleteTask(change.doc.id);
+              }
+            }
+          },
+          onError: (e, st) {
+            logger?.error(
+              'sync',
+              'Remote family tasks stream error',
+              error: e,
+              stackTrace: st,
+            );
+            errorHandler?.report(e, stackTrace: st);
+          },
+        );
+
+    _familyInstancesSub = _firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('instances')
+        .snapshots()
+        .listen(
+          (snapshot) {
+            logger?.debug(
+              'sync',
+              'Received remote family instances snapshot',
+              data: {
+                'docsCount': snapshot.docs.length,
+                'changesCount': snapshot.docChanges.length,
+              },
+            );
+            for (final change in snapshot.docChanges) {
+              if (change.type == DocumentChangeType.added ||
+                  change.type == DocumentChangeType.modified) {
+                if (change.doc.data() != null) {
+                  _handleRemoteInstanceUpdate(
+                    TaskInstance.fromFirestore(change.doc),
+                  );
+                }
+              } else if (change.type == DocumentChangeType.removed) {
+                _localDataSource.deleteInstance(change.doc.id);
+              }
+            }
+          },
+          onError: (e, st) {
+            logger?.error(
+              'sync',
+              'Remote family instances stream error',
+              error: e,
+              stackTrace: st,
+            );
+            errorHandler?.report(e, stackTrace: st);
+          },
+        );
+  }
+
+  Future<String?> _getFamilyId() async {
+    if (_familyId != null) return _familyId;
+    if (_userId.isEmpty) return null;
+    try {
+      final userDoc = await _firestore.collection('users').doc(_userId).get();
+      _familyId = userDoc.data()?['familyId'] as String?;
+      return _familyId;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _handleRemoteTaskUpdate(TaskSchedule remoteTask) async {
     final localTasks = _localDataSource.getTasks();
     final localTaskIndex = localTasks.indexWhere((t) => t.id == remoteTask.id);
@@ -209,12 +338,22 @@ class TaskSyncService {
         // Local wins
         await _localDataSource.markDirty(localInst.id);
         await _pushInstanceToRemote(localInst);
-        await _firestore
-            .collection('users')
-            .doc(_userId)
-            .collection('instances')
-            .doc(remoteInst.id)
-            .delete();
+        final familyId = await _getFamilyId();
+        if (remoteInst.isFamily && familyId != null && familyId.isNotEmpty) {
+          await _firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(remoteInst.id)
+              .delete();
+        } else {
+          await _firestore
+              .collection('users')
+              .doc(_userId)
+              .collection('instances')
+              .doc(remoteInst.id)
+              .delete();
+        }
       } else {
         // Remote wins (or equal)
         await _localDataSource.deleteInstance(localInst.id);
@@ -247,6 +386,7 @@ class TaskSyncService {
 
       final tasksMap = {for (final t in localTasks) t.id: t};
       final instancesMap = {for (final i in localInstances) i.id: i};
+      final familyId = await _getFamilyId();
 
       for (final taskId in dirtyTaskIds) {
         if (taskId.startsWith('S-')) {
@@ -255,6 +395,14 @@ class TaskSyncService {
             await _pushTaskToRemote(task);
           } else {
             // Deleted locally, remove from remote
+            if (familyId != null && familyId.isNotEmpty) {
+              await _firestore
+                  .collection('families')
+                  .doc(familyId)
+                  .collection('tasks')
+                  .doc(taskId)
+                  .delete();
+            }
             await _firestore
                 .collection('users')
                 .doc(_userId)
@@ -267,6 +415,14 @@ class TaskSyncService {
           if (inst != null) {
             await _pushInstanceToRemote(inst);
           } else {
+            if (familyId != null && familyId.isNotEmpty) {
+              await _firestore
+                  .collection('families')
+                  .doc(familyId)
+                  .collection('instances')
+                  .doc(taskId)
+                  .delete();
+            }
             await _firestore
                 .collection('users')
                 .doc(_userId)
@@ -289,20 +445,40 @@ class TaskSyncService {
   }
 
   Future<void> _pushTaskToRemote(TaskSchedule task) async {
-    await _firestore
-        .collection('users')
-        .doc(_userId)
-        .collection('tasks')
-        .doc(task.id)
-        .set(task.toFirestore());
+    final familyId = await _getFamilyId();
+    if (task.isFamily && familyId != null && familyId.isNotEmpty) {
+      await _firestore
+          .collection('families')
+          .doc(familyId)
+          .collection('tasks')
+          .doc(task.id)
+          .set(task.toFirestore());
+    } else {
+      await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('tasks')
+          .doc(task.id)
+          .set(task.toFirestore());
+    }
   }
 
   Future<void> _pushInstanceToRemote(TaskInstance inst) async {
-    await _firestore
-        .collection('users')
-        .doc(_userId)
-        .collection('instances')
-        .doc(inst.id)
-        .set(inst.toFirestore());
+    final familyId = await _getFamilyId();
+    if (inst.isFamily && familyId != null && familyId.isNotEmpty) {
+      await _firestore
+          .collection('families')
+          .doc(familyId)
+          .collection('instances')
+          .doc(inst.id)
+          .set(inst.toFirestore());
+    } else {
+      await _firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('instances')
+          .doc(inst.id)
+          .set(inst.toFirestore());
+    }
   }
 }
