@@ -212,6 +212,135 @@ void main() {
     });
 
     testWidgets(
+      'RecipeEditorScreen deduplicates unit options and defaults to cup',
+      (tester) async {
+        final fakeRepo = _FakeRecipeRepository([]);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [recipeRepositoryProvider.overrideWithValue(fakeRepo)],
+            child: const MaterialApp(home: RecipeEditorScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Default ingredient unit should be 'cup'
+        expect(find.text('cup'), findsOneWidget);
+        expect(find.text('cups'), findsNothing);
+
+        final unitField = find.byKey(const Key('ingredient_unit_field')).first;
+
+        // Test filtering and deduplication for 'cup' vs 'cups'
+        await tester.enterText(unitField, 'cup');
+        await tester.pumpAndSettle();
+        expect(find.text('cup'), findsWidgets);
+        expect(find.text('cups'), findsNothing);
+
+        // Test filtering and deduplication for 'clove' vs 'cloves'
+        await tester.enterText(unitField, 'clove');
+        await tester.pumpAndSettle();
+        expect(find.text('clove'), findsWidgets);
+        expect(find.text('cloves'), findsNothing);
+
+        // Test filtering and deduplication for 'piece' vs 'pieces'
+        await tester.enterText(unitField, 'piece');
+        await tester.pumpAndSettle();
+        expect(find.text('piece'), findsWidgets);
+        expect(find.text('pieces'), findsNothing);
+
+        // Test filtering and deduplication for 'lb' vs 'lbs'
+        await tester.enterText(unitField, 'lb');
+        await tester.pumpAndSettle();
+        expect(find.text('lb'), findsWidgets);
+        expect(find.text('lbs'), findsNothing);
+
+        // Test abbreviation 'tsp' and 'tbsp'
+        await tester.enterText(unitField, 'tsp');
+        await tester.pumpAndSettle();
+        expect(find.text('tsp'), findsWidgets);
+
+        await tester.enterText(unitField, 'tbsp');
+        await tester.pumpAndSettle();
+        expect(find.text('tbsp'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'RecipeDetailScreen dynamically pluralizes and singularizes units when scaling servings',
+      (tester) async {
+        final scalableRecipe = Recipe(
+          id: 'scalable-1',
+          title: 'Garlic Bread',
+          description: 'Tasty bread',
+          servings: 1,
+          ingredients: const [
+            RecipeIngredient(id: '1', name: 'Flour', quantity: 1, unit: 'cup'),
+            RecipeIngredient(
+              id: '2',
+              name: 'Garlic',
+              quantity: 1,
+              unit: 'clove',
+            ),
+            RecipeIngredient(
+              id: '3',
+              name: 'Butter',
+              quantity: 2,
+              unit: 'tbsp',
+            ),
+            RecipeIngredient(
+              id: '4',
+              name: 'Bread',
+              quantity: 1,
+              unit: 'piece',
+            ),
+          ],
+          prepSteps: const [],
+          cookSteps: const [],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              recipeRepositoryProvider.overrideWithValue(
+                _FakeRecipeRepository([scalableRecipe]),
+              ),
+            ],
+            child: MaterialApp(
+              home: RecipeDetailScreen(recipe: scalableRecipe),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // At 1 serving, units should be singular (except tbsp which is invariant)
+        expect(find.text('1 cup'), findsOneWidget);
+        expect(find.text('1 clove'), findsOneWidget);
+        expect(find.text('2 tbsp'), findsOneWidget);
+        expect(find.text('1 piece'), findsOneWidget);
+
+        // Scale up to 2 servings
+        await tester.tap(find.byIcon(Icons.add_circle_outline));
+        await tester.pumpAndSettle();
+
+        // At 2 servings, units should automatically be pluralized
+        expect(find.text('2 cups'), findsOneWidget);
+        expect(find.text('2 cloves'), findsOneWidget);
+        expect(find.text('4 tbsp'), findsOneWidget);
+        expect(find.text('2 pieces'), findsOneWidget);
+
+        // Scale back down to 1 serving
+        await tester.tap(find.byIcon(Icons.remove_circle_outline));
+        await tester.pumpAndSettle();
+
+        // Back to singular
+        expect(find.text('1 cup'), findsOneWidget);
+        expect(find.text('1 clove'), findsOneWidget);
+        expect(find.text('2 tbsp'), findsOneWidget);
+        expect(find.text('1 piece'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
       'CookingModeScreen progresses through steps and starts countdown timer',
       (tester) async {
         await tester.pumpWidget(
@@ -374,6 +503,8 @@ void main() {
         expect(find.text('Shopping: Spaghetti Bolognese'), findsOneWidget);
         expect(find.text('1. Pantry Check'), findsOneWidget);
         expect(find.text('Ground Beef'), findsOneWidget);
+        expect(find.text('500 g'), findsOneWidget);
+        expect(find.text('2 cans'), findsOneWidget);
 
         // Check off ground beef in pantry check
         await tester.tap(find.text('Ground Beef'));
@@ -388,6 +519,7 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('Crushed Tomatoes'), findsOneWidget);
+        expect(find.text('2 cans'), findsOneWidget);
 
         // Complete shopping task
         await tester.tap(find.byKey(const Key('done_shopping_button')));
