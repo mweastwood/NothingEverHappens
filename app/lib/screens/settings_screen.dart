@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../logic/app_logger.dart';
 import '../logic/app_state_exporter.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/task_repository.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
+import '../widgets/debug_state_share_helper.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -284,9 +286,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         OutlinedButton.icon(
                           key: const Key('export_debug_state_button'),
                           onPressed: () {
-                            ref
-                                .read(appStateExporterProvider)
-                                .shareDebugState(context);
+                            DebugStateShareHelper.shareDebugState(
+                              context,
+                              exporter: ref.read(appStateExporterProvider),
+                              errorHandler: ref.read(errorHandlerProvider),
+                              logger: ref.read(appLoggerProvider),
+                            );
                           },
                           icon: const Icon(Icons.ios_share),
                           label: Text(context.l10n.exportDebugStateButton),
