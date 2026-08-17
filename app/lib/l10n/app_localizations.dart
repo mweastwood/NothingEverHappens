@@ -1238,6 +1238,18 @@ abstract class AppLocalizations {
   /// **'Only visible to you.'**
   String get personalTaskHelper;
 
+  /// No description provided for @assignToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign to'**
+  String get assignToLabel;
+
+  /// No description provided for @unassignedMemberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unassigned'**
+  String get unassignedMemberLabel;
+
   /// No description provided for @viewTaskTitle.
   ///
   /// In en, this message translates to:

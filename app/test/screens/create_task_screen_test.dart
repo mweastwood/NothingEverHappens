@@ -734,6 +734,48 @@ void main() {
       },
     );
 
+    testGoldens(
+      'CreateTaskScreen renders family task with assignee selection when members present',
+      (tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+        await firestore.collection('families').doc('fam-123').set({
+          'name': 'Test Family',
+          'members': {
+            'test-user-id': {
+              'userId': 'test-user-id',
+              'displayName': 'Parent User',
+              'email': 'parent@example.com',
+              'role': 'parent',
+            },
+            'member-2': {
+              'userId': 'member-2',
+              'displayName': 'Child User',
+              'email': 'child@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+
+        await tester.pumpWidgetBuilder(
+          createWidget(
+            taskToEdit: TaskSchedule(
+              id: 'task-1',
+              title: 'Clean Bedroom',
+              description: 'Tidy up bedroom and fold laundry',
+              isFamily: true,
+              assignedUserId: 'member-2',
+            ),
+          ),
+          surfaceSize: const Size(800, 1000),
+        );
+
+        await screenMatchesGolden(tester, 'create_task_screen_family_assigned');
+      },
+    );
+
     testWidgets('hides family toggle if user is not in a family', (
       WidgetTester tester,
     ) async {
@@ -945,6 +987,148 @@ void main() {
         verification.called(1);
         final modification = verification.captured.single as TaskModification;
         expect(modification.newTask.isFamily, isTrue);
+      },
+    );
+
+    testWidgets(
+      'allows assigning family task to a specific member and saves assignedUserId',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+        await firestore.collection('families').doc('fam-123').set({
+          'name': 'Test Family',
+          'members': {
+            'test-user-id': {
+              'userId': 'test-user-id',
+              'displayName': 'Parent User',
+              'email': 'parent@example.com',
+              'role': 'parent',
+            },
+            'member-2': {
+              'userId': 'member-2',
+              'displayName': 'Child User',
+              'email': 'child@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+
+        when(mockTaskRepository.addTaskSchedule(any)).thenAnswer((_) async {});
+
+        await tester.pumpWidget(createWidget());
+        await tester.pumpAndSettle();
+
+        // Switch to family task
+        final familyChip = find.byKey(const Key('is_family_toggle'));
+        await tester.ensureVisible(familyChip);
+        await tester.tap(familyChip);
+        await tester.pumpAndSettle();
+
+        // Check member chips appear
+        expect(find.text('Assign to'), findsOneWidget);
+        expect(find.byKey(const Key('unassigned_member_chip')), findsOneWidget);
+        expect(find.byKey(const Key('member_chip_member-2')), findsOneWidget);
+
+        // Select member-2
+        await tester.ensureVisible(
+          find.byKey(const Key('member_chip_member-2')),
+        );
+        await tester.tap(find.byKey(const Key('member_chip_member-2')));
+        await tester.pumpAndSettle();
+
+        // Enter title and save
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Title'),
+          'Clean Bedroom',
+        );
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        final verification = verify(
+          mockTaskRepository.addTaskSchedule(captureAny),
+        );
+        verification.called(1);
+        final createdTask = verification.captured.single as TaskSchedule;
+        expect(createdTask.isFamily, isTrue);
+        expect(createdTask.assignedUserId, 'member-2');
+      },
+    );
+
+    testWidgets(
+      'clears assignedUserId when switching from assigned family task to personal task',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+        await firestore.collection('families').doc('fam-123').set({
+          'name': 'Test Family',
+          'members': {
+            'test-user-id': {
+              'userId': 'test-user-id',
+              'displayName': 'Parent User',
+              'email': 'parent@example.com',
+              'role': 'parent',
+            },
+            'member-2': {
+              'userId': 'member-2',
+              'displayName': 'Child User',
+              'email': 'child@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+
+        when(
+          mockTaskRepository.updateTaskSchedule(any),
+        ).thenAnswer((_) async {});
+
+        final assignedFamilyTask = TaskSchedule(
+          id: 'task-assigned',
+          title: 'Wash Dishes',
+          description: 'Desc',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2026, month: 6, day: 2),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+          isFamily: true,
+          assignedUserId: 'member-2',
+        );
+
+        await tester.pumpWidget(createWidget(taskToEdit: assignedFamilyTask));
+        await tester.pumpAndSettle();
+
+        // Switch to personal
+        final personalChip = find.byKey(const Key('personal_task_chip'));
+        await tester.ensureVisible(personalChip);
+        await tester.tap(personalChip);
+        await tester.pumpAndSettle();
+
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        final verification = verify(
+          mockTaskRepository.updateTaskSchedule(captureAny),
+        );
+        verification.called(1);
+        final modification = verification.captured.single as TaskModification;
+        expect(modification.newTask.isFamily, isFalse);
+        expect(modification.newTask.assignedUserId, isNull);
       },
     );
 

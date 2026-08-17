@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:rxdart/rxdart.dart';
 import '../test_helper.dart';
 
@@ -1682,4 +1683,142 @@ void main() {
       settingsSubject.close();
     },
   );
+
+  testWidgets(
+    'TaskListScreen only displays family tasks assigned to current user or unassigned',
+    (WidgetTester tester) async {
+      final mockUserSettingsRepository =
+          home_mocks.MockUserSettingsRepository();
+      final tasksSubject = BehaviorSubject<List<TaskSchedule>>();
+      final instancesSubject = BehaviorSubject<List<TaskInstance>>();
+
+      when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+      when(
+        mockTaskRepository.getTasks(),
+      ).thenAnswer((_) => tasksSubject.stream);
+      when(
+        mockTaskRepository.getInstances(),
+      ).thenAnswer((_) => instancesSubject.stream);
+      when(mockUserSettingsRepository.getSettings()).thenAnswer(
+        (_) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+      );
+
+      final taskSchedules = [
+        TaskSchedule(
+          id: 'task-1',
+          title: 'Unassigned Family Task',
+          description: '',
+          schedules: [],
+          isFamily: true,
+          assignedUserId: null,
+        ),
+        TaskSchedule(
+          id: 'task-2',
+          title: 'My Assigned Family Task',
+          description: '',
+          schedules: [],
+          isFamily: true,
+          assignedUserId: 'user-me',
+        ),
+        TaskSchedule(
+          id: 'task-3',
+          title: 'Other Member Family Task',
+          description: '',
+          schedules: [],
+          isFamily: true,
+          assignedUserId: 'user-other',
+        ),
+      ];
+
+      final instances = [
+        TaskInstance(
+          id: 'inst-1',
+          scheduleId: 'task-1',
+          ruleId: 'rule-1',
+          title: 'Unassigned Family Task',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+          assignedUserId: null,
+        ),
+        TaskInstance(
+          id: 'inst-2',
+          scheduleId: 'task-2',
+          ruleId: 'rule-2',
+          title: 'My Assigned Family Task',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+          assignedUserId: 'user-me',
+        ),
+        TaskInstance(
+          id: 'inst-3',
+          scheduleId: 'task-3',
+          ruleId: 'rule-3',
+          title: 'Other Member Family Task',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+          assignedUserId: 'user-other',
+        ),
+      ];
+
+      tasksSubject.add(taskSchedules);
+      instancesSubject.add(instances);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userSettingsRepositoryProvider.overrideWithValue(
+              mockUserSettingsRepository,
+            ),
+            authStateProvider.overrideWith(
+              (ref) => Stream.value(_TestUser('user-me')),
+            ),
+          ],
+          child: buildTestableWidget(child: const HomeScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unassigned Family Task'), findsOneWidget);
+      expect(find.text('My Assigned Family Task'), findsOneWidget);
+      expect(find.text('Other Member Family Task'), findsNothing);
+
+      tasksSubject.close();
+      instancesSubject.close();
+    },
+  );
+}
+
+class _TestUser extends Fake implements User {
+  @override
+  final String uid;
+  _TestUser(this.uid);
 }

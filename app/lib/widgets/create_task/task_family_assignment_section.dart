@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../logic/family.dart';
 import '../../logic/l10n_extension.dart';
 import '../standard_choice_chip.dart';
 
@@ -7,12 +8,18 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
   final bool isFamily;
   final ValueChanged<bool>? onFamilyToggled;
   final bool readOnly;
+  final List<FamilyMember> members;
+  final String? assignedUserId;
+  final ValueChanged<String?>? onAssignedUserChanged;
 
   const TaskFamilyAssignmentSection({
     super.key,
     required this.isFamily,
     this.onFamilyToggled,
     this.readOnly = false,
+    this.members = const [],
+    this.assignedUserId,
+    this.onAssignedUserChanged,
   });
 
   @override
@@ -78,6 +85,51 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (isFamily && members.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  context.l10n.assignToLabel,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8.0,
+                  runSpacing: 8.0,
+                  children: [
+                    StandardChoiceChip(
+                      key: const Key('unassigned_member_chip'),
+                      label: context.l10n.unassignedMemberLabel,
+                      selected: assignedUserId == null,
+                      onSelected: readOnly
+                          ? null
+                          : (selected) {
+                              if (selected) {
+                                onAssignedUserChanged?.call(null);
+                              }
+                            },
+                    ),
+                    for (final member in members)
+                      StandardChoiceChip(
+                        key: Key('member_chip_${member.userId}'),
+                        label: member.displayName.isNotEmpty
+                            ? member.displayName
+                            : (member.email.isNotEmpty
+                                  ? member.email
+                                  : 'Member'),
+                        selected: assignedUserId == member.userId,
+                        onSelected: readOnly
+                            ? null
+                            : (selected) {
+                                if (selected) {
+                                  onAssignedUserChanged?.call(member.userId);
+                                }
+                              },
+                      ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

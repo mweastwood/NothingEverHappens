@@ -669,6 +669,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get personalTaskHelper => 'Solo visible para ti.';
 
   @override
+  String get assignToLabel => 'Asignar a';
+
+  @override
+  String get unassignedMemberLabel => 'Sin asignar';
+
+  @override
   String get viewTaskTitle => 'Ver Tarea';
 
   @override

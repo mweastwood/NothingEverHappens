@@ -243,6 +243,8 @@
   "noBacklogTasks": "No hay tareas en la lista de espera.",
   "unassigned": "Sin asignar",
   "assignedTo": "Asignado a {name}",
+  "assignToLabel": "Asignar a",
+  "unassignedMemberLabel": "Sin asignar",
   "starTooltip": "Alternar preferencia",
   "familyCapacityPool": "Capacidad del Grupo Familiar",
   "memberRemainingTotal": "{remaining} min restantes / {total} min en total",

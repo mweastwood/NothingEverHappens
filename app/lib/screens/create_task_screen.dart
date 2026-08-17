@@ -677,13 +677,27 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     );
   }
 
-  Widget _buildFamilyCard(BuildContext context, bool readOnly) {
+  Widget _buildFamilyCard(
+    BuildContext context,
+    bool readOnly,
+    List<FamilyMember> members,
+  ) {
     return TaskFamilyAssignmentSection(
       isFamily: _isFamily,
       readOnly: readOnly,
+      members: members,
+      assignedUserId: _assignedUserId,
+      onAssignedUserChanged: (userId) {
+        setState(() {
+          _assignedUserId = userId;
+        });
+      },
       onFamilyToggled: (selected) {
         setState(() {
           _isFamily = selected;
+          if (!selected) {
+            _assignedUserId = null;
+          }
         });
       },
     );
@@ -1025,6 +1039,18 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         final inFamily = familyId.isNotEmpty;
         final isParent = familyRole == FamilyRole.parent.value;
 
+        final familyAsync = inFamily
+            ? ref.watch(familyStreamProvider(familyId))
+            : null;
+        final members =
+            (familyAsync?.valueOrNull?.members.values.toList() ??
+                  <FamilyMember>[])
+              ..sort(
+                (a, b) => a.displayName.toLowerCase().compareTo(
+                  b.displayName.toLowerCase(),
+                ),
+              );
+
         final isEditingFamilyTask = widget.taskToEdit?.isFamily ?? false;
         final hasEditPermission = !isEditingFamilyTask || isParent;
         final readOnly = !hasEditPermission;
@@ -1136,7 +1162,11 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     readOnly,
                     isDesktop,
                   );
-                  final familyCard = _buildFamilyCard(context, readOnly);
+                  final familyCard = _buildFamilyCard(
+                    context,
+                    readOnly,
+                    members,
+                  );
 
                   return Column(
                     children: [
