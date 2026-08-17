@@ -1442,6 +1442,52 @@ void main() {
     );
   });
 
+  testGoldens('TaskWidget markdown bullet description golden', (tester) async {
+    final markdownBulletTask = TaskSchedule(
+      id: 'S-md-bullet-golden',
+      title: 'Task with Markdown Bullets',
+      description:
+          '- First subtask\n- Second subtask with **bold**\n- Third subtask',
+      schedules: [
+        OneOffSchedule(
+          id: 'R-md-golden-1',
+          scheduleId: 'S-md-bullet-golden',
+          date: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: Container(
+          color: Colors.white,
+          child: TaskWidget(
+            instance: createInstanceFor(markdownBulletTask),
+            schedule: markdownBulletTask,
+          ),
+        ),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 240),
+    );
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_markdown_bullets.png'),
+    );
+  });
+
   testWidgets(
     'TaskWidget displays error SnackBar when launchUrl returns false',
     (tester) async {
