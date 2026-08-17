@@ -734,6 +734,48 @@ void main() {
       },
     );
 
+    testGoldens(
+      'CreateTaskScreen renders family task with assignee selection when members present',
+      (tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+        await firestore.collection('families').doc('fam-123').set({
+          'name': 'Test Family',
+          'members': {
+            'test-user-id': {
+              'userId': 'test-user-id',
+              'displayName': 'Parent User',
+              'email': 'parent@example.com',
+              'role': 'parent',
+            },
+            'member-2': {
+              'userId': 'member-2',
+              'displayName': 'Child User',
+              'email': 'child@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+
+        await tester.pumpWidgetBuilder(
+          createWidget(
+            taskToEdit: TaskSchedule(
+              id: 'task-1',
+              title: 'Clean Bedroom',
+              description: 'Tidy up bedroom and fold laundry',
+              isFamily: true,
+              assignedUserId: 'member-2',
+            ),
+          ),
+          surfaceSize: const Size(800, 1000),
+        );
+
+        await screenMatchesGolden(tester, 'create_task_screen_family_assigned');
+      },
+    );
+
     testWidgets('hides family toggle if user is not in a family', (
       WidgetTester tester,
     ) async {

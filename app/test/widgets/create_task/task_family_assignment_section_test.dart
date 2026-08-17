@@ -316,6 +316,21 @@ void main() {
     testGoldens(
       'TaskFamilyAssignmentSection renders correctly in different states',
       (tester) async {
+        const members = [
+          FamilyMember(
+            userId: 'user-1',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            role: FamilyRole.parent,
+          ),
+          FamilyMember(
+            userId: 'user-2',
+            displayName: 'Bob',
+            email: 'bob@example.com',
+            role: FamilyRole.nonParent,
+          ),
+        ];
+
         final builder = GoldenBuilder.column()
           ..addScenario(
             'Individual (Personal Task Selected)',
@@ -325,21 +340,44 @@ void main() {
             ),
           )
           ..addScenario(
-            'Family Task Selected',
+            'Family Task Selected (No Members)',
             TaskFamilyAssignmentSection(
               isFamily: true,
               onFamilyToggled: (_) {},
             ),
           )
           ..addScenario(
-            'Read Only State',
-            TaskFamilyAssignmentSection(isFamily: true, readOnly: true),
+            'Family Task Selected with Members (Unassigned)',
+            TaskFamilyAssignmentSection(
+              isFamily: true,
+              members: members,
+              assignedUserId: null,
+              onFamilyToggled: (_) {},
+            ),
+          )
+          ..addScenario(
+            'Family Task Selected with Member Assigned',
+            TaskFamilyAssignmentSection(
+              isFamily: true,
+              members: members,
+              assignedUserId: 'user-1',
+              onFamilyToggled: (_) {},
+            ),
+          )
+          ..addScenario(
+            'Read Only State with Member Assigned',
+            TaskFamilyAssignmentSection(
+              isFamily: true,
+              readOnly: true,
+              members: members,
+              assignedUserId: 'user-2',
+            ),
           );
 
         await tester.pumpWidgetBuilder(
           builder.build(),
           wrapper: l10nMaterialAppWrapper(),
-          surfaceSize: const Size(600, 600),
+          surfaceSize: const Size(600, 1300),
         );
 
         await screenMatchesGolden(
