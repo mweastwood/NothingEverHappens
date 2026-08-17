@@ -113,6 +113,15 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
                     for (final member in members)
                       StandardChoiceChip(
                         key: Key('member_chip_${member.userId}'),
+                        avatar: Icon(
+                          member.role == FamilyRole.parent
+                              ? Icons.supervisor_account
+                              : Icons.person,
+                          size: 16,
+                          color: assignedUserId == member.userId
+                              ? theme.colorScheme.onPrimaryContainer
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
                         label: member.displayName.isNotEmpty
                             ? member.displayName
                             : (member.email.isNotEmpty

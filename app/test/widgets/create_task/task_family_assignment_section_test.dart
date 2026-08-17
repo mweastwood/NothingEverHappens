@@ -214,6 +214,21 @@ void main() {
         expect(aliceChip.selected, isTrue);
         expect(bobChip.selected, isFalse);
 
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('member_chip_user-1')),
+            matching: find.byIcon(Icons.supervisor_account),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('member_chip_user-2')),
+            matching: find.byIcon(Icons.person),
+          ),
+          findsOneWidget,
+        );
+
         // Tap Bob
         await tester.tap(find.byKey(const Key('member_chip_user-2')));
         await tester.pumpAndSettle();
@@ -223,6 +238,61 @@ void main() {
         await tester.tap(find.byKey(const Key('unassigned_member_chip')));
         await tester.pumpAndSettle();
         expect(assignedUser, isNull);
+      },
+    );
+
+    testWidgets(
+      'visually distinguishes parents with supervisor_account icon and non-parents with person icon',
+      (WidgetTester tester) async {
+        const members = [
+          FamilyMember(
+            userId: 'parent-1',
+            displayName: 'Parent Member',
+            email: 'parent@example.com',
+            role: FamilyRole.parent,
+          ),
+          FamilyMember(
+            userId: 'child-1',
+            displayName: 'Child Member',
+            email: 'child@example.com',
+            role: FamilyRole.nonParent,
+          ),
+        ];
+
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(
+              body: TaskFamilyAssignmentSection(
+                isFamily: true,
+                members: members,
+                assignedUserId: 'parent-1',
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('member_chip_parent-1')),
+            matching: find.byIcon(Icons.supervisor_account),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('member_chip_child-1')),
+            matching: find.byIcon(Icons.person),
+          ),
+          findsOneWidget,
+        );
       },
     );
 
