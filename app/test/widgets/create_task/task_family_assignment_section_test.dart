@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/create_task/task_family_assignment_section.dart';
 import 'package:nothing_ever_happens/widgets/standard_choice_chip.dart';
+import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
 import '../../test_helper.dart';
@@ -152,6 +153,164 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(toggled, isFalse);
+    });
+
+    testWidgets(
+      'renders member assignment chips when isFamily is true and members list is non-empty',
+      (WidgetTester tester) async {
+        const members = [
+          FamilyMember(
+            userId: 'user-1',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            role: FamilyRole.parent,
+          ),
+          FamilyMember(
+            userId: 'user-2',
+            displayName: 'Bob',
+            email: 'bob@example.com',
+            role: FamilyRole.nonParent,
+          ),
+        ];
+
+        String? assignedUser = 'user-1';
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: TaskFamilyAssignmentSection(
+                isFamily: true,
+                members: members,
+                assignedUserId: assignedUser,
+                onAssignedUserChanged: (uid) => assignedUser = uid,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Assign to'), findsOneWidget);
+        expect(find.byKey(const Key('unassigned_member_chip')), findsOneWidget);
+        expect(find.byKey(const Key('member_chip_user-1')), findsOneWidget);
+        expect(find.byKey(const Key('member_chip_user-2')), findsOneWidget);
+
+        final unassignedChip = tester.widget<StandardChoiceChip>(
+          find.byKey(const Key('unassigned_member_chip')),
+        );
+        final aliceChip = tester.widget<StandardChoiceChip>(
+          find.byKey(const Key('member_chip_user-1')),
+        );
+        final bobChip = tester.widget<StandardChoiceChip>(
+          find.byKey(const Key('member_chip_user-2')),
+        );
+
+        expect(unassignedChip.selected, isFalse);
+        expect(aliceChip.selected, isTrue);
+        expect(bobChip.selected, isFalse);
+
+        // Tap Bob
+        await tester.tap(find.byKey(const Key('member_chip_user-2')));
+        await tester.pumpAndSettle();
+        expect(assignedUser, 'user-2');
+
+        // Tap Unassigned
+        await tester.tap(find.byKey(const Key('unassigned_member_chip')));
+        await tester.pumpAndSettle();
+        expect(assignedUser, isNull);
+      },
+    );
+
+    testWidgets(
+      'does not render member assignment chips when isFamily is false even if members exist',
+      (WidgetTester tester) async {
+        const members = [
+          FamilyMember(
+            userId: 'user-1',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            role: FamilyRole.parent,
+          ),
+        ];
+
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(
+              body: TaskFamilyAssignmentSection(
+                isFamily: false,
+                members: members,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Assign to'), findsNothing);
+        expect(find.byKey(const Key('unassigned_member_chip')), findsNothing);
+        expect(find.byKey(const Key('member_chip_user-1')), findsNothing);
+      },
+    );
+
+    testWidgets('disables member assignment chips when readOnly is true', (
+      WidgetTester tester,
+    ) async {
+      const members = [
+        FamilyMember(
+          userId: 'user-1',
+          displayName: 'Alice',
+          email: 'alice@example.com',
+          role: FamilyRole.parent,
+        ),
+      ];
+
+      String? assignedUser = 'user-1';
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: TaskFamilyAssignmentSection(
+              isFamily: true,
+              readOnly: true,
+              members: members,
+              assignedUserId: assignedUser,
+              onAssignedUserChanged: (uid) => assignedUser = uid,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final unassignedChip = tester.widget<StandardChoiceChip>(
+        find.byKey(const Key('unassigned_member_chip')),
+      );
+      final aliceChip = tester.widget<StandardChoiceChip>(
+        find.byKey(const Key('member_chip_user-1')),
+      );
+
+      expect(unassignedChip.onSelected, isNull);
+      expect(aliceChip.onSelected, isNull);
+
+      await tester.tap(find.byKey(const Key('unassigned_member_chip')));
+      await tester.pumpAndSettle();
+      expect(assignedUser, 'user-1');
     });
 
     testGoldens(

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import '../logic/auth_repository.dart';
 import '../widgets/task_widget.dart';
 import 'home_screen.dart';
 import '../logic/task_repository.dart';
@@ -95,6 +96,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       valueListenable: AppClock.timeNotifier,
       builder: (context, mockTime, _) {
         final isMocked = mockTime != null;
+        final currentUserId = ref.watch(authStateProvider).valueOrNull?.uid;
         final schedulesVal = ref.watch(taskSchedulesProvider);
         final instancesVal = ref.watch(taskInstancesProvider);
         final settingsVal = ref.watch(userSettingsProvider);
@@ -155,6 +157,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             final isFuture = AppClock.now.isBefore(startDateTime);
             final isPending = inst.status == TaskStatus.pending && !isFuture;
             if (!isPending) return false;
+            if (inst.assignedUserId != null &&
+                inst.assignedUserId != currentUserId) {
+              return false;
+            }
             if (searchQuery.isEmpty) return true;
 
             final queryWords = searchQuery

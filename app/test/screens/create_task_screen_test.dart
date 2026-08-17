@@ -949,6 +949,148 @@ void main() {
     );
 
     testWidgets(
+      'allows assigning family task to a specific member and saves assignedUserId',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+        await firestore.collection('families').doc('fam-123').set({
+          'name': 'Test Family',
+          'members': {
+            'test-user-id': {
+              'userId': 'test-user-id',
+              'displayName': 'Parent User',
+              'email': 'parent@example.com',
+              'role': 'parent',
+            },
+            'member-2': {
+              'userId': 'member-2',
+              'displayName': 'Child User',
+              'email': 'child@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+
+        when(mockTaskRepository.addTaskSchedule(any)).thenAnswer((_) async {});
+
+        await tester.pumpWidget(createWidget());
+        await tester.pumpAndSettle();
+
+        // Switch to family task
+        final familyChip = find.byKey(const Key('is_family_toggle'));
+        await tester.ensureVisible(familyChip);
+        await tester.tap(familyChip);
+        await tester.pumpAndSettle();
+
+        // Check member chips appear
+        expect(find.text('Assign to'), findsOneWidget);
+        expect(find.byKey(const Key('unassigned_member_chip')), findsOneWidget);
+        expect(find.byKey(const Key('member_chip_member-2')), findsOneWidget);
+
+        // Select member-2
+        await tester.ensureVisible(
+          find.byKey(const Key('member_chip_member-2')),
+        );
+        await tester.tap(find.byKey(const Key('member_chip_member-2')));
+        await tester.pumpAndSettle();
+
+        // Enter title and save
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Title'),
+          'Clean Bedroom',
+        );
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        final verification = verify(
+          mockTaskRepository.addTaskSchedule(captureAny),
+        );
+        verification.called(1);
+        final createdTask = verification.captured.single as TaskSchedule;
+        expect(createdTask.isFamily, isTrue);
+        expect(createdTask.assignedUserId, 'member-2');
+      },
+    );
+
+    testWidgets(
+      'clears assignedUserId when switching from assigned family task to personal task',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+        await firestore.collection('families').doc('fam-123').set({
+          'name': 'Test Family',
+          'members': {
+            'test-user-id': {
+              'userId': 'test-user-id',
+              'displayName': 'Parent User',
+              'email': 'parent@example.com',
+              'role': 'parent',
+            },
+            'member-2': {
+              'userId': 'member-2',
+              'displayName': 'Child User',
+              'email': 'child@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+
+        when(
+          mockTaskRepository.updateTaskSchedule(any),
+        ).thenAnswer((_) async {});
+
+        final assignedFamilyTask = TaskSchedule(
+          id: 'task-assigned',
+          title: 'Wash Dishes',
+          description: 'Desc',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2026, month: 6, day: 2),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+          isFamily: true,
+          assignedUserId: 'member-2',
+        );
+
+        await tester.pumpWidget(createWidget(taskToEdit: assignedFamilyTask));
+        await tester.pumpAndSettle();
+
+        // Switch to personal
+        final personalChip = find.byKey(const Key('personal_task_chip'));
+        await tester.ensureVisible(personalChip);
+        await tester.tap(personalChip);
+        await tester.pumpAndSettle();
+
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        final verification = verify(
+          mockTaskRepository.updateTaskSchedule(captureAny),
+        );
+        verification.called(1);
+        final modification = verification.captured.single as TaskModification;
+        expect(modification.newTask.isFamily, isFalse);
+        expect(modification.newTask.assignedUserId, isNull);
+      },
+    );
+
+    testWidgets(
       'shows task title in AppBar when editing and scrolled down, updating dynamically',
       (WidgetTester tester) async {
         // Set physical size and device pixel ratio to ensure layout is scrollable
@@ -1654,6 +1796,138 @@ void main() {
         expect(updatedMod!.newTask.description, 'Fold shirts and pants');
         expect(updatedMod!.changes['title'], 'Organize Closet');
         expect(updatedMod!.changes['description'], 'Fold shirts and pants');
+      },
+    );
+  });
+
+  group('Experimental Features Card', () {
+    late MockTaskRepository mockRepository;
+
+    setUp(() {
+      mockRepository = MockTaskRepository();
+      when(
+        mockRepository.getInstances(),
+      ).thenAnswer((_) => const Stream.empty());
+    });
+
+    testWidgets(
+      'The "Experimental Features" card renders collapsed by default',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: const CreateTaskScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Experimental Features'), findsOneWidget);
+        expect(find.byKey(const Key('workflow_standard_chip')), findsNothing);
+        expect(find.byKey(const Key('workflow_meal_chip')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Tapping the card expands it to reveal the Task Workflow chips and stage time selectors',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: const CreateTaskScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap to expand
+        final experimentalHeader = find.text('Experimental Features');
+        await tester.ensureVisible(experimentalHeader);
+        await tester.tap(experimentalHeader);
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('workflow_standard_chip')), findsOneWidget);
+        expect(find.byKey(const Key('workflow_meal_chip')), findsOneWidget);
+        expect(find.text('1. Select'), findsNothing);
+
+        // Tap Meal Planning Workflow chip
+        await tester.tap(find.byKey(const Key('workflow_meal_chip')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('1. Select'), findsOneWidget);
+        expect(find.text('2. Shop'), findsOneWidget);
+        expect(find.text('3. Prep'), findsOneWidget);
+
+        // Tap header again to collapse
+        await tester.tap(experimentalHeader);
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('workflow_standard_chip')), findsNothing);
+        expect(find.byKey(const Key('workflow_meal_chip')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Selecting "Meal Planning Workflow" updates state and persists when saving',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        TaskSchedule? savedSchedule;
+        when(mockRepository.addTaskSchedule(any)).thenAnswer((
+          invocation,
+        ) async {
+          savedSchedule = invocation.positionalArguments[0] as TaskSchedule;
+        });
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: const CreateTaskScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Expand Experimental Features
+        final experimentalHeader = find.text('Experimental Features');
+        await tester.ensureVisible(experimentalHeader);
+        await tester.tap(experimentalHeader);
+        await tester.pumpAndSettle();
+
+        // Select Meal Planning Workflow
+        await tester.tap(find.byKey(const Key('workflow_meal_chip')));
+        await tester.pumpAndSettle();
+
+        // Check default title set to Dinner if empty
+        expect(find.widgetWithText(TextFormField, 'Dinner'), findsOneWidget);
+
+        // Tap Save
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        verify(mockRepository.addTaskSchedule(any)).called(1);
+        expect(savedSchedule, isNotNull);
+        expect(savedSchedule!.workflowType, 'mealWorkflow');
+        expect(savedSchedule!.mealWorkflowConfig, isNotNull);
       },
     );
   });
