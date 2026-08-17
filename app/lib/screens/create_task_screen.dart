@@ -77,6 +77,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   bool _skipIfNoCapacity = false;
 
   // Workflow properties
+  bool _isExperimentalExpanded = false;
   bool _isMealWorkflow = false;
   TimeOfDay _selectTime = const TimeOfDay(hour: 10, minute: 0);
   TimeOfDay _shopTime = const TimeOfDay(hour: 16, minute: 0);
@@ -688,12 +689,13 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     );
   }
 
-  Widget _buildWorkflowCard(BuildContext context, bool readOnly) {
+  Widget _buildExperimentalFeaturesCard(BuildContext context, bool readOnly) {
     final theme = Theme.of(context);
 
     return SizedBox(
       width: double.infinity,
       child: Card(
+        key: const Key('experimental_features_card'),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -705,170 +707,209 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.auto_awesome,
-                    size: 20,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Task Workflow',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+              InkWell(
+                key: const Key('experimental_features_header'),
+                borderRadius: BorderRadius.circular(8),
+                onTap: () {
+                  setState(() {
+                    _isExperimentalExpanded = !_isExperimentalExpanded;
+                  });
+                },
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.science_outlined,
+                      size: 20,
+                      color: theme.colorScheme.primary,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 8.0,
-                children: [
-                  StandardChoiceChip(
-                    key: const Key('workflow_standard_chip'),
-                    label: 'Standard Task',
-                    selected: !_isMealWorkflow,
-                    onSelected: readOnly
-                        ? null
-                        : (selected) {
-                            if (selected) {
-                              setState(() => _isMealWorkflow = false);
-                            }
-                          },
-                  ),
-                  StandardChoiceChip(
-                    key: const Key('workflow_meal_chip'),
-                    label: 'Meal Planning Workflow',
-                    selected: _isMealWorkflow,
-                    onSelected: readOnly
-                        ? null
-                        : (selected) {
-                            if (selected) {
-                              setState(() {
-                                _isMealWorkflow = true;
-                                if (_titleController.text.trim().isEmpty) {
-                                  _titleController.text = 'Dinner';
-                                }
-                              });
-                            }
-                          },
-                  ),
-                ],
-              ),
-              if (_isMealWorkflow) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Coordinates dinner across 3 stages: selecting a recipe, checking shopping list, and cooking instructions.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Experimental Features',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      _isExperimentalExpanded
+                          ? Icons.expand_less
+                          : Icons.expand_more,
+                      size: 20,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ],
                 ),
+              ),
+              if (_isExperimentalExpanded) ...[
                 const SizedBox(height: 16),
-                Text(
-                  'Stage Target Times',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
+                const Divider(height: 1),
+                const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: readOnly
-                            ? null
-                            : () async {
-                                final t = await showTimePicker(
-                                  context: context,
-                                  initialTime: _selectTime,
-                                );
-                                if (t != null) {
-                                  setState(() => _selectTime = t);
-                                }
-                              },
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              '1. Select',
-                              style: TextStyle(fontSize: 10),
-                            ),
-                            Text(
-                              _selectTime.format(context),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    Icon(
+                      Icons.auto_awesome,
+                      size: 20,
+                      color: theme.colorScheme.primary,
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: readOnly
-                            ? null
-                            : () async {
-                                final t = await showTimePicker(
-                                  context: context,
-                                  initialTime: _shopTime,
-                                );
-                                if (t != null) {
-                                  setState(() => _shopTime = t);
-                                }
-                              },
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              '2. Shop',
-                              style: TextStyle(fontSize: 10),
-                            ),
-                            Text(
-                              _shopTime.format(context),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: readOnly
-                            ? null
-                            : () async {
-                                final t = await showTimePicker(
-                                  context: context,
-                                  initialTime: _prepTime,
-                                );
-                                if (t != null) {
-                                  setState(() => _prepTime = t);
-                                }
-                              },
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              '3. Prep',
-                              style: TextStyle(fontSize: 10),
-                            ),
-                            Text(
-                              _prepTime.format(context),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Task Workflow',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8.0,
+                  runSpacing: 8.0,
+                  children: [
+                    StandardChoiceChip(
+                      key: const Key('workflow_standard_chip'),
+                      label: 'Standard Task',
+                      selected: !_isMealWorkflow,
+                      onSelected: readOnly
+                          ? null
+                          : (selected) {
+                              if (selected) {
+                                setState(() => _isMealWorkflow = false);
+                              }
+                            },
+                    ),
+                    StandardChoiceChip(
+                      key: const Key('workflow_meal_chip'),
+                      label: 'Meal Planning Workflow',
+                      selected: _isMealWorkflow,
+                      onSelected: readOnly
+                          ? null
+                          : (selected) {
+                              if (selected) {
+                                setState(() {
+                                  _isMealWorkflow = true;
+                                  if (_titleController.text.trim().isEmpty) {
+                                    _titleController.text = 'Dinner';
+                                  }
+                                });
+                              }
+                            },
+                    ),
+                  ],
+                ),
+                if (_isMealWorkflow) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Coordinates dinner across 3 stages: selecting a recipe, checking shopping list, and cooking instructions.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Stage Target Times',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: readOnly
+                              ? null
+                              : () async {
+                                  final t = await showTimePicker(
+                                    context: context,
+                                    initialTime: _selectTime,
+                                  );
+                                  if (t != null) {
+                                    setState(() => _selectTime = t);
+                                  }
+                                },
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                '1. Select',
+                                style: TextStyle(fontSize: 10),
+                              ),
+                              Text(
+                                _selectTime.format(context),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: readOnly
+                              ? null
+                              : () async {
+                                  final t = await showTimePicker(
+                                    context: context,
+                                    initialTime: _shopTime,
+                                  );
+                                  if (t != null) {
+                                    setState(() => _shopTime = t);
+                                  }
+                                },
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                '2. Shop',
+                                style: TextStyle(fontSize: 10),
+                              ),
+                              Text(
+                                _shopTime.format(context),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: readOnly
+                              ? null
+                              : () async {
+                                  final t = await showTimePicker(
+                                    context: context,
+                                    initialTime: _prepTime,
+                                  );
+                                  if (t != null) {
+                                    setState(() => _prepTime = t);
+                                  }
+                                },
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                '3. Prep',
+                                style: TextStyle(fontSize: 10),
+                              ),
+                              Text(
+                                _prepTime.format(context),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ],
           ),
@@ -1083,7 +1124,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                   final isDesktop = constraints.maxWidth >= 800;
 
                   final detailsCard = _buildDetailsCard(context, readOnly);
-                  final workflowCard = _buildWorkflowCard(context, readOnly);
+                  final experimentalFeaturesCard =
+                      _buildExperimentalFeaturesCard(context, readOnly);
                   final scheduleSection = _buildScheduleSection(
                     context,
                     readOnly,
@@ -1132,8 +1174,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                     children: [
                                       detailsCard,
                                       const SizedBox(height: 16),
-                                      workflowCard,
-                                      const SizedBox(height: 16),
                                       Row(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
@@ -1150,6 +1190,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                                   const SizedBox(height: 16),
                                                   familyCard,
                                                 ],
+                                                const SizedBox(height: 16),
+                                                experimentalFeaturesCard,
                                               ],
                                             ),
                                           ),
@@ -1170,8 +1212,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                     children: [
                                       detailsCard,
                                       const SizedBox(height: 16),
-                                      workflowCard,
-                                      const SizedBox(height: 16),
                                       scheduleSection,
                                       const SizedBox(height: 16),
                                       effortAndPriorityCard,
@@ -1179,6 +1219,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                         const SizedBox(height: 16),
                                         familyCard,
                                       ],
+                                      const SizedBox(height: 16),
+                                      experimentalFeaturesCard,
                                       if (_schedules.isNotEmpty) ...[
                                         const SizedBox(height: 24),
                                         _buildSpawnedInstancesList(
