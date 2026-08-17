@@ -1657,4 +1657,136 @@ void main() {
       },
     );
   });
+
+  group('Experimental Features Card', () {
+    late MockTaskRepository mockRepository;
+
+    setUp(() {
+      mockRepository = MockTaskRepository();
+      when(
+        mockRepository.getInstances(),
+      ).thenAnswer((_) => const Stream.empty());
+    });
+
+    testWidgets(
+      'The "Experimental Features" card renders collapsed by default',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: const CreateTaskScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Experimental Features'), findsOneWidget);
+        expect(find.byKey(const Key('workflow_standard_chip')), findsNothing);
+        expect(find.byKey(const Key('workflow_meal_chip')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Tapping the card expands it to reveal the Task Workflow chips and stage time selectors',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: const CreateTaskScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap to expand
+        final experimentalHeader = find.text('Experimental Features');
+        await tester.ensureVisible(experimentalHeader);
+        await tester.tap(experimentalHeader);
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('workflow_standard_chip')), findsOneWidget);
+        expect(find.byKey(const Key('workflow_meal_chip')), findsOneWidget);
+        expect(find.text('1. Select'), findsNothing);
+
+        // Tap Meal Planning Workflow chip
+        await tester.tap(find.byKey(const Key('workflow_meal_chip')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('1. Select'), findsOneWidget);
+        expect(find.text('2. Shop'), findsOneWidget);
+        expect(find.text('3. Prep'), findsOneWidget);
+
+        // Tap header again to collapse
+        await tester.tap(experimentalHeader);
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('workflow_standard_chip')), findsNothing);
+        expect(find.byKey(const Key('workflow_meal_chip')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Selecting "Meal Planning Workflow" updates state and persists when saving',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        TaskSchedule? savedSchedule;
+        when(mockRepository.addTaskSchedule(any)).thenAnswer((
+          invocation,
+        ) async {
+          savedSchedule = invocation.positionalArguments[0] as TaskSchedule;
+        });
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: const CreateTaskScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Expand Experimental Features
+        final experimentalHeader = find.text('Experimental Features');
+        await tester.ensureVisible(experimentalHeader);
+        await tester.tap(experimentalHeader);
+        await tester.pumpAndSettle();
+
+        // Select Meal Planning Workflow
+        await tester.tap(find.byKey(const Key('workflow_meal_chip')));
+        await tester.pumpAndSettle();
+
+        // Check default title set to Dinner if empty
+        expect(find.widgetWithText(TextFormField, 'Dinner'), findsOneWidget);
+
+        // Tap Save
+        final saveButton = find.byKey(const Key('save_task_button'));
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        verify(mockRepository.addTaskSchedule(any)).called(1);
+        expect(savedSchedule, isNotNull);
+        expect(savedSchedule!.workflowType, 'mealWorkflow');
+        expect(savedSchedule!.mealWorkflowConfig, isNotNull);
+      },
+    );
+  });
 }
