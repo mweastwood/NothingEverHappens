@@ -121,7 +121,7 @@ void main() {
     );
 
     test(
-      'resolves from authenticated user when family data is absent',
+      'resolves to you when userId matches the current authenticated user',
       () async {
         final mockUser = MockUser();
         when(mockUser.uid).thenReturn('current-user-id');
@@ -142,33 +142,47 @@ void main() {
         final result = await container.read(
           userNameProvider('current-user-id').future,
         );
-        expect(result, 'Charlie');
+        expect(result, 'you');
       },
     );
 
     test(
-      'resolves from authenticated user email when auth displayName is null',
+      'resolves to you when userId matches current authenticated user even in family',
       () async {
         final mockUser = MockUser();
-        when(mockUser.uid).thenReturn('current-user-id');
-        when(mockUser.displayName).thenReturn(null);
-        when(mockUser.email).thenReturn('david.miller@example.com');
+        when(mockUser.uid).thenReturn('user-1');
 
         final container = ProviderContainer(
           overrides: [
             firestoreProvider.overrideWithValue(fakeFirestore),
-            familyProfileStreamProvider.overrideWith(
-              (ref) => Stream.value(null),
-            ),
             authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
+            familyProfileStreamProvider.overrideWith(
+              (ref) => Stream.value(
+                const FamilyProfile(familyId: 'fam-1', familyRole: 'parent'),
+              ),
+            ),
+            familyStreamProvider('fam-1').overrideWith(
+              (ref) => Stream.value(
+                const Family(
+                  id: 'fam-1',
+                  name: 'Smiths',
+                  members: {
+                    'user-1': FamilyMember(
+                      userId: 'user-1',
+                      displayName: 'Alice Smith',
+                      email: 'alice@example.com',
+                      role: FamilyRole.parent,
+                    ),
+                  },
+                ),
+              ),
+            ),
           ],
         );
         addTearDown(container.dispose);
 
-        final result = await container.read(
-          userNameProvider('current-user-id').future,
-        );
-        expect(result, 'david');
+        final result = await container.read(userNameProvider('user-1').future);
+        expect(result, 'you');
       },
     );
 

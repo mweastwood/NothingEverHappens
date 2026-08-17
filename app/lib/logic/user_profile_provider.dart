@@ -24,7 +24,17 @@ final userNameProvider = FutureProvider.family<String, String>((
   userId,
 ) async {
   try {
-    // 1. Family Member Resolution
+    // 1. Current Authenticated User Resolution
+    try {
+      final authUser = await ref.watch(authStateProvider.future);
+      if (authUser != null && authUser.uid == userId) {
+        return 'you';
+      }
+    } catch (_) {
+      // Continue to next resolution strategy
+    }
+
+    // 2. Family Member Resolution
     try {
       final familyProfile = await ref.watch(familyProfileStreamProvider.future);
       final familyId = familyProfile?.familyId;
@@ -38,22 +48,6 @@ final userNameProvider = FutureProvider.family<String, String>((
           if (member.email.trim().isNotEmpty) {
             return extractFirstName(member.email);
           }
-        }
-      }
-    } catch (_) {
-      // Continue to next resolution strategy
-    }
-
-    // 2. Current Authenticated User Resolution
-    try {
-      final authUser = await ref.watch(authStateProvider.future);
-      if (authUser != null && authUser.uid == userId) {
-        if (authUser.displayName != null &&
-            authUser.displayName!.trim().isNotEmpty) {
-          return extractFirstName(authUser.displayName!);
-        }
-        if (authUser.email != null && authUser.email!.trim().isNotEmpty) {
-          return extractFirstName(authUser.email!);
         }
       }
     } catch (_) {

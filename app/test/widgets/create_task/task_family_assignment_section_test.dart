@@ -242,6 +242,57 @@ void main() {
     );
 
     testWidgets(
+      'renders "You" instead of member name when member matches currentUserId',
+      (WidgetTester tester) async {
+        const members = [
+          FamilyMember(
+            userId: 'user-1',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            role: FamilyRole.parent,
+          ),
+          FamilyMember(
+            userId: 'user-2',
+            displayName: 'Bob',
+            email: 'bob@example.com',
+            role: FamilyRole.nonParent,
+          ),
+        ];
+
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(
+              body: TaskFamilyAssignmentSection(
+                isFamily: true,
+                members: members,
+                assignedUserId: 'user-1',
+                currentUserId: 'user-1',
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final user1Chip = tester.widget<StandardChoiceChip>(
+          find.byKey(const Key('member_chip_user-1')),
+        );
+        final user2Chip = tester.widget<StandardChoiceChip>(
+          find.byKey(const Key('member_chip_user-2')),
+        );
+
+        expect(user1Chip.label, 'You');
+        expect(user2Chip.label, 'Bob');
+      },
+    );
+
+    testWidgets(
       'visually distinguishes parents with supervisor_account icon and non-parents with person icon',
       (WidgetTester tester) async {
         const members = [

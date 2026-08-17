@@ -293,6 +293,52 @@ void main() {
     },
   );
 
+  testWidgets(
+    'renders "Assigned to you" badge when task is assigned to current user',
+    (tester) async {
+      tasksSubject.add([
+        TaskSchedule(
+          id: 'task-current-user',
+          title: 'My Assigned Chore',
+          description: 'Description',
+          isFamily: true,
+          assignedUserId: 'current-user-id',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2024, month: 1, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        ),
+      ]);
+
+      await tester.pumpWidget(
+        createScreen(
+          overrides: [
+            userNameProvider(
+              'current-user-id',
+            ).overrideWith((ref) => Future.value('you')),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('My Assigned Chore'), findsOneWidget);
+      expect(find.text('Family'), findsOneWidget);
+      expect(find.byIcon(Icons.people_alt), findsOneWidget);
+      expect(find.text('Assigned to you'), findsOneWidget);
+      expect(find.byIcon(Icons.assignment_ind), findsOneWidget);
+    },
+  );
+
   testGoldens('TaskScheduleScreen empty state golden', (tester) async {
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();

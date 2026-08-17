@@ -13,6 +13,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
+import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
@@ -574,6 +575,57 @@ void main() {
       matchesGoldenFile('goldens/task_widget_recurring.png'),
     );
   });
+
+  testWidgets(
+    'displays "Assigned to you" badge when assigned to current user',
+    (tester) async {
+      final assignedTask = TaskSchedule(
+        id: 'S-assigned-you',
+        title: 'Family Chore for Me',
+        description: 'Chore description',
+        isFamily: true,
+        assignedUserId: 'current-user-id',
+        schedules: [
+          OneOffSchedule(
+            id: 'R-assigned-you',
+            scheduleId: 'S-assigned-you',
+            date: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final instance = createInstanceFor(assignedTask);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userNameProvider(
+              'current-user-id',
+            ).overrideWith((ref) => Future.value('you')),
+          ],
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: TaskWidget(instance: instance, schedule: assignedTask),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Family Chore for Me'), findsOneWidget);
+      expect(find.text('Assigned to you'), findsOneWidget);
+      expect(find.byIcon(Icons.assignment_ind), findsOneWidget);
+    },
+  );
 
   testGoldens('TaskWidget badges scenarios', (tester) async {
     const defaultStartTime = RelativeTime(
