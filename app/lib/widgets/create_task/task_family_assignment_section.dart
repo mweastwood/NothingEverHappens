@@ -11,6 +11,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
   final List<FamilyMember> members;
   final String? assignedUserId;
   final ValueChanged<String?>? onAssignedUserChanged;
+  final String? currentUserId;
 
   const TaskFamilyAssignmentSection({
     super.key,
@@ -20,6 +21,7 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
     this.members = const [],
     this.assignedUserId,
     this.onAssignedUserChanged,
+    this.currentUserId,
   });
 
   @override
@@ -122,11 +124,15 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
                               ? theme.colorScheme.onPrimaryContainer
                               : theme.colorScheme.onSurfaceVariant,
                         ),
-                        label: member.displayName.isNotEmpty
-                            ? member.displayName
-                            : (member.email.isNotEmpty
-                                  ? member.email
-                                  : 'Member'),
+                        label:
+                            (currentUserId != null &&
+                                member.userId == currentUserId)
+                            ? 'You'
+                            : (member.displayName.isNotEmpty
+                                  ? member.displayName
+                                  : (member.email.isNotEmpty
+                                        ? member.email
+                                        : 'Member')),
                         selected: assignedUserId == member.userId,
                         onSelected: readOnly
                             ? null

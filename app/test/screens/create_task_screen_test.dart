@@ -22,7 +22,17 @@ import 'package:nothing_ever_happens/widgets/missed_occurrence_policy_selector.d
 import 'package:nothing_ever_happens/widgets/create_task/task_basic_info_section.dart';
 import 'create_task_screen_test.mocks.dart';
 import '../test_helper.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nothing_ever_happens/widgets/standard_choice_chip.dart';
 import 'package:nothing_ever_happens/screens/help_screen.dart';
+
+class _FakeAuthUser extends Fake implements User {
+  final String _uid;
+  _FakeAuthUser(this._uid);
+
+  @override
+  String get uid => _uid;
+}
 
 Widget buildTestProviderScope({
   required Widget child,
@@ -689,12 +699,16 @@ void main() {
       );
     });
 
-    Widget createWidget({TaskSchedule? taskToEdit}) {
+    Widget createWidget({
+      TaskSchedule? taskToEdit,
+      List<Override> extraOverrides = const [],
+    }) {
       return buildTestableWidget(
         child: buildTestProviderScope(
           overrides: [
             taskRepositoryProvider.overrideWithValue(mockTaskRepository),
             familyRepositoryProvider.overrideWithValue(familyRepository),
+            ...extraOverrides,
           ],
           child: CreateTaskScreen(taskToEdit: taskToEdit),
         ),
@@ -1055,6 +1069,60 @@ void main() {
         final createdTask = verification.captured.single as TaskSchedule;
         expect(createdTask.isFamily, isTrue);
         expect(createdTask.assignedUserId, 'member-2');
+      },
+    );
+
+    testWidgets(
+      'displays "You" instead of name on assignment chip for current user',
+      (WidgetTester tester) async {
+        await firestore.collection('users').doc('test-user-id').set({
+          'familyId': 'fam-123',
+          'familyRole': 'parent',
+        });
+        await firestore.collection('families').doc('fam-123').set({
+          'name': 'Test Family',
+          'members': {
+            'test-user-id': {
+              'userId': 'test-user-id',
+              'displayName': 'Parent User',
+              'email': 'parent@example.com',
+              'role': 'parent',
+            },
+            'member-2': {
+              'userId': 'member-2',
+              'displayName': 'Child User',
+              'email': 'child@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+
+        final mockUser = _FakeAuthUser('test-user-id');
+
+        await tester.pumpWidget(
+          createWidget(
+            extraOverrides: [
+              authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to family task
+        final familyChip = find.byKey(const Key('is_family_toggle'));
+        await tester.ensureVisible(familyChip);
+        await tester.tap(familyChip);
+        await tester.pumpAndSettle();
+
+        final currentUserChip = tester.widget<StandardChoiceChip>(
+          find.byKey(const Key('member_chip_test-user-id')),
+        );
+        final otherUserChip = tester.widget<StandardChoiceChip>(
+          find.byKey(const Key('member_chip_member-2')),
+        );
+
+        expect(currentUserChip.label, 'You');
+        expect(otherUserChip.label, 'Child User');
       },
     );
 

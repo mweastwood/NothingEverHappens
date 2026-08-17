@@ -10,6 +10,7 @@ import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/family_repository.dart';
 import '../logic/family.dart';
+import '../logic/auth_repository.dart';
 import '../logic/undo_notifier.dart';
 import '../widgets/undo_snackbar.dart';
 
@@ -681,12 +682,14 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     BuildContext context,
     bool readOnly,
     List<FamilyMember> members,
+    String? currentUserId,
   ) {
     return TaskFamilyAssignmentSection(
       isFamily: _isFamily,
       readOnly: readOnly,
       members: members,
       assignedUserId: _assignedUserId,
+      currentUserId: currentUserId,
       onAssignedUserChanged: (userId) {
         setState(() {
           _assignedUserId = userId;
@@ -1022,6 +1025,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = ref.watch(authStateProvider).valueOrNull?.uid;
     final familyRepo = ref.watch(familyRepositoryProvider);
     final instancesVal = ref.watch(taskInstancesProvider);
     final dbInstances =
@@ -1166,6 +1170,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     context,
                     readOnly,
                     members,
+                    currentUserId,
                   );
 
                   return Column(

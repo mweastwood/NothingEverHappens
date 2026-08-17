@@ -332,6 +332,39 @@ void main() {
       },
     );
 
+    testWidgets(
+      'renders family badge and "Assigned to you" badge when isFamily is true and assigned to current user',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              userNameProvider(
+                'user-bob',
+              ).overrideWith((ref) => Future.value('you')),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: ScheduleCard(
+                    task: familyTaskWithAssignee,
+                    onEdit: () {},
+                    onDelete: () {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Assigned Family Chore'), findsOneWidget);
+        expect(find.text('Family'), findsOneWidget);
+        expect(find.byIcon(Icons.people_alt), findsOneWidget);
+        expect(find.text('Assigned to you'), findsOneWidget);
+        expect(find.byIcon(Icons.assignment_ind), findsOneWidget);
+      },
+    );
+
     testWidgets('does not render family badge when isFamily is false', (
       tester,
     ) async {
