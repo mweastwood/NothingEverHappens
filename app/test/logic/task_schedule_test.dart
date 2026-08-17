@@ -1888,5 +1888,60 @@ void main() {
         },
       );
     });
+
+    group('TaskSchedule Whitespace Trimming', () {
+      test('Constructor trims leading and trailing spaces from title and description', () {
+        final task = TaskSchedule(
+          id: '123',
+          title: '   Trimmed Title   ',
+          description: '   Trimmed Description   \n\t',
+        );
+
+        expect(task.title, 'Trimmed Title');
+        expect(task.description, 'Trimmed Description');
+      });
+
+      test('edit trims leading and trailing spaces from title and description', () {
+        final task = TaskSchedule(
+          id: '123',
+          title: 'Initial Title',
+          description: 'Initial Description',
+        );
+
+        final modification = task.edit(
+          newTitle: '   Updated Title   ',
+          newDescription: '   Updated Description   ',
+          newSchedules: [],
+          newEstimatedDuration: null,
+          newMissedPolicy: MissedPolicy.stack,
+          newIsMaster: false,
+          newLastSpawnedDate: null,
+          newIsFamily: false,
+          newPriority: TaskPriority.medium,
+        );
+
+        expect(modification.newTask.title, 'Updated Title');
+        expect(modification.newTask.description, 'Updated Description');
+        expect(modification.changes['title'], 'Updated Title');
+        expect(modification.changes['description'], 'Updated Description');
+      });
+
+      test('updateTitle and updateDescription trim leading and trailing spaces', () {
+        final task = TaskSchedule(
+          id: '123',
+          title: 'Title',
+          description: 'Desc',
+        );
+
+        final titleMod = task.updateTitle('   New Title   ');
+        expect(titleMod.newTask.title, 'New Title');
+        expect(titleMod.changes['title'], 'New Title');
+
+        final descMod = task.updateDescription('   New Description   ');
+        expect(descMod.newTask.description, 'New Description');
+        expect(descMod.changes['description'], 'New Description');
+      });
+    });
   });
 }
+
