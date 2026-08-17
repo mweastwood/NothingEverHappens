@@ -7,6 +7,9 @@ import '../logic/l10n_extension.dart';
 import '../logic/civil_day.dart';
 import '../logic/task_repository.dart';
 import '../logic/utils/format_utils.dart';
+import '../logic/dashboard_stats.dart';
+import '../widgets/personal_history_stats_card.dart';
+import '../widgets/family_history_stats_card.dart';
 import '../widgets/weekly_capacity_chart.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -59,6 +62,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final settings =
         settingsVal.value ?? const UserSettings(hoursAvailable: 8.0);
     final plannedMinutesPerDay = ref.watch(plannedMinutesPerDayProvider);
+    final personalStats = ref.watch(personalLastWeekStatsProvider);
+    final familyStats = ref.watch(familyLastWeekStatsProvider);
 
     final today = AppClock.now;
     final currentWeekId = _getWeekIdentifier(today);
@@ -140,6 +145,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 16),
             ],
 
+            // Personal Past Week Stats Card
+            PersonalHistoryStatsCard(stats: personalStats),
+            const SizedBox(height: 16),
+
+            // Family Past Week Stats Card (if part of a family)
+            if (familyStats != null) ...[
+              FamilyHistoryStatsCard(stats: familyStats),
+              const SizedBox(height: 16),
+            ],
+
             // Weekly Capacity Graph Card
             Builder(
               builder: (context) {
@@ -174,42 +189,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               },
             ),
             const SizedBox(height: 16),
-
-            // Statistics Card (Placeholder)
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              color: theme.colorScheme.surfaceContainerLow,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.bar_chart, color: theme.colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Statistics',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Completion rate, daily activity trends, and historic chore logs will appear here soon.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),

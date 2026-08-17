@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/mockito.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:rxdart/rxdart.dart';
 import '../test_helper.dart';
 import 'home_screen_test.mocks.dart';
@@ -17,12 +17,17 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/family.dart';
+import 'package:nothing_ever_happens/logic/family_repository.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() {
   late MockUserSettingsRepository mockUserSettingsRepository;
   late BehaviorSubject<UserSettings> settingsSubject;
   late BehaviorSubject<List<TaskSchedule>> tasksSubject;
   late BehaviorSubject<List<TaskInstance>> instancesSubject;
+  late BehaviorSubject<FamilyProfile?> familyProfileSubject;
+  late BehaviorSubject<Family?> familySubject;
 
   setUp(() {
     mockUserSettingsRepository = MockUserSettingsRepository();
@@ -36,6 +41,8 @@ void main() {
     );
     tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([]);
     instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([]);
+    familyProfileSubject = BehaviorSubject<FamilyProfile?>.seeded(null);
+    familySubject = BehaviorSubject<Family?>.seeded(null);
     when(
       mockUserSettingsRepository.getSettings(),
     ).thenAnswer((_) => settingsSubject.stream);
@@ -45,9 +52,11 @@ void main() {
     settingsSubject.close();
     tasksSubject.close();
     instancesSubject.close();
+    familyProfileSubject.close();
+    familySubject.close();
   });
 
-  Widget createTestWidget() {
+  Widget createTestWidget({User? mockUser}) {
     return ProviderScope(
       overrides: [
         userSettingsRepositoryProvider.overrideWithValue(
@@ -56,7 +65,13 @@ void main() {
         userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
         taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
         taskInstancesProvider.overrideWith((ref) => instancesSubject.stream),
-        authStateProvider.overrideWith((ref) => Stream.value(null)),
+        authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
+        familyProfileStreamProvider.overrideWith(
+          (ref) => familyProfileSubject.stream,
+        ),
+        familyStreamProvider(
+          'fam-123',
+        ).overrideWith((ref) => familySubject.stream),
       ],
       child: buildTestableWidget(child: const DashboardScreen()),
     );
@@ -122,6 +137,8 @@ void main() {
       // Tap on Wednesday capacity bar (July 1st)
       final barKey = const Key('capacity_bar_2026-07-01');
       expect(find.byKey(barKey), findsOneWidget);
+      await tester.ensureVisible(find.byKey(barKey));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(barKey));
       await tester.pumpAndSettle();
@@ -166,6 +183,8 @@ void main() {
       // Verify pencil icon exists
       final editBtn = find.byKey(const Key('edit_default_capacity_button'));
       expect(editBtn, findsOneWidget);
+      await tester.ensureVisible(editBtn);
+      await tester.pumpAndSettle();
 
       // Tap pencil icon
       await tester.tap(editBtn);
@@ -221,7 +240,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Open Default Capacity Template dialog
-      await tester.tap(find.byKey(const Key('edit_default_capacity_button')));
+      final editBtn = find.byKey(const Key('edit_default_capacity_button'));
+      await tester.ensureVisible(editBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(editBtn);
       await tester.pumpAndSettle();
 
       // 1. Test Tuesday ('2') - starts at 3.0, incremented to 3.25
@@ -455,6 +477,345 @@ void main() {
       );
       final thuHeight = tester.getSize(thuPaint).height;
       expect(thuHeight, 60.0);
+    },
+  );
+
+  testWidgets(
+    'DashboardScreen renders personal historical stats for rolling 7-day window',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(
+        DateTime(2026, 7, 8, 9, 0),
+      ); // Wednesday (2026-07-08)
+      addTearDown(AppClock.reset);
+
+      final schedule1 = TaskSchedule(
+        id: 's-1',
+        title: 'Dishes',
+        description: 'Wash dishes',
+        estimatedDuration: const Duration(minutes: 60),
+        schedules: [
+          DailySchedule(
+            startDate: CivilDay(year: 2026, month: 7, day: 1),
+            interval: 1,
+          ),
+        ],
+      );
+      final schedule2 = TaskSchedule(
+        id: 's-2',
+        title: 'Trash',
+        description: 'Take out trash',
+        estimatedDuration: const Duration(minutes: 30),
+        schedules: [
+          DailySchedule(
+            startDate: CivilDay(year: 2026, month: 7, day: 1),
+            interval: 1,
+          ),
+        ],
+      );
+
+      // Completed on 2026-07-05 (60 mins)
+      final inst1 = TaskInstance(
+        id: 'i-1',
+        scheduleId: schedule1.id,
+        ruleId: 'r-1',
+        title: 'Dishes',
+        description: 'Wash dishes',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 5),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.completed,
+      );
+
+      // Completed on 2026-07-08 (30 mins)
+      final inst2 = TaskInstance(
+        id: 'i-2',
+        scheduleId: schedule2.id,
+        ruleId: 'r-2',
+        title: 'Trash',
+        description: 'Take out trash',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 8),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.completed,
+      );
+
+      // Skipped on 2026-07-06
+      final inst3 = TaskInstance(
+        id: 'i-3',
+        scheduleId: schedule1.id,
+        ruleId: 'r-1',
+        title: 'Dishes',
+        description: 'Wash dishes',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 6),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.skipped,
+      );
+
+      // Missed/Failed on 2026-07-04
+      final inst4 = TaskInstance(
+        id: 'i-4',
+        scheduleId: schedule2.id,
+        ruleId: 'r-2',
+        title: 'Trash',
+        description: 'Take out trash',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 4),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.failed,
+      );
+
+      tasksSubject.add([schedule1, schedule2]);
+      instancesSubject.add([inst1, inst2, inst3, inst4]);
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      // Verify Personal History card is shown
+      expect(find.text('Your Past Week'), findsOneWidget);
+      expect(
+        find.text('Past 7 days activity & follow-through'),
+        findsOneWidget,
+      );
+
+      // Verify metrics: 2 completed, 1h 30m, 50% completion (2 / 4)
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('personal_stats_completed_tile')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('personal_stats_time_tile')),
+          matching: find.text('1h 30m'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('personal_stats_rate_tile')),
+          matching: find.text('50%'),
+        ),
+        findsOneWidget,
+      );
+
+      // Verify callout for skipped and missed
+      expect(find.text('1 skipped · 1 missed/overdue'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'DashboardScreen renders family breakdown for shared tasks and preserves personal task privacy',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(
+        DateTime(2026, 7, 8, 9, 0),
+      ); // Wednesday (2026-07-08)
+      addTearDown(AppClock.reset);
+
+      familyProfileSubject.add(
+        const FamilyProfile(familyId: 'fam-123', familyRole: 'parent'),
+      );
+      familySubject.add(
+        const Family(
+          id: 'fam-123',
+          name: 'The Incredibles',
+          members: {
+            'user-1': FamilyMember(
+              userId: 'user-1',
+              displayName: 'Helen',
+              email: 'helen@example.com',
+              role: FamilyRole.parent,
+            ),
+            'user-2': FamilyMember(
+              userId: 'user-2',
+              displayName: 'Bob',
+              email: 'bob@example.com',
+              role: FamilyRole.parent,
+            ),
+          },
+        ),
+      );
+
+      final schedule1 = TaskSchedule(
+        id: 's-1',
+        title: 'Family Dinner',
+        description: 'Cook dinner',
+        estimatedDuration: const Duration(minutes: 60),
+        isFamily: true,
+        schedules: [
+          DailySchedule(
+            startDate: CivilDay(year: 2026, month: 7, day: 1),
+            interval: 1,
+          ),
+        ],
+      );
+
+      final personalSchedule = TaskSchedule(
+        id: 's-personal',
+        title: 'Private Journal',
+        description: 'Write diary',
+        estimatedDuration: const Duration(minutes: 45),
+        isFamily: false,
+        schedules: [
+          DailySchedule(
+            startDate: CivilDay(year: 2026, month: 7, day: 1),
+            interval: 1,
+          ),
+        ],
+      );
+
+      // 1. Personal task done by Helen (must NOT appear in family stats)
+      final personalInst = TaskInstance(
+        id: 'i-pers',
+        scheduleId: personalSchedule.id,
+        ruleId: 'r-p',
+        title: 'Private Journal',
+        description: 'Write diary',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 7),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        isFamily: false,
+        status: TaskStatus.completed,
+        completedByUserId: 'user-1',
+      );
+
+      // 2. Family task done by Helen (60 mins)
+      final famInst1 = TaskInstance(
+        id: 'i-fam-1',
+        scheduleId: schedule1.id,
+        ruleId: 'r-1',
+        title: 'Family Dinner',
+        description: 'Cook dinner',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 7),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        isFamily: true,
+        status: TaskStatus.completed,
+        completedByUserId: 'user-1',
+      );
+
+      // 3. Family task done by Bob (60 mins)
+      final famInst2 = TaskInstance(
+        id: 'i-fam-2',
+        scheduleId: schedule1.id,
+        ruleId: 'r-1',
+        title: 'Family Dinner',
+        description: 'Cook dinner',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 6),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        isFamily: true,
+        status: TaskStatus.completed,
+        completedByUserId: 'user-2',
+      );
+
+      // 4. Family task skipped by Bob
+      final famInst3 = TaskInstance(
+        id: 'i-fam-3',
+        scheduleId: schedule1.id,
+        ruleId: 'r-1',
+        title: 'Family Dinner',
+        description: 'Cook dinner',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 5),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        isFamily: true,
+        status: TaskStatus.skipped,
+        completedByUserId: 'user-2',
+      );
+
+      tasksSubject.add([schedule1, personalSchedule]);
+      instancesSubject.add([personalInst, famInst1, famInst2, famInst3]);
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      // Verify Family Team Activity card is shown with family name badge
+      expect(find.text('Family Team Activity'), findsOneWidget);
+      expect(find.text('The Incredibles'), findsOneWidget);
+
+      // Family total stats: 2 family tasks completed (1 each for Helen & Bob), personal task excluded
+      expect(
+        find.byKey(const Key('family_stats_completed_tile')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('family_stats_completed_tile')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+
+      // Total team time: 2h (60m + 60m)
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('family_stats_time_tile')),
+          matching: find.text('2h'),
+        ),
+        findsOneWidget,
+      );
+
+      // Skipped callout for family
+      expect(find.text('1 family tasks skipped'), findsOneWidget);
+
+      // Members displayed
+      expect(find.text('Helen'), findsOneWidget);
+      expect(find.text('Bob'), findsOneWidget);
+      expect(
+        find.text('50%'),
+        findsNWidgets(2),
+      ); // Both contributed 1 / 2 = 50%
     },
   );
 }
