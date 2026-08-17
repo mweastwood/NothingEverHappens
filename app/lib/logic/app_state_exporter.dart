@@ -5,38 +5,25 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import 'app_logger.dart';
 import 'auth_repository.dart';
-import 'civil_day.dart';
-import 'error_handler.dart';
+import 'firestore_extensions.dart';
 import 'hive_local_data_source.dart';
-import 'l10n_extension.dart';
-import 'relative_time.dart';
 import 'task_repository.dart';
 import 'utils/app_version.dart';
-import 'utils/file_downloader/file_downloader.dart';
-import 'firestore_extensions.dart';
-
-typedef FileSaver =
-    FutureOr<void> Function(String content, String fileName, {String mimeType});
+import 'utils/pii_sanitizer.dart';
 
 final appStateExporterProvider = Provider<AppStateExporter>((ref) {
   final firestore = ref.watch(firestoreProvider);
   final authRepo = ref.watch(authRepositoryProvider);
   final hiveDataSource = ref.watch(hiveLocalDataSourceProvider);
-  final errorHandler = ref.watch(errorHandlerProvider);
   final logger = ref.watch(appLoggerProvider);
   return AppStateExporter(
     firestore: firestore,
     authRepository: authRepo,
     hiveDataSource: hiveDataSource,
-    errorHandler: errorHandler,
     logger: logger,
   );
 });
@@ -45,134 +32,31 @@ class AppStateExporter {
   final FirebaseFirestore? _firestore;
   final AuthRepository? _authRepository;
   final HiveLocalDataSource _hiveDataSource;
-  final ErrorHandler? _errorHandler;
-  final FileSaver? _fileSaver;
   final AppLogger? _logger;
 
   AppStateExporter({
     FirebaseFirestore? firestore,
     AuthRepository? authRepository,
     required HiveLocalDataSource hiveDataSource,
-    ErrorHandler? errorHandler,
-    FileSaver? fileSaver,
     AppLogger? logger,
   }) : _firestore = firestore,
        _authRepository = authRepository,
        _hiveDataSource = hiveDataSource,
-       _errorHandler = errorHandler,
-       _fileSaver = fileSaver,
        _logger = logger;
 
-  static String? maskEmail(String? email) {
-    if (email == null) return null;
-    final trimmed = email.trim();
-    if (trimmed.isEmpty) return trimmed;
-    final parts = trimmed.split('@');
-    if (parts.length != 2) return '***';
-    final local = parts[0];
-    final domain = parts[1];
-    if (local.isEmpty) return '***@$domain';
-    return '${local[0]}***@$domain';
-  }
+  /// Masks an email address by delegating to [PiiSanitizer.maskEmail].
+  static String? maskEmail(String? email) => PiiSanitizer.maskEmail(email);
 
-  static String? maskPii(String? value) {
-    if (value == null) return null;
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return trimmed;
-    return '${trimmed[0]}***';
-  }
+  /// Masks a general PII string by delegating to [PiiSanitizer.maskPii].
+  static String? maskPii(String? value) => PiiSanitizer.maskPii(value);
 
-  static bool _isNonPiiKey(String key) {
-    final lowerKey = key.toLowerCase();
-    if (lowerKey.contains('email')) return false;
-    if (lowerKey == 'id' ||
-        lowerKey == 'ids' ||
-        lowerKey == 'uid' ||
-        lowerKey == 'uids' ||
-        lowerKey == 'role' ||
-        lowerKey == 'status') {
-      return true;
-    }
-    if (lowerKey.endsWith('_id') ||
-        lowerKey.endsWith('_ids') ||
-        lowerKey.endsWith('-id') ||
-        lowerKey.endsWith('-ids') ||
-        lowerKey.endsWith('_uid') ||
-        lowerKey.endsWith('_uids') ||
-        lowerKey.endsWith('-uid') ||
-        lowerKey.endsWith('-uids')) {
-      return true;
-    }
-    if (key.endsWith('Id') ||
-        key.endsWith('Ids') ||
-        key.endsWith('ID') ||
-        key.endsWith('IDS') ||
-        key.endsWith('Uid') ||
-        key.endsWith('Uids')) {
-      return true;
-    }
-    return false;
-  }
-
-  static bool _isPiiKey(String key) {
-    if (_isNonPiiKey(key)) return false;
-    final lowerKey = key.toLowerCase();
-    const piiKeywords = [
-      'displayname',
-      'display_name',
-      'fullname',
-      'full_name',
-      'firstname',
-      'first_name',
-      'lastname',
-      'last_name',
-      'username',
-      'user_name',
-      'phonenumber',
-      'phone_number',
-      'phone',
-      'photourl',
-      'photo_url',
-      'photo',
-      'avatar',
-      'picture',
-      'address',
-      'street',
-      'zipcode',
-      'postalcode',
-      'bio',
-      'sender',
-      'recipient',
-      'inviter',
-      'invitee',
-      'profile',
-    ];
-    if (piiKeywords.any((k) => lowerKey.contains(k))) return true;
-    if (lowerKey == 'name' || lowerKey == 'member' || lowerKey == 'members') {
-      return true;
-    }
-    return false;
-  }
-
-  static bool _isRoleOrStatusValue(String value) {
-    final lower = value.trim().toLowerCase();
-    const roleAndStatusValues = {
-      'admin',
-      'owner',
-      'member',
-      'parent',
-      'non-parent',
-      'viewer',
-      'editor',
-      'creator',
-      'active',
-      'pending',
-      'accepted',
-      'declined',
-      'inactive',
-    };
-    return roleAndStatusValues.contains(lower);
-  }
+  /// Sanitizes [value] into a JSON-encodable structure by delegating to [PiiSanitizer.sanitize].
+  dynamic sanitizeForJson(
+    dynamic value, {
+    bool isEmailKey = false,
+    bool isPiiKey = false,
+  }) =>
+      PiiSanitizer.sanitize(value, isEmailKey: isEmailKey, isPiiKey: isPiiKey);
 
   Future<Map<String, dynamic>> exportStateRaw() async {
     bool isOffline = false;
@@ -586,7 +470,7 @@ class AppStateExporter {
       'eventLogs': eventLogs,
     };
 
-    return sanitizeForJson(rawMap) as Map<String, dynamic>;
+    return PiiSanitizer.sanitize(rawMap) as Map<String, dynamic>;
   }
 
   Future<String> exportStateJson({bool pretty = true}) async {
@@ -595,249 +479,5 @@ class AppStateExporter {
       return const JsonEncoder.withIndent('  ').convert(rawMap);
     }
     return jsonEncode(rawMap);
-  }
-
-  dynamic sanitizeForJson(
-    dynamic value, {
-    bool isEmailKey = false,
-    bool isPiiKey = false,
-  }) {
-    if (value == null) return null;
-    if (value is num || value is bool) return value;
-
-    if (value is String) {
-      if (isEmailKey) return maskEmail(value);
-      if (isPiiKey) {
-        if (_isRoleOrStatusValue(value)) return value;
-        return maskPii(value);
-      }
-      return value;
-    }
-
-    if (value is DateTime) {
-      return value.toUtc().toIso8601String();
-    }
-
-    if (value is Timestamp) {
-      return value.toDate().toUtc().toIso8601String();
-    }
-
-    if (value is DocumentReference) {
-      return value.path;
-    }
-
-    if (value is CivilDay) {
-      return sanitizeForJson(
-        value.toJson(),
-        isEmailKey: isEmailKey,
-        isPiiKey: isPiiKey,
-      );
-    }
-
-    if (value is RelativeTime) {
-      return sanitizeForJson(
-        value.toJson(),
-        isEmailKey: isEmailKey,
-        isPiiKey: isPiiKey,
-      );
-    }
-
-    if (value is TimeOfDay) {
-      return sanitizeForJson(
-        {'hour': value.hour, 'minute': value.minute},
-        isEmailKey: isEmailKey,
-        isPiiKey: isPiiKey,
-      );
-    }
-
-    if (value is Enum) {
-      return value.name;
-    }
-
-    if (value is Duration) {
-      return value.inMilliseconds;
-    }
-
-    if (value is GeoPoint) {
-      return sanitizeForJson(
-        {'latitude': value.latitude, 'longitude': value.longitude},
-        isEmailKey: isEmailKey,
-        isPiiKey: isPiiKey,
-      );
-    }
-
-    if (value is Map) {
-      final Map<String, dynamic> result = {};
-      value.forEach((k, v) {
-        final keyStr = k.toString();
-        final lowerKey = keyStr.toLowerCase();
-        final entryIsEmailKey = isEmailKey || lowerKey.contains('email');
-        final entryIsPiiKey =
-            !_isNonPiiKey(keyStr) && (isPiiKey || _isPiiKey(keyStr));
-        result[keyStr] = sanitizeForJson(
-          v,
-          isEmailKey: entryIsEmailKey,
-          isPiiKey: entryIsPiiKey,
-        );
-      });
-      return result;
-    }
-
-    if (value is Iterable) {
-      return value
-          .map(
-            (e) =>
-                sanitizeForJson(e, isEmailKey: isEmailKey, isPiiKey: isPiiKey),
-          )
-          .toList();
-    }
-
-    try {
-      final dynamic json = (value as dynamic).toJson();
-      return sanitizeForJson(json, isEmailKey: isEmailKey, isPiiKey: isPiiKey);
-    } catch (_) {
-      final str = value.toString();
-      if (isEmailKey) return maskEmail(str);
-      if (isPiiKey) return maskPii(str);
-      return str;
-    }
-  }
-
-  Future<void> shareDebugState(BuildContext context) async {
-    if (!context.mounted) return;
-
-    _logger?.info('export', 'Debug state export initiated');
-
-    final Completer<BuildContext> dialogContextCompleter =
-        Completer<BuildContext>();
-    bool isDismissed = false;
-    bool isPopped = false;
-
-    void popDialog(BuildContext ctx) {
-      if (!isPopped && ctx.mounted) {
-        final navigator = Navigator.of(ctx, rootNavigator: true);
-        final route = ModalRoute.of(ctx);
-        if (navigator.canPop() && (route == null || route.isCurrent)) {
-          isPopped = true;
-          navigator.pop();
-        }
-      }
-    }
-
-    dialogContextCompleter.future.then((dialogCtx) {
-      if (!dialogCtx.mounted) return;
-      if (isDismissed) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          popDialog(dialogCtx);
-        });
-      }
-    });
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext ctx) {
-        if (isDismissed) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            popDialog(ctx);
-          });
-        }
-        if (!dialogContextCompleter.isCompleted) {
-          dialogContextCompleter.complete(ctx);
-        }
-        return const Center(child: CircularProgressIndicator());
-      },
-    );
-
-    Future<void> dismissProgressDialog() async {
-      if (isDismissed) return;
-      isDismissed = true;
-      final dialogCtx = await dialogContextCompleter.future;
-      if (!dialogCtx.mounted) return;
-      popDialog(dialogCtx);
-    }
-
-    try {
-      try {
-        final jsonString = await exportStateJson(pretty: true);
-        _logger?.info('export', 'Debug state export completed');
-        await dismissProgressDialog();
-
-        if (!context.mounted) return;
-
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final fileName = 'debug_app_state_$timestamp.json';
-
-        bool shared = false;
-        if (kIsWeb || _fileSaver != null) {
-          try {
-            if (_fileSaver != null) {
-              await _fileSaver(
-                jsonString,
-                fileName,
-                mimeType: 'application/json',
-              );
-            } else {
-              downloadFile(jsonString, fileName, mimeType: 'application/json');
-            }
-            shared = true;
-          } catch (e) {
-            debugPrint('Web download failed, falling back to clipboard: $e');
-          }
-        } else {
-          try {
-            final RenderBox? box = context.findRenderObject() as RenderBox?;
-            final fallbackRect = Rect.fromLTWH(
-              0,
-              0,
-              MediaQuery.maybeOf(context)?.size.width ?? 400,
-              (MediaQuery.maybeOf(context)?.size.height ?? 800) / 2,
-            );
-            final Rect sharePositionOrigin =
-                (box != null && box.attached && box.hasSize)
-                ? (box.localToGlobal(Offset.zero) & box.size)
-                : fallbackRect;
-
-            final tempDir = await getTemporaryDirectory();
-            final filePath = '${tempDir.path}/$fileName';
-            final tempFile = File(filePath);
-            await tempFile.writeAsString(jsonString, flush: true);
-
-            final xFile = XFile(
-              filePath,
-              mimeType: 'application/json',
-              name: fileName,
-            );
-
-            if (!context.mounted) return;
-            await Share.shareXFiles(
-              [xFile],
-              subject: context.l10n.debugStateShareSubject,
-              text: context.l10n.debugStateShareText,
-              sharePositionOrigin: sharePositionOrigin,
-            );
-            shared = true;
-          } catch (e) {
-            debugPrint('Share file failed, falling back to clipboard: $e');
-          }
-        }
-
-        if (!shared) {
-          if (!context.mounted) return;
-          await Clipboard.setData(ClipboardData(text: jsonString));
-          if (!context.mounted) return;
-          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-            SnackBar(content: Text(context.l10n.debugStateCopiedToClipboard)),
-          );
-        }
-      } finally {
-        await dismissProgressDialog();
-      }
-    } catch (e, stackTrace) {
-      if (!context.mounted) return;
-      final errorHandler = _errorHandler ?? ErrorHandler();
-      final report = errorHandler.report(e, stackTrace: stackTrace);
-      errorHandler.showErrorDialog(context, report);
-    }
   }
 }

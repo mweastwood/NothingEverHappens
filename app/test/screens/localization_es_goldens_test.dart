@@ -36,13 +36,13 @@ import 'localization_es_goldens_test.mocks.dart';
 
 class MockAppStateExporter extends Mock implements AppStateExporter {
   @override
-  Future<void> shareDebugState(BuildContext? context) =>
+  Future<String> exportStateJson({bool pretty = true}) =>
       (super.noSuchMethod(
-            Invocation.method(#shareDebugState, [context]),
-            returnValue: Future<void>.value(),
-            returnValueForMissingStub: Future<void>.value(),
+            Invocation.method(#exportStateJson, [], {#pretty: pretty}),
+            returnValue: Future<String>.value('{}'),
+            returnValueForMissingStub: Future<String>.value('{}'),
           )
-          as Future<void>);
+          as Future<String>);
 }
 
 void main() {

@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:nothing_ever_happens/logic/app_state_exporter.dart';
@@ -17,8 +16,6 @@ import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 import 'package:nothing_ever_happens/logic/utils/file_downloader/file_downloader.dart';
-
-import '../test_helper.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {
   final fb_auth.User? _mockUser;
@@ -543,37 +540,6 @@ void main() {
       expect(remoteState['status'], 'success');
     });
 
-    testWidgets(
-      'shareDebugState completes fast without 2-second timeout delay',
-      (WidgetTester tester) async {
-        final exporter = AppStateExporter(
-          firestore: null,
-          hiveDataSource: localDataSource,
-        );
-
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: Builder(
-                builder: (context) {
-                  return ElevatedButton(
-                    onPressed: () => exporter.shareDebugState(context),
-                    child: const Text('Share'),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-
-        await tester.tap(find.byType(ElevatedButton));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 50));
-
-        expect(find.byType(CircularProgressIndicator), findsNothing);
-      },
-    );
-
     test('sanitizeForJson flags members key for PII sanitization while '
         'preserving roles', () {
       final exporter = AppStateExporter(hiveDataSource: localDataSource);
@@ -629,101 +595,6 @@ void main() {
         returnsNormally,
       );
     });
-
-    testWidgets(
-      'shareDebugState calls injected fileSaver with json and filename',
-      (WidgetTester tester) async {
-        String? capturedContent;
-        String? capturedFileName;
-        String? capturedMimeType;
-
-        final exporter = AppStateExporter(
-          firestore: null,
-          hiveDataSource: localDataSource,
-          fileSaver: (content, fileName, {mimeType = 'application/json'}) {
-            capturedContent = content;
-            capturedFileName = fileName;
-            capturedMimeType = mimeType;
-          },
-        );
-
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: Scaffold(
-              body: Builder(
-                builder: (context) {
-                  return ElevatedButton(
-                    onPressed: () => exporter.shareDebugState(context),
-                    child: const Text('Export'),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-
-        await tester.tap(find.byType(ElevatedButton));
-        await tester.pumpAndSettle();
-
-        expect(capturedContent, isNotNull);
-        final decoded = jsonDecode(capturedContent!);
-        expect(decoded['exportMetadata'], isNotNull);
-        expect(capturedFileName, matches(r'^debug_app_state_\d+\.json$'));
-        expect(capturedMimeType, 'application/json');
-        expect(find.byType(SnackBar), findsNothing);
-      },
-    );
-
-    testWidgets(
-      'shareDebugState falls back to clipboard when fileSaver throws',
-      (WidgetTester tester) async {
-        final List<Map<String, dynamic>> clipboardStore = [];
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(SystemChannels.platform, (
-              MethodCall methodCall,
-            ) async {
-              if (methodCall.method == 'Clipboard.setData') {
-                clipboardStore.add(
-                  methodCall.arguments as Map<String, dynamic>,
-                );
-                return null;
-              }
-              return null;
-            });
-
-        final exporter = AppStateExporter(
-          firestore: null,
-          hiveDataSource: localDataSource,
-          fileSaver: (content, fileName, {mimeType = 'application/json'}) {
-            throw Exception('FileSaver web download failed');
-          },
-        );
-
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: Scaffold(
-              body: Builder(
-                builder: (context) {
-                  return ElevatedButton(
-                    onPressed: () => exporter.shareDebugState(context),
-                    child: const Text('Export'),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-
-        await tester.tap(find.byType(ElevatedButton));
-        await tester.pumpAndSettle();
-
-        expect(clipboardStore, isNotEmpty);
-        final copiedText = clipboardStore.last['text'] as String;
-        final decoded = jsonDecode(copiedText);
-        expect(decoded['exportMetadata'], isNotNull);
-        expect(find.byType(SnackBar), findsOneWidget);
-      },
-    );
 
     test('exportStateRaw includes eventLogs from injected AppLogger', () async {
       final logger = AppLogger();
@@ -792,42 +663,5 @@ void main() {
       expect(logData['phoneNumber'], '+***');
       expect(logData['taskId'], 'T-100');
     });
-
-    testWidgets(
-      'shareDebugState logs export initiated and completed events into AppLogger',
-      (WidgetTester tester) async {
-        final logger = AppLogger();
-        final exporter = AppStateExporter(
-          firestore: null,
-          hiveDataSource: localDataSource,
-          logger: logger,
-        );
-
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: Scaffold(
-              body: Builder(
-                builder: (context) {
-                  return ElevatedButton(
-                    onPressed: () => exporter.shareDebugState(context),
-                    child: const Text('Export'),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-
-        await tester.tap(find.byType(ElevatedButton));
-        await tester.pumpAndSettle();
-
-        final events = logger.getEvents();
-        expect(events.length, 2);
-        expect(events[0].category, 'export');
-        expect(events[0].message, 'Debug state export initiated');
-        expect(events[1].category, 'export');
-        expect(events[1].message, 'Debug state export completed');
-      },
-    );
   });
 }
