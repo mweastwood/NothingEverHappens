@@ -48,7 +48,7 @@ class TaskBasicInfoSection extends StatelessWidget {
                 contentPadding: const EdgeInsets.all(16),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) {
+                if (value == null || value.trim().isEmpty) {
                   return context.l10n.titleRequiredError;
                 }
                 return null;

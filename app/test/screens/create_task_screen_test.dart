@@ -19,6 +19,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 
 import 'package:nothing_ever_happens/widgets/missed_occurrence_policy_selector.dart';
+import 'package:nothing_ever_happens/widgets/create_task/task_basic_info_section.dart';
 import 'create_task_screen_test.mocks.dart';
 import '../test_helper.dart';
 import 'package:nothing_ever_happens/screens/help_screen.dart';
@@ -1491,6 +1492,168 @@ void main() {
         expect(createdTask!.schedules.length, 1);
         expect(createdTask!.schedules.first.id, isNot(equals('daily-rule-id')));
         expect(createdTask!.schedules.first.scheduleId, createdTask!.id);
+      },
+    );
+
+    testWidgets('submitting whitespace-only title triggers validation error', (
+      WidgetTester tester,
+    ) async {
+      final mockRepository = MockTaskRepository();
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: buildTestProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockRepository),
+            ],
+            child: const CreateTaskScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final titleField = find
+          .descendant(
+            of: find.byType(TaskBasicInfoSection),
+            matching: find.byType(TextFormField),
+          )
+          .first;
+
+      // Enter whitespace-only title
+      await tester.enterText(titleField, '     ');
+      await tester.pump();
+
+      final saveButton = find.text('Save');
+      await tester.tap(saveButton);
+      await tester.pump();
+
+      // Verify validation error
+      expect(find.text('Please enter a title'), findsOneWidget);
+      verifyNever(mockRepository.addTaskSchedule(any));
+    });
+
+    testWidgets(
+      'creating task with leading and trailing spaces saves trimmed values',
+      (WidgetTester tester) async {
+        final mockRepository = MockTaskRepository();
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        TaskSchedule? savedTask;
+        when(mockRepository.addTaskSchedule(any)).thenAnswer((
+          invocation,
+        ) async {
+          savedTask = invocation.positionalArguments[0] as TaskSchedule;
+        });
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: const CreateTaskScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final basicInfoFields = find.descendant(
+          of: find.byType(TaskBasicInfoSection),
+          matching: find.byType(TextFormField),
+        );
+
+        await tester.enterText(basicInfoFields.first, '   Clean Room   ');
+        await tester.enterText(basicInfoFields.at(1), '   Pick up clothes   ');
+
+        final saveButton = find.text('Save');
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        verify(mockRepository.addTaskSchedule(any)).called(1);
+        expect(savedTask, isNotNull);
+        expect(savedTask!.title, 'Clean Room');
+        expect(savedTask!.description, 'Pick up clothes');
+      },
+    );
+
+    testWidgets(
+      'editing task with leading and trailing spaces saves trimmed values',
+      (WidgetTester tester) async {
+        final mockRepository = MockTaskRepository();
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final initialTask = TaskSchedule(
+          id: 'task-123',
+          title: 'Initial Title',
+          description: 'Initial Description',
+          schedules: [
+            DailySchedule(
+              id: 'rule-1',
+              scheduleId: 'task-123',
+              startDate: const CivilDay(year: 2026, month: 3, day: 8),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        TaskModification? updatedMod;
+        when(mockRepository.updateTaskSchedule(any)).thenAnswer((
+          invocation,
+        ) async {
+          updatedMod = invocation.positionalArguments[0] as TaskModification;
+        });
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: buildTestProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockRepository),
+              ],
+              child: CreateTaskScreen(taskToEdit: initialTask),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final basicInfoFields = find.descendant(
+          of: find.byType(TaskBasicInfoSection),
+          matching: find.byType(TextFormField),
+        );
+
+        await tester.enterText(basicInfoFields.first, '   Organize Closet   ');
+        await tester.enterText(
+          basicInfoFields.at(1),
+          '   Fold shirts and pants   ',
+        );
+
+        final saveButton = find.text('Save');
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        verify(mockRepository.updateTaskSchedule(any)).called(1);
+        expect(updatedMod, isNotNull);
+        expect(updatedMod!.newTask.title, 'Organize Closet');
+        expect(updatedMod!.newTask.description, 'Fold shirts and pants');
+        expect(updatedMod!.changes['title'], 'Organize Closet');
+        expect(updatedMod!.changes['description'], 'Fold shirts and pants');
       },
     );
   });

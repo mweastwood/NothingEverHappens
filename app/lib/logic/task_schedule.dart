@@ -134,8 +134,8 @@ class TaskSchedule {
 
   TaskSchedule({
     required String id,
-    required this.title,
-    required this.description,
+    required String title,
+    required String description,
     List<TaskScheduleRule>? schedules,
     this.activeOccurrenceIndex = 0,
     this.estimatedDuration,
@@ -158,6 +158,8 @@ class TaskSchedule {
     this.isFromCache = false,
     DateTime? updatedAt,
   }) : id = id.startsWith('S-') ? id : 'S-$id',
+       title = title.trim(),
+       description = description.trim(),
        updatedAt = updatedAt ?? DateTime.now(),
        schedules = (schedules ?? []).map((s) {
          final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
@@ -353,9 +355,12 @@ class TaskSchedule {
       );
     }).toList();
 
+    final trimmedTitle = newTitle.trim();
+    final trimmedDescription = newDescription.trim();
+
     final newTask = _copyWith(
-      title: newTitle,
-      description: newDescription,
+      title: trimmedTitle,
+      description: trimmedDescription,
       schedules: resolvedSchedules,
       estimatedDuration: newEstimatedDuration,
       clearEstimatedDuration: newEstimatedDuration == null,
@@ -379,8 +384,12 @@ class TaskSchedule {
     );
 
     final changes = <String, dynamic>{};
-    if (newTitle != title) changes['title'] = newTitle;
-    if (newDescription != description) changes['description'] = newDescription;
+    if (trimmedTitle != title) {
+      changes['title'] = trimmedTitle;
+    }
+    if (trimmedDescription != description) {
+      changes['description'] = trimmedDescription;
+    }
 
     final oldSchedulesJson = schedules
         .map((s) => s.toJson())
@@ -463,14 +472,16 @@ class TaskSchedule {
 
   /// Updates the title and returns the modified task and changes.
   TaskModification updateTitle(String newTitle) {
-    final newTask = _copyWith(title: newTitle);
-    return (newTask: newTask, changes: {'title': newTitle});
+    final trimmedTitle = newTitle.trim();
+    final newTask = _copyWith(title: trimmedTitle);
+    return (newTask: newTask, changes: {'title': trimmedTitle});
   }
 
   /// Updates the description and returns the modified task and changes.
   TaskModification updateDescription(String newDescription) {
-    final newTask = _copyWith(description: newDescription);
-    return (newTask: newTask, changes: {'description': newDescription});
+    final trimmedDescription = newDescription.trim();
+    final newTask = _copyWith(description: trimmedDescription);
+    return (newTask: newTask, changes: {'description': trimmedDescription});
   }
 
   /// Updates the schedule and returns the modified task and changes.

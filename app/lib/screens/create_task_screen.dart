@@ -276,8 +276,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
         final newTask = TaskSchedule(
           id: _taskScheduleId,
-          title: _titleController.text,
-          description: _descriptionController.text,
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
           schedules: _schedules,
           estimatedDuration: estimatedDuration,
           isMaster:
@@ -305,8 +305,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           if (widget.taskToEdit != null) {
             final previousSchedule = widget.taskToEdit!;
             final modification = widget.taskToEdit!.edit(
-              newTitle: _titleController.text,
-              newDescription: _descriptionController.text,
+              newTitle: _titleController.text.trim(),
+              newDescription: _descriptionController.text.trim(),
               newSchedules: _schedules,
               newEstimatedDuration: estimatedDuration,
               newMissedPolicy: hasRepeating
