@@ -20,6 +20,7 @@ import '../logic/subscription_service.dart';
 import '../logic/user_profile_provider.dart';
 import '../logic/family_repository.dart';
 import '../widgets/markdown_styles.dart';
+import '../logic/utils/layout_breakpoints.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -460,35 +461,97 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                             (ref.watch(unsyncedCountProvider) > 0 ||
                                 ref.watch(isFromCacheProvider));
 
+                        final isWide = isWideScreen(context);
+                        final rowCount = (filteredTasks.length + 1) ~/ 2;
+
                         return Stack(
                           children: [
-                            ListView.builder(
-                              controller: _scrollController,
-                              padding: EdgeInsets.only(
-                                top: isSortBarVisible ? 64.0 : 8.0,
-                                bottom: 80.0,
-                              ),
-                              itemCount:
-                                  filteredTasks.length +
-                                  (showUnsyncedBanner ? 1 : 0),
-                              itemBuilder: (context, index) {
-                                if (showUnsyncedBanner) {
-                                  if (index == 0) {
-                                    return const UnsyncedBanner();
+                            if (isWide)
+                              ListView.builder(
+                                controller: _scrollController,
+                                padding: EdgeInsets.only(
+                                  top: isSortBarVisible ? 64.0 : 8.0,
+                                  bottom: 80.0,
+                                  left: 4.0,
+                                  right: 4.0,
+                                ),
+                                itemCount:
+                                    rowCount + (showUnsyncedBanner ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (showUnsyncedBanner) {
+                                    if (index == 0) {
+                                      return const UnsyncedBanner();
+                                    }
+                                    index--;
                                   }
-                                  index--;
-                                }
-                                final task = filteredTasks[index];
-                                return _buildTaskCard(
-                                  context,
-                                  task,
-                                  theme,
-                                  taskRepository,
-                                  showLastSpawnedDate,
-                                  isParent,
-                                );
-                              },
-                            ),
+                                  final leftIndex = index * 2;
+                                  final rightIndex = leftIndex + 1;
+                                  final leftTask = filteredTasks[leftIndex];
+                                  final rightTask =
+                                      rightIndex < filteredTasks.length
+                                      ? filteredTasks[rightIndex]
+                                      : null;
+                                  return Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: _buildTaskCard(
+                                          context,
+                                          leftTask,
+                                          theme,
+                                          taskRepository,
+                                          showLastSpawnedDate,
+                                          isParent,
+                                        ),
+                                      ),
+                                      if (rightTask != null)
+                                        Expanded(
+                                          child: _buildTaskCard(
+                                            context,
+                                            rightTask,
+                                            theme,
+                                            taskRepository,
+                                            showLastSpawnedDate,
+                                            isParent,
+                                          ),
+                                        )
+                                      else
+                                        const Expanded(
+                                          child: SizedBox.shrink(),
+                                        ),
+                                    ],
+                                  );
+                                },
+                              )
+                            else
+                              ListView.builder(
+                                controller: _scrollController,
+                                padding: EdgeInsets.only(
+                                  top: isSortBarVisible ? 64.0 : 8.0,
+                                  bottom: 80.0,
+                                ),
+                                itemCount:
+                                    filteredTasks.length +
+                                    (showUnsyncedBanner ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (showUnsyncedBanner) {
+                                    if (index == 0) {
+                                      return const UnsyncedBanner();
+                                    }
+                                    index--;
+                                  }
+                                  final task = filteredTasks[index];
+                                  return _buildTaskCard(
+                                    context,
+                                    task,
+                                    theme,
+                                    taskRepository,
+                                    showLastSpawnedDate,
+                                    isParent,
+                                  );
+                                },
+                              ),
                             Positioned(
                               top: 0,
                               left: 0,
