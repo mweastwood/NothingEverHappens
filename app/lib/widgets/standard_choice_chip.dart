@@ -4,18 +4,21 @@ class StandardChoiceChip extends StatelessWidget {
   final String label;
   final bool selected;
   final ValueChanged<bool>? onSelected;
+  final Widget? avatar;
 
   const StandardChoiceChip({
     super.key,
     required this.label,
     required this.selected,
     this.onSelected,
+    this.avatar,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ChoiceChip(
+      avatar: avatar,
       label: Text(label),
       selected: selected,
       onSelected: onSelected,

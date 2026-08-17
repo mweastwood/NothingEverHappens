@@ -64,6 +64,26 @@ void main() {
       expect(chipWidget.selected, isFalse);
     });
 
+    testWidgets('renders avatar when provided', (tester) async {
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: const Scaffold(
+            body: Center(
+              child: StandardChoiceChip(
+                key: Key('avatar_chip'),
+                avatar: Icon(Icons.person),
+                label: 'Avatar Chip',
+                selected: false,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.person), findsOneWidget);
+      expect(find.text('Avatar Chip'), findsOneWidget);
+    });
+
     testGoldens('StandardChoiceChip renders correctly in different states', (
       tester,
     ) async {
