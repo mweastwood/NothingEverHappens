@@ -1049,6 +1049,66 @@ void main() {
       );
     },
   );
+
+  test(
+    'Changing or clearing familyId cancels _familyRecipesSub and prevents syncing recipes from old family',
+    () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam1',
+      });
+
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Add a recipe in fam1
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('recipes')
+          .doc('R-1')
+          .set({
+            'title': 'Recipe 1',
+            'description': 'Family Recipe 1',
+            'servings': 4,
+            'isFamily': true,
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(localDataSource.getRecipes().any((r) => r.id == 'R-1'), isTrue);
+
+      // Now user leaves family (familyId becomes null)
+      await firestore.collection('users').doc('user1').set({'familyId': null});
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Add another recipe to old family fam1
+      await firestore
+          .collection('families')
+          .doc('fam1')
+          .collection('recipes')
+          .doc('R-2')
+          .set({
+            'title': 'Recipe 2',
+            'description': 'Family Recipe 2',
+            'servings': 4,
+            'isFamily': true,
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // R-2 should NOT be synced to local data source because stream was cancelled
+      expect(localDataSource.getRecipes().any((r) => r.id == 'R-2'), isFalse);
+    },
+  );
 }
 
 class _FailingHiveLocalDataSource extends HiveLocalDataSource {
