@@ -8,6 +8,7 @@ import '../logic/relative_time.dart';
 import '../logic/subscription_service.dart';
 import '../logic/user_profile_provider.dart';
 import '../logic/family_repository.dart';
+import 'markdown_styles.dart';
 
 class ScheduleCard extends ConsumerWidget {
   final TaskSchedule task;
@@ -313,7 +314,11 @@ class ScheduleCard extends ConsumerWidget {
             ],
             if (task.description.isNotEmpty) ...[
               const SizedBox(height: 8),
-              MarkdownBody(data: task.description, selectable: true),
+              MarkdownBody(
+                data: task.description,
+                selectable: true,
+                styleSheet: MarkdownStyles.taskDescription(context),
+              ),
             ],
             const Divider(height: 24),
             Row(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
@@ -133,6 +134,12 @@ void main() {
       expect(find.text('Every 2 days'), findsOneWidget);
       expect(find.text('Starting: 2024-01-01'), findsOneWidget);
       expect(find.text('9:00 AM - 5:00 PM'), findsOneWidget);
+
+      final markdownBody = tester.widget<MarkdownBody>(
+        find.byType(MarkdownBody),
+      );
+      expect(markdownBody.styleSheet?.blockSpacing, equals(3.0));
+      expect(markdownBody.styleSheet?.pPadding, equals(EdgeInsets.zero));
 
       // Tap edit
       await tester.tap(find.byKey(const Key('edit_schedule_button_S-1')));

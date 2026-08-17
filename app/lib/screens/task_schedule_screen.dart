@@ -19,6 +19,7 @@ import '../widgets/unsynced_banner.dart';
 import '../logic/subscription_service.dart';
 import '../logic/user_profile_provider.dart';
 import '../logic/family_repository.dart';
+import '../widgets/markdown_styles.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -721,13 +722,13 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
               child: MarkdownBody(
                 data: task.description,
                 selectable: false,
-                styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-                  p: theme.textTheme.bodySmall?.copyWith(
+                styleSheet: MarkdownStyles.taskDescription(
+                  context,
+                  textStyle: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant.withValues(
                       alpha: 0.8,
                     ),
                   ),
-                  pPadding: EdgeInsets.zero,
                 ),
               ),
             ),
