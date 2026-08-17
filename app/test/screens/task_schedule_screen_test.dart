@@ -1346,4 +1346,179 @@ void main() {
     await tasksSubject.close();
     await settingsSubject.close();
   });
+
+  group('TaskScheduleScreen Wide Screen Layout', () {
+    testWidgets(
+      'TaskScheduleScreen renders schedule cards in 2-column layout on wide screens',
+      (WidgetTester tester) async {
+        final dailyTask = TaskSchedule(
+          id: 'S-1',
+          title: 'Daily Exercise',
+          description: '30 min cardio',
+          schedules: [
+            DailySchedule(
+              id: 'R-1',
+              scheduleId: 'S-1',
+              startDate: const CivilDay(year: 2024, month: 1, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 7, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 8, minute: 0),
+              ),
+            ),
+          ],
+        );
+        final weeklyTask = TaskSchedule(
+          id: 'S-2',
+          title: 'Weekly Review',
+          description: 'Review project status',
+          schedules: [
+            WeeklySchedule(
+              id: 'R-2',
+              scheduleId: 'S-2',
+              startDate: const CivilDay(year: 2024, month: 1, day: 1),
+              interval: 1,
+              daysOfWeek: {1},
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 10, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 12, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          dailyTask,
+          weeklyTask,
+        ], sync: true);
+        final settingsSubject = BehaviorSubject<UserSettings>.seeded(
+          const UserSettings(hoursAvailable: 8.0),
+          sync: true,
+        );
+
+        when(
+          mockTaskRepository.getTasks(),
+        ).thenAnswer((_) => tasksSubject.stream);
+
+        tester.view.physicalSize = const Size(900, 600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authRepositoryProvider.overrideWithValue(mockAuthRepository),
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              userSettingsProvider.overrideWith(
+                (ref) => settingsSubject.stream,
+              ),
+            ],
+            child: buildTestableWidget(
+              child: const Scaffold(body: TaskScheduleScreen()),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify both task titles are rendered
+        expect(find.text('Daily Exercise'), findsOneWidget);
+        expect(find.text('Weekly Review'), findsOneWidget);
+
+        // Verify Row layout for dual-column cards
+        expect(find.byType(Row), findsWidgets);
+
+        await tasksSubject.close();
+        await settingsSubject.close();
+      },
+    );
+
+    testGoldens('TaskScheduleScreen wide screen 2-column golden', (
+      tester,
+    ) async {
+      final dailyTask = TaskSchedule(
+        id: 'S-1',
+        title: 'Daily Exercise',
+        description: '30 min cardio',
+        schedules: [
+          DailySchedule(
+            id: 'R-1',
+            scheduleId: 'S-1',
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 7, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 8, minute: 0),
+            ),
+          ),
+        ],
+      );
+      final weeklyTask = TaskSchedule(
+        id: 'S-2',
+        title: 'Weekly Review',
+        description: 'Review project status',
+        schedules: [
+          WeeklySchedule(
+            id: 'R-2',
+            scheduleId: 'S-2',
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            daysOfWeek: {1},
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 12, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+        dailyTask,
+        weeklyTask,
+      ], sync: true);
+      final settingsSubject = BehaviorSubject<UserSettings>.seeded(
+        const UserSettings(hoursAvailable: 8.0),
+        sync: true,
+      );
+
+      when(
+        mockTaskRepository.getTasks(),
+      ).thenAnswer((_) => tasksSubject.stream);
+
+      await tester.pumpWidgetBuilder(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userSettingsProvider.overrideWith((ref) => settingsSubject.stream),
+          ],
+          child: const Scaffold(body: TaskScheduleScreen()),
+        ),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(900, 600),
+      );
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'task_schedule_screen_wide');
+
+      await tasksSubject.close();
+      await settingsSubject.close();
+    });
+  });
 }

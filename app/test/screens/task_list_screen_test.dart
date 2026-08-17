@@ -13,6 +13,7 @@ import 'package:mockito/annotations.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/screens/home_screen.dart';
+import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
@@ -31,12 +32,14 @@ import 'home_screen_test.mocks.dart' as home_mocks;
 void main() {
   late MockAuthRepository mockAuthRepository;
   late MockTaskRepository mockTaskRepository;
+  late home_mocks.MockUserSettingsRepository mockUserSettingsRepository;
   late BehaviorSubject<List<TaskSchedule>> tasksSubject;
   late BehaviorSubject<List<TaskInstance>> instancesSubject;
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
     mockTaskRepository = MockTaskRepository();
+    mockUserSettingsRepository = home_mocks.MockUserSettingsRepository();
 
     // Initial task list
     final initialTasks = [
@@ -89,6 +92,9 @@ void main() {
     when(
       mockTaskRepository.getInstances(),
     ).thenAnswer((_) => instancesSubject.stream);
+    when(
+      mockUserSettingsRepository.getSettings(),
+    ).thenAnswer((_) => Stream.value(const UserSettings(hoursAvailable: 8.0)));
 
     when(mockTaskRepository.addTaskSchedule(any)).thenAnswer((
       invocation,
@@ -1815,6 +1821,300 @@ void main() {
       instancesSubject.close();
     },
   );
+
+  group('TaskListScreen Wide Screen Layout & Interactions', () {
+    testWidgets(
+      'TaskListScreen renders tasks in 2-column layout on wide screens',
+      (WidgetTester tester) async {
+        final tasks = [
+          TaskSchedule(
+            id: '1',
+            title: 'Task 1',
+            description: 'Desc 1',
+            schedules: [
+              OneOffSchedule(
+                date: const CivilDay(year: 2024, month: 1, day: 1),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 9, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+              ),
+            ],
+          ),
+          TaskSchedule(
+            id: '2',
+            title: 'Task 2',
+            description: 'Desc 2',
+            schedules: [
+              OneOffSchedule(
+                date: const CivilDay(year: 2024, month: 1, day: 1),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 10, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 18, minute: 0),
+                ),
+              ),
+            ],
+          ),
+        ];
+        final instances = [
+          TaskInstance(
+            id: 'I-1',
+            scheduleId: '1',
+            ruleId: 'R-1',
+            title: 'Task 1',
+            description: 'Desc 1',
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+          TaskInstance(
+            id: 'I-2',
+            scheduleId: '2',
+            ruleId: 'R-2',
+            title: 'Task 2',
+            description: 'Desc 2',
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 10, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 18, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+        ];
+        tasksSubject.add(tasks);
+        instancesSubject.add(instances);
+
+        tester.view.physicalSize = const Size(900, 600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authRepositoryProvider.overrideWithValue(mockAuthRepository),
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              userSettingsRepositoryProvider.overrideWithValue(
+                mockUserSettingsRepository,
+              ),
+            ],
+            child: buildTestableWidget(child: const TaskListScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify both task cards are visible
+        expect(find.text('Task 1'), findsOneWidget);
+        expect(find.text('Task 2'), findsOneWidget);
+
+        // Verify DismissDirection is DismissDirection.none on TaskWidget
+        final dismissibles = tester.widgetList<Dismissible>(
+          find.byType(Dismissible),
+        );
+        for (final dismissible in dismissibles) {
+          expect(dismissible.direction, DismissDirection.none);
+        }
+      },
+    );
+
+    testWidgets(
+      'TaskListScreen disables swipe-to-dismiss gestures on wide screens',
+      (WidgetTester tester) async {
+        final task = TaskSchedule(
+          id: '1',
+          title: 'Non Swipeable Task',
+          description: 'Desc',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2024, month: 1, day: 1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+        final instance = TaskInstance(
+          id: 'I-1',
+          scheduleId: '1',
+          ruleId: 'R-1',
+          title: 'Non Swipeable Task',
+          description: 'Desc',
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+        tasksSubject.add([task]);
+        instancesSubject.add([instance]);
+
+        tester.view.physicalSize = const Size(900, 600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authRepositoryProvider.overrideWithValue(mockAuthRepository),
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              userSettingsRepositoryProvider.overrideWithValue(
+                mockUserSettingsRepository,
+              ),
+            ],
+            child: buildTestableWidget(child: const TaskListScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Attempt LTR fling
+        await tester.fling(
+          find.text('Non Swipeable Task'),
+          const Offset(500.0, 0.0),
+          1000.0,
+        );
+        await tester.pumpAndSettle();
+        verifyNever(mockTaskRepository.completeTaskInstance(any));
+
+        // Attempt RTL fling
+        await tester.fling(
+          find.text('Non Swipeable Task'),
+          const Offset(-500.0, 0.0),
+          1000.0,
+        );
+        await tester.pumpAndSettle();
+        verifyNever(mockTaskRepository.dismissTaskInstance(any));
+      },
+    );
+
+    testGoldens('TaskListScreen wide screen 2-column golden', (tester) async {
+      final tasks = [
+        TaskSchedule(
+          id: '1',
+          title: 'Water Houseplants',
+          description: 'Living room and bedroom plants',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2024, month: 1, day: 1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        ),
+        TaskSchedule(
+          id: '2',
+          title: 'Pay Electricity Bill',
+          description: 'Due end of week',
+          priority: TaskPriority.high,
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2024, month: 1, day: 1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 10, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 18, minute: 0),
+              ),
+            ),
+          ],
+        ),
+      ];
+      final instances = [
+        TaskInstance(
+          id: 'I-1',
+          scheduleId: '1',
+          ruleId: 'R-1',
+          title: 'Water Houseplants',
+          description: 'Living room and bedroom plants',
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        ),
+        TaskInstance(
+          id: 'I-2',
+          scheduleId: '2',
+          ruleId: 'R-2',
+          title: 'Pay Electricity Bill',
+          description: 'Due end of week',
+          priority: TaskPriority.high,
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 10, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 18, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        ),
+      ];
+      tasksSubject.add(tasks);
+      instancesSubject.add(instances);
+
+      await tester.pumpWidgetBuilder(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            userSettingsRepositoryProvider.overrideWithValue(
+              mockUserSettingsRepository,
+            ),
+          ],
+          child: const TaskListScreen(),
+        ),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(900, 600),
+      );
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'task_list_screen_wide');
+    });
+  });
 }
 
 class _TestUser extends Fake implements User {

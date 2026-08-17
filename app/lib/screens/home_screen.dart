@@ -15,6 +15,7 @@ import 'help_screen.dart';
 import 'recipes/recipe_list_screen.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/utils/app_version.dart';
+import '../logic/utils/layout_breakpoints.dart';
 
 final homeTabIndexProvider = StateProvider<int>((ref) => 0);
 
@@ -62,6 +63,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(homeTabIndexProvider);
+    final isWide = isWideScreen(context);
+
+    final activeScreen = currentIndex == 0
+        ? const TaskListScreen()
+        : currentIndex == 1
+        ? const TaskScheduleScreen()
+        : currentIndex == 2
+        ? const DashboardScreen()
+        : const FamilyScreen();
 
     return HomeSearchAndShortcutWidget(
       currentIndex: currentIndex,
@@ -69,42 +79,75 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final mainContent = Scaffold(
           appBar: appBar,
           drawer: _buildDrawer(context),
-          body: currentIndex == 0
-              ? const TaskListScreen()
-              : currentIndex == 1
-              ? const TaskScheduleScreen()
-              : currentIndex == 2
-              ? const DashboardScreen()
-              : const FamilyScreen(),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: currentIndex,
-            onDestinationSelected: (int index) {
-              ref.read(homeTabIndexProvider.notifier).state = index;
-              _routeManager.updateUrlPath(index);
-            },
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.list_outlined),
-                selectedIcon: const Icon(Icons.list),
-                label: context.l10n.tasksTab,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.calendar_month_outlined),
-                selectedIcon: const Icon(Icons.calendar_month),
-                label: context.l10n.scheduleTab,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.dashboard_outlined),
-                selectedIcon: const Icon(Icons.dashboard),
-                label: context.l10n.dashboardTab,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.people_outline),
-                selectedIcon: const Icon(Icons.people),
-                label: context.l10n.familyTab,
-              ),
-            ],
-          ),
+          body: isWide
+              ? Row(
+                  children: [
+                    NavigationRail(
+                      selectedIndex: currentIndex,
+                      onDestinationSelected: (int index) {
+                        ref.read(homeTabIndexProvider.notifier).state = index;
+                        _routeManager.updateUrlPath(index);
+                      },
+                      labelType: NavigationRailLabelType.all,
+                      destinations: [
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.list_outlined),
+                          selectedIcon: const Icon(Icons.list),
+                          label: Text(context.l10n.tasksTab),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.calendar_month_outlined),
+                          selectedIcon: const Icon(Icons.calendar_month),
+                          label: Text(context.l10n.scheduleTab),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.dashboard_outlined),
+                          selectedIcon: const Icon(Icons.dashboard),
+                          label: Text(context.l10n.dashboardTab),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.people_outline),
+                          selectedIcon: const Icon(Icons.people),
+                          label: Text(context.l10n.familyTab),
+                        ),
+                      ],
+                    ),
+                    const VerticalDivider(thickness: 1, width: 1),
+                    Expanded(child: activeScreen),
+                  ],
+                )
+              : activeScreen,
+          bottomNavigationBar: isWide
+              ? null
+              : NavigationBar(
+                  selectedIndex: currentIndex,
+                  onDestinationSelected: (int index) {
+                    ref.read(homeTabIndexProvider.notifier).state = index;
+                    _routeManager.updateUrlPath(index);
+                  },
+                  destinations: [
+                    NavigationDestination(
+                      icon: const Icon(Icons.list_outlined),
+                      selectedIcon: const Icon(Icons.list),
+                      label: context.l10n.tasksTab,
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      selectedIcon: const Icon(Icons.calendar_month),
+                      label: context.l10n.scheduleTab,
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.dashboard_outlined),
+                      selectedIcon: const Icon(Icons.dashboard),
+                      label: context.l10n.dashboardTab,
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.people_outline),
+                      selectedIcon: const Icon(Icons.people),
+                      label: context.l10n.familyTab,
+                    ),
+                  ],
+                ),
           floatingActionButton: (currentIndex == 0 || currentIndex == 1)
               ? FloatingActionButton(
                   onPressed: _addNewTask,

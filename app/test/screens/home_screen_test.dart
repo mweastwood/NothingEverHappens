@@ -70,7 +70,7 @@ void main() {
     settingsSubject.close();
   });
 
-  Widget createScreen({Uri? mockUri}) {
+  Widget createScreen({Uri? mockUri, Size size = const Size(400, 800)}) {
     final firestore = FakeFirebaseFirestore();
     final familyRepo = FamilyRepository(
       firestore: firestore,
@@ -91,7 +91,10 @@ void main() {
           (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
         ),
       ],
-      child: buildTestableWidget(child: HomeScreen(mockUri: mockUri)),
+      child: MediaQuery(
+        data: MediaQueryData(size: size),
+        child: buildTestableWidget(child: HomeScreen(mockUri: mockUri)),
+      ),
     );
   }
 
@@ -427,6 +430,98 @@ void main() {
 
       final NavigationBar navBar = tester.widget(find.byType(NavigationBar));
       expect(navBar.selectedIndex, 0);
+    });
+  });
+
+  group('HomeScreen wide screen tests', () {
+    testWidgets(
+      'HomeScreen initial state on wide screen (Tasks tab with NavigationRail)',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(createScreen(size: const Size(900, 600)));
+        await tester.pumpAndSettle();
+
+        // Verify NavigationBar is NOT present, NavigationRail IS present
+        expect(find.byType(NavigationBar), findsNothing);
+        expect(find.byType(NavigationRail), findsOneWidget);
+
+        // Verify default selected destination is Tasks (index 0)
+        final NavigationRail rail = tester.widget(find.byType(NavigationRail));
+        expect(rail.selectedIndex, 0);
+
+        // Verify TaskListScreen is visible, others are not
+        expect(find.byType(TaskListScreen), findsOneWidget);
+        expect(find.byType(TaskScheduleScreen), findsNothing);
+        expect(find.byType(FamilyScreen), findsNothing);
+
+        // Verify FloatingActionButton is shown on Tasks tab
+        expect(find.byType(FloatingActionButton), findsOneWidget);
+      },
+    );
+
+    testWidgets('HomeScreen switch tabs on wide screen with NavigationRail', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(createScreen(size: const Size(900, 600)));
+      await tester.pumpAndSettle();
+
+      // 1. Switch to Schedule tab
+      await tester.tap(find.text('Schedule'));
+      await tester.pumpAndSettle();
+
+      final NavigationRail rail1 = tester.widget(find.byType(NavigationRail));
+      expect(rail1.selectedIndex, 1);
+      expect(find.byType(TaskScheduleScreen), findsOneWidget);
+      expect(find.byType(TaskListScreen), findsNothing);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+
+      // 2. Switch to Dashboard tab
+      await tester.tap(find.text('Dashboard'));
+      await tester.pumpAndSettle();
+
+      final NavigationRail rail2 = tester.widget(find.byType(NavigationRail));
+      expect(rail2.selectedIndex, 2);
+      expect(find.byType(DashboardScreen), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing);
+
+      // 3. Switch to Family tab
+      await tester.tap(find.text('Family'));
+      await tester.pumpAndSettle();
+
+      final NavigationRail rail3 = tester.widget(find.byType(NavigationRail));
+      expect(rail3.selectedIndex, 3);
+      expect(find.byType(FamilyScreen), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing);
+
+      // 4. Switch back to Tasks tab
+      await tester.tap(find.text('Tasks'));
+      await tester.pumpAndSettle();
+
+      final NavigationRail rail4 = tester.widget(find.byType(NavigationRail));
+      expect(rail4.selectedIndex, 0);
+      expect(find.byType(TaskListScreen), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+    });
+
+    testGoldens('HomeScreen wide screen Tasks tab golden', (tester) async {
+      await tester.pumpWidgetBuilder(
+        createScreen(size: const Size(900, 600)),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(900, 600),
+      );
+      await tester.pumpAndSettle();
+      await screenMatchesGolden(tester, 'home_screen_wide_tasks_tab');
+    });
+
+    testGoldens('HomeScreen wide screen Schedule tab golden', (tester) async {
+      await tester.pumpWidgetBuilder(
+        createScreen(size: const Size(900, 600)),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(900, 600),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Schedule'));
+      await tester.pumpAndSettle();
+      await screenMatchesGolden(tester, 'home_screen_wide_schedule_tab');
     });
   });
 }

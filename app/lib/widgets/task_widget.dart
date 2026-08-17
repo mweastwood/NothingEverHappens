@@ -22,6 +22,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../logic/subscription_service.dart';
 import '../logic/recipes/recipe_repository.dart';
+import '../logic/utils/layout_breakpoints.dart';
 import '../screens/workflows/meal_selection_dialog.dart';
 import '../screens/workflows/shopping_checklist_screen.dart';
 import '../screens/recipes/cooking_mode_screen.dart';
@@ -509,7 +510,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                   ),
                 Dismissible(
                   key: ValueKey(widget.instance.id),
-                  direction: _isMouse
+                  direction: (_isMouse || isWideScreen(context))
                       ? DismissDirection.none
                       : DismissDirection.horizontal,
                   onUpdate: (details) {

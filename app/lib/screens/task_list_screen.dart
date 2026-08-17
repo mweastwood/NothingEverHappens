@@ -15,6 +15,7 @@ import '../widgets/sort_bar.dart';
 import '../widgets/unsynced_banner.dart';
 
 import '../logic/subscription_service.dart';
+import '../logic/utils/layout_breakpoints.dart';
 
 final taskSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -232,24 +233,72 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               );
             }
           } else {
+            final isWide = isWideScreen(context);
             bodySliver = SliverPadding(
               padding: const EdgeInsets.all(8.0),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final inst = filteredInstances[index];
-                  final matchingSchedules = schedules.where(
-                    (s) => s.id == inst.scheduleId,
-                  );
-                  final sched = matchingSchedules.isEmpty
-                      ? null
-                      : matchingSchedules.first;
-                  return TaskWidget(
-                    key: ValueKey(inst.id),
-                    instance: inst,
-                    schedule: sched,
-                  );
-                }, childCount: filteredInstances.length),
-              ),
+              sliver: isWide
+                  ? SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final leftIndex = index * 2;
+                        final rightIndex = leftIndex + 1;
+
+                        final leftInst = filteredInstances[leftIndex];
+                        final leftMatching = schedules.where(
+                          (s) => s.id == leftInst.scheduleId,
+                        );
+                        final leftSched = leftMatching.isEmpty
+                            ? null
+                            : leftMatching.first;
+                        final leftWidget = TaskWidget(
+                          key: ValueKey(leftInst.id),
+                          instance: leftInst,
+                          schedule: leftSched,
+                        );
+
+                        Widget? rightWidget;
+                        if (rightIndex < filteredInstances.length) {
+                          final rightInst = filteredInstances[rightIndex];
+                          final rightMatching = schedules.where(
+                            (s) => s.id == rightInst.scheduleId,
+                          );
+                          final rightSched = rightMatching.isEmpty
+                              ? null
+                              : rightMatching.first;
+                          rightWidget = TaskWidget(
+                            key: ValueKey(rightInst.id),
+                            instance: rightInst,
+                            schedule: rightSched,
+                          );
+                        }
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: leftWidget),
+                            const SizedBox(width: 8.0),
+                            Expanded(
+                              child: rightWidget ?? const SizedBox.shrink(),
+                            ),
+                          ],
+                        );
+                      }, childCount: (filteredInstances.length + 1) ~/ 2),
+                    )
+                  : SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final inst = filteredInstances[index];
+                        final matchingSchedules = schedules.where(
+                          (s) => s.id == inst.scheduleId,
+                        );
+                        final sched = matchingSchedules.isEmpty
+                            ? null
+                            : matchingSchedules.first;
+                        return TaskWidget(
+                          key: ValueKey(inst.id),
+                          instance: inst,
+                          schedule: sched,
+                        );
+                      }, childCount: filteredInstances.length),
+                    ),
             );
           }
         }
