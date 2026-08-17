@@ -113,6 +113,7 @@ class TaskSyncService {
               _familyId = newFamilyId;
               _familyTasksSub?.cancel();
               _familyInstancesSub?.cancel();
+              _familyRecipesSub?.cancel();
               if (_familyId != null && _familyId!.isNotEmpty) {
                 _startListeningToFamilyRemote(_familyId!);
               }
