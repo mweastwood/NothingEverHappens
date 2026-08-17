@@ -1495,45 +1495,46 @@ void main() {
       },
     );
 
-    testWidgets(
-      'submitting whitespace-only title triggers validation error',
-      (WidgetTester tester) async {
-        final mockRepository = MockTaskRepository();
-        tester.view.physicalSize = const Size(1000, 2000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('submitting whitespace-only title triggers validation error', (
+      WidgetTester tester,
+    ) async {
+      final mockRepository = MockTaskRepository();
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: buildTestProviderScope(
-              overrides: [
-                taskRepositoryProvider.overrideWithValue(mockRepository),
-              ],
-              child: const CreateTaskScreen(),
-            ),
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: buildTestProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockRepository),
+            ],
+            child: const CreateTaskScreen(),
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        final titleField = find.descendant(
-          of: find.byType(TaskBasicInfoSection),
-          matching: find.byType(TextFormField),
-        ).first;
+      final titleField = find
+          .descendant(
+            of: find.byType(TaskBasicInfoSection),
+            matching: find.byType(TextFormField),
+          )
+          .first;
 
-        // Enter whitespace-only title
-        await tester.enterText(titleField, '     ');
-        await tester.pump();
+      // Enter whitespace-only title
+      await tester.enterText(titleField, '     ');
+      await tester.pump();
 
-        final saveButton = find.text('Save');
-        await tester.tap(saveButton);
-        await tester.pump();
+      final saveButton = find.text('Save');
+      await tester.tap(saveButton);
+      await tester.pump();
 
-        // Verify validation error
-        expect(find.text('Please enter a title'), findsOneWidget);
-        verifyNever(mockRepository.addTaskSchedule(any));
-      },
-    );
+      // Verify validation error
+      expect(find.text('Please enter a title'), findsOneWidget);
+      verifyNever(mockRepository.addTaskSchedule(any));
+    });
 
     testWidgets(
       'creating task with leading and trailing spaces saves trimmed values',
@@ -1545,7 +1546,9 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         TaskSchedule? savedTask;
-        when(mockRepository.addTaskSchedule(any)).thenAnswer((invocation) async {
+        when(mockRepository.addTaskSchedule(any)).thenAnswer((
+          invocation,
+        ) async {
           savedTask = invocation.positionalArguments[0] as TaskSchedule;
         });
 
@@ -1566,14 +1569,8 @@ void main() {
           matching: find.byType(TextFormField),
         );
 
-        await tester.enterText(
-          basicInfoFields.first,
-          '   Clean Room   ',
-        );
-        await tester.enterText(
-          basicInfoFields.at(1),
-          '   Pick up clothes   ',
-        );
+        await tester.enterText(basicInfoFields.first, '   Clean Room   ');
+        await tester.enterText(basicInfoFields.at(1), '   Pick up clothes   ');
 
         final saveButton = find.text('Save');
         await tester.tap(saveButton);
@@ -1618,7 +1615,9 @@ void main() {
         );
 
         TaskModification? updatedMod;
-        when(mockRepository.updateTaskSchedule(any)).thenAnswer((invocation) async {
+        when(mockRepository.updateTaskSchedule(any)).thenAnswer((
+          invocation,
+        ) async {
           updatedMod = invocation.positionalArguments[0] as TaskModification;
         });
 
@@ -1639,10 +1638,7 @@ void main() {
           matching: find.byType(TextFormField),
         );
 
-        await tester.enterText(
-          basicInfoFields.first,
-          '   Organize Closet   ',
-        );
+        await tester.enterText(basicInfoFields.first, '   Organize Closet   ');
         await tester.enterText(
           basicInfoFields.at(1),
           '   Fold shirts and pants   ',
@@ -1662,4 +1658,3 @@ void main() {
     );
   });
 }
-

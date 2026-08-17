@@ -384,8 +384,12 @@ class TaskSchedule {
     );
 
     final changes = <String, dynamic>{};
-    if (trimmedTitle != title) changes['title'] = trimmedTitle;
-    if (trimmedDescription != description) changes['description'] = trimmedDescription;
+    if (trimmedTitle != title) {
+      changes['title'] = trimmedTitle;
+    }
+    if (trimmedDescription != description) {
+      changes['description'] = trimmedDescription;
+    }
 
     final oldSchedulesJson = schedules
         .map((s) => s.toJson())

@@ -308,28 +308,30 @@ void main() {
       },
     );
 
-    test('Constructor and copyWith trim leading and trailing spaces from title and description', () {
-      final instance = TaskInstance(
-        scheduleId: 'schedule-1',
-        ruleId: 'rule-1',
-        title: '   Trimmed Instance Title   ',
-        description: '   Trimmed Instance Description \t\n  ',
-        scheduledDate: testDate,
-        startRelativeTime: testStart,
-        dueRelativeTime: testDue,
-      );
+    test(
+      'Constructor and copyWith trim leading and trailing spaces from title and description',
+      () {
+        final instance = TaskInstance(
+          scheduleId: 'schedule-1',
+          ruleId: 'rule-1',
+          title: '   Trimmed Instance Title   ',
+          description: '   Trimmed Instance Description \t\n  ',
+          scheduledDate: testDate,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+        );
 
-      expect(instance.title, 'Trimmed Instance Title');
-      expect(instance.description, 'Trimmed Instance Description');
+        expect(instance.title, 'Trimmed Instance Title');
+        expect(instance.description, 'Trimmed Instance Description');
 
-      final copied = instance.copyWith(
-        title: '   Updated Instance Title   ',
-        description: '   Updated Instance Description   ',
-      );
+        final copied = instance.copyWith(
+          title: '   Updated Instance Title   ',
+          description: '   Updated Instance Description   ',
+        );
 
-      expect(copied.title, 'Updated Instance Title');
-      expect(copied.description, 'Updated Instance Description');
-    });
+        expect(copied.title, 'Updated Instance Title');
+        expect(copied.description, 'Updated Instance Description');
+      },
+    );
   });
 }
-
