@@ -10,6 +10,7 @@ import '../logic/task_repository.dart';
 import '../screens/create_task_screen.dart';
 import 'fun_check_button.dart';
 import 'fun_delete_button.dart';
+import 'markdown_styles.dart';
 
 import '../logic/task_instance.dart';
 import '../logic/l10n_extension.dart';
@@ -662,6 +663,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               MarkdownBody(
                 data: widget.instance.description,
                 selectable: _isMouse,
+                styleSheet: MarkdownStyles.taskDescription(context),
               ),
             ],
             const SizedBox(height: 8),

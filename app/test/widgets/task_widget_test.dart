@@ -218,6 +218,9 @@ void main() {
 
     expect(find.byType(MarkdownBody), findsOneWidget);
     expect(find.text('**bold**'), findsNothing);
+    final markdownBody = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+    expect(markdownBody.styleSheet?.blockSpacing, equals(3.0));
+    expect(markdownBody.styleSheet?.pPadding, equals(EdgeInsets.zero));
   });
 
   testWidgets('TaskWidget calls repository on completion', (tester) async {

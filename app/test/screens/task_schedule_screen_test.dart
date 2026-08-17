@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -150,6 +151,42 @@ void main() {
     expect(find.text('9:00 AM -- 5:00 PM'), findsOneWidget);
     expect(find.text('10:30 AM -- 12:00 PM'), findsOneWidget);
   });
+
+  testWidgets(
+    'TaskScheduleScreen renders markdown description with compact spacing',
+    (WidgetTester tester) async {
+      final markdownTask = TaskSchedule(
+        id: 'md-1',
+        title: 'Markdown Schedule',
+        description: '- Item 1\n- Item 2',
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          ),
+        ],
+      );
+
+      tasksSubject.add([markdownTask]);
+
+      await tester.pumpWidget(createScreen());
+      await tester.pumpAndSettle();
+
+      final markdownBody = tester.widget<MarkdownBody>(
+        find.byType(MarkdownBody),
+      );
+      expect(markdownBody.styleSheet?.blockSpacing, equals(3.0));
+      expect(markdownBody.styleSheet?.pPadding, equals(EdgeInsets.zero));
+    },
+  );
 
   testWidgets(
     'TaskScheduleScreen displays family badge for family tasks and hides for personal tasks',
