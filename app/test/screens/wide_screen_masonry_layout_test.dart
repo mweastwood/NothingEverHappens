@@ -14,26 +14,14 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
 import 'package:nothing_ever_happens/widgets/smooth_shuffle_item.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:nothing_ever_happens/l10n/app_localizations.dart';
+
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
+import '../test_helper.dart';
 
 import 'home_screen_test.mocks.dart' as home_mocks;
 
 @GenerateMocks([TaskRepository, AuthRepository])
 import 'wide_screen_masonry_layout_test.mocks.dart';
-
-Widget buildTestableWidget({required Widget child}) {
-  return MaterialApp(
-    localizationsDelegates: const [
-      AppLocalizations.delegate,
-      GlobalMaterialLocalizations.delegate,
-      GlobalWidgetsLocalizations.delegate,
-      GlobalCupertinoLocalizations.delegate,
-    ],
-    supportedLocales: const [Locale('en')],
-    home: child,
-  );
-}
 
 void main() {
   late MockTaskRepository mockTaskRepository;
@@ -384,6 +372,332 @@ void main() {
 
         // Schedule 4 starts higher than Schedule 3 because Schedule 2 is shorter
         expect(rect4.top, lessThan(rect3.top));
+      },
+    );
+
+    testGoldens(
+      'TaskListScreen wide screen masonry layout with uneven heights golden',
+      (WidgetTester tester) async {
+        final tasks = [
+          TaskSchedule(
+            id: '1',
+            title: 'Clean & Organize Garage Workshop',
+            description:
+                '1. Sort hand tools onto pegboard\n2. Sweep wood shavings and dust\n3. Organize storage bins on metal shelving\n4. Dispose of hazardous chemical waste safely',
+            priority: TaskPriority.high,
+            schedules: [
+              OneOffSchedule(
+                date: const CivilDay(year: 2024, month: 1, day: 1),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 9, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+              ),
+            ],
+          ),
+          TaskSchedule(
+            id: '2',
+            title: 'Water Indoor Houseplants',
+            description: 'Living room monstera and ferns.',
+            priority: TaskPriority.low,
+            schedules: [
+              OneOffSchedule(
+                date: const CivilDay(year: 2024, month: 1, day: 1),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 9, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+              ),
+            ],
+          ),
+          TaskSchedule(
+            id: '3',
+            title: 'Take Out Recycling & Compost',
+            description: 'Sort plastics and place curbside before 8 AM.',
+            priority: TaskPriority.medium,
+            schedules: [
+              OneOffSchedule(
+                date: const CivilDay(year: 2024, month: 1, day: 1),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 9, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+              ),
+            ],
+          ),
+          TaskSchedule(
+            id: '4',
+            title: 'Weekly Meal Planning & Grocery List',
+            description:
+                'Check pantry inventory for staple items, fresh produce, and spices before heading to the market.',
+            priority: TaskPriority.medium,
+            schedules: [
+              OneOffSchedule(
+                date: const CivilDay(year: 2024, month: 1, day: 1),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 9, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+              ),
+            ],
+          ),
+        ];
+
+        final instances = [
+          TaskInstance(
+            id: 'I-1',
+            scheduleId: '1',
+            ruleId: 'R-1',
+            title: 'Clean & Organize Garage Workshop',
+            description:
+                '1. Sort hand tools onto pegboard\n2. Sweep wood shavings and dust\n3. Organize storage bins on metal shelving\n4. Dispose of hazardous chemical waste safely',
+            priority: TaskPriority.high,
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+          TaskInstance(
+            id: 'I-2',
+            scheduleId: '2',
+            ruleId: 'R-2',
+            title: 'Water Indoor Houseplants',
+            description: 'Living room monstera and ferns.',
+            priority: TaskPriority.low,
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+          TaskInstance(
+            id: 'I-3',
+            scheduleId: '3',
+            ruleId: 'R-3',
+            title: 'Take Out Recycling & Compost',
+            description: 'Sort plastics and place curbside before 8 AM.',
+            priority: TaskPriority.medium,
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+          TaskInstance(
+            id: 'I-4',
+            scheduleId: '4',
+            ruleId: 'R-4',
+            title: 'Weekly Meal Planning & Grocery List',
+            description:
+                'Check pantry inventory for staple items, fresh produce, and spices before heading to the market.',
+            priority: TaskPriority.medium,
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+        ];
+
+        when(
+          mockTaskRepository.getTasks(),
+        ).thenAnswer((_) => Stream.value(tasks));
+        when(
+          mockTaskRepository.getInstances(),
+        ).thenAnswer((_) => Stream.value(instances));
+        when(mockUserSettingsRepository.getSettings()).thenAnswer(
+          (_) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+        );
+
+        await tester.pumpWidgetBuilder(
+          ProviderScope(
+            overrides: [
+              authRepositoryProvider.overrideWithValue(mockAuthRepository),
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              userSettingsRepositoryProvider.overrideWithValue(
+                mockUserSettingsRepository,
+              ),
+              userSettingsProvider.overrideWith(
+                (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+              ),
+            ],
+            child: const TaskListScreen(),
+          ),
+          wrapper: l10nMaterialAppWrapper(),
+          surfaceSize: const Size(900, 600),
+        );
+        await tester.pumpAndSettle();
+
+        await screenMatchesGolden(
+          tester,
+          'task_list_screen_wide_masonry_uneven_heights',
+        );
+      },
+    );
+
+    testGoldens(
+      'TaskScheduleScreen wide screen masonry layout with uneven heights golden',
+      (WidgetTester tester) async {
+        final tasks = [
+          TaskSchedule(
+            id: 'S-1',
+            title: 'Vehicle Maintenance Inspection',
+            description:
+                '• Check tire pressure (35 psi)\n• Top up windshield washer fluid\n• Inspect engine oil level and filter\n• Test turn signals and brake lights',
+            priority: TaskPriority.high,
+            schedules: [
+              DailySchedule(
+                id: 'R-1',
+                scheduleId: 'S-1',
+                startDate: const CivilDay(year: 2024, month: 1, day: 1),
+                interval: 1,
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 7, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 8, minute: 0),
+                ),
+              ),
+            ],
+          ),
+          TaskSchedule(
+            id: 'S-2',
+            title: 'Evening Journal & Daily Reflection',
+            description: 'Write 3 highlights and gratitude items.',
+            priority: TaskPriority.low,
+            schedules: [
+              DailySchedule(
+                id: 'R-2',
+                scheduleId: 'S-2',
+                startDate: const CivilDay(year: 2024, month: 1, day: 1),
+                interval: 1,
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 20, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 20, minute: 30),
+                ),
+              ),
+            ],
+          ),
+          TaskSchedule(
+            id: 'S-3',
+            title: 'Water Garden Vegetables',
+            description: 'Deep soak tomato beds and herbs in raised planters.',
+            priority: TaskPriority.medium,
+            schedules: [
+              DailySchedule(
+                id: 'R-3',
+                scheduleId: 'S-3',
+                startDate: const CivilDay(year: 2024, month: 1, day: 1),
+                interval: 1,
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 7, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 8, minute: 0),
+                ),
+              ),
+            ],
+          ),
+          TaskSchedule(
+            id: 'S-4',
+            title: 'Monthly Budget & Expenses Audit',
+            description:
+                'Review bank transactions and reconcile spending categories against monthly allocation targets.',
+            priority: TaskPriority.medium,
+            schedules: [
+              DailySchedule(
+                id: 'R-4',
+                scheduleId: 'S-4',
+                startDate: const CivilDay(year: 2024, month: 1, day: 1),
+                interval: 1,
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 9, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 10, minute: 0),
+                ),
+              ),
+            ],
+          ),
+        ];
+
+        when(
+          mockTaskRepository.getTasks(),
+        ).thenAnswer((_) => Stream.value(tasks));
+        when(mockUserSettingsRepository.getSettings()).thenAnswer(
+          (_) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+        );
+
+        await tester.pumpWidgetBuilder(
+          ProviderScope(
+            overrides: [
+              authRepositoryProvider.overrideWithValue(mockAuthRepository),
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              userSettingsRepositoryProvider.overrideWithValue(
+                mockUserSettingsRepository,
+              ),
+              userSettingsProvider.overrideWith(
+                (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+              ),
+            ],
+            child: const Scaffold(body: TaskScheduleScreen()),
+          ),
+          wrapper: l10nMaterialAppWrapper(),
+          surfaceSize: const Size(900, 600),
+        );
+        await tester.pumpAndSettle();
+
+        await screenMatchesGolden(
+          tester,
+          'task_schedule_screen_wide_masonry_uneven_heights',
+        );
       },
     );
   });
