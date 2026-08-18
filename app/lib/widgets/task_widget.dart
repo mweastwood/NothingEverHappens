@@ -319,13 +319,15 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
           width: 1,
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+            Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -335,8 +337,8 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                 color: color,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

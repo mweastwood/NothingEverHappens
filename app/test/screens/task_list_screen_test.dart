@@ -1439,6 +1439,9 @@ void main() {
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
 
+    tester.view.physicalSize = const Size(400, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+
     final now = DateTime(2026, 6, 22, 12, 0);
     AppClock.setMockTime(now);
     addTearDown(AppClock.reset);
