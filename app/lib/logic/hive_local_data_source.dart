@@ -86,11 +86,18 @@ class HiveLocalDataSource {
   Future<void> init() async {
     try {
       await Hive.initFlutter();
-      _tasksBox = await _openBoxSafely(_tasksBoxName);
-      _instancesBox = await _openBoxSafely(_instancesBoxName);
-      _syncMetaBox = await _openBoxSafely(_syncMetaBoxName);
-      _settingsBox = await _openBoxSafely(_settingsBoxName);
-      _recipesBox = await _openBoxSafely(_recipesBoxName);
+      final results = await Future.wait([
+        _openBoxSafely(_tasksBoxName),
+        _openBoxSafely(_instancesBoxName),
+        _openBoxSafely(_syncMetaBoxName),
+        _openBoxSafely(_settingsBoxName),
+        _openBoxSafely(_recipesBoxName),
+      ]);
+      _tasksBox = results[0];
+      _instancesBox = results[1];
+      _syncMetaBox = results[2];
+      _settingsBox = results[3];
+      _recipesBox = results[4];
     } catch (e, st) {
       isFallbackInMemoryMode = true;
       errorHandler?.report(e, stackTrace: st);
