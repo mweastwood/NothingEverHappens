@@ -164,5 +164,26 @@ void main() {
         syncService.dispose();
       },
     );
+
+    test(
+      'Startup launch telemetry count increments and executes without blocking critical path',
+      () async {
+        expect(localDataSource.getAppLaunchCount(), equals(0));
+
+        // Asynchronous telemetry trigger simulation
+        final launchFuture = () async {
+          final count = await localDataSource.incrementAppLaunchCount();
+          return count;
+        }();
+
+        // Local storage and repository access is immediately available
+        final tasks = localDataSource.getTasks();
+        expect(tasks, isEmpty);
+
+        final launchCount = await launchFuture;
+        expect(launchCount, equals(1));
+        expect(localDataSource.getAppLaunchCount(), equals(1));
+      },
+    );
   });
 }

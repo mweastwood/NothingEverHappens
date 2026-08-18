@@ -342,4 +342,21 @@ void main() {
     expect(settingsDone, isTrue);
     expect(migrationDone, isTrue);
   });
+
+  test(
+    'init() concurrently opens all 5 boxes and initializes state cleanly',
+    () async {
+      final customDataSource = HiveLocalDataSource();
+      await customDataSource.init();
+
+      expect(customDataSource.isFallbackInMemoryMode, isFalse);
+      expect(Hive.isBoxOpen('tasksBox'), isTrue);
+      expect(Hive.isBoxOpen('instancesBox'), isTrue);
+      expect(Hive.isBoxOpen('syncMetaBox'), isTrue);
+      expect(Hive.isBoxOpen('settingsBox'), isTrue);
+      expect(Hive.isBoxOpen('recipesBox'), isTrue);
+
+      await customDataSource.dispose();
+    },
+  );
 }

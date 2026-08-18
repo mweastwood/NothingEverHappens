@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -83,28 +84,30 @@ Future<void> main() async {
     debugPrint("Hive initialization error: $e");
   }
 
-  try {
-    final launchCount = await hiveDataSource.incrementAppLaunchCount();
-    final platform = kIsWeb ? 'web' : Platform.operatingSystem;
-    final appVersion = AppVersion.current;
-    final settings = hiveDataSource.getSettings();
+  unawaited(() async {
+    try {
+      final launchCount = await hiveDataSource.incrementAppLaunchCount();
+      final platform = kIsWeb ? 'web' : Platform.operatingSystem;
+      final appVersion = AppVersion.current;
+      final settings = hiveDataSource.getSettings();
 
-    if (Firebase.apps.isNotEmpty) {
-      final telemetryService = FirebaseTelemetryService(
-        analytics: FirebaseAnalytics.instance,
-        enabled: settings.telemetryEnabled,
-        defaultPlatform: platform,
-        defaultAppVersion: appVersion,
-      );
-      await telemetryService.logAppLaunch(
-        platform: platform,
-        appVersion: appVersion,
-        launchCount: launchCount,
-      );
+      if (Firebase.apps.isNotEmpty) {
+        final telemetryService = FirebaseTelemetryService(
+          analytics: FirebaseAnalytics.instance,
+          enabled: settings.telemetryEnabled,
+          defaultPlatform: platform,
+          defaultAppVersion: appVersion,
+        );
+        await telemetryService.logAppLaunch(
+          platform: platform,
+          appVersion: appVersion,
+          launchCount: launchCount,
+        );
+      }
+    } catch (e) {
+      debugPrint("Telemetry app launch error: $e");
     }
-  } catch (e) {
-    debugPrint("Telemetry app launch error: $e");
-  }
+  }());
 
   mainCommon(hiveDataSource);
 }
