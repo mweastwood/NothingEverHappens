@@ -743,6 +743,97 @@ void main() {
       syncServiceUser2.dispose();
     },
   );
+
+  test(
+    'orphan pending task instances with non-existent scheduleId are swept on missed policy processing',
+    () async {
+      final orphanInstance = TaskInstance(
+        id: 'orphan-inst-1',
+        scheduleId: 'non-existent-schedule-id',
+        ruleId: 'rule-1',
+        title: 'Orphan Task Instance',
+        description: 'No schedule attached',
+        scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.pending,
+        updatedAt: DateTime(2026, 8, 19, 9, 0),
+      );
+
+      await localDataSource.saveInstance(orphanInstance);
+      expect(
+        localDataSource.getInstances().any((i) => i.id == 'orphan-inst-1'),
+        true,
+      );
+
+      await repository.triggerMissedPolicyProcessing();
+
+      expect(
+        localDataSource.getInstances().any((i) => i.id == 'orphan-inst-1'),
+        false,
+      );
+      expect(localDataSource.getDirtyTaskIds().contains('orphan-inst-1'), true);
+    },
+  );
+
+  test(
+    'orphan completed or skipped task instances with non-existent scheduleId are preserved',
+    () async {
+      final completedOrphan = TaskInstance(
+        id: 'orphan-completed-1',
+        scheduleId: 'non-existent-schedule-id',
+        ruleId: 'rule-1',
+        title: 'Completed Orphan Instance',
+        description: 'Completed history preserved',
+        scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.completed,
+        completedAt: DateTime(2026, 8, 19, 10, 0),
+        updatedAt: DateTime(2026, 8, 19, 10, 0),
+      );
+
+      final skippedOrphan = TaskInstance(
+        id: 'orphan-skipped-1',
+        scheduleId: 'non-existent-schedule-id',
+        ruleId: 'rule-1',
+        title: 'Skipped Orphan Instance',
+        description: 'Skipped history preserved',
+        scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.skipped,
+        updatedAt: DateTime(2026, 8, 19, 10, 0),
+      );
+
+      await localDataSource.saveInstance(completedOrphan);
+      await localDataSource.saveInstance(skippedOrphan);
+
+      await repository.triggerMissedPolicyProcessing();
+
+      final instances = localDataSource.getInstances();
+      expect(instances.any((i) => i.id == 'orphan-completed-1'), true);
+      expect(instances.any((i) => i.id == 'orphan-skipped-1'), true);
+    },
+  );
 }
 
 class _TestTelemetryService extends NoOpTelemetryService {

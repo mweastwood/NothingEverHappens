@@ -2950,6 +2950,165 @@ void main() {
         );
       },
     );
+
+    test(
+      'orphan sweep clears stale pending instances when task schedule is deleted from firestore',
+      () async {
+        final mockTime = DateTime(2026, 6, 22, 10, 0, 0);
+        AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
+
+        final firestore = FakeFirebaseFirestore();
+        final repo = TaskRepository(
+          firestore: firestore,
+          userId: 'test-user-id',
+        );
+        addTearDown(() => repo.dispose());
+
+        final task = TestTaskFactory.createOneOff(
+          id: 'task-orphan-test',
+          title: 'Orphan Schedule',
+          description: 'Will be deleted directly from firestore',
+          date: const CivilDay(year: 2026, month: 6, day: 22),
+        );
+
+        await repo.addTaskSchedule(task);
+        await Future(() {});
+
+        // Verify task and instance exist
+        final instancesRef = firestore
+            .collection('users')
+            .doc('test-user-id')
+            .collection('instances')
+            .withConverter<TaskInstance>(
+              fromFirestore: (snapshot, _) =>
+                  TaskInstance.fromFirestore(snapshot),
+              toFirestore: (instance, _) => instance.toFirestore(),
+            );
+
+        final initialInstances = await instancesRef.get();
+        expect(initialInstances.docs.isNotEmpty, true);
+        expect(
+          initialInstances.docs.any(
+            (d) =>
+                d.data().scheduleId == task.id &&
+                d.data().status == TaskStatus.pending,
+          ),
+          true,
+        );
+
+        // Delete the task document directly from firestore, bypassing deleteTaskSchedule
+        await firestore
+            .collection('users')
+            .doc('test-user-id')
+            .collection('tasks')
+            .doc(task.id)
+            .delete();
+
+        // Trigger missed policy processing sweep
+        await repo.triggerMissedPolicyProcessing();
+
+        final updatedInstances = await instancesRef.get();
+        expect(
+          updatedInstances.docs.any(
+            (d) =>
+                d.data().scheduleId == task.id &&
+                d.data().status == TaskStatus.pending,
+          ),
+          false,
+        );
+      },
+    );
+
+    test('orphan sweep preserves completed and skipped instances', () async {
+      final mockTime = DateTime(2026, 8, 19, 10, 0, 0);
+      AppClock.setMockTime(mockTime);
+      addTearDown(() => AppClock.reset());
+
+      final firestore = FakeFirebaseFirestore();
+      final repo = TaskRepository(firestore: firestore, userId: 'test-user-id');
+      addTearDown(() => repo.dispose());
+
+      final instancesRef = firestore
+          .collection('users')
+          .doc('test-user-id')
+          .collection('instances')
+          .withConverter<TaskInstance>(
+            fromFirestore: (snapshot, _) =>
+                TaskInstance.fromFirestore(snapshot),
+            toFirestore: (instance, _) => instance.toFirestore(),
+          );
+
+      final completedOrphan = TaskInstance(
+        id: 'inst-completed-orphan',
+        scheduleId: 'deleted-task-id',
+        ruleId: 'rule-1',
+        title: 'Completed Task',
+        description: '',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.completed,
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 19),
+        completedAt: DateTime(2026, 8, 19, 9, 30),
+        updatedAt: DateTime(2026, 8, 19, 9, 30),
+      );
+
+      final skippedOrphan = TaskInstance(
+        id: 'inst-skipped-orphan',
+        scheduleId: 'deleted-task-id',
+        ruleId: 'rule-1',
+        title: 'Skipped Task',
+        description: '',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.skipped,
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 19),
+        updatedAt: DateTime(2026, 8, 19, 9, 30),
+      );
+
+      final pendingOrphan = TaskInstance(
+        id: 'inst-pending-orphan',
+        scheduleId: 'deleted-task-id',
+        ruleId: 'rule-1',
+        title: 'Pending Orphan Task',
+        description: '',
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.pending,
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 19),
+        updatedAt: DateTime(2026, 8, 19, 9, 30),
+      );
+
+      await instancesRef.doc(completedOrphan.id).set(completedOrphan);
+      await instancesRef.doc(skippedOrphan.id).set(skippedOrphan);
+      await instancesRef.doc(pendingOrphan.id).set(pendingOrphan);
+
+      await repo.triggerMissedPolicyProcessing();
+
+      final finalInstances = await instancesRef.get();
+      final ids = finalInstances.docs.map((d) => d.id).toSet();
+      expect(ids.contains('inst-completed-orphan'), true);
+      expect(ids.contains('inst-skipped-orphan'), true);
+      expect(ids.contains('inst-pending-orphan'), false);
+    });
   });
 }
 

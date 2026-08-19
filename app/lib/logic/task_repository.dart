@@ -725,6 +725,7 @@ class TaskRepository {
           freshTasksMap[doc.id] = doc.data();
         }
       }
+      _cachedTasksMap.clear();
       _cachedTasksMap.addAll(freshTasksMap);
 
       // Build lookup map for durations using cached tasks
@@ -772,10 +773,6 @@ class TaskRepository {
       }
 
       final tasksToEvaluate = taskMap.values.toList();
-
-      if (tasksToEvaluate.isEmpty) {
-        return;
-      }
 
       // Prioritize capacity-dependent tasks by Priority (High > Medium > Low)
       // If priority is equal, prioritize (evaluate first) the least recently completed task.
@@ -872,20 +869,22 @@ class TaskRepository {
         );
 
         for (final inst in action.instancesToUpdate) {
-          batch.set(_instanceRefFor(inst, familyId), inst);
+          final updatedInst = inst.copyWith(updatedAt: now);
+          batch.set(_instanceRefFor(updatedInst, familyId), updatedInst);
           hasChanges = true;
           final idx = allInstances.indexWhere((x) => x.id == inst.id);
           if (idx >= 0) {
-            allInstances[idx] = inst;
+            allInstances[idx] = updatedInst;
           }
         }
 
         for (final inst in action.instancesToSpawn) {
-          batch.set(_instanceRefFor(inst, familyId), inst);
+          final newInst = inst.copyWith(updatedAt: now);
+          batch.set(_instanceRefFor(newInst, familyId), newInst);
           _spawnedInstancesCache['${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}'] =
               now;
           hasChanges = true;
-          allInstances.add(inst);
+          allInstances.add(newInst);
         }
 
         for (final instId in action.instancesToDelete) {
@@ -919,6 +918,20 @@ class TaskRepository {
         }
 
         allTriggerTimes.addAll(action.triggerTimes);
+      }
+
+      // Sweep: delete pending instances whose schedule no longer exists.
+      for (final inst in List<TaskInstance>.from(allInstances)) {
+        if (inst.status == TaskStatus.pending &&
+            !taskMap.containsKey(inst.scheduleId)) {
+          final isFamily = inst.isFamily;
+          batch.delete(_instanceRefForId(inst.id, isFamily, familyId));
+          _spawnedInstancesCache.remove(
+            '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
+          );
+          allInstances.remove(inst);
+          hasChanges = true;
+        }
       }
 
       if (hasChanges) {
