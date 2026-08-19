@@ -1,7 +1,9 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/crashlytics_service.dart';
+import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 
 class FakeFirebaseCrashlytics extends Fake implements FirebaseCrashlytics {
   bool collectionEnabled = true;
@@ -183,6 +185,19 @@ void main() {
       await noOp.setCustomKey('k', 'v');
       await noOp.setCrashlyticsCollectionEnabled(false);
       expect(noOp.isEnabled, isFalse);
+    });
+
+    test('crashlyticsServiceProvider resolves without circular dependency', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      // Instantiating hiveLocalDataSourceProvider triggers errorHandlerProvider which triggers crashlyticsServiceProvider
+      expect(
+        () => container.read(hiveLocalDataSourceProvider),
+        returnsNormally,
+      );
+      final crashlytics = container.read(crashlyticsServiceProvider);
+      expect(crashlytics, isA<CrashlyticsService>());
     });
   });
 }

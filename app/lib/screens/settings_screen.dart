@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../logic/app_logger.dart';
 import '../logic/app_state_exporter.dart';
-import '../logic/crashlytics_service.dart';
 import '../logic/error_handler.dart';
+
 import '../logic/l10n_extension.dart';
 import '../logic/task_repository.dart';
 import '../logic/user_settings.dart';
@@ -280,9 +280,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         crashReportingEnabled: val,
                       );
                       settingsRepository.updateSettings(updated);
-                      ref
-                          .read(crashlyticsServiceProvider)
-                          .setCrashlyticsCollectionEnabled(val);
                     },
                     secondary: const Icon(Icons.bug_report_outlined, size: 28),
                   ),

@@ -3,8 +3,6 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'hive_local_data_source.dart';
-
 abstract class CrashlyticsService {
   bool get isEnabled;
   Future<void> setCrashlyticsCollectionEnabled(bool enabled);
@@ -139,13 +137,10 @@ class NoOpCrashlyticsService implements CrashlyticsService {
 final Provider<CrashlyticsService> crashlyticsServiceProvider =
     Provider<CrashlyticsService>((ref) {
       try {
-        final hive = ref.watch(hiveLocalDataSourceProvider);
-        final initialSettings = hive.getSettings();
         return FirebaseCrashlyticsService(
           crashlytics: !kIsWeb && Firebase.apps.isNotEmpty
               ? FirebaseCrashlytics.instance
               : null,
-          enabled: initialSettings.crashReportingEnabled,
         );
       } catch (e) {
         return NoOpCrashlyticsService();

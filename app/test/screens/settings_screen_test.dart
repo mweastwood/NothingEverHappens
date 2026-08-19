@@ -302,7 +302,6 @@ void main() {
           const UserSettings(hoursAvailable: 8.0, crashReportingEnabled: false),
         ),
       ).called(1);
-      expect(fakeCrashlytics.collectionEnabledCalls, contains(false));
     },
   );
 

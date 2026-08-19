@@ -39,7 +39,13 @@ class UserSettingsRepository {
        _userId = userId,
        _localDataSource = localDataSource,
        _telemetryService = telemetryService,
-       _crashlyticsService = crashlyticsService;
+       _crashlyticsService = crashlyticsService {
+    final initialSettings = _localDataSource.getSettings();
+    _telemetryService?.setTelemetryEnabled(initialSettings.telemetryEnabled);
+    _crashlyticsService?.setCrashlyticsCollectionEnabled(
+      initialSettings.crashReportingEnabled,
+    );
+  }
 
   DocumentReference<UserSettings>? _settingsRefForUser(String userId) {
     if (_firestore == null || userId.isEmpty) return null;
