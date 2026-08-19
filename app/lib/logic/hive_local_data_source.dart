@@ -12,14 +12,15 @@ import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:rxdart/rxdart.dart';
 
-final hiveLocalDataSourceProvider = Provider<HiveLocalDataSource>((ref) {
-  final ds = HiveLocalDataSource(
-    errorHandler: ref.read(errorHandlerProvider),
-    logger: ref.watch(appLoggerProvider),
-  );
-  ref.onDispose(() => ds.dispose());
-  return ds;
-});
+final Provider<HiveLocalDataSource> hiveLocalDataSourceProvider =
+    Provider<HiveLocalDataSource>((ref) {
+      final ds = HiveLocalDataSource(
+        errorHandler: ref.read(errorHandlerProvider),
+        logger: ref.watch(appLoggerProvider),
+      );
+      ref.onDispose(() => ds.dispose());
+      return ds;
+    });
 
 class HiveLocalDataSource {
   static const String _tasksBoxName = 'tasksBox';

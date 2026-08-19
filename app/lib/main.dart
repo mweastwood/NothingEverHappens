@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -84,12 +85,27 @@ Future<void> main() async {
     debugPrint("Hive initialization error: $e");
   }
 
+  final settings = hiveDataSource.getSettings();
+
+  FlutterError.onError = (errorDetails) {
+    if (!kIsWeb && Firebase.apps.isNotEmpty && settings.crashReportingEnabled) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+    }
+    FlutterError.presentError(errorDetails);
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    if (!kIsWeb && Firebase.apps.isNotEmpty && settings.crashReportingEnabled) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    }
+    return true;
+  };
+
   unawaited(() async {
     try {
       final launchCount = await hiveDataSource.incrementAppLaunchCount();
       final platform = kIsWeb ? 'web' : Platform.operatingSystem;
       final appVersion = AppVersion.current;
-      final settings = hiveDataSource.getSettings();
 
       if (Firebase.apps.isNotEmpty) {
         final telemetryService = FirebaseTelemetryService(

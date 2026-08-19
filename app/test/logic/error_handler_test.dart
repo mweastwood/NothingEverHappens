@@ -1,8 +1,67 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
+import 'package:nothing_ever_happens/logic/crashlytics_service.dart';
+
+class FakeCrashlyticsService implements CrashlyticsService {
+  @override
+  bool isEnabled = true;
+  final List<
+    ({
+      dynamic exception,
+      StackTrace? stack,
+      dynamic reason,
+      Iterable<Object> information,
+      bool fatal,
+      bool? printDetails,
+    })
+  >
+  recordedErrors = [];
+  final Map<String, Object> customKeys = {};
+  final List<String> logs = [];
+
+  @override
+  Future<void> setCrashlyticsCollectionEnabled(bool enabled) async {
+    isEnabled = enabled;
+  }
+
+  @override
+  Future<void> recordError(
+    dynamic exception,
+    StackTrace? stack, {
+    dynamic reason,
+    Iterable<Object> information = const [],
+    bool fatal = false,
+    bool? printDetails,
+  }) async {
+    recordedErrors.add((
+      exception: exception,
+      stack: stack,
+      reason: reason,
+      information: information,
+      fatal: fatal,
+      printDetails: printDetails,
+    ));
+  }
+
+  @override
+  Future<void> recordFlutterFatalError(
+    FlutterErrorDetails flutterErrorDetails,
+  ) async {}
+
+  @override
+  Future<void> log(String message) async {
+    logs.add(message);
+  }
+
+  @override
+  Future<void> setCustomKey(String key, Object value) async {
+    customKeys[key] = value;
+  }
+}
 
 void main() {
   group('ErrorHandler Unit Tests', () {
@@ -91,5 +150,33 @@ void main() {
       expect(loggedEvent.error, testError);
       expect(loggedEvent.stackTrace, testStackTrace.toString());
     });
+
+    test(
+      'ErrorHandler.report forwards non-fatal errors and error code key to CrashlyticsService',
+      () {
+        final fakeCrashlytics = FakeCrashlyticsService();
+        final handlerWithCrashlytics = ErrorHandler(
+          logger: logger,
+          crashlyticsService: fakeCrashlytics,
+        );
+
+        final testError = StateError('Test crashlytics dispatch');
+        final testStackTrace = StackTrace.current;
+
+        final report = handlerWithCrashlytics.report(
+          testError,
+          stackTrace: testStackTrace,
+        );
+
+        expect(fakeCrashlytics.customKeys['errorCode'], report.code);
+        expect(fakeCrashlytics.recordedErrors.length, 1);
+
+        final record = fakeCrashlytics.recordedErrors.first;
+        expect(record.exception, testError);
+        expect(record.stack, testStackTrace);
+        expect(record.fatal, isFalse);
+        expect(record.reason, 'ErrorHandler [${report.code}]');
+      },
+    );
   });
 }
