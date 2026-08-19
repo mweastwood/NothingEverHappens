@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -19,6 +20,7 @@ import 'logic/notification_service.dart';
 import 'l10n/app_localizations.dart';
 import 'logic/hive_local_data_source.dart';
 import 'logic/telemetry_service.dart';
+import 'logic/remote_config_service.dart';
 import 'logic/utils/app_version.dart';
 
 @pragma('vm:entry-point')
@@ -105,6 +107,12 @@ Future<void> main() async {
           appVersion: appVersion,
           launchCount: launchCount,
         );
+
+        final remoteConfigService = FirebaseRemoteConfigService(
+          remoteConfig: FirebaseRemoteConfig.instance,
+        );
+        await remoteConfigService.initialize();
+        await remoteConfigService.fetchAndActivate();
       }
     } catch (e) {
       debugPrint("Telemetry app launch error: $e");
