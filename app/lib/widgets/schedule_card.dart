@@ -296,6 +296,14 @@ class ScheduleCard extends ConsumerWidget {
                     label: context.l10n.familyTab,
                     color: Theme.of(context).colorScheme.primary,
                   ),
+                  if (task.familyCompletionMode ==
+                      FamilyCompletionMode.individual)
+                    _buildBadge(
+                      context,
+                      icon: Icons.checklist,
+                      label: context.l10n.completionModeIndividualLabel,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   if (task.assignedUserId != null)
                     _buildBadge(
                       context,

@@ -3043,6 +3043,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Automatically send crash reports to help resolve stability issues and bugs.'**
   String get crashReportingSettingSubtitle;
+
+  /// No description provided for @familyCompletionModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Completion Requirement'**
+  String get familyCompletionModeLabel;
+
+  /// No description provided for @completionModeAnyoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Any member'**
+  String get completionModeAnyoneLabel;
+
+  /// No description provided for @completionModeAnyoneHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'One person can check off this task for everyone.'**
+  String get completionModeAnyoneHelper;
+
+  /// No description provided for @completionModeIndividualLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone individually'**
+  String get completionModeIndividualLabel;
+
+  /// No description provided for @completionModeIndividualHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Every family member must check off their own task.'**
+  String get completionModeIndividualHelper;
+
+  /// No description provided for @completionProgressBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} of {total} completed'**
+  String completionProgressBadge(int completed, int total);
 }
 
 class _AppLocalizationsDelegate

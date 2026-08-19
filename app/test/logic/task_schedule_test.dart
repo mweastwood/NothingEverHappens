@@ -1950,6 +1950,55 @@ void main() {
           expect(descMod.changes['description'], 'New Description');
         },
       );
+
+      test(
+        'familyCompletionMode serializes, deserializes, edits, and copies correctly',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          final docRef = firestore.collection('tasks').doc('S-schedule-indiv');
+
+          final task = TaskSchedule(
+            id: 'S-schedule-indiv',
+            title: 'Individual Task',
+            description: 'Desc',
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+          );
+
+          final firestoreMap = task.toFirestore();
+          expect(firestoreMap['familyCompletionMode'], 'individual');
+
+          await docRef.set(firestoreMap);
+          final snapshot = await docRef.get();
+          final loaded = TaskSchedule.fromFirestore(snapshot);
+
+          expect(loaded.id, 'S-schedule-indiv');
+          expect(loaded.isFamily, isTrue);
+          expect(loaded.familyCompletionMode, FamilyCompletionMode.individual);
+          final modification = loaded.edit(
+            newTitle: loaded.title,
+            newDescription: loaded.description,
+            newSchedules: loaded.schedules,
+            newEstimatedDuration: loaded.estimatedDuration,
+            newMissedPolicy: MissedPolicy.stack,
+            newIsMaster: loaded.isMaster,
+            newLastSpawnedDate: loaded.lastSpawnedDate,
+            newIsFamily: loaded.isFamily,
+            newFamilyCompletionMode: FamilyCompletionMode.anyone,
+            newPriority: loaded.priority,
+          );
+          expect(
+            modification.newTask.familyCompletionMode,
+            FamilyCompletionMode.anyone,
+          );
+          expect(modification.changes['familyCompletionMode'], 'anyone');
+
+          final copied = loaded.copyWith(
+            familyCompletionMode: FamilyCompletionMode.anyone,
+          );
+          expect(copied.familyCompletionMode, FamilyCompletionMode.anyone);
+        },
+      );
     });
   });
 }

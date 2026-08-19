@@ -1771,4 +1771,26 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get crashReportingSettingSubtitle =>
       'Envía automáticamente informes de fallos para ayudar a resolver problemas de estabilidad y errores.';
+
+  @override
+  String get familyCompletionModeLabel => 'Requisito de cumplimiento';
+
+  @override
+  String get completionModeAnyoneLabel => 'Cualquier miembro';
+
+  @override
+  String get completionModeAnyoneHelper =>
+      'Una persona puede marcar esta tarea para todos.';
+
+  @override
+  String get completionModeIndividualLabel => 'Cada uno individualmente';
+
+  @override
+  String get completionModeIndividualHelper =>
+      'Cada miembro de la familia debe marcar su propia tarea.';
+
+  @override
+  String completionProgressBadge(int completed, int total) {
+    return '$completed de $total completados';
+  }
 }

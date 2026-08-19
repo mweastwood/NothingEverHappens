@@ -722,6 +722,9 @@ class HiveLocalDataSource {
       lastSpawnedDate: lastSpawnedDate,
       parentTaskId: data['parentTaskId'] as String?,
       isFamily: data['isFamily'] as bool? ?? false,
+      familyCompletionMode: FamilyCompletionMode.fromString(
+        data['familyCompletionMode'] as String?,
+      ),
       priority: priority,
       cycleId: data['cycleId'] as String?,
       preferredBy: preferredBy,
@@ -773,6 +776,12 @@ class HiveLocalDataSource {
       orElse: () => TaskPriority.medium,
     );
 
+    final completedByUserIdsRaw =
+        data['completedByUserIds'] as List<dynamic>? ?? [];
+    final completedByUserIds = completedByUserIdsRaw
+        .map((e) => e.toString())
+        .toList();
+
     final completedAtRaw = data['completedAt'];
     DateTime? completedAt;
     if (completedAtRaw != null) {
@@ -815,10 +824,14 @@ class HiveLocalDataSource {
       dueRelativeTime: dueRelativeTime,
       notificationRelativeTimes: notificationRelativeTimes,
       isFamily: data['isFamily'] as bool? ?? false,
+      familyCompletionMode: FamilyCompletionMode.fromString(
+        data['familyCompletionMode'] as String?,
+      ),
       priority: priority,
       cycleId: data['cycleId'] as String?,
       assignedUserId: data['assignedUserId'] as String?,
       completedByUserId: data['completedByUserId'] as String?,
+      completedByUserIds: completedByUserIds,
       completedAt: completedAt,
       status: TaskStatus.fromString(data['status'] as String?),
       workflowPayload: workflowPayload,

@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
 import 'package:rxdart/rxdart.dart';
 
 import 'relative_time.dart';
@@ -12,6 +12,7 @@ import 'app_clock.dart';
 import 'civil_day.dart';
 import 'task_schedule.dart';
 import 'task_instance.dart';
+import 'family.dart';
 import 'notification_service.dart';
 import 'auth_repository.dart';
 import 'scheduler_engine.dart';
@@ -305,6 +306,8 @@ class TaskRepository {
       return snapshot.docs.map((doc) => doc.data()).toList();
     });
   }
+
+  Future<String?> getFamilyId() => _getFamilyId();
 
   Future<String?> _getFamilyId() async {
     if (_cachedFamilyId != null &&
@@ -1209,6 +1212,18 @@ class TaskRepository {
     await _checkAndProcessMissedPolicies([task]);
   }
 
+  Future<Family?> _fetchFamily(String familyId) async {
+    try {
+      final doc = await _firestore.collection('families').doc(familyId).get();
+      if (doc.exists && doc.data() != null) {
+        return Family.fromJson(doc.data()!, doc.id);
+      }
+    } catch (e, st) {
+      errorHandler?.report(e, stackTrace: st);
+    }
+    return null;
+  }
+
   Future<TaskInstance?> completeTaskInstance(String id) async {
     final instance = await _fetchInstance(id);
     if (instance == null) return null;
@@ -1217,6 +1232,76 @@ class TaskRepository {
 
     final familyId = await _getFamilyId();
     final now = AppClock.now;
+
+    if (instance.isFamily &&
+        instance.familyCompletionMode == FamilyCompletionMode.individual) {
+      final updatedCompletedByUserIds = {
+        ...instance.completedByUserIds,
+        _userId,
+      }.toList();
+
+      bool allCompleted = false;
+      if (instance.assignedUserId != null) {
+        allCompleted = updatedCompletedByUserIds.contains(
+          instance.assignedUserId,
+        );
+      } else if (familyId != null) {
+        final family = await _fetchFamily(familyId);
+        if (family != null && family.members.isNotEmpty) {
+          allCompleted = family.members.keys.every(
+            (memberId) => updatedCompletedByUserIds.contains(memberId),
+          );
+        } else {
+          allCompleted = true;
+        }
+      } else {
+        allCompleted = true;
+      }
+
+      if (allCompleted) {
+        final batch = _firestore.batch();
+        final completedInstance = instance.copyWith(
+          status: TaskStatus.completed,
+          completedByUserId: _userId,
+          completedAt: now,
+          completedByUserIds: updatedCompletedByUserIds,
+        );
+        batch.set(
+          _instanceRefFor(completedInstance, familyId),
+          completedInstance,
+        );
+        _spawnedInstancesCache.remove(
+          '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
+        );
+
+        if (task != null) {
+          final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+          if (isRecurring) {
+            final allInstances = await _getInstancesForSchedule(
+              task.id,
+              task.isFamily,
+              familyId,
+            );
+            _spawnNextOccurrence(
+              task,
+              instance,
+              now,
+              batch,
+              familyId,
+              allInstances,
+            );
+          }
+        }
+        await batch.commit();
+        return completedInstance;
+      } else {
+        final partialInstance = instance.copyWith(
+          completedByUserIds: updatedCompletedByUserIds,
+        );
+        await saveTaskInstance(partialInstance);
+        return partialInstance;
+      }
+    }
 
     final batch = _firestore.batch();
 
@@ -1251,6 +1336,13 @@ class TaskRepository {
 
     await batch.commit();
     return completedInstance;
+  }
+
+  Future<TaskInstance?> uncompleteTaskInstance(String id) async {
+    final instance = await _fetchInstance(id);
+    if (instance == null) return null;
+    await undoResolveTaskInstance(instance);
+    return await _fetchInstance(id);
   }
 
   Future<void> saveTaskInstance(TaskInstance instance) async {
@@ -1308,6 +1400,52 @@ class TaskRepository {
     final familyId = await _getFamilyId();
     final batch = _firestore.batch();
     final now = resolvedInstance.completedAt ?? AppClock.now;
+
+    if (resolvedInstance.isFamily &&
+        resolvedInstance.familyCompletionMode ==
+            FamilyCompletionMode.individual) {
+      final updatedUserIds = resolvedInstance.completedByUserIds
+          .where((uid) => uid != _userId)
+          .toList();
+      final pendingInstance = resolvedInstance.copyWith(
+        status: TaskStatus.pending,
+        clearCompletedByUserId: true,
+        clearCompletedAt: true,
+        completedByUserIds: updatedUserIds,
+      );
+      batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
+      _spawnedInstancesCache['${resolvedInstance.scheduleId}:${resolvedInstance.ruleId}:${resolvedInstance.scheduledDate}'] =
+          now;
+
+      if (task != null) {
+        final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+        if (isRecurring) {
+          final allInstances = await _getInstancesForSchedule(
+            task.id,
+            task.isFamily,
+            familyId,
+          );
+          final nextId = _nextOccurrenceId(
+            task,
+            resolvedInstance,
+            now,
+            allInstances,
+          );
+          if (nextId != null) {
+            final nextInst = allInstances.firstWhere((x) => x.id == nextId);
+            _spawnedInstancesCache.remove(
+              '${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}',
+            );
+            batch.delete(
+              _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
+            );
+          }
+        }
+      }
+
+      await batch.commit();
+      return;
+    }
 
     final pendingInstance = resolvedInstance.copyWith(
       status: TaskStatus.pending,

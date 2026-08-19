@@ -8,6 +8,7 @@ import 'task_schedule_rule.dart';
 import 'scheduling_policy.dart';
 import 'missed_occurrence_policy.dart';
 import 'workflows/task_workflow.dart';
+import 'family_task_completion_mode.dart';
 
 export 'task_priority.dart';
 export 'daily_occurrence_time.dart';
@@ -15,6 +16,7 @@ export 'task_schedule_rule.dart';
 export 'scheduling_policy.dart';
 export 'missed_occurrence_policy.dart';
 export 'workflows/task_workflow.dart';
+export 'family_task_completion_mode.dart';
 
 /// Result of a task update operation.
 typedef TaskModification = ({
@@ -73,6 +75,9 @@ class TaskSchedule {
 
   /// Whether this task is shared with the family.
   final bool isFamily;
+
+  /// Completion mode for family tasks (anyone vs individual).
+  final FamilyCompletionMode familyCompletionMode;
 
   /// The priority of the task.
   final TaskPriority priority;
@@ -143,6 +148,7 @@ class TaskSchedule {
     this.lastSpawnedDate,
     this.parentTaskId,
     this.isFamily = false,
+    this.familyCompletionMode = FamilyCompletionMode.anyone,
     this.priority = TaskPriority.medium,
     this.cycleId,
     this.preferredBy = const {},
@@ -221,6 +227,10 @@ class TaskSchedule {
         : null;
     final parentTaskId = data['parentTaskId'] as String?;
     final isFamily = data['isFamily'] as bool? ?? false;
+    final familyCompletionModeStr = data['familyCompletionMode'] as String?;
+    final familyCompletionMode = FamilyCompletionMode.fromString(
+      familyCompletionModeStr,
+    );
     final priorityStr = data['priority'] as String? ?? 'medium';
     final priority = TaskPriority.values.firstWhere(
       (e) => e.name == priorityStr,
@@ -267,6 +277,7 @@ class TaskSchedule {
       lastSpawnedDate: lastSpawnedDate,
       parentTaskId: parentTaskId,
       isFamily: isFamily,
+      familyCompletionMode: familyCompletionMode,
       priority: priority,
       cycleId: cycleId,
       preferredBy: preferredBy,
@@ -292,6 +303,7 @@ class TaskSchedule {
       if (lastSpawnedDate != null) 'lastSpawnedDate': lastSpawnedDate!.toJson(),
       if (parentTaskId != null) 'parentTaskId': parentTaskId,
       'isFamily': isFamily,
+      'familyCompletionMode': familyCompletionMode.name,
       'priority': priority.name,
       if (cycleId != null) 'cycleId': cycleId,
       'preferredBy': preferredBy,
@@ -315,6 +327,7 @@ class TaskSchedule {
     required bool newIsMaster,
     required CivilDay? newLastSpawnedDate,
     required bool newIsFamily,
+    FamilyCompletionMode? newFamilyCompletionMode,
     required TaskPriority newPriority,
     String? newCycleId,
     Map<String, bool>? newPreferredBy,
@@ -327,6 +340,8 @@ class TaskSchedule {
     bool? newSkipIfNoCapacity,
   }) {
     final resolvedSkip = newSkipIfNoCapacity ?? skipIfNoCapacity;
+    final resolvedFamilyCompletionMode =
+        newFamilyCompletionMode ?? familyCompletionMode;
     final resolvedSchedules = newSchedules.map((s) {
       final sPolicy = newSchedulingPolicy ?? s.schedulingPolicy;
       MissedOccurrencePolicy mPolicy;
@@ -368,6 +383,7 @@ class TaskSchedule {
       lastSpawnedDate: newLastSpawnedDate,
       clearLastSpawnedDate: newLastSpawnedDate == null,
       isFamily: newIsFamily,
+      familyCompletionMode: resolvedFamilyCompletionMode,
       priority: newPriority,
       cycleId: newCycleId,
       clearCycleId: newCycleId == null,
@@ -427,6 +443,10 @@ class TaskSchedule {
 
     if (isFamily != newIsFamily) {
       changes['isFamily'] = newIsFamily;
+    }
+
+    if (resolvedFamilyCompletionMode != familyCompletionMode) {
+      changes['familyCompletionMode'] = resolvedFamilyCompletionMode.name;
     }
 
     if (priority != newPriority) {
@@ -581,6 +601,7 @@ class TaskSchedule {
     bool clearLastSpawnedDate = false,
     String? parentTaskId,
     bool? isFamily,
+    FamilyCompletionMode? familyCompletionMode,
     TaskPriority? priority,
     String? cycleId,
     bool clearCycleId = false,
@@ -610,6 +631,7 @@ class TaskSchedule {
       clearLastSpawnedDate: clearLastSpawnedDate,
       parentTaskId: parentTaskId,
       isFamily: isFamily,
+      familyCompletionMode: familyCompletionMode,
       priority: priority,
       cycleId: cycleId,
       clearCycleId: clearCycleId,
@@ -641,6 +663,7 @@ class TaskSchedule {
     bool clearLastSpawnedDate = false,
     String? parentTaskId,
     bool? isFamily,
+    FamilyCompletionMode? familyCompletionMode,
     TaskPriority? priority,
     String? cycleId,
     bool clearCycleId = false,
@@ -696,6 +719,7 @@ class TaskSchedule {
           : (lastSpawnedDate ?? this.lastSpawnedDate),
       parentTaskId: parentTaskId ?? this.parentTaskId,
       isFamily: isFamily ?? this.isFamily,
+      familyCompletionMode: familyCompletionMode ?? this.familyCompletionMode,
       priority: priority ?? this.priority,
       cycleId: clearCycleId ? null : (cycleId ?? this.cycleId),
       preferredBy: preferredBy ?? this.preferredBy,

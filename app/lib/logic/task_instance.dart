@@ -6,8 +6,10 @@ import 'relative_time.dart';
 import 'task_priority.dart';
 import 'task_status.dart';
 import 'workflows/task_workflow.dart';
+import 'family_task_completion_mode.dart';
 export 'task_status.dart';
 export 'workflows/task_workflow.dart';
+export 'family_task_completion_mode.dart';
 
 class TaskInstance {
   static String generateId() => 'I-${const Uuid().v4()}';
@@ -22,10 +24,12 @@ class TaskInstance {
   final RelativeTime dueRelativeTime;
   final List<RelativeTime> notificationRelativeTimes;
   final bool isFamily;
+  final FamilyCompletionMode familyCompletionMode;
   final TaskPriority priority;
   final String? cycleId;
   final String? assignedUserId;
   final String? completedByUserId;
+  final List<String> completedByUserIds;
   final DateTime? completedAt;
   final TaskStatus status;
   final WorkflowInstancePayload? workflowPayload;
@@ -50,10 +54,12 @@ class TaskInstance {
     required this.dueRelativeTime,
     List<RelativeTime>? notificationRelativeTimes,
     this.isFamily = false,
+    this.familyCompletionMode = FamilyCompletionMode.anyone,
     this.priority = TaskPriority.medium,
     this.cycleId,
     this.assignedUserId,
     this.completedByUserId,
+    List<String>? completedByUserIds,
     this.completedAt,
     this.status = TaskStatus.pending,
     this.workflowPayload,
@@ -64,7 +70,15 @@ class TaskInstance {
        title = title.trim(),
        description = description.trim(),
        updatedAt = updatedAt ?? DateTime.now(),
+       completedByUserIds = completedByUserIds ?? const [],
        notificationRelativeTimes = notificationRelativeTimes ?? const [];
+
+  bool isCompletedForUser(String userId) {
+    if (familyCompletionMode == FamilyCompletionMode.individual) {
+      return completedByUserIds.contains(userId);
+    }
+    return status == TaskStatus.completed;
+  }
 
   factory TaskInstance.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot, [
@@ -115,6 +129,10 @@ class TaskInstance {
     }
 
     final isFamily = data['isFamily'] as bool? ?? false;
+    final familyCompletionModeStr = data['familyCompletionMode'] as String?;
+    final familyCompletionMode = FamilyCompletionMode.fromString(
+      familyCompletionModeStr,
+    );
 
     final priorityStr = data['priority'] as String? ?? 'medium';
     final priority = TaskPriority.values.firstWhere(
@@ -125,6 +143,11 @@ class TaskInstance {
     final cycleId = data['cycleId'] as String?;
     final assignedUserId = data['assignedUserId'] as String?;
     final completedByUserId = data['completedByUserId'] as String?;
+    final completedByUserIdsRaw =
+        data['completedByUserIds'] as List<dynamic>? ?? [];
+    final completedByUserIds = completedByUserIdsRaw
+        .map((e) => e.toString())
+        .toList();
 
     final completedAtRaw = data['completedAt'];
     DateTime? completedAt;
@@ -175,10 +198,12 @@ class TaskInstance {
       dueRelativeTime: dueRelativeTime,
       notificationRelativeTimes: notificationRelativeTimes,
       isFamily: isFamily,
+      familyCompletionMode: familyCompletionMode,
       priority: priority,
       cycleId: cycleId,
       assignedUserId: assignedUserId,
       completedByUserId: completedByUserId,
+      completedByUserIds: completedByUserIds,
       completedAt: completedAt,
       status: status,
       workflowPayload: workflowPayload,
@@ -202,10 +227,13 @@ class TaskInstance {
             .map((t) => t.toJson())
             .toList(),
       'isFamily': isFamily,
+      'familyCompletionMode': familyCompletionMode.name,
       'priority': priority.name,
       if (cycleId != null) 'cycleId': cycleId,
       if (assignedUserId != null) 'assignedUserId': assignedUserId,
       if (completedByUserId != null) 'completedByUserId': completedByUserId,
+      if (completedByUserIds.isNotEmpty)
+        'completedByUserIds': completedByUserIds,
       if (completedAt != null) 'completedAt': completedAt,
       if (workflowPayload != null) 'workflowPayload': workflowPayload!.toJson(),
       'status': status.toJson(),
@@ -222,6 +250,7 @@ class TaskInstance {
     List<RelativeTime>? notificationRelativeTimes,
     bool clearNotificationRelativeTimes = false,
     bool? isFamily,
+    FamilyCompletionMode? familyCompletionMode,
     TaskPriority? priority,
     String? cycleId,
     bool clearCycleId = false,
@@ -229,6 +258,8 @@ class TaskInstance {
     bool clearAssignedUserId = false,
     String? completedByUserId,
     bool clearCompletedByUserId = false,
+    List<String>? completedByUserIds,
+    bool clearCompletedByUserIds = false,
     DateTime? completedAt,
     bool clearCompletedAt = false,
     TaskStatus? status,
@@ -251,6 +282,7 @@ class TaskInstance {
           ? const []
           : (notificationRelativeTimes ?? this.notificationRelativeTimes),
       isFamily: isFamily ?? this.isFamily,
+      familyCompletionMode: familyCompletionMode ?? this.familyCompletionMode,
       priority: priority ?? this.priority,
       cycleId: clearCycleId ? null : (cycleId ?? this.cycleId),
       assignedUserId: clearAssignedUserId
@@ -259,6 +291,9 @@ class TaskInstance {
       completedByUserId: clearCompletedByUserId
           ? null
           : (completedByUserId ?? this.completedByUserId),
+      completedByUserIds: clearCompletedByUserIds
+          ? const []
+          : (completedByUserIds ?? this.completedByUserIds),
       completedAt: clearCompletedAt ? null : (completedAt ?? this.completedAt),
       status: status ?? this.status,
       workflowPayload: clearWorkflowPayload

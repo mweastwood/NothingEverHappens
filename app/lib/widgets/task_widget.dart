@@ -12,6 +12,7 @@ import 'fun_check_button.dart';
 import 'fun_delete_button.dart';
 import 'markdown_styles.dart';
 
+import '../logic/family_repository.dart';
 import '../logic/task_instance.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/undo_notifier.dart';
@@ -695,6 +696,35 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                     label: context.l10n.familyTab,
                     color: Theme.of(context).colorScheme.primary,
                   ),
+                // Individual completion mode badge (Family only)
+                if (widget.instance.isFamily &&
+                    widget.instance.familyCompletionMode ==
+                        FamilyCompletionMode.individual) ...[
+                  () {
+                    final familyProfile = ref
+                        .watch(familyProfileStreamProvider)
+                        .valueOrNull;
+                    final familyId = familyProfile?.familyId ?? '';
+                    final family = familyId.isNotEmpty
+                        ? ref.watch(familyStreamProvider(familyId)).valueOrNull
+                        : null;
+                    final totalMembers = family?.members.length ?? 0;
+                    final completedCount =
+                        widget.instance.completedByUserIds.length;
+                    final label = totalMembers > 0
+                        ? context.l10n.completionProgressBadge(
+                            completedCount,
+                            totalMembers,
+                          )
+                        : context.l10n.completionModeIndividualLabel;
+                    return _buildBadge(
+                      context,
+                      icon: Icons.checklist,
+                      label: label,
+                      color: Theme.of(context).colorScheme.primary,
+                    );
+                  }(),
+                ],
                 // Priority
                 _buildBadge(
                   context,

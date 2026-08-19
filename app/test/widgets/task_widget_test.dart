@@ -14,7 +14,9 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
+import 'package:nothing_ever_happens/logic/family.dart';
+import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 
@@ -624,6 +626,86 @@ void main() {
       expect(find.text('Family Chore for Me'), findsOneWidget);
       expect(find.text('Assigned to you'), findsOneWidget);
       expect(find.byIcon(Icons.assignment_ind), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'displays individual completion badge with progress count when family is present',
+    (tester) async {
+      final individualTask = TaskSchedule(
+        id: 'S-indiv-progress',
+        title: 'Individual Task Chore',
+        description: 'Chore description',
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.individual,
+      );
+
+      final instance = TaskInstance(
+        id: 'I-indiv-1',
+        scheduleId: 'S-indiv-progress',
+        ruleId: 'R-1',
+        title: 'Individual Task Chore',
+        description: 'Chore description',
+        scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.individual,
+        completedByUserIds: const ['user-1'],
+        status: TaskStatus.pending,
+      );
+
+      final family = Family(
+        id: 'fam-abc',
+        name: 'The Family',
+        members: const {
+          'user-1': FamilyMember(
+            userId: 'user-1',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            role: FamilyRole.parent,
+          ),
+          'user-2': FamilyMember(
+            userId: 'user-2',
+            displayName: 'Bob',
+            email: 'bob@example.com',
+            role: FamilyRole.nonParent,
+          ),
+        },
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            familyProfileStreamProvider.overrideWith(
+              (ref) => Stream.value(
+                const FamilyProfile(familyId: 'fam-abc', familyRole: 'parent'),
+              ),
+            ),
+            familyStreamProvider(
+              'fam-abc',
+            ).overrideWith((ref) => Stream.value(family)),
+          ],
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: TaskWidget(instance: instance, schedule: individualTask),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Individual Task Chore'), findsOneWidget);
+      expect(find.text('Family'), findsOneWidget);
+      expect(find.text('1 of 2 completed'), findsOneWidget);
+      expect(find.byIcon(Icons.checklist), findsOneWidget);
     },
   );
 

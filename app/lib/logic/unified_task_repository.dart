@@ -12,6 +12,7 @@ import 'package:nothing_ever_happens/logic/task_spawner_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
 import 'package:nothing_ever_happens/logic/telemetry_service.dart';
+import 'package:nothing_ever_happens/logic/family.dart';
 
 class UnifiedTaskRepository extends TaskRepository {
   final HiveLocalDataSource _localDataSource;
@@ -218,6 +219,84 @@ class UnifiedTaskRepository extends TaskRepository {
         .firstOrNull;
     if (instance == null) return null;
 
+    if (instance.isFamily &&
+        instance.familyCompletionMode == FamilyCompletionMode.individual) {
+      final updatedUserIds = {...instance.completedByUserIds, userId}.toList();
+
+      bool allCompleted = false;
+      if (instance.assignedUserId != null) {
+        allCompleted = updatedUserIds.contains(instance.assignedUserId);
+      } else {
+        final familyId = await getFamilyId();
+        if (familyId != null && familyId.isNotEmpty && _rawFirestore != null) {
+          try {
+            final familyDoc = await _rawFirestore
+                .collection('families')
+                .doc(familyId)
+                .get();
+            if (familyDoc.exists && familyDoc.data() != null) {
+              final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
+              if (family.members.isNotEmpty) {
+                allCompleted = family.members.keys.every(
+                  (memberId) => updatedUserIds.contains(memberId),
+                );
+              } else {
+                allCompleted = true;
+              }
+            } else {
+              allCompleted = true;
+            }
+          } catch (_) {
+            allCompleted = true;
+          }
+        } else {
+          allCompleted = true;
+        }
+      }
+
+      if (allCompleted) {
+        final completedInstance = instance.copyWith(
+          status: TaskStatus.completed,
+          completedByUserId: userId,
+          completedAt: AppClock.now,
+          completedByUserIds: updatedUserIds,
+          updatedAt: DateTime.now(),
+        );
+        await _localDataSource.saveInstance(completedInstance);
+        await _localDataSource.markDirty(completedInstance.id);
+        final totalCompleted = await _localDataSource
+            .incrementTasksCompletedCount();
+        await _telemetryService?.logTaskCompleted(
+          taskId: id,
+          scheduleId: instance.scheduleId,
+          totalCompletedCount: totalCompleted,
+        );
+        logger?.info(
+          'task',
+          'Task instance completed: $id',
+          data: {'instanceId': id, 'scheduleId': instance.scheduleId},
+        );
+
+        _syncService.sync();
+        return completedInstance;
+      } else {
+        final partialInstance = instance.copyWith(
+          completedByUserIds: updatedUserIds,
+          updatedAt: DateTime.now(),
+        );
+        await _localDataSource.saveInstance(partialInstance);
+        await _localDataSource.markDirty(partialInstance.id);
+        logger?.info(
+          'task',
+          'Task instance individually completed: $id by $userId',
+          data: {'instanceId': id, 'scheduleId': instance.scheduleId},
+        );
+
+        _syncService.sync();
+        return partialInstance;
+      }
+    }
+
     final completedInstance = instance.copyWith(
       status: TaskStatus.completed,
       completedByUserId: userId,
@@ -241,6 +320,17 @@ class UnifiedTaskRepository extends TaskRepository {
 
     _syncService.sync();
     return completedInstance;
+  }
+
+  @override
+  Future<TaskInstance?> uncompleteTaskInstance(String id) async {
+    final instance = _localDataSource
+        .getInstances()
+        .where((i) => i.id == id)
+        .firstOrNull;
+    if (instance == null) return null;
+    await undoResolveTaskInstance(instance);
+    return _localDataSource.getInstances().where((i) => i.id == id).firstOrNull;
   }
 
   @override
@@ -282,6 +372,33 @@ class UnifiedTaskRepository extends TaskRepository {
 
   @override
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
+    if (resolvedInstance.isFamily &&
+        resolvedInstance.familyCompletionMode ==
+            FamilyCompletionMode.individual) {
+      final updatedUserIds = resolvedInstance.completedByUserIds
+          .where((uid) => uid != userId)
+          .toList();
+      final pendingInstance = resolvedInstance.copyWith(
+        status: TaskStatus.pending,
+        clearCompletedByUserId: true,
+        clearCompletedAt: true,
+        completedByUserIds: updatedUserIds,
+        updatedAt: DateTime.now(),
+      );
+      await _localDataSource.saveInstance(pendingInstance);
+      await _localDataSource.markDirty(pendingInstance.id);
+      logger?.info(
+        'task',
+        'Task instance individual completion undone: ${resolvedInstance.id}',
+        data: {
+          'instanceId': resolvedInstance.id,
+          'scheduleId': resolvedInstance.scheduleId,
+        },
+      );
+      _syncService.sync();
+      return;
+    }
+
     final pendingInstance = resolvedInstance.copyWith(
       status: TaskStatus.pending,
       clearCompletedByUserId: true,
@@ -319,7 +436,6 @@ class UnifiedTaskRepository extends TaskRepository {
         await _localDataSource.markDirty(nextId);
       }
     }
-
     _syncService.sync();
   }
 

@@ -4,6 +4,7 @@ import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/widgets/create_task/task_family_assignment_section.dart';
 import 'package:nothing_ever_happens/widgets/standard_choice_chip.dart';
 import 'package:nothing_ever_happens/logic/family.dart';
+import 'package:nothing_ever_happens/logic/family_task_completion_mode.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
 import '../../test_helper.dart';
@@ -153,6 +154,121 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(toggled, isFalse);
+    });
+
+    testWidgets(
+      'renders completion requirement choice chips and helper when isFamily is true',
+      (WidgetTester tester) async {
+        FamilyCompletionMode currentMode = FamilyCompletionMode.anyone;
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setState) {
+                  return TaskFamilyAssignmentSection(
+                    isFamily: true,
+                    familyCompletionMode: currentMode,
+                    onFamilyCompletionModeChanged: (mode) {
+                      setState(() {
+                        currentMode = mode;
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Completion Requirement'), findsOneWidget);
+        expect(
+          find.byKey(const Key('completion_mode_anyone_chip')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('completion_mode_individual_chip')),
+          findsOneWidget,
+        );
+        expect(
+          find.text('One person can check off this task for everyone.'),
+          findsOneWidget,
+        );
+
+        // Tap Everyone individually
+        await tester.tap(
+          find.byKey(const Key('completion_mode_individual_chip')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(currentMode, FamilyCompletionMode.individual);
+        expect(
+          find.text('Every family member must check off their own task.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'hides completion requirement choice chips when isFamily is false',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(buildWidget(isFamily: false));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Completion Requirement'), findsNothing);
+        expect(
+          find.byKey(const Key('completion_mode_anyone_chip')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('completion_mode_individual_chip')),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets('readOnly disables completion requirement choice chips', (
+      WidgetTester tester,
+    ) async {
+      bool modeChanged = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: TaskFamilyAssignmentSection(
+              isFamily: true,
+              readOnly: true,
+              familyCompletionMode: FamilyCompletionMode.anyone,
+              onFamilyCompletionModeChanged: (_) => modeChanged = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final chip = tester.widget<StandardChoiceChip>(
+        find.byKey(const Key('completion_mode_individual_chip')),
+      );
+      expect(chip.onSelected, isNull);
+
+      await tester.tap(
+        find.byKey(const Key('completion_mode_individual_chip')),
+      );
+      await tester.pumpAndSettle();
+      expect(modeChanged, isFalse);
     });
 
     testWidgets(
@@ -498,7 +614,7 @@ void main() {
         await tester.pumpWidgetBuilder(
           builder.build(),
           wrapper: l10nMaterialAppWrapper(),
-          surfaceSize: const Size(600, 1300),
+          surfaceSize: const Size(600, 1800),
         );
 
         await screenMatchesGolden(

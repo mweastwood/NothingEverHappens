@@ -1045,5 +1045,21 @@
   "mealWorkflow": "Meal Planning Workflow",
   "mealWorkflowDesc": "Plan dinners with recipe selection, dynamic shopping list, and prep tasks.",
   "crashReportingSettingTitle": "Crash & Error Reporting",
-  "crashReportingSettingSubtitle": "Automatically send crash reports to help resolve stability issues and bugs."
+  "crashReportingSettingSubtitle": "Automatically send crash reports to help resolve stability issues and bugs.",
+  "familyCompletionModeLabel": "Completion Requirement",
+  "completionModeAnyoneLabel": "Any member",
+  "completionModeAnyoneHelper": "One person can check off this task for everyone.",
+  "completionModeIndividualLabel": "Everyone individually",
+  "completionModeIndividualHelper": "Every family member must check off their own task.",
+  "completionProgressBadge": "{completed} of {total} completed",
+  "@completionProgressBadge": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

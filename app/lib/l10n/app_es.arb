@@ -634,5 +634,21 @@
   "mealWorkflow": "Flujo de Planificación de Comidas",
   "mealWorkflowDesc": "Planifica cenas con selección de recetas, lista de compras dinámica y tareas de preparación.",
   "crashReportingSettingTitle": "Informes de fallos y errores",
-  "crashReportingSettingSubtitle": "Envía automáticamente informes de fallos para ayudar a resolver problemas de estabilidad y errores."
+  "crashReportingSettingSubtitle": "Envía automáticamente informes de fallos para ayudar a resolver problemas de estabilidad y errores.",
+  "familyCompletionModeLabel": "Requisito de cumplimiento",
+  "completionModeAnyoneLabel": "Cualquier miembro",
+  "completionModeAnyoneHelper": "Una persona puede marcar esta tarea para todos.",
+  "completionModeIndividualLabel": "Cada uno individualmente",
+  "completionModeIndividualHelper": "Cada miembro de la familia debe marcar su propia tarea.",
+  "completionProgressBadge": "{completed} de {total} completados",
+  "@completionProgressBadge": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }
