@@ -5,6 +5,7 @@ import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:nothing_ever_happens/logic/app_state_exporter.dart';
+import 'package:nothing_ever_happens/logic/crashlytics_service.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
@@ -39,10 +40,24 @@ class MockTaskRepository extends Mock implements TaskRepository {
           as Future<void>);
 }
 
+class FakeSettingsCrashlyticsService extends Fake
+    implements CrashlyticsService {
+  @override
+  bool isEnabled = true;
+  final List<bool> collectionEnabledCalls = [];
+
+  @override
+  Future<void> setCrashlyticsCollectionEnabled(bool enabled) async {
+    isEnabled = enabled;
+    collectionEnabledCalls.add(enabled);
+  }
+}
+
 void main() {
   late MockUserSettingsRepository mockRepository;
   late MockAppStateExporter mockExporter;
   late MockTaskRepository mockTaskRepository;
+  late FakeSettingsCrashlyticsService fakeCrashlytics;
   late ErrorHandler errorHandler;
   late BehaviorSubject<UserSettings> settingsSubject;
 
@@ -50,6 +65,7 @@ void main() {
     mockRepository = MockUserSettingsRepository();
     mockExporter = MockAppStateExporter();
     mockTaskRepository = MockTaskRepository();
+    fakeCrashlytics = FakeSettingsCrashlyticsService();
     errorHandler = ErrorHandler();
     settingsSubject = BehaviorSubject<UserSettings>.seeded(
       const UserSettings(hoursAvailable: 8.0),
@@ -71,6 +87,7 @@ void main() {
         errorHandlerProvider.overrideWithValue(errorHandler),
         appStateExporterProvider.overrideWithValue(mockExporter),
         taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        crashlyticsServiceProvider.overrideWithValue(fakeCrashlytics),
         hasSuspectedStaleDataProvider.overrideWith(
           (_) => Stream.value(hasSuspectedStaleData),
         ),
@@ -156,7 +173,7 @@ void main() {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(400, 1000),
+      surfaceSize: const Size(400, 1150),
     );
     await screenMatchesGolden(tester, 'settings_screen_initial');
   });
@@ -165,7 +182,7 @@ void main() {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(400, 1000),
+      surfaceSize: const Size(400, 1150),
     );
 
     final textFieldFinder = find.byKey(const Key('hours_available_field'));
@@ -187,7 +204,7 @@ void main() {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(400, 1000),
+      surfaceSize: const Size(400, 1150),
     );
     await screenMatchesGolden(tester, 'settings_screen_all_enabled');
   });
@@ -255,6 +272,34 @@ void main() {
       verify(
         mockRepository.updateSettings(
           const UserSettings(hoursAvailable: 8.0, telemetryEnabled: false),
+        ),
+      ).called(1);
+    },
+  );
+
+  testWidgets(
+    'SettingsScreen updates and saves crash reporting toggle switch correctly',
+    (WidgetTester tester) async {
+      when(mockRepository.updateSettings(any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      final switchFinder = find.byKey(const Key('crash_reporting_toggle'));
+      expect(switchFinder, findsOneWidget);
+
+      final SwitchListTile switchListTile = tester.widget(switchFinder);
+      expect(switchListTile.value, isTrue);
+
+      await tester.tap(switchFinder);
+      await tester.pumpAndSettle();
+
+      final SwitchListTile updatedSwitch = tester.widget(switchFinder);
+      expect(updatedSwitch.value, isFalse);
+
+      verify(
+        mockRepository.updateSettings(
+          const UserSettings(hoursAvailable: 8.0, crashReportingEnabled: false),
         ),
       ).called(1);
     },

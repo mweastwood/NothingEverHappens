@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_logger.dart';
+import 'crashlytics_service.dart';
 import 'l10n_extension.dart';
 
 class ErrorReport {
@@ -22,9 +23,12 @@ class ErrorReport {
 
 class ErrorHandler {
   final AppLogger? _logger;
+  final CrashlyticsService? _crashlyticsService;
   final List<ErrorReport> _history = [];
 
-  ErrorHandler({AppLogger? logger}) : _logger = logger;
+  ErrorHandler({AppLogger? logger, CrashlyticsService? crashlyticsService})
+    : _logger = logger,
+      _crashlyticsService = crashlyticsService;
 
   List<ErrorReport> get history => List.unmodifiable(_history);
 
@@ -112,6 +116,14 @@ class ErrorHandler {
       stackTrace: stackTrace,
     );
 
+    _crashlyticsService?.setCustomKey('errorCode', code);
+    _crashlyticsService?.recordError(
+      error,
+      stackTrace,
+      fatal: false,
+      reason: 'ErrorHandler [$code]',
+    );
+
     return report;
   }
 
@@ -193,7 +205,10 @@ class ErrorHandler {
   }
 }
 
-final errorHandlerProvider = Provider<ErrorHandler>((ref) {
+final Provider<ErrorHandler> errorHandlerProvider = Provider<ErrorHandler>((
+  ref,
+) {
   final logger = ref.watch(appLoggerProvider);
-  return ErrorHandler(logger: logger);
+  final crashlytics = ref.watch(crashlyticsServiceProvider);
+  return ErrorHandler(logger: logger, crashlyticsService: crashlytics);
 });

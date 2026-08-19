@@ -12,6 +12,7 @@ class UserSettings {
   final bool showTaskListSortBar;
   final bool showScheduleListSortBar;
   final bool telemetryEnabled;
+  final bool crashReportingEnabled;
 
   const UserSettings({
     required this.hoursAvailable,
@@ -24,6 +25,7 @@ class UserSettings {
     this.showTaskListSortBar = true,
     this.showScheduleListSortBar = true,
     this.telemetryEnabled = true,
+    this.crashReportingEnabled = true,
   });
 
   double getCapacityForDate(DateTime date) {
@@ -112,6 +114,7 @@ class UserSettings {
       showTaskListSortBar: json['showTaskListSortBar'] as bool? ?? true,
       showScheduleListSortBar: json['showScheduleListSortBar'] as bool? ?? true,
       telemetryEnabled: json['telemetryEnabled'] as bool? ?? true,
+      crashReportingEnabled: json['crashReportingEnabled'] as bool? ?? true,
     );
   }
 
@@ -139,6 +142,7 @@ class UserSettings {
       'showTaskListSortBar': showTaskListSortBar,
       'showScheduleListSortBar': showScheduleListSortBar,
       'telemetryEnabled': telemetryEnabled,
+      'crashReportingEnabled': crashReportingEnabled,
     };
   }
 
@@ -153,6 +157,7 @@ class UserSettings {
     bool? showTaskListSortBar,
     bool? showScheduleListSortBar,
     bool? telemetryEnabled,
+    bool? crashReportingEnabled,
   }) {
     return UserSettings(
       hoursAvailable: hoursAvailable ?? this.hoursAvailable,
@@ -170,6 +175,8 @@ class UserSettings {
       showScheduleListSortBar:
           showScheduleListSortBar ?? this.showScheduleListSortBar,
       telemetryEnabled: telemetryEnabled ?? this.telemetryEnabled,
+      crashReportingEnabled:
+          crashReportingEnabled ?? this.crashReportingEnabled,
     );
   }
 
@@ -187,7 +194,8 @@ class UserSettings {
         lastCapacityConfirmedWeek == other.lastCapacityConfirmedWeek &&
         showTaskListSortBar == other.showTaskListSortBar &&
         showScheduleListSortBar == other.showScheduleListSortBar &&
-        telemetryEnabled == other.telemetryEnabled;
+        telemetryEnabled == other.telemetryEnabled &&
+        crashReportingEnabled == other.crashReportingEnabled;
   }
 
   @override
@@ -202,5 +210,6 @@ class UserSettings {
     showTaskListSortBar,
     showScheduleListSortBar,
     telemetryEnabled,
+    crashReportingEnabled,
   );
 }

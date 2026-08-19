@@ -3031,6 +3031,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Plan dinners with recipe selection, dynamic shopping list, and prep tasks.'**
   String get mealWorkflowDesc;
+
+  /// No description provided for @crashReportingSettingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Crash & Error Reporting'**
+  String get crashReportingSettingTitle;
+
+  /// No description provided for @crashReportingSettingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically send crash reports to help resolve stability issues and bugs.'**
+  String get crashReportingSettingSubtitle;
 }
 
 class _AppLocalizationsDelegate

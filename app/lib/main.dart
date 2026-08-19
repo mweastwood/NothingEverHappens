@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'firebase_options_dev.dart' as dev;
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'logic/crashlytics_service.dart';
 import 'logic/auth_repository.dart';
 import 'logic/task_repository.dart';
 import 'logic/notification_service.dart';
@@ -84,12 +85,13 @@ Future<void> main() async {
     debugPrint("Hive initialization error: $e");
   }
 
+  final settings = hiveDataSource.getSettings();
+
   unawaited(() async {
     try {
       final launchCount = await hiveDataSource.incrementAppLaunchCount();
       final platform = kIsWeb ? 'web' : Platform.operatingSystem;
       final appVersion = AppVersion.current;
-      final settings = hiveDataSource.getSettings();
 
       if (Firebase.apps.isNotEmpty) {
         final telemetryService = FirebaseTelemetryService(
@@ -112,12 +114,39 @@ Future<void> main() async {
   mainCommon(hiveDataSource);
 }
 
-void mainCommon(HiveLocalDataSource hiveDataSource) {
+void setupGlobalErrorHandlers(ProviderContainer container) {
+  FlutterError.onError = (errorDetails) {
+    container
+        .read(crashlyticsServiceProvider)
+        .recordFlutterFatalError(errorDetails);
+    FlutterError.presentError(errorDetails);
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    container
+        .read(crashlyticsServiceProvider)
+        .recordError(error, stack, fatal: true);
+    return true;
+  };
+}
+
+void mainCommon(
+  HiveLocalDataSource hiveDataSource, [
+  ProviderContainer? container,
+]) {
+  final providerContainer =
+      container ??
+      ProviderContainer(
+        overrides: [
+          hiveLocalDataSourceProvider.overrideWithValue(hiveDataSource),
+        ],
+      );
+
+  setupGlobalErrorHandlers(providerContainer);
+
   runApp(
-    ProviderScope(
-      overrides: [
-        hiveLocalDataSourceProvider.overrideWithValue(hiveDataSource),
-      ],
+    UncontrolledProviderScope(
+      container: providerContainer,
       child: const MyApp(),
     ),
   );

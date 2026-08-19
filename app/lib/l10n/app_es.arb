@@ -632,5 +632,7 @@
   "pantryCheck": "Revisión de Despensa",
   "storeChecklist": "Lista del Supermercado",
   "mealWorkflow": "Flujo de Planificación de Comidas",
-  "mealWorkflowDesc": "Planifica cenas con selección de recetas, lista de compras dinámica y tareas de preparación."
+  "mealWorkflowDesc": "Planifica cenas con selección de recetas, lista de compras dinámica y tareas de preparación.",
+  "crashReportingSettingTitle": "Informes de fallos y errores",
+  "crashReportingSettingSubtitle": "Envía automáticamente informes de fallos para ayudar a resolver problemas de estabilidad y errores."
 }

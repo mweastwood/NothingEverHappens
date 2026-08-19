@@ -1748,4 +1748,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get mealWorkflowDesc =>
       'Plan dinners with recipe selection, dynamic shopping list, and prep tasks.';
+
+  @override
+  String get crashReportingSettingTitle => 'Crash & Error Reporting';
+
+  @override
+  String get crashReportingSettingSubtitle =>
+      'Automatically send crash reports to help resolve stability issues and bugs.';
 }

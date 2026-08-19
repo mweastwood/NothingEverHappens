@@ -1043,5 +1043,7 @@
   "pantryCheck": "Pantry Check",
   "storeChecklist": "Store Checklist",
   "mealWorkflow": "Meal Planning Workflow",
-  "mealWorkflowDesc": "Plan dinners with recipe selection, dynamic shopping list, and prep tasks."
+  "mealWorkflowDesc": "Plan dinners with recipe selection, dynamic shopping list, and prep tasks.",
+  "crashReportingSettingTitle": "Crash & Error Reporting",
+  "crashReportingSettingSubtitle": "Automatically send crash reports to help resolve stability issues and bugs."
 }

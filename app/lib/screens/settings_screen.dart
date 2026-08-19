@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/app_logger.dart';
 import '../logic/app_state_exporter.dart';
 import '../logic/error_handler.dart';
+
 import '../logic/l10n_extension.dart';
 import '../logic/task_repository.dart';
 import '../logic/user_settings.dart';
@@ -25,6 +26,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isInitialized = false;
   bool _showLastSpawnedDate = false;
   bool _telemetryEnabled = true;
+  bool _crashReportingEnabled = true;
 
   @override
   void dispose() {
@@ -102,6 +104,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           hoursAvailable: hours,
           showLastSpawnedDate: _showLastSpawnedDate,
           telemetryEnabled: _telemetryEnabled,
+          crashReportingEnabled: _crashReportingEnabled,
         );
 
         await repository
@@ -163,6 +166,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _hoursController.text = settings.hoursAvailable.toString();
             _showLastSpawnedDate = settings.showLastSpawnedDate;
             _telemetryEnabled = settings.telemetryEnabled;
+            _crashReportingEnabled = settings.crashReportingEnabled;
             _isInitialized = true;
           }
 
@@ -249,10 +253,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             settings.hoursAvailable,
                         showLastSpawnedDate: _showLastSpawnedDate,
                         telemetryEnabled: val,
+                        crashReportingEnabled: _crashReportingEnabled,
                       );
                       settingsRepository.updateSettings(updated);
                     },
                     secondary: const Icon(Icons.analytics_outlined, size: 28),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: SwitchListTile(
+                    key: const Key('crash_reporting_toggle'),
+                    title: Text(context.l10n.crashReportingSettingTitle),
+                    subtitle: Text(context.l10n.crashReportingSettingSubtitle),
+                    value: _crashReportingEnabled,
+                    onChanged: (val) {
+                      setState(() {
+                        _crashReportingEnabled = val;
+                      });
+                      final updated = settings.copyWith(
+                        hoursAvailable:
+                            double.tryParse(_hoursController.text.trim()) ??
+                            settings.hoursAvailable,
+                        showLastSpawnedDate: _showLastSpawnedDate,
+                        telemetryEnabled: _telemetryEnabled,
+                        crashReportingEnabled: val,
+                      );
+                      settingsRepository.updateSettings(updated);
+                    },
+                    secondary: const Icon(Icons.bug_report_outlined, size: 28),
                   ),
                 ),
                 const SizedBox(height: 16),

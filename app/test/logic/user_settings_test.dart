@@ -8,6 +8,7 @@ import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/telemetry_service.dart';
+import 'package:nothing_ever_happens/logic/crashlytics_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +45,7 @@ void main() {
         expect(settings.showLastSpawnedDate, isFalse);
         expect(settings.showTaskListSortBar, isTrue);
         expect(settings.showScheduleListSortBar, isTrue);
+        expect(settings.crashReportingEnabled, isTrue);
       },
     );
 
@@ -53,6 +55,7 @@ void main() {
       expect(settings.showLastSpawnedDate, isFalse);
       expect(settings.showTaskListSortBar, isTrue);
       expect(settings.showScheduleListSortBar, isTrue);
+      expect(settings.crashReportingEnabled, isTrue);
     });
 
     test('fromJson handles valid JSON input including sort bar visibility', () {
@@ -117,6 +120,7 @@ void main() {
         showTaskListSortBar: false,
         showScheduleListSortBar: true,
         telemetryEnabled: true,
+        crashReportingEnabled: true,
         taskListSort: [(column: 'priority', ascending: false)],
         scheduleListSort: [(column: 'next_due', ascending: true)],
       );
@@ -132,6 +136,7 @@ void main() {
         'showTaskListSortBar': false,
         'showScheduleListSortBar': true,
         'telemetryEnabled': true,
+        'crashReportingEnabled': true,
       });
     });
 
@@ -301,12 +306,14 @@ void main() {
         'showTaskListSortBar': true,
         'showScheduleListSortBar': true,
         'telemetryEnabled': true,
+        'crashReportingEnabled': true,
       });
 
       final settingsFromRepository = await repository.getSettings().first;
       expect(settingsFromRepository.hoursAvailable, 15.0);
       expect(settingsFromRepository.showLastSpawnedDate, isTrue);
       expect(settingsFromRepository.telemetryEnabled, isTrue);
+      expect(settingsFromRepository.crashReportingEnabled, isTrue);
     });
 
     test(
@@ -327,6 +334,27 @@ void main() {
         );
 
         expect(fakeTelemetry.isEnabled, isFalse);
+      },
+    );
+
+    test(
+      'updateSettings synchronizes crash reporting enabled state to CrashlyticsService',
+      () async {
+        final fakeCrashlytics = NoOpCrashlyticsService(enabled: true);
+        final repoWithCrashlytics = UserSettingsRepository(
+          firestore: firestore,
+          userId: userId,
+          localDataSource: localDataSource,
+          crashlyticsService: fakeCrashlytics,
+        );
+
+        expect(fakeCrashlytics.isEnabled, isTrue);
+
+        await repoWithCrashlytics.updateSettings(
+          const UserSettings(hoursAvailable: 8.0, crashReportingEnabled: false),
+        );
+
+        expect(fakeCrashlytics.isEnabled, isFalse);
       },
     );
   });
