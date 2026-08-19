@@ -2,7 +2,6 @@ import 'dart:async' show unawaited;
 import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -13,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'firebase_options_dev.dart' as dev;
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'logic/crashlytics_service.dart';
 import 'logic/auth_repository.dart';
 import 'logic/task_repository.dart';
 import 'logic/notification_service.dart';
@@ -87,20 +87,6 @@ Future<void> main() async {
 
   final settings = hiveDataSource.getSettings();
 
-  FlutterError.onError = (errorDetails) {
-    if (!kIsWeb && Firebase.apps.isNotEmpty && settings.crashReportingEnabled) {
-      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-    }
-    FlutterError.presentError(errorDetails);
-  };
-
-  PlatformDispatcher.instance.onError = (error, stack) {
-    if (!kIsWeb && Firebase.apps.isNotEmpty && settings.crashReportingEnabled) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    }
-    return true;
-  };
-
   unawaited(() async {
     try {
       final launchCount = await hiveDataSource.incrementAppLaunchCount();
@@ -128,12 +114,39 @@ Future<void> main() async {
   mainCommon(hiveDataSource);
 }
 
-void mainCommon(HiveLocalDataSource hiveDataSource) {
+void setupGlobalErrorHandlers(ProviderContainer container) {
+  FlutterError.onError = (errorDetails) {
+    container
+        .read(crashlyticsServiceProvider)
+        .recordFlutterFatalError(errorDetails);
+    FlutterError.presentError(errorDetails);
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    container
+        .read(crashlyticsServiceProvider)
+        .recordError(error, stack, fatal: true);
+    return true;
+  };
+}
+
+void mainCommon(
+  HiveLocalDataSource hiveDataSource, [
+  ProviderContainer? container,
+]) {
+  final providerContainer =
+      container ??
+      ProviderContainer(
+        overrides: [
+          hiveLocalDataSourceProvider.overrideWithValue(hiveDataSource),
+        ],
+      );
+
+  setupGlobalErrorHandlers(providerContainer);
+
   runApp(
-    ProviderScope(
-      overrides: [
-        hiveLocalDataSourceProvider.overrideWithValue(hiveDataSource),
-      ],
+    UncontrolledProviderScope(
+      container: providerContainer,
       child: const MyApp(),
     ),
   );
