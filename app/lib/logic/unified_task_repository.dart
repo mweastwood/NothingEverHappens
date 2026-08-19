@@ -510,6 +510,18 @@ class UnifiedTaskRepository extends TaskRepository {
       }
     }
 
+    // Sweep: delete pending instances whose schedule no longer exists.
+    final taskIds = tasks.map((t) => t.id).toSet();
+    for (final inst in List<TaskInstance>.from(allInstances)) {
+      if (inst.status == TaskStatus.pending &&
+          !taskIds.contains(inst.scheduleId)) {
+        await _localDataSource.deleteInstance(inst.id);
+        await _localDataSource.markDirty(inst.id);
+        allInstances.remove(inst);
+        hasChanges = true;
+      }
+    }
+
     logger?.debug(
       'scheduler',
       'Scheduler cycle evaluated ${tasksToEvaluate.length} tasks',
