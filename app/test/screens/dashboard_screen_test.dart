@@ -627,6 +627,10 @@ void main() {
 
       // Verify callout for skipped and missed
       expect(find.text('1 skipped · 1 missed/overdue'), findsOneWidget);
+
+      // Verify standardized 3-letter day labels and legend
+      expect(find.text('Wed'), findsWidgets);
+      expect(find.text('Skipped / Missed'), findsOneWidget);
     },
   );
 
