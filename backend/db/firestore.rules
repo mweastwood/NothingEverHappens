@@ -51,6 +51,12 @@ service cloud.firestore {
         allow read: if isUser(userId) || areInSameFamily(userId);
         allow write: if isUser(userId);
       }
+
+      // Private Recipes: Users can read/write their own recipes, and family members can read
+      match /recipes/{recipeId} {
+        allow read: if isUser(userId) || areInSameFamily(userId);
+        allow write: if isUser(userId);
+      }
     }
 
     // Families: Users can read if they are members. Any authenticated user can create.
@@ -106,6 +112,11 @@ service cloud.firestore {
         allow read: if isFamilyMember();
         allow create: if isFamilyMember();
         allow update, delete: if false; // Append-only
+      }
+
+      // Family-scoped Recipes
+      match /recipes/{recipeId} {
+        allow read, write: if isFamilyMember();
       }
     }
 

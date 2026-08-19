@@ -223,16 +223,11 @@ class InitialFirebaseMigrationService {
         data: {'durationMs': clearWatch.elapsedMilliseconds},
       );
 
-      // Save all fresh items to Hive
+      // Save all fresh items to Hive in batch
       _logger?.debug('sync', '[Migration 5/5] Saving fresh items to Hive...');
       final saveWatch = Stopwatch()..start();
-      for (final task in tasksToMigrate) {
-        await _localDataSource.saveTask(task);
-      }
-
-      for (final instance in instancesToMigrate) {
-        await _localDataSource.saveInstance(instance);
-      }
+      await _localDataSource.saveTasks(tasksToMigrate);
+      await _localDataSource.saveInstances(instancesToMigrate);
 
       await _localDataSource.setActiveUserId(_userId);
       await _localDataSource.setMigrationCompleted(true);
