@@ -1109,6 +1109,50 @@ void main() {
       expect(localDataSource.getRecipes().any((r) => r.id == 'R-2'), isFalse);
     },
   );
+
+  test(
+    'Fast batch ingestion of large snapshot (200 instances) works correctly',
+    () async {
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      for (int i = 0; i < 200; i++) {
+        final inst = TaskInstance(
+          id: 'I-large-$i',
+          scheduleId: 'S-large',
+          ruleId: 'rule_$i',
+          title: 'Large Inst $i',
+          description: 'Desc',
+          scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+          isFamily: false,
+          updatedAt: DateTime.now(),
+        );
+        await firestore
+            .collection('users')
+            .doc('user1')
+            .collection('instances')
+            .doc(inst.id)
+            .set(inst.toFirestore());
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(localDataSource.getInstances().length, 200);
+    },
+  );
 }
 
 class _FailingHiveLocalDataSource extends HiveLocalDataSource {

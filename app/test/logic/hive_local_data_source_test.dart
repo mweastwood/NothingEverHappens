@@ -359,4 +359,48 @@ void main() {
       await customDataSource.dispose();
     },
   );
+
+  test(
+    'Batch operations saveInstances, deleteInstances, markDirtyBatch, clearDirtyBatch work efficiently',
+    () async {
+      final instances = List.generate(
+        100,
+        (i) => TaskInstance(
+          id: 'I-batch-$i',
+          scheduleId: 'S-batch',
+          ruleId: 'rule1',
+          title: 'Batch Inst $i',
+          description: 'Desc',
+          scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      // Save batch
+      await dataSource.saveInstances(instances);
+      expect(dataSource.getInstances().length, 100);
+
+      // Mark dirty batch
+      final dirtyIds = instances.map((i) => i.id).toList();
+      await dataSource.markDirtyBatch(dirtyIds);
+      expect(dataSource.getDirtyTaskIds().length, 100);
+
+      // Clear dirty batch
+      await dataSource.clearDirtyBatch(dirtyIds.sublist(0, 50));
+      expect(dataSource.getDirtyTaskIds().length, 50);
+
+      // Delete instances batch
+      final deleteIds = instances.sublist(0, 50).map((i) => i.id).toList();
+      await dataSource.deleteInstances(deleteIds);
+      expect(dataSource.getInstances().length, 50);
+    },
+  );
 }

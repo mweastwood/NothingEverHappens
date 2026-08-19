@@ -136,7 +136,7 @@ class TaskSyncService {
         .collection('tasks')
         .snapshots()
         .listen(
-          (snapshot) {
+          (snapshot) async {
             logger?.debug(
               'sync',
               'Received remote tasks snapshot',
@@ -145,24 +145,7 @@ class TaskSyncService {
                 'changesCount': snapshot.docChanges.length,
               },
             );
-            for (final change in snapshot.docChanges) {
-              if (change.type == DocumentChangeType.added ||
-                  change.type == DocumentChangeType.modified) {
-                if (change.doc.data() != null) {
-                  _handleRemoteTaskUpdate(
-                    TaskSchedule.fromFirestore(change.doc),
-                  );
-                }
-              } else if (change.type == DocumentChangeType.removed) {
-                final localTask = _localDataSource
-                    .getTasks()
-                    .where((t) => t.id == change.doc.id)
-                    .firstOrNull;
-                if (localTask == null || !localTask.isFamily) {
-                  _localDataSource.deleteTask(change.doc.id);
-                }
-              }
-            }
+            await _handleRemoteTasksSnapshot(snapshot, isFamily: false);
           },
           onError: (e, st) {
             logger?.error(
@@ -181,7 +164,7 @@ class TaskSyncService {
         .collection('instances')
         .snapshots()
         .listen(
-          (snapshot) {
+          (snapshot) async {
             logger?.debug(
               'sync',
               'Received remote instances snapshot',
@@ -190,24 +173,7 @@ class TaskSyncService {
                 'changesCount': snapshot.docChanges.length,
               },
             );
-            for (final change in snapshot.docChanges) {
-              if (change.type == DocumentChangeType.added ||
-                  change.type == DocumentChangeType.modified) {
-                if (change.doc.data() != null) {
-                  _handleRemoteInstanceUpdate(
-                    TaskInstance.fromFirestore(change.doc),
-                  );
-                }
-              } else if (change.type == DocumentChangeType.removed) {
-                final localInst = _localDataSource
-                    .getInstances()
-                    .where((i) => i.id == change.doc.id)
-                    .firstOrNull;
-                if (localInst == null || !localInst.isFamily) {
-                  _localDataSource.deleteInstance(change.doc.id);
-                }
-              }
-            }
+            await _handleRemoteInstancesSnapshot(snapshot, isFamily: false);
           },
           onError: (e, st) {
             logger?.error(
@@ -226,36 +192,8 @@ class TaskSyncService {
         .collection('recipes')
         .snapshots()
         .listen(
-          (snapshot) {
-            for (final change in snapshot.docChanges) {
-              if (change.type == DocumentChangeType.added ||
-                  change.type == DocumentChangeType.modified) {
-                if (change.doc.data() != null) {
-                  final remoteRecipe = Recipe.fromFirestore(change.doc);
-                  final localRecipe = _localDataSource
-                      .getRecipes()
-                      .where((r) => r.id == remoteRecipe.id)
-                      .firstOrNull;
-                  if (localRecipe == null ||
-                      remoteRecipe.updatedAt.isAfter(localRecipe.updatedAt)) {
-                    _localDataSource.saveRecipe(
-                      remoteRecipe.copyWith(
-                        hasPendingWrites: false,
-                        isFromCache: false,
-                      ),
-                    );
-                  }
-                }
-              } else if (change.type == DocumentChangeType.removed) {
-                final localRecipe = _localDataSource
-                    .getRecipes()
-                    .where((r) => r.id == change.doc.id)
-                    .firstOrNull;
-                if (localRecipe == null || !localRecipe.isFamily) {
-                  _localDataSource.deleteRecipe(change.doc.id);
-                }
-              }
-            }
+          (snapshot) async {
+            await _handleRemoteRecipesSnapshot(snapshot, isFamily: false);
           },
           onError: (e, st) {
             logger?.error(
@@ -276,7 +214,7 @@ class TaskSyncService {
         .collection('tasks')
         .snapshots()
         .listen(
-          (snapshot) {
+          (snapshot) async {
             logger?.debug(
               'sync',
               'Received remote family tasks snapshot',
@@ -285,24 +223,7 @@ class TaskSyncService {
                 'changesCount': snapshot.docChanges.length,
               },
             );
-            for (final change in snapshot.docChanges) {
-              if (change.type == DocumentChangeType.added ||
-                  change.type == DocumentChangeType.modified) {
-                if (change.doc.data() != null) {
-                  _handleRemoteTaskUpdate(
-                    TaskSchedule.fromFirestore(change.doc),
-                  );
-                }
-              } else if (change.type == DocumentChangeType.removed) {
-                final localTask = _localDataSource
-                    .getTasks()
-                    .where((t) => t.id == change.doc.id)
-                    .firstOrNull;
-                if (localTask == null || localTask.isFamily) {
-                  _localDataSource.deleteTask(change.doc.id);
-                }
-              }
-            }
+            await _handleRemoteTasksSnapshot(snapshot, isFamily: true);
           },
           onError: (e, st) {
             logger?.error(
@@ -321,7 +242,7 @@ class TaskSyncService {
         .collection('instances')
         .snapshots()
         .listen(
-          (snapshot) {
+          (snapshot) async {
             logger?.debug(
               'sync',
               'Received remote family instances snapshot',
@@ -330,24 +251,7 @@ class TaskSyncService {
                 'changesCount': snapshot.docChanges.length,
               },
             );
-            for (final change in snapshot.docChanges) {
-              if (change.type == DocumentChangeType.added ||
-                  change.type == DocumentChangeType.modified) {
-                if (change.doc.data() != null) {
-                  _handleRemoteInstanceUpdate(
-                    TaskInstance.fromFirestore(change.doc),
-                  );
-                }
-              } else if (change.type == DocumentChangeType.removed) {
-                final localInst = _localDataSource
-                    .getInstances()
-                    .where((i) => i.id == change.doc.id)
-                    .firstOrNull;
-                if (localInst == null || localInst.isFamily) {
-                  _localDataSource.deleteInstance(change.doc.id);
-                }
-              }
-            }
+            await _handleRemoteInstancesSnapshot(snapshot, isFamily: true);
           },
           onError: (e, st) {
             logger?.error(
@@ -366,30 +270,8 @@ class TaskSyncService {
         .collection('recipes')
         .snapshots()
         .listen(
-          (snapshot) {
-            for (final change in snapshot.docChanges) {
-              if (change.type == DocumentChangeType.added ||
-                  change.type == DocumentChangeType.modified) {
-                if (change.doc.data() != null) {
-                  final remoteRecipe = Recipe.fromFirestore(change.doc);
-                  final localRecipe = _localDataSource
-                      .getRecipes()
-                      .where((r) => r.id == remoteRecipe.id)
-                      .firstOrNull;
-                  if (localRecipe == null ||
-                      remoteRecipe.updatedAt.isAfter(localRecipe.updatedAt)) {
-                    _localDataSource.saveRecipe(
-                      remoteRecipe.copyWith(
-                        hasPendingWrites: false,
-                        isFromCache: false,
-                      ),
-                    );
-                  }
-                }
-              } else if (change.type == DocumentChangeType.removed) {
-                _localDataSource.deleteRecipe(change.doc.id);
-              }
-            }
+          (snapshot) async {
+            await _handleRemoteRecipesSnapshot(snapshot, isFamily: true);
           },
           onError: (e, st) {
             logger?.error(
@@ -415,77 +297,206 @@ class TaskSyncService {
     }
   }
 
-  Future<void> _handleRemoteTaskUpdate(TaskSchedule remoteTask) async {
-    final localTasks = _localDataSource.getTasks();
-    final localTaskIndex = localTasks.indexWhere((t) => t.id == remoteTask.id);
+  Future<void> _handleRemoteTasksSnapshot(
+    QuerySnapshot<Map<String, dynamic>> snapshot, {
+    required bool isFamily,
+  }) async {
+    if (snapshot.docChanges.isEmpty) return;
 
-    if (localTaskIndex == -1) {
-      await _localDataSource.saveTask(remoteTask);
-      return;
+    final localTasks = _localDataSource.getTasks();
+    final localMap = {for (final t in localTasks) t.id: t};
+
+    final toSave = <TaskSchedule>[];
+    final toDelete = <String>[];
+    final toPush = <TaskSchedule>[];
+
+    for (final change in snapshot.docChanges) {
+      final docId = change.doc.id;
+      if (change.type == DocumentChangeType.removed) {
+        final localTask = localMap[docId];
+        if (localTask == null ||
+            (isFamily ? localTask.isFamily : !localTask.isFamily)) {
+          toDelete.add(docId);
+          localMap.remove(docId);
+        }
+      } else if (change.type == DocumentChangeType.added ||
+          change.type == DocumentChangeType.modified) {
+        if (change.doc.data() != null) {
+          final remoteTask = TaskSchedule.fromFirestore(change.doc);
+          final localTask = localMap[remoteTask.id];
+
+          if (localTask != null) {
+            if (localTask.updatedAt.isAfter(remoteTask.updatedAt)) {
+              toPush.add(localTask);
+            } else {
+              toSave.add(remoteTask);
+              localMap[remoteTask.id] = remoteTask;
+            }
+          } else {
+            toSave.add(remoteTask);
+            localMap[remoteTask.id] = remoteTask;
+          }
+        }
+      }
     }
 
-    final localTask = localTasks[localTaskIndex];
-    if (localTask.updatedAt.isAfter(remoteTask.updatedAt)) {
-      // Local wins
-      await _pushTaskToRemote(localTask);
-    } else {
-      // Remote wins (or equal)
-      await _localDataSource.saveTask(remoteTask);
+    if (toDelete.isNotEmpty) {
+      await _localDataSource.deleteTasks(toDelete);
+    }
+    if (toSave.isNotEmpty) {
+      await _localDataSource.saveTasks(toSave);
+    }
+
+    for (final task in toPush) {
+      await _localDataSource.markDirty(task.id);
+      await _pushTaskToRemote(task);
     }
   }
 
-  Future<void> _handleRemoteInstanceUpdate(TaskInstance remoteInst) async {
+  Future<void> _handleRemoteInstancesSnapshot(
+    QuerySnapshot<Map<String, dynamic>> snapshot, {
+    required bool isFamily,
+  }) async {
+    if (snapshot.docChanges.isEmpty) return;
+
     final localInsts = _localDataSource.getInstances();
-    final localInstIndex = localInsts.indexWhere((i) => i.id == remoteInst.id);
+    final localMap = {for (final inst in localInsts) inst.id: inst};
+    final localSlotMap = {
+      for (final inst in localInsts)
+        '${inst.scheduleId}_${inst.ruleId}_${inst.scheduledDate}': inst,
+    };
 
-    if (localInstIndex != -1) {
-      final localInst = localInsts[localInstIndex];
-      if (localInst.updatedAt.isAfter(remoteInst.updatedAt)) {
-        await _pushInstanceToRemote(localInst);
-      } else {
-        await _localDataSource.saveInstance(remoteInst);
-      }
-      return;
-    }
+    final toSave = <TaskInstance>[];
+    final toDelete = <String>[];
+    final toPush = <TaskInstance>[];
+    final remoteIdsToDelete = <String>[];
 
-    final localSlotIndex = localInsts.indexWhere(
-      (i) =>
-          i.scheduleId == remoteInst.scheduleId &&
-          i.ruleId == remoteInst.ruleId &&
-          i.scheduledDate == remoteInst.scheduledDate,
-    );
+    final familyId = await _getFamilyId();
 
-    if (localSlotIndex != -1) {
-      final localInst = localInsts[localSlotIndex];
-      if (localInst.updatedAt.isAfter(remoteInst.updatedAt)) {
-        // Local wins
-        await _localDataSource.markDirty(localInst.id);
-        await _pushInstanceToRemote(localInst);
-        final familyId = await _getFamilyId();
-        if (remoteInst.isFamily && familyId != null && familyId.isNotEmpty) {
-          await _firestore
-              .collection('families')
-              .doc(familyId)
-              .collection('instances')
-              .doc(remoteInst.id)
-              .delete();
-        } else {
-          await _firestore
-              .collection('users')
-              .doc(_userId)
-              .collection('instances')
-              .doc(remoteInst.id)
-              .delete();
+    for (final change in snapshot.docChanges) {
+      final docId = change.doc.id;
+      if (change.type == DocumentChangeType.removed) {
+        final localInst = localMap[docId];
+        if (localInst == null ||
+            (isFamily ? localInst.isFamily : !localInst.isFamily)) {
+          toDelete.add(docId);
+          localMap.remove(docId);
         }
-      } else {
-        // Remote wins (or equal)
-        await _localDataSource.deleteInstance(localInst.id);
-        await _localDataSource.saveInstance(remoteInst);
+      } else if (change.type == DocumentChangeType.added ||
+          change.type == DocumentChangeType.modified) {
+        if (change.doc.data() != null) {
+          final remoteInst = TaskInstance.fromFirestore(change.doc);
+          final localInst = localMap[remoteInst.id];
+
+          if (localInst != null) {
+            if (localInst.updatedAt.isAfter(remoteInst.updatedAt)) {
+              toPush.add(localInst);
+            } else {
+              toSave.add(remoteInst);
+              localMap[remoteInst.id] = remoteInst;
+              localSlotMap['${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}'] =
+                  remoteInst;
+            }
+          } else {
+            final slotKey =
+                '${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}';
+            final localSlotInst = localSlotMap[slotKey];
+            if (localSlotInst != null) {
+              if (localSlotInst.updatedAt.isAfter(remoteInst.updatedAt)) {
+                toPush.add(localSlotInst);
+                remoteIdsToDelete.add(remoteInst.id);
+              } else {
+                toDelete.add(localSlotInst.id);
+                localMap.remove(localSlotInst.id);
+                toSave.add(remoteInst);
+                localMap[remoteInst.id] = remoteInst;
+                localSlotMap[slotKey] = remoteInst;
+              }
+            } else {
+              toSave.add(remoteInst);
+              localMap[remoteInst.id] = remoteInst;
+              localSlotMap[slotKey] = remoteInst;
+            }
+          }
+        }
       }
-      return;
     }
 
-    await _localDataSource.saveInstance(remoteInst);
+    if (toDelete.isNotEmpty) {
+      await _localDataSource.deleteInstances(toDelete);
+    }
+    if (toSave.isNotEmpty) {
+      await _localDataSource.saveInstances(toSave);
+    }
+
+    for (final inst in toPush) {
+      await _localDataSource.markDirty(inst.id);
+      await _pushInstanceToRemote(inst);
+    }
+    for (final remId in remoteIdsToDelete) {
+      if (isFamily && familyId != null && familyId.isNotEmpty) {
+        await _firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances')
+            .doc(remId)
+            .delete();
+      } else {
+        await _firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('instances')
+            .doc(remId)
+            .delete();
+      }
+    }
+  }
+
+  Future<void> _handleRemoteRecipesSnapshot(
+    QuerySnapshot<Map<String, dynamic>> snapshot, {
+    required bool isFamily,
+  }) async {
+    if (snapshot.docChanges.isEmpty) return;
+
+    final localRecipes = _localDataSource.getRecipes();
+    final localMap = {for (final r in localRecipes) r.id: r};
+
+    final toSave = <Recipe>[];
+    final toDelete = <String>[];
+
+    for (final change in snapshot.docChanges) {
+      final docId = change.doc.id;
+      if (change.type == DocumentChangeType.removed) {
+        final localRecipe = localMap[docId];
+        if (localRecipe == null ||
+            (isFamily ? localRecipe.isFamily : !localRecipe.isFamily)) {
+          toDelete.add(docId);
+          localMap.remove(docId);
+        }
+      } else if (change.type == DocumentChangeType.added ||
+          change.type == DocumentChangeType.modified) {
+        if (change.doc.data() != null) {
+          final remoteRecipe = Recipe.fromFirestore(change.doc);
+          final localRecipe = localMap[remoteRecipe.id];
+          if (localRecipe == null ||
+              remoteRecipe.updatedAt.isAfter(localRecipe.updatedAt)) {
+            final cleanRecipe = remoteRecipe.copyWith(
+              hasPendingWrites: false,
+              isFromCache: false,
+            );
+            toSave.add(cleanRecipe);
+            localMap[cleanRecipe.id] = cleanRecipe;
+          }
+        }
+      }
+    }
+
+    if (toDelete.isNotEmpty) {
+      await _localDataSource.deleteRecipes(toDelete);
+    }
+    if (toSave.isNotEmpty) {
+      await _localDataSource.saveRecipes(toSave);
+    }
   }
 
   Future<void> sync() async {

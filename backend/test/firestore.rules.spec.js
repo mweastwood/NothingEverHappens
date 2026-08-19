@@ -268,4 +268,58 @@ describe('Firestore Security Rules', () => {
       await assertSucceeds(aliceDb.collection('families').doc('fam-1').collection('instances').doc('inst-1').delete());
     });
   });
+
+  describe('Recipes collection', () => {
+    it('allows a user to read and write their own private recipes', async () => {
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const db = aliceContext.firestore();
+
+      await assertSucceeds(db.collection('users').doc('alice').collection('recipes').doc('recipe-1').set({
+        title: 'Pancakes',
+        servings: 4
+      }));
+
+      await assertSucceeds(db.collection('users').doc('alice').collection('recipes').doc('recipe-1').get());
+    });
+
+    it('denies a user from writing to another user\'s private recipes', async () => {
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const db = aliceContext.firestore();
+
+      await assertFails(db.collection('users').doc('bob').collection('recipes').doc('recipe-1').set({
+        title: 'Waffles'
+      }));
+    });
+
+    it('allows family members to read and write family recipes', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' },
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+      });
+
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const aliceDb = aliceContext.firestore();
+      const bobContext = testEnv.authenticatedContext('bob');
+      const bobDb = bobContext.firestore();
+
+      // Bob creates recipe
+      await assertSucceeds(bobDb.collection('families').doc('fam-1').collection('recipes').doc('recipe-1').set({
+        title: 'Family Pasta'
+      }));
+
+      // Alice reads recipe
+      await assertSucceeds(aliceDb.collection('families').doc('fam-1').collection('recipes').doc('recipe-1').get());
+
+      // Alice updates recipe
+      await assertSucceeds(aliceDb.collection('families').doc('fam-1').collection('recipes').doc('recipe-1').update({
+        servings: 6
+      }));
+    });
+  });
 });
