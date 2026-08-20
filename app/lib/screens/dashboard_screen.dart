@@ -11,6 +11,8 @@ import '../logic/dashboard_stats.dart';
 import '../widgets/personal_history_stats_card.dart';
 import '../widgets/family_history_stats_card.dart';
 import '../widgets/weekly_capacity_chart.dart';
+import '../widgets/system_task_widget.dart';
+import '../logic/system_tasks/system_task.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -39,7 +41,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final settingsVal = ref.watch(userSettingsProvider);
     final schedulesVal = ref.watch(taskSchedulesProvider);
     final instancesVal = ref.watch(taskInstancesProvider);
@@ -83,64 +84,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (!isConfirmed) ...[
-              Card(
-                color: theme.colorScheme.primaryContainer,
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              SystemTaskWidget(
+                task: SystemTask(
+                  id: 'verify_weekly_capacity',
+                  title: 'Confirm capacity for this week',
+                  description:
+                      'Review and confirm your available chore hours to clear this task.',
+                  icon: Icons.assignment_turned_in,
+                  priority: SystemTaskPriority.high,
+                  category: SystemTaskCategory.capacity,
+                  actionLabel: 'Confirm Capacity',
+                  onAction: () => _confirmCapacity(settings, currentWeekId),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.assignment_turned_in,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Confirm capacity for this week',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onPrimaryContainer,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Review and confirm your available chore hours to clear this task.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer
-                              .withValues(alpha: 0.8),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          FilledButton(
-                            key: const Key('confirm_capacity_button'),
-                            onPressed: () =>
-                                _confirmCapacity(settings, currentWeekId),
-                            style: FilledButton.styleFrom(
-                              backgroundColor:
-                                  theme.colorScheme.onPrimaryContainer,
-                              foregroundColor:
-                                  theme.colorScheme.primaryContainer,
-                            ),
-                            child: const Text('Confirm Capacity'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                variant: SystemTaskWidgetVariant.card,
+                actionButtonKey: const Key('confirm_capacity_button'),
               ),
               const SizedBox(height: 16),
             ],
