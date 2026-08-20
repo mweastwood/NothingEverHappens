@@ -280,6 +280,17 @@ void main() {
               'isFamily': true,
             });
 
+        await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('recipes')
+            .doc('recipe-100')
+            .set({
+              'id': 'recipe-100',
+              'title': 'Family Lasagna',
+              'isFamily': true,
+            });
+
         await repository.leaveFamily(familyId);
 
         // Verify family doc deleted
@@ -309,6 +320,17 @@ void main() {
             .get();
         expect(userInstanceDoc.exists, isTrue);
         expect(userInstanceDoc.data()?['isFamily'], isFalse);
+
+        // Verify recipe converted and moved to user's collection
+        final userRecipeDoc = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('recipes')
+            .doc('recipe-100')
+            .get();
+        expect(userRecipeDoc.exists, isTrue);
+        expect(userRecipeDoc.data()?['isFamily'], isFalse);
+        expect(userRecipeDoc.data()?['title'], 'Family Lasagna');
       },
     );
 
