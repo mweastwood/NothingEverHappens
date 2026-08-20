@@ -333,5 +333,115 @@ void main() {
         expect(copied.description, 'Updated Instance Description');
       },
     );
+
+    test(
+      'isCompletedForUser returns correct status based on completion mode',
+      () {
+        final anyoneInstance = TaskInstance(
+          scheduleId: 's1',
+          ruleId: 'r1',
+          title: 'Anyone Mode Task',
+          description: '',
+          scheduledDate: testDate,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.anyone,
+          status: TaskStatus.pending,
+        );
+        expect(anyoneInstance.isCompletedForUser('user1'), isFalse);
+        expect(anyoneInstance.isCompletedForUser('user2'), isFalse);
+
+        final completedAnyone = anyoneInstance.copyWith(
+          status: TaskStatus.completed,
+        );
+        expect(completedAnyone.isCompletedForUser('user1'), isTrue);
+        expect(completedAnyone.isCompletedForUser('user2'), isTrue);
+
+        final individualInstance = TaskInstance(
+          scheduleId: 's2',
+          ruleId: 'r2',
+          title: 'Individual Mode Task',
+          description: '',
+          scheduledDate: testDate,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          completedByUserIds: const ['user1'],
+          status: TaskStatus.pending,
+        );
+        expect(individualInstance.isCompletedForUser('user1'), isTrue);
+        expect(individualInstance.isCompletedForUser('user2'), isFalse);
+
+        final fullyCompletedIndividual = individualInstance.copyWith(
+          completedByUserIds: const ['user1', 'user2'],
+          status: TaskStatus.completed,
+        );
+        expect(fullyCompletedIndividual.isCompletedForUser('user1'), isTrue);
+        expect(fullyCompletedIndividual.isCompletedForUser('user2'), isTrue);
+        expect(fullyCompletedIndividual.isCompletedForUser('user3'), isFalse);
+      },
+    );
+
+    test(
+      'toFirestore and fromFirestore serialize and deserialize familyCompletionMode and completedByUserIds',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final ref = firestore.collection('instances').doc('inst-individual');
+
+        final instance = TaskInstance(
+          id: 'inst-individual',
+          scheduleId: 's-123',
+          ruleId: 'r-123',
+          title: 'Individual Family Task',
+          description: 'Test description',
+          scheduledDate: testDate,
+          startRelativeTime: testStart,
+          dueRelativeTime: testDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          completedByUserIds: ['userA', 'userB'],
+        );
+
+        final data = instance.toFirestore();
+        expect(data['familyCompletionMode'], 'individual');
+        expect(data['completedByUserIds'], ['userA', 'userB']);
+
+        await ref.set(data);
+        final snapshot = await ref.get();
+        final loaded = TaskInstance.fromFirestore(snapshot);
+
+        expect(loaded.id, 'inst-individual');
+        expect(loaded.isFamily, isTrue);
+        expect(loaded.familyCompletionMode, FamilyCompletionMode.individual);
+        expect(loaded.completedByUserIds, ['userA', 'userB']);
+      },
+    );
+
+    test('copyWith handles familyCompletionMode and completedByUserIds', () {
+      final instance = TaskInstance(
+        scheduleId: 's-1',
+        ruleId: 'r-1',
+        title: 'Test',
+        description: '',
+        scheduledDate: testDate,
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.anyone,
+        completedByUserIds: ['u1'],
+      );
+
+      final updated = instance.copyWith(
+        familyCompletionMode: FamilyCompletionMode.individual,
+        completedByUserIds: ['u1', 'u2'],
+      );
+      expect(updated.familyCompletionMode, FamilyCompletionMode.individual);
+      expect(updated.completedByUserIds, ['u1', 'u2']);
+
+      final cleared = updated.copyWith(clearCompletedByUserIds: true);
+      expect(cleared.completedByUserIds, isEmpty);
+    });
   });
 }

@@ -71,6 +71,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
   // New Agile and Scoping variables
   bool _isFamily = false;
+  FamilyCompletionMode _familyCompletionMode = FamilyCompletionMode.anyone;
   TaskPriority _priority = TaskPriority.medium;
   String? _cycleId;
   Map<String, bool> _preferredBy = const {};
@@ -94,6 +95,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       _titleController.text = task.title;
       _descriptionController.text = task.description;
       _isFamily = task.isFamily;
+      _familyCompletionMode = task.familyCompletionMode;
       _priority = task.priority;
       _cycleId = task.cycleId;
       _preferredBy = Map<String, bool>.from(task.preferredBy);
@@ -119,6 +121,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       _titleController.text = task.title;
       _descriptionController.text = task.description;
       _isFamily = task.isFamily;
+      _familyCompletionMode = task.familyCompletionMode;
       _priority = task.priority;
       _cycleId = task.cycleId;
       _preferredBy = Map<String, bool>.from(task.preferredBy);
@@ -293,6 +296,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
               : null,
           isFamily: _isFamily,
+          familyCompletionMode: _familyCompletionMode,
           priority: _priority,
           cycleId: _cycleId,
           preferredBy: _preferredBy,
@@ -326,6 +330,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                       ? CivilDay.fromDateTime(AppClock.now).addDays(-1)
                       : null),
               newIsFamily: _isFamily,
+              newFamilyCompletionMode: _familyCompletionMode,
               newPriority: _priority,
               newCycleId: _cycleId,
               newPreferredBy: _preferredBy,
@@ -686,6 +691,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   ) {
     return TaskFamilyAssignmentSection(
       isFamily: _isFamily,
+      familyCompletionMode: _familyCompletionMode,
       readOnly: readOnly,
       members: members,
       assignedUserId: _assignedUserId,
@@ -701,6 +707,11 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           if (!selected) {
             _assignedUserId = null;
           }
+        });
+      },
+      onFamilyCompletionModeChanged: (mode) {
+        setState(() {
+          _familyCompletionMode = mode;
         });
       },
     );

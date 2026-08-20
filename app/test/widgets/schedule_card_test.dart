@@ -390,6 +390,40 @@ void main() {
       expect(find.byIcon(Icons.assignment_ind), findsNothing);
     });
 
+    testWidgets(
+      'renders individual completion badge when isFamily is true and familyCompletionMode is individual',
+      (tester) async {
+        final individualTask = TaskSchedule(
+          id: 'S-indiv',
+          title: 'Individual Task',
+          description: 'Desc',
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: ScheduleCard(
+                    task: individualTask,
+                    onEdit: () {},
+                    onDelete: () {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Family'), findsOneWidget);
+        expect(find.text('Everyone individually'), findsOneWidget);
+        expect(find.byIcon(Icons.checklist), findsOneWidget);
+      },
+    );
+
     testGoldens(
       'ScheduleCard renders correctly across different schedule types and family badges',
       (tester) async {

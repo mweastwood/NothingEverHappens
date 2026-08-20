@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../logic/family.dart';
+import '../../logic/family_task_completion_mode.dart';
 import '../../logic/l10n_extension.dart';
 import '../standard_choice_chip.dart';
 
@@ -7,6 +8,8 @@ import '../standard_choice_chip.dart';
 class TaskFamilyAssignmentSection extends StatelessWidget {
   final bool isFamily;
   final ValueChanged<bool>? onFamilyToggled;
+  final FamilyCompletionMode familyCompletionMode;
+  final ValueChanged<FamilyCompletionMode>? onFamilyCompletionModeChanged;
   final bool readOnly;
   final List<FamilyMember> members;
   final String? assignedUserId;
@@ -17,6 +20,8 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
     super.key,
     required this.isFamily,
     this.onFamilyToggled,
+    this.familyCompletionMode = FamilyCompletionMode.anyone,
+    this.onFamilyCompletionModeChanged,
     this.readOnly = false,
     this.members = const [],
     this.assignedUserId,
@@ -87,6 +92,62 @@ class TaskFamilyAssignmentSection extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (isFamily) ...[
+                const SizedBox(height: 16),
+                Text(
+                  context.l10n.familyCompletionModeLabel,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8.0,
+                  runSpacing: 8.0,
+                  children: [
+                    StandardChoiceChip(
+                      key: const Key('completion_mode_anyone_chip'),
+                      label: context.l10n.completionModeAnyoneLabel,
+                      selected:
+                          familyCompletionMode == FamilyCompletionMode.anyone,
+                      onSelected: readOnly
+                          ? null
+                          : (selected) {
+                              if (selected) {
+                                onFamilyCompletionModeChanged?.call(
+                                  FamilyCompletionMode.anyone,
+                                );
+                              }
+                            },
+                    ),
+                    StandardChoiceChip(
+                      key: const Key('completion_mode_individual_chip'),
+                      label: context.l10n.completionModeIndividualLabel,
+                      selected:
+                          familyCompletionMode ==
+                          FamilyCompletionMode.individual,
+                      onSelected: readOnly
+                          ? null
+                          : (selected) {
+                              if (selected) {
+                                onFamilyCompletionModeChanged?.call(
+                                  FamilyCompletionMode.individual,
+                                );
+                              }
+                            },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  familyCompletionMode == FamilyCompletionMode.anyone
+                      ? context.l10n.completionModeAnyoneHelper
+                      : context.l10n.completionModeIndividualHelper,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
               if (isFamily && members.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(

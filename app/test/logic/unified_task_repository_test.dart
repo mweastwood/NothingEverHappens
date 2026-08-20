@@ -834,6 +834,75 @@ void main() {
       expect(instances.any((i) => i.id == 'orphan-skipped-1'), true);
     },
   );
+
+  test(
+    'UnifiedTaskRepository handles individual family task completion and undo correctly',
+    () async {
+      const familyId = 'fam-unified';
+      const user1 = 'user1';
+      const user2 = 'user2';
+
+      await firestore.collection('families').doc(familyId).set({
+        'name': 'Unified Fam',
+        'members': {
+          user1: {'role': 'parent', 'displayName': 'User 1'},
+          user2: {'role': 'child', 'displayName': 'User 2'},
+        },
+      });
+      await firestore.collection('users').doc(user1).set({
+        'familyId': familyId,
+      });
+
+      final task = TaskSchedule(
+        id: 'U-indiv-fam',
+        title: 'Walk the dog',
+        description: 'Everyone walks the dog once',
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.individual,
+      );
+      await repository.addTaskSchedule(task);
+
+      final instance = TaskInstance(
+        id: 'I-indiv-fam-1',
+        scheduleId: 'S-U-indiv-fam',
+        ruleId: 'R-1',
+        title: task.title,
+        description: task.description,
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 19),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 8, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 20, minute: 0),
+        ),
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.individual,
+        status: TaskStatus.pending,
+      );
+      await localDataSource.saveInstance(instance);
+
+      // User 1 completes
+      final result1 = await repository.completeTaskInstance(instance.id);
+      expect(result1?.status, TaskStatus.pending);
+      expect(result1?.completedByUserIds, [user1]);
+
+      var savedInst = localDataSource.getInstances().firstWhere(
+        (i) => i.id == instance.id,
+      );
+      expect(savedInst.status, TaskStatus.pending);
+      expect(savedInst.completedByUserIds, [user1]);
+
+      // Undo user 1 completion
+      await repository.undoResolveTaskInstance(savedInst);
+      savedInst = localDataSource.getInstances().firstWhere(
+        (i) => i.id == instance.id,
+      );
+      expect(savedInst.status, TaskStatus.pending);
+      expect(savedInst.completedByUserIds, isEmpty);
+    },
+  );
 }
 
 class _TestTelemetryService extends NoOpTelemetryService {

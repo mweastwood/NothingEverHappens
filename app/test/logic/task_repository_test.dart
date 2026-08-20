@@ -3109,6 +3109,135 @@ void main() {
       expect(ids.contains('inst-skipped-orphan'), true);
       expect(ids.contains('inst-pending-orphan'), false);
     });
+
+    group('FamilyCompletionMode Individual Tests', () {
+      test(
+        'completeTaskInstance only completes instance once all family members complete',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          const familyId = 'fam-123';
+          const user1 = 'u1';
+          const user2 = 'u2';
+
+          // Setup family document
+          await firestore.collection('families').doc(familyId).set({
+            'name': 'The Smiths',
+            'createdAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+            'members': {
+              user1: {
+                'role': 'parent',
+                'joinedAt': Timestamp.now(),
+                'displayName': 'User 1',
+              },
+              user2: {
+                'role': 'child',
+                'joinedAt': Timestamp.now(),
+                'displayName': 'User 2',
+              },
+            },
+          });
+
+          // Setup user docs with familyId
+          await firestore.collection('users').doc(user1).set({
+            'familyId': familyId,
+          });
+          await firestore.collection('users').doc(user2).set({
+            'familyId': familyId,
+          });
+
+          final repo1 = TaskRepository(firestore: firestore, userId: user1);
+          final repo2 = TaskRepository(firestore: firestore, userId: user2);
+
+          final task = TaskSchedule(
+            id: 'task-indiv-fam',
+            title: 'Clean living room',
+            description: 'Each person cleans their area',
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+          );
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(task.id)
+              .set(task.toFirestore());
+
+          final instance = TaskInstance(
+            id: 'inst-indiv-1',
+            scheduleId: task.id,
+            ruleId: 'r1',
+            title: task.title,
+            description: task.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 20),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            status: TaskStatus.pending,
+          );
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(instance.id)
+              .set(instance.toFirestore());
+
+          // User 1 completes
+          final result1 = await repo1.completeTaskInstance(instance.id);
+          expect(result1?.status, TaskStatus.pending);
+          expect(result1?.completedByUserIds, [user1]);
+
+          // Verify in firestore
+          final docAfterUser1 = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(instance.id)
+              .get();
+          final instAfterUser1 = TaskInstance.fromFirestore(docAfterUser1);
+          expect(instAfterUser1.status, TaskStatus.pending);
+          expect(instAfterUser1.completedByUserIds, [user1]);
+
+          // User 2 completes
+          final result2 = await repo2.completeTaskInstance(instance.id);
+          expect(result2?.status, TaskStatus.completed);
+          expect(result2?.completedByUserIds, containsAll([user1, user2]));
+
+          // Verify in firestore
+          final docAfterUser2 = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(instance.id)
+              .get();
+          final instAfterUser2 = TaskInstance.fromFirestore(docAfterUser2);
+          expect(instAfterUser2.status, TaskStatus.completed);
+          expect(
+            instAfterUser2.completedByUserIds,
+            containsAll([user1, user2]),
+          );
+
+          // User 1 undoes completion
+          await repo1.undoResolveTaskInstance(instAfterUser2);
+          final docAfterUndo = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(instance.id)
+              .get();
+          final instAfterUndo = TaskInstance.fromFirestore(docAfterUndo);
+          expect(instAfterUndo.status, TaskStatus.pending);
+          expect(instAfterUndo.completedByUserIds, [user2]);
+        },
+      );
+    });
   });
 }
 

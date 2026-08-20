@@ -159,6 +159,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             final isFuture = AppClock.now.isBefore(startDateTime);
             final isPending = inst.status == TaskStatus.pending && !isFuture;
             if (!isPending) return false;
+            if (currentUserId != null &&
+                inst.isCompletedForUser(currentUserId)) {
+              return false;
+            }
             if (inst.assignedUserId != null &&
                 inst.assignedUserId != currentUserId) {
               return false;
