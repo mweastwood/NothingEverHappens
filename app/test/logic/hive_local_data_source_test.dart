@@ -61,6 +61,40 @@ void main() {
     expect(afterDelete.isEmpty, true);
   });
 
+  test('persists and deserializes TaskSchedule appLaunchUrl properly', () async {
+    final rawMap = {
+      'id': 'S-task-url',
+      'title': 'Duolingo Daily',
+      'description': 'Practice languages',
+      'appLaunchUrl': 'duolingo://app',
+      'schedules': <dynamic>[],
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+
+    final deserialized = dataSource.taskScheduleFromJson(rawMap);
+    expect(deserialized.id, 'S-task-url');
+    expect(deserialized.appLaunchUrl, 'duolingo://app');
+
+    final taskWithUrl = TaskSchedule(
+      id: 'S-task-url',
+      title: 'Duolingo Daily',
+      description: 'Practice languages',
+      appLaunchUrl: 'duolingo://app',
+      schedules: [],
+      updatedAt: DateTime.now(),
+    );
+
+    await dataSource.saveTask(taskWithUrl);
+
+    // Reinitialize a secondary dataSource instance to load from the persisted box and exercise _taskScheduleFromJson
+    final secondDataSource = HiveLocalDataSource();
+    await secondDataSource.init();
+    final tasks = secondDataSource.getTasks();
+    final retrieved = tasks.firstWhere((t) => t.id == 'S-task-url');
+    expect(retrieved.appLaunchUrl, 'duolingo://app');
+    await secondDataSource.dispose();
+  });
+
   test('Test CRUD operations on instancesBox', () async {
     final instance = TaskInstance(
       id: 'I-inst1',
