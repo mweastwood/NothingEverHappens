@@ -14,6 +14,8 @@ import '../logic/sort_helper.dart';
 import '../widgets/sort_bar.dart';
 import '../widgets/unsynced_banner.dart';
 import '../widgets/smooth_shuffle_item.dart';
+import '../widgets/system_task_widget.dart';
+import '../logic/system_tasks/system_task.dart';
 
 import '../logic/subscription_service.dart';
 import '../logic/utils/layout_breakpoints.dart';
@@ -317,7 +319,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             children: [
               Builder(
                 builder: (context) {
-                  final theme = Theme.of(context);
                   String getWeekIdentifier(DateTime date) {
                     final monday = date.subtract(
                       Duration(days: date.weekday - 1),
@@ -365,42 +366,16 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                         SliverToBoxAdapter(
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                            child: Card(
+                            child: SystemTaskWidget(
                               key: const Key('capacity_prompt_card'),
-                              margin: EdgeInsets.zero,
-                              color: theme.colorScheme.primaryContainer,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(
-                                  color: theme.colorScheme.primary.withValues(
-                                    alpha: 0.2,
-                                  ),
-                                ),
-                              ),
-                              child: ListTile(
-                                leading: Icon(
-                                  Icons.assignment_late,
-                                  color: theme.colorScheme.onPrimaryContainer,
-                                ),
-                                title: Text(
-                                  context.l10n.capacityPromptTitle,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.onPrimaryContainer,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  context.l10n.capacityPromptSubtitle,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.onPrimaryContainer
-                                        .withValues(alpha: 0.8),
-                                  ),
-                                ),
-                                trailing: Icon(
-                                  Icons.chevron_right,
-                                  color: theme.colorScheme.onPrimaryContainer,
-                                ),
+                              task: SystemTask(
+                                id: 'verify_weekly_capacity',
+                                title: context.l10n.capacityPromptTitle,
+                                description:
+                                    context.l10n.capacityPromptSubtitle,
+                                icon: Icons.assignment_late,
+                                priority: SystemTaskPriority.high,
+                                category: SystemTaskCategory.capacity,
                                 onTap: () {
                                   ref
                                           .read(homeTabIndexProvider.notifier)
@@ -408,6 +383,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                                       2; // Switch to Dashboard Tab
                                 },
                               ),
+                              variant: SystemTaskWidgetVariant.banner,
                             ),
                           ),
                         ),
