@@ -68,13 +68,23 @@ class _SmoothShuffleItemState extends State<SmoothShuffleItem>
     final scrollableBox = scrollable?.context.findRenderObject() as RenderBox?;
 
     Offset currentPos;
-    if (scrollableBox != null &&
+    if (scrollable != null &&
+        scrollableBox != null &&
         scrollableBox.attached &&
         scrollableBox.hasSize) {
-      currentPos = renderBox.localToGlobal(
+      final viewportPos = renderBox.localToGlobal(
         Offset.zero,
         ancestor: scrollableBox,
       );
+      final scrollOffset = scrollable.position.hasPixels
+          ? scrollable.position.pixels
+          : 0.0;
+      final axis = scrollable.axisDirection;
+      if (axis == AxisDirection.down || axis == AxisDirection.up) {
+        currentPos = Offset(viewportPos.dx, viewportPos.dy + scrollOffset);
+      } else {
+        currentPos = Offset(viewportPos.dx + scrollOffset, viewportPos.dy);
+      }
     } else {
       currentPos = renderBox.localToGlobal(Offset.zero);
     }
