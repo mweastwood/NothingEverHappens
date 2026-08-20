@@ -50,6 +50,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Set your available hours for the upcoming days.';
 
   @override
+  String communicateMissedChoreTitle(String taskTitle) {
+    return 'Communicate missed chore: $taskTitle';
+  }
+
+  @override
+  String get communicateMissedChoreDescription =>
+      'This family task was missed before 5:00 AM. Reach out to your family and own responsibility for the missed task by 5:00 PM today.';
+
+  @override
+  String get markCommunicatedAction => 'Mark Communicated';
+
+  @override
   String get historyTab => 'History';
 
   @override

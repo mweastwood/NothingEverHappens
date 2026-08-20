@@ -13,6 +13,7 @@ class UserSettings {
   final bool showScheduleListSortBar;
   final bool telemetryEnabled;
   final bool crashReportingEnabled;
+  final List<String>? acknowledgedMissedTaskCommunications;
 
   const UserSettings({
     required this.hoursAvailable,
@@ -26,6 +27,7 @@ class UserSettings {
     this.showScheduleListSortBar = true,
     this.telemetryEnabled = true,
     this.crashReportingEnabled = true,
+    this.acknowledgedMissedTaskCommunications,
   });
 
   double getCapacityForDate(DateTime date) {
@@ -41,6 +43,35 @@ class UserSettings {
       return defaultDailyCapacity![weekdayStr]!;
     }
     return hoursAvailable;
+  }
+
+  static List<String>? _pruneAcknowledgedCommunications(
+    List<String>? comms,
+    DateTime now,
+  ) {
+    if (comms == null || comms.isEmpty) return comms;
+
+    final cutoffDate = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(const Duration(days: 30));
+    final cutoffStr =
+        '${cutoffDate.year}-${cutoffDate.month.toString().padLeft(2, '0')}-${cutoffDate.day.toString().padLeft(2, '0')}';
+
+    final pruned = <String>[];
+    for (final entry in comms) {
+      final lastColon = entry.lastIndexOf(':');
+      if (lastColon != -1 && lastColon < entry.length - 1) {
+        final dateStr = entry.substring(lastColon + 1);
+        if (dateStr.compareTo(cutoffStr) >= 0) {
+          pruned.add(entry);
+        }
+      } else {
+        pruned.add(entry);
+      }
+    }
+    return pruned;
   }
 
   static Map<String, double>? _pruneOverrides(
@@ -103,6 +134,14 @@ class UserSettings {
       AppClock.now,
     );
 
+    final acknowledgedMissedTaskCommunicationsRaw =
+        json['acknowledgedMissedTaskCommunications'] as List<dynamic>?;
+    final parsedAcknowledgedComms = acknowledgedMissedTaskCommunicationsRaw
+        ?.map((e) => e.toString())
+        .toList();
+    final acknowledgedMissedTaskCommunications =
+        _pruneAcknowledgedCommunications(parsedAcknowledgedComms, AppClock.now);
+
     return UserSettings(
       hoursAvailable: (json['hoursAvailable'] as num?)?.toDouble() ?? 8.0,
       showLastSpawnedDate: json['showLastSpawnedDate'] as bool? ?? false,
@@ -115,12 +154,18 @@ class UserSettings {
       showScheduleListSortBar: json['showScheduleListSortBar'] as bool? ?? true,
       telemetryEnabled: json['telemetryEnabled'] as bool? ?? true,
       crashReportingEnabled: json['crashReportingEnabled'] as bool? ?? true,
+      acknowledgedMissedTaskCommunications:
+          acknowledgedMissedTaskCommunications,
     );
   }
 
   Map<String, dynamic> toJson() {
     final prunedOverrides = _pruneOverrides(
       dailyCapacityOverrides,
+      AppClock.now,
+    );
+    final prunedComms = _pruneAcknowledgedCommunications(
+      acknowledgedMissedTaskCommunications,
       AppClock.now,
     );
     return {
@@ -143,6 +188,7 @@ class UserSettings {
       'showScheduleListSortBar': showScheduleListSortBar,
       'telemetryEnabled': telemetryEnabled,
       'crashReportingEnabled': crashReportingEnabled,
+      'acknowledgedMissedTaskCommunications': ?prunedComms,
     };
   }
 
@@ -158,6 +204,7 @@ class UserSettings {
     bool? showScheduleListSortBar,
     bool? telemetryEnabled,
     bool? crashReportingEnabled,
+    List<String>? acknowledgedMissedTaskCommunications,
   }) {
     return UserSettings(
       hoursAvailable: hoursAvailable ?? this.hoursAvailable,
@@ -177,6 +224,11 @@ class UserSettings {
       telemetryEnabled: telemetryEnabled ?? this.telemetryEnabled,
       crashReportingEnabled:
           crashReportingEnabled ?? this.crashReportingEnabled,
+      acknowledgedMissedTaskCommunications: _pruneAcknowledgedCommunications(
+        acknowledgedMissedTaskCommunications ??
+            this.acknowledgedMissedTaskCommunications,
+        AppClock.now,
+      ),
     );
   }
 
@@ -195,7 +247,11 @@ class UserSettings {
         showTaskListSortBar == other.showTaskListSortBar &&
         showScheduleListSortBar == other.showScheduleListSortBar &&
         telemetryEnabled == other.telemetryEnabled &&
-        crashReportingEnabled == other.crashReportingEnabled;
+        crashReportingEnabled == other.crashReportingEnabled &&
+        listEquals(
+          acknowledgedMissedTaskCommunications,
+          other.acknowledgedMissedTaskCommunications,
+        );
   }
 
   @override
@@ -211,5 +267,8 @@ class UserSettings {
     showScheduleListSortBar,
     telemetryEnabled,
     crashReportingEnabled,
+    acknowledgedMissedTaskCommunications != null
+        ? Object.hashAll(acknowledgedMissedTaskCommunications!)
+        : null,
   );
 }

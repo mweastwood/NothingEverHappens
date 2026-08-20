@@ -176,6 +176,24 @@ abstract class AppLocalizations {
   /// **'Set your available hours for the upcoming days.'**
   String get capacityPromptSubtitle;
 
+  /// Title for system task prompting communication of a missed family chore
+  ///
+  /// In en, this message translates to:
+  /// **'Communicate missed chore: {taskTitle}'**
+  String communicateMissedChoreTitle(String taskTitle);
+
+  /// No description provided for @communicateMissedChoreDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This family task was missed before 5:00 AM. Reach out to your family and own responsibility for the missed task by 5:00 PM today.'**
+  String get communicateMissedChoreDescription;
+
+  /// No description provided for @markCommunicatedAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark Communicated'**
+  String get markCommunicatedAction;
+
   /// No description provided for @historyTab.
   ///
   /// In en, this message translates to:

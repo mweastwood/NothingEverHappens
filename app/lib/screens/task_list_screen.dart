@@ -16,6 +16,7 @@ import '../widgets/unsynced_banner.dart';
 import '../widgets/smooth_shuffle_item.dart';
 import '../widgets/system_task_widget.dart';
 import '../logic/system_tasks/system_task.dart';
+import '../logic/system_tasks/system_task_providers.dart';
 
 import '../logic/subscription_service.dart';
 import '../logic/utils/layout_breakpoints.dart';
@@ -387,6 +388,24 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                             ),
                           ),
                         ),
+                      if (searchQuery.isEmpty)
+                        for (final familyTask
+                            in ref
+                                .watch(activeSystemTasksProvider)
+                                .where(
+                                  (t) =>
+                                      t.category == SystemTaskCategory.family,
+                                ))
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                              child: SystemTaskWidget(
+                                key: Key('system_task_${familyTask.id}'),
+                                task: familyTask,
+                                variant: SystemTaskWidgetVariant.card,
+                              ),
+                            ),
+                          ),
                       SliverPadding(
                         key: _taskListKey,
                         padding: const EdgeInsets.only(bottom: 80.0),

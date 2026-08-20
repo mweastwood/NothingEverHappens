@@ -12,7 +12,7 @@ import '../widgets/personal_history_stats_card.dart';
 import '../widgets/family_history_stats_card.dart';
 import '../widgets/weekly_capacity_chart.dart';
 import '../widgets/system_task_widget.dart';
-import '../logic/system_tasks/system_task.dart';
+import '../logic/system_tasks/system_task_providers.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -64,9 +64,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final personalStats = ref.watch(personalLastWeekStatsProvider);
     final familyStats = ref.watch(familyLastWeekStatsProvider);
 
+    final activeSystemTasks = ref.watch(activeSystemTasksProvider);
     final today = AppClock.now;
     final currentWeekId = _getWeekIdentifier(today);
-    final isConfirmed = settings.lastCapacityConfirmedWeek == currentWeekId;
 
     // Upcoming 7 days (today + next 6 days)
     final upcomingDays = List.generate(
@@ -79,21 +79,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (!isConfirmed) ...[
+          for (final sysTask in activeSystemTasks) ...[
             SystemTaskWidget(
-              task: SystemTask(
-                id: 'verify_weekly_capacity',
-                title: 'Confirm capacity for this week',
-                description:
-                    'Review and confirm your available chore hours to clear this task.',
-                icon: Icons.assignment_turned_in,
-                priority: SystemTaskPriority.high,
-                category: SystemTaskCategory.capacity,
-                actionLabel: 'Confirm Capacity',
-                onAction: () => _confirmCapacity(settings, currentWeekId),
-              ),
+              key: Key('system_task_${sysTask.id}'),
+              task: sysTask.id == 'verify_weekly_capacity'
+                  ? sysTask.copyWith(
+                      onAction: () =>
+                          _confirmCapacity(settings, currentWeekId),
+                    )
+                  : sysTask,
               variant: SystemTaskWidgetVariant.card,
-              actionButtonKey: const Key('confirm_capacity_button'),
+              actionButtonKey: sysTask.id == 'verify_weekly_capacity'
+                  ? const Key('confirm_capacity_button')
+                  : null,
             ),
             const SizedBox(height: 16),
           ],
