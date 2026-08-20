@@ -2384,6 +2384,50 @@ void main() {
         expect(sig1, isNot(equals(sig2)));
       });
 
+      test('computeScheduleSignature includes isFamily', () {
+        final task1 = TaskSchedule(
+          id: 'sig-task-family-1',
+          title: 'Sig Task Family 1',
+          description: 'Sig task isFamily check 1',
+          isFamily: false,
+        );
+        final task2 = TaskSchedule(
+          id: 'sig-task-family-1',
+          title: 'Sig Task Family 1',
+          description: 'Sig task isFamily check 2',
+          isFamily: true,
+        );
+
+        final sig1 = TaskSpawnerEngine.computeScheduleSignature(task1);
+        final sig2 = TaskSpawnerEngine.computeScheduleSignature(task2);
+
+        expect(sig1, contains('"isFamily":false'));
+        expect(sig2, contains('"isFamily":true'));
+        expect(sig1, isNot(equals(sig2)));
+      });
+
+      test('computeScheduleSignature includes familyCompletionMode', () {
+        final task1 = TaskSchedule(
+          id: 'sig-task-mode-1',
+          title: 'Sig Task Mode 1',
+          description: 'Sig task familyCompletionMode check 1',
+          familyCompletionMode: FamilyCompletionMode.anyone,
+        );
+        final task2 = TaskSchedule(
+          id: 'sig-task-mode-1',
+          title: 'Sig Task Mode 1',
+          description: 'Sig task familyCompletionMode check 2',
+          familyCompletionMode: FamilyCompletionMode.individual,
+        );
+
+        final sig1 = TaskSpawnerEngine.computeScheduleSignature(task1);
+        final sig2 = TaskSpawnerEngine.computeScheduleSignature(task2);
+
+        expect(sig1, contains('"familyCompletionMode":"anyone"'));
+        expect(sig2, contains('"familyCompletionMode":"individual"'));
+        expect(sig1, isNot(equals(sig2)));
+      });
+
       test(
         'deleteTaskSchedule cleans up queued and last processed tasks',
         () async {

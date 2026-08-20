@@ -47,6 +47,8 @@ class TaskSpawnerEngine {
       'skipIfNoCapacity': task.skipIfNoCapacity,
       'missedPolicy': task.missedPolicy.name,
       'assignedUserId': task.assignedUserId,
+      'isFamily': task.isFamily,
+      'familyCompletionMode': task.familyCompletionMode.name,
     });
   }
 }
