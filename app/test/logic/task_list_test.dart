@@ -163,5 +163,119 @@ void main() {
         );
       },
     );
+
+    test(
+      'complete of recurring task preserves all modern task metadata fields',
+      () {
+        AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
+        addTearDown(AppClock.reset);
+
+        final recurringTask = TaskSchedule(
+          id: 'task-recur-metadata',
+          title: 'Daily Task with Metadata',
+          description: 'Preserve me',
+          estimatedDuration: const Duration(minutes: 45),
+          isMaster: true,
+          lastSpawnedDate: const CivilDay(year: 2026, month: 3, day: 7),
+          parentTaskId: 'parent-123',
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          priority: TaskPriority.high,
+          cycleId: 'cycle-789',
+          preferredBy: {'user-1': true, 'user-2': false},
+          assignedUserId: 'user-1',
+          appLaunchUrl: 'duolingo://',
+          workflowType: 'mealWorkflow',
+          mealWorkflowConfig: const MealWorkflowConfig(
+            selectTime: RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 11, minute: 0),
+            ),
+            shopTime: RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 15, minute: 0),
+            ),
+            prepTime: RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 19, minute: 0),
+            ),
+          ),
+          skipIfNoCapacity: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 3, day: 8),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        final nextState = TaskList([
+          recurringTask,
+        ]).complete('S-task-recur-metadata');
+
+        expect(nextState.activeTasks.length, 1);
+        final updatedTask = nextState.activeTasks.first;
+
+        expect(updatedTask.id, 'S-task-recur-metadata');
+        expect(updatedTask.title, 'Daily Task with Metadata');
+        expect(updatedTask.description, 'Preserve me');
+        expect(updatedTask.estimatedDuration, const Duration(minutes: 45));
+        expect(updatedTask.isMaster, true);
+        expect(
+          updatedTask.lastSpawnedDate,
+          const CivilDay(year: 2026, month: 3, day: 7),
+        );
+        expect(updatedTask.parentTaskId, 'parent-123');
+        expect(updatedTask.isFamily, true);
+        expect(
+          updatedTask.familyCompletionMode,
+          FamilyCompletionMode.individual,
+        );
+        expect(updatedTask.priority, TaskPriority.high);
+        expect(updatedTask.cycleId, 'cycle-789');
+        expect(updatedTask.preferredBy, {'user-1': true, 'user-2': false});
+        expect(updatedTask.assignedUserId, 'user-1');
+        expect(updatedTask.appLaunchUrl, 'duolingo://');
+        expect(updatedTask.workflowType, 'mealWorkflow');
+        expect(updatedTask.mealWorkflowConfig, isNotNull);
+        expect(
+          updatedTask.mealWorkflowConfig?.selectTime,
+          const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 11, minute: 0),
+          ),
+        );
+        expect(
+          updatedTask.mealWorkflowConfig?.shopTime,
+          const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 15, minute: 0),
+          ),
+        );
+        expect(
+          updatedTask.mealWorkflowConfig?.prepTime,
+          const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 19, minute: 0),
+          ),
+        );
+        expect(updatedTask.skipIfNoCapacity, true);
+
+        // Schedule was advanced to March 9
+        final newSchedule = updatedTask.schedules.first as DailySchedule;
+        expect(
+          newSchedule.startDate,
+          const CivilDay(year: 2026, month: 3, day: 9),
+        );
+      },
+    );
   });
 }
