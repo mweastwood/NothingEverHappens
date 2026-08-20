@@ -830,7 +830,10 @@ void main() {
       '6. TaskRepository missed policies: Stack policy on mixed Daily (interval 2) and Weekly (Wed, Fri) schedules',
       () async {
         final firestore = FakeFirebaseFirestore();
-        final repository = TaskRepository(firestore: firestore, userId: userId);
+        final repository = FirestoreTaskRepository(
+          firestore: firestore,
+          userId: userId,
+        );
 
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final task = TaskSchedule(
@@ -902,7 +905,10 @@ void main() {
       '7. TaskRepository missed policies: Auto-dismiss with zero grace period on mixed Weekly (Mon) and Monthly (dayOfMonth 1) schedules',
       () async {
         final firestore = FakeFirebaseFirestore();
-        final repository = TaskRepository(firestore: firestore, userId: userId);
+        final repository = FirestoreTaskRepository(
+          firestore: firestore,
+          userId: userId,
+        );
 
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final task = TaskSchedule(
@@ -1005,7 +1011,10 @@ void main() {
       '7b. TaskRepository missed policies: Auto-dismiss backfill cap at 30 days',
       () async {
         final firestore = FakeFirebaseFirestore();
-        final repository = TaskRepository(firestore: firestore, userId: userId);
+        final repository = FirestoreTaskRepository(
+          firestore: firestore,
+          userId: userId,
+        );
 
         final start = const CivilDay(year: 2026, month: 6, day: 1);
         final task = TestTaskFactory.createDaily(
@@ -1061,7 +1070,10 @@ void main() {
       '8. TaskRepository missed policies: Stack policy on mixed Daily (interval 1) and Weekly (Wed) schedules',
       () async {
         final firestore = FakeFirebaseFirestore();
-        final repository = TaskRepository(firestore: firestore, userId: userId);
+        final repository = FirestoreTaskRepository(
+          firestore: firestore,
+          userId: userId,
+        );
 
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final task = TaskSchedule(
@@ -1169,7 +1181,10 @@ void main() {
       '10. TaskRepository missed policies: OneOff + Daily + Weekly + Monthly + Yearly under Stack policy',
       () async {
         final firestore = FakeFirebaseFirestore();
-        final repository = TaskRepository(firestore: firestore, userId: userId);
+        final repository = FirestoreTaskRepository(
+          firestore: firestore,
+          userId: userId,
+        );
 
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final task = TaskSchedule(
@@ -1317,7 +1332,10 @@ void main() {
       '11. TaskRepository completion: Stack policy completion spawns correct next occurrences in mixed schedules',
       () async {
         final firestore = FakeFirebaseFirestore();
-        final repository = TaskRepository(firestore: firestore, userId: userId);
+        final repository = FirestoreTaskRepository(
+          firestore: firestore,
+          userId: userId,
+        );
 
         final start = const CivilDay(year: 2026, month: 6, day: 1); // Monday
         final task = TaskSchedule(
@@ -1590,7 +1608,7 @@ void main() {
     group('Completion-Relative Scheduling Policy Tests', () {
       test('Initial Spawning spawns on scheduledDate', () async {
         final firestore = FakeFirebaseFirestore();
-        final repository = TaskRepository(
+        final repository = FirestoreTaskRepository(
           firestore: firestore,
           userId: 'user-1',
         );
@@ -1631,7 +1649,7 @@ void main() {
         'Completion spawns next instance exactly interval after completion time',
         () async {
           final firestore = FakeFirebaseFirestore();
-          final repository = TaskRepository(
+          final repository = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'user-1',
           );
@@ -1722,7 +1740,7 @@ void main() {
 
       test('Completion-Relative tasks ignore Auto-Dismiss policy', () async {
         final firestore = FakeFirebaseFirestore();
-        final repository = TaskRepository(
+        final repository = FirestoreTaskRepository(
           firestore: firestore,
           userId: 'user-1',
         );
@@ -1783,7 +1801,7 @@ void main() {
         'Spawning triggers on interval expiration if pending instance is deleted',
         () async {
           final firestore = FakeFirebaseFirestore();
-          final repository = TaskRepository(
+          final repository = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'user-1',
           );

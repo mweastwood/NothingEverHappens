@@ -17,7 +17,7 @@ void main() {
     AppClock.setMockTime(DateTime(2026, 6, 3, 12, 0));
     addTearDown(AppClock.reset);
     firestore = FakeFirebaseFirestore();
-    repository = TaskRepository(firestore: firestore, userId: userId);
+    repository = FirestoreTaskRepository(firestore: firestore, userId: userId);
   });
 
   tearDown(() {});

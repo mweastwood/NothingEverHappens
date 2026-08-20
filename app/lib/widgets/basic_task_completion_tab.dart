@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task_schedule.dart';
 import '../logic/task_instance.dart';
@@ -235,12 +234,10 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
   }
 }
 
-class DummyFirebaseFirestore implements FirebaseFirestore {
+class FakeTaskRepository implements TaskRepository {
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+  final String userId = 'practice_user';
 
-class FakeTaskRepository extends TaskRepository {
   final void Function(String) onComplete;
   final void Function(String) onDelete;
   final void Function(TaskInstance) onUndo;
@@ -249,11 +246,7 @@ class FakeTaskRepository extends TaskRepository {
     required this.onComplete,
     required this.onDelete,
     required this.onUndo,
-  }) : super(
-         firestore: DummyFirebaseFirestore(),
-         userId: 'practice_user',
-         notificationService: null,
-       );
+  });
 
   @override
   Future<TaskInstance?> completeTaskInstance(String id) async {
@@ -292,4 +285,7 @@ class FakeTaskRepository extends TaskRepository {
     );
     onUndo(pending);
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

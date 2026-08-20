@@ -13,12 +13,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
 import 'package:nothing_ever_happens/logic/telemetry_service.dart';
 import 'package:nothing_ever_happens/logic/family.dart';
+import 'package:nothing_ever_happens/logic/notification_service.dart';
+import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/app_logger.dart';
 
-class UnifiedTaskRepository extends TaskRepository {
+class UnifiedTaskRepository implements TaskRepository {
   final HiveLocalDataSource _localDataSource;
   final TaskSyncService _syncService;
   final FirebaseFirestore? _rawFirestore;
   final TelemetryService? _telemetryService;
+
+  @override
+  final String userId;
+  final NotificationService? notificationService;
+  final ErrorHandler? errorHandler;
+  final AppLogger? logger;
+
+  /// Cache duration for family ID to avoid excessive DB reads.
+  static const Duration _familyIdCacheDuration = Duration(seconds: 15);
+
+  /// Timeout for fetching family ID from the network.
+  static const Duration _familyIdFetchTimeout = Duration(seconds: 2);
+
+  String? _cachedFamilyId;
+  DateTime? _lastFamilyIdCheck;
 
   Future<void>? _activeProcessingFuture;
   bool _hasQueuedProcessing = false;
@@ -27,17 +45,55 @@ class UnifiedTaskRepository extends TaskRepository {
   UnifiedTaskRepository({
     required HiveLocalDataSource localDataSource,
     required TaskSyncService syncService,
-    required super.userId,
-    super.firestore,
-    super.notificationService,
-    super.errorHandler,
-    super.logger,
+    required this.userId,
+    FirebaseFirestore? firestore,
+    this.notificationService,
+    this.errorHandler,
+    this.logger,
     TelemetryService? telemetryService,
   }) : _localDataSource = localDataSource,
        _syncService = syncService,
        _rawFirestore = firestore,
        _telemetryService = telemetryService {
     _initMigration();
+  }
+
+  @override
+  void dispose() {}
+
+  @override
+  Future<String?> getFamilyId() async {
+    if (_rawFirestore == null || userId.isEmpty) return null;
+    if (_cachedFamilyId != null &&
+        _lastFamilyIdCheck != null &&
+        DateTime.now().difference(_lastFamilyIdCheck!) <
+            _familyIdCacheDuration) {
+      return _cachedFamilyId;
+    }
+    try {
+      final userDoc = await _rawFirestore
+          .collection('users')
+          .doc(userId)
+          .get(const GetOptions(source: Source.serverAndCache))
+          .timeout(_familyIdFetchTimeout);
+      _cachedFamilyId = userDoc.data()?['familyId'] as String?;
+      _lastFamilyIdCheck = DateTime.now();
+      return _cachedFamilyId;
+    } catch (e, st) {
+      errorHandler?.report(e, stackTrace: st);
+      try {
+        final cacheDoc = await _rawFirestore
+            .collection('users')
+            .doc(userId)
+            .get(const GetOptions(source: Source.cache));
+        _cachedFamilyId = cacheDoc.data()?['familyId'] as String?;
+        _lastFamilyIdCheck = DateTime.now();
+        return _cachedFamilyId;
+      } catch (e2, st2) {
+        errorHandler?.report(e2, stackTrace: st2);
+        return _cachedFamilyId;
+      }
+    }
   }
 
   void _initMigration() {

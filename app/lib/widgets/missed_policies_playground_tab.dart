@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../logic/task_schedule.dart';
 import '../logic/task_instance.dart';
@@ -665,21 +664,14 @@ class _MissedPoliciesPlaygroundTabState
   }
 }
 
-class DummyFirebaseFirestore implements FirebaseFirestore {
+class FakeTaskRepository implements TaskRepository {
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+  final String userId = 'playground_user';
 
-class FakeTaskRepository extends TaskRepository {
   final Future<void> Function(String) onComplete;
   final Future<void> Function(String) onDelete;
 
-  FakeTaskRepository({required this.onComplete, required this.onDelete})
-    : super(
-        firestore: DummyFirebaseFirestore(),
-        userId: 'playground_user',
-        notificationService: null,
-      );
+  FakeTaskRepository({required this.onComplete, required this.onDelete});
 
   @override
   Future<TaskInstance?> completeTaskInstance(String id) async {
@@ -707,4 +699,7 @@ class FakeTaskRepository extends TaskRepository {
 
   @override
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

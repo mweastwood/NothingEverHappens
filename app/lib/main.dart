@@ -15,7 +15,8 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'logic/crashlytics_service.dart';
 import 'logic/auth_repository.dart';
-import 'logic/task_repository.dart';
+import 'logic/unified_task_repository.dart';
+import 'logic/task_sync_service.dart';
 import 'logic/notification_service.dart';
 import 'l10n/app_localizations.dart';
 import 'logic/hive_local_data_source.dart';
@@ -35,8 +36,19 @@ void callbackDispatcher() {
 
     final currentUser = fb_auth.FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
-      final repo = TaskRepository(
+      final hiveDataSource = HiveLocalDataSource();
+      await hiveDataSource.init();
+      final syncService = TaskSyncService(
+        firestore: FirebaseFirestore.instance,
+        localDataSource: hiveDataSource,
         userId: currentUser.uid,
+        isActivePremium: false,
+      );
+      final repo = UnifiedTaskRepository(
+        localDataSource: hiveDataSource,
+        syncService: syncService,
+        userId: currentUser.uid,
+        firestore: FirebaseFirestore.instance,
         notificationService: PlatformNotificationService(),
       );
       await repo.triggerMissedPolicyProcessing();

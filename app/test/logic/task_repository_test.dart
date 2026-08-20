@@ -55,7 +55,10 @@ void main() {
 
     setUp(() {
       firestore = FakeFirebaseFirestore();
-      repository = TaskRepository(firestore: firestore, userId: userId);
+      repository = FirestoreTaskRepository(
+        firestore: firestore,
+        userId: userId,
+      );
     });
 
     Future<String> findInstanceId(String taskId, CivilDay date) =>
@@ -576,7 +579,7 @@ void main() {
     setUp(() {
       firestore = FakeFirebaseFirestore();
       notificationService = LoggingNotificationService();
-      repository = TaskRepository(
+      repository = FirestoreTaskRepository(
         firestore: firestore,
         userId: userId,
         notificationService: notificationService,
@@ -1542,7 +1545,7 @@ void main() {
             authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
             firestoreProvider.overrideWithValue(firestore),
             taskRepositoryProvider.overrideWith(
-              (ref) => TaskRepository(
+              (ref) => FirestoreTaskRepository(
                 firestore: firestore,
                 userId: userId,
                 notificationService: ref.watch(notificationServiceProvider),
@@ -1657,7 +1660,7 @@ void main() {
               authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
               firestoreProvider.overrideWithValue(firestore),
               taskRepositoryProvider.overrideWith(
-                (ref) => TaskRepository(
+                (ref) => FirestoreTaskRepository(
                   firestore: firestore,
                   userId: userId,
                   notificationService: ref.watch(notificationServiceProvider),
@@ -1713,7 +1716,7 @@ void main() {
               authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
               firestoreProvider.overrideWithValue(firestore),
               taskRepositoryProvider.overrideWith(
-                (ref) => TaskRepository(
+                (ref) => FirestoreTaskRepository(
                   firestore: firestore,
                   userId: userId,
                   notificationService: ref.watch(notificationServiceProvider),
@@ -1819,7 +1822,7 @@ void main() {
             'familyRole': 'parent',
           });
 
-          final repository = TaskRepository(
+          final repository = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'test-user-id',
           );
@@ -1871,7 +1874,7 @@ void main() {
           AppClock.setMockTime(now);
           addTearDown(AppClock.reset);
 
-          final repository = TaskRepository(
+          final repository = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'test-user-id',
           );
@@ -1990,7 +1993,7 @@ void main() {
               authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
               firestoreProvider.overrideWithValue(firestore),
               taskRepositoryProvider.overrideWith(
-                (ref) => TaskRepository(
+                (ref) => FirestoreTaskRepository(
                   firestore: firestore,
                   userId: 'test-user-id',
                   notificationService: ref.watch(notificationServiceProvider),
@@ -2043,7 +2046,7 @@ void main() {
         notificationService.prepareTask('S-queue-test-task-3');
 
         final firestore = FakeFirebaseFirestore();
-        final repository = TaskRepository(
+        final repository = FirestoreTaskRepository(
           firestore: firestore,
           userId: 'test-user-id',
           notificationService: notificationService,
@@ -2137,7 +2140,7 @@ void main() {
           AppClock.setMockTime(mockTime);
 
           final firestore = FakeFirebaseFirestore();
-          final repository = TaskRepository(
+          final repository = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'test-user-id',
           );
@@ -2181,7 +2184,7 @@ void main() {
           AppClock.setMockTime(mockTime);
 
           final firestore = FakeFirebaseFirestore();
-          final repository = TaskRepository(
+          final repository = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'test-user-id',
           );
@@ -2274,7 +2277,7 @@ void main() {
           AppClock.setMockTime(mockTime);
 
           final firestore = FakeFirebaseFirestore();
-          final repository = TaskRepository(
+          final repository = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'test-user-id',
           );
@@ -2388,7 +2391,7 @@ void main() {
           AppClock.setMockTime(mockTime);
 
           final firestore = FakeFirebaseFirestore();
-          final repository = TaskRepository(
+          final repository = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'test-user-id',
           );
@@ -2458,7 +2461,7 @@ void main() {
             ],
           );
 
-          final repo1 = TaskRepository(
+          final repo1 = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'test-user-id',
           );
@@ -2467,7 +2470,7 @@ void main() {
           await Future(() {});
 
           // Fresh repository without pre-cached _cachedTasksMap
-          final repo2 = TaskRepository(
+          final repo2 = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'test-user-id',
           );
@@ -2498,7 +2501,7 @@ void main() {
           notificationService.prepareTask('S-force-run-task-1');
 
           final firestore = FakeFirebaseFirestore();
-          final repository = TaskRepository(
+          final repository = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'test-user-id',
             notificationService: notificationService,
@@ -2932,7 +2935,7 @@ void main() {
       'reports errors to ErrorHandler during triggerMissedPolicyProcessing',
       () async {
         final errorHandler = ErrorHandler();
-        final repo = TaskRepository(
+        final repo = FirestoreTaskRepository(
           firestore: _ThrowingFirestore(),
           userId: 'test-user-id',
           errorHandler: errorHandler,
@@ -2959,7 +2962,7 @@ void main() {
         addTearDown(AppClock.reset);
 
         final firestore = FakeFirebaseFirestore();
-        final repo = TaskRepository(
+        final repo = FirestoreTaskRepository(
           firestore: firestore,
           userId: 'test-user-id',
         );
@@ -3026,7 +3029,10 @@ void main() {
       addTearDown(() => AppClock.reset());
 
       final firestore = FakeFirebaseFirestore();
-      final repo = TaskRepository(firestore: firestore, userId: 'test-user-id');
+      final repo = FirestoreTaskRepository(
+        firestore: firestore,
+        userId: 'test-user-id',
+      );
       addTearDown(() => repo.dispose());
 
       final instancesRef = firestore
@@ -3146,8 +3152,14 @@ void main() {
             'familyId': familyId,
           });
 
-          final repo1 = TaskRepository(firestore: firestore, userId: user1);
-          final repo2 = TaskRepository(firestore: firestore, userId: user2);
+          final repo1 = FirestoreTaskRepository(
+            firestore: firestore,
+            userId: user1,
+          );
+          final repo2 = FirestoreTaskRepository(
+            firestore: firestore,
+            userId: user2,
+          );
 
           final task = TaskSchedule(
             id: 'task-indiv-fam',

@@ -5,11 +5,10 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i4;
 
-import 'package:firebase_auth/firebase_auth.dart' as _i9;
+import 'package:firebase_auth/firebase_auth.dart' as _i8;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i3;
-import 'package:nothing_ever_happens/logic/auth_repository.dart' as _i8;
-import 'package:nothing_ever_happens/logic/civil_day.dart' as _i7;
+import 'package:nothing_ever_happens/logic/auth_repository.dart' as _i7;
 import 'package:nothing_ever_happens/logic/task_instance.dart' as _i6;
 import 'package:nothing_ever_happens/logic/task_repository.dart' as _i2;
 import 'package:nothing_ever_happens/logic/task_schedule.dart' as _i5;
@@ -49,53 +48,6 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
           as String);
 
   @override
-  _i4.Future<void> resetLocalDataAndResync() =>
-      (super.noSuchMethod(
-            Invocation.method(#resetLocalDataAndResync, []),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
-          )
-          as _i4.Future<void>);
-
-  @override
-  void dispose() => super.noSuchMethod(
-    Invocation.method(#dispose, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  _i4.Stream<List<_i5.TaskSchedule>> getPersonalTasksForUser(String? userId) =>
-      (super.noSuchMethod(
-            Invocation.method(#getPersonalTasksForUser, [userId]),
-            returnValue: _i4.Stream<List<_i5.TaskSchedule>>.empty(),
-          )
-          as _i4.Stream<List<_i5.TaskSchedule>>);
-
-  @override
-  _i4.Stream<List<_i6.TaskInstance>> getPersonalInstancesForUser(
-    String? userId,
-  ) =>
-      (super.noSuchMethod(
-            Invocation.method(#getPersonalInstancesForUser, [userId]),
-            returnValue: _i4.Stream<List<_i6.TaskInstance>>.empty(),
-          )
-          as _i4.Stream<List<_i6.TaskInstance>>);
-
-  @override
-  (_i7.CivilDay, _i5.TaskScheduleRule, int)?
-  nextOccurrenceRuleOfScheduleOnOrAfter(
-    _i5.TaskSchedule? task,
-    _i7.CivilDay? ref,
-  ) =>
-      (super.noSuchMethod(
-            Invocation.method(#nextOccurrenceRuleOfScheduleOnOrAfter, [
-              task,
-              ref,
-            ]),
-          )
-          as (_i7.CivilDay, _i5.TaskScheduleRule, int)?);
-
-  @override
   _i4.Stream<List<_i5.TaskSchedule>> getTasks() =>
       (super.noSuchMethod(
             Invocation.method(#getTasks, []),
@@ -110,15 +62,6 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
             returnValue: _i4.Stream<List<_i6.TaskInstance>>.empty(),
           )
           as _i4.Stream<List<_i6.TaskInstance>>);
-
-  @override
-  _i4.Future<void> triggerMissedPolicyProcessing() =>
-      (super.noSuchMethod(
-            Invocation.method(#triggerMissedPolicyProcessing, []),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
-          )
-          as _i4.Future<void>);
 
   @override
   _i4.Future<void> addTaskSchedule(_i5.TaskSchedule? task) =>
@@ -180,13 +123,12 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
           as _i4.Future<_i6.TaskInstance?>);
 
   @override
-  _i4.Future<void> saveTaskInstance(_i6.TaskInstance? instance) =>
+  _i4.Future<_i6.TaskInstance?> uncompleteTaskInstance(String? id) =>
       (super.noSuchMethod(
-            Invocation.method(#saveTaskInstance, [instance]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            Invocation.method(#uncompleteTaskInstance, [id]),
+            returnValue: _i4.Future<_i6.TaskInstance?>.value(),
           )
-          as _i4.Future<void>);
+          as _i4.Future<_i6.TaskInstance?>);
 
   @override
   _i4.Future<_i6.TaskInstance?> dismissTaskInstance(String? id) =>
@@ -195,6 +137,15 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
             returnValue: _i4.Future<_i6.TaskInstance?>.value(),
           )
           as _i4.Future<_i6.TaskInstance?>);
+
+  @override
+  _i4.Future<void> saveTaskInstance(_i6.TaskInstance? instance) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveTaskInstance, [instance]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
 
   @override
   _i4.Future<void> undoResolveTaskInstance(
@@ -206,39 +157,75 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
             returnValueForMissingStub: _i4.Future<void>.value(),
           )
           as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> triggerMissedPolicyProcessing({
+    _i4.Future<void> Function()? postProcess,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#triggerMissedPolicyProcessing, [], {
+              #postProcess: postProcess,
+            }),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> resetLocalDataAndResync() =>
+      (super.noSuchMethod(
+            Invocation.method(#resetLocalDataAndResync, []),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<String?> getFamilyId() =>
+      (super.noSuchMethod(
+            Invocation.method(#getFamilyId, []),
+            returnValue: _i4.Future<String?>.value(),
+          )
+          as _i4.Future<String?>);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
 }
 
 /// A class which mocks [AuthRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAuthRepository extends _i1.Mock implements _i8.AuthRepository {
+class MockAuthRepository extends _i1.Mock implements _i7.AuthRepository {
   MockAuthRepository() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i4.Stream<_i9.User?> get authStateChanges =>
+  _i4.Stream<_i8.User?> get authStateChanges =>
       (super.noSuchMethod(
             Invocation.getter(#authStateChanges),
-            returnValue: _i4.Stream<_i9.User?>.empty(),
+            returnValue: _i4.Stream<_i8.User?>.empty(),
           )
-          as _i4.Stream<_i9.User?>);
+          as _i4.Stream<_i8.User?>);
 
   @override
-  _i4.Future<_i9.User?> signInWithGoogle() =>
+  _i4.Future<_i8.User?> signInWithGoogle() =>
       (super.noSuchMethod(
             Invocation.method(#signInWithGoogle, []),
-            returnValue: _i4.Future<_i9.User?>.value(),
+            returnValue: _i4.Future<_i8.User?>.value(),
           )
-          as _i4.Future<_i9.User?>);
+          as _i4.Future<_i8.User?>);
 
   @override
-  _i4.Future<_i9.User?> signInAnonymously() =>
+  _i4.Future<_i8.User?> signInAnonymously() =>
       (super.noSuchMethod(
             Invocation.method(#signInAnonymously, []),
-            returnValue: _i4.Future<_i9.User?>.value(),
+            returnValue: _i4.Future<_i8.User?>.value(),
           )
-          as _i4.Future<_i9.User?>);
+          as _i4.Future<_i8.User?>);
 
   @override
   _i4.Future<void> signOut() =>
