@@ -518,6 +518,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resetLocalDataFailed => 'Failed to re-sync from cloud: ';
 
   @override
+  String get pendingCloudSyncTitle => 'Pending Cloud Sync';
+
+  @override
+  String get pendingCloudSyncSubtitle =>
+      'These items are saved safely on your device and will sync automatically when connected.';
+
+  @override
+  String get pendingCloudSyncEmpty =>
+      'All changes are in sync with cloud storage.';
+
+  @override
+  String get syncNowButton => 'Sync Now';
+
+  @override
+  String get syncingInProgress => 'Syncing...';
+
+  @override
+  String get syncCompletedSuccess => 'Sync completed successfully.';
+
+  @override
+  String get unsyncedScheduleTag => 'Task Schedule';
+
+  @override
+  String get unsyncedInstanceTag => 'Task Occurrence';
+
+  @override
+  String get unsyncedCompletedTag => 'Completed';
+
+  @override
+  String get unsyncedDismissedTag => 'Dismissed';
+
+  @override
+  String get viewPendingDetailsTooltip => 'View pending sync details';
+
+  @override
   String get pendingBadge => 'Pending';
 
   @override

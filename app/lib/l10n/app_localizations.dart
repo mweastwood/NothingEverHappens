@@ -980,6 +980,72 @@ abstract class AppLocalizations {
   /// **'Failed to re-sync from cloud: '**
   String get resetLocalDataFailed;
 
+  /// No description provided for @pendingCloudSyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending Cloud Sync'**
+  String get pendingCloudSyncTitle;
+
+  /// No description provided for @pendingCloudSyncSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'These items are saved safely on your device and will sync automatically when connected.'**
+  String get pendingCloudSyncSubtitle;
+
+  /// No description provided for @pendingCloudSyncEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'All changes are in sync with cloud storage.'**
+  String get pendingCloudSyncEmpty;
+
+  /// No description provided for @syncNowButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync Now'**
+  String get syncNowButton;
+
+  /// No description provided for @syncingInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing...'**
+  String get syncingInProgress;
+
+  /// No description provided for @syncCompletedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync completed successfully.'**
+  String get syncCompletedSuccess;
+
+  /// No description provided for @unsyncedScheduleTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Task Schedule'**
+  String get unsyncedScheduleTag;
+
+  /// No description provided for @unsyncedInstanceTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Task Occurrence'**
+  String get unsyncedInstanceTag;
+
+  /// No description provided for @unsyncedCompletedTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get unsyncedCompletedTag;
+
+  /// No description provided for @unsyncedDismissedTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismissed'**
+  String get unsyncedDismissedTag;
+
+  /// No description provided for @viewPendingDetailsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'View pending sync details'**
+  String get viewPendingDetailsTooltip;
+
   /// No description provided for @pendingBadge.
   ///
   /// In en, this message translates to:

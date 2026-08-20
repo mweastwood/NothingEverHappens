@@ -9,6 +9,7 @@ import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
+import 'package:rxdart/rxdart.dart';
 
 import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 
@@ -34,6 +35,11 @@ final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
   return service;
 });
 
+final isSyncingProvider = StreamProvider<bool>((ref) {
+  final syncService = ref.watch(taskSyncServiceProvider);
+  return syncService.isSyncingStream;
+});
+
 class TaskSyncService {
   final FirebaseFirestore _firestore;
   final HiveLocalDataSource _localDataSource;
@@ -52,6 +58,9 @@ class TaskSyncService {
   String? _familyId;
 
   bool _isSyncing = false;
+  final _isSyncingSubject = BehaviorSubject<bool>.seeded(false);
+  Stream<bool> get isSyncingStream => _isSyncingSubject.stream;
+  Timer? _periodicSyncTimer;
 
   TaskSyncService({
     required FirebaseFirestore firestore,
@@ -72,6 +81,8 @@ class TaskSyncService {
   }
 
   void dispose() {
+    _periodicSyncTimer?.cancel();
+    _isSyncingSubject.close();
     _tasksSub?.cancel();
     _instancesSub?.cancel();
     _recipesSub?.cancel();
@@ -95,6 +106,35 @@ class TaskSyncService {
     _familyTasksSub?.cancel();
     _familyInstancesSub?.cancel();
     _familyRecipesSub?.cancel();
+
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      try {
+        if (_localDataSource.getDirtyTaskIds().isNotEmpty) {
+          sync();
+        }
+      } catch (e, st) {
+        logger?.error(
+          'sync',
+          'Periodic dirty tasks check failed',
+          error: e,
+          stackTrace: st,
+        );
+      }
+    });
+
+    try {
+      if (_localDataSource.getDirtyTaskIds().isNotEmpty) {
+        scheduleMicrotask(() => sync());
+      }
+    } catch (e, st) {
+      logger?.error(
+        'sync',
+        'Initial dirty tasks check failed',
+        error: e,
+        stackTrace: st,
+      );
+    }
 
     logger?.info(
       'sync',
@@ -134,7 +174,7 @@ class TaskSyncService {
         .collection('users')
         .doc(_userId)
         .collection('tasks')
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .listen(
           (snapshot) async {
             logger?.debug(
@@ -162,7 +202,7 @@ class TaskSyncService {
         .collection('users')
         .doc(_userId)
         .collection('instances')
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .listen(
           (snapshot) async {
             logger?.debug(
@@ -212,7 +252,7 @@ class TaskSyncService {
         .collection('families')
         .doc(familyId)
         .collection('tasks')
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .listen(
           (snapshot) async {
             logger?.debug(
@@ -240,7 +280,7 @@ class TaskSyncService {
         .collection('families')
         .doc(familyId)
         .collection('instances')
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .listen(
           (snapshot) async {
             logger?.debug(
@@ -507,6 +547,9 @@ class TaskSyncService {
       return;
     }
     _isSyncing = true;
+    if (!_isSyncingSubject.isClosed) {
+      _isSyncingSubject.add(true);
+    }
 
     try {
       final dirtyTaskIds = _localDataSource.getDirtyTaskIds();
@@ -589,6 +632,9 @@ class TaskSyncService {
       print('Sync failed: $e');
     } finally {
       _isSyncing = false;
+      if (!_isSyncingSubject.isClosed) {
+        _isSyncingSubject.add(false);
+      }
     }
   }
 
@@ -623,6 +669,16 @@ class TaskSyncService {
             .delete();
       }
     }
+
+    final localCurrent = _localDataSource
+        .getTasks()
+        .where((t) => t.id == task.id)
+        .firstOrNull;
+    if (localCurrent != null && localCurrent.hasPendingWrites) {
+      await _localDataSource.saveTask(
+        localCurrent.copyWith(hasPendingWrites: false),
+      );
+    }
   }
 
   Future<void> _pushInstanceToRemote(TaskInstance inst) async {
@@ -655,6 +711,16 @@ class TaskSyncService {
             .doc(inst.id)
             .delete();
       }
+    }
+
+    final localCurrent = _localDataSource
+        .getInstances()
+        .where((i) => i.id == inst.id)
+        .firstOrNull;
+    if (localCurrent != null && localCurrent.hasPendingWrites) {
+      await _localDataSource.saveInstance(
+        localCurrent.copyWith(hasPendingWrites: false),
+      );
     }
   }
 }

@@ -137,14 +137,25 @@ final taskInstancesProvider = StreamProvider<List<TaskInstance>>((ref) {
   return repo.getInstances();
 });
 
+final dirtyTaskIdsProvider = StreamProvider<List<String>>((ref) {
+  final localDataSource = ref.watch(hiveLocalDataSourceProvider);
+  return localDataSource.watchDirtyTaskIds();
+});
+
 final unsyncedTasksProvider = Provider<List<TaskSchedule>>((ref) {
   final tasks = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
-  return tasks.where((t) => t.hasPendingWrites).toList();
+  final dirtyIds = ref.watch(dirtyTaskIdsProvider).valueOrNull ?? [];
+  return tasks
+      .where((t) => t.hasPendingWrites || dirtyIds.contains(t.id))
+      .toList();
 });
 
 final unsyncedInstancesProvider = Provider<List<TaskInstance>>((ref) {
   final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
-  return instances.where((i) => i.hasPendingWrites).toList();
+  final dirtyIds = ref.watch(dirtyTaskIdsProvider).valueOrNull ?? [];
+  return instances
+      .where((i) => i.hasPendingWrites || dirtyIds.contains(i.id))
+      .toList();
 });
 
 final unsyncedCountProvider = Provider<int>((ref) {
