@@ -708,6 +708,7 @@ class HiveLocalDataSource {
             Map<String, dynamic>.from(data['mealWorkflowConfig'] as Map),
           )
         : null;
+    final appLaunchUrl = data['appLaunchUrl'] as String?;
 
     return TaskSchedule(
       id: data['id'] as String,
@@ -729,6 +730,7 @@ class HiveLocalDataSource {
       cycleId: data['cycleId'] as String?,
       preferredBy: preferredBy,
       assignedUserId: data['assignedUserId'] as String?,
+      appLaunchUrl: appLaunchUrl,
       workflowType: workflowType,
       mealWorkflowConfig: mealWorkflowConfig,
       skipIfNoCapacity: data['skipIfNoCapacity'] as bool? ?? false,

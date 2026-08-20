@@ -61,6 +61,26 @@ void main() {
     expect(afterDelete.isEmpty, true);
   });
 
+  test(
+    'persists and deserializes TaskSchedule appLaunchUrl properly',
+    () async {
+      final taskWithUrl = TaskSchedule(
+        id: 'S-task-url',
+        title: 'Duolingo Daily',
+        description: 'Practice languages',
+        appLaunchUrl: 'duolingo://app',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+
+      await dataSource.saveTask(taskWithUrl);
+
+      final tasks = dataSource.getTasks();
+      final retrieved = tasks.firstWhere((t) => t.id == 'S-task-url');
+      expect(retrieved.appLaunchUrl, 'duolingo://app');
+    },
+  );
+
   test('Test CRUD operations on instancesBox', () async {
     final instance = TaskInstance(
       id: 'I-inst1',
