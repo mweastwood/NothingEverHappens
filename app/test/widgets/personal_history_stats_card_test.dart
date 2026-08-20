@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/dashboard_stats.dart';
 import 'package:nothing_ever_happens/widgets/personal_history_stats_card.dart';
@@ -149,6 +150,70 @@ void main() {
       // Verify legend
       expect(find.text('Completed'), findsNWidgets(2));
       expect(find.text('Skipped / Missed'), findsOneWidget);
+    });
+
+    testGoldens('PersonalHistoryStatsCard renders correctly', (tester) async {
+      final perfectStats = PersonalLastWeekStats(
+        completedCount: 7,
+        completedHours: 7.0,
+        skippedCount: 0,
+        missedCount: 0,
+        completionRate: 1.0,
+        startDay: startDay,
+        endDay: endDay,
+        dailyStats: [
+          for (int i = 1; i <= 7; i++)
+            DailyStatsData(
+              day: CivilDay(year: 2026, month: 7, day: i),
+              completedCount: 1,
+              skippedCount: 0,
+              missedCount: 0,
+              completedHours: 1.0,
+            ),
+        ],
+      );
+
+      final emptyStats = PersonalLastWeekStats(
+        completedCount: 0,
+        completedHours: 0.0,
+        skippedCount: 0,
+        missedCount: 0,
+        completionRate: 0.0,
+        startDay: startDay,
+        endDay: endDay,
+        dailyStats: [
+          for (int i = 1; i <= 7; i++)
+            DailyStatsData(
+              day: CivilDay(year: 2026, month: 7, day: i),
+              completedCount: 0,
+              skippedCount: 0,
+              missedCount: 0,
+              completedHours: 0.0,
+            ),
+        ],
+      );
+
+      final builder = GoldenBuilder.column()
+        ..addScenario(
+          'Personal Past Week - Active Week',
+          PersonalHistoryStatsCard(stats: stats),
+        )
+        ..addScenario(
+          'Personal Past Week - Perfect Week',
+          PersonalHistoryStatsCard(stats: perfectStats),
+        )
+        ..addScenario(
+          'Personal Past Week - Zero Activity',
+          PersonalHistoryStatsCard(stats: emptyStats),
+        );
+
+      await tester.pumpWidgetBuilder(
+        builder.build(),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(500, 1600),
+      );
+
+      await screenMatchesGolden(tester, 'personal_history_stats_card_golden');
     });
   });
 }
