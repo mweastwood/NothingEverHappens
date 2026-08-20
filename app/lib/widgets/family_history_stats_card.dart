@@ -70,7 +70,7 @@ class FamilyHistoryStatsCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     stats.familyName,
@@ -186,19 +186,36 @@ class FamilyHistoryStatsCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: SizedBox(
-                  height: 12,
+                  height: 14,
                   child: Row(
-                    children: stats.memberStats.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final member = entry.value;
-                      if (member.completedCount == 0) {
-                        return const SizedBox.shrink();
+                    children: () {
+                      final activeEntries = stats.memberStats
+                          .asMap()
+                          .entries
+                          .where((entry) => entry.value.completedCount > 0)
+                          .toList();
+                      final List<Widget> segments = [];
+                      for (int i = 0; i < activeEntries.length; i++) {
+                        if (i > 0) {
+                          segments.add(
+                            Container(
+                              width: 2,
+                              color: theme.colorScheme.surfaceContainerLow,
+                            ),
+                          );
+                        }
+                        final entry = activeEntries[i];
+                        segments.add(
+                          Expanded(
+                            flex: entry.value.completedCount,
+                            child: Container(
+                              color: _getColorForIndex(entry.key),
+                            ),
+                          ),
+                        );
                       }
-                      return Expanded(
-                        flex: member.completedCount,
-                        child: Container(color: _getColorForIndex(index)),
-                      );
-                    }).toList(),
+                      return segments;
+                    }(),
                   ),
                 ),
               ),
@@ -303,7 +320,7 @@ class FamilyHistoryStatsCard extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: theme.colorScheme.outlineVariant
                                   .withValues(alpha: 0.5),

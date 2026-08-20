@@ -1283,13 +1283,14 @@ void main() {
 
       // Schedule the task to start 5 minutes in the future
       final taskStartLocalTime = startTime.add(const Duration(minutes: 5));
+      final taskDueLocalTime = startTime.add(const Duration(hours: 1));
       final relativeStart = RelativeTime(
-        dayOffset: 0,
+        dayOffset: taskStartLocalTime.day != startTime.day ? 1 : 0,
         time: TimeOfDay.fromDateTime(taskStartLocalTime),
       );
       final relativeDue = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay.fromDateTime(startTime.add(const Duration(hours: 1))),
+        dayOffset: taskDueLocalTime.day != startTime.day ? 1 : 0,
+        time: TimeOfDay.fromDateTime(taskDueLocalTime),
       );
 
       final futureTask = TaskSchedule(
@@ -1368,13 +1369,14 @@ void main() {
     final taskDate = CivilDay.fromDateTime(startTime);
 
     final taskStartLocalTime = startTime.add(const Duration(minutes: 5));
+    final taskDueLocalTime = startTime.add(const Duration(hours: 1));
     final relativeStart = RelativeTime(
-      dayOffset: 0,
+      dayOffset: taskStartLocalTime.day != startTime.day ? 1 : 0,
       time: TimeOfDay.fromDateTime(taskStartLocalTime),
     );
     final relativeDue = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay.fromDateTime(startTime.add(const Duration(hours: 1))),
+      dayOffset: taskDueLocalTime.day != startTime.day ? 1 : 0,
+      time: TimeOfDay.fromDateTime(taskDueLocalTime),
     );
 
     final futureTask = TaskSchedule(

@@ -9,9 +9,19 @@ class PersonalHistoryStatsCard extends StatelessWidget {
   const PersonalHistoryStatsCard({super.key, required this.stats});
 
   String _formatDayLabel(CivilDay day) {
-    const weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dt = day.toDateTime();
     return weekdays[dt.weekday - 1];
+  }
+
+  String _formatDayCountLabel(DailyStatsData dayData) {
+    final total =
+        dayData.completedCount + dayData.skippedCount + dayData.missedCount;
+    if (total == 0) return '-';
+    if (dayData.skippedCount + dayData.missedCount > 0) {
+      return '${dayData.completedCount}/$total';
+    }
+    return '${dayData.completedCount}';
   }
 
   String _formatDateRange(CivilDay start, CivilDay end) {
@@ -239,119 +249,198 @@ class PersonalHistoryStatsCard extends StatelessWidget {
 
   Widget _buildDailyStrip(BuildContext context) {
     final theme = Theme.of(context);
-    int maxCount = 1;
+    int maxCount = 0;
     for (final d in stats.dailyStats) {
       final total = d.completedCount + d.skippedCount + d.missedCount;
       if (total > maxCount) maxCount = total;
     }
+    final double scaleMax = maxCount > 0 ? maxCount.toDouble() : 1.0;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: stats.dailyStats.map((dayData) {
-        final totalDay =
-            dayData.completedCount + dayData.skippedCount + dayData.missedCount;
-        final isToday = dayData.day == stats.endDay;
+    return Column(
+      children: [
+        SizedBox(
+          height: 180,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: stats.dailyStats.map((dayData) {
+              final day = dayData.day;
+              final isToday = day == stats.endDay;
+              final dayLabel = _formatDayLabel(day);
+              final totalDay =
+                  dayData.completedCount +
+                  dayData.skippedCount +
+                  dayData.missedCount;
+              final completed = dayData.completedCount;
+              final missed = dayData.skippedCount + dayData.missedCount;
 
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Mini bar container
-                Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(4),
-                    border: isToday
-                        ? Border.all(color: theme.colorScheme.primary, width: 1)
-                        : null,
-                  ),
-                  alignment: Alignment.bottomCenter,
-                  child: totalDay == 0
-                      ? Container(
-                          height: 3,
-                          width: 8,
-                          margin: const EdgeInsets.only(bottom: 4),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.outlineVariant,
-                            borderRadius: BorderRadius.circular(2),
+              final double totalBarHeight = totalDay > 0
+                  ? (totalDay / scaleMax * 120.0).clamp(8.0, 120.0)
+                  : 0.0;
+
+              return Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    SizedBox(
+                      height: 14,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _formatDayCountLabel(dayData),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 9,
+                            fontWeight: isToday
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            if (dayData.skippedCount + dayData.missedCount > 0)
-                              Container(
-                                height:
-                                    ((dayData.skippedCount +
-                                                dayData.missedCount) /
-                                            maxCount *
-                                            44)
-                                        .clamp(4.0, 44.0),
-                                width: double.infinity,
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.error.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(2),
-                                  ),
-                                ),
-                              ),
-                            if (dayData.completedCount > 0)
-                              Container(
-                                height: (dayData.completedCount / maxCount * 44)
-                                    .clamp(4.0, 44.0),
-                                width: double.infinity,
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary,
-                                  borderRadius: BorderRadius.vertical(
-                                    top:
-                                        dayData.skippedCount +
-                                                dayData.missedCount >
-                                            0
-                                        ? Radius.zero
-                                        : const Radius.circular(2),
-                                    bottom: const Radius.circular(2),
-                                  ),
-                                ),
-                              ),
-                          ],
                         ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatDayLabel(dayData.day),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                    color: isToday
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  '${dayData.day.day}',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontSize: 9,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.7,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 120,
+                      child: Stack(
+                        alignment: Alignment.bottomCenter,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            height: 120,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(6),
+                              border: isToday
+                                  ? Border.all(
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: 0.5),
+                                      width: 1,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          if (totalBarHeight > 0)
+                            Container(
+                              height: totalBarHeight,
+                              width: double.infinity,
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    if (missed > 0)
+                                      Flexible(
+                                        flex: missed,
+                                        child: Container(
+                                          width: double.infinity,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                theme.colorScheme.error,
+                                                theme.colorScheme.error
+                                                    .withValues(alpha: 0.7),
+                                              ],
+                                              begin: Alignment.bottomCenter,
+                                              end: Alignment.topCenter,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    if (completed > 0)
+                                      Flexible(
+                                        flex: completed,
+                                        child: Container(
+                                          width: double.infinity,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                theme.colorScheme.primary,
+                                                theme.colorScheme.primary
+                                                    .withValues(alpha: 0.7),
+                                              ],
+                                              begin: Alignment.bottomCenter,
+                                              end: Alignment.topCenter,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      dayLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: isToday
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isToday
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      '${day.day}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 10,
+                        fontWeight: isToday
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            }).toList(),
           ),
-        );
-      }).toList(),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 16,
+              height: 12,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Completed',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(width: 24),
+            Container(
+              width: 16,
+              height: 12,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.error,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Skipped / Missed',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
