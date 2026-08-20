@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/task_repository.dart';
-
 import '../logic/subscription_service.dart';
+import 'unsynced_details_sheet.dart';
 
 class UnsyncedBanner extends ConsumerWidget {
   const UnsyncedBanner({super.key});
@@ -39,33 +39,42 @@ class UnsyncedBanner extends ConsumerWidget {
     return Container(
       key: const Key('unsynced_warning_banner'),
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: borderColor, width: 1),
       ),
-      child: Row(
-        children: [
-          Icon(Icons.cloud_sync_outlined, color: iconColor, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-              ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => UnsyncedDetailsSheet.show(context),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.cloud_sync_outlined, color: iconColor, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Tooltip(
+                  message:
+                      'Tap to inspect pending unsynced changes and sync manually.',
+                  child: Icon(Icons.info_outline, color: iconColor, size: 16),
+                ),
+              ],
             ),
           ),
-          Tooltip(
-            message:
-                'Your data is saved safely on your device in local Firebase Firestore cache and will automatically sync when connected.',
-            child: Icon(Icons.info_outline, color: iconColor, size: 16),
-          ),
-        ],
+        ),
       ),
     );
   }

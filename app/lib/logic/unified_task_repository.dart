@@ -157,7 +157,7 @@ class UnifiedTaskRepository implements TaskRepository {
 
   @override
   Future<void> addTaskSchedule(TaskSchedule task) async {
-    final t = task.copyWith(updatedAt: DateTime.now());
+    final t = task.copyWith(updatedAt: DateTime.now(), hasPendingWrites: true);
     await _localDataSource.saveTask(t);
     await _localDataSource.markDirty(t.id);
     logger?.info(
@@ -171,7 +171,10 @@ class UnifiedTaskRepository implements TaskRepository {
 
   @override
   Future<void> updateTaskSchedule(TaskModification modification) async {
-    final t = modification.newTask.copyWith(updatedAt: DateTime.now());
+    final t = modification.newTask.copyWith(
+      updatedAt: DateTime.now(),
+      hasPendingWrites: true,
+    );
     await _localDataSource.saveTask(t);
     await _localDataSource.markDirty(t.id);
     logger?.info(
@@ -205,6 +208,7 @@ class UnifiedTaskRepository implements TaskRepository {
           clearCycleId: t.cycleId == null,
           assignedUserId: t.assignedUserId,
           clearAssignedUserId: t.assignedUserId == null,
+          hasPendingWrites: true,
           updatedAt: DateTime.now(),
         );
         await _localDataSource.saveInstance(updatedInst);
@@ -252,10 +256,12 @@ class UnifiedTaskRepository implements TaskRepository {
     TaskSchedule task,
     List<TaskInstance> pendingInstances,
   ) async {
-    await _localDataSource.saveTask(task);
+    await _localDataSource.saveTask(task.copyWith(hasPendingWrites: true));
     await _localDataSource.markDirty(task.id);
     for (final inst in pendingInstances) {
-      await _localDataSource.saveInstance(inst);
+      await _localDataSource.saveInstance(
+        inst.copyWith(hasPendingWrites: true),
+      );
       await _localDataSource.markDirty(inst.id);
     }
     logger?.info(
@@ -316,6 +322,7 @@ class UnifiedTaskRepository implements TaskRepository {
           completedByUserId: userId,
           completedAt: AppClock.now,
           completedByUserIds: updatedUserIds,
+          hasPendingWrites: true,
           updatedAt: DateTime.now(),
         );
         await _localDataSource.saveInstance(completedInstance);
@@ -338,6 +345,7 @@ class UnifiedTaskRepository implements TaskRepository {
       } else {
         final partialInstance = instance.copyWith(
           completedByUserIds: updatedUserIds,
+          hasPendingWrites: true,
           updatedAt: DateTime.now(),
         );
         await _localDataSource.saveInstance(partialInstance);
@@ -357,6 +365,7 @@ class UnifiedTaskRepository implements TaskRepository {
       status: TaskStatus.completed,
       completedByUserId: userId,
       completedAt: AppClock.now,
+      hasPendingWrites: true,
       updatedAt: DateTime.now(),
     );
     await _localDataSource.saveInstance(completedInstance);
@@ -412,6 +421,7 @@ class UnifiedTaskRepository implements TaskRepository {
       status: TaskStatus.skipped,
       completedByUserId: userId,
       completedAt: AppClock.now,
+      hasPendingWrites: true,
       updatedAt: DateTime.now(),
     );
     await _localDataSource.saveInstance(dismissedInstance);
@@ -439,6 +449,7 @@ class UnifiedTaskRepository implements TaskRepository {
         clearCompletedByUserId: true,
         clearCompletedAt: true,
         completedByUserIds: updatedUserIds,
+        hasPendingWrites: true,
         updatedAt: DateTime.now(),
       );
       await _localDataSource.saveInstance(pendingInstance);
@@ -459,6 +470,7 @@ class UnifiedTaskRepository implements TaskRepository {
       status: TaskStatus.pending,
       clearCompletedByUserId: true,
       clearCompletedAt: true,
+      hasPendingWrites: true,
       updatedAt: DateTime.now(),
     );
     await _localDataSource.saveInstance(pendingInstance);
@@ -634,7 +646,10 @@ class UnifiedTaskRepository implements TaskRepository {
       );
 
       for (final inst in action.instancesToUpdate) {
-        final updatedInst = inst.copyWith(updatedAt: DateTime.now());
+        final updatedInst = inst.copyWith(
+          updatedAt: DateTime.now(),
+          hasPendingWrites: true,
+        );
         await _localDataSource.saveInstance(updatedInst);
         await _localDataSource.markDirty(updatedInst.id);
         hasChanges = true;
@@ -646,7 +661,10 @@ class UnifiedTaskRepository implements TaskRepository {
       }
 
       for (final inst in action.instancesToSpawn) {
-        final newInst = inst.copyWith(updatedAt: DateTime.now());
+        final newInst = inst.copyWith(
+          updatedAt: DateTime.now(),
+          hasPendingWrites: true,
+        );
         await _localDataSource.saveInstance(newInst);
         await _localDataSource.markDirty(newInst.id);
         hasChanges = true;
@@ -675,6 +693,7 @@ class UnifiedTaskRepository implements TaskRepository {
       if (action.updatedSchedule != null) {
         final updatedTask = action.updatedSchedule!.copyWith(
           updatedAt: DateTime.now(),
+          hasPendingWrites: true,
         );
         await _localDataSource.saveTask(updatedTask);
         await _localDataSource.markDirty(updatedTask.id);

@@ -520,6 +520,42 @@ class AppLocalizationsEs extends AppLocalizations {
   String get resetLocalDataFailed => 'Error al resincronizar desde la nube: ';
 
   @override
+  String get pendingCloudSyncTitle => 'Sincronización pendiente con la nube';
+
+  @override
+  String get pendingCloudSyncSubtitle =>
+      'Estos elementos se guardan de forma segura en su dispositivo y se sincronizarán automáticamente cuando se conecte.';
+
+  @override
+  String get pendingCloudSyncEmpty =>
+      'Todos los cambios están sincronizados con el almacenamiento en la nube.';
+
+  @override
+  String get syncNowButton => 'Sincronizar ahora';
+
+  @override
+  String get syncingInProgress => 'Sincronizando...';
+
+  @override
+  String get syncCompletedSuccess => 'Sincronización completada con éxito.';
+
+  @override
+  String get unsyncedScheduleTag => 'Programación de tareas';
+
+  @override
+  String get unsyncedInstanceTag => 'Ocurrencia de tarea';
+
+  @override
+  String get unsyncedCompletedTag => 'Completada';
+
+  @override
+  String get unsyncedDismissedTag => 'Descartada';
+
+  @override
+  String get viewPendingDetailsTooltip =>
+      'Ver detalles de sincronización pendiente';
+
+  @override
   String get pendingBadge => 'Pendiente';
 
   @override

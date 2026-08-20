@@ -616,6 +616,9 @@ class TaskSchedule {
     bool clearMealWorkflowConfig = false,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
+    bool? skipIfNoCapacity,
+    bool? hasPendingWrites,
+    bool? isFromCache,
     DateTime? updatedAt,
   }) {
     return _copyWith(
@@ -646,6 +649,9 @@ class TaskSchedule {
       clearMealWorkflowConfig: clearMealWorkflowConfig,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
+      skipIfNoCapacity: skipIfNoCapacity,
+      hasPendingWrites: hasPendingWrites,
+      isFromCache: isFromCache,
       updatedAt: updatedAt,
     );
   }

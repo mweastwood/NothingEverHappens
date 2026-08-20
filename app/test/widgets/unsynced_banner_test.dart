@@ -9,9 +9,11 @@ import 'package:nothing_ever_happens/logic/subscription_service.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/widgets/unsynced_banner.dart';
+import 'package:nothing_ever_happens/widgets/unsynced_details_sheet.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:nothing_ever_happens/widgets/schedule_card.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:nothing_ever_happens/logic/task_sync_service.dart';
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
 import '../test_helper.dart';
 
@@ -24,6 +26,18 @@ class MockSubscriptionService extends StateNotifier<SubscriptionState>
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class FakeTaskSyncService extends Fake implements TaskSyncService {
+  bool syncCalled = false;
+
+  @override
+  Stream<bool> get isSyncingStream => Stream.value(false);
+
+  @override
+  Future<void> sync() async {
+    syncCalled = true;
+  }
 }
 
 void main() {
@@ -305,6 +319,108 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byIcon(Icons.cloud_sync_outlined), findsOneWidget);
+      },
+    );
+
+    testWidgets('Tapping UnsyncedBanner opens UnsyncedDetailsSheet', (
+      tester,
+    ) async {
+      final unsyncedTask = TaskSchedule(
+        id: 'S-unsynced-detail',
+        title: 'Water the plants',
+        description: 'Living room and balcony',
+        hasPendingWrites: true,
+      );
+
+      final unsyncedInstance = TaskInstance(
+        id: 'I-unsynced-detail',
+        scheduleId: 'S-unsynced-detail',
+        ruleId: 'R-detail',
+        title: 'Water the plants',
+        description: 'Living room and balcony',
+        scheduledDate: CivilDay(year: 2026, month: 8, day: 4),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.completed,
+        hasPendingWrites: true,
+      );
+
+      final fakeSyncService = FakeTaskSyncService();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            subscriptionServiceProvider.overrideWith(
+              (ref) => MockSubscriptionService(
+                const SubscriptionState(tier: SubscriptionTier.standard),
+              ),
+            ),
+            taskSchedulesProvider.overrideWith(
+              (ref) => Stream.value([unsyncedTask]),
+            ),
+            taskInstancesProvider.overrideWith(
+              (ref) => Stream.value([unsyncedInstance]),
+            ),
+            taskSyncServiceProvider.overrideWithValue(fakeSyncService),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(body: UnsyncedBanner()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('unsynced_warning_banner')), findsOneWidget);
+
+      // Tap the banner to open details sheet
+      await tester.tap(find.byKey(const Key('unsynced_warning_banner')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('unsynced_details_sheet')), findsOneWidget);
+      expect(find.text('Pending Cloud Sync'), findsOneWidget);
+      expect(find.text('Water the plants'), findsNWidgets(2));
+      expect(find.text('Completed'), findsOneWidget);
+
+      // Tap Sync Now button
+      expect(find.byKey(const Key('unsynced_sync_now_button')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('unsynced_sync_now_button')));
+      await tester.pumpAndSettle();
+
+      expect(fakeSyncService.syncCalled, isTrue);
+    });
+
+    testWidgets(
+      'UnsyncedDetailsSheet displays empty state when no unsynced changes',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskSchedulesProvider.overrideWith((ref) => Stream.value([])),
+              taskInstancesProvider.overrideWith((ref) => Stream.value([])),
+              taskSyncServiceProvider.overrideWithValue(FakeTaskSyncService()),
+            ],
+            child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const Scaffold(body: UnsyncedDetailsSheet()),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('unsynced_details_sheet')), findsOneWidget);
+        expect(
+          find.text('All changes are in sync with cloud storage.'),
+          findsNWidgets(2),
+        );
       },
     );
   });

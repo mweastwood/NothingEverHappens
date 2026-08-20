@@ -56,6 +56,7 @@ class HiveLocalDataSource {
     const UserSettings(hoursAvailable: 8.0),
   );
   final _migrationCompletedSubject = BehaviorSubject<bool>.seeded(false);
+  final _dirtyTaskIdsSubject = BehaviorSubject<List<String>>.seeded(const []);
 
   bool isFallbackInMemoryMode = false;
 
@@ -294,6 +295,9 @@ class HiveLocalDataSource {
     if (!_migrationCompletedSubject.isClosed) {
       _migrationCompletedSubject.add(isMigrationCompleted());
     }
+    if (!_dirtyTaskIdsSubject.isClosed) {
+      _dirtyTaskIdsSubject.add(getDirtyTaskIds());
+    }
   }
 
   Stream<List<TaskSchedule>> watchTasks() => _tasksSubject.stream;
@@ -301,6 +305,7 @@ class HiveLocalDataSource {
   Stream<List<Recipe>> watchRecipes() => _recipesSubject.stream;
   Stream<UserSettings> watchSettings() => _settingsSubject.stream;
   Stream<bool> watchMigrationCompleted() => _migrationCompletedSubject.stream;
+  Stream<List<String>> watchDirtyTaskIds() => _dirtyTaskIdsSubject.stream;
 
   UserSettings getSettings() {
     return _memSettings;
@@ -515,6 +520,7 @@ class HiveLocalDataSource {
       } else {
         _memMeta['dirty_tasks'] = {'list': dirtyList};
       }
+      _emitSyncMeta();
     }
   }
 
@@ -542,6 +548,7 @@ class HiveLocalDataSource {
       } else {
         _memMeta['dirty_tasks'] = {'list': dirtyList};
       }
+      _emitSyncMeta();
     }
   }
 
@@ -568,6 +575,7 @@ class HiveLocalDataSource {
     if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
       await _syncMetaBox!.put('dirty_tasks', {'list': <String>[]});
     }
+    _emitSyncMeta();
   }
 
   Future<void> resetAllData() async {
@@ -928,5 +936,6 @@ class HiveLocalDataSource {
     await _recipesSubject.close();
     await _settingsSubject.close();
     await _migrationCompletedSubject.close();
+    await _dirtyTaskIdsSubject.close();
   }
 }
