@@ -275,6 +275,21 @@ class FamilyRepository {
           batch.delete(doc.reference);
         }
 
+        final recipesSnap = await familyRef.collection('recipes').get();
+        for (final doc in recipesSnap.docs) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['isFamily'] = false;
+          batch.set(
+            _firestore
+                .collection('users')
+                .doc(_userId)
+                .collection('recipes')
+                .doc(doc.id),
+            data,
+          );
+          batch.delete(doc.reference);
+        }
+
         batch.delete(familyRef);
       } else {
         batch.update(familyRef, {'members.$_userId': FieldValue.delete()});
