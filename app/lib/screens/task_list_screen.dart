@@ -17,7 +17,6 @@ import '../widgets/smooth_shuffle_item.dart';
 import '../widgets/system_task_widget.dart';
 import '../logic/system_tasks/system_task.dart';
 
-import '../logic/subscription_service.dart';
 import '../logic/utils/layout_breakpoints.dart';
 
 final taskSearchQueryProvider = StateProvider<String>((ref) => '');
@@ -334,19 +333,11 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                       !settingsVal.isLoading &&
                       !settingsVal.hasError &&
                       !isConfirmed;
-                  final hasSubscription = ref
-                      .watch(subscriptionServiceProvider)
-                      .isActivePremium;
-                  final showUnsyncedBanner =
-                      hasSubscription &&
-                      (ref.watch(unsyncedCountProvider) > 0 ||
-                          ref.watch(isFromCacheProvider));
                   return CustomScrollView(
                     key: const PageStorageKey('tasksView'),
                     controller: _scrollController,
                     slivers: [
-                      if (showUnsyncedBanner)
-                        const SliverToBoxAdapter(child: UnsyncedBanner()),
+                      const SliverToBoxAdapter(child: UnsyncedBanner()),
                       SliverToBoxAdapter(
                         child: AnimatedContainer(
                           duration:
