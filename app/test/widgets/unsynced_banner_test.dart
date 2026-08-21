@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -169,6 +170,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('unsynced_warning_banner')), findsOneWidget);
       expect(
@@ -211,6 +214,8 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pumpAndSettle();
 
         expect(
           find.byKey(const Key('unsynced_warning_banner')),
@@ -222,6 +227,213 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'Transient unsynced write that syncs within grace period does not flash banner',
+      (tester) async {
+        final schedulesController =
+            StreamController<List<TaskSchedule>>.broadcast();
+        addTearDown(schedulesController.close);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              subscriptionServiceProvider.overrideWith(
+                (ref) => MockSubscriptionService(
+                  const SubscriptionState(tier: SubscriptionTier.standard),
+                ),
+              ),
+              taskSchedulesProvider.overrideWith(
+                (ref) => schedulesController.stream,
+              ),
+              taskInstancesProvider.overrideWith((ref) => Stream.value([])),
+            ],
+            child: const MaterialApp(home: Scaffold(body: UnsyncedBanner())),
+          ),
+        );
+        schedulesController.add([]);
+        await tester.pump();
+
+        expect(find.byKey(const Key('unsynced_warning_banner')), findsNothing);
+
+        // Step 1: User swipes/completes a task (transient unsynced write)
+        final unsyncedTask = TaskSchedule(
+          id: 'S-transient',
+          title: 'Quick Task',
+          description: '',
+          hasPendingWrites: true,
+        );
+        schedulesController.add([unsyncedTask]);
+        // Advance 300ms (typical fast background sync duration)
+        await tester.pump(const Duration(milliseconds: 300));
+
+        // Banner should NOT be visible during grace period
+        expect(find.byKey(const Key('unsynced_warning_banner')), findsNothing);
+
+        // Step 2: Background sync completes at 400ms
+        final syncedTask = TaskSchedule(
+          id: 'S-transient',
+          title: 'Quick Task',
+          description: '',
+          hasPendingWrites: false,
+        );
+        schedulesController.add([syncedTask]);
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Advance well past the original 1.5s grace period
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pumpAndSettle();
+
+        // Banner was never shown and remains not shown
+        expect(find.byKey(const Key('unsynced_warning_banner')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Persistent unsynced write displays banner after grace period expires',
+      (tester) async {
+        final schedulesController =
+            StreamController<List<TaskSchedule>>.broadcast();
+        addTearDown(schedulesController.close);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              subscriptionServiceProvider.overrideWith(
+                (ref) => MockSubscriptionService(
+                  const SubscriptionState(tier: SubscriptionTier.standard),
+                ),
+              ),
+              taskSchedulesProvider.overrideWith(
+                (ref) => schedulesController.stream,
+              ),
+              taskInstancesProvider.overrideWith((ref) => Stream.value([])),
+            ],
+            child: const MaterialApp(home: Scaffold(body: UnsyncedBanner())),
+          ),
+        );
+        schedulesController.add([]);
+        await tester.pump();
+
+        // Add unsynced task
+        final unsyncedTask = TaskSchedule(
+          id: 'S-persistent',
+          title: 'Unsynced Task',
+          description: '',
+          hasPendingWrites: true,
+        );
+        schedulesController.add([unsyncedTask]);
+        await tester.pump();
+
+        // Before grace period expires:
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.byKey(const Key('unsynced_warning_banner')), findsNothing);
+
+        // Advance to cross the 1500ms grace period threshold
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pumpAndSettle();
+
+        // Banner is now smoothly visible!
+        expect(
+          find.byKey(const Key('unsynced_warning_banner')),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Saved locally to device — 1 change pending Cloud sync'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Offline cache mode (isFromCache) displays banner immediately without grace period delay',
+      (tester) async {
+        final cachedTask = TaskSchedule(
+          id: 'S-cached',
+          title: 'Cached Task',
+          description: '',
+          isFromCache: true,
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              subscriptionServiceProvider.overrideWith(
+                (ref) => MockSubscriptionService(
+                  const SubscriptionState(tier: SubscriptionTier.standard),
+                ),
+              ),
+              taskSchedulesProvider.overrideWith(
+                (ref) => Stream.value([cachedTask]),
+              ),
+              taskInstancesProvider.overrideWith((ref) => Stream.value([])),
+            ],
+            child: const MaterialApp(home: Scaffold(body: UnsyncedBanner())),
+          ),
+        );
+        // Pump 1 frame without advancing time
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        // Immediately visible
+        expect(
+          find.byKey(const Key('unsynced_warning_banner')),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Offline mode — All changes save to local device storage first',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('Banner dismisses when unsynced changes sync to cloud', (
+      tester,
+    ) async {
+      final schedulesController =
+          StreamController<List<TaskSchedule>>.broadcast();
+      addTearDown(schedulesController.close);
+
+      final unsyncedTask = TaskSchedule(
+        id: 'S-unsynced',
+        title: 'Unsynced Task',
+        description: '',
+        hasPendingWrites: true,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            subscriptionServiceProvider.overrideWith(
+              (ref) => MockSubscriptionService(
+                const SubscriptionState(tier: SubscriptionTier.standard),
+              ),
+            ),
+            taskSchedulesProvider.overrideWith(
+              (ref) => schedulesController.stream,
+            ),
+            taskInstancesProvider.overrideWith((ref) => Stream.value([])),
+          ],
+          child: const MaterialApp(home: Scaffold(body: UnsyncedBanner())),
+        ),
+      );
+      schedulesController.add([unsyncedTask]);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('unsynced_warning_banner')), findsOneWidget);
+
+      // Sync completes
+      schedulesController.add([unsyncedTask.copyWith(hasPendingWrites: false)]);
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // Banner disappears
+      expect(find.byKey(const Key('unsynced_warning_banner')), findsNothing);
+    });
 
     testWidgets(
       'TaskWidget displays "pending Cloud sync" badge & title icon for active subscriber',
@@ -377,6 +589,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('unsynced_warning_banner')), findsOneWidget);
 
@@ -505,6 +719,10 @@ void main() {
           ),
           surfaceSize: const Size(600, 800),
         );
+
+        await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pumpAndSettle();
 
         await screenMatchesGolden(tester, 'unsynced_banner_golden');
       },

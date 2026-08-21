@@ -18,7 +18,6 @@ import '../logic/sort_helper.dart';
 import '../widgets/sort_bar.dart';
 import '../widgets/unsynced_banner.dart';
 import '../widgets/smooth_shuffle_item.dart';
-import '../logic/subscription_service.dart';
 import '../logic/user_profile_provider.dart';
 import '../logic/family_repository.dart';
 import '../widgets/markdown_styles.dart';
@@ -455,13 +454,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                         final isSortBarVisible = ref.watch(
                           showScheduleListSortBarProvider,
                         );
-                        final hasSubscription = ref
-                            .watch(subscriptionServiceProvider)
-                            .isActivePremium;
-                        final showUnsyncedBanner =
-                            hasSubscription &&
-                            (ref.watch(unsyncedCountProvider) > 0 ||
-                                ref.watch(isFromCacheProvider));
 
                         final isWide = isWideScreen(context);
 
@@ -477,8 +469,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                   right: 8.0,
                                 ),
                                 children: [
-                                  if (showUnsyncedBanner)
-                                    const UnsyncedBanner(),
+                                  const UnsyncedBanner(),
                                   Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -551,17 +542,12 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                   left: 8.0,
                                   right: 8.0,
                                 ),
-                                itemCount:
-                                    filteredTasks.length +
-                                    (showUnsyncedBanner ? 1 : 0),
+                                itemCount: filteredTasks.length + 1,
                                 itemBuilder: (context, index) {
-                                  if (showUnsyncedBanner) {
-                                    if (index == 0) {
-                                      return const UnsyncedBanner();
-                                    }
-                                    index--;
+                                  if (index == 0) {
+                                    return const UnsyncedBanner();
                                   }
-                                  final task = filteredTasks[index];
+                                  final task = filteredTasks[index - 1];
                                   return SmoothShuffleItem(
                                     key: ValueKey('shuffle_sched_${task.id}'),
                                     id: 'sched_${task.id}',
