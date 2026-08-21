@@ -547,6 +547,8 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                 padding: EdgeInsets.only(
                                   top: isSortBarVisible ? 64.0 : 8.0,
                                   bottom: 80.0,
+                                  left: 8.0,
+                                  right: 8.0,
                                 ),
                                 itemCount:
                                     filteredTasks.length +
@@ -687,13 +689,15 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
       }
     }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      elevation: 2.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+        elevation: 2.0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           // Card Header with Title, priority, actions (high density)
           Padding(
             padding: const EdgeInsets.only(
@@ -1005,7 +1009,8 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
               );
             },
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
