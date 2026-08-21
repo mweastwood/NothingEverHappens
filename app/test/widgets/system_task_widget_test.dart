@@ -137,4 +137,105 @@ void main() {
       },
     );
   });
+
+  group('SystemTaskWidget - Missed Family Task Communication Variant', () {
+    testWidgets(
+      'renders missed family task card with record_voice_over icon, dismiss button and action button',
+      (WidgetTester tester) async {
+        var actionFired = false;
+        var dismissFired = false;
+
+        final task = SystemTask(
+          id: 'missed_family_task_comm_inst-1_2026-07-10',
+          title: 'Communicate missed chore: Mow the lawn',
+          description:
+              'This family task was missed before 5:00 AM. Reach out to your family and own responsibility for the missed task by 5:00 PM today.',
+          icon: Icons.record_voice_over,
+          priority: SystemTaskPriority.high,
+          category: SystemTaskCategory.family,
+          actionLabel: 'Mark Communicated',
+          isDismissible: true,
+          onAction: () {
+            actionFired = true;
+          },
+          onDismiss: () {
+            dismissFired = true;
+          },
+        );
+
+        await tester.pumpWidget(
+          wrapWidget(
+            SystemTaskWidget(
+              task: task,
+              variant: SystemTaskWidgetVariant.card,
+              actionButtonKey: const Key('mark_communicated_btn'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Communicate missed chore: Mow the lawn'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'This family task was missed before 5:00 AM. Reach out to your family and own responsibility for the missed task by 5:00 PM today.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.byIcon(Icons.record_voice_over), findsOneWidget);
+        expect(find.byKey(const Key('mark_communicated_btn')), findsOneWidget);
+        expect(find.text('Mark Communicated'), findsOneWidget);
+        expect(find.byIcon(Icons.close), findsOneWidget);
+
+        // Tap action button
+        await tester.tap(find.byKey(const Key('mark_communicated_btn')));
+        await tester.pumpAndSettle();
+        expect(actionFired, isTrue);
+
+        // Tap dismiss button
+        await tester.tap(find.byIcon(Icons.close));
+        await tester.pumpAndSettle();
+        expect(dismissFired, isTrue);
+      },
+    );
+
+    testWidgets(
+      'renders missed family task banner variant with record_voice_over icon',
+      (WidgetTester tester) async {
+        final task = const SystemTask(
+          id: 'missed_family_task_comm_inst-2_2026-07-10',
+          title: 'Communicate missed chore: Clean dishes',
+          description:
+              'This family task was missed before 5:00 AM. Reach out to your family and own responsibility for the missed task by 5:00 PM today.',
+          icon: Icons.record_voice_over,
+          priority: SystemTaskPriority.high,
+          category: SystemTaskCategory.family,
+        );
+
+        await tester.pumpWidget(
+          wrapWidget(
+            SystemTaskWidget(
+              task: task,
+              variant: SystemTaskWidgetVariant.banner,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Communicate missed chore: Clean dishes'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'This family task was missed before 5:00 AM. Reach out to your family and own responsibility for the missed task by 5:00 PM today.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.byIcon(Icons.record_voice_over), findsOneWidget);
+      },
+    );
+  });
 }

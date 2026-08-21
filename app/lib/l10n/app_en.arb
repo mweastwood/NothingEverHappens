@@ -12,6 +12,18 @@
   "dashboardTab": "Dashboard",
   "capacityPromptTitle": "Adjust your weekly capacity",
   "capacityPromptSubtitle": "Set your available hours for the upcoming days.",
+  "communicateMissedChoreTitle": "Communicate missed chore: {taskTitle}",
+  "@communicateMissedChoreTitle": {
+    "description": "Title for system task prompting communication of a missed family chore",
+    "placeholders": {
+      "taskTitle": {
+        "type": "String",
+        "example": "Take out trash"
+      }
+    }
+  },
+  "communicateMissedChoreDescription": "This family task was missed before 5:00 AM. Reach out to your family and own responsibility for the missed task by 5:00 PM today.",
+  "markCommunicatedAction": "Mark Communicated",
   "historyTab": "History",
   "addTaskTooltip": "Add Task",
   "menu": "Menu",
