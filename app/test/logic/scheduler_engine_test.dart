@@ -522,6 +522,171 @@ void main() {
           );
         },
       );
+
+      test(
+        'does not skip today started occurrence when yesterday occurrence is already completed',
+        () {
+          // today is June 19, 10:00 AM (started at 9:00 AM)
+          final yesterday = today.addDays(-1); // June 18
+          final task = TestTaskFactory.createDaily(
+            id: 'older-completed-test',
+            title: 'Prefer Older Completed Test',
+            description: 'Test prefer older with completed prior instance',
+            startDate: yesterday,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
+          );
+
+          final completedYesterday = TaskInstance(
+            id: 'older-completed-test_yesterday',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: yesterday,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 6, 19, 1, 0),
+          );
+
+          final todayInstance = TaskInstance(
+            id: 'older-completed-test_today',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          );
+
+          final action = const SchedulerEngine().evaluate(
+            task,
+            [completedYesterday, todayInstance],
+            now, // 10:00 AM, today has started
+            futureInstancesCount: 2,
+          );
+
+          // Today's instance should NOT be updated to skipped; it should remain pending
+          expect(action.instancesToUpdate, isEmpty);
+
+          // Only future lookahead instances (tomorrow June 20, etc.) are spawned
+          final spawnedDates = action.instancesToSpawn
+              .map((x) => x.scheduledDate.day)
+              .toList();
+          expect(spawnedDates.contains(20), isTrue);
+          expect(
+            action.instancesToSpawn
+                .firstWhere((x) => x.scheduledDate.day == 20)
+                .status,
+            TaskStatus.pending,
+          );
+        },
+      );
+
+      test(
+        'does not skip today started occurrence when yesterday occurrence is already skipped',
+        () {
+          // today is June 19, 10:00 AM (started at 9:00 AM)
+          final yesterday = today.addDays(-1); // June 18
+          final task = TestTaskFactory.createDaily(
+            id: 'older-skipped-test',
+            title: 'Prefer Older Skipped Test',
+            description: 'Test prefer older with skipped prior instance',
+            startDate: yesterday,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
+          );
+
+          final skippedYesterday = TaskInstance(
+            id: 'older-skipped-test_yesterday',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: yesterday,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.skipped,
+          );
+
+          final todayInstance = TaskInstance(
+            id: 'older-skipped-test_today',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          );
+
+          final action = const SchedulerEngine().evaluate(
+            task,
+            [skippedYesterday, todayInstance],
+            now, // 10:00 AM, today has started
+            futureInstancesCount: 2,
+          );
+
+          // Today's instance should NOT be updated to skipped; it should remain pending
+          expect(action.instancesToUpdate, isEmpty);
+
+          // Future lookahead instances (tomorrow June 20, etc.) are spawned as pending
+          final spawnedDates = action.instancesToSpawn
+              .map((x) => x.scheduledDate.day)
+              .toList();
+          expect(spawnedDates.contains(20), isTrue);
+          expect(
+            action.instancesToSpawn
+                .firstWhere((x) => x.scheduledDate.day == 20)
+                .status,
+            TaskStatus.pending,
+          );
+        },
+      );
     });
 
     group('FixedCalendarPolicy - Auto-Dismiss', () {

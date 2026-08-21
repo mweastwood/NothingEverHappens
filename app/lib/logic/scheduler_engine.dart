@@ -483,6 +483,10 @@ class SchedulerEngine {
           } else if (policy == MissedPolicy.preferNewer) {
             final startedDates = targetDates.where((d) {
               final inst = workingInstances[d]!;
+              final isOriginalResolved = canonicalInstances.any(
+                (x) => x.id == inst.id && x.status != TaskStatus.pending,
+              );
+              if (isOriginalResolved) return false;
               final start = inst.startRelativeTime.referenceTo(d);
               return !now.isBefore(start);
             }).toList();
@@ -515,6 +519,10 @@ class SchedulerEngine {
           } else if (policy == MissedPolicy.preferOlder) {
             final startedDates = targetDates.where((d) {
               final inst = workingInstances[d]!;
+              final isOriginalResolved = canonicalInstances.any(
+                (x) => x.id == inst.id && x.status != TaskStatus.pending,
+              );
+              if (isOriginalResolved) return false;
               final start = inst.startRelativeTime.referenceTo(d);
               return !now.isBefore(start);
             }).toList();
