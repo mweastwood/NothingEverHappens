@@ -903,6 +903,157 @@ void main() {
       expect(savedInst.completedByUserIds, isEmpty);
     },
   );
+
+  test(
+    'missed policy processing batches instance persistence and dirty marking',
+    () async {
+      final trackingDataSource = _TrackingHiveLocalDataSource();
+      await trackingDataSource.init();
+      await trackingDataSource.setMigrationCompleted(true);
+
+      final trackingSync = TaskSyncService(
+        firestore: firestore,
+        localDataSource: trackingDataSource,
+        userId: 'user1',
+        isActivePremium: false,
+      );
+
+      final trackingRepo = UnifiedTaskRepository(
+        localDataSource: trackingDataSource,
+        syncService: trackingSync,
+        firestore: firestore,
+        userId: 'user1',
+      );
+
+      try {
+        final now = AppClock.now;
+        final today = CivilDay.fromDateTime(now);
+
+        // Add two task schedules that each spawn instances
+        final task1 = TaskSchedule(
+          id: 'S-Batch-1',
+          title: 'Batch Task 1',
+          description: 'Batch Desc 1',
+          schedules: [DailySchedule(startDate: today, interval: 1)],
+          updatedAt: now,
+        );
+
+        final task2 = TaskSchedule(
+          id: 'S-Batch-2',
+          title: 'Batch Task 2',
+          description: 'Batch Desc 2',
+          schedules: [DailySchedule(startDate: today, interval: 1)],
+          updatedAt: now,
+        );
+
+        // Also add an orphan instance to test batched deletion sweep
+        final orphanInstance = TaskInstance(
+          id: 'I-Orphan',
+          scheduleId: 'NonExistentSchedule',
+          ruleId: 'R-Orphan',
+          title: 'Orphan',
+          description: 'Orphan Desc',
+          scheduledDate: today,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 7, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 8, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+        await trackingDataSource.saveInstance(orphanInstance);
+        await trackingDataSource.saveTasks([task1, task2]);
+
+        // Reset tracking counters before running triggerMissedPolicyProcessing
+        trackingDataSource.resetCounts();
+
+        await trackingRepo.triggerMissedPolicyProcessing();
+
+        // Verify batch methods were called at most once per operation type
+        expect(trackingDataSource.saveInstanceCallCount, 0);
+        expect(trackingDataSource.deleteInstanceCallCount, 0);
+        expect(trackingDataSource.markDirtyCallCount, 0);
+
+        expect(trackingDataSource.saveInstancesCallCount, 1);
+        expect(trackingDataSource.deleteInstancesCallCount, 1);
+        expect(trackingDataSource.markDirtyBatchCallCount, 1);
+
+        // Verify instances were saved and orphan was deleted
+        final instances = trackingDataSource.getInstances();
+        expect(instances.any((i) => i.id == 'I-Orphan'), false);
+        expect(instances.any((i) => i.scheduleId == 'S-Batch-1'), true);
+        expect(instances.any((i) => i.scheduleId == 'S-Batch-2'), true);
+      } finally {
+        trackingSync.dispose();
+        trackingDataSource.dispose();
+      }
+    },
+  );
+}
+
+class _TrackingHiveLocalDataSource extends HiveLocalDataSource {
+  int saveInstancesCallCount = 0;
+  int deleteInstancesCallCount = 0;
+  int saveTasksCallCount = 0;
+  int markDirtyBatchCallCount = 0;
+  int saveInstanceCallCount = 0;
+  int deleteInstanceCallCount = 0;
+  int markDirtyCallCount = 0;
+
+  void resetCounts() {
+    saveInstancesCallCount = 0;
+    deleteInstancesCallCount = 0;
+    saveTasksCallCount = 0;
+    markDirtyBatchCallCount = 0;
+    saveInstanceCallCount = 0;
+    deleteInstanceCallCount = 0;
+    markDirtyCallCount = 0;
+  }
+
+  @override
+  Future<void> saveInstances(List<TaskInstance> instances) async {
+    saveInstancesCallCount++;
+    await super.saveInstances(instances);
+  }
+
+  @override
+  Future<void> saveInstance(TaskInstance instance) async {
+    saveInstanceCallCount++;
+    await super.saveInstance(instance);
+  }
+
+  @override
+  Future<void> deleteInstances(List<String> ids) async {
+    deleteInstancesCallCount++;
+    await super.deleteInstances(ids);
+  }
+
+  @override
+  Future<void> deleteInstance(String id) async {
+    deleteInstanceCallCount++;
+    await super.deleteInstance(id);
+  }
+
+  @override
+  Future<void> saveTasks(List<TaskSchedule> tasks) async {
+    saveTasksCallCount++;
+    await super.saveTasks(tasks);
+  }
+
+  @override
+  Future<void> markDirtyBatch(List<String> ids) async {
+    markDirtyBatchCallCount++;
+    await super.markDirtyBatch(ids);
+  }
+
+  @override
+  Future<void> markDirty(String id) async {
+    markDirtyCallCount++;
+    await super.markDirty(id);
+  }
 }
 
 class _TestTelemetryService extends NoOpTelemetryService {

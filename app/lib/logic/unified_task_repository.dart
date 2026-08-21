@@ -632,6 +632,11 @@ class UnifiedTaskRepository implements TaskRepository {
       instancesByScheduleId.putIfAbsent(inst.scheduleId, () => []).add(inst);
     }
 
+    final instancesToSave = <TaskInstance>[];
+    final instancesToDelete = <String>[];
+    final tasksToSave = <TaskSchedule>[];
+    final dirtyIds = <String>[];
+
     for (final task in tasksToEvaluate) {
       final taskInstances = instancesByScheduleId[task.id] ?? [];
 
@@ -650,9 +655,8 @@ class UnifiedTaskRepository implements TaskRepository {
           updatedAt: DateTime.now(),
           hasPendingWrites: true,
         );
-        await _localDataSource.saveInstance(updatedInst);
-        await _localDataSource.markDirty(updatedInst.id);
-        hasChanges = true;
+        instancesToSave.add(updatedInst);
+        dirtyIds.add(updatedInst.id);
 
         final idx = allInstances.indexWhere((x) => x.id == inst.id);
         if (idx >= 0) {
@@ -665,17 +669,15 @@ class UnifiedTaskRepository implements TaskRepository {
           updatedAt: DateTime.now(),
           hasPendingWrites: true,
         );
-        await _localDataSource.saveInstance(newInst);
-        await _localDataSource.markDirty(newInst.id);
-        hasChanges = true;
+        instancesToSave.add(newInst);
+        dirtyIds.add(newInst.id);
 
         allInstances.add(newInst);
       }
 
       for (final instId in action.instancesToDelete) {
-        await _localDataSource.deleteInstance(instId);
-        await _localDataSource.markDirty(instId);
-        hasChanges = true;
+        instancesToDelete.add(instId);
+        dirtyIds.add(instId);
         allInstances.removeWhere((x) => x.id == instId);
       }
 
@@ -695,9 +697,8 @@ class UnifiedTaskRepository implements TaskRepository {
           updatedAt: DateTime.now(),
           hasPendingWrites: true,
         );
-        await _localDataSource.saveTask(updatedTask);
-        await _localDataSource.markDirty(updatedTask.id);
-        hasChanges = true;
+        tasksToSave.add(updatedTask);
+        dirtyIds.add(updatedTask.id);
       }
     }
 
@@ -706,11 +707,29 @@ class UnifiedTaskRepository implements TaskRepository {
     for (final inst in List<TaskInstance>.from(allInstances)) {
       if (inst.status == TaskStatus.pending &&
           !taskIds.contains(inst.scheduleId)) {
-        await _localDataSource.deleteInstance(inst.id);
-        await _localDataSource.markDirty(inst.id);
+        instancesToDelete.add(inst.id);
+        dirtyIds.add(inst.id);
         allInstances.remove(inst);
-        hasChanges = true;
       }
+    }
+
+    if (instancesToSave.isNotEmpty) {
+      await _localDataSource.saveInstances(instancesToSave);
+      hasChanges = true;
+    }
+
+    if (instancesToDelete.isNotEmpty) {
+      await _localDataSource.deleteInstances(instancesToDelete);
+      hasChanges = true;
+    }
+
+    if (tasksToSave.isNotEmpty) {
+      await _localDataSource.saveTasks(tasksToSave);
+      hasChanges = true;
+    }
+
+    if (dirtyIds.isNotEmpty) {
+      await _localDataSource.markDirtyBatch(dirtyIds);
     }
 
     logger?.debug(
