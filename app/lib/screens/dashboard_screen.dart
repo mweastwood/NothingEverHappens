@@ -48,16 +48,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (settingsVal.isLoading ||
         schedulesVal.isLoading ||
         instancesVal.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (settingsVal.hasError ||
         schedulesVal.hasError ||
         instancesVal.hasError) {
       final err = settingsVal.error ?? schedulesVal.error ?? instancesVal.error;
-      return Scaffold(
-        body: Center(child: Text('${context.l10n.errorOccurred}: $err')),
-      );
+      return Center(child: Text('${context.l10n.errorOccurred}: $err'));
     }
 
     final settings =
@@ -76,78 +74,75 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       (index) => today.add(Duration(days: index)),
     );
 
-    return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.dashboardTab)),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!isConfirmed) ...[
-              SystemTaskWidget(
-                task: SystemTask(
-                  id: 'verify_weekly_capacity',
-                  title: 'Confirm capacity for this week',
-                  description:
-                      'Review and confirm your available chore hours to clear this task.',
-                  icon: Icons.assignment_turned_in,
-                  priority: SystemTaskPriority.high,
-                  category: SystemTaskCategory.capacity,
-                  actionLabel: 'Confirm Capacity',
-                  onAction: () => _confirmCapacity(settings, currentWeekId),
-                ),
-                variant: SystemTaskWidgetVariant.card,
-                actionButtonKey: const Key('confirm_capacity_button'),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!isConfirmed) ...[
+            SystemTaskWidget(
+              task: SystemTask(
+                id: 'verify_weekly_capacity',
+                title: 'Confirm capacity for this week',
+                description:
+                    'Review and confirm your available chore hours to clear this task.',
+                icon: Icons.assignment_turned_in,
+                priority: SystemTaskPriority.high,
+                category: SystemTaskCategory.capacity,
+                actionLabel: 'Confirm Capacity',
+                onAction: () => _confirmCapacity(settings, currentWeekId),
               ),
-              const SizedBox(height: 16),
-            ],
-
-            // Personal Past Week Stats Card
-            PersonalHistoryStatsCard(stats: personalStats),
-            const SizedBox(height: 16),
-
-            // Family Past Week Stats Card (if part of a family)
-            if (familyStats != null) ...[
-              FamilyHistoryStatsCard(stats: familyStats),
-              const SizedBox(height: 16),
-            ],
-
-            // Weekly Capacity Graph Card
-            Builder(
-              builder: (context) {
-                final daysData = upcomingDays.map((date) {
-                  final capacity = settings.getCapacityForDate(date);
-                  final day = CivilDay.fromDateTime(date);
-                  final plannedMinutes = plannedMinutesPerDay[day] ?? 0.0;
-                  final dateStr =
-                      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-                  final isOverridden =
-                      settings.dailyCapacityOverrides?.containsKey(dateStr) ??
-                      false;
-                  return DailyCapacityData(
-                    date: date,
-                    capacityHours: capacity,
-                    plannedMinutes: plannedMinutes,
-                    isOverridden: isOverridden,
-                  );
-                }).toList();
-
-                return WeeklyCapacityChart(
-                  daysData: daysData,
-                  onDayTap: (date) => _showEditCapacityDialog(
-                    context,
-                    settings,
-                    date,
-                    isOverride: true,
-                  ),
-                  onEditDefaultCapacity: () =>
-                      _showDefaultCapacityTemplateDialog(context, settings),
-                );
-              },
+              variant: SystemTaskWidgetVariant.card,
+              actionButtonKey: const Key('confirm_capacity_button'),
             ),
             const SizedBox(height: 16),
           ],
-        ),
+
+          // Personal Past Week Stats Card
+          PersonalHistoryStatsCard(stats: personalStats),
+          const SizedBox(height: 16),
+
+          // Family Past Week Stats Card (if part of a family)
+          if (familyStats != null) ...[
+            FamilyHistoryStatsCard(stats: familyStats),
+            const SizedBox(height: 16),
+          ],
+
+          // Weekly Capacity Graph Card
+          Builder(
+            builder: (context) {
+              final daysData = upcomingDays.map((date) {
+                final capacity = settings.getCapacityForDate(date);
+                final day = CivilDay.fromDateTime(date);
+                final plannedMinutes = plannedMinutesPerDay[day] ?? 0.0;
+                final dateStr =
+                    '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                final isOverridden =
+                    settings.dailyCapacityOverrides?.containsKey(dateStr) ??
+                    false;
+                return DailyCapacityData(
+                  date: date,
+                  capacityHours: capacity,
+                  plannedMinutes: plannedMinutes,
+                  isOverridden: isOverridden,
+                );
+              }).toList();
+
+              return WeeklyCapacityChart(
+                daysData: daysData,
+                onDayTap: (date) => _showEditCapacityDialog(
+                  context,
+                  settings,
+                  date,
+                  isOverride: true,
+                ),
+                onEditDefaultCapacity: () =>
+                    _showDefaultCapacityTemplateDialog(context, settings),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
