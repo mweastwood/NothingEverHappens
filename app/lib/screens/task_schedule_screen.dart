@@ -473,8 +473,8 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                 padding: EdgeInsets.only(
                                   top: isSortBarVisible ? 64.0 : 8.0,
                                   bottom: 80.0,
-                                  left: 4.0,
-                                  right: 4.0,
+                                  left: 8.0,
+                                  right: 8.0,
                                 ),
                                 children: [
                                   if (showUnsyncedBanner)
