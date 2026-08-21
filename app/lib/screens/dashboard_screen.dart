@@ -84,8 +84,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               key: Key('system_task_${sysTask.id}'),
               task: sysTask.id == 'verify_weekly_capacity'
                   ? sysTask.copyWith(
-                      onAction: () =>
-                          _confirmCapacity(settings, currentWeekId),
+                      onAction: () => _confirmCapacity(settings, currentWeekId),
                     )
                   : sysTask,
               variant: SystemTaskWidgetVariant.card,
