@@ -2013,8 +2013,10 @@ void main() {
 
           final copied = loaded.copyWith(
             familyCompletionMode: FamilyCompletionMode.anyone,
+            skipIfNoCapacity: true,
           );
           expect(copied.familyCompletionMode, FamilyCompletionMode.anyone);
+          expect(copied.skipIfNoCapacity, true);
         },
       );
     });

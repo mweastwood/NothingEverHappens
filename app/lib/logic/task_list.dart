@@ -81,21 +81,9 @@ class TaskList {
       return TaskList(activeTasks.where((t) => t.id != taskId).toList());
     }
 
-    final updatedTask = TaskSchedule(
-      id: task.id,
-      title: task.title,
-      description: task.description,
+    final updatedTask = task.copyWith(
       schedules: newSchedules,
       activeOccurrenceIndex: newActiveOccurrenceIndex,
-      estimatedDuration: task.estimatedDuration,
-      isMaster: task.isMaster,
-      lastSpawnedDate: task.lastSpawnedDate,
-      parentTaskId: task.parentTaskId,
-      isFamily: task.isFamily,
-      priority: task.priority,
-      cycleId: task.cycleId,
-      preferredBy: task.preferredBy,
-      assignedUserId: task.assignedUserId,
     );
 
     final updatedTasks = List<TaskSchedule>.from(activeTasks);
