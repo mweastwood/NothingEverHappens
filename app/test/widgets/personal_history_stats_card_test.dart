@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/dashboard_stats.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/widgets/personal_history_stats_card.dart';
 import '../test_helper.dart';
 
@@ -10,6 +12,15 @@ void main() {
   group('PersonalHistoryStatsCard', () {
     final startDay = CivilDay(year: 2026, month: 7, day: 1); // Wednesday
     final endDay = CivilDay(year: 2026, month: 7, day: 7); // Tuesday
+
+    const dummyStart = RelativeTime(
+      dayOffset: 0,
+      time: TimeOfDay(hour: 9, minute: 0),
+    );
+    const dummyDue = RelativeTime(
+      dayOffset: 0,
+      time: TimeOfDay(hour: 17, minute: 0),
+    );
 
     final stats = PersonalLastWeekStats(
       completedCount: 5,
@@ -26,6 +37,30 @@ void main() {
           skippedCount: 0,
           missedCount: 0,
           completedHours: 1.5,
+          completedTasks: [
+            TaskInstance(
+              id: 't-1',
+              scheduleId: 's-1',
+              ruleId: 'r-1',
+              title: 'Clean the kitchen',
+              description: 'Wash dishes and wipe counters',
+              scheduledDate: CivilDay(year: 2026, month: 7, day: 1),
+              startRelativeTime: dummyStart,
+              dueRelativeTime: dummyDue,
+              status: TaskStatus.completed,
+            ),
+            TaskInstance(
+              id: 't-2',
+              scheduleId: 's-2',
+              ruleId: 'r-2',
+              title: 'Water plants',
+              description: '',
+              scheduledDate: CivilDay(year: 2026, month: 7, day: 1),
+              startRelativeTime: dummyStart,
+              dueRelativeTime: dummyDue,
+              status: TaskStatus.completed,
+            ),
+          ],
         ),
         DailyStatsData(
           day: CivilDay(year: 2026, month: 7, day: 2),
@@ -33,6 +68,19 @@ void main() {
           skippedCount: 1,
           missedCount: 0,
           completedHours: 0.0,
+          skippedTasks: [
+            TaskInstance(
+              id: 't-3',
+              scheduleId: 's-3',
+              ruleId: 'r-3',
+              title: 'Vacuum living room',
+              description: '',
+              scheduledDate: CivilDay(year: 2026, month: 7, day: 2),
+              startRelativeTime: dummyStart,
+              dueRelativeTime: dummyDue,
+              status: TaskStatus.skipped,
+            ),
+          ],
         ),
         DailyStatsData(
           day: CivilDay(year: 2026, month: 7, day: 3),
@@ -40,6 +88,32 @@ void main() {
           skippedCount: 0,
           missedCount: 1,
           completedHours: 1.0,
+          completedTasks: [
+            TaskInstance(
+              id: 't-4',
+              scheduleId: 's-4',
+              ruleId: 'r-4',
+              title: 'Take out trash',
+              description: '',
+              scheduledDate: CivilDay(year: 2026, month: 7, day: 3),
+              startRelativeTime: dummyStart,
+              dueRelativeTime: dummyDue,
+              status: TaskStatus.completed,
+            ),
+          ],
+          missedTasks: [
+            TaskInstance(
+              id: 't-5',
+              scheduleId: 's-5',
+              ruleId: 'r-5',
+              title: 'Mow the lawn',
+              description: '',
+              scheduledDate: CivilDay(year: 2026, month: 7, day: 3),
+              startRelativeTime: dummyStart,
+              dueRelativeTime: dummyDue,
+              status: TaskStatus.pending,
+            ),
+          ],
         ),
         DailyStatsData(
           day: CivilDay(year: 2026, month: 7, day: 4),
@@ -151,6 +225,100 @@ void main() {
       expect(find.text('Completed'), findsNWidgets(2));
       expect(find.text('Skipped / Missed'), findsOneWidget);
     });
+
+    testWidgets(
+      'tapping a daily activity bar opens breakdown bottom sheet with tasks',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: PersonalHistoryStatsCard(stats: stats),
+              ),
+            ),
+          ),
+        );
+
+        // Tap on Day 1 (Wed Jul 1, 2026)
+        final day1Bar = find.byKey(const Key('daily_activity_bar_2026-07-01'));
+        expect(day1Bar, findsOneWidget);
+        await tester.tap(day1Bar);
+        await tester.pumpAndSettle();
+
+        // Bottom sheet appears
+        expect(
+          find.byKey(const Key('daily_activity_breakdown_sheet')),
+          findsOneWidget,
+        );
+        expect(find.text('Wednesday, Jul 1, 2026'), findsOneWidget);
+        expect(find.text('2 completed'), findsOneWidget);
+        expect(find.text('1h 30m'), findsOneWidget);
+
+        // Task items
+        expect(find.text('Clean the kitchen'), findsOneWidget);
+        expect(find.text('Wash dishes and wipe counters'), findsOneWidget);
+        expect(find.text('Water plants'), findsOneWidget);
+
+        // Close bottom sheet
+        final closeButton = find.byIcon(Icons.close);
+        expect(closeButton, findsOneWidget);
+        await tester.tap(closeButton);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('daily_activity_breakdown_sheet')),
+          findsNothing,
+        );
+
+        // Tap on Day 3 (Fri Jul 3, 2026) which has completed and missed
+        final day3Bar = find.byKey(const Key('daily_activity_bar_2026-07-03'));
+        expect(day3Bar, findsOneWidget);
+        await tester.tap(day3Bar);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('daily_activity_breakdown_sheet')),
+          findsOneWidget,
+        );
+        expect(find.text('Friday, Jul 3, 2026'), findsOneWidget);
+        expect(find.text('1 completed'), findsOneWidget);
+        expect(find.text('1 missed'), findsOneWidget);
+        expect(find.text('Take out trash'), findsOneWidget);
+        expect(find.text('Mow the lawn'), findsOneWidget);
+
+        // Close again
+        await tester.tap(find.byIcon(Icons.close));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    testWidgets(
+      'tapping a day with no activity displays empty state in breakdown sheet',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: PersonalHistoryStatsCard(stats: stats),
+              ),
+            ),
+          ),
+        );
+
+        // Tap Day 4 (Sat Jul 4, 2026) with zero activity
+        final day4Bar = find.byKey(const Key('daily_activity_bar_2026-07-04'));
+        expect(day4Bar, findsOneWidget);
+        await tester.tap(day4Bar);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('daily_activity_breakdown_sheet')),
+          findsOneWidget,
+        );
+        expect(find.text('Saturday, Jul 4, 2026'), findsOneWidget);
+        expect(find.text('No activity recorded for this day'), findsOneWidget);
+      },
+    );
 
     testGoldens('PersonalHistoryStatsCard renders correctly', (tester) async {
       final perfectStats = PersonalLastWeekStats(

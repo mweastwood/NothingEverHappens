@@ -824,4 +824,64 @@ void main() {
       ); // Both contributed 1 / 2 = 50%
     },
   );
+
+  testWidgets(
+    'Tapping a daily activity bar in Personal Past Week card opens breakdown sheet with task details',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(DateTime(2026, 7, 7, 12, 0)); // Tuesday 2026-07-07
+      addTearDown(AppClock.reset);
+
+      final schedule = TaskSchedule(
+        id: 'schedule-daily',
+        title: 'Morning Yoga',
+        description: 'Stretch and breathe',
+        estimatedDuration: const Duration(minutes: 30),
+        schedules: [
+          DailySchedule(
+            startDate: CivilDay(year: 2026, month: 7, day: 1),
+            interval: 1,
+          ),
+        ],
+      );
+
+      final inst1 = TaskInstance(
+        id: 'inst-yoga-1',
+        scheduleId: schedule.id,
+        ruleId: 'r-1',
+        title: 'Morning Yoga',
+        description: 'Stretch and breathe',
+        scheduledDate: CivilDay(year: 2026, month: 7, day: 7),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 8, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        status: TaskStatus.completed,
+      );
+
+      tasksSubject.add([schedule]);
+      instancesSubject.add([inst1]);
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      // Tap on Tuesday Jul 7 bar
+      final bar = find.byKey(const Key('daily_activity_bar_2026-07-07'));
+      expect(bar, findsOneWidget);
+      await tester.tap(bar);
+      await tester.pumpAndSettle();
+
+      // Breakdown sheet opens
+      expect(
+        find.byKey(const Key('daily_activity_breakdown_sheet')),
+        findsOneWidget,
+      );
+      expect(find.text('Tuesday, Jul 7, 2026'), findsOneWidget);
+      expect(find.text('Morning Yoga'), findsOneWidget);
+      expect(find.text('Stretch and breathe'), findsOneWidget);
+    },
+  );
 }
