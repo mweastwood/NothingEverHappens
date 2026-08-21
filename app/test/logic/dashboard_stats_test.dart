@@ -163,6 +163,31 @@ void main() {
         expect(stats.completionRate, 2 / (2 + 1 + 1)); // 50%
         expect(stats.hasActivity, isTrue);
         expect(stats.dailyStats.length, 7);
+
+        // Verify task instance lists per day
+        final day10 = stats.dailyStats.firstWhere(
+          (d) => d.day == CivilDay(year: 2026, month: 7, day: 10),
+        );
+        expect(day10.completedTasks.length, 1);
+        expect(day10.completedTasks.first.id, 'i-1');
+        expect(day10.skippedTasks, isEmpty);
+        expect(day10.missedTasks, isEmpty);
+
+        final day8 = stats.dailyStats.firstWhere(
+          (d) => d.day == CivilDay(year: 2026, month: 7, day: 8),
+        );
+        expect(day8.completedTasks, isEmpty);
+        expect(day8.skippedTasks.length, 1);
+        expect(day8.skippedTasks.first.id, 'i-4');
+        expect(day8.missedTasks, isEmpty);
+
+        final day6 = stats.dailyStats.firstWhere(
+          (d) => d.day == CivilDay(year: 2026, month: 7, day: 6),
+        );
+        expect(day6.completedTasks, isEmpty);
+        expect(day6.skippedTasks, isEmpty);
+        expect(day6.missedTasks.length, 1);
+        expect(day6.missedTasks.first.id, 'i-5');
       },
     );
   });

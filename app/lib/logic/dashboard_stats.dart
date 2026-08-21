@@ -13,6 +13,9 @@ class DailyStatsData {
   final int skippedCount;
   final int missedCount;
   final double completedHours;
+  final List<TaskInstance> completedTasks;
+  final List<TaskInstance> skippedTasks;
+  final List<TaskInstance> missedTasks;
 
   const DailyStatsData({
     required this.day,
@@ -20,6 +23,9 @@ class DailyStatsData {
     required this.skippedCount,
     required this.missedCount,
     required this.completedHours,
+    this.completedTasks = const [],
+    this.skippedTasks = const [],
+    this.missedTasks = const [],
   });
 }
 
@@ -121,6 +127,15 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
   final dailySkipped = <CivilDay, int>{for (final d in days) d: 0};
   final dailyMissed = <CivilDay, int>{for (final d in days) d: 0};
   final dailyHours = <CivilDay, double>{for (final d in days) d: 0.0};
+  final dailyCompletedTasks = <CivilDay, List<TaskInstance>>{
+    for (final d in days) d: [],
+  };
+  final dailySkippedTasks = <CivilDay, List<TaskInstance>>{
+    for (final d in days) d: [],
+  };
+  final dailyMissedTasks = <CivilDay, List<TaskInstance>>{
+    for (final d in days) d: [],
+  };
 
   int totalCompleted = 0;
   double totalHours = 0.0;
@@ -164,15 +179,19 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
       totalHours += duration;
       dailyCompleted[schedDay] = (dailyCompleted[schedDay] ?? 0) + 1;
       dailyHours[schedDay] = (dailyHours[schedDay] ?? 0.0) + duration;
+      dailyCompletedTasks[schedDay]?.add(inst);
     } else if (inst.status == TaskStatus.skipped) {
       totalSkipped++;
       dailySkipped[schedDay] = (dailySkipped[schedDay] ?? 0) + 1;
+      dailySkippedTasks[schedDay]?.add(inst);
     } else if (inst.status == TaskStatus.failed) {
       totalMissed++;
       dailyMissed[schedDay] = (dailyMissed[schedDay] ?? 0) + 1;
+      dailyMissedTasks[schedDay]?.add(inst);
     } else if (inst.status == TaskStatus.pending && schedDay.isBefore(today)) {
       totalMissed++;
       dailyMissed[schedDay] = (dailyMissed[schedDay] ?? 0) + 1;
+      dailyMissedTasks[schedDay]?.add(inst);
     }
   }
 
@@ -188,6 +207,9 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
       skippedCount: dailySkipped[d] ?? 0,
       missedCount: dailyMissed[d] ?? 0,
       completedHours: dailyHours[d] ?? 0.0,
+      completedTasks: dailyCompletedTasks[d] ?? const [],
+      skippedTasks: dailySkippedTasks[d] ?? const [],
+      missedTasks: dailyMissedTasks[d] ?? const [],
     );
   }).toList();
 

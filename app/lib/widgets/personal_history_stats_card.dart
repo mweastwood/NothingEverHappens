@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../logic/civil_day.dart';
 import '../logic/dashboard_stats.dart';
 import '../logic/utils/format_utils.dart';
+import 'daily_activity_breakdown_sheet.dart';
 
 class PersonalHistoryStatsCard extends StatelessWidget {
   final PersonalLastWeekStats stats;
@@ -177,12 +178,24 @@ class PersonalHistoryStatsCard extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Daily 7-Day Activity Strip
-            Text(
-              'Daily Activity',
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Daily Activity',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  'Tap bar for details',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             _buildDailyStrip(context),
@@ -279,123 +292,131 @@ class PersonalHistoryStatsCard extends StatelessWidget {
                   : 0.0;
 
               return Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    SizedBox(
-                      height: 14,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          _formatDayCountLabel(dayData),
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 9,
-                            fontWeight: isToday
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                child: InkWell(
+                  key: Key('daily_activity_bar_${day.toIso8601String()}'),
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () =>
+                      DailyActivityBreakdownSheet.show(context, dayData),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        height: 14,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _formatDayCountLabel(dayData),
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 9,
+                              fontWeight: isToday
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    SizedBox(
-                      height: 120,
-                      child: Stack(
-                        alignment: Alignment.bottomCenter,
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            height: 120,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(6),
-                              border: isToday
-                                  ? Border.all(
-                                      color: theme.colorScheme.primary
-                                          .withValues(alpha: 0.5),
-                                      width: 1,
-                                    )
-                                  : null,
-                            ),
-                          ),
-                          if (totalBarHeight > 0)
+                      const SizedBox(height: 4),
+                      SizedBox(
+                        height: 120,
+                        child: Stack(
+                          alignment: Alignment.bottomCenter,
+                          children: [
                             Container(
-                              height: totalBarHeight,
                               width: double.infinity,
+                              height: 120,
                               margin: const EdgeInsets.symmetric(horizontal: 4),
-                              child: ClipRRect(
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.25),
                                 borderRadius: BorderRadius.circular(6),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    if (missed > 0)
-                                      Flexible(
-                                        flex: missed,
-                                        child: Container(
-                                          width: double.infinity,
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                theme.colorScheme.error,
-                                                theme.colorScheme.error
-                                                    .withValues(alpha: 0.7),
-                                              ],
-                                              begin: Alignment.bottomCenter,
-                                              end: Alignment.topCenter,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    if (completed > 0)
-                                      Flexible(
-                                        flex: completed,
-                                        child: Container(
-                                          width: double.infinity,
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                theme.colorScheme.primary,
-                                                theme.colorScheme.primary
-                                                    .withValues(alpha: 0.7),
-                                              ],
-                                              begin: Alignment.bottomCenter,
-                                              end: Alignment.topCenter,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
+                                border: isToday
+                                    ? Border.all(
+                                        color: theme.colorScheme.primary
+                                            .withValues(alpha: 0.5),
+                                        width: 1,
+                                      )
+                                    : null,
                               ),
                             ),
-                        ],
+                            if (totalBarHeight > 0)
+                              Container(
+                                height: totalBarHeight,
+                                width: double.infinity,
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      if (missed > 0)
+                                        Flexible(
+                                          flex: missed,
+                                          child: Container(
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  theme.colorScheme.error,
+                                                  theme.colorScheme.error
+                                                      .withValues(alpha: 0.7),
+                                                ],
+                                                begin: Alignment.bottomCenter,
+                                                end: Alignment.topCenter,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      if (completed > 0)
+                                        Flexible(
+                                          flex: completed,
+                                          child: Container(
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  theme.colorScheme.primary,
+                                                  theme.colorScheme.primary
+                                                      .withValues(alpha: 0.7),
+                                                ],
+                                                begin: Alignment.bottomCenter,
+                                                end: Alignment.topCenter,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      dayLabel,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: isToday
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: isToday
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurface,
+                      const SizedBox(height: 4),
+                      Text(
+                        dayLabel,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: isToday
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: isToday
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${day.day}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 10,
-                        fontWeight: isToday
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                      Text(
+                        '${day.day}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                          fontWeight: isToday
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }).toList(),

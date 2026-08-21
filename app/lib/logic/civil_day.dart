@@ -71,6 +71,8 @@ class CivilDay implements Comparable<CivilDay> {
     return CivilDay(year: utc.year, month: utc.month, day: utc.day);
   }
 
+  String toIso8601String() => toString();
+
   @override
   String toString() {
     return '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
