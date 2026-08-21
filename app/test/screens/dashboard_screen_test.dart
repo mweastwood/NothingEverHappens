@@ -73,7 +73,9 @@ void main() {
           'fam-123',
         ).overrideWith((ref) => familySubject.stream),
       ],
-      child: buildTestableWidget(child: const DashboardScreen()),
+      child: buildTestableWidget(
+        child: const Scaffold(body: DashboardScreen()),
+      ),
     );
   }
 
