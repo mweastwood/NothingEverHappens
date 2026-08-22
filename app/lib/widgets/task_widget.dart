@@ -250,25 +250,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     return '${minutes}m';
   }
 
-  String _getScheduleLabel(BuildContext context, TaskScheduleRule schedule) {
-    final l10n = context.l10n;
-    if (schedule is OneOffSchedule) return l10n.oneOffLabel;
-    if (schedule is DailySchedule) return l10n.dailyLabel;
-    if (schedule is WeeklySchedule) return l10n.weeklyLabel;
-    if (schedule is MonthlySchedule) return l10n.monthlyLabel;
-    if (schedule is YearlySchedule) return l10n.yearlyLabel;
-    return l10n.recurringLabel;
-  }
-
-  IconData _getScheduleIcon(TaskScheduleRule schedule) {
-    if (schedule is OneOffSchedule) return Icons.today;
-    if (schedule is DailySchedule) return Icons.repeat;
-    if (schedule is WeeklySchedule) return Icons.view_week;
-    if (schedule is MonthlySchedule) return Icons.calendar_month;
-    if (schedule is YearlySchedule) return Icons.event;
-    return Icons.settings_backup_restore;
-  }
-
   String _getPriorityLabel(BuildContext context, TaskPriority priority) {
     final l10n = context.l10n;
     switch (priority) {
@@ -415,37 +396,8 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     }
   }
 
-  int _getRuleIndex(TaskInstance instance, TaskSchedule schedule) {
-    if (schedule.schedules.length <= 1) return 0;
-    final parts = instance.id.split('_');
-    if (parts.length >= 3) {
-      final idxPart = parts.last;
-      final idx = int.tryParse(idxPart);
-      if (idx != null && idx >= 0 && idx < schedule.schedules.length) {
-        return idx;
-      }
-    }
-    return 0;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final ruleIdx = widget.schedule != null
-        ? _getRuleIndex(widget.instance, widget.schedule!)
-        : 0;
-    final schedule =
-        widget.schedule != null && ruleIdx < widget.schedule!.schedules.length
-        ? widget.schedule!.schedules[ruleIdx]
-        : OneOffSchedule(
-            id: widget.instance.ruleId,
-            scheduleId: widget.instance.scheduleId,
-            date: widget.instance.scheduledDate,
-            startRelativeTime: widget.instance.startRelativeTime,
-            dueRelativeTime: widget.instance.dueRelativeTime,
-            notificationRelativeTimes:
-                widget.instance.notificationRelativeTimes,
-          );
-
     final startDateTime = widget.instance.startRelativeTime.referenceTo(
       widget.instance.scheduledDate,
     );
@@ -726,19 +678,12 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                   }(),
                 ],
                 // Priority
-                _buildBadge(
-                  context,
-                  icon: _getPriorityIcon(widget.instance.priority),
-                  label: _getPriorityLabel(context, widget.instance.priority),
-                  color: _getPriorityColor(context, widget.instance.priority),
-                ),
-                // Schedule (Recurring only)
-                if (schedule is! OneOffSchedule)
+                if (widget.instance.priority != TaskPriority.medium)
                   _buildBadge(
                     context,
-                    icon: _getScheduleIcon(schedule),
-                    label: _getScheduleLabel(context, schedule),
-                    color: Theme.of(context).colorScheme.primary,
+                    icon: _getPriorityIcon(widget.instance.priority),
+                    label: _getPriorityLabel(context, widget.instance.priority),
+                    color: _getPriorityColor(context, widget.instance.priority),
                   ),
                 // Effort/Duration (if any)
                 if (widget.schedule?.estimatedDuration != null)
