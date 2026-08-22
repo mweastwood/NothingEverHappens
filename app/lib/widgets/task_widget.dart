@@ -808,9 +808,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
               ),
               const SizedBox(width: 8),
             ],
-            if (widget.showEditOption &&
-                widget.schedule != null &&
-                schedule is OneOffSchedule) ...[
+            if (widget.showEditOption && widget.schedule != null) ...[
               IconButton(
                 key: const Key('edit_pencil_button'),
                 icon: const Icon(Icons.edit, size: 20),
