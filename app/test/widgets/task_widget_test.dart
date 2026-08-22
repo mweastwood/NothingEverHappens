@@ -413,7 +413,7 @@ void main() {
     },
   );
 
-  testWidgets('TaskWidget does not expose edit button for recurring tasks', (
+  testWidgets('TaskWidget exposes edit button for recurring tasks', (
     tester,
   ) async {
     final recurringTask = TaskSchedule(
@@ -454,8 +454,8 @@ void main() {
       ),
     );
 
-    // Exposes delete button but NOT edit button
-    expect(find.byKey(const Key('edit_pencil_button')), findsNothing);
+    // Exposes both edit button and delete button
+    expect(find.byKey(const Key('edit_pencil_button')), findsOneWidget);
     expect(find.byKey(const Key('delete_task_button')), findsOneWidget);
   });
 
@@ -532,7 +532,7 @@ void main() {
     );
   });
 
-  testGoldens('TaskWidget recurring state golden (no pencil)', (tester) async {
+  testGoldens('TaskWidget recurring state golden', (tester) async {
     final recurringTask = TaskSchedule(
       id: 'S-2',
       title: 'Recurring TaskSchedule',
@@ -836,7 +836,7 @@ void main() {
         ),
       ),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(450, 860),
+      surfaceSize: const Size(450, 1000),
     );
 
     await expectLater(
