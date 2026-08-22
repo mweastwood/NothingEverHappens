@@ -8,9 +8,9 @@ import '../logic/civil_day.dart';
 import '../logic/task_repository.dart';
 import '../logic/utils/format_utils.dart';
 import '../logic/dashboard_stats.dart';
-import '../widgets/personal_history_stats_card.dart';
 import '../widgets/family_history_stats_card.dart';
 import '../widgets/weekly_capacity_chart.dart';
+import '../widgets/daily_activity_breakdown_sheet.dart';
 import '../widgets/system_task_widget.dart';
 import '../logic/system_tasks/system_task_providers.dart';
 
@@ -68,10 +68,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final today = AppClock.now;
     final currentWeekId = _getWeekIdentifier(today);
 
-    // Upcoming 7 days (today + next 6 days)
-    final upcomingDays = List.generate(
-      7,
-      (index) => today.add(Duration(days: index)),
+    // 13-day timeline (6 days history + today + 6 days forecast)
+    final timelineDays = List.generate(
+      13,
+      (index) => DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).add(Duration(days: index - 6)),
     );
 
     return SingleChildScrollView(
@@ -95,20 +99,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(height: 16),
           ],
 
-          // Personal Past Week Stats Card
-          PersonalHistoryStatsCard(stats: personalStats),
-          const SizedBox(height: 16),
-
-          // Family Past Week Stats Card (if part of a family)
-          if (familyStats != null) ...[
-            FamilyHistoryStatsCard(stats: familyStats),
-            const SizedBox(height: 16),
-          ],
-
-          // Weekly Capacity Graph Card
+          // Combined Activity & Capacity Timeline Card
           Builder(
             builder: (context) {
-              final daysData = upcomingDays.map((date) {
+              final daysData = timelineDays.map((date) {
                 final capacity = settings.getCapacityForDate(date);
                 final day = CivilDay.fromDateTime(date);
                 final plannedMinutes = plannedMinutesPerDay[day] ?? 0.0;
@@ -117,28 +111,46 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 final isOverridden =
                     settings.dailyCapacityOverrides?.containsKey(dateStr) ??
                     false;
+
+                final dayStats = personalStats.dailyStats
+                    .where((d) => d.day == day)
+                    .firstOrNull;
+                final completedMinutes =
+                    (dayStats?.completedHours ?? 0.0) * 60.0;
+
                 return DailyCapacityData(
                   date: date,
                   capacityHours: capacity,
                   plannedMinutes: plannedMinutes,
+                  completedMinutes: completedMinutes,
                   isOverridden: isOverridden,
+                  statsData: dayStats,
                 );
               }).toList();
 
               return WeeklyCapacityChart(
                 daysData: daysData,
+                stats: personalStats,
                 onDayTap: (date) => _showEditCapacityDialog(
                   context,
                   settings,
                   date,
                   isOverride: true,
                 ),
+                onDayActivityTap: (dayData) =>
+                    DailyActivityBreakdownSheet.show(context, dayData),
                 onEditDefaultCapacity: () =>
                     _showDefaultCapacityTemplateDialog(context, settings),
               );
             },
           ),
           const SizedBox(height: 16),
+
+          // Family Past Week Stats Card (if part of a family)
+          if (familyStats != null) ...[
+            FamilyHistoryStatsCard(stats: familyStats),
+            const SizedBox(height: 16),
+          ],
         ],
       ),
     );
