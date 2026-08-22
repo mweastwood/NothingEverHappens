@@ -341,8 +341,7 @@ class TaskSyncService {
     QuerySnapshot<Map<String, dynamic>> snapshot, {
     required bool isFamily,
   }) async {
-    if (snapshot.docChanges.isEmpty) return;
-
+    final isCache = snapshot.metadata.isFromCache;
     final localTasks = _localDataSource.getTasks();
     final localMap = {for (final t in localTasks) t.id: t};
 
@@ -380,6 +379,17 @@ class TaskSyncService {
       }
     }
 
+    if (!isCache) {
+      for (final localTask in localMap.values) {
+        if ((isFamily ? localTask.isFamily : !localTask.isFamily) &&
+            localTask.isFromCache) {
+          final updated = localTask.copyWith(isFromCache: false);
+          toSave.add(updated);
+          localMap[localTask.id] = updated;
+        }
+      }
+    }
+
     if (toDelete.isNotEmpty) {
       await _localDataSource.deleteTasks(toDelete);
     }
@@ -397,8 +407,7 @@ class TaskSyncService {
     QuerySnapshot<Map<String, dynamic>> snapshot, {
     required bool isFamily,
   }) async {
-    if (snapshot.docChanges.isEmpty) return;
-
+    final isCache = snapshot.metadata.isFromCache;
     final localInsts = _localDataSource.getInstances();
     final localMap = {for (final inst in localInsts) inst.id: inst};
     final localSlotMap = {
@@ -462,6 +471,17 @@ class TaskSyncService {
       }
     }
 
+    if (!isCache) {
+      for (final localInst in localMap.values) {
+        if ((isFamily ? localInst.isFamily : !localInst.isFamily) &&
+            localInst.isFromCache) {
+          final updated = localInst.copyWith(isFromCache: false);
+          toSave.add(updated);
+          localMap[localInst.id] = updated;
+        }
+      }
+    }
+
     if (toDelete.isNotEmpty) {
       await _localDataSource.deleteInstances(toDelete);
     }
@@ -496,8 +516,7 @@ class TaskSyncService {
     QuerySnapshot<Map<String, dynamic>> snapshot, {
     required bool isFamily,
   }) async {
-    if (snapshot.docChanges.isEmpty) return;
-
+    final isCache = snapshot.metadata.isFromCache;
     final localRecipes = _localDataSource.getRecipes();
     final localMap = {for (final r in localRecipes) r.id: r};
 
@@ -522,11 +541,22 @@ class TaskSyncService {
               remoteRecipe.updatedAt.isAfter(localRecipe.updatedAt)) {
             final cleanRecipe = remoteRecipe.copyWith(
               hasPendingWrites: false,
-              isFromCache: false,
+              isFromCache: isCache,
             );
             toSave.add(cleanRecipe);
             localMap[cleanRecipe.id] = cleanRecipe;
           }
+        }
+      }
+    }
+
+    if (!isCache) {
+      for (final localRecipe in localMap.values) {
+        if ((isFamily ? localRecipe.isFamily : !localRecipe.isFamily) &&
+            localRecipe.isFromCache) {
+          final updated = localRecipe.copyWith(isFromCache: false);
+          toSave.add(updated);
+          localMap[localRecipe.id] = updated;
         }
       }
     }
@@ -674,9 +704,10 @@ class TaskSyncService {
         .getTasks()
         .where((t) => t.id == task.id)
         .firstOrNull;
-    if (localCurrent != null && localCurrent.hasPendingWrites) {
+    if (localCurrent != null &&
+        (localCurrent.hasPendingWrites || localCurrent.isFromCache)) {
       await _localDataSource.saveTask(
-        localCurrent.copyWith(hasPendingWrites: false),
+        localCurrent.copyWith(hasPendingWrites: false, isFromCache: false),
       );
     }
   }
@@ -717,9 +748,10 @@ class TaskSyncService {
         .getInstances()
         .where((i) => i.id == inst.id)
         .firstOrNull;
-    if (localCurrent != null && localCurrent.hasPendingWrites) {
+    if (localCurrent != null &&
+        (localCurrent.hasPendingWrites || localCurrent.isFromCache)) {
       await _localDataSource.saveInstance(
-        localCurrent.copyWith(hasPendingWrites: false),
+        localCurrent.copyWith(hasPendingWrites: false, isFromCache: false),
       );
     }
   }

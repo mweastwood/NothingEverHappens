@@ -1153,6 +1153,81 @@ void main() {
       expect(localDataSource.getInstances().length, 200);
     },
   );
+
+  test(
+    'Remote snapshot marks local cached tasks and instances as isFromCache == false',
+    () async {
+      // 1. Prepopulate local data source with items loaded from cache
+      final cachedTask = TaskSchedule(
+        id: 'S-cached-1',
+        title: 'Cached Task',
+        description: 'Desc',
+        schedules: [],
+        isFromCache: true,
+        updatedAt: DateTime(2026, 8, 20, 10, 0),
+      );
+      final cachedInstance = TaskInstance(
+        id: 'I-cached-1',
+        scheduleId: 'S-cached-1',
+        ruleId: 'R-1',
+        title: 'Cached Task',
+        description: 'Desc',
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 21),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        isFromCache: true,
+        updatedAt: DateTime(2026, 8, 20, 10, 0),
+      );
+
+      await localDataSource.saveTask(cachedTask);
+      await localDataSource.saveInstance(cachedInstance);
+
+      expect(localDataSource.getTasks().first.isFromCache, isTrue);
+      expect(localDataSource.getInstances().first.isFromCache, isTrue);
+
+      // 2. Start sync service and populate Firestore
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc(cachedTask.id)
+          .set(cachedTask.toFirestore());
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc(cachedInstance.id)
+          .set(cachedInstance.toFirestore());
+
+      // Allow stream to process
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      // Local tasks and instances should now have isFromCache == false
+      final updatedTask = localDataSource.getTasks().firstWhere(
+        (t) => t.id == 'S-cached-1',
+      );
+      final updatedInstance = localDataSource.getInstances().firstWhere(
+        (i) => i.id == 'I-cached-1',
+      );
+
+      expect(updatedTask.isFromCache, isFalse);
+      expect(updatedInstance.isFromCache, isFalse);
+    },
+  );
 }
 
 class _FailingHiveLocalDataSource extends HiveLocalDataSource {
