@@ -7,6 +7,7 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:io';
@@ -1155,7 +1156,7 @@ void main() {
   );
 
   test(
-    'Remote snapshot marks local cached tasks and instances as isFromCache == false',
+    'Remote snapshot marks local cached tasks, instances, and recipes as isFromCache == false',
     () async {
       // 1. Prepopulate local data source with items loaded from cache
       final cachedTask = TaskSchedule(
@@ -1184,12 +1185,21 @@ void main() {
         isFromCache: true,
         updatedAt: DateTime(2026, 8, 20, 10, 0),
       );
+      final cachedRecipe = Recipe(
+        id: 'R-cached-1',
+        title: 'Cached Recipe',
+        description: 'Desc',
+        isFromCache: true,
+        updatedAt: DateTime(2026, 8, 20, 10, 0),
+      );
 
       await localDataSource.saveTask(cachedTask);
       await localDataSource.saveInstance(cachedInstance);
+      await localDataSource.saveRecipe(cachedRecipe);
 
       expect(localDataSource.getTasks().first.isFromCache, isTrue);
       expect(localDataSource.getInstances().first.isFromCache, isTrue);
+      expect(localDataSource.getRecipes().first.isFromCache, isTrue);
 
       // 2. Start sync service and populate Firestore
       final service = TaskSyncService(
@@ -1212,20 +1222,30 @@ void main() {
           .collection('instances')
           .doc(cachedInstance.id)
           .set(cachedInstance.toFirestore());
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('recipes')
+          .doc(cachedRecipe.id)
+          .set(cachedRecipe.toFirestore());
 
       // Allow stream to process
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
-      // Local tasks and instances should now have isFromCache == false
+      // Local tasks, instances, and recipes should now have isFromCache == false
       final updatedTask = localDataSource.getTasks().firstWhere(
         (t) => t.id == 'S-cached-1',
       );
       final updatedInstance = localDataSource.getInstances().firstWhere(
         (i) => i.id == 'I-cached-1',
       );
+      final updatedRecipe = localDataSource.getRecipes().firstWhere(
+        (r) => r.id == 'R-cached-1',
+      );
 
       expect(updatedTask.isFromCache, isFalse);
       expect(updatedInstance.isFromCache, isFalse);
+      expect(updatedRecipe.isFromCache, isFalse);
     },
   );
 }
