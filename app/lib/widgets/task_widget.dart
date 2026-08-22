@@ -432,12 +432,12 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
           sizeFactor: _sizeFactorAnimation,
           axis: Axis.vertical,
           alignment: Alignment.topCenter,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Stack(
-              children: [
-                if (_swipeProgress > 0.0 && _swipeDirection != null)
-                  Positioned.fill(
+          child: Stack(
+            children: [
+              if (_swipeProgress > 0.0 && _swipeDirection != null)
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
                     child: Card(
                       margin: const EdgeInsets.symmetric(
                         horizontal: 4.0,
@@ -463,92 +463,91 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                       ),
                     ),
                   ),
-                Dismissible(
-                  key: ValueKey(widget.instance.id),
-                  direction: (_isMouse || isWideScreen(context))
-                      ? DismissDirection.none
-                      : DismissDirection.horizontal,
-                  onUpdate: (details) {
-                    if (_swipeDirection != details.direction ||
-                        _swipeProgress != details.progress) {
+                ),
+              Dismissible(
+                key: ValueKey(widget.instance.id),
+                direction: (_isMouse || isWideScreen(context))
+                    ? DismissDirection.none
+                    : DismissDirection.horizontal,
+                onUpdate: (details) {
+                  if (_swipeDirection != details.direction ||
+                      _swipeProgress != details.progress) {
+                    setState(() {
+                      _swipeDirection = details.direction;
+                      _swipeProgress = details.progress;
+                    });
+                  }
+                },
+                onDismissed: (direction) async {
+                  setState(() {
+                    _isDismissed = true;
+                  });
+                  final repo = ref.read(taskRepositoryProvider)!;
+                  final notifier = ref.read(undoNotifierProvider.notifier);
+                  final instance = widget.instance;
+                  // Capture context-sensitive values before any async gap.
+                  final messenger = ScaffoldMessenger.of(context);
+                  final completeMsg = context.l10n.taskCompleted(
+                    instance.title,
+                  );
+                  final dismissMsg = context.l10n.taskDismissed(instance.title);
+                  final undoLabel = context.l10n.undoButton;
+                  final undoneLabel = context.l10n.taskRestored(instance.title);
+                  if (direction == DismissDirection.startToEnd) {
+                    final resolved = await repo.completeTaskInstance(
+                      instance.id,
+                    );
+                    UndoSnackBar.showWithMessenger(
+                      messenger: messenger,
+                      notifier: notifier,
+                      action: UndoResolveTaskInstanceAction(
+                        message: completeMsg,
+                        instance: resolved ?? instance,
+                      ),
+                      repository: repo,
+                      undoLabel: undoLabel,
+                      undoneLabel: undoneLabel,
+                    );
+                  } else if (direction == DismissDirection.endToStart) {
+                    final resolved = await repo.dismissTaskInstance(
+                      instance.id,
+                    );
+                    UndoSnackBar.showWithMessenger(
+                      messenger: messenger,
+                      notifier: notifier,
+                      action: UndoResolveTaskInstanceAction(
+                        message: dismissMsg,
+                        instance: resolved ?? instance,
+                      ),
+                      repository: repo,
+                      undoLabel: undoLabel,
+                      undoneLabel: undoneLabel,
+                    );
+                  }
+                },
+                child: Listener(
+                  onPointerHover: (event) {
+                    if (event.kind == PointerDeviceKind.mouse && !_isMouse) {
                       setState(() {
-                        _swipeDirection = details.direction;
-                        _swipeProgress = details.progress;
+                        _isMouse = true;
                       });
                     }
                   },
-                  onDismissed: (direction) async {
-                    setState(() {
-                      _isDismissed = true;
-                    });
-                    final repo = ref.read(taskRepositoryProvider)!;
-                    final notifier = ref.read(undoNotifierProvider.notifier);
-                    final instance = widget.instance;
-                    // Capture context-sensitive values before any async gap.
-                    final messenger = ScaffoldMessenger.of(context);
-                    final completeMsg = context.l10n.taskCompleted(
-                      instance.title,
-                    );
-                    final dismissMsg = context.l10n.taskDismissed(
-                      instance.title,
-                    );
-                    final undoLabel = context.l10n.undoButton;
-                    final undoneLabel = context.l10n.taskRestored(
-                      instance.title,
-                    );
-                    if (direction == DismissDirection.startToEnd) {
-                      final resolved = await repo.completeTaskInstance(
-                        instance.id,
-                      );
-                      UndoSnackBar.showWithMessenger(
-                        messenger: messenger,
-                        notifier: notifier,
-                        action: UndoResolveTaskInstanceAction(
-                          message: completeMsg,
-                          instance: resolved ?? instance,
-                        ),
-                        repository: repo,
-                        undoLabel: undoLabel,
-                        undoneLabel: undoneLabel,
-                      );
-                    } else if (direction == DismissDirection.endToStart) {
-                      final resolved = await repo.dismissTaskInstance(
-                        instance.id,
-                      );
-                      UndoSnackBar.showWithMessenger(
-                        messenger: messenger,
-                        notifier: notifier,
-                        action: UndoResolveTaskInstanceAction(
-                          message: dismissMsg,
-                          instance: resolved ?? instance,
-                        ),
-                        repository: repo,
-                        undoLabel: undoLabel,
-                        undoneLabel: undoneLabel,
-                      );
+                  onPointerDown: (event) {
+                    final isMouse = event.kind == PointerDeviceKind.mouse;
+                    if (isMouse != _isMouse) {
+                      setState(() {
+                        _isMouse = isMouse;
+                      });
                     }
                   },
-                  child: Listener(
-                    onPointerHover: (event) {
-                      if (event.kind == PointerDeviceKind.mouse && !_isMouse) {
-                        setState(() {
-                          _isMouse = true;
-                        });
-                      }
-                    },
-                    onPointerDown: (event) {
-                      final isMouse = event.kind == PointerDeviceKind.mouse;
-                      if (isMouse != _isMouse) {
-                        setState(() {
-                          _isMouse = isMouse;
-                        });
-                      }
-                    },
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
                     child: transformedChild,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
