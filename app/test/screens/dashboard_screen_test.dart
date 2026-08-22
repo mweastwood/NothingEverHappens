@@ -87,8 +87,8 @@ void main() {
     await tester.pumpWidget(createTestWidget());
     await tester.pumpAndSettle();
 
-    // Verify weekly capacity title
-    expect(find.text('Weekly Capacity Forecast'), findsOneWidget);
+    // Verify timeline title
+    expect(find.text('Activity & Capacity Timeline'), findsOneWidget);
 
     // Verify pencil button to edit default baseline is present
     expect(
@@ -597,12 +597,8 @@ void main() {
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
-      // Verify Personal History card is shown
-      expect(find.text('Your Past Week'), findsOneWidget);
-      expect(
-        find.text('Past 7 days activity & follow-through'),
-        findsOneWidget,
-      );
+      // Verify Activity & Capacity Timeline card is shown
+      expect(find.text('Activity & Capacity Timeline'), findsOneWidget);
 
       // Verify metrics: 2 completed, 1h 30m, 50% completion (2 / 4)
       expect(
@@ -632,7 +628,7 @@ void main() {
 
       // Verify standardized 3-letter day labels and legend
       expect(find.text('Wed'), findsWidgets);
-      expect(find.text('Skipped / Missed'), findsOneWidget);
+      expect(find.text('Workload'), findsOneWidget);
     },
   );
 
@@ -871,6 +867,8 @@ void main() {
       // Tap on Tuesday Jul 7 bar
       final bar = find.byKey(const Key('daily_activity_bar_2026-07-07'));
       expect(bar, findsOneWidget);
+      await tester.ensureVisible(bar);
+      await tester.pumpAndSettle();
       await tester.tap(bar);
       await tester.pumpAndSettle();
 

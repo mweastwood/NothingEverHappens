@@ -42,13 +42,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Weekly Capacity Forecast'), findsOneWidget);
-      expect(
-        find.text(
-          'Tap a bar to override capacity for that specific calendar day.',
-        ),
-        findsOneWidget,
-      );
+      expect(find.text('Activity & Capacity Timeline'), findsOneWidget);
 
       final editBtn = find.byKey(const Key('edit_default_capacity_button'));
       expect(editBtn, findsOneWidget);
