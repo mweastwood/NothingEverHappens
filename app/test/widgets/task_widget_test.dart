@@ -177,12 +177,15 @@ void main() {
   Widget createWidget(TaskSchedule task) {
     final instance = createInstanceFor(task);
     return buildTestableWidget(
-      child: Scaffold(
-        body: ProviderScope(
-          overrides: [
-            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
-          ],
-          child: TaskWidget(instance: instance, schedule: task),
+      child: MediaQuery(
+        data: const MediaQueryData(size: Size(400, 800)),
+        child: Scaffold(
+          body: ProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            ],
+            child: TaskWidget(instance: instance, schedule: task),
+          ),
         ),
       ),
     );
@@ -888,6 +891,40 @@ void main() {
     expect(find.byType(SnackBar), findsOneWidget);
     expect(find.text('Undo'), findsOneWidget);
   });
+
+  testWidgets(
+    'TaskWidget swipe dismiss smoothly collapses height to 0 with no residual padding',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(createWidget(testTask));
+
+      // Initial height includes card and bottom padding
+      final initialHeight = tester.getSize(find.byType(TaskWidget)).height;
+      expect(initialHeight, greaterThan(0));
+
+      // Fling to dismiss
+      await tester.fling(
+        find.text(testTask.title),
+        const Offset(-500.0, 0.0),
+        1000.0,
+      );
+
+      // Pump frames through the dismiss collapse animation
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+
+      // At the end of dismissal, widget size should be exactly 0 (SizedBox.shrink)
+      final finalSize = tester.getSize(find.byType(TaskWidget));
+      expect(finalSize.height, equals(0.0));
+      expect(finalSize.width, equals(0.0));
+    },
+  );
 
   testWidgets(
     'TaskWidget swipe RTL dismisses task instance and undo resolves it',

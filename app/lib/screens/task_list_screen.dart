@@ -240,21 +240,27 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               );
             }
           } else {
-            Widget buildTaskItem(TaskInstance inst) {
+            Widget buildTaskItem(TaskInstance inst, {required bool isWide}) {
               final matchingSchedules = schedules.where(
                 (s) => s.id == inst.scheduleId,
               );
               final sched = matchingSchedules.isEmpty
                   ? null
                   : matchingSchedules.first;
+              final taskWidget = TaskWidget(
+                key: ValueKey(inst.id),
+                instance: inst,
+                schedule: sched,
+              );
+
+              if (!isWide) {
+                return taskWidget;
+              }
+
               return SmoothShuffleItem(
                 key: ValueKey('shuffle_task_${inst.id}'),
                 id: 'task_${inst.id}',
-                child: TaskWidget(
-                  key: ValueKey(inst.id),
-                  instance: inst,
-                  schedule: sched,
-                ),
+                child: taskWidget,
               );
             }
 
@@ -275,7 +281,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                                   i < filteredInstances.length;
                                   i += 2
                                 )
-                                  buildTaskItem(filteredInstances[i]),
+                                  buildTaskItem(
+                                    filteredInstances[i],
+                                    isWide: true,
+                                  ),
                               ],
                             ),
                           ),
@@ -289,7 +298,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                                   i < filteredInstances.length;
                                   i += 2
                                 )
-                                  buildTaskItem(filteredInstances[i]),
+                                  buildTaskItem(
+                                    filteredInstances[i],
+                                    isWide: true,
+                                  ),
                               ],
                             ),
                           ),
@@ -299,7 +311,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                   : SliverList(
                       delegate: SliverChildBuilderDelegate((context, index) {
                         final inst = filteredInstances[index];
-                        return buildTaskItem(inst);
+                        return buildTaskItem(inst, isWide: false);
                       }, childCount: filteredInstances.length),
                     ),
             );

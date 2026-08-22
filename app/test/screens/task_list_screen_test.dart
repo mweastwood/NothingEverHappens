@@ -23,6 +23,7 @@ import 'package:nothing_ever_happens/main.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
+import 'package:nothing_ever_happens/widgets/smooth_shuffle_item.dart';
 import '../widgets/task_widget_robot.dart';
 
 @GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<TaskRepository>()])
@@ -2119,6 +2120,186 @@ void main() {
 
       await screenMatchesGolden(tester, 'task_list_screen_wide');
     });
+
+    testWidgets(
+      'TaskListScreen narrow screen does not wrap tasks with SmoothShuffleItem to prevent dismiss animation jank',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(400, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final task1 = TaskSchedule(
+          id: '1',
+          title: 'Task 1',
+          description: 'Desc 1',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2024, month: 1, day: 1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+        final task2 = TaskSchedule(
+          id: '2',
+          title: 'Task 2',
+          description: 'Desc 2',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2024, month: 1, day: 1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+        tasksSubject.add([task1, task2]);
+        instancesSubject.add([
+          TaskInstance(
+            id: 'I-1',
+            scheduleId: '1',
+            ruleId: task1.schedules.first.id,
+            title: 'Task 1',
+            description: 'Desc 1',
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+          TaskInstance(
+            id: 'I-2',
+            scheduleId: '2',
+            ruleId: task2.schedules.first.id,
+            title: 'Task 2',
+            description: 'Desc 2',
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+        ]);
+
+        await tester.pumpWidget(createScreen());
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SmoothShuffleItem), findsNothing);
+        expect(find.byType(TaskWidget), findsNWidgets(2));
+      },
+    );
+
+    testWidgets(
+      'TaskListScreen wide screen wraps tasks with SmoothShuffleItem for 2-column masonry animation',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(900, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final task1 = TaskSchedule(
+          id: '1',
+          title: 'Task 1',
+          description: 'Desc 1',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2024, month: 1, day: 1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+        final task2 = TaskSchedule(
+          id: '2',
+          title: 'Task 2',
+          description: 'Desc 2',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2024, month: 1, day: 1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+        tasksSubject.add([task1, task2]);
+        instancesSubject.add([
+          TaskInstance(
+            id: 'I-1',
+            scheduleId: '1',
+            ruleId: task1.schedules.first.id,
+            title: 'Task 1',
+            description: 'Desc 1',
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+          TaskInstance(
+            id: 'I-2',
+            scheduleId: '2',
+            ruleId: task2.schedules.first.id,
+            title: 'Task 2',
+            description: 'Desc 2',
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+        ]);
+
+        await tester.pumpWidget(createScreen());
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SmoothShuffleItem), findsNWidgets(2));
+        expect(find.byType(TaskWidget), findsNWidgets(2));
+      },
+    );
   });
 }
 
