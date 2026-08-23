@@ -16,6 +16,7 @@ class TestRepositoryScripts(unittest.TestCase):
         scripts = [
             "build_agent_container.sh",
             "run_agent_container.sh",
+            "run_webhook_listener.sh",
             "tag.sh",
         ]
         for script_name in scripts:
