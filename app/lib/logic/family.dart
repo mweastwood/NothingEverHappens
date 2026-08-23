@@ -38,20 +38,41 @@ class FamilyMember {
   final String displayName;
   final String email;
   final FamilyRole role;
+  final String? appVersion;
+  final String? platform;
+  final DateTime? lastSeenAt;
 
   const FamilyMember({
     required this.userId,
     required this.displayName,
     required this.email,
     required this.role,
+    this.appVersion,
+    this.platform,
+    this.lastSeenAt,
   });
 
   factory FamilyMember.fromJson(Map<String, dynamic> json) {
+    final lastSeenAtRaw = json['lastSeenAt'];
+    DateTime? lastSeenAt;
+    if (lastSeenAtRaw != null) {
+      if (lastSeenAtRaw is Timestamp) {
+        lastSeenAt = lastSeenAtRaw.toDate();
+      } else if (lastSeenAtRaw is String) {
+        lastSeenAt = DateTime.tryParse(lastSeenAtRaw);
+      } else if (lastSeenAtRaw is int) {
+        lastSeenAt = DateTime.fromMillisecondsSinceEpoch(lastSeenAtRaw);
+      }
+    }
+
     return FamilyMember(
       userId: json['userId'] as String? ?? '',
       displayName: json['displayName'] as String? ?? '',
       email: json['email'] as String? ?? '',
       role: FamilyRole.fromString(json['role'] as String? ?? 'non-parent'),
+      appVersion: json['appVersion'] as String?,
+      platform: json['platform'] as String?,
+      lastSeenAt: lastSeenAt,
     );
   }
 
@@ -61,7 +82,31 @@ class FamilyMember {
       'displayName': displayName,
       'email': email,
       'role': role.toJson(),
+      if (appVersion != null) 'appVersion': appVersion,
+      if (platform != null) 'platform': platform,
+      if (lastSeenAt != null)
+        'lastSeenAt': lastSeenAt!.toUtc().toIso8601String(),
     };
+  }
+
+  FamilyMember copyWith({
+    String? userId,
+    String? displayName,
+    String? email,
+    FamilyRole? role,
+    String? appVersion,
+    String? platform,
+    DateTime? lastSeenAt,
+  }) {
+    return FamilyMember(
+      userId: userId ?? this.userId,
+      displayName: displayName ?? this.displayName,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      appVersion: appVersion ?? this.appVersion,
+      platform: platform ?? this.platform,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+    );
   }
 }
 

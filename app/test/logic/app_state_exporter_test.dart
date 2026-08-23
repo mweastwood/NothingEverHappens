@@ -663,5 +663,71 @@ void main() {
       expect(logData['phoneNumber'], '+***');
       expect(logData['taskId'], 'T-100');
     });
+
+    test(
+      'exportStateRaw includes familyMemberProfiles with app versions',
+      () async {
+        final fakeFirestore = FakeFirebaseFirestore();
+        final mockAuth = MockAuthRepository(MockUser());
+
+        await fakeFirestore.collection('users').doc('user-123').set({
+          'familyId': 'fam-abc',
+          'displayName': 'Main User',
+          'email': 'main@example.com',
+          'appVersion': 'v1.2.3 (abc1234)',
+          'platform': 'android',
+        });
+
+        await fakeFirestore.collection('users').doc('user-partner').set({
+          'familyId': 'fam-abc',
+          'displayName': 'Partner User',
+          'email': 'partner@example.com',
+          'appVersion': 'v1.1.0 (oldhash)',
+          'platform': 'ios',
+        });
+
+        await fakeFirestore.collection('families').doc('fam-abc').set({
+          'name': 'Our Family',
+          'members': {
+            'user-123': {
+              'userId': 'user-123',
+              'displayName': 'Main User',
+              'email': 'main@example.com',
+              'role': 'parent',
+              'appVersion': 'v1.2.3 (abc1234)',
+              'platform': 'android',
+            },
+            'user-partner': {
+              'userId': 'user-partner',
+              'displayName': 'Partner User',
+              'email': 'partner@example.com',
+              'role': 'parent',
+              'appVersion': 'v1.1.0 (oldhash)',
+              'platform': 'ios',
+            },
+          },
+        });
+
+        final exporter = AppStateExporter(
+          firestore: fakeFirestore,
+          authRepository: mockAuth,
+          hiveDataSource: localDataSource,
+        );
+
+        final rawState = await exporter.exportStateRaw();
+        final remote = rawState['remoteFirebaseState'] as Map<String, dynamic>;
+        expect(remote.containsKey('familyDoc'), isTrue);
+        expect(remote.containsKey('familyMemberProfiles'), isTrue);
+
+        final memberProfiles =
+            remote['familyMemberProfiles'] as Map<String, dynamic>;
+        expect(memberProfiles.containsKey('user-partner'), isTrue);
+        expect(
+          memberProfiles['user-partner']['appVersion'],
+          'v1.1.0 (oldhash)',
+        );
+        expect(memberProfiles['user-partner']['platform'], 'ios');
+      },
+    );
   });
 }

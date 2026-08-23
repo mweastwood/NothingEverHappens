@@ -304,9 +304,11 @@ class FamilyRepository {
             batch.update(familyRef, {
               'members.${nextParent.userId}.role': FamilyRole.parent.toJson(),
             });
-            batch.set(_firestore.collection('users').doc(nextParent.userId), {
-              'familyRole': FamilyRole.parent.toJson(),
-            }, SetOptions(merge: true));
+            batch.set(
+              _firestore.collection('users').doc(nextParent.userId),
+              {'familyRole': FamilyRole.parent.toJson()},
+              SetOptions(merge: true),
+            );
           }
         }
       }
@@ -317,6 +319,29 @@ class FamilyRepository {
       'familyRole': FieldValue.delete(),
     }, SetOptions(merge: true));
 
+    await batch.commit();
+  }
+
+  Future<void> updateClientMetadata({
+    String? familyId,
+    required String appVersion,
+    required String platform,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final batch = _firestore.batch();
+    batch.set(_firestore.collection('users').doc(_userId), {
+      'appVersion': appVersion,
+      'platform': platform,
+      'lastSeenAt': now.toIso8601String(),
+    }, SetOptions(merge: true));
+
+    if (familyId != null && familyId.isNotEmpty) {
+      batch.update(_firestore.collection('families').doc(familyId), {
+        'members.$_userId.appVersion': appVersion,
+        'members.$_userId.platform': platform,
+        'members.$_userId.lastSeenAt': now.toIso8601String(),
+      });
+    }
     await batch.commit();
   }
 }

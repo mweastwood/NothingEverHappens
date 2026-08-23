@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -9,6 +10,7 @@ import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
+import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
@@ -141,6 +143,8 @@ class TaskSyncService {
       'Starting remote listeners for tasks, instances and recipes',
       data: {'userId': _userId},
     );
+
+    _updateClientMetadata();
 
     _userDocSub = _firestore
         .collection('users')
@@ -430,12 +434,40 @@ class TaskSyncService {
             (isFamily ? localInst.isFamily : !localInst.isFamily)) {
           toDelete.add(docId);
           localMap.remove(docId);
+          logger?.info(
+            'sync',
+            'Remote instance removed: $docId',
+            data: {'instanceId': docId, 'isFamily': isFamily},
+          );
         }
       } else if (change.type == DocumentChangeType.added ||
           change.type == DocumentChangeType.modified) {
         if (change.doc.data() != null) {
           final remoteInst = TaskInstance.fromFirestore(change.doc);
           final localInst = localMap[remoteInst.id];
+
+          final oldStatus = localInst?.status.name;
+          final newStatus = remoteInst.status.name;
+          final statusChanged = localInst != null && oldStatus != newStatus;
+
+          logger?.info(
+            'sync',
+            'Remote instance ${change.type == DocumentChangeType.added ? "added" : "modified"}: "${remoteInst.title}" (${remoteInst.scheduledDate})',
+            data: {
+              'instanceId': remoteInst.id,
+              'scheduleId': remoteInst.scheduleId,
+              'date': remoteInst.scheduledDate.toString(),
+              if (statusChanged) 'statusChange': '$oldStatus -> $newStatus',
+              'status': newStatus,
+              if (remoteInst.statusReason != null)
+                'statusReason': remoteInst.statusReason,
+              if (remoteInst.lastModifiedByUserId != null)
+                'modifiedByUserId': remoteInst.lastModifiedByUserId,
+              if (remoteInst.lastModifiedByAppVersion != null)
+                'modifiedByAppVersion': remoteInst.lastModifiedByAppVersion,
+              'isFamily': isFamily,
+            },
+          );
 
           if (localInst != null) {
             if (localInst.updatedAt.isAfter(remoteInst.updatedAt)) {
@@ -752,6 +784,35 @@ class TaskSyncService {
         (localCurrent.hasPendingWrites || localCurrent.isFromCache)) {
       await _localDataSource.saveInstance(
         localCurrent.copyWith(hasPendingWrites: false, isFromCache: false),
+      );
+    }
+  }
+
+  Future<void> _updateClientMetadata() async {
+    try {
+      final now = DateTime.now().toUtc();
+      final batch = _firestore.batch();
+      batch.set(_firestore.collection('users').doc(_userId), {
+        'appVersion': AppVersion.display,
+        'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
+        'lastSeenAt': now.toIso8601String(),
+      }, SetOptions(merge: true));
+
+      if (_familyId != null && _familyId!.isNotEmpty) {
+        batch.update(_firestore.collection('families').doc(_familyId), {
+          'members.$_userId.appVersion': AppVersion.display,
+          'members.$_userId.platform': kIsWeb
+              ? 'web'
+              : defaultTargetPlatform.name,
+          'members.$_userId.lastSeenAt': now.toIso8601String(),
+        });
+      }
+      await batch.commit();
+    } catch (e) {
+      logger?.debug(
+        'sync',
+        'Failed to update client metadata in Firestore',
+        error: e,
       );
     }
   }

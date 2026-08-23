@@ -2931,5 +2931,202 @@ void main() {
         },
       );
     });
+
+    group('Telemetry & StatusReason Attributions', () {
+      test('sets statusReason and appVersion on preferOlder skips', () {
+        final task = TestTaskFactory.createDaily(
+          id: 'task-prefer-older',
+          title: 'Clean Kitchen',
+          description: 'Daily chore',
+          startDate: today.addDays(-1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          missedOccurrencePolicy: const MissedOccurrencePolicy(
+            policy: MissedPolicy.preferOlder,
+          ),
+        );
+
+        final yesterdayInst = TaskInstance(
+          id: 'inst-yesterday',
+          scheduleId: task.id,
+          ruleId: task.schedules.first.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: today.addDays(-1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final todayInst = TaskInstance(
+          id: 'inst-today',
+          scheduleId: task.id,
+          ruleId: task.schedules.first.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: today,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final action = const SchedulerEngine().evaluate(
+          task,
+          [yesterdayInst, todayInst],
+          now,
+          userId: 'user-123',
+        );
+
+        final updatedToday = action.instancesToUpdate.firstWhere(
+          (x) => x.id == 'inst-today',
+        );
+        expect(updatedToday.status, TaskStatus.skipped);
+        expect(updatedToday.statusReason, 'scheduler_prefer_older');
+        expect(updatedToday.lastModifiedByUserId, 'user-123');
+        expect(updatedToday.lastModifiedByAppVersion, isNotNull);
+      });
+
+      test('sets statusReason and appVersion on preferNewer skips', () {
+        final task = TestTaskFactory.createDaily(
+          id: 'task-prefer-newer',
+          title: 'Daily Checkin',
+          description: 'Daily',
+          startDate: today.addDays(-1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          missedOccurrencePolicy: const MissedOccurrencePolicy(
+            policy: MissedPolicy.preferNewer,
+          ),
+        );
+
+        final yesterdayInst = TaskInstance(
+          id: 'inst-yesterday',
+          scheduleId: task.id,
+          ruleId: task.schedules.first.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: today.addDays(-1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final todayInst = TaskInstance(
+          id: 'inst-today',
+          scheduleId: task.id,
+          ruleId: task.schedules.first.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: today,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final action = const SchedulerEngine().evaluate(
+          task,
+          [yesterdayInst, todayInst],
+          now,
+          userId: 'user-123',
+        );
+
+        final updatedYesterday = action.instancesToUpdate.firstWhere(
+          (x) => x.id == 'inst-yesterday',
+        );
+        expect(updatedYesterday.status, TaskStatus.skipped);
+        expect(updatedYesterday.statusReason, 'scheduler_prefer_newer');
+        expect(updatedYesterday.lastModifiedByUserId, 'user-123');
+        expect(updatedYesterday.lastModifiedByAppVersion, isNotNull);
+      });
+
+      test('sets statusReason and appVersion on autoDismiss skips', () {
+        final task = TestTaskFactory.createDaily(
+          id: 'task-autodismiss',
+          title: 'Daily Trash',
+          description: 'Daily',
+          startDate: today.addDays(-2),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+            gracePeriod: Duration(hours: 12),
+          ),
+        );
+
+        final oldInst = TaskInstance(
+          id: 'inst-old',
+          scheduleId: task.id,
+          ruleId: task.schedules.first.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: today.addDays(-2),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final action = const SchedulerEngine().evaluate(
+          task,
+          [oldInst],
+          now,
+          userId: 'user-456',
+        );
+
+        final updatedOld = action.instancesToUpdate.firstWhere(
+          (x) => x.id == 'inst-old',
+        );
+        expect(updatedOld.status, TaskStatus.skipped);
+        expect(updatedOld.statusReason, 'scheduler_auto_dismiss');
+        expect(updatedOld.lastModifiedByUserId, 'user-456');
+        expect(updatedOld.lastModifiedByAppVersion, isNotNull);
+      });
+    });
   });
 }
