@@ -17,6 +17,7 @@ import 'task_repository.dart';
 import 'task_schedule.dart';
 import 'task_spawner_engine.dart';
 import 'user_settings.dart';
+import 'utils/app_version.dart';
 
 class FirestoreTaskRepository implements TaskRepository {
   /// Cache duration for family ID to avoid excessive DB reads.
@@ -667,7 +668,7 @@ class FirestoreTaskRepository implements TaskRepository {
           _spawnedInstancesCache.remove(k);
         }
 
-        final action = const SchedulerEngine().evaluate(
+        final action = SchedulerEngine(logger: logger).evaluate(
           task,
           taskInstances,
           now,
@@ -675,6 +676,7 @@ class FirestoreTaskRepository implements TaskRepository {
           dayPlannedHours: dayPlannedHours,
           applyCapacityLimits:
               task.assignedUserId == null || task.assignedUserId == _userId,
+          userId: _userId,
         );
 
         for (final inst in action.instancesToUpdate) {
@@ -1082,6 +1084,9 @@ class FirestoreTaskRepository implements TaskRepository {
           status: TaskStatus.completed,
           completedByUserId: _userId,
           completedAt: now,
+          statusReason: 'user_completed',
+          lastModifiedByUserId: _userId,
+          lastModifiedByAppVersion: AppVersion.display,
           completedByUserIds: updatedCompletedByUserIds,
         );
         batch.set(
@@ -1127,6 +1132,9 @@ class FirestoreTaskRepository implements TaskRepository {
       status: TaskStatus.completed,
       completedByUserId: _userId,
       completedAt: now,
+      statusReason: 'user_completed',
+      lastModifiedByUserId: _userId,
+      lastModifiedByAppVersion: AppVersion.display,
     );
     batch.set(_instanceRefFor(completedInstance, familyId), completedInstance);
     _spawnedInstancesCache.remove(
@@ -1186,6 +1194,9 @@ class FirestoreTaskRepository implements TaskRepository {
       status: TaskStatus.skipped,
       completedByUserId: _userId,
       completedAt: now,
+      statusReason: 'user_dismissed',
+      lastModifiedByUserId: _userId,
+      lastModifiedByAppVersion: AppVersion.display,
     );
     batch.set(_instanceRefFor(dismissedInstance, familyId), dismissedInstance);
     _spawnedInstancesCache.remove(

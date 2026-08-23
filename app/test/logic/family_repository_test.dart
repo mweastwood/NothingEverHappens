@@ -629,5 +629,73 @@ void main() {
         expect(userDoc.data()?['familyRole'], 'parent');
       },
     );
+
+    test('FamilyMember handles appVersion, platform, and lastSeenAt', () {
+      final now = DateTime.utc(2026, 8, 22, 12, 0);
+      final member = FamilyMember(
+        userId: 'u1',
+        displayName: 'Alice',
+        email: 'alice@example.com',
+        role: FamilyRole.parent,
+        appVersion: 'v1.2.3 (abc1234)',
+        platform: 'android',
+        lastSeenAt: now,
+      );
+
+      final json = member.toJson();
+      expect(json['appVersion'], 'v1.2.3 (abc1234)');
+      expect(json['platform'], 'android');
+      expect(json['lastSeenAt'], now.toIso8601String());
+
+      final deserialized = FamilyMember.fromJson(json);
+      expect(deserialized.appVersion, 'v1.2.3 (abc1234)');
+      expect(deserialized.platform, 'android');
+      expect(deserialized.lastSeenAt, now);
+
+      final copied = deserialized.copyWith(
+        appVersion: 'v1.2.4',
+        platform: 'ios',
+      );
+      expect(copied.appVersion, 'v1.2.4');
+      expect(copied.platform, 'ios');
+    });
+
+    test(
+      'updateClientMetadata updates both user document and family member record',
+      () async {
+        await firestore.collection('families').doc('fam-1').set({
+          'name': 'The Simpsons',
+          'members': {
+            'user-1': {
+              'userId': 'user-1',
+              'displayName': 'Alice',
+              'email': 'alice@example.com',
+              'role': 'parent',
+            },
+          },
+        });
+
+        await repository.updateClientMetadata(
+          familyId: 'fam-1',
+          appVersion: 'v2.0.1 (def5678)',
+          platform: 'android',
+        );
+
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        expect(userDoc.data()?['appVersion'], 'v2.0.1 (def5678)');
+        expect(userDoc.data()?['platform'], 'android');
+        expect(userDoc.data()?['lastSeenAt'], isNotNull);
+
+        final familyDoc = await firestore
+            .collection('families')
+            .doc('fam-1')
+            .get();
+        final member =
+            familyDoc.data()?['members']['user-1'] as Map<String, dynamic>;
+        expect(member['appVersion'], 'v2.0.1 (def5678)');
+        expect(member['platform'], 'android');
+        expect(member['lastSeenAt'], isNotNull);
+      },
+    );
   });
 }

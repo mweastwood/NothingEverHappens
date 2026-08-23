@@ -33,6 +33,9 @@ class TaskInstance {
   final DateTime? completedAt;
   final TaskStatus status;
   final WorkflowInstancePayload? workflowPayload;
+  final String? lastModifiedByUserId;
+  final String? lastModifiedByAppVersion;
+  final String? statusReason;
 
   /// Whether this instance document has pending local writes that have not yet synced to Firestore server.
   final bool hasPendingWrites;
@@ -63,6 +66,9 @@ class TaskInstance {
     this.completedAt,
     this.status = TaskStatus.pending,
     this.workflowPayload,
+    this.lastModifiedByUserId,
+    this.lastModifiedByAppVersion,
+    this.statusReason,
     this.hasPendingWrites = false,
     this.isFromCache = false,
     DateTime? updatedAt,
@@ -187,6 +193,11 @@ class TaskInstance {
           )
         : null;
 
+    final lastModifiedByUserId = data['lastModifiedByUserId'] as String?;
+    final lastModifiedByAppVersion =
+        data['lastModifiedByAppVersion'] as String?;
+    final statusReason = data['statusReason'] as String?;
+
     return TaskInstance(
       id: snapshot.id,
       scheduleId: scheduleId,
@@ -207,6 +218,9 @@ class TaskInstance {
       completedAt: completedAt,
       status: status,
       workflowPayload: workflowPayload,
+      lastModifiedByUserId: lastModifiedByUserId,
+      lastModifiedByAppVersion: lastModifiedByAppVersion,
+      statusReason: statusReason,
       hasPendingWrites: snapshot.metadata.hasPendingWrites,
       isFromCache: snapshot.metadata.isFromCache,
       updatedAt: updatedAt,
@@ -236,6 +250,11 @@ class TaskInstance {
         'completedByUserIds': completedByUserIds,
       if (completedAt != null) 'completedAt': completedAt,
       if (workflowPayload != null) 'workflowPayload': workflowPayload!.toJson(),
+      if (lastModifiedByUserId != null)
+        'lastModifiedByUserId': lastModifiedByUserId,
+      if (lastModifiedByAppVersion != null)
+        'lastModifiedByAppVersion': lastModifiedByAppVersion,
+      if (statusReason != null) 'statusReason': statusReason,
       'status': status.toJson(),
       'updatedAt': updatedAt,
     };
@@ -265,6 +284,12 @@ class TaskInstance {
     TaskStatus? status,
     WorkflowInstancePayload? workflowPayload,
     bool clearWorkflowPayload = false,
+    String? lastModifiedByUserId,
+    bool clearLastModifiedByUserId = false,
+    String? lastModifiedByAppVersion,
+    bool clearLastModifiedByAppVersion = false,
+    String? statusReason,
+    bool clearStatusReason = false,
     bool? hasPendingWrites,
     bool? isFromCache,
     DateTime? updatedAt,
@@ -299,6 +324,15 @@ class TaskInstance {
       workflowPayload: clearWorkflowPayload
           ? null
           : (workflowPayload ?? this.workflowPayload),
+      lastModifiedByUserId: clearLastModifiedByUserId
+          ? null
+          : (lastModifiedByUserId ?? this.lastModifiedByUserId),
+      lastModifiedByAppVersion: clearLastModifiedByAppVersion
+          ? null
+          : (lastModifiedByAppVersion ?? this.lastModifiedByAppVersion),
+      statusReason: clearStatusReason
+          ? null
+          : (statusReason ?? this.statusReason),
       hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
       isFromCache: isFromCache ?? this.isFromCache,
       updatedAt: updatedAt ?? this.updatedAt,

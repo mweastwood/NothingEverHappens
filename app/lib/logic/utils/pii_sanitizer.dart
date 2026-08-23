@@ -84,7 +84,15 @@ class PiiSanitizer {
         lowerKey == 'uid' ||
         lowerKey == 'uids' ||
         lowerKey == 'role' ||
-        lowerKey == 'status') {
+        lowerKey == 'status' ||
+        lowerKey == 'appversion' ||
+        lowerKey == 'app_version' ||
+        lowerKey == 'platform' ||
+        lowerKey == 'lastseenat' ||
+        lowerKey == 'last_seen_at' ||
+        lowerKey == 'version' ||
+        lowerKey == 'statusreason' ||
+        lowerKey == 'status_reason') {
       return true;
     }
     if (lowerKey.endsWith('_id') ||

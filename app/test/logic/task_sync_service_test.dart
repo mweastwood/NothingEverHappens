@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/task_sync_service.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
@@ -1246,6 +1247,44 @@ void main() {
       expect(updatedTask.isFromCache, isFalse);
       expect(updatedInstance.isFromCache, isFalse);
       expect(updatedRecipe.isFromCache, isFalse);
+    },
+  );
+
+  test(
+    'updates family member client metadata when familyId is resolved via user doc stream',
+    () async {
+      await firestore.collection('families').doc('fam-123').set({
+        'name': 'The Smiths',
+        'members': {
+          'user1': {'role': 'member'},
+        },
+      });
+
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam-123',
+      }, SetOptions(merge: true));
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      final familyDoc = await firestore
+          .collection('families')
+          .doc('fam-123')
+          .get();
+      final memberData =
+          familyDoc.data()?['members']?['user1'] as Map<String, dynamic>?;
+
+      expect(memberData, isNotNull);
+      expect(memberData?['appVersion'], isNotNull);
+      expect(memberData?['platform'], isNotNull);
+      expect(memberData?['lastSeenAt'], isNotNull);
     },
   );
 }

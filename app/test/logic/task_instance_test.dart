@@ -443,5 +443,58 @@ void main() {
       final cleared = updated.copyWith(clearCompletedByUserIds: true);
       expect(cleared.completedByUserIds, isEmpty);
     });
+
+    test('serializes and deserializes telemetry/attribution fields', () async {
+      final firestore = FakeFirebaseFirestore();
+      final ref = firestore.collection('instances').doc('inst-telemetry');
+
+      final instance = TaskInstance(
+        id: 'inst-telemetry',
+        scheduleId: 's-100',
+        ruleId: 'r-100',
+        title: 'Attributed Task',
+        description: 'Testing telemetry fields',
+        scheduledDate: testDate,
+        startRelativeTime: testStart,
+        dueRelativeTime: testDue,
+        status: TaskStatus.skipped,
+        statusReason: 'scheduler_prefer_older',
+        lastModifiedByUserId: 'user-telemetry-1',
+        lastModifiedByAppVersion: 'v1.2.3 (abc1234)',
+      );
+
+      final data = instance.toFirestore();
+      expect(data['statusReason'], 'scheduler_prefer_older');
+      expect(data['lastModifiedByUserId'], 'user-telemetry-1');
+      expect(data['lastModifiedByAppVersion'], 'v1.2.3 (abc1234)');
+
+      await ref.set(data);
+      final snapshot = await ref.get();
+      final loaded = TaskInstance.fromFirestore(snapshot);
+
+      expect(loaded.id, 'inst-telemetry');
+      expect(loaded.status, TaskStatus.skipped);
+      expect(loaded.statusReason, 'scheduler_prefer_older');
+      expect(loaded.lastModifiedByUserId, 'user-telemetry-1');
+      expect(loaded.lastModifiedByAppVersion, 'v1.2.3 (abc1234)');
+
+      final modified = loaded.copyWith(
+        statusReason: 'user_dismissed',
+        lastModifiedByUserId: 'user-telemetry-2',
+        lastModifiedByAppVersion: 'v1.2.4',
+      );
+      expect(modified.statusReason, 'user_dismissed');
+      expect(modified.lastModifiedByUserId, 'user-telemetry-2');
+      expect(modified.lastModifiedByAppVersion, 'v1.2.4');
+
+      final cleared = modified.copyWith(
+        clearStatusReason: true,
+        clearLastModifiedByUserId: true,
+        clearLastModifiedByAppVersion: true,
+      );
+      expect(cleared.statusReason, isNull);
+      expect(cleared.lastModifiedByUserId, isNull);
+      expect(cleared.lastModifiedByAppVersion, isNull);
+    });
   });
 }

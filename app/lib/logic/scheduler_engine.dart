@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'app_logger.dart';
 import 'civil_day.dart';
 import 'task_schedule.dart';
 import 'task_instance.dart';
 import 'relative_time.dart';
 import 'user_settings.dart';
+import 'utils/app_version.dart';
 
 class SchedulerAction {
   final List<TaskInstance> instancesToUpdate;
@@ -31,6 +33,7 @@ class SchedulerEvaluationContext {
   final Map<CivilDay, double>? dayPlannedHours;
   final bool applyCapacityLimits;
   final int? futureInstancesCount;
+  final String? userId;
 
   const SchedulerEvaluationContext({
     required this.task,
@@ -41,6 +44,7 @@ class SchedulerEvaluationContext {
     this.dayPlannedHours,
     this.applyCapacityLimits = true,
     this.futureInstancesCount,
+    this.userId,
   });
 }
 
@@ -55,7 +59,9 @@ class SchedulerEngine {
   static const double minutesPerHour = 60.0;
 
   final String Function() generateId;
-  const SchedulerEngine({String Function()? generateId})
+  final AppLogger? logger;
+
+  const SchedulerEngine({String Function()? generateId, this.logger})
     : generateId = generateId ?? TaskInstance.generateId;
 
   SchedulerAction evaluate(
@@ -66,6 +72,7 @@ class SchedulerEngine {
     UserSettings? userSettings,
     Map<CivilDay, double>? dayPlannedHours,
     bool applyCapacityLimits = true,
+    String? userId,
   }) {
     final today = CivilDay.fromDateTime(now);
     final context = SchedulerEvaluationContext(
@@ -77,6 +84,7 @@ class SchedulerEngine {
       dayPlannedHours: dayPlannedHours,
       applyCapacityLimits: applyCapacityLimits,
       futureInstancesCount: futureInstancesCount,
+      userId: userId,
     );
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
@@ -474,9 +482,21 @@ class SchedulerEngine {
                   ? TaskStatus.skipped
                   : TaskStatus.pending;
               if (inst.status != nextStatus) {
-                workingInstances[date] = inst.copyWith(status: nextStatus);
+                workingInstances[date] = inst.copyWith(
+                  status: nextStatus,
+                  statusReason: nextStatus == TaskStatus.skipped
+                      ? 'scheduler_auto_dismiss'
+                      : null,
+                  clearStatusReason: nextStatus != TaskStatus.skipped,
+                  lastModifiedByAppVersion: AppVersion.display,
+                  lastModifiedByUserId: context.userId,
+                );
                 if (nextStatus == TaskStatus.skipped) {
                   hasNewSkipped = true;
+                  logger?.debug(
+                    'scheduler',
+                    'autoDismiss: expired instance skipped for "${task.title}" ($date)',
+                  );
                 }
               }
             }
@@ -510,9 +530,21 @@ class SchedulerEngine {
                 nextStatus = TaskStatus.skipped;
               }
               if (inst.status != nextStatus) {
-                workingInstances[date] = inst.copyWith(status: nextStatus);
+                workingInstances[date] = inst.copyWith(
+                  status: nextStatus,
+                  statusReason: nextStatus == TaskStatus.skipped
+                      ? 'scheduler_prefer_newer'
+                      : null,
+                  clearStatusReason: nextStatus != TaskStatus.skipped,
+                  lastModifiedByAppVersion: AppVersion.display,
+                  lastModifiedByUserId: context.userId,
+                );
                 if (nextStatus == TaskStatus.skipped) {
                   hasNewSkipped = true;
+                  logger?.debug(
+                    'scheduler',
+                    'preferNewer: older instance skipped for "${task.title}" ($date in favor of $latestStartedDate)',
+                  );
                 }
               }
             }
@@ -547,9 +579,21 @@ class SchedulerEngine {
                 nextStatus = TaskStatus.pending;
               }
               if (inst.status != nextStatus) {
-                workingInstances[date] = inst.copyWith(status: nextStatus);
+                workingInstances[date] = inst.copyWith(
+                  status: nextStatus,
+                  statusReason: nextStatus == TaskStatus.skipped
+                      ? 'scheduler_prefer_older'
+                      : null,
+                  clearStatusReason: nextStatus != TaskStatus.skipped,
+                  lastModifiedByAppVersion: AppVersion.display,
+                  lastModifiedByUserId: context.userId,
+                );
                 if (nextStatus == TaskStatus.skipped) {
                   hasNewSkipped = true;
+                  logger?.debug(
+                    'scheduler',
+                    'preferOlder: subsequent instance skipped for "${task.title}" ($date, keeping $earliestStartedDate active)',
+                  );
                 }
               }
             }
@@ -698,16 +742,33 @@ class SchedulerEngine {
                 } else {
                   finalToUpdate[idx] = finalToUpdate[idx].copyWith(
                     status: TaskStatus.skipped,
+                    statusReason: 'scheduler_capacity_limit',
+                    lastModifiedByAppVersion: AppVersion.display,
+                    lastModifiedByUserId: context.userId,
                   );
                 }
               } else {
-                finalToUpdate.add(inst.copyWith(status: TaskStatus.skipped));
+                finalToUpdate.add(
+                  inst.copyWith(
+                    status: TaskStatus.skipped,
+                    statusReason: 'scheduler_capacity_limit',
+                    lastModifiedByAppVersion: AppVersion.display,
+                    lastModifiedByUserId: context.userId,
+                  ),
+                );
               }
             }
           } else {
             if (effectiveStatus == TaskStatus.skipped) {
               if (!isMarkedForUpdate) {
-                finalToUpdate.add(inst.copyWith(status: TaskStatus.pending));
+                finalToUpdate.add(
+                  inst.copyWith(
+                    status: TaskStatus.pending,
+                    clearStatusReason: true,
+                    lastModifiedByAppVersion: AppVersion.display,
+                    lastModifiedByUserId: context.userId,
+                  ),
+                );
                 tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
               }
             } else if (effectiveStatus == TaskStatus.pending) {
@@ -729,7 +790,14 @@ class SchedulerEngine {
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
           if (capacity - planned < taskDuration) {
-            finalToSpawn.add(inst.copyWith(status: TaskStatus.skipped));
+            finalToSpawn.add(
+              inst.copyWith(
+                status: TaskStatus.skipped,
+                statusReason: 'scheduler_capacity_limit',
+                lastModifiedByAppVersion: AppVersion.display,
+                lastModifiedByUserId: context.userId,
+              ),
+            );
           } else {
             finalToSpawn.add(inst);
             tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
@@ -754,7 +822,12 @@ class SchedulerEngine {
           final planned = tempPlannedHours[inst.scheduledDate] ?? 0.0;
 
           if (capacity - planned < taskDuration) {
-            finalToUpdate[i] = inst.copyWith(status: TaskStatus.skipped);
+            finalToUpdate[i] = inst.copyWith(
+              status: TaskStatus.skipped,
+              statusReason: 'scheduler_capacity_limit',
+              lastModifiedByAppVersion: AppVersion.display,
+              lastModifiedByUserId: context.userId,
+            );
           } else {
             tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
           }

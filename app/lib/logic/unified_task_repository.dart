@@ -16,6 +16,7 @@ import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
+import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 
 class UnifiedTaskRepository implements TaskRepository {
   final HiveLocalDataSource _localDataSource;
@@ -365,6 +366,9 @@ class UnifiedTaskRepository implements TaskRepository {
       status: TaskStatus.completed,
       completedByUserId: userId,
       completedAt: AppClock.now,
+      statusReason: 'user_completed',
+      lastModifiedByUserId: userId,
+      lastModifiedByAppVersion: AppVersion.display,
       hasPendingWrites: true,
       updatedAt: DateTime.now(),
     );
@@ -421,6 +425,9 @@ class UnifiedTaskRepository implements TaskRepository {
       status: TaskStatus.skipped,
       completedByUserId: userId,
       completedAt: AppClock.now,
+      statusReason: 'user_dismissed',
+      lastModifiedByUserId: userId,
+      lastModifiedByAppVersion: AppVersion.display,
       hasPendingWrites: true,
       updatedAt: DateTime.now(),
     );
@@ -640,7 +647,7 @@ class UnifiedTaskRepository implements TaskRepository {
     for (final task in tasksToEvaluate) {
       final taskInstances = instancesByScheduleId[task.id] ?? [];
 
-      final action = const SchedulerEngine().evaluate(
+      final action = SchedulerEngine(logger: logger).evaluate(
         task,
         taskInstances,
         now,
@@ -648,6 +655,7 @@ class UnifiedTaskRepository implements TaskRepository {
         dayPlannedHours: dayPlannedHours,
         applyCapacityLimits:
             task.assignedUserId == null || task.assignedUserId == userId,
+        userId: userId,
       );
 
       for (final inst in action.instancesToUpdate) {

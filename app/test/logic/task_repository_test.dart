@@ -3293,6 +3293,104 @@ void main() {
           expect(instAfterUndo.completedByUserIds, [user2]);
         },
       );
+
+      test(
+        'scheduler evaluation populates lastModifiedByUserId with userId in FirestoreTaskRepository',
+        () async {
+          final mockNow = DateTime(2026, 6, 19, 10, 0);
+          AppClock.setMockTime(mockNow);
+          addTearDown(AppClock.reset);
+
+          final firestore = FakeFirebaseFirestore();
+          const userId = 'test-user-id';
+          final repository = FirestoreTaskRepository(
+            firestore: firestore,
+            userId: userId,
+          );
+
+          final today = CivilDay.fromDateTime(mockNow);
+          final yesterday = today.addDays(-1);
+
+          final task = TestTaskFactory.createDaily(
+            id: 'task-eval-user-attribution',
+            title: 'Daily Task',
+            description: 'Daily Task Desc',
+            startDate: yesterday,
+            missedOccurrencePolicy: const MissedOccurrencePolicy(
+              policy: MissedPolicy.preferOlder,
+            ),
+          );
+
+          await firestore
+              .collection('users')
+              .doc(userId)
+              .collection('tasks')
+              .doc(task.id)
+              .set(task.toFirestore());
+
+          final yesterdayInst = TaskInstance(
+            id: 'inst-yesterday-attr',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: yesterday,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+            updatedAt: mockNow,
+          );
+          final todayInst = TaskInstance(
+            id: 'inst-today-attr',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+            updatedAt: mockNow,
+          );
+
+          await firestore
+              .collection('users')
+              .doc(userId)
+              .collection('instances')
+              .doc(yesterdayInst.id)
+              .set(yesterdayInst.toFirestore());
+          await firestore
+              .collection('users')
+              .doc(userId)
+              .collection('instances')
+              .doc(todayInst.id)
+              .set(todayInst.toFirestore());
+
+          await repository.triggerMissedPolicyProcessing();
+
+          final updatedDoc = await firestore
+              .collection('users')
+              .doc(userId)
+              .collection('instances')
+              .doc(todayInst.id)
+              .get();
+          final updatedInst = TaskInstance.fromFirestore(updatedDoc);
+          expect(updatedInst.status, TaskStatus.skipped);
+          expect(updatedInst.lastModifiedByUserId, userId);
+        },
+      );
     });
   });
 }

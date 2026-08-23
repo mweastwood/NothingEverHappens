@@ -246,10 +246,35 @@ class AppStateExporter {
                 timeout: const Duration(seconds: 5),
               );
               if (familySnap.exists && familySnap.data() != null) {
+                final familyData = familySnap.data()!;
                 remoteFirebaseState['familyDoc'] = {
                   'id': familySnap.id,
-                  ...familySnap.data()!,
+                  ...familyData,
                 };
+
+                final membersMap =
+                    familyData['members'] as Map<String, dynamic>?;
+                if (membersMap != null && membersMap.isNotEmpty) {
+                  final memberProfiles = <String, dynamic>{};
+                  for (final memberUid in membersMap.keys) {
+                    try {
+                      final memberDocSnap = await _firestore
+                          .collection('users')
+                          .doc(memberUid)
+                          .safeGet(timeout: const Duration(seconds: 5));
+                      if (memberDocSnap.exists &&
+                          memberDocSnap.data() != null) {
+                        memberProfiles[memberUid] = memberDocSnap.data();
+                      }
+                    } catch (e) {
+                      errors.add('memberProfileDoc ($memberUid): $e');
+                    }
+                  }
+                  if (memberProfiles.isNotEmpty) {
+                    remoteFirebaseState['familyMemberProfiles'] =
+                        memberProfiles;
+                  }
+                }
               }
             } catch (e) {
               if (isNetworkOrTimeoutError(e)) {
