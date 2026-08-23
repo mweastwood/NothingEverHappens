@@ -70,3 +70,19 @@ jobs:
 
       - name: Run security rules tests
         run: npm test
+
+  test-scripts:
+    name: Script Tests (Python)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Python unit tests
+        run: python3 -m unittest discover -s bin -p "test_*.py"
+
