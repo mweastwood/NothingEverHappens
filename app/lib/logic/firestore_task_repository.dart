@@ -668,7 +668,7 @@ class FirestoreTaskRepository implements TaskRepository {
           _spawnedInstancesCache.remove(k);
         }
 
-        final action = const SchedulerEngine().evaluate(
+        final action = SchedulerEngine(logger: logger).evaluate(
           task,
           taskInstances,
           now,
@@ -676,6 +676,7 @@ class FirestoreTaskRepository implements TaskRepository {
           dayPlannedHours: dayPlannedHours,
           applyCapacityLimits:
               task.assignedUserId == null || task.assignedUserId == _userId,
+          userId: _userId,
         );
 
         for (final inst in action.instancesToUpdate) {

@@ -160,6 +160,7 @@ class TaskSyncService {
               _familyRecipesSub?.cancel();
               if (_familyId != null && _familyId!.isNotEmpty) {
                 _startListeningToFamilyRemote(_familyId!);
+                _updateClientMetadata();
               }
             }
           },
