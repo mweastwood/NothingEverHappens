@@ -86,6 +86,14 @@ class TaskInstance {
     return status == TaskStatus.completed;
   }
 
+  /// Whether this task was completed after its due date and time.
+  bool get isCompletedOverdue {
+    if (status != TaskStatus.completed) return false;
+    if (completedAt == null) return false;
+    final dueDateTime = dueRelativeTime.referenceTo(scheduledDate);
+    return completedAt!.isAfter(dueDateTime);
+  }
+
   factory TaskInstance.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot, [
     SnapshotOptions? options,

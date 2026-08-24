@@ -247,7 +247,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          'Past 6 Days',
+                          'Past',
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
@@ -285,7 +285,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                     children: [
                       Flexible(
                         child: Text(
-                          'Next 6 Days',
+                          'Next',
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
@@ -583,7 +583,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                       isOverCapacity,
                       isOverridden,
                     ),
-                    if (barHeight > 0)
+                    if (barHeight > 0 && !isPast)
                       IgnorePointer(
                         child: Container(
                           height: barHeight,

@@ -118,18 +118,36 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
                   : ListView(
                       shrinkWrap: true,
                       children: [
-                        if (dayData.completedTasks.isNotEmpty) ...[
+                        if (dayData.completedOnTimeTasks.isNotEmpty) ...[
                           _buildSectionHeader(
                             context,
                             'Completed',
-                            dayData.completedTasks.length,
+                            dayData.completedOnTimeTasks.length,
                             Colors.green,
                           ),
-                          ...dayData.completedTasks.map(
+                          ...dayData.completedOnTimeTasks.map(
                             (task) => _buildTaskTile(
                               context,
                               task,
                               status: TaskStatus.completed,
+                              isOverdue: false,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (dayData.completedOverdueTasks.isNotEmpty) ...[
+                          _buildSectionHeader(
+                            context,
+                            'Completed Overdue',
+                            dayData.completedOverdueTasks.length,
+                            Colors.amber.shade800,
+                          ),
+                          ...dayData.completedOverdueTasks.map(
+                            (task) => _buildTaskTile(
+                              context,
+                              task,
+                              status: TaskStatus.completed,
+                              isOverdue: true,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -153,7 +171,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
                         if (dayData.missedTasks.isNotEmpty) ...[
                           _buildSectionHeader(
                             context,
-                            'Missed / Overdue',
+                            'Missed',
                             dayData.missedTasks.length,
                             theme.colorScheme.error,
                           ),
@@ -180,13 +198,27 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final chips = <Widget>[];
 
-    if (dayData.completedCount > 0) {
+    final onTimeCount = dayData.completedOnTimeCount;
+    final overdueCount = dayData.completedOverdueCount;
+
+    if (onTimeCount > 0) {
       chips.add(
         _buildChip(
           context,
           icon: Icons.check_circle_outline,
-          label: '${dayData.completedCount} completed',
+          label: '$onTimeCount completed',
           color: Colors.green,
+        ),
+      );
+    }
+
+    if (overdueCount > 0) {
+      chips.add(
+        _buildChip(
+          context,
+          icon: Icons.warning_amber_rounded,
+          label: '$overdueCount overdue',
+          color: Colors.amber.shade800,
         ),
       );
     }
@@ -295,6 +327,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     BuildContext context,
     TaskInstance task, {
     required TaskStatus status,
+    bool isOverdue = false,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -303,23 +336,24 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     final Color iconColor;
     final String tagLabel;
 
-    switch (status) {
-      case TaskStatus.completed:
+    if (status == TaskStatus.completed) {
+      if (isOverdue) {
+        icon = Icons.warning_amber_rounded;
+        iconColor = isDark ? Colors.amber.shade300 : Colors.amber.shade800;
+        tagLabel = 'Overdue';
+      } else {
         icon = Icons.check_circle;
         iconColor = isDark ? Colors.green.shade300 : Colors.green.shade700;
         tagLabel = 'Completed';
-        break;
-      case TaskStatus.skipped:
-        icon = Icons.remove_circle_outline;
-        iconColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
-        tagLabel = 'Skipped';
-        break;
-      case TaskStatus.failed:
-      case TaskStatus.pending:
-        icon = Icons.cancel_outlined;
-        iconColor = theme.colorScheme.error;
-        tagLabel = 'Missed';
-        break;
+      }
+    } else if (status == TaskStatus.skipped) {
+      icon = Icons.remove_circle_outline;
+      iconColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+      tagLabel = 'Skipped';
+    } else {
+      icon = Icons.cancel_outlined;
+      iconColor = theme.colorScheme.error;
+      tagLabel = 'Missed';
     }
 
     final subtitleParts = <String>[];
