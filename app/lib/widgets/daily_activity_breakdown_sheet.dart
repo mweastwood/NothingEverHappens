@@ -152,11 +152,14 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                         ],
-                        if (dayData.skippedTasks.isNotEmpty) ...[
+                        if ((dayData.skippedTasks.length +
+                                dayData.missedTasks.length) >
+                            0) ...[
                           _buildSectionHeader(
                             context,
                             'Skipped',
-                            dayData.skippedTasks.length,
+                            dayData.skippedTasks.length +
+                                dayData.missedTasks.length,
                             theme.colorScheme.onSurfaceVariant,
                           ),
                           ...dayData.skippedTasks.map(
@@ -166,24 +169,14 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
                               status: TaskStatus.skipped,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                        ],
-                        if (dayData.missedTasks.isNotEmpty) ...[
-                          _buildSectionHeader(
-                            context,
-                            'Missed',
-                            dayData.missedTasks.length,
-                            theme.colorScheme.error,
-                          ),
                           ...dayData.missedTasks.map(
                             (task) => _buildTaskTile(
                               context,
                               task,
-                              status: task.status == TaskStatus.failed
-                                  ? TaskStatus.failed
-                                  : TaskStatus.pending,
+                              status: TaskStatus.skipped,
                             ),
                           ),
+                          const SizedBox(height: 12),
                         ],
                       ],
                     ),
@@ -200,6 +193,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
 
     final onTimeCount = dayData.completedOnTimeCount;
     final overdueCount = dayData.completedOverdueCount;
+    final totalSkippedCount = dayData.skippedCount + dayData.missedCount;
 
     if (onTimeCount > 0) {
       chips.add(
@@ -223,12 +217,12 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       );
     }
 
-    if (dayData.skippedCount > 0) {
+    if (totalSkippedCount > 0) {
       chips.add(
         _buildChip(
           context,
           icon: Icons.remove_circle_outline,
-          label: '${dayData.skippedCount} skipped',
+          label: '$totalSkippedCount skipped',
           color: theme.colorScheme.onSurfaceVariant,
         ),
       );
@@ -337,7 +331,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     final String tagLabel;
 
     if (status == TaskStatus.completed) {
-      if (isOverdue) {
+      if (isOverdue || task.isCompletedOverdue) {
         icon = Icons.warning_amber_rounded;
         iconColor = isDark ? Colors.amber.shade300 : Colors.amber.shade800;
         tagLabel = 'Overdue';
@@ -356,14 +350,12 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       tagLabel = 'Missed';
     }
 
-    final subtitleParts = <String>[];
-    if (task.description.isNotEmpty) {
-      subtitleParts.add(task.description);
-    }
+    String? completionTimeStr;
     if (task.completedAt != null) {
-      final hour = task.completedAt!.hour.toString().padLeft(2, '0');
-      final minute = task.completedAt!.minute.toString().padLeft(2, '0');
-      subtitleParts.add('Completed at $hour:$minute');
+      final dt = task.completedAt!;
+      final hour = dt.hour.toString().padLeft(2, '0');
+      final minute = dt.minute.toString().padLeft(2, '0');
+      completionTimeStr = '$hour:$minute';
     }
 
     return Container(
@@ -381,31 +373,27 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, size: 20, color: iconColor),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task.title.isEmpty ? 'Untitled Task' : task.title,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (subtitleParts.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitleParts.join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
+            child: Text(
+              task.title.isEmpty ? 'Untitled Task' : task.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
+          if (completionTimeStr != null) ...[
+            const SizedBox(width: 8),
+            Text(
+              completionTimeStr,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(

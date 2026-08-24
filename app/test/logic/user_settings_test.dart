@@ -266,8 +266,13 @@ void main() {
       repository = UserSettingsRepository(
         firestore: firestore,
         userId: userId,
+        isActivePremium: true,
         localDataSource: localDataSource,
       );
+    });
+
+    tearDown(() {
+      repository.dispose();
     });
 
     test(
@@ -355,6 +360,30 @@ void main() {
         );
 
         expect(fakeCrashlytics.isEnabled, isFalse);
+      },
+    );
+
+    test(
+      'remote Firestore settings snapshot updates local Hive storage when subscribed',
+      () async {
+        await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('settings')
+            .doc('agile')
+            .set({
+              'hoursAvailable': 6.0,
+              'defaultDailyCapacity': {'1': 4.0, '2': 5.0},
+              'dailyCapacityOverrides': {'2026-07-10': 3.0},
+            });
+
+        // Give stream a microtask cycle to propagate
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        final current = localDataSource.getSettings();
+        expect(current.hoursAvailable, 6.0);
+        expect(current.defaultDailyCapacity, {'1': 4.0, '2': 5.0});
+        expect(current.dailyCapacityOverrides, {'2026-07-10': 3.0});
       },
     );
   });

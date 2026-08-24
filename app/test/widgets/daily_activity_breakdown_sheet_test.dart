@@ -158,34 +158,34 @@ void main() {
         // Metric chips
         expect(find.text('2 completed'), findsOneWidget);
         expect(find.text('1 overdue'), findsOneWidget);
-        expect(find.text('1 skipped'), findsOneWidget);
-        expect(find.text('1 missed'), findsOneWidget);
+        expect(find.text('2 skipped'), findsOneWidget);
         expect(find.text('3h'), findsOneWidget);
 
         // Section headers
         expect(find.text('Completed (2)'), findsOneWidget);
         expect(find.text('Completed Overdue (1)'), findsOneWidget);
-        expect(find.text('Skipped (1)'), findsOneWidget);
-        expect(find.text('Missed (1)'), findsOneWidget);
+        expect(find.text('Skipped (2)'), findsOneWidget);
 
-        // Task tiles
+        // Single-line task tiles (no descriptions shown)
         expect(find.text('Clean the kitchen'), findsOneWidget);
-        expect(
-          find.text('Wash dishes and wipe counters · Completed at 14:30'),
-          findsOneWidget,
-        );
+        expect(find.text('14:30'), findsOneWidget);
+        expect(find.text('Wash dishes and wipe counters'), findsNothing);
+
         expect(find.text('Water plants'), findsOneWidget);
+
         expect(find.text('Take medication'), findsOneWidget);
-        expect(find.text('Evening dose · Completed at 19:00'), findsOneWidget);
+        expect(find.text('19:00'), findsOneWidget);
+        expect(find.text('Evening dose'), findsNothing);
+
         expect(find.text('Vacuum living room'), findsOneWidget);
-        expect(find.text('Carpet in hallway and living room'), findsOneWidget);
+        expect(find.text('Carpet in hallway and living room'), findsNothing);
+
         expect(find.text('Take out recycling'), findsOneWidget);
 
         // Status tags
         expect(find.text('Completed'), findsNWidgets(2));
         expect(find.text('Overdue'), findsOneWidget);
-        expect(find.text('Skipped'), findsOneWidget);
-        expect(find.text('Missed'), findsOneWidget);
+        expect(find.text('Skipped'), findsNWidgets(2));
       },
     );
 
