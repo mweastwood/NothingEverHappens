@@ -23,6 +23,19 @@ class DailyCapacityData {
 
   double get completedHours => completedMinutes / 60.0;
   double get plannedHours => plannedMinutes / 60.0;
+
+  double get completedOnTimeHours {
+    if (statsData != null &&
+        (statsData!.completedOnTimeHours > 0 ||
+            statsData!.completedOverdueHours > 0)) {
+      return statsData!.completedOnTimeHours;
+    }
+    return completedHours;
+  }
+
+  double get completedOverdueHours => statsData?.completedOverdueHours ?? 0.0;
+  double get skippedHours => statsData?.skippedHours ?? 0.0;
+  double get missedHours => statsData?.missedHours ?? 0.0;
 }
 
 class WeeklyCapacityChart extends StatefulWidget {
@@ -122,61 +135,6 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
     return '$startMonth ${start.day} – $endMonth ${end.day}';
   }
 
-  String _buildCalloutText(int skipped, int missed) {
-    final parts = <String>[];
-    if (skipped > 0) {
-      parts.add('$skipped skipped');
-    }
-    if (missed > 0) {
-      parts.add('$missed missed/overdue');
-    }
-    return parts.join(' · ');
-  }
-
-  Widget _buildMetricTile(
-    BuildContext context, {
-    required Key key,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color iconColor,
-  }) {
-    final theme = Theme.of(context);
-    return Container(
-      key: key,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 18, color: iconColor),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            subtitle,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -197,9 +155,10 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
           data.date.month == today.month &&
           data.date.year == today.year;
 
+      final historyWork = completedHours + data.skippedHours;
       final totalWork = isToday
-          ? (completedHours + plannedHours)
-          : (isPast ? completedHours : plannedHours);
+          ? (completedHours + plannedHours + data.skippedHours)
+          : (isPast ? historyWork : plannedHours);
 
       if (capacityHours > peakValue) peakValue = capacityHours;
       if (totalWork > peakValue) peakValue = totalWork;
@@ -212,11 +171,6 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
             widget.daysData.last.date,
           )
         : '';
-
-    final stats = widget.stats;
-    final ratePercent = stats != null
-        ? (stats.completionRate * 100).round()
-        : 0;
 
     return Card(
       elevation: 2,
@@ -245,7 +199,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Activity & Capacity Timeline',
+                              'Personal Timeline',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -254,15 +208,15 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        dateRangeStr.isNotEmpty
-                            ? '$dateRangeStr · 6 days history + Today + 6 days forecast'
-                            : '6 days history + Today + 6 days forecast',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                      if (dateRangeStr.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          dateRangeStr,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -275,86 +229,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
               ],
             ),
 
-            // Optional KPI Metrics from Past Week
-            if (stats != null) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMetricTile(
-                      context,
-                      key: const Key('personal_stats_completed_tile'),
-                      title: '${stats.completedCount}',
-                      subtitle: 'Completed',
-                      icon: Icons.check_circle_outline,
-                      iconColor: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildMetricTile(
-                      context,
-                      key: const Key('personal_stats_time_tile'),
-                      title: formatDurationHours(stats.completedHours),
-                      subtitle: 'Time Spent',
-                      icon: Icons.schedule,
-                      iconColor: theme.colorScheme.secondary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildMetricTile(
-                      context,
-                      key: const Key('personal_stats_rate_tile'),
-                      title: '$ratePercent%',
-                      subtitle: 'Completion',
-                      icon: Icons.track_changes,
-                      iconColor: ratePercent >= 80
-                          ? Colors.green
-                          : theme.colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-              if (stats.skippedCount > 0 || stats.missedCount > 0) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(
-                      alpha: 0.6,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _buildCalloutText(
-                            stats.skippedCount,
-                            stats.missedCount,
-                          ),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Timeline Guide (Past 6 Days / Today / Next 6 Days)
             Row(
@@ -503,7 +378,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                       fontSize: 11,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Container(
                     width: 14,
                     height: 10,
@@ -514,13 +389,56 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Workload',
+                    'Completed / Workload',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       fontSize: 11,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 14,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade700,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Overdue',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: SizedBox(
+                      width: 14,
+                      height: 10,
+                      child: CustomPaint(
+                        painter: HatchedPatternPainter(
+                          backgroundColor: theme.colorScheme.error.withValues(
+                            alpha: 0.15,
+                          ),
+                          stripeColor: theme.colorScheme.error,
+                          stripeWidth: 1.5,
+                          gap: 2.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Skipped',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Container(
                     width: 14,
                     height: 10,
@@ -577,9 +495,6 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
     final double barHeight = capacity > 0
         ? (capacity / scaleMax * 120.0).clamp(8.0, 120.0)
         : 0.0;
-    final double fillHeight = workHours > 0
-        ? (workHours / scaleMax * 120.0).clamp(8.0, 120.0)
-        : 0.0;
 
     final List<String> weekdays = [
       'Mon',
@@ -603,6 +518,11 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
         widget.onDayActivityTap != null &&
         data.statsData != null &&
         (isPast || hasRecordedTasks);
+
+    // History is labeled with time spent only, without capacity label
+    final String topLabel = isPast
+        ? formatDurationHours(data.completedHours)
+        : _formatForecastLabel(workHours: workHours, capacityHours: capacity);
 
     return GestureDetector(
       key: Key('capacity_bar_$dateStr'),
@@ -636,10 +556,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    _formatForecastLabel(
-                      workHours: workHours,
-                      capacityHours: capacity,
-                    ),
+                    topLabel,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontSize: 9,
@@ -657,38 +574,15 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                 child: Stack(
                   alignment: Alignment.bottomCenter,
                   children: [
-                    if (fillHeight > 0)
-                      Container(
-                        height: fillHeight,
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isOverCapacity
-                                ? [
-                                    theme.colorScheme.error,
-                                    theme.colorScheme.error.withValues(
-                                      alpha: 0.7,
-                                    ),
-                                  ]
-                                : isOverridden
-                                ? [
-                                    theme.colorScheme.tertiary,
-                                    theme.colorScheme.tertiary.withValues(
-                                      alpha: 0.7,
-                                    ),
-                                  ]
-                                : [
-                                    theme.colorScheme.primary,
-                                    theme.colorScheme.primary.withValues(
-                                      alpha: 0.7,
-                                    ),
-                                  ],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
+                    _buildBarFill(
+                      context,
+                      data,
+                      scaleMax,
+                      isPast,
+                      isToday,
+                      isOverCapacity,
+                      isOverridden,
+                    ),
                     if (barHeight > 0)
                       IgnorePointer(
                         child: Container(
@@ -736,6 +630,286 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
         ),
       ),
     );
+  }
+
+  Widget _buildBarFill(
+    BuildContext context,
+    DailyCapacityData data,
+    double scaleMax,
+    bool isPast,
+    bool isToday,
+    bool isOverCapacity,
+    bool isOverridden,
+  ) {
+    final theme = Theme.of(context);
+
+    if (isPast) {
+      double onTimeHours = data.completedOnTimeHours;
+      double overdueHours = data.completedOverdueHours;
+      double skippedHours = data.skippedHours;
+
+      if (onTimeHours == 0 &&
+          overdueHours == 0 &&
+          skippedHours == 0 &&
+          data.statsData != null) {
+        if (data.statsData!.completedCount > 0) {
+          onTimeHours = 0.25;
+        }
+        if (data.statsData!.skippedCount > 0) {
+          skippedHours = 0.25;
+        }
+      }
+
+      final totalActivity = onTimeHours + overdueHours + skippedHours;
+      if (totalActivity <= 0) return const SizedBox.shrink();
+
+      final double fillHeight = (totalActivity / scaleMax * 120.0).clamp(
+        8.0,
+        120.0,
+      );
+
+      return Container(
+        height: fillHeight,
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Column(
+            children: [
+              if (skippedHours > 0)
+                Expanded(
+                  flex: (skippedHours * 1000).round().clamp(1, 1000000),
+                  child: CustomPaint(
+                    painter: HatchedPatternPainter(
+                      backgroundColor: theme.colorScheme.error.withValues(
+                        alpha: 0.15,
+                      ),
+                      stripeColor: theme.colorScheme.error,
+                      stripeWidth: 2.0,
+                      gap: 3.0,
+                    ),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              if (overdueHours > 0)
+                Expanded(
+                  flex: (overdueHours * 1000).round().clamp(1, 1000000),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.amber.shade700, Colors.amber.shade600],
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                      ),
+                    ),
+                  ),
+                ),
+              if (onTimeHours > 0)
+                Expanded(
+                  flex: (onTimeHours * 1000).round().clamp(1, 1000000),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          theme.colorScheme.primary,
+                          theme.colorScheme.primary.withValues(alpha: 0.7),
+                        ],
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (isToday &&
+        data.statsData != null &&
+        (data.completedHours > 0 || data.skippedHours > 0)) {
+      double onTimeHours = data.completedOnTimeHours;
+      double overdueHours = data.completedOverdueHours;
+      double skippedHours = data.skippedHours;
+      double plannedHours = data.plannedHours;
+
+      final totalActivity =
+          onTimeHours + overdueHours + skippedHours + plannedHours;
+      if (totalActivity <= 0) return const SizedBox.shrink();
+
+      final double fillHeight = (totalActivity / scaleMax * 120.0).clamp(
+        8.0,
+        120.0,
+      );
+
+      return Container(
+        height: fillHeight,
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Column(
+            children: [
+              if (plannedHours > 0)
+                Expanded(
+                  flex: (plannedHours * 1000).round().clamp(1, 1000000),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isOverCapacity
+                            ? [
+                                theme.colorScheme.error,
+                                theme.colorScheme.error.withValues(alpha: 0.7),
+                              ]
+                            : isOverridden
+                            ? [
+                                theme.colorScheme.tertiary,
+                                theme.colorScheme.tertiary.withValues(
+                                  alpha: 0.7,
+                                ),
+                              ]
+                            : [
+                                theme.colorScheme.primary,
+                                theme.colorScheme.primary.withValues(
+                                  alpha: 0.7,
+                                ),
+                              ],
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                      ),
+                    ),
+                  ),
+                ),
+              if (skippedHours > 0)
+                Expanded(
+                  flex: (skippedHours * 1000).round().clamp(1, 1000000),
+                  child: CustomPaint(
+                    painter: HatchedPatternPainter(
+                      backgroundColor: theme.colorScheme.error.withValues(
+                        alpha: 0.15,
+                      ),
+                      stripeColor: theme.colorScheme.error,
+                      stripeWidth: 2.0,
+                      gap: 3.0,
+                    ),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              if (overdueHours > 0)
+                Expanded(
+                  flex: (overdueHours * 1000).round().clamp(1, 1000000),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.amber.shade700, Colors.amber.shade600],
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                      ),
+                    ),
+                  ),
+                ),
+              if (onTimeHours > 0)
+                Expanded(
+                  flex: (onTimeHours * 1000).round().clamp(1, 1000000),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          theme.colorScheme.primary,
+                          theme.colorScheme.primary.withValues(alpha: 0.7),
+                        ],
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Future / standard planned workload
+    final double workHours = isToday
+        ? (data.completedHours + data.plannedHours)
+        : data.plannedHours;
+
+    final double fillHeight = workHours > 0
+        ? (workHours / scaleMax * 120.0).clamp(8.0, 120.0)
+        : 0.0;
+
+    if (fillHeight <= 0) return const SizedBox.shrink();
+
+    return Container(
+      height: fillHeight,
+      margin: const EdgeInsets.symmetric(horizontal: 3),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isOverCapacity
+              ? [
+                  theme.colorScheme.error,
+                  theme.colorScheme.error.withValues(alpha: 0.7),
+                ]
+              : isOverridden
+              ? [
+                  theme.colorScheme.tertiary,
+                  theme.colorScheme.tertiary.withValues(alpha: 0.7),
+                ]
+              : [
+                  theme.colorScheme.primary,
+                  theme.colorScheme.primary.withValues(alpha: 0.7),
+                ],
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+        ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+    );
+  }
+}
+
+class HatchedPatternPainter extends CustomPainter {
+  final Color backgroundColor;
+  final Color stripeColor;
+  final double stripeWidth;
+  final double gap;
+
+  const HatchedPatternPainter({
+    required this.backgroundColor,
+    required this.stripeColor,
+    this.stripeWidth = 2.0,
+    this.gap = 3.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+
+    final bgPaint = Paint()..color = backgroundColor;
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    final stripePaint = Paint()
+      ..color = stripeColor
+      ..strokeWidth = stripeWidth
+      ..style = PaintingStyle.stroke;
+
+    final step = stripeWidth + gap;
+    final total = size.width + size.height;
+    for (double offset = -size.height; offset < total; offset += step) {
+      canvas.drawLine(
+        Offset(offset, size.height),
+        Offset(offset + size.height, 0),
+        stripePaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant HatchedPatternPainter oldDelegate) {
+    return oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.stripeColor != stripeColor ||
+        oldDelegate.stripeWidth != stripeWidth ||
+        oldDelegate.gap != gap;
   }
 }
 

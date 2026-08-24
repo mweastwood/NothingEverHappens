@@ -88,7 +88,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify timeline title
-    expect(find.text('Activity & Capacity Timeline'), findsOneWidget);
+    expect(find.text('Personal Timeline'), findsOneWidget);
 
     // Verify pencil button to edit default baseline is present
     expect(
@@ -597,38 +597,17 @@ void main() {
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
-      // Verify Activity & Capacity Timeline card is shown
-      expect(find.text('Activity & Capacity Timeline'), findsOneWidget);
-
-      // Verify metrics: 2 completed, 1h 30m, 50% completion (2 / 4)
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('personal_stats_completed_tile')),
-          matching: find.text('2'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('personal_stats_time_tile')),
-          matching: find.text('1h 30m'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('personal_stats_rate_tile')),
-          matching: find.text('50%'),
-        ),
-        findsOneWidget,
-      );
-
-      // Verify callout for skipped and missed
-      expect(find.text('1 skipped · 1 missed/overdue'), findsOneWidget);
+      // Verify Personal Timeline card is shown
+      expect(find.text('Personal Timeline'), findsOneWidget);
 
       // Verify standardized 3-letter day labels and legend
       expect(find.text('Wed'), findsWidgets);
-      expect(find.text('Workload'), findsOneWidget);
+      expect(find.text('Completed / Workload'), findsOneWidget);
+      expect(find.text('Overdue'), findsOneWidget);
+      expect(find.text('Skipped'), findsOneWidget);
+
+      // Verify Sunday (2026-07-05, history): Dishes completed (60m) - time spent only, without /8h capacity
+      expect(find.text('1h'), findsWidgets);
     },
   );
 

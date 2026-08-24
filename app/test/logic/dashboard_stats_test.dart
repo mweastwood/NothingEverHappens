@@ -170,6 +170,8 @@ void main() {
         );
         expect(day10.completedTasks.length, 1);
         expect(day10.completedTasks.first.id, 'i-1');
+        expect(day10.completedOnTimeHours, 1.0);
+        expect(day10.completedOverdueHours, 0.0);
         expect(day10.skippedTasks, isEmpty);
         expect(day10.missedTasks, isEmpty);
 
@@ -179,6 +181,7 @@ void main() {
         expect(day8.completedTasks, isEmpty);
         expect(day8.skippedTasks.length, 1);
         expect(day8.skippedTasks.first.id, 'i-4');
+        expect(day8.skippedHours, 1.0);
         expect(day8.missedTasks, isEmpty);
 
         final day6 = stats.dailyStats.firstWhere(
@@ -188,6 +191,89 @@ void main() {
         expect(day6.skippedTasks, isEmpty);
         expect(day6.missedTasks.length, 1);
         expect(day6.missedTasks.first.id, 'i-5');
+        expect(day6.missedHours, 0.5);
+      },
+    );
+
+    testWidgets(
+      'correctly separates completed on-time tasks from completed overdue tasks',
+      (tester) async {
+        final schedule = TaskSchedule(
+          id: 's-1',
+          title: 'Timed Task',
+          description: 'Desc',
+          estimatedDuration: const Duration(minutes: 60),
+          schedules: [],
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          schedule,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          // On-time: scheduled 2026-07-09, due at 17:00, completed at 16:00
+          TaskInstance(
+            id: 'i-ontime',
+            scheduleId: schedule.id,
+            ruleId: 'r-1',
+            title: 'On Time',
+            description: 'Desc',
+            scheduledDate: CivilDay(year: 2026, month: 7, day: 9),
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 9, 16, 0),
+            completedByUserId: 'user-alice',
+          ),
+          // Overdue: scheduled 2026-07-09, due at 17:00, completed at 18:30
+          TaskInstance(
+            id: 'i-overdue',
+            scheduleId: schedule.id,
+            ruleId: 'r-1',
+            title: 'Overdue',
+            description: 'Desc',
+            scheduledDate: CivilDay(year: 2026, month: 7, day: 9),
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 9, 18, 30),
+            completedByUserId: 'user-alice',
+          ),
+        ]);
+        final authSubject = BehaviorSubject<User?>.seeded(MockUser());
+
+        addTearDown(() {
+          tasksSubject.close();
+          instancesSubject.close();
+          authSubject.close();
+        });
+
+        late PersonalLastWeekStats stats;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authStateProvider.overrideWith((ref) => authSubject.stream),
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                stats = ref.watch(personalLastWeekStatsProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final day9 = stats.dailyStats.firstWhere(
+          (d) => d.day == CivilDay(year: 2026, month: 7, day: 9),
+        );
+        expect(day9.completedCount, 2);
+        expect(day9.completedHours, 2.0);
+        expect(day9.completedOnTimeHours, 1.0);
+        expect(day9.completedOverdueHours, 1.0);
       },
     );
   });
