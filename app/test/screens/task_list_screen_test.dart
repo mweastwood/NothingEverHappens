@@ -2212,7 +2212,7 @@ void main() {
     );
 
     testWidgets(
-      'TaskListScreen wide screen wraps tasks with SmoothShuffleItem for 2-column masonry animation',
+      'TaskListScreen wide screen does not wrap tasks with SmoothShuffleItem to avoid jank',
       (WidgetTester tester) async {
         tester.view.physicalSize = const Size(900, 800);
         tester.view.devicePixelRatio = 1.0;
@@ -2296,8 +2296,150 @@ void main() {
         await tester.pumpWidget(createScreen());
         await tester.pumpAndSettle();
 
-        expect(find.byType(SmoothShuffleItem), findsNWidgets(2));
+        expect(find.byType(SmoothShuffleItem), findsNothing);
         expect(find.byType(TaskWidget), findsNWidgets(2));
+      },
+    );
+
+    testWidgets(
+      'TaskListScreen wide screen column-affinity maintains column placement when tasks are removed',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(900, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final task1 = TaskSchedule(
+          id: '1',
+          title: 'Task 1',
+          description: 'Desc 1',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2024, month: 1, day: 1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+        final task2 = TaskSchedule(
+          id: '2',
+          title: 'Task 2',
+          description: 'Desc 2',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2024, month: 1, day: 1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+        final task3 = TaskSchedule(
+          id: '3',
+          title: 'Task 3',
+          description: 'Desc 3',
+          schedules: [
+            OneOffSchedule(
+              date: const CivilDay(year: 2024, month: 1, day: 1),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+            ),
+          ],
+        );
+
+        final inst1 = TaskInstance(
+          id: 'I-1',
+          scheduleId: '1',
+          ruleId: task1.schedules.first.id,
+          title: 'Task 1',
+          description: 'Desc 1',
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+        final inst2 = TaskInstance(
+          id: 'I-2',
+          scheduleId: '2',
+          ruleId: task2.schedules.first.id,
+          title: 'Task 2',
+          description: 'Desc 2',
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+        final inst3 = TaskInstance(
+          id: 'I-3',
+          scheduleId: '3',
+          ruleId: task3.schedules.first.id,
+          title: 'Task 3',
+          description: 'Desc 3',
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        );
+
+        tasksSubject.add([task1, task2, task3]);
+        instancesSubject.add([inst1, inst2, inst3]);
+
+        await tester.pumpWidget(createScreen());
+        await tester.pumpAndSettle();
+
+        final rect1 = tester.getRect(find.text('Task 1'));
+        final rect2 = tester.getRect(find.text('Task 2'));
+        final rect3 = tester.getRect(find.text('Task 3'));
+
+        // Initially: Left column has Task 1 and Task 3; Right column has Task 2
+        expect(rect1.left, equals(rect3.left));
+        expect(rect2.left, greaterThan(rect1.left));
+
+        // Remove Task 1 (simulating completion/dismissal)
+        instancesSubject.add([inst2, inst3]);
+        await tester.pumpAndSettle();
+
+        final rect2After = tester.getRect(find.text('Task 2'));
+        final rect3After = tester.getRect(find.text('Task 3'));
+
+        // Column affinity ensures Task 3 stays in Left column and Task 2 stays in Right column
+        expect(rect3After.left, equals(rect1.left));
+        expect(rect2After.left, equals(rect2.left));
       },
     );
   });
