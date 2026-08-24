@@ -420,6 +420,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
           ),
           child: Card(
             margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+            clipBehavior: Clip.antiAlias,
             child: Opacity(
               opacity: _contentOpacityAnimation.value,
               child: child,
