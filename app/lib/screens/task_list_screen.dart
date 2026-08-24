@@ -13,7 +13,6 @@ import '../logic/task_instance.dart';
 import '../logic/sort_helper.dart';
 import '../widgets/sort_bar.dart';
 import '../widgets/unsynced_banner.dart';
-import '../widgets/smooth_shuffle_item.dart';
 import '../widgets/system_task_widget.dart';
 import '../logic/system_tasks/system_task.dart';
 import '../logic/system_tasks/system_task_providers.dart';
@@ -32,6 +31,7 @@ class TaskListScreen extends ConsumerStatefulWidget {
 class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   final Key _taskListKey = const ValueKey('taskList');
   final ScrollController _scrollController = ScrollController();
+  final Map<String, int> _columnAffinity = {};
   Timer? _rebuildTimer;
   List<({String column, bool ascending})>? _localSortHistory;
 
@@ -240,81 +240,84 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               );
             }
           } else {
-            Widget buildTaskItem(TaskInstance inst, {required bool isWide}) {
+            Widget buildTaskItem(TaskInstance inst) {
               final matchingSchedules = schedules.where(
                 (s) => s.id == inst.scheduleId,
               );
               final sched = matchingSchedules.isEmpty
                   ? null
                   : matchingSchedules.first;
-              final taskWidget = TaskWidget(
+              return TaskWidget(
                 key: ValueKey(inst.id),
                 instance: inst,
                 schedule: sched,
               );
-
-              if (!isWide) {
-                return taskWidget;
-              }
-
-              return SmoothShuffleItem(
-                key: ValueKey('shuffle_task_${inst.id}'),
-                id: 'task_${inst.id}',
-                child: taskWidget,
-              );
             }
 
             final isWide = isWideScreen(context);
-            bodySliver = SliverPadding(
-              padding: const EdgeInsets.all(8.0),
-              sliver: isWide
-                  ? SliverToBoxAdapter(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                for (
-                                  int i = 0;
-                                  i < filteredInstances.length;
-                                  i += 2
-                                )
-                                  buildTaskItem(
-                                    filteredInstances[i],
-                                    isWide: true,
-                                  ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8.0),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                for (
-                                  int i = 1;
-                                  i < filteredInstances.length;
-                                  i += 2
-                                )
-                                  buildTaskItem(
-                                    filteredInstances[i],
-                                    isWide: true,
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
+            if (isWide) {
+              final List<TaskInstance> leftColumnInstances = [];
+              final List<TaskInstance> rightColumnInstances = [];
+
+              final currentIds = filteredInstances.map((e) => e.id).toSet();
+              _columnAffinity.removeWhere((id, _) => !currentIds.contains(id));
+
+              for (final inst in filteredInstances) {
+                int? col = _columnAffinity[inst.id];
+                if (col == null) {
+                  col =
+                      leftColumnInstances.length <= rightColumnInstances.length
+                      ? 0
+                      : 1;
+                  _columnAffinity[inst.id] = col;
+                }
+                if (col == 0) {
+                  leftColumnInstances.add(inst);
+                } else {
+                  rightColumnInstances.add(inst);
+                }
+              }
+
+              bodySliver = SliverPadding(
+                padding: const EdgeInsets.all(8.0),
+                sliver: SliverToBoxAdapter(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (final inst in leftColumnInstances)
+                              buildTaskItem(inst),
+                          ],
+                        ),
                       ),
-                    )
-                  : SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final inst = filteredInstances[index];
-                        return buildTaskItem(inst, isWide: false);
-                      }, childCount: filteredInstances.length),
-                    ),
-            );
+                      const SizedBox(width: 8.0),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (final inst in rightColumnInstances)
+                              buildTaskItem(inst),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            } else {
+              bodySliver = SliverPadding(
+                padding: const EdgeInsets.all(8.0),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final inst = filteredInstances[index];
+                    return buildTaskItem(inst);
+                  }, childCount: filteredInstances.length),
+                ),
+              );
+            }
           }
         }
 
