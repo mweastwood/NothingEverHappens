@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/dashboard_stats.dart';
 import 'package:nothing_ever_happens/widgets/weekly_capacity_chart.dart';
 import '../test_helper.dart';
 
@@ -42,7 +44,12 @@ void main() {
         ),
       );
 
-      expect(find.text('Activity & Capacity Timeline'), findsOneWidget);
+      expect(find.text('Personal Timeline'), findsOneWidget);
+      expect(find.text('Jul 1 – 2'), findsOneWidget);
+      expect(
+        find.textContaining('6 days history + Today + 6 days forecast'),
+        findsNothing,
+      );
 
       final editBtn = find.byKey(const Key('edit_default_capacity_button'));
       expect(editBtn, findsOneWidget);
@@ -68,7 +75,7 @@ void main() {
         ),
       );
 
-      // Verify formatted forecast labels
+      // Verify formatted forecast labels for today (Wed) and future (Thu)
       expect(find.text('2h 15m/4h'), findsOneWidget);
       expect(find.text('8h'), findsOneWidget);
 
@@ -83,6 +90,98 @@ void main() {
 
       expect(tappedDate, equals(DateTime(2026, 7, 1)));
     });
+
+    testWidgets('history bars display time spent without capacity label', (
+      tester,
+    ) async {
+      // Mock clock to July 2, 2026 (Thursday), so July 1 (Wednesday) is history
+      AppClock.setMockTime(DateTime(2026, 7, 2));
+
+      final historyDays = [
+        DailyCapacityData(
+          date: DateTime(2026, 7, 1), // Wednesday (past)
+          capacityHours: 4.0,
+          plannedMinutes: 0.0,
+          completedMinutes: 90.0, // 1h 30m spent
+          isOverridden: false,
+        ),
+        DailyCapacityData(
+          date: DateTime(2026, 7, 2), // Thursday (today)
+          capacityHours: 8.0,
+          plannedMinutes: 60.0,
+          completedMinutes: 0.0,
+          isOverridden: false,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: WeeklyCapacityChart(
+              daysData: historyDays,
+              onDayTap: (_) {},
+              onEditDefaultCapacity: () {},
+            ),
+          ),
+        ),
+      );
+
+      // For Wednesday (history), label is "1h 30m" without capacity (/4h)
+      expect(find.text('1h 30m'), findsOneWidget);
+      expect(find.text('1h 30m/4h'), findsNothing);
+
+      // For Thursday (today), label is "1h/8h"
+      expect(find.text('1h/8h'), findsOneWidget);
+    });
+
+    testWidgets(
+      'history bars render overdue in warning color and skipped in hatched red',
+      (tester) async {
+        // Mock clock to July 2, 2026 (Thursday), so July 1 (Wednesday) is history
+        AppClock.setMockTime(DateTime(2026, 7, 2));
+
+        final statsData = DailyStatsData(
+          day: CivilDay(year: 2026, month: 7, day: 1),
+          completedCount: 2,
+          skippedCount: 1,
+          missedCount: 0,
+          completedHours: 2.0,
+          completedOnTimeHours: 1.0,
+          completedOverdueHours: 1.0,
+          skippedHours: 0.5,
+        );
+
+        final historyDays = [
+          DailyCapacityData(
+            date: DateTime(2026, 7, 1), // Wednesday (past)
+            capacityHours: 4.0,
+            plannedMinutes: 0.0,
+            completedMinutes: 120.0,
+            isOverridden: false,
+            statsData: statsData,
+          ),
+        ];
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: WeeklyCapacityChart(
+                daysData: historyDays,
+                onDayTap: (_) {},
+                onEditDefaultCapacity: () {},
+              ),
+            ),
+          ),
+        );
+
+        // Verify HatchedPatternPainter is used for skipped items
+        final hatchedPaints = find.byWidgetPredicate(
+          (widget) =>
+              widget is CustomPaint && widget.painter is HatchedPatternPainter,
+        );
+        expect(hatchedPaints, findsWidgets);
+      },
+    );
 
     testWidgets('respects AppClock.now for current day highlighting', (
       tester,
