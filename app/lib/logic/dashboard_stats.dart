@@ -35,6 +35,15 @@ class DailyStatsData {
     this.skippedTasks = const [],
     this.missedTasks = const [],
   });
+
+  List<TaskInstance> get completedOnTimeTasks =>
+      completedTasks.where((t) => !t.isCompletedOverdue).toList();
+
+  List<TaskInstance> get completedOverdueTasks =>
+      completedTasks.where((t) => t.isCompletedOverdue).toList();
+
+  int get completedOnTimeCount => completedOnTimeTasks.length;
+  int get completedOverdueCount => completedOverdueTasks.length;
 }
 
 class PersonalLastWeekStats {

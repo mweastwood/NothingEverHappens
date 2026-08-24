@@ -23,10 +23,10 @@ void main() {
 
     final activeDayData = DailyStatsData(
       day: day,
-      completedCount: 2,
+      completedCount: 3,
       skippedCount: 1,
       missedCount: 1,
-      completedHours: 2.5,
+      completedHours: 3.0,
       completedTasks: [
         TaskInstance(
           id: 't-1',
@@ -50,6 +50,18 @@ void main() {
           startRelativeTime: dummyStart,
           dueRelativeTime: dummyDue,
           status: TaskStatus.completed,
+        ),
+        TaskInstance(
+          id: 't-overdue',
+          scheduleId: 's-overdue',
+          ruleId: 'r-overdue',
+          title: 'Take medication',
+          description: 'Evening dose',
+          scheduledDate: day,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 7, 1, 19, 0), // Overdue (due was 17:00)
         ),
       ],
       skippedTasks: [
@@ -125,6 +137,13 @@ void main() {
     testWidgets(
       'renders date header, metric chips, section headers, and task tiles',
       (tester) async {
+        tester.view.physicalSize = const Size(800, 1400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
         await tester.pumpWidget(
           buildTestableWidget(
             child: Scaffold(
@@ -138,14 +157,16 @@ void main() {
 
         // Metric chips
         expect(find.text('2 completed'), findsOneWidget);
+        expect(find.text('1 overdue'), findsOneWidget);
         expect(find.text('1 skipped'), findsOneWidget);
         expect(find.text('1 missed'), findsOneWidget);
-        expect(find.text('2h 30m'), findsOneWidget);
+        expect(find.text('3h'), findsOneWidget);
 
         // Section headers
         expect(find.text('Completed (2)'), findsOneWidget);
+        expect(find.text('Completed Overdue (1)'), findsOneWidget);
         expect(find.text('Skipped (1)'), findsOneWidget);
-        expect(find.text('Missed / Overdue (1)'), findsOneWidget);
+        expect(find.text('Missed (1)'), findsOneWidget);
 
         // Task tiles
         expect(find.text('Clean the kitchen'), findsOneWidget);
@@ -154,12 +175,15 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('Water plants'), findsOneWidget);
+        expect(find.text('Take medication'), findsOneWidget);
+        expect(find.text('Evening dose · Completed at 19:00'), findsOneWidget);
         expect(find.text('Vacuum living room'), findsOneWidget);
         expect(find.text('Carpet in hallway and living room'), findsOneWidget);
         expect(find.text('Take out recycling'), findsOneWidget);
 
         // Status tags
         expect(find.text('Completed'), findsNWidgets(2));
+        expect(find.text('Overdue'), findsOneWidget);
         expect(find.text('Skipped'), findsOneWidget);
         expect(find.text('Missed'), findsOneWidget);
       },

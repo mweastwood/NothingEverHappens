@@ -46,6 +46,10 @@ void main() {
 
       expect(find.text('Personal Timeline'), findsOneWidget);
       expect(find.text('Jul 1 – 2'), findsOneWidget);
+      expect(find.text('Past'), findsOneWidget);
+      expect(find.text('Next'), findsOneWidget);
+      expect(find.text('Past 6 Days'), findsNothing);
+      expect(find.text('Next 6 Days'), findsNothing);
       expect(
         find.textContaining('6 days history + Today + 6 days forecast'),
         findsNothing,
@@ -55,6 +59,45 @@ void main() {
       expect(editBtn, findsOneWidget);
       await tester.tap(editBtn);
       expect(editTemplateTapped, isTrue);
+    });
+
+    testWidgets('past days do not render dashed capacity box', (tester) async {
+      // Mock clock to July 2, 2026 (Thursday), so July 1 (Wednesday) is history
+      AppClock.setMockTime(DateTime(2026, 7, 2));
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: WeeklyCapacityChart(
+              daysData: testDays,
+              onDayTap: (_) {},
+              onEditDefaultCapacity: () {},
+            ),
+          ),
+        ),
+      );
+
+      // Wednesday (past) bar should NOT contain DashedRectPainter
+      final wedBar = find.byKey(const Key('capacity_bar_2026-07-01'));
+      final wedDashed = find.descendant(
+        of: wedBar,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is CustomPaint && widget.painter is DashedRectPainter,
+        ),
+      );
+      expect(wedDashed, findsNothing);
+
+      // Thursday (today) bar SHOULD contain DashedRectPainter
+      final thuBar = find.byKey(const Key('capacity_bar_2026-07-02'));
+      final thuDashed = find.descendant(
+        of: thuBar,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is CustomPaint && widget.painter is DashedRectPainter,
+        ),
+      );
+      expect(thuDashed, findsOneWidget);
     });
 
     testWidgets('renders capacity data and handles day tap callbacks', (
