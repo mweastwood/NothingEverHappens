@@ -535,6 +535,38 @@ void main() {
     );
   });
 
+  testGoldens('TaskWidget long press highlight state golden', (tester) async {
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+        ],
+        child: Container(
+          color: Colors.white,
+          child: TaskWidget(
+            instance: createInstanceFor(testTask),
+            schedule: testTask,
+          ),
+        ),
+      ),
+      wrapper: l10nMaterialAppWrapper(),
+      surfaceSize: const Size(400, 200),
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListTile)),
+    );
+    await tester.pump(kPressTimeout);
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/task_widget_long_press_highlight.png'),
+    );
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
   testGoldens('TaskWidget recurring state golden', (tester) async {
     final recurringTask = TaskSchedule(
       id: 'S-2',
