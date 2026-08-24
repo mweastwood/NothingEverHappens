@@ -256,7 +256,7 @@ void main() {
 
         // Task items
         expect(find.text('Clean the kitchen'), findsOneWidget);
-        expect(find.text('Wash dishes and wipe counters'), findsOneWidget);
+        expect(find.text('Wash dishes and wipe counters'), findsNothing);
         expect(find.text('Water plants'), findsOneWidget);
 
         // Close bottom sheet

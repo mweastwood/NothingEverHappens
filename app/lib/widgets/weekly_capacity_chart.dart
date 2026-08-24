@@ -220,11 +220,18 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                     ],
                   ),
                 ),
-                IconButton(
+                TextButton.icon(
                   key: const Key('edit_default_capacity_button'),
-                  icon: const Icon(Icons.edit_outlined),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit Capacity'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                  ),
                   onPressed: widget.onEditDefaultCapacity,
-                  tooltip: 'Edit Default Capacity Template',
                 ),
               ],
             ),
@@ -359,6 +366,66 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Container(
+                    width: 14,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade600,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Completed',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 14,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade700,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Completed Overdue',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: SizedBox(
+                      width: 14,
+                      height: 10,
+                      child: CustomPaint(
+                        painter: HatchedPatternPainter(
+                          backgroundColor: theme.colorScheme.error.withValues(
+                            alpha: 0.15,
+                          ),
+                          stripeColor: theme.colorScheme.error,
+                          stripeWidth: 1.5,
+                          gap: 2.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Skipped',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   SizedBox(
                     width: 14,
                     height: 10,
@@ -389,50 +456,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Completed / Workload',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 14,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade700,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Overdue',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: SizedBox(
-                      width: 14,
-                      height: 10,
-                      child: CustomPaint(
-                        painter: HatchedPatternPainter(
-                          backgroundColor: theme.colorScheme.error.withValues(
-                            alpha: 0.15,
-                          ),
-                          stripeColor: theme.colorScheme.error,
-                          stripeWidth: 1.5,
-                          gap: 2.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Skipped',
+                    'Workload',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       fontSize: 11,
@@ -646,7 +670,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
     if (isPast) {
       double onTimeHours = data.completedOnTimeHours;
       double overdueHours = data.completedOverdueHours;
-      double skippedHours = data.skippedHours;
+      double skippedHours = data.skippedHours + data.missedHours;
 
       if (onTimeHours == 0 &&
           overdueHours == 0 &&
@@ -655,7 +679,8 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
         if (data.statsData!.completedCount > 0) {
           onTimeHours = 0.25;
         }
-        if (data.statsData!.skippedCount > 0) {
+        if (data.statsData!.skippedCount > 0 ||
+            data.statsData!.missedCount > 0) {
           skippedHours = 0.25;
         }
       }
@@ -709,10 +734,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          theme.colorScheme.primary,
-                          theme.colorScheme.primary.withValues(alpha: 0.7),
-                        ],
+                        colors: [Colors.green.shade600, Colors.green.shade500],
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
                       ),
@@ -727,10 +749,12 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
 
     if (isToday &&
         data.statsData != null &&
-        (data.completedHours > 0 || data.skippedHours > 0)) {
+        (data.completedHours > 0 ||
+            data.skippedHours > 0 ||
+            data.missedHours > 0)) {
       double onTimeHours = data.completedOnTimeHours;
       double overdueHours = data.completedOverdueHours;
-      double skippedHours = data.skippedHours;
+      double skippedHours = data.skippedHours + data.missedHours;
       double plannedHours = data.plannedHours;
 
       final totalActivity =
@@ -813,10 +837,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          theme.colorScheme.primary,
-                          theme.colorScheme.primary.withValues(alpha: 0.7),
-                        ],
+                        colors: [Colors.green.shade600, Colors.green.shade500],
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
                       ),

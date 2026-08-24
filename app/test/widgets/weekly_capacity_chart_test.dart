@@ -57,6 +57,7 @@ void main() {
 
       final editBtn = find.byKey(const Key('edit_default_capacity_button'));
       expect(editBtn, findsOneWidget);
+      expect(find.text('Edit Capacity'), findsOneWidget);
       await tester.tap(editBtn);
       expect(editTemplateTapped, isTrue);
     });

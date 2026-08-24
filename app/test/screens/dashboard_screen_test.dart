@@ -602,9 +602,12 @@ void main() {
 
       // Verify standardized 3-letter day labels and legend
       expect(find.text('Wed'), findsWidgets);
-      expect(find.text('Completed / Workload'), findsOneWidget);
-      expect(find.text('Overdue'), findsOneWidget);
+      expect(find.text('Completed'), findsOneWidget);
+      expect(find.text('Completed Overdue'), findsOneWidget);
       expect(find.text('Skipped'), findsOneWidget);
+      expect(find.text('Capacity'), findsOneWidget);
+      expect(find.text('Workload'), findsOneWidget);
+      expect(find.text('Over Capacity'), findsOneWidget);
 
       // Verify Sunday (2026-07-05, history): Dishes completed (60m) - time spent only, without /8h capacity
       expect(find.text('1h'), findsWidgets);
@@ -852,13 +855,14 @@ void main() {
       await tester.pumpAndSettle();
 
       // Breakdown sheet opens
-      expect(
-        find.byKey(const Key('daily_activity_breakdown_sheet')),
-        findsOneWidget,
-      );
+      final sheet = find.byKey(const Key('daily_activity_breakdown_sheet'));
+      expect(sheet, findsOneWidget);
       expect(find.text('Tuesday, Jul 7, 2026'), findsOneWidget);
       expect(find.text('Morning Yoga'), findsOneWidget);
-      expect(find.text('Stretch and breathe'), findsOneWidget);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Completed')),
+        findsOneWidget,
+      );
     },
   );
 }
