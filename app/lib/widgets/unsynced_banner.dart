@@ -37,21 +37,13 @@ class _UnsyncedBannerState extends ConsumerState<UnsyncedBanner> {
       return;
     }
 
-    if (isCache) {
-      _debounceTimer?.cancel();
-      _debounceTimer = null;
-      _isVisible = true;
-      return;
-    }
-
-    // count > 0 and not from cache:
     if (_isVisible) {
       _debounceTimer?.cancel();
       _debounceTimer = null;
       return;
     }
 
-    _debounceTimer ??= Timer(const Duration(milliseconds: 1500), () {
+    _debounceTimer ??= Timer(const Duration(seconds: 60), () {
       if (mounted) {
         setState(() {
           _isVisible = true;
