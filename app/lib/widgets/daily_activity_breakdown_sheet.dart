@@ -152,11 +152,14 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                         ],
-                        if (dayData.skippedTasks.isNotEmpty) ...[
+                        if ((dayData.skippedTasks.length +
+                                dayData.missedTasks.length) >
+                            0) ...[
                           _buildSectionHeader(
                             context,
                             'Skipped',
-                            dayData.skippedTasks.length,
+                            dayData.skippedTasks.length +
+                                dayData.missedTasks.length,
                             theme.colorScheme.onSurfaceVariant,
                           ),
                           ...dayData.skippedTasks.map(
@@ -166,20 +169,11 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
                               status: TaskStatus.skipped,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                        ],
-                        if (dayData.missedTasks.isNotEmpty) ...[
-                          _buildSectionHeader(
-                            context,
-                            'Missed',
-                            dayData.missedTasks.length,
-                            theme.colorScheme.error,
-                          ),
                           ...dayData.missedTasks.map(
                             (task) => _buildTaskTile(
                               context,
                               task,
-                              status: task.status,
+                              status: TaskStatus.skipped,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -199,6 +193,8 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
 
     final onTimeCount = dayData.completedOnTimeCount;
     final overdueCount = dayData.completedOverdueCount;
+
+    final totalSkippedCount = dayData.skippedCount + dayData.missedCount;
 
     if (onTimeCount > 0) {
       chips.add(
@@ -222,24 +218,13 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       );
     }
 
-    if (dayData.skippedCount > 0) {
+    if (totalSkippedCount > 0) {
       chips.add(
         _buildChip(
           context,
           icon: Icons.remove_circle_outline,
-          label: '${dayData.skippedCount} skipped',
+          label: '$totalSkippedCount skipped',
           color: theme.colorScheme.onSurfaceVariant,
-        ),
-      );
-    }
-
-    if (dayData.missedCount > 0) {
-      chips.add(
-        _buildChip(
-          context,
-          icon: Icons.cancel_outlined,
-          label: '${dayData.missedCount} missed',
-          color: theme.colorScheme.error,
         ),
       );
     }
