@@ -158,13 +158,15 @@ void main() {
         // Metric chips
         expect(find.text('2 completed'), findsOneWidget);
         expect(find.text('1 overdue'), findsOneWidget);
-        expect(find.text('2 skipped'), findsOneWidget);
+        expect(find.text('1 skipped'), findsOneWidget);
+        expect(find.text('1 missed'), findsOneWidget);
         expect(find.text('3h'), findsOneWidget);
 
         // Section headers
         expect(find.text('Completed (2)'), findsOneWidget);
         expect(find.text('Completed Overdue (1)'), findsOneWidget);
-        expect(find.text('Skipped (2)'), findsOneWidget);
+        expect(find.text('Skipped (1)'), findsOneWidget);
+        expect(find.text('Missed (1)'), findsOneWidget);
 
         // Single-line task tiles (no descriptions shown)
         expect(find.text('Clean the kitchen'), findsOneWidget);
@@ -185,7 +187,8 @@ void main() {
         // Status tags
         expect(find.text('Completed'), findsNWidgets(2));
         expect(find.text('Overdue'), findsOneWidget);
-        expect(find.text('Skipped'), findsNWidgets(2));
+        expect(find.text('Skipped'), findsOneWidget);
+        expect(find.text('Missed'), findsOneWidget);
       },
     );
 

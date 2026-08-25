@@ -228,10 +228,7 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
       dailyHours[accountedDay] = (dailyHours[accountedDay] ?? 0.0) + duration;
       dailyCompletedTasks[accountedDay]?.add(inst);
 
-      final dueDateTime = inst.dueRelativeTime.referenceTo(inst.scheduledDate);
-      final isOverdue =
-          inst.completedAt != null && inst.completedAt!.isAfter(dueDateTime);
-      if (isOverdue) {
+      if (inst.isCompletedOverdue) {
         dailyCompletedOverdueHours[accountedDay] =
             (dailyCompletedOverdueHours[accountedDay] ?? 0.0) + duration;
       } else {
