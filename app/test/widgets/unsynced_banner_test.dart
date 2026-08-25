@@ -170,7 +170,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 61));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('unsynced_warning_banner')), findsOneWidget);
@@ -214,7 +214,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 61));
         await tester.pumpAndSettle();
 
         expect(
@@ -264,13 +264,13 @@ void main() {
           hasPendingWrites: true,
         );
         schedulesController.add([unsyncedTask]);
-        // Advance 300ms (typical fast background sync duration)
-        await tester.pump(const Duration(milliseconds: 300));
+        // Advance 30s (within 60s threshold)
+        await tester.pump(const Duration(seconds: 30));
 
         // Banner should NOT be visible during grace period
         expect(find.byKey(const Key('unsynced_warning_banner')), findsNothing);
 
-        // Step 2: Background sync completes at 400ms
+        // Step 2: Background sync completes
         final syncedTask = TaskSchedule(
           id: 'S-transient',
           title: 'Quick Task',
@@ -280,8 +280,8 @@ void main() {
         schedulesController.add([syncedTask]);
         await tester.pump(const Duration(milliseconds: 100));
 
-        // Advance well past the original 1.5s grace period
-        await tester.pump(const Duration(seconds: 2));
+        // Advance well past the 60s threshold
+        await tester.pump(const Duration(seconds: 65));
         await tester.pumpAndSettle();
 
         // Banner was never shown and remains not shown
@@ -324,13 +324,14 @@ void main() {
         );
         schedulesController.add([unsyncedTask]);
         await tester.pump();
+        await tester.pump();
 
         // Before grace period expires:
-        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(seconds: 30));
         expect(find.byKey(const Key('unsynced_warning_banner')), findsNothing);
 
-        // Advance to cross the 1500ms grace period threshold
-        await tester.pump(const Duration(seconds: 2));
+        // Advance to cross the 60-second grace period threshold
+        await tester.pump(const Duration(seconds: 35));
         await tester.pumpAndSettle();
 
         // Banner is now smoothly visible!
@@ -346,7 +347,7 @@ void main() {
     );
 
     testWidgets(
-      'Offline cache mode (isFromCache) displays banner immediately without grace period delay',
+      'Offline cache mode (isFromCache) displays banner after 60-second persistence threshold',
       (tester) async {
         final cachedTask = TaskSchedule(
           id: 'S-cached',
@@ -371,11 +372,16 @@ void main() {
             child: const MaterialApp(home: Scaffold(body: UnsyncedBanner())),
           ),
         );
-        // Pump 1 frame without advancing time
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
+        // Not visible within 60s
+        await tester.pump(const Duration(seconds: 30));
+        expect(find.byKey(const Key('unsynced_warning_banner')), findsNothing);
 
-        // Immediately visible
+        // Advance past 60s
+        await tester.pump(const Duration(seconds: 35));
+        await tester.pumpAndSettle();
+
+        // Visible after 60s threshold
         expect(
           find.byKey(const Key('unsynced_warning_banner')),
           findsOneWidget,
@@ -421,7 +427,7 @@ void main() {
       );
       schedulesController.add([unsyncedTask]);
       await tester.pump();
-      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 61));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('unsynced_warning_banner')), findsOneWidget);
@@ -589,7 +595,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 61));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('unsynced_warning_banner')), findsOneWidget);
@@ -721,7 +727,7 @@ void main() {
         );
 
         await tester.pumpAndSettle();
-        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 61));
         await tester.pumpAndSettle();
 
         await screenMatchesGolden(tester, 'unsynced_banner_golden');
