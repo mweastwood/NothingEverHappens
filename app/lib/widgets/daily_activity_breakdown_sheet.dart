@@ -193,6 +193,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
 
     final onTimeCount = dayData.completedOnTimeCount;
     final overdueCount = dayData.completedOverdueCount;
+
     final totalSkippedCount = dayData.skippedCount + dayData.missedCount;
 
     if (onTimeCount > 0) {
@@ -224,17 +225,6 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
           icon: Icons.remove_circle_outline,
           label: '$totalSkippedCount skipped',
           color: theme.colorScheme.onSurfaceVariant,
-        ),
-      );
-    }
-
-    if (dayData.missedCount > 0) {
-      chips.add(
-        _buildChip(
-          context,
-          icon: Icons.cancel_outlined,
-          label: '${dayData.missedCount} missed',
-          color: theme.colorScheme.error,
         ),
       );
     }
@@ -332,9 +322,15 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
 
     if (status == TaskStatus.completed) {
       if (isOverdue || task.isCompletedOverdue) {
-        icon = Icons.warning_amber_rounded;
-        iconColor = isDark ? Colors.amber.shade300 : Colors.amber.shade800;
-        tagLabel = 'Overdue';
+        if (task.isCompletedOverdueByMoreThan24Hours) {
+          icon = Icons.warning_amber_rounded;
+          iconColor = theme.colorScheme.error;
+          tagLabel = 'Overdue';
+        } else {
+          icon = Icons.warning_amber_rounded;
+          iconColor = isDark ? Colors.amber.shade300 : Colors.amber.shade800;
+          tagLabel = 'Overdue';
+        }
       } else {
         icon = Icons.check_circle;
         iconColor = isDark ? Colors.green.shade300 : Colors.green.shade700;
@@ -358,6 +354,10 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       completionTimeStr = '$hour:$minute';
     }
 
+    final isSevereOverdue =
+        task.status == TaskStatus.completed &&
+        task.isCompletedOverdueByMoreThan24Hours;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -367,7 +367,9 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
             : theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          color: isSevereOverdue
+              ? theme.colorScheme.error.withValues(alpha: 0.5)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
       ),
       child: Row(

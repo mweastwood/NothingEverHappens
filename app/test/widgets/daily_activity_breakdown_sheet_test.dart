@@ -23,10 +23,10 @@ void main() {
 
     final activeDayData = DailyStatsData(
       day: day,
-      completedCount: 3,
+      completedCount: 4,
       skippedCount: 1,
       missedCount: 1,
-      completedHours: 3.0,
+      completedHours: 4.0,
       completedTasks: [
         TaskInstance(
           id: 't-1',
@@ -62,6 +62,24 @@ void main() {
           dueRelativeTime: dummyDue,
           status: TaskStatus.completed,
           completedAt: DateTime(2026, 7, 1, 19, 0), // Overdue (due was 17:00)
+        ),
+        TaskInstance(
+          id: 't-severe-overdue',
+          scheduleId: 's-severe',
+          ruleId: 'r-severe',
+          title: 'Submit quarterly report',
+          description: '',
+          scheduledDate: day,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          status: TaskStatus.completed,
+          completedAt: DateTime(
+            2026,
+            7,
+            3,
+            10,
+            0,
+          ), // Overdue by 41 hours (due was July 1 at 17:00)
         ),
       ],
       skippedTasks: [
@@ -157,13 +175,13 @@ void main() {
 
         // Metric chips
         expect(find.text('2 completed'), findsOneWidget);
-        expect(find.text('1 overdue'), findsOneWidget);
+        expect(find.text('2 overdue'), findsOneWidget);
         expect(find.text('2 skipped'), findsOneWidget);
-        expect(find.text('3h'), findsOneWidget);
+        expect(find.text('4h'), findsOneWidget);
 
         // Section headers
         expect(find.text('Completed (2)'), findsOneWidget);
-        expect(find.text('Completed Overdue (1)'), findsOneWidget);
+        expect(find.text('Completed Overdue (2)'), findsOneWidget);
         expect(find.text('Skipped (2)'), findsOneWidget);
 
         // Single-line task tiles (no descriptions shown)
@@ -177,6 +195,9 @@ void main() {
         expect(find.text('19:00'), findsOneWidget);
         expect(find.text('Evening dose'), findsNothing);
 
+        expect(find.text('Submit quarterly report'), findsOneWidget);
+        expect(find.text('10:00'), findsOneWidget);
+
         expect(find.text('Vacuum living room'), findsOneWidget);
         expect(find.text('Carpet in hallway and living room'), findsNothing);
 
@@ -184,7 +205,7 @@ void main() {
 
         // Status tags
         expect(find.text('Completed'), findsNWidgets(2));
-        expect(find.text('Overdue'), findsOneWidget);
+        expect(find.text('Overdue'), findsNWidgets(2));
         expect(find.text('Skipped'), findsNWidgets(2));
       },
     );
@@ -238,6 +259,80 @@ void main() {
         findsNothing,
       );
     });
+
+    testWidgets(
+      'marks completed task overdue by > 24 hours with error/red color',
+      (tester) async {
+        final severeOverdueTask = TaskInstance(
+          id: 't-severe-overdue',
+          scheduleId: 's-severe',
+          ruleId: 'r-severe',
+          title: 'Submit quarterly report',
+          description: '',
+          scheduledDate: day,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          status: TaskStatus.completed,
+          completedAt: DateTime(
+            2026,
+            7,
+            3,
+            10,
+            0,
+          ), // Overdue by 41 hours (due was July 1 at 17:00)
+        );
+
+        final mildOverdueTask = TaskInstance(
+          id: 't-mild-overdue',
+          scheduleId: 's-mild',
+          ruleId: 'r-mild',
+          title: 'Call dentist',
+          description: '',
+          scheduledDate: day,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 7, 1, 20, 0), // Overdue by 3 hours
+        );
+
+        final testDayData = DailyStatsData(
+          day: day,
+          completedCount: 2,
+          skippedCount: 0,
+          missedCount: 0,
+          completedHours: 2.0,
+          completedTasks: [severeOverdueTask, mildOverdueTask],
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: DailyActivityBreakdownSheet(dayData: testDayData),
+            ),
+          ),
+        );
+
+        expect(find.text('Submit quarterly report'), findsOneWidget);
+        expect(find.text('Call dentist'), findsOneWidget);
+
+        final icons = tester
+            .widgetList<Icon>(find.byIcon(Icons.warning_amber_rounded))
+            .toList();
+        final BuildContext context = tester.element(
+          find.byKey(const Key('daily_activity_breakdown_sheet')),
+        );
+        final theme = Theme.of(context);
+
+        expect(
+          icons.any((icon) => icon.color == theme.colorScheme.error),
+          isTrue,
+        );
+        expect(
+          icons.any((icon) => icon.color == Colors.amber.shade800),
+          isTrue,
+        );
+      },
+    );
 
     testGoldens('DailyActivityBreakdownSheet renders correctly', (
       tester,

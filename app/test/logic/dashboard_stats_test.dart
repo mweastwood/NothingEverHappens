@@ -276,6 +276,160 @@ void main() {
         expect(day9.completedOverdueHours, 1.0);
       },
     );
+
+    testWidgets(
+      'accounts repeating tasks to iteration day and one-off tasks to completion day',
+      (tester) async {
+        // Repeating daily task
+        final repeatingSchedule = TaskSchedule(
+          id: 's-daily',
+          title: 'Daily Workout',
+          description: 'Gym',
+          estimatedDuration: const Duration(minutes: 60),
+          schedules: [
+            DailySchedule(
+              id: 'r-daily',
+              startDate: const CivilDay(year: 2026, month: 7, day: 1),
+              interval: 1,
+              startRelativeTime: dummyStart,
+              dueRelativeTime: dummyDue,
+            ),
+          ],
+        );
+
+        // One-off task
+        final oneOffSchedule = TaskSchedule(
+          id: 's-oneoff',
+          title: 'Doctor Appointment',
+          description: 'Checkup',
+          estimatedDuration: const Duration(minutes: 90),
+          schedules: [
+            OneOffSchedule(
+              id: 'r-oneoff',
+              date: const CivilDay(year: 2026, month: 7, day: 5),
+              startRelativeTime: dummyStart,
+              dueRelativeTime: dummyDue,
+            ),
+          ],
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          repeatingSchedule,
+          oneOffSchedule,
+        ]);
+
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          // 1. Repeating task: scheduled for 2026-07-07, completed on 2026-07-08
+          // Must be accounted to 2026-07-07 (its iteration day)
+          TaskInstance(
+            id: 'i-rep-1',
+            scheduleId: repeatingSchedule.id,
+            ruleId: 'r-daily',
+            title: 'Daily Workout',
+            description: 'Gym',
+            scheduledDate: const CivilDay(year: 2026, month: 7, day: 7),
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 8, 10, 0), // Completed next day
+            completedByUserId: 'user-alice',
+          ),
+
+          // 2. One-off task: scheduled for 2026-07-05, completed on 2026-07-09
+          // Must be accounted to 2026-07-09 (the completion day)
+          TaskInstance(
+            id: 'i-oneoff-1',
+            scheduleId: oneOffSchedule.id,
+            ruleId: 'r-oneoff',
+            title: 'Doctor Appointment',
+            description: 'Checkup',
+            scheduledDate: const CivilDay(year: 2026, month: 7, day: 5),
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 9, 14, 0), // Completed on July 9
+            completedByUserId: 'user-alice',
+          ),
+
+          // 3. One-off task not completed: scheduled for 2026-07-06 (pending missed)
+          // Must be accounted to 2026-07-06
+          TaskInstance(
+            id: 'i-oneoff-pending',
+            scheduleId: oneOffSchedule.id,
+            ruleId: 'r-oneoff',
+            title: 'Doctor Appointment',
+            description: 'Checkup',
+            scheduledDate: const CivilDay(year: 2026, month: 7, day: 6),
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.pending,
+            assignedUserId: 'user-alice',
+          ),
+        ]);
+        final authSubject = BehaviorSubject<User?>.seeded(MockUser());
+
+        addTearDown(() {
+          tasksSubject.close();
+          instancesSubject.close();
+          authSubject.close();
+        });
+
+        late PersonalLastWeekStats stats;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authStateProvider.overrideWith((ref) => authSubject.stream),
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                stats = ref.watch(personalLastWeekStatsProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Check July 7 (repeating task iteration day)
+        final day7 = stats.dailyStats.firstWhere(
+          (d) => d.day == const CivilDay(year: 2026, month: 7, day: 7),
+        );
+        expect(day7.completedCount, 1);
+        expect(day7.completedTasks.first.id, 'i-rep-1');
+        expect(day7.completedHours, 1.0);
+
+        // Check July 8 (completion day of repeating task - should NOT have the repeating task)
+        final day8 = stats.dailyStats.firstWhere(
+          (d) => d.day == const CivilDay(year: 2026, month: 7, day: 8),
+        );
+        expect(day8.completedCount, 0);
+
+        // Check July 5 (scheduled date of one-off task - should NOT have the completed one-off task)
+        final day5 = stats.dailyStats.firstWhere(
+          (d) => d.day == const CivilDay(year: 2026, month: 7, day: 5),
+        );
+        expect(day5.completedCount, 0);
+
+        // Check July 9 (completion date of one-off task - MUST have the one-off task)
+        final day9 = stats.dailyStats.firstWhere(
+          (d) => d.day == const CivilDay(year: 2026, month: 7, day: 9),
+        );
+        expect(day9.completedCount, 1);
+        expect(day9.completedTasks.first.id, 'i-oneoff-1');
+        expect(day9.completedHours, 1.5);
+
+        // Check July 6 (uncompleted one-off task - accounted to scheduled date as missed)
+        final day6 = stats.dailyStats.firstWhere(
+          (d) => d.day == const CivilDay(year: 2026, month: 7, day: 6),
+        );
+        expect(day6.missedCount, 1);
+        expect(day6.missedTasks.first.id, 'i-oneoff-pending');
+      },
+    );
   });
 
   group('familyLastWeekStatsProvider', () {

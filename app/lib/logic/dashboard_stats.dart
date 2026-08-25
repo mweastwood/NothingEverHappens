@@ -6,6 +6,7 @@ import 'family.dart';
 import 'family_repository.dart';
 import 'task_instance.dart';
 import 'task_repository.dart';
+import 'task_schedule.dart';
 
 class DailyStatsData {
   final CivilDay day;
@@ -139,6 +140,10 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
         s.id: s.estimatedDuration!.inMinutes / 60.0,
   };
 
+  final scheduleMap = <String, TaskSchedule>{
+    for (final s in schedules) s.id: s,
+  };
+
   final days = List.generate(7, (index) => startDay.addDays(index));
   final dailyCompleted = <CivilDay, int>{for (final d in days) d: 0};
   final dailySkipped = <CivilDay, int>{for (final d in days) d: 0};
@@ -168,8 +173,25 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
   int totalMissed = 0;
 
   for (final inst in instances) {
-    final schedDay = inst.scheduledDate;
-    if (schedDay.isBefore(startDay) || schedDay.isAfter(endDay)) {
+    final schedule = scheduleMap[inst.scheduleId];
+    final rule = schedule?.schedules
+        .where((r) => r.id == inst.ruleId)
+        .firstOrNull;
+    final bool isOneOff =
+        rule is OneOffSchedule ||
+        (rule == null &&
+            schedule != null &&
+            schedule.schedules.isNotEmpty &&
+            schedule.schedules.every((r) => r is OneOffSchedule));
+
+    final CivilDay accountedDay =
+        (isOneOff &&
+            inst.status == TaskStatus.completed &&
+            inst.completedAt != null)
+        ? CivilDay.fromDateTime(inst.completedAt!)
+        : inst.scheduledDate;
+
+    if (accountedDay.isBefore(startDay) || accountedDay.isAfter(endDay)) {
       continue;
     }
 
@@ -202,38 +224,36 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
     if (inst.status == TaskStatus.completed) {
       totalCompleted++;
       totalHours += duration;
-      dailyCompleted[schedDay] = (dailyCompleted[schedDay] ?? 0) + 1;
-      dailyHours[schedDay] = (dailyHours[schedDay] ?? 0.0) + duration;
-      dailyCompletedTasks[schedDay]?.add(inst);
+      dailyCompleted[accountedDay] = (dailyCompleted[accountedDay] ?? 0) + 1;
+      dailyHours[accountedDay] = (dailyHours[accountedDay] ?? 0.0) + duration;
+      dailyCompletedTasks[accountedDay]?.add(inst);
 
-      final dueDateTime = inst.dueRelativeTime.referenceTo(inst.scheduledDate);
-      final isOverdue =
-          inst.completedAt != null && inst.completedAt!.isAfter(dueDateTime);
-      if (isOverdue) {
-        dailyCompletedOverdueHours[schedDay] =
-            (dailyCompletedOverdueHours[schedDay] ?? 0.0) + duration;
+      if (inst.isCompletedOverdue) {
+        dailyCompletedOverdueHours[accountedDay] =
+            (dailyCompletedOverdueHours[accountedDay] ?? 0.0) + duration;
       } else {
-        dailyCompletedOnTimeHours[schedDay] =
-            (dailyCompletedOnTimeHours[schedDay] ?? 0.0) + duration;
+        dailyCompletedOnTimeHours[accountedDay] =
+            (dailyCompletedOnTimeHours[accountedDay] ?? 0.0) + duration;
       }
     } else if (inst.status == TaskStatus.skipped) {
       totalSkipped++;
-      dailySkipped[schedDay] = (dailySkipped[schedDay] ?? 0) + 1;
-      dailySkippedHours[schedDay] =
-          (dailySkippedHours[schedDay] ?? 0.0) + duration;
-      dailySkippedTasks[schedDay]?.add(inst);
+      dailySkipped[accountedDay] = (dailySkipped[accountedDay] ?? 0) + 1;
+      dailySkippedHours[accountedDay] =
+          (dailySkippedHours[accountedDay] ?? 0.0) + duration;
+      dailySkippedTasks[accountedDay]?.add(inst);
     } else if (inst.status == TaskStatus.failed) {
       totalMissed++;
-      dailyMissed[schedDay] = (dailyMissed[schedDay] ?? 0) + 1;
-      dailyMissedHours[schedDay] =
-          (dailyMissedHours[schedDay] ?? 0.0) + duration;
-      dailyMissedTasks[schedDay]?.add(inst);
-    } else if (inst.status == TaskStatus.pending && schedDay.isBefore(today)) {
+      dailyMissed[accountedDay] = (dailyMissed[accountedDay] ?? 0) + 1;
+      dailyMissedHours[accountedDay] =
+          (dailyMissedHours[accountedDay] ?? 0.0) + duration;
+      dailyMissedTasks[accountedDay]?.add(inst);
+    } else if (inst.status == TaskStatus.pending &&
+        inst.scheduledDate.isBefore(today)) {
       totalMissed++;
-      dailyMissed[schedDay] = (dailyMissed[schedDay] ?? 0) + 1;
-      dailyMissedHours[schedDay] =
-          (dailyMissedHours[schedDay] ?? 0.0) + duration;
-      dailyMissedTasks[schedDay]?.add(inst);
+      dailyMissed[accountedDay] = (dailyMissed[accountedDay] ?? 0) + 1;
+      dailyMissedHours[accountedDay] =
+          (dailyMissedHours[accountedDay] ?? 0.0) + duration;
+      dailyMissedTasks[accountedDay]?.add(inst);
     }
   }
 
@@ -297,6 +317,10 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
         s.id: s.estimatedDuration!.inMinutes / 60.0,
   };
 
+  final scheduleMap = <String, TaskSchedule>{
+    for (final s in schedules) s.id: s,
+  };
+
   final memberCompletedCount = <String, int>{};
   final memberCompletedHours = <String, double>{};
   final memberSkippedCount = <String, int>{};
@@ -318,8 +342,25 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
     // Only strictly family tasks are included in the family breakdown
     if (!inst.isFamily) continue;
 
-    final schedDay = inst.scheduledDate;
-    if (schedDay.isBefore(startDay) || schedDay.isAfter(endDay)) {
+    final schedule = scheduleMap[inst.scheduleId];
+    final rule = schedule?.schedules
+        .where((r) => r.id == inst.ruleId)
+        .firstOrNull;
+    final bool isOneOff =
+        rule is OneOffSchedule ||
+        (rule == null &&
+            schedule != null &&
+            schedule.schedules.isNotEmpty &&
+            schedule.schedules.every((r) => r is OneOffSchedule));
+
+    final CivilDay accountedDay =
+        (isOneOff &&
+            inst.status == TaskStatus.completed &&
+            inst.completedAt != null)
+        ? CivilDay.fromDateTime(inst.completedAt!)
+        : inst.scheduledDate;
+
+    if (accountedDay.isBefore(startDay) || accountedDay.isAfter(endDay)) {
       continue;
     }
 
@@ -346,7 +387,8 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
       if (userId != null && memberMissedCount.containsKey(userId)) {
         memberMissedCount[userId] = (memberMissedCount[userId] ?? 0) + 1;
       }
-    } else if (inst.status == TaskStatus.pending && schedDay.isBefore(today)) {
+    } else if (inst.status == TaskStatus.pending &&
+        inst.scheduledDate.isBefore(today)) {
       totalMissed++;
       final userId = inst.assignedUserId;
       if (userId != null && memberMissedCount.containsKey(userId)) {

@@ -282,7 +282,7 @@ void main() {
         );
         expect(find.text('Friday, Jul 3, 2026'), findsOneWidget);
         expect(find.text('1 completed'), findsOneWidget);
-        expect(find.text('1 missed'), findsOneWidget);
+        expect(find.text('1 skipped'), findsOneWidget);
         expect(find.text('Take out trash'), findsOneWidget);
         expect(find.text('Mow the lawn'), findsOneWidget);
 
