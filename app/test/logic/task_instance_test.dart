@@ -496,5 +496,71 @@ void main() {
       expect(cleared.lastModifiedByUserId, isNull);
       expect(cleared.lastModifiedByAppVersion, isNull);
     });
+
+    test(
+      'isCompletedOverdue and isCompletedOverdueByMoreThan24Hours work correctly',
+      () {
+        final baseInstance = TaskInstance(
+          id: 'inst-overdue-test',
+          scheduleId: 's-1',
+          ruleId: 'r-1',
+          title: 'Overdue Test',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 7, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.completed,
+        );
+
+        // On-time: completed at 16:00 (due was 17:00)
+        final onTime = baseInstance.copyWith(
+          completedAt: DateTime(2026, 7, 1, 16, 0),
+        );
+        expect(onTime.isCompletedOverdue, isFalse);
+        expect(onTime.isCompletedOverdueByMoreThan24Hours, isFalse);
+
+        // Exactly due time: completed at 17:00
+        final exactlyOnTime = baseInstance.copyWith(
+          completedAt: DateTime(2026, 7, 1, 17, 0),
+        );
+        expect(exactlyOnTime.isCompletedOverdue, isFalse);
+        expect(exactlyOnTime.isCompletedOverdueByMoreThan24Hours, isFalse);
+
+        // Overdue by 2 hours (< 24h): completed at 19:00 on same day
+        final overdueUnder24h = baseInstance.copyWith(
+          completedAt: DateTime(2026, 7, 1, 19, 0),
+        );
+        expect(overdueUnder24h.isCompletedOverdue, isTrue);
+        expect(overdueUnder24h.isCompletedOverdueByMoreThan24Hours, isFalse);
+
+        // Overdue by exactly 24 hours: completed at 17:00 next day
+        final overdueExact24h = baseInstance.copyWith(
+          completedAt: DateTime(2026, 7, 2, 17, 0),
+        );
+        expect(overdueExact24h.isCompletedOverdue, isTrue);
+        expect(overdueExact24h.isCompletedOverdueByMoreThan24Hours, isFalse);
+
+        // Overdue by more than 24 hours (25 hours): completed at 18:00 next day
+        final overdueOver24h = baseInstance.copyWith(
+          completedAt: DateTime(2026, 7, 2, 18, 0),
+        );
+        expect(overdueOver24h.isCompletedOverdue, isTrue);
+        expect(overdueOver24h.isCompletedOverdueByMoreThan24Hours, isTrue);
+
+        // Not completed status
+        final pendingTask = baseInstance.copyWith(
+          status: TaskStatus.pending,
+          completedAt: DateTime(2026, 7, 2, 18, 0),
+        );
+        expect(pendingTask.isCompletedOverdue, isFalse);
+        expect(pendingTask.isCompletedOverdueByMoreThan24Hours, isFalse);
+      },
+    );
   });
 }

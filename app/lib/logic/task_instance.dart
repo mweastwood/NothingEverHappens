@@ -94,6 +94,14 @@ class TaskInstance {
     return completedAt!.isAfter(dueDateTime);
   }
 
+  /// Whether this task was completed more than 24 hours after its due date and time.
+  bool get isCompletedOverdueByMoreThan24Hours {
+    if (status != TaskStatus.completed) return false;
+    if (completedAt == null) return false;
+    final dueDateTime = dueRelativeTime.referenceTo(scheduledDate);
+    return completedAt!.difference(dueDateTime) > const Duration(hours: 24);
+  }
+
   factory TaskInstance.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot, [
     SnapshotOptions? options,

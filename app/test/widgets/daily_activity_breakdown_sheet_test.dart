@@ -239,6 +239,80 @@ void main() {
       );
     });
 
+    testWidgets(
+      'marks completed task overdue by > 24 hours with error/red color',
+      (tester) async {
+        final severeOverdueTask = TaskInstance(
+          id: 't-severe-overdue',
+          scheduleId: 's-severe',
+          ruleId: 'r-severe',
+          title: 'Submit quarterly report',
+          description: '',
+          scheduledDate: day,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          status: TaskStatus.completed,
+          completedAt: DateTime(
+            2026,
+            7,
+            3,
+            10,
+            0,
+          ), // Overdue by 41 hours (due was July 1 at 17:00)
+        );
+
+        final mildOverdueTask = TaskInstance(
+          id: 't-mild-overdue',
+          scheduleId: 's-mild',
+          ruleId: 'r-mild',
+          title: 'Call dentist',
+          description: '',
+          scheduledDate: day,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 7, 1, 20, 0), // Overdue by 3 hours
+        );
+
+        final testDayData = DailyStatsData(
+          day: day,
+          completedCount: 2,
+          skippedCount: 0,
+          missedCount: 0,
+          completedHours: 2.0,
+          completedTasks: [severeOverdueTask, mildOverdueTask],
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: DailyActivityBreakdownSheet(dayData: testDayData),
+            ),
+          ),
+        );
+
+        expect(find.text('Submit quarterly report'), findsOneWidget);
+        expect(find.text('Call dentist'), findsOneWidget);
+
+        final icons = tester
+            .widgetList<Icon>(find.byIcon(Icons.warning_amber_rounded))
+            .toList();
+        final BuildContext context = tester.element(
+          find.byKey(const Key('daily_activity_breakdown_sheet')),
+        );
+        final theme = Theme.of(context);
+
+        expect(
+          icons.any((icon) => icon.color == theme.colorScheme.error),
+          isTrue,
+        );
+        expect(
+          icons.any((icon) => icon.color == Colors.amber.shade800),
+          isTrue,
+        );
+      },
+    );
+
     testGoldens('DailyActivityBreakdownSheet renders correctly', (
       tester,
     ) async {
