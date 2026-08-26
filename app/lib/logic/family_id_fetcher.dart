@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'app_clock.dart';
 import 'error_handler.dart';
 
 /// Helper class for querying and caching the user's family ID from Firestore.
@@ -38,10 +39,8 @@ class FamilyIdFetcher {
   Future<String?> getFamilyId() async {
     if (_firestore == null || _userId.isEmpty) return null;
 
-    if (_cachedFamilyId != null &&
-        _lastFamilyIdCheck != null &&
-        DateTime.now().difference(_lastFamilyIdCheck!) <
-            familyIdCacheDuration) {
+    if (_lastFamilyIdCheck != null &&
+        AppClock.now.difference(_lastFamilyIdCheck!) < familyIdCacheDuration) {
       return _cachedFamilyId;
     }
 
@@ -52,7 +51,7 @@ class FamilyIdFetcher {
           .get(const GetOptions(source: Source.serverAndCache))
           .timeout(familyIdFetchTimeout);
       _cachedFamilyId = userDoc.data()?['familyId'] as String?;
-      _lastFamilyIdCheck = DateTime.now();
+      _lastFamilyIdCheck = AppClock.now;
       return _cachedFamilyId;
     } catch (e, st) {
       // Expected if offline, fallback to cache
@@ -63,7 +62,7 @@ class FamilyIdFetcher {
             .doc(_userId)
             .get(const GetOptions(source: Source.cache));
         _cachedFamilyId = cacheDoc.data()?['familyId'] as String?;
-        _lastFamilyIdCheck = DateTime.now();
+        _lastFamilyIdCheck = AppClock.now;
         return _cachedFamilyId;
       } catch (e2, st2) {
         _errorHandler?.report(e2, stackTrace: st2);
