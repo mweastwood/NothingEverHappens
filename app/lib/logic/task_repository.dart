@@ -22,6 +22,7 @@ import 'telemetry_service.dart';
 import 'subscription_service.dart';
 
 export 'firestore_task_repository.dart';
+export 'family_id_fetcher.dart';
 
 class _AppLifecycleObserver extends WidgetsBindingObserver {
   final VoidCallback onResume;
