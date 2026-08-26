@@ -439,10 +439,7 @@ void main() {
   );
 
   test('cancels box watch subscriptions on dispose', () async {
-    final ds = HiveLocalDataSource();
-    await ds.init();
-
-    await ds.dispose();
+    await dataSource.dispose();
 
     final tasksBox = await Hive.openBox<Map>('tasksBox');
     await tasksBox.put('S-post-dispose', {

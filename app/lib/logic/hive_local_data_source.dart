@@ -39,7 +39,7 @@ class HiveLocalDataSource {
   Box<Map>? _settingsBox;
   Box<Map>? _recipesBox;
 
-  final List<StreamSubscription> _boxWatchSubscriptions = [];
+  final List<StreamSubscription<BoxEvent>> _boxWatchSubscriptions = [];
 
   HiveLocalDataSource({this.errorHandler, this.logger});
 
@@ -202,7 +202,7 @@ class HiveLocalDataSource {
   Future<void> _setupBoxWatchers() async {
     await _cancelBoxWatchers();
 
-    if (_tasksBox != null) {
+    if (_tasksBox != null && _tasksBox!.isOpen) {
       _boxWatchSubscriptions.add(
         _tasksBox!.watch().listen((event) {
           if (_isWritingInternally) return;
@@ -223,7 +223,7 @@ class HiveLocalDataSource {
       );
     }
 
-    if (_instancesBox != null) {
+    if (_instancesBox != null && _instancesBox!.isOpen) {
       _boxWatchSubscriptions.add(
         _instancesBox!.watch().listen((event) {
           if (_isWritingInternally) return;
@@ -244,7 +244,7 @@ class HiveLocalDataSource {
       );
     }
 
-    if (_recipesBox != null) {
+    if (_recipesBox != null && _recipesBox!.isOpen) {
       _boxWatchSubscriptions.add(
         _recipesBox!.watch().listen((event) {
           if (_isWritingInternally) return;
@@ -265,7 +265,7 @@ class HiveLocalDataSource {
       );
     }
 
-    if (_settingsBox != null) {
+    if (_settingsBox != null && _settingsBox!.isOpen) {
       _boxWatchSubscriptions.add(
         _settingsBox!.watch().listen((event) {
           if (_isWritingInternally) return;
@@ -282,7 +282,7 @@ class HiveLocalDataSource {
       );
     }
 
-    if (_syncMetaBox != null) {
+    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
       _boxWatchSubscriptions.add(
         _syncMetaBox!.watch().listen((_) {
           if (_isWritingInternally) return;
@@ -293,7 +293,9 @@ class HiveLocalDataSource {
   }
 
   Future<void> _cancelBoxWatchers() async {
-    final subscriptions = List<StreamSubscription>.from(_boxWatchSubscriptions);
+    final subscriptions = List<StreamSubscription<BoxEvent>>.from(
+      _boxWatchSubscriptions,
+    );
     _boxWatchSubscriptions.clear();
     await Future.wait(subscriptions.map((s) => s.cancel()));
   }
