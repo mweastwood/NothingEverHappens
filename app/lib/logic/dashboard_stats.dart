@@ -21,8 +21,10 @@ class DailyStatsData {
   final List<TaskInstance> completedTasks;
   final List<TaskInstance> skippedTasks;
   final List<TaskInstance> missedTasks;
+  final List<TaskInstance> completedOnTimeTasks;
+  final List<TaskInstance> completedOverdueTasks;
 
-  const DailyStatsData({
+  DailyStatsData({
     required this.day,
     required this.completedCount,
     required this.skippedCount,
@@ -35,13 +37,14 @@ class DailyStatsData {
     this.completedTasks = const [],
     this.skippedTasks = const [],
     this.missedTasks = const [],
-  });
-
-  List<TaskInstance> get completedOnTimeTasks =>
-      completedTasks.where((t) => !t.isCompletedOverdue).toList();
-
-  List<TaskInstance> get completedOverdueTasks =>
-      completedTasks.where((t) => t.isCompletedOverdue).toList();
+    List<TaskInstance>? completedOnTimeTasks,
+    List<TaskInstance>? completedOverdueTasks,
+  }) : completedOnTimeTasks =
+           completedOnTimeTasks ??
+           completedTasks.where((t) => !t.isCompletedOverdue).toList(),
+       completedOverdueTasks =
+           completedOverdueTasks ??
+           completedTasks.where((t) => t.isCompletedOverdue).toList();
 
   int get completedOnTimeCount => completedOnTimeTasks.length;
   int get completedOverdueCount => completedOverdueTasks.length;

@@ -626,4 +626,92 @@ void main() {
       },
     );
   });
+
+  group('DailyStatsData', () {
+    final onTimeTask = TaskInstance(
+      id: 'ontime-1',
+      scheduleId: 's-1',
+      ruleId: 'r-1',
+      title: 'On-time Task',
+      description: '',
+      scheduledDate: const CivilDay(year: 2026, month: 7, day: 10),
+      startRelativeTime: dummyStart,
+      dueRelativeTime: dummyDue,
+      status: TaskStatus.completed,
+      completedAt: DateTime(2026, 7, 10, 12, 0),
+    );
+    final overdueTask = TaskInstance(
+      id: 'overdue-1',
+      scheduleId: 's-1',
+      ruleId: 'r-1',
+      title: 'Overdue Task',
+      description: '',
+      scheduledDate: const CivilDay(year: 2026, month: 7, day: 10),
+      startRelativeTime: dummyStart,
+      dueRelativeTime: dummyDue,
+      status: TaskStatus.completed,
+      completedAt: DateTime(2026, 7, 10, 18, 0),
+    );
+
+    test(
+      'properly separates on-time and overdue tasks when default initialized',
+      () {
+        final data = DailyStatsData(
+          day: const CivilDay(year: 2026, month: 7, day: 10),
+          completedCount: 2,
+          skippedCount: 0,
+          missedCount: 0,
+          completedHours: 2.0,
+          completedTasks: [onTimeTask, overdueTask],
+        );
+
+        expect(data.completedOnTimeTasks, equals([onTimeTask]));
+        expect(data.completedOverdueTasks, equals([overdueTask]));
+        expect(data.completedOnTimeCount, 1);
+        expect(data.completedOverdueCount, 1);
+      },
+    );
+
+    test(
+      'respects custom pre-filtered completedOnTimeTasks and completedOverdueTasks when provided',
+      () {
+        final customOnTime = [onTimeTask];
+        final customOverdue = [overdueTask];
+        final data = DailyStatsData(
+          day: const CivilDay(year: 2026, month: 7, day: 10),
+          completedCount: 2,
+          skippedCount: 0,
+          missedCount: 0,
+          completedHours: 2.0,
+          completedTasks: [onTimeTask, overdueTask],
+          completedOnTimeTasks: customOnTime,
+          completedOverdueTasks: customOverdue,
+        );
+
+        expect(data.completedOnTimeTasks, same(customOnTime));
+        expect(data.completedOverdueTasks, same(customOverdue));
+        expect(data.completedOnTimeCount, 1);
+        expect(data.completedOverdueCount, 1);
+      },
+    );
+
+    test('returns identical cached instances on repeated property access', () {
+      final data = DailyStatsData(
+        day: const CivilDay(year: 2026, month: 7, day: 10),
+        completedCount: 2,
+        skippedCount: 0,
+        missedCount: 0,
+        completedHours: 2.0,
+        completedTasks: [onTimeTask, overdueTask],
+      );
+
+      final firstOnTime = data.completedOnTimeTasks;
+      final secondOnTime = data.completedOnTimeTasks;
+      final firstOverdue = data.completedOverdueTasks;
+      final secondOverdue = data.completedOverdueTasks;
+
+      expect(identical(firstOnTime, secondOnTime), isTrue);
+      expect(identical(firstOverdue, secondOverdue), isTrue);
+    });
+  });
 }
