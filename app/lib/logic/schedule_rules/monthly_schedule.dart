@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../civil_day.dart';
 import '../relative_time.dart';
 import '../scheduling_policy.dart';
@@ -28,7 +29,7 @@ class MonthlySchedule extends TaskScheduleRule {
     String? id,
     String? scheduleId,
     required this.startDate,
-    required this.interval,
+    required int interval,
     this.dayOfMonth,
     this.dayOfWeek,
     this.occurrence,
@@ -37,7 +38,8 @@ class MonthlySchedule extends TaskScheduleRule {
     super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
-  }) : super(
+  }) : interval = interval <= 0 ? 1 : interval,
+       super(
          id: id ?? TaskScheduleRule.generateId(),
          scheduleId: scheduleId ?? '',
        ) {
@@ -89,13 +91,16 @@ class MonthlySchedule extends TaskScheduleRule {
           )
         : const MissedOccurrencePolicy.stack();
 
+    final rawInterval = json['interval'] as int? ?? 1;
+    final interval = rawInterval <= 0 ? 1 : rawInterval;
+
     return MonthlySchedule(
       id: id,
       scheduleId: scheduleId,
       startDate: CivilDay.fromJson(
         Map<String, dynamic>.from(json['startDate'] as Map),
       ),
-      interval: json['interval'] as int,
+      interval: interval,
       dayOfMonth: json['dayOfMonth'] as int?,
       dayOfWeek: json['dayOfWeek'] as int?,
       occurrence: json['occurrence'] as int?,
@@ -109,6 +114,7 @@ class MonthlySchedule extends TaskScheduleRule {
 
   @override
   bool occursOn(CivilDay date) {
+    final safeInterval = interval <= 0 ? 1 : interval;
     final startUtc = startDate.toUtcDateTime();
     final targetUtc = date.toUtcDateTime();
 
@@ -118,7 +124,7 @@ class MonthlySchedule extends TaskScheduleRule {
 
     final monthsDiff =
         (date.year - startDate.year) * 12 + (date.month - startDate.month);
-    if (monthsDiff < 0 || monthsDiff % interval != 0) {
+    if (monthsDiff < 0 || monthsDiff % safeInterval != 0) {
       return false;
     }
 
@@ -200,6 +206,7 @@ class MonthlySchedule extends TaskScheduleRule {
 
   @override
   CivilDay? nextOccurrenceAfter(CivilDay date) {
+    final safeInterval = interval <= 0 ? 1 : interval;
     final startTotalMonths = startDate.year * 12 + (startDate.month - 1);
     final refTotalMonths = date.year * 12 + (date.month - 1);
 
@@ -208,12 +215,12 @@ class MonthlySchedule extends TaskScheduleRule {
       cycle = 0;
     } else {
       final monthsDiff = refTotalMonths - startTotalMonths;
-      cycle = monthsDiff ~/ interval;
+      cycle = monthsDiff ~/ safeInterval;
     }
 
     // Search up to 10 years (120 months)
     for (int i = 0; i < 120; i++, cycle++) {
-      final targetTotalMonths = startTotalMonths + cycle * interval;
+      final targetTotalMonths = startTotalMonths + cycle * safeInterval;
       final targetYear = targetTotalMonths ~/ 12;
       final targetMonth = (targetTotalMonths % 12) + 1;
 

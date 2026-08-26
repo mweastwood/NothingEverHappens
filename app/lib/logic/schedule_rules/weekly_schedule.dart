@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../civil_day.dart';
 import '../relative_time.dart';
 import '../scheduling_policy.dart';
@@ -20,14 +21,15 @@ class WeeklySchedule extends TaskScheduleRule {
     String? id,
     String? scheduleId,
     required this.startDate,
-    required this.interval,
+    required int interval,
     required this.daysOfWeek,
     super.startRelativeTime,
     super.dueRelativeTime,
     super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
-  }) : super(
+  }) : interval = interval <= 0 ? 1 : interval,
+       super(
          id: id ?? TaskScheduleRule.generateId(),
          scheduleId: scheduleId ?? '',
        );
@@ -65,13 +67,16 @@ class WeeklySchedule extends TaskScheduleRule {
           )
         : const MissedOccurrencePolicy.stack();
 
+    final rawInterval = json['interval'] as int? ?? 1;
+    final interval = rawInterval <= 0 ? 1 : rawInterval;
+
     return WeeklySchedule(
       id: id,
       scheduleId: scheduleId,
       startDate: CivilDay.fromJson(
         Map<String, dynamic>.from(json['startDate'] as Map),
       ),
-      interval: json['interval'] as int,
+      interval: interval,
       daysOfWeek: (json['daysOfWeek'] as List<dynamic>).cast<int>().toSet(),
       startRelativeTime: start,
       dueRelativeTime: due,
@@ -83,6 +88,7 @@ class WeeklySchedule extends TaskScheduleRule {
 
   @override
   bool occursOn(CivilDay date) {
+    final safeInterval = interval <= 0 ? 1 : interval;
     final startUtc = startDate.toUtcDateTime();
     final targetUtc = date.toUtcDateTime();
 
@@ -110,7 +116,7 @@ class WeeklySchedule extends TaskScheduleRule {
         .inDays;
     final weeksDiff = daysDiff ~/ 7;
 
-    return weeksDiff % interval == 0;
+    return weeksDiff % safeInterval == 0;
   }
 
   @override
@@ -119,6 +125,7 @@ class WeeklySchedule extends TaskScheduleRule {
       throw Exception('No occurrence found within 10 years');
     }
 
+    final safeInterval = interval <= 0 ? 1 : interval;
     final startUtc = startDate.toUtcDateTime();
     final refUtc = date.toUtcDateTime();
 
@@ -135,7 +142,7 @@ class WeeklySchedule extends TaskScheduleRule {
 
     final daysDiff = startOfWeekForMin.difference(startOfWeekForStart).inDays;
     final weeksDiff = daysDiff ~/ 7;
-    final k = weeksDiff % interval;
+    final k = weeksDiff % safeInterval;
 
     final sortedDays = daysOfWeek.toList()..sort();
 
@@ -154,7 +161,7 @@ class WeeklySchedule extends TaskScheduleRule {
     }
 
     // Otherwise (or if all active days in current week have passed), jump to next active week
-    final weeksToJump = k == 0 ? interval : (interval - k);
+    final weeksToJump = k == 0 ? safeInterval : (safeInterval - k);
     final nextActiveWeekStart = startOfWeekForMin.add(
       Duration(days: weeksToJump * 7),
     );

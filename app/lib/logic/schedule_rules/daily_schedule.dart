@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../civil_day.dart';
 import '../relative_time.dart';
 import '../scheduling_policy.dart';
@@ -17,13 +18,14 @@ class DailySchedule extends TaskScheduleRule {
     String? id,
     String? scheduleId,
     required this.startDate,
-    required this.interval,
+    required int interval,
     super.startRelativeTime,
     super.dueRelativeTime,
     super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
-  }) : super(
+  }) : interval = interval <= 0 ? 1 : interval,
+       super(
          id: id ?? TaskScheduleRule.generateId(),
          scheduleId: scheduleId ?? '',
        );
@@ -61,13 +63,16 @@ class DailySchedule extends TaskScheduleRule {
           )
         : const MissedOccurrencePolicy.stack();
 
+    final rawInterval = json['interval'] as int? ?? 1;
+    final interval = rawInterval <= 0 ? 1 : rawInterval;
+
     return DailySchedule(
       id: id,
       scheduleId: scheduleId,
       startDate: CivilDay.fromJson(
         Map<String, dynamic>.from(json['startDate'] as Map),
       ),
-      interval: json['interval'] as int,
+      interval: interval,
       startRelativeTime: start,
       dueRelativeTime: due,
       notificationRelativeTimes: notifs,
@@ -78,6 +83,7 @@ class DailySchedule extends TaskScheduleRule {
 
   @override
   bool occursOn(CivilDay date) {
+    final safeInterval = interval <= 0 ? 1 : interval;
     final startUtc = startDate.toUtcDateTime();
     final targetUtc = date.toUtcDateTime();
 
@@ -87,11 +93,12 @@ class DailySchedule extends TaskScheduleRule {
     }
 
     final difference = targetUtc.difference(startUtc).inDays;
-    return difference % interval == 0;
+    return difference % safeInterval == 0;
   }
 
   @override
   CivilDay? nextOccurrenceAfter(CivilDay date) {
+    final safeInterval = interval <= 0 ? 1 : interval;
     final startUtc = startDate.toUtcDateTime();
     final currentUtc = date.toUtcDateTime();
 
@@ -100,12 +107,14 @@ class DailySchedule extends TaskScheduleRule {
     }
 
     final daysDiff = currentUtc.difference(startUtc).inDays;
-    final intervals = daysDiff ~/ interval;
-    final occurrenceUtc = startUtc.add(Duration(days: intervals * interval));
+    final intervals = daysDiff ~/ safeInterval;
+    final occurrenceUtc = startUtc.add(
+      Duration(days: intervals * safeInterval),
+    );
 
     final nextUtc = currentUtc.isBefore(occurrenceUtc)
         ? occurrenceUtc
-        : startUtc.add(Duration(days: (intervals + 1) * interval));
+        : startUtc.add(Duration(days: (intervals + 1) * safeInterval));
 
     return CivilDay(year: nextUtc.year, month: nextUtc.month, day: nextUtc.day);
   }
