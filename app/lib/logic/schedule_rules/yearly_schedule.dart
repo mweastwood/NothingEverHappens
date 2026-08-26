@@ -23,7 +23,7 @@ class YearlySchedule extends TaskScheduleRule {
     String? id,
     String? scheduleId,
     required this.startDate,
-    required this.interval,
+    required int interval,
     required this.month,
     required this.day,
     super.startRelativeTime,
@@ -31,7 +31,8 @@ class YearlySchedule extends TaskScheduleRule {
     super.notificationRelativeTimes,
     super.schedulingPolicy,
     super.missedOccurrencePolicy,
-  }) : super(
+  }) : interval = interval <= 0 ? 1 : interval,
+       super(
          id: id ?? TaskScheduleRule.generateId(),
          scheduleId: scheduleId ?? '',
        );
@@ -69,13 +70,16 @@ class YearlySchedule extends TaskScheduleRule {
           )
         : const MissedOccurrencePolicy.stack();
 
+    final rawInterval = json['interval'] as int? ?? 1;
+    final interval = rawInterval <= 0 ? 1 : rawInterval;
+
     return YearlySchedule(
       id: id,
       scheduleId: scheduleId,
       startDate: CivilDay.fromJson(
         Map<String, dynamic>.from(json['startDate'] as Map),
       ),
-      interval: json['interval'] as int,
+      interval: interval,
       month: json['month'] as int,
       day: json['day'] as int,
       startRelativeTime: start,
@@ -88,6 +92,7 @@ class YearlySchedule extends TaskScheduleRule {
 
   @override
   bool occursOn(CivilDay date) {
+    final safeInterval = interval <= 0 ? 1 : interval;
     final startUtc = startDate.toUtcDateTime();
     final targetUtc = date.toUtcDateTime();
 
@@ -100,7 +105,7 @@ class YearlySchedule extends TaskScheduleRule {
     }
 
     final yearsDiff = date.year - startDate.year;
-    return yearsDiff >= 0 && yearsDiff % interval == 0;
+    return yearsDiff >= 0 && yearsDiff % safeInterval == 0;
   }
 
   CivilDay? _occurrenceInYear(int year) {
@@ -117,17 +122,18 @@ class YearlySchedule extends TaskScheduleRule {
 
   @override
   CivilDay? nextOccurrenceAfter(CivilDay date) {
+    final safeInterval = interval <= 0 ? 1 : interval;
     int cycle;
     if (date.year < startDate.year) {
       cycle = 0;
     } else {
       final yearsDiff = date.year - startDate.year;
-      cycle = yearsDiff ~/ interval;
+      cycle = yearsDiff ~/ safeInterval;
     }
 
     // Search up to 100 cycles
     for (int i = 0; i < 100; i++, cycle++) {
-      final targetYear = startDate.year + cycle * interval;
+      final targetYear = startDate.year + cycle * safeInterval;
       final occurrenceDay = _occurrenceInYear(targetYear);
       if (occurrenceDay == null) continue;
 

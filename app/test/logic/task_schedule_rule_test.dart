@@ -1565,5 +1565,131 @@ void main() {
         );
       },
     );
+
+    group('Zero and Negative Interval Handling (Issue #623)', () {
+      test(
+        'DailySchedule constructor and fromJson default interval <= 0 to 1',
+        () {
+          const start = CivilDay(year: 2026, month: 1, day: 1);
+          final schedule = DailySchedule(
+            startDate: start,
+            interval: 0,
+            startRelativeTime: testStart,
+            dueRelativeTime: testDue,
+          );
+
+          expect(schedule.interval, equals(1));
+          expect(schedule.occursOn(start), isTrue);
+          expect(
+            schedule.nextOccurrenceAfter(start),
+            equals(const CivilDay(year: 2026, month: 1, day: 2)),
+          );
+          expect(schedule.advanceAfterCompletion(start), isNotNull);
+
+          final jsonSchedule = DailySchedule.fromJson({
+            'startDate': start.toJson(),
+            'interval': 0,
+          });
+          expect(jsonSchedule.interval, equals(1));
+          expect(jsonSchedule.occursOn(start), isTrue);
+          expect(
+            jsonSchedule.nextOccurrenceAfter(start),
+            equals(const CivilDay(year: 2026, month: 1, day: 2)),
+          );
+        },
+      );
+
+      test(
+        'WeeklySchedule constructor and fromJson default interval <= 0 to 1',
+        () {
+          const start = CivilDay(year: 2026, month: 1, day: 5); // Mon
+          final schedule = WeeklySchedule(
+            startDate: start,
+            interval: 0,
+            daysOfWeek: const {1},
+            startRelativeTime: testStart,
+            dueRelativeTime: testDue,
+          );
+
+          expect(schedule.interval, equals(1));
+          expect(schedule.occursOn(start), isTrue);
+          expect(
+            schedule.nextOccurrenceAfter(start),
+            equals(const CivilDay(year: 2026, month: 1, day: 12)),
+          );
+          expect(schedule.advanceAfterCompletion(start), isNotNull);
+
+          final jsonSchedule = WeeklySchedule.fromJson({
+            'startDate': start.toJson(),
+            'interval': -1,
+            'daysOfWeek': [1],
+          });
+          expect(jsonSchedule.interval, equals(1));
+          expect(jsonSchedule.occursOn(start), isTrue);
+        },
+      );
+
+      test(
+        'MonthlySchedule constructor and fromJson default interval <= 0 to 1',
+        () {
+          const start = CivilDay(year: 2026, month: 1, day: 15);
+          final schedule = MonthlySchedule(
+            startDate: start,
+            interval: 0,
+            dayOfMonth: 15,
+            startRelativeTime: testStart,
+            dueRelativeTime: testDue,
+          );
+
+          expect(schedule.interval, equals(1));
+          expect(schedule.occursOn(start), isTrue);
+          expect(
+            schedule.nextOccurrenceAfter(start),
+            equals(const CivilDay(year: 2026, month: 2, day: 15)),
+          );
+          expect(schedule.advanceAfterCompletion(start), isNotNull);
+
+          final jsonSchedule = MonthlySchedule.fromJson({
+            'startDate': start.toJson(),
+            'interval': 0,
+            'dayOfMonth': 15,
+          });
+          expect(jsonSchedule.interval, equals(1));
+          expect(jsonSchedule.occursOn(start), isTrue);
+        },
+      );
+
+      test(
+        'YearlySchedule constructor and fromJson default interval <= 0 to 1',
+        () {
+          const start = CivilDay(year: 2026, month: 5, day: 10);
+          final schedule = YearlySchedule(
+            startDate: start,
+            interval: 0,
+            month: 5,
+            day: 10,
+            startRelativeTime: testStart,
+            dueRelativeTime: testDue,
+          );
+
+          expect(schedule.interval, equals(1));
+          expect(schedule.occursOn(start), isTrue);
+          expect(
+            schedule.nextOccurrenceAfter(start),
+            equals(const CivilDay(year: 2027, month: 5, day: 10)),
+          );
+          expect(schedule.advanceAfterCompletion(start), isNotNull);
+
+          final jsonSchedule = YearlySchedule.fromJson({
+            'startDate': start.toJson(),
+            'interval': -5,
+            'month': 5,
+            'day': 10,
+          });
+          expect(jsonSchedule.interval, equals(1));
+          expect(jsonSchedule.occursOn(start), isTrue);
+        },
+      );
+    });
   });
 }
