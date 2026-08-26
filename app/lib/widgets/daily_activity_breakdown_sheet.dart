@@ -391,7 +391,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       final dateStr = (dt.year != AppClock.now.year)
           ? DateFormat.yMMMd(locale).format(dt)
           : DateFormat.MMMd(locale).format(dt);
-      final timeStr = DateFormat('h:mm a').format(dt);
+      final timeStr = DateFormat('h:mm a', locale).format(dt);
       completionTimeStr = '$dateStr, $timeStr';
     }
 

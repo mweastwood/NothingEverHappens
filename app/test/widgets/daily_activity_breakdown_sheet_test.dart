@@ -440,6 +440,108 @@ void main() {
       },
     );
 
+    testWidgets('handles null completedAt when sorting resolved order', (
+      tester,
+    ) async {
+      final nullTimeDayData = DailyStatsData(
+        day: day,
+        completedCount: 0,
+        skippedCount: 2,
+        missedCount: 1,
+        completedHours: 0.0,
+        skippedTasks: [
+          TaskInstance(
+            id: 't-skip-null-1',
+            scheduleId: 's-1',
+            ruleId: 'r-1',
+            title: 'B Skipped Null',
+            description: '',
+            scheduledDate: day,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.skipped,
+            completedAt: null,
+            updatedAt: null,
+          ),
+          TaskInstance(
+            id: 't-skip-null-2',
+            scheduleId: 's-2',
+            ruleId: 'r-2',
+            title: 'A Skipped Null',
+            description: '',
+            scheduledDate: day,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.skipped,
+            completedAt: null,
+            updatedAt: null,
+          ),
+        ],
+        missedTasks: [
+          TaskInstance(
+            id: 't-miss-null',
+            scheduleId: 's-3',
+            ruleId: 'r-3',
+            title: 'Missed Task Null',
+            description: '',
+            scheduledDate: day,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.failed,
+            completedAt: null,
+            updatedAt: null,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: DailyActivityBreakdownSheet(dayData: nullTimeDayData),
+          ),
+        ),
+      );
+
+      expect(find.text('A Skipped Null'), findsOneWidget);
+      expect(find.text('B Skipped Null'), findsOneWidget);
+      expect(find.text('Missed Task Null'), findsOneWidget);
+    });
+
+    testWidgets('formats completion time using active locale', (tester) async {
+      final taskWithTime = TaskInstance(
+        id: 't-locale',
+        scheduleId: 's-loc',
+        ruleId: 'r-loc',
+        title: 'Locale Task',
+        description: '',
+        scheduledDate: day,
+        startRelativeTime: dummyStart,
+        dueRelativeTime: dummyDue,
+        status: TaskStatus.completed,
+        completedAt: DateTime(2026, 7, 1, 14, 30),
+      );
+
+      final testDayData = DailyStatsData(
+        day: day,
+        completedCount: 1,
+        skippedCount: 0,
+        missedCount: 0,
+        completedHours: 1.0,
+        completedTasks: [taskWithTime],
+      );
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          locale: const Locale('en', 'US'),
+          child: Scaffold(
+            body: DailyActivityBreakdownSheet(dayData: testDayData),
+          ),
+        ),
+      );
+
+      expect(find.text('Jul 1, 2:30 PM'), findsOneWidget);
+    });
+
     testGoldens('DailyActivityBreakdownSheet renders correctly', (
       tester,
     ) async {

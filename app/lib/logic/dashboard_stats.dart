@@ -43,23 +43,23 @@ class DailyStatsData {
     List<TaskInstance>? completedOnTimeTasks,
     List<TaskInstance>? completedOverdueTasks,
     List<TaskInstance>? completedSeriouslyOverdueTasks,
-  })  : completedOnTimeTasks =
-            completedOnTimeTasks ??
-            completedTasks.where((t) => !t.isCompletedOverdue).toList(),
-        completedOverdueTasks =
-            completedOverdueTasks ??
-            completedTasks
-                .where(
-                  (t) =>
-                      t.isCompletedOverdue &&
-                      !t.isCompletedOverdueByMoreThan24Hours,
-                )
-                .toList(),
-        completedSeriouslyOverdueTasks =
-            completedSeriouslyOverdueTasks ??
-            completedTasks
-                .where((t) => t.isCompletedOverdueByMoreThan24Hours)
-                .toList();
+  }) : completedOnTimeTasks =
+           completedOnTimeTasks ??
+           completedTasks.where((t) => !t.isCompletedOverdue).toList(),
+       completedOverdueTasks =
+           completedOverdueTasks ??
+           completedTasks
+               .where(
+                 (t) =>
+                     t.isCompletedOverdue &&
+                     !t.isCompletedOverdueByMoreThan24Hours,
+               )
+               .toList(),
+       completedSeriouslyOverdueTasks =
+           completedSeriouslyOverdueTasks ??
+           completedTasks
+               .where((t) => t.isCompletedOverdueByMoreThan24Hours)
+               .toList();
 
   int get completedOnTimeCount => completedOnTimeTasks.length;
   int get completedOverdueCount => completedOverdueTasks.length;
