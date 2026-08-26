@@ -23,21 +23,13 @@ class UnifiedTaskRepository implements TaskRepository {
   final TaskSyncService _syncService;
   final FirebaseFirestore? _rawFirestore;
   final TelemetryService? _telemetryService;
+  final FamilyIdFetcher _familyIdFetcher;
 
   @override
   final String userId;
   final NotificationService? notificationService;
   final ErrorHandler? errorHandler;
   final AppLogger? logger;
-
-  /// Cache duration for family ID to avoid excessive DB reads.
-  static const Duration _familyIdCacheDuration = Duration(seconds: 15);
-
-  /// Timeout for fetching family ID from the network.
-  static const Duration _familyIdFetchTimeout = Duration(seconds: 2);
-
-  String? _cachedFamilyId;
-  DateTime? _lastFamilyIdCheck;
 
   Future<void>? _activeProcessingFuture;
   bool _hasQueuedProcessing = false;
@@ -52,10 +44,18 @@ class UnifiedTaskRepository implements TaskRepository {
     this.errorHandler,
     this.logger,
     TelemetryService? telemetryService,
+    FamilyIdFetcher? familyIdFetcher,
   }) : _localDataSource = localDataSource,
        _syncService = syncService,
        _rawFirestore = firestore,
-       _telemetryService = telemetryService {
+       _telemetryService = telemetryService,
+       _familyIdFetcher =
+           familyIdFetcher ??
+           FamilyIdFetcher(
+             firestore: firestore,
+             userId: userId,
+             errorHandler: errorHandler,
+           ) {
     _initMigration();
   }
 
@@ -63,39 +63,7 @@ class UnifiedTaskRepository implements TaskRepository {
   void dispose() {}
 
   @override
-  Future<String?> getFamilyId() async {
-    if (_rawFirestore == null || userId.isEmpty) return null;
-    if (_cachedFamilyId != null &&
-        _lastFamilyIdCheck != null &&
-        DateTime.now().difference(_lastFamilyIdCheck!) <
-            _familyIdCacheDuration) {
-      return _cachedFamilyId;
-    }
-    try {
-      final userDoc = await _rawFirestore
-          .collection('users')
-          .doc(userId)
-          .get(const GetOptions(source: Source.serverAndCache))
-          .timeout(_familyIdFetchTimeout);
-      _cachedFamilyId = userDoc.data()?['familyId'] as String?;
-      _lastFamilyIdCheck = DateTime.now();
-      return _cachedFamilyId;
-    } catch (e, st) {
-      errorHandler?.report(e, stackTrace: st);
-      try {
-        final cacheDoc = await _rawFirestore
-            .collection('users')
-            .doc(userId)
-            .get(const GetOptions(source: Source.cache));
-        _cachedFamilyId = cacheDoc.data()?['familyId'] as String?;
-        _lastFamilyIdCheck = DateTime.now();
-        return _cachedFamilyId;
-      } catch (e2, st2) {
-        errorHandler?.report(e2, stackTrace: st2);
-        return _cachedFamilyId;
-      }
-    }
-  }
+  Future<String?> getFamilyId() => _familyIdFetcher.getFamilyId();
 
   void _initMigration() {
     if (userId.isEmpty) return;

@@ -20,12 +20,6 @@ import 'user_settings.dart';
 import 'utils/app_version.dart';
 
 class FirestoreTaskRepository implements TaskRepository {
-  /// Cache duration for family ID to avoid excessive DB reads.
-  static const Duration _familyIdCacheDuration = Duration(seconds: 15);
-
-  /// Timeout for fetching family ID from the network.
-  static const Duration _familyIdFetchTimeout = Duration(seconds: 2);
-
   /// Expiration duration for recently spawned virtual instances.
   static const Duration _spawnedInstanceCacheDuration = Duration(seconds: 2);
 
@@ -36,6 +30,7 @@ class FirestoreTaskRepository implements TaskRepository {
   final String _userId;
   final NotificationService? _notificationService;
   final ErrorHandler? errorHandler;
+  final FamilyIdFetcher _familyIdFetcher;
   Future<void>? _activeProcessingFuture;
   bool _hasQueuedForceRun = false;
   final List<Future<void> Function()> _queuedPostProcessCallbacks = [];
@@ -46,8 +41,6 @@ class FirestoreTaskRepository implements TaskRepository {
   final Map<String, ({DateTime processedAt, String signature})>
   _lastProcessedTasks = {};
   final Map<String, DateTime> _spawnedInstancesCache = {};
-  String? _cachedFamilyId;
-  DateTime? _lastFamilyIdCheck;
   static const int _instanceQueryCutoffDays = 90;
 
   @override
@@ -60,9 +53,17 @@ class FirestoreTaskRepository implements TaskRepository {
     NotificationService? notificationService,
     this.errorHandler,
     this.logger,
+    FamilyIdFetcher? familyIdFetcher,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _userId = userId,
-       _notificationService = notificationService;
+       _notificationService = notificationService,
+       _familyIdFetcher =
+           familyIdFetcher ??
+           FamilyIdFetcher(
+             firestore: firestore ?? FirebaseFirestore.instance,
+             userId: userId,
+             errorHandler: errorHandler,
+           );
 
   @override
   Future<void> resetLocalDataAndResync() async {}
@@ -112,41 +113,7 @@ class FirestoreTaskRepository implements TaskRepository {
   }
 
   @override
-  Future<String?> getFamilyId() => _getFamilyId();
-
-  Future<String?> _getFamilyId() async {
-    if (_cachedFamilyId != null &&
-        _lastFamilyIdCheck != null &&
-        DateTime.now().difference(_lastFamilyIdCheck!) <
-            _familyIdCacheDuration) {
-      return _cachedFamilyId;
-    }
-    try {
-      final userDoc = await _firestore
-          .collection('users')
-          .doc(_userId)
-          .get(const GetOptions(source: Source.serverAndCache))
-          .timeout(_familyIdFetchTimeout);
-      _cachedFamilyId = userDoc.data()?['familyId'] as String?;
-      _lastFamilyIdCheck = DateTime.now();
-      return _cachedFamilyId;
-    } catch (e, st) {
-      // Expected if offline, fallback to cache
-      errorHandler?.report(e, stackTrace: st);
-      try {
-        final cacheDoc = await _firestore
-            .collection('users')
-            .doc(_userId)
-            .get(const GetOptions(source: Source.cache));
-        _cachedFamilyId = cacheDoc.data()?['familyId'] as String?;
-        _lastFamilyIdCheck = DateTime.now();
-        return _cachedFamilyId;
-      } catch (e2, st2) {
-        errorHandler?.report(e2, stackTrace: st2);
-        return _cachedFamilyId;
-      }
-    }
-  }
+  Future<String?> getFamilyId() => _familyIdFetcher.getFamilyId();
 
   DocumentReference<TaskSchedule> _taskRefFor(
     TaskSchedule task,
@@ -232,7 +199,7 @@ class FirestoreTaskRepository implements TaskRepository {
       } catch (_) {}
 
       // Check family collection
-      final familyId = await _getFamilyId();
+      final familyId = await getFamilyId();
       if (familyId != null && familyId.isNotEmpty) {
         try {
           final familyDoc = await _firestore
@@ -256,7 +223,7 @@ class FirestoreTaskRepository implements TaskRepository {
     final personalDoc = await _instancesRef.doc(id).get();
     if (personalDoc.exists) return personalDoc.data();
 
-    final familyId = await _getFamilyId();
+    final familyId = await getFamilyId();
     if (familyId != null && familyId.isNotEmpty) {
       final familyDoc = await _firestore
           .collection('families')
@@ -478,7 +445,7 @@ class FirestoreTaskRepository implements TaskRepository {
     try {
       final now = AppClock.now;
 
-      final familyId = await _getFamilyId();
+      final familyId = await getFamilyId();
       final cutoffDate = AppClock.now.subtract(
         const Duration(days: _instanceQueryCutoffDays),
       );
@@ -787,7 +754,7 @@ class FirestoreTaskRepository implements TaskRepository {
       await _activeProcessingFuture;
     }
     try {
-      final familyId = await _getFamilyId();
+      final familyId = await getFamilyId();
       final List<TaskSchedule> allTasks = (await _tasksRef.get()).docs
           .map((d) => d.data())
           .toList();
@@ -820,7 +787,7 @@ class FirestoreTaskRepository implements TaskRepository {
 
   @override
   Future<void> addTaskSchedule(TaskSchedule task) async {
-    final familyId = await _getFamilyId();
+    final familyId = await getFamilyId();
     final batch = _firestore.batch();
     batch.set(_taskRefFor(task, familyId), task);
     await batch.commit();
@@ -832,7 +799,7 @@ class FirestoreTaskRepository implements TaskRepository {
 
   @override
   Future<void> updateTaskSchedule(TaskModification modification) async {
-    final familyId = await _getFamilyId();
+    final familyId = await getFamilyId();
     final batch = _firestore.batch();
 
     var newTask = modification.newTask;
@@ -955,7 +922,7 @@ class FirestoreTaskRepository implements TaskRepository {
     if (task == null) return null;
 
     final targetId = task.id;
-    final familyId = await _getFamilyId();
+    final familyId = await getFamilyId();
     final batch = _firestore.batch();
 
     batch.delete(_taskRefFor(task, familyId));
@@ -1015,7 +982,7 @@ class FirestoreTaskRepository implements TaskRepository {
     TaskSchedule task,
     List<TaskInstance> pendingInstances,
   ) async {
-    final familyId = await _getFamilyId();
+    final familyId = await getFamilyId();
     final batch = _firestore.batch();
 
     batch.set(_taskRefFor(task, familyId), task);
@@ -1050,7 +1017,7 @@ class FirestoreTaskRepository implements TaskRepository {
 
     final task = await _fetchTask(instance.scheduleId);
 
-    final familyId = await _getFamilyId();
+    final familyId = await getFamilyId();
     final now = AppClock.now;
 
     if (instance.isFamily &&
@@ -1174,7 +1141,7 @@ class FirestoreTaskRepository implements TaskRepository {
 
   @override
   Future<void> saveTaskInstance(TaskInstance instance) async {
-    final familyId = await _getFamilyId();
+    final familyId = await getFamilyId();
     await _instanceRefFor(instance, familyId).set(instance);
   }
 
@@ -1185,7 +1152,7 @@ class FirestoreTaskRepository implements TaskRepository {
 
     final task = await _fetchTask(instance.scheduleId);
 
-    final familyId = await _getFamilyId();
+    final familyId = await getFamilyId();
     final now = AppClock.now;
 
     final batch = _firestore.batch();
@@ -1230,7 +1197,7 @@ class FirestoreTaskRepository implements TaskRepository {
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
     final task = await _fetchTask(resolvedInstance.scheduleId);
 
-    final familyId = await _getFamilyId();
+    final familyId = await getFamilyId();
     final batch = _firestore.batch();
     final now = resolvedInstance.completedAt ?? AppClock.now;
 
