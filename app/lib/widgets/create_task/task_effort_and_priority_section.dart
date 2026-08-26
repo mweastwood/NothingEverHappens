@@ -116,18 +116,18 @@ class TaskEffortAndPrioritySection extends StatelessWidget {
                           Expanded(
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: ValueListenableBuilder<TextEditingValue>(
-                                valueListenable: estimatedDurationController,
-                                builder: (context, value, _) {
-                                  final humanized = _getHumanizedDuration(
-                                    value.text,
-                                  );
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ValueListenableBuilder<TextEditingValue>(
+                                    valueListenable:
+                                        estimatedDurationController,
+                                    builder: (context, value, _) {
+                                      final humanized = _getHumanizedDuration(
+                                        value.text,
+                                      );
+                                      return Text(
                                         humanized.isNotEmpty
                                             ? '${context.l10n.estimatedEffortFieldLabel} $humanized'
                                             : context
@@ -141,46 +141,41 @@ class TaskEffortAndPrioritySection extends StatelessWidget {
                                               height: 1.1,
                                             ),
                                         textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      TextFormField(
-                                        key: const Key(
-                                          'estimated_effort_field',
-                                        ),
-                                        controller: estimatedDurationController,
-                                        enabled: !readOnly,
-                                        textAlign: TextAlign.center,
-                                        style: theme.textTheme.bodyLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              height: 1.2,
-                                            ),
-                                        decoration: const InputDecoration(
-                                          border: InputBorder.none,
-                                          isDense: true,
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
-                                        keyboardType: TextInputType.number,
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter
-                                              .digitsOnly,
-                                        ],
-                                        validator: (value) {
-                                          if (value != null &&
-                                              value.isNotEmpty) {
-                                            final val = int.tryParse(value);
-                                            if (val == null || val <= 0) {
-                                              return context
-                                                  .l10n
-                                                  .estimatedEffortValidationError;
-                                            }
-                                          }
-                                          return null;
-                                        },
-                                      ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 4),
+                                  TextFormField(
+                                    key: const Key('estimated_effort_field'),
+                                    controller: estimatedDurationController,
+                                    enabled: !readOnly,
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      height: 1.2,
+                                    ),
+                                    decoration: const InputDecoration(
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
                                     ],
-                                  );
-                                },
+                                    validator: (value) {
+                                      if (value != null && value.isNotEmpty) {
+                                        final val = int.tryParse(value);
+                                        if (val == null || val <= 0) {
+                                          return context
+                                              .l10n
+                                              .estimatedEffortValidationError;
+                                        }
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
                           ),
