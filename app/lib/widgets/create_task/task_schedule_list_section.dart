@@ -37,7 +37,7 @@ class TaskScheduleListSection extends StatelessWidget {
               children: [
                 for (int i = 0; i < schedules.length; i++)
                   ScheduleConfigCard(
-                    key: ValueKey('schedule_card_$i'),
+                    key: ValueKey(schedules[i].id),
                     schedule: schedules[i],
                     onChanged: (newSchedule) {
                       onScheduleChanged?.call(i, newSchedule);

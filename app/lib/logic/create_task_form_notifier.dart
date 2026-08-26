@@ -79,6 +79,15 @@ class CreateTaskFormState {
       );
     } else if (taskToDuplicate != null) {
       final task = taskToDuplicate;
+      final isMealWorkflow = task.workflowType == 'mealWorkflow';
+      TimeOfDay selectTime = const TimeOfDay(hour: 10, minute: 0);
+      TimeOfDay shopTime = const TimeOfDay(hour: 16, minute: 0);
+      TimeOfDay prepTime = const TimeOfDay(hour: 18, minute: 30);
+      if (task.mealWorkflowConfig != null) {
+        selectTime = task.mealWorkflowConfig!.selectTime.time;
+        shopTime = task.mealWorkflowConfig!.shopTime.time;
+        prepTime = task.mealWorkflowConfig!.prepTime.time;
+      }
       final taskScheduleId = TaskSchedule.generateId();
       final schedules = task.schedules
           .map(
@@ -99,6 +108,10 @@ class CreateTaskFormState {
         preferredBy: Map<String, bool>.from(task.preferredBy),
         assignedUserId: task.assignedUserId,
         skipIfNoCapacity: task.skipIfNoCapacity,
+        isMealWorkflow: isMealWorkflow,
+        selectTime: selectTime,
+        shopTime: shopTime,
+        prepTime: prepTime,
       );
     } else {
       final taskScheduleId = TaskSchedule.generateId();

@@ -122,6 +122,21 @@ void main() {
         ],
         isFamily: true,
         priority: TaskPriority.low,
+        workflowType: 'mealWorkflow',
+        mealWorkflowConfig: const MealWorkflowConfig(
+          selectTime: RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 30),
+          ),
+          shopTime: RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 14, minute: 0),
+          ),
+          prepTime: RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 18, minute: 0),
+          ),
+        ),
       );
 
       final notifier = CreateTaskFormNotifier(taskToDuplicate: existingTask);
@@ -133,6 +148,10 @@ void main() {
       expect(state.schedules.first.id, isNot(equals('old-rule-id')));
       expect(state.isFamily, true);
       expect(state.priority, TaskPriority.low);
+      expect(state.isMealWorkflow, true);
+      expect(state.selectTime, const TimeOfDay(hour: 9, minute: 30));
+      expect(state.shopTime, const TimeOfDay(hour: 14, minute: 0));
+      expect(state.prepTime, const TimeOfDay(hour: 18, minute: 0));
     });
   });
 

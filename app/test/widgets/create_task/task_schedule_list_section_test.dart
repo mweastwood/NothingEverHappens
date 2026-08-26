@@ -65,7 +65,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('schedule_card_0')), findsOneWidget);
+      expect(find.byKey(ValueKey(defaultSchedule.id)), findsOneWidget);
       expect(find.byKey(const Key('add_schedule_button')), findsOneWidget);
     });
 
