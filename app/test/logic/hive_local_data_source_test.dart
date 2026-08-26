@@ -437,4 +437,74 @@ void main() {
       expect(dataSource.getInstances().length, 50);
     },
   );
+
+  test('cancels box watch subscriptions on dispose', () async {
+    final tasksEvents = <List<TaskSchedule>>[];
+    final instancesEvents = <List<TaskInstance>>[];
+    bool tasksDone = false;
+    bool instancesDone = false;
+
+    dataSource.watchTasks().listen(
+      tasksEvents.add,
+      onDone: () => tasksDone = true,
+    );
+    dataSource.watchInstances().listen(
+      instancesEvents.add,
+      onDone: () => instancesDone = true,
+    );
+
+    await dataSource.dispose();
+    await pumpEventQueue();
+
+    expect(tasksDone, isTrue);
+    expect(instancesDone, isTrue);
+
+    final tasksCountPostDispose = tasksEvents.length;
+    final instancesCountPostDispose = instancesEvents.length;
+
+    final tasksBox = await Hive.openBox<Map>('tasksBox');
+    await tasksBox.put('S-post-dispose', {
+      'id': 'S-post-dispose',
+      'title': 'Post dispose task',
+      'description': 'Desc',
+      'schedules': <dynamic>[],
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+
+    final instancesBox = await Hive.openBox<Map>('instancesBox');
+    await instancesBox.put('I-post-dispose', {
+      'id': 'I-post-dispose',
+      'taskId': 'S-post-dispose',
+      'civilDay': 20260826,
+      'due': DateTime.now().toIso8601String(),
+      'status': 'pending',
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+
+    final recipesBox = await Hive.openBox<Map>('recipesBox');
+    await recipesBox.put('R-post-dispose', {
+      'id': 'R-post-dispose',
+      'title': 'Post dispose recipe',
+      'servings': 2,
+      'ingredients': <dynamic>[],
+      'steps': <dynamic>[],
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+
+    final settingsBox = await Hive.openBox<Map>('settingsBox');
+    await settingsBox.put('agile', {
+      'workingHoursStart': 9,
+      'workingHoursEnd': 17,
+    });
+
+    final syncMetaBox = await Hive.openBox<Map>('syncMetaBox');
+    await syncMetaBox.put('dirty_tasks', {
+      'list': ['S-post-dispose'],
+    });
+
+    await pumpEventQueue();
+
+    expect(tasksEvents.length, equals(tasksCountPostDispose));
+    expect(instancesEvents.length, equals(instancesCountPostDispose));
+  });
 }
