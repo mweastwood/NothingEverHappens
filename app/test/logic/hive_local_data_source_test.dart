@@ -437,4 +437,20 @@ void main() {
       expect(dataSource.getInstances().length, 50);
     },
   );
+
+  test('cancels box watch subscriptions on dispose', () async {
+    final ds = HiveLocalDataSource();
+    await ds.init();
+
+    await ds.dispose();
+
+    final tasksBox = await Hive.openBox<Map>('tasksBox');
+    await tasksBox.put('S-post-dispose', {
+      'id': 'S-post-dispose',
+      'title': 'Post dispose task',
+      'description': 'Desc',
+      'schedules': <dynamic>[],
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
+  });
 }

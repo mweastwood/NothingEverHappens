@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,6 +38,8 @@ class HiveLocalDataSource {
   Box<Map>? _syncMetaBox;
   Box<Map>? _settingsBox;
   Box<Map>? _recipesBox;
+
+  final List<StreamSubscription> _boxWatchSubscriptions = [];
 
   HiveLocalDataSource({this.errorHandler, this.logger});
 
@@ -197,74 +200,103 @@ class HiveLocalDataSource {
   }
 
   void _setupBoxWatchers() {
-    _tasksBox?.watch().listen((event) {
-      if (_isWritingInternally) return;
-      if (event.deleted) {
-        _memTasks.remove(event.key.toString());
-      } else if (event.value != null) {
-        try {
-          final data = Map<String, dynamic>.from(event.value as Map);
-          final task = _taskScheduleFromJson(data);
-          _memTasks[task.id] = task;
-        } catch (e, st) {
-          _memTasks.remove(event.key.toString());
-          errorHandler?.report(e, stackTrace: st);
-        }
-      }
-      _emitTasks();
-    });
+    _cancelBoxWatchers();
 
-    _instancesBox?.watch().listen((event) {
-      if (_isWritingInternally) return;
-      if (event.deleted) {
-        _memInstances.remove(event.key.toString());
-      } else if (event.value != null) {
-        try {
-          final data = Map<String, dynamic>.from(event.value as Map);
-          final inst = _taskInstanceFromJson(data);
-          _memInstances[inst.id] = inst;
-        } catch (e, st) {
-          _memInstances.remove(event.key.toString());
-          errorHandler?.report(e, stackTrace: st);
-        }
-      }
-      _emitInstances();
-    });
+    if (_tasksBox != null) {
+      _boxWatchSubscriptions.add(
+        _tasksBox!.watch().listen((event) {
+          if (_isWritingInternally) return;
+          if (event.deleted) {
+            _memTasks.remove(event.key.toString());
+          } else if (event.value != null) {
+            try {
+              final data = Map<String, dynamic>.from(event.value as Map);
+              final task = _taskScheduleFromJson(data);
+              _memTasks[task.id] = task;
+            } catch (e, st) {
+              _memTasks.remove(event.key.toString());
+              errorHandler?.report(e, stackTrace: st);
+            }
+          }
+          _emitTasks();
+        }),
+      );
+    }
 
-    _recipesBox?.watch().listen((event) {
-      if (_isWritingInternally) return;
-      if (event.deleted) {
-        _memRecipes.remove(event.key.toString());
-      } else if (event.value != null) {
-        try {
-          final data = Map<String, dynamic>.from(event.value as Map);
-          final recipe = _recipeFromJson(data);
-          _memRecipes[recipe.id] = recipe;
-        } catch (e, st) {
-          _memRecipes.remove(event.key.toString());
-          errorHandler?.report(e, stackTrace: st);
-        }
-      }
-      _emitRecipes();
-    });
+    if (_instancesBox != null) {
+      _boxWatchSubscriptions.add(
+        _instancesBox!.watch().listen((event) {
+          if (_isWritingInternally) return;
+          if (event.deleted) {
+            _memInstances.remove(event.key.toString());
+          } else if (event.value != null) {
+            try {
+              final data = Map<String, dynamic>.from(event.value as Map);
+              final inst = _taskInstanceFromJson(data);
+              _memInstances[inst.id] = inst;
+            } catch (e, st) {
+              _memInstances.remove(event.key.toString());
+              errorHandler?.report(e, stackTrace: st);
+            }
+          }
+          _emitInstances();
+        }),
+      );
+    }
 
-    _settingsBox?.watch().listen((event) {
-      if (_isWritingInternally) return;
-      if (event.value != null && event.key == 'agile') {
-        try {
-          final data = Map<String, dynamic>.from(event.value as Map);
-          _memSettings = UserSettings.fromJson(data);
-        } catch (e, st) {
-          errorHandler?.report(e, stackTrace: st);
-        }
-      }
-      _emitSettings();
-    });
+    if (_recipesBox != null) {
+      _boxWatchSubscriptions.add(
+        _recipesBox!.watch().listen((event) {
+          if (_isWritingInternally) return;
+          if (event.deleted) {
+            _memRecipes.remove(event.key.toString());
+          } else if (event.value != null) {
+            try {
+              final data = Map<String, dynamic>.from(event.value as Map);
+              final recipe = _recipeFromJson(data);
+              _memRecipes[recipe.id] = recipe;
+            } catch (e, st) {
+              _memRecipes.remove(event.key.toString());
+              errorHandler?.report(e, stackTrace: st);
+            }
+          }
+          _emitRecipes();
+        }),
+      );
+    }
 
-    _syncMetaBox?.watch().listen((_) {
-      if (_isWritingInternally) return;
-      _emitSyncMeta();
-    });
+    if (_settingsBox != null) {
+      _boxWatchSubscriptions.add(
+        _settingsBox!.watch().listen((event) {
+          if (_isWritingInternally) return;
+          if (event.value != null && event.key == 'agile') {
+            try {
+              final data = Map<String, dynamic>.from(event.value as Map);
+              _memSettings = UserSettings.fromJson(data);
+            } catch (e, st) {
+              errorHandler?.report(e, stackTrace: st);
+            }
+          }
+          _emitSettings();
+        }),
+      );
+    }
+
+    if (_syncMetaBox != null) {
+      _boxWatchSubscriptions.add(
+        _syncMetaBox!.watch().listen((_) {
+          if (_isWritingInternally) return;
+          _emitSyncMeta();
+        }),
+      );
+    }
+  }
+
+  void _cancelBoxWatchers() {
+    for (final subscription in _boxWatchSubscriptions) {
+      subscription.cancel();
+    }
+    _boxWatchSubscriptions.clear();
   }
 
   void _emitTasks() {
@@ -936,6 +968,7 @@ class HiveLocalDataSource {
   }
 
   Future<void> dispose() async {
+    _cancelBoxWatchers();
     await _tasksSubject.close();
     await _instancesSubject.close();
     await _recipesSubject.close();
