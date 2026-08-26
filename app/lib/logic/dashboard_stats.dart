@@ -16,6 +16,7 @@ class DailyStatsData {
   final double completedHours;
   final double completedOnTimeHours;
   final double completedOverdueHours;
+  final double completedSeriouslyOverdueHours;
   final double skippedHours;
   final double missedHours;
   final List<TaskInstance> completedTasks;
@@ -23,6 +24,7 @@ class DailyStatsData {
   final List<TaskInstance> missedTasks;
   final List<TaskInstance> completedOnTimeTasks;
   final List<TaskInstance> completedOverdueTasks;
+  final List<TaskInstance> completedSeriouslyOverdueTasks;
 
   DailyStatsData({
     required this.day,
@@ -32,6 +34,7 @@ class DailyStatsData {
     required this.completedHours,
     this.completedOnTimeHours = 0.0,
     this.completedOverdueHours = 0.0,
+    this.completedSeriouslyOverdueHours = 0.0,
     this.skippedHours = 0.0,
     this.missedHours = 0.0,
     this.completedTasks = const [],
@@ -39,15 +42,37 @@ class DailyStatsData {
     this.missedTasks = const [],
     List<TaskInstance>? completedOnTimeTasks,
     List<TaskInstance>? completedOverdueTasks,
+    List<TaskInstance>? completedSeriouslyOverdueTasks,
   }) : completedOnTimeTasks =
            completedOnTimeTasks ??
            completedTasks.where((t) => !t.isCompletedOverdue).toList(),
        completedOverdueTasks =
            completedOverdueTasks ??
-           completedTasks.where((t) => t.isCompletedOverdue).toList();
+           completedTasks
+               .where(
+                 (t) =>
+                     t.isCompletedOverdue &&
+                     !t.isCompletedOverdueByMoreThan24Hours,
+               )
+               .toList(),
+       completedSeriouslyOverdueTasks =
+           completedSeriouslyOverdueTasks ??
+           completedTasks
+               .where((t) => t.isCompletedOverdueByMoreThan24Hours)
+               .toList();
 
   int get completedOnTimeCount => completedOnTimeTasks.length;
   int get completedOverdueCount => completedOverdueTasks.length;
+  int get completedSeriouslyOverdueCount =>
+      completedSeriouslyOverdueTasks.length;
+  int get totalCompletedOverdueCount =>
+      completedOverdueCount + completedSeriouslyOverdueCount;
+
+  double get completedModeratelyOverdueHours =>
+      (completedOverdueHours - completedSeriouslyOverdueHours).clamp(
+        0.0,
+        double.infinity,
+      );
 }
 
 class PersonalLastWeekStats {
@@ -158,6 +183,9 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
   final dailyCompletedOverdueHours = <CivilDay, double>{
     for (final d in days) d: 0.0,
   };
+  final dailyCompletedSeriouslyOverdueHours = <CivilDay, double>{
+    for (final d in days) d: 0.0,
+  };
   final dailySkippedHours = <CivilDay, double>{for (final d in days) d: 0.0};
   final dailyMissedHours = <CivilDay, double>{for (final d in days) d: 0.0};
   final dailyCompletedTasks = <CivilDay, List<TaskInstance>>{
@@ -234,6 +262,11 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
       if (inst.isCompletedOverdue) {
         dailyCompletedOverdueHours[accountedDay] =
             (dailyCompletedOverdueHours[accountedDay] ?? 0.0) + duration;
+        if (inst.isCompletedOverdueByMoreThan24Hours) {
+          dailyCompletedSeriouslyOverdueHours[accountedDay] =
+              (dailyCompletedSeriouslyOverdueHours[accountedDay] ?? 0.0) +
+              duration;
+        }
       } else {
         dailyCompletedOnTimeHours[accountedDay] =
             (dailyCompletedOnTimeHours[accountedDay] ?? 0.0) + duration;
@@ -274,6 +307,8 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
       completedHours: dailyHours[d] ?? 0.0,
       completedOnTimeHours: dailyCompletedOnTimeHours[d] ?? 0.0,
       completedOverdueHours: dailyCompletedOverdueHours[d] ?? 0.0,
+      completedSeriouslyOverdueHours:
+          dailyCompletedSeriouslyOverdueHours[d] ?? 0.0,
       skippedHours: dailySkippedHours[d] ?? 0.0,
       missedHours: dailyMissedHours[d] ?? 0.0,
       completedTasks: dailyCompletedTasks[d] ?? const [],

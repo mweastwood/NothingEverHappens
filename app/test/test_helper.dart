@@ -25,8 +25,9 @@ final List<Override> defaultTestOverrides = [
 /// Wraps the widget under test in MaterialApp with all localization delegates.
 ///
 /// This resolves missing localization contexts in standard widget tests.
-Widget buildTestableWidget({required Widget child}) {
+Widget buildTestableWidget({required Widget child, Locale? locale}) {
   return MaterialApp(
+    locale: locale,
     localizationsDelegates: const [
       AppLocalizations.delegate,
       GlobalMaterialLocalizations.delegate,

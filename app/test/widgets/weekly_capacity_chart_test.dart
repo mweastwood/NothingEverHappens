@@ -227,6 +227,52 @@ void main() {
       },
     );
 
+    testWidgets(
+      'renders seriously overdue in legend and stacks red gradient segment for past days',
+      (tester) async {
+        AppClock.setMockTime(DateTime(2026, 7, 2));
+
+        final statsData = DailyStatsData(
+          day: CivilDay(year: 2026, month: 7, day: 1),
+          completedCount: 3,
+          skippedCount: 0,
+          missedCount: 0,
+          completedHours: 3.0,
+          completedOnTimeHours: 1.0,
+          completedOverdueHours: 2.0,
+          completedSeriouslyOverdueHours: 1.0,
+        );
+
+        final historyDays = [
+          DailyCapacityData(
+            date: DateTime(2026, 7, 1),
+            capacityHours: 4.0,
+            plannedMinutes: 0.0,
+            completedMinutes: 180.0,
+            isOverridden: false,
+            statsData: statsData,
+          ),
+        ];
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: WeeklyCapacityChart(
+                daysData: historyDays,
+                onDayTap: (_) {},
+                onEditDefaultCapacity: () {},
+              ),
+            ),
+          ),
+        );
+
+        // Legend should include 'Seriously Overdue'
+        expect(find.text('Seriously Overdue'), findsOneWidget);
+        expect(find.text('Completed Overdue'), findsOneWidget);
+        expect(find.text('Completed'), findsOneWidget);
+      },
+    );
+
     testWidgets('respects AppClock.now for current day highlighting', (
       tester,
     ) async {
