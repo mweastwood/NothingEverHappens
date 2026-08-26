@@ -123,7 +123,7 @@ class HiveLocalDataSource {
     _emitSettings();
     _emitSyncMeta();
 
-    _setupBoxWatchers();
+    await _setupBoxWatchers();
   }
 
   void _loadFromBoxes() {
@@ -199,8 +199,8 @@ class HiveLocalDataSource {
     }
   }
 
-  void _setupBoxWatchers() {
-    _cancelBoxWatchers();
+  Future<void> _setupBoxWatchers() async {
+    await _cancelBoxWatchers();
 
     if (_tasksBox != null) {
       _boxWatchSubscriptions.add(
@@ -292,11 +292,10 @@ class HiveLocalDataSource {
     }
   }
 
-  void _cancelBoxWatchers() {
-    for (final subscription in _boxWatchSubscriptions) {
-      subscription.cancel();
-    }
+  Future<void> _cancelBoxWatchers() async {
+    final subscriptions = List<StreamSubscription>.from(_boxWatchSubscriptions);
     _boxWatchSubscriptions.clear();
+    await Future.wait(subscriptions.map((s) => s.cancel()));
   }
 
   void _emitTasks() {
@@ -968,7 +967,7 @@ class HiveLocalDataSource {
   }
 
   Future<void> dispose() async {
-    _cancelBoxWatchers();
+    await _cancelBoxWatchers();
     await _tasksSubject.close();
     await _instancesSubject.close();
     await _recipesSubject.close();
