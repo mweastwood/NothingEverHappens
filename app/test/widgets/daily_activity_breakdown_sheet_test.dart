@@ -175,28 +175,30 @@ void main() {
 
         // Metric chips
         expect(find.text('2 completed'), findsOneWidget);
-        expect(find.text('2 overdue'), findsOneWidget);
+        expect(find.text('1 overdue'), findsOneWidget);
+        expect(find.text('1 seriously overdue'), findsOneWidget);
         expect(find.text('2 skipped'), findsOneWidget);
         expect(find.text('4h'), findsOneWidget);
 
         // Section headers
         expect(find.text('Completed (2)'), findsOneWidget);
-        expect(find.text('Completed Overdue (2)'), findsOneWidget);
+        expect(find.text('Completed Overdue (1)'), findsOneWidget);
+        expect(find.text('Seriously Overdue (1)'), findsOneWidget);
         expect(find.text('Skipped (2)'), findsOneWidget);
 
         // Single-line task tiles (no descriptions shown)
         expect(find.text('Clean the kitchen'), findsOneWidget);
-        expect(find.text('14:30'), findsOneWidget);
+        expect(find.text('Jul 1, 2:30 PM'), findsOneWidget);
         expect(find.text('Wash dishes and wipe counters'), findsNothing);
 
         expect(find.text('Water plants'), findsOneWidget);
 
         expect(find.text('Take medication'), findsOneWidget);
-        expect(find.text('19:00'), findsOneWidget);
+        expect(find.text('Jul 1, 7:00 PM'), findsOneWidget);
         expect(find.text('Evening dose'), findsNothing);
 
         expect(find.text('Submit quarterly report'), findsOneWidget);
-        expect(find.text('10:00'), findsOneWidget);
+        expect(find.text('Jul 3, 10:00 AM'), findsOneWidget);
 
         expect(find.text('Vacuum living room'), findsOneWidget);
         expect(find.text('Carpet in hallway and living room'), findsNothing);
@@ -205,10 +207,114 @@ void main() {
 
         // Status tags
         expect(find.text('Completed'), findsNWidgets(2));
-        expect(find.text('Overdue'), findsNWidgets(2));
+        expect(find.text('Overdue'), findsOneWidget);
+        expect(find.text('Seriously Overdue'), findsOneWidget);
         expect(find.text('Skipped'), findsNWidgets(2));
       },
     );
+
+    testWidgets('sorts tasks in order they were resolved within a section', (
+      tester,
+    ) async {
+      final sortedDayData = DailyStatsData(
+        day: day,
+        completedCount: 3,
+        skippedCount: 2,
+        missedCount: 0,
+        completedHours: 3.0,
+        completedTasks: [
+          TaskInstance(
+            id: 't-late',
+            scheduleId: 's-1',
+            ruleId: 'r-1',
+            title: 'Task Resolved Last (16:00)',
+            description: '',
+            scheduledDate: day,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 1, 16, 0),
+          ),
+          TaskInstance(
+            id: 't-early',
+            scheduleId: 's-2',
+            ruleId: 'r-2',
+            title: 'Task Resolved First (09:30)',
+            description: '',
+            scheduledDate: day,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 1, 9, 30),
+          ),
+          TaskInstance(
+            id: 't-mid',
+            scheduleId: 's-3',
+            ruleId: 'r-3',
+            title: 'Task Resolved Middle (12:00)',
+            description: '',
+            scheduledDate: day,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 1, 12, 0),
+          ),
+        ],
+        skippedTasks: [
+          TaskInstance(
+            id: 't-skip-2',
+            scheduleId: 's-4',
+            ruleId: 'r-4',
+            title: 'Skipped Second (15:00)',
+            description: '',
+            scheduledDate: day,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.skipped,
+            completedAt: DateTime(2026, 7, 1, 15, 0),
+          ),
+          TaskInstance(
+            id: 't-skip-1',
+            scheduleId: 's-5',
+            ruleId: 'r-5',
+            title: 'Skipped First (10:00)',
+            description: '',
+            scheduledDate: day,
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.skipped,
+            completedAt: DateTime(2026, 7, 1, 10, 0),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: DailyActivityBreakdownSheet(dayData: sortedDayData),
+          ),
+        ),
+      );
+
+      // Verify task text widgets appear in resolution order
+      final firstFinder = find.text('Task Resolved First (09:30)');
+      final midFinder = find.text('Task Resolved Middle (12:00)');
+      final lastFinder = find.text('Task Resolved Last (16:00)');
+
+      final firstY = tester.getTopLeft(firstFinder).dy;
+      final midY = tester.getTopLeft(midFinder).dy;
+      final lastY = tester.getTopLeft(lastFinder).dy;
+
+      expect(firstY < midY, isTrue);
+      expect(midY < lastY, isTrue);
+
+      final skipFirstFinder = find.text('Skipped First (10:00)');
+      final skipSecondFinder = find.text('Skipped Second (15:00)');
+      final skipFirstY = tester.getTopLeft(skipFirstFinder).dy;
+      final skipSecondY = tester.getTopLeft(skipSecondFinder).dy;
+
+      expect(skipFirstY < skipSecondY, isTrue);
+    });
 
     testWidgets('renders empty state when day has no tasks', (tester) async {
       await tester.pumpWidget(

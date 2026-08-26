@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../logic/app_clock.dart';
 import '../logic/civil_day.dart';
 import '../logic/dashboard_stats.dart';
 import '../logic/task_instance.dart';
@@ -51,6 +53,14 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     return '$weekday, $month ${day.day}, ${day.year}';
   }
 
+  int _compareResolvedOrder(TaskInstance a, TaskInstance b) {
+    final aTime = a.completedAt ?? a.updatedAt;
+    final bTime = b.completedAt ?? b.updatedAt;
+    final cmp = aTime.compareTo(bTime);
+    if (cmp != 0) return cmp;
+    return a.title.compareTo(b.title);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -59,6 +69,17 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
         dayData.completedTasks.length +
         dayData.skippedTasks.length +
         dayData.missedTasks.length;
+
+    final onTimeTasks = [...dayData.completedOnTimeTasks]
+      ..sort(_compareResolvedOrder);
+    final overdueTasks = [...dayData.completedOverdueTasks]
+      ..sort(_compareResolvedOrder);
+    final seriouslyOverdueTasks = [...dayData.completedSeriouslyOverdueTasks]
+      ..sort(_compareResolvedOrder);
+    final skippedAndMissedTasks = [
+      ...dayData.skippedTasks,
+      ...dayData.missedTasks,
+    ]..sort(_compareResolvedOrder);
 
     return SafeArea(
       child: Container(
@@ -118,14 +139,14 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
                   : ListView(
                       shrinkWrap: true,
                       children: [
-                        if (dayData.completedOnTimeTasks.isNotEmpty) ...[
+                        if (onTimeTasks.isNotEmpty) ...[
                           _buildSectionHeader(
                             context,
                             'Completed',
-                            dayData.completedOnTimeTasks.length,
+                            onTimeTasks.length,
                             Colors.green,
                           ),
-                          ...dayData.completedOnTimeTasks.map(
+                          ...onTimeTasks.map(
                             (task) => _buildTaskTile(
                               context,
                               task,
@@ -135,14 +156,14 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                         ],
-                        if (dayData.completedOverdueTasks.isNotEmpty) ...[
+                        if (overdueTasks.isNotEmpty) ...[
                           _buildSectionHeader(
                             context,
                             'Completed Overdue',
-                            dayData.completedOverdueTasks.length,
+                            overdueTasks.length,
                             Colors.amber.shade800,
                           ),
-                          ...dayData.completedOverdueTasks.map(
+                          ...overdueTasks.map(
                             (task) => _buildTaskTile(
                               context,
                               task,
@@ -152,24 +173,31 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                         ],
-                        if ((dayData.skippedTasks.length +
-                                dayData.missedTasks.length) >
-                            0) ...[
+                        if (seriouslyOverdueTasks.isNotEmpty) ...[
                           _buildSectionHeader(
                             context,
-                            'Skipped',
-                            dayData.skippedTasks.length +
-                                dayData.missedTasks.length,
-                            theme.colorScheme.onSurfaceVariant,
+                            'Seriously Overdue',
+                            seriouslyOverdueTasks.length,
+                            theme.colorScheme.error,
                           ),
-                          ...dayData.skippedTasks.map(
+                          ...seriouslyOverdueTasks.map(
                             (task) => _buildTaskTile(
                               context,
                               task,
-                              status: TaskStatus.skipped,
+                              status: TaskStatus.completed,
+                              isOverdue: true,
                             ),
                           ),
-                          ...dayData.missedTasks.map(
+                          const SizedBox(height: 12),
+                        ],
+                        if (skippedAndMissedTasks.isNotEmpty) ...[
+                          _buildSectionHeader(
+                            context,
+                            'Skipped',
+                            skippedAndMissedTasks.length,
+                            theme.colorScheme.onSurfaceVariant,
+                          ),
+                          ...skippedAndMissedTasks.map(
                             (task) => _buildTaskTile(
                               context,
                               task,
@@ -193,6 +221,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
 
     final onTimeCount = dayData.completedOnTimeCount;
     final overdueCount = dayData.completedOverdueCount;
+    final seriouslyOverdueCount = dayData.completedSeriouslyOverdueCount;
 
     final totalSkippedCount = dayData.skippedCount + dayData.missedCount;
 
@@ -214,6 +243,17 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
           icon: Icons.warning_amber_rounded,
           label: '$overdueCount overdue',
           color: Colors.amber.shade800,
+        ),
+      );
+    }
+
+    if (seriouslyOverdueCount > 0) {
+      chips.add(
+        _buildChip(
+          context,
+          icon: Icons.warning_amber_rounded,
+          label: '$seriouslyOverdueCount seriously overdue',
+          color: theme.colorScheme.error,
         ),
       );
     }
@@ -321,16 +361,14 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     final String tagLabel;
 
     if (status == TaskStatus.completed) {
-      if (isOverdue || task.isCompletedOverdue) {
-        if (task.isCompletedOverdueByMoreThan24Hours) {
-          icon = Icons.warning_amber_rounded;
-          iconColor = theme.colorScheme.error;
-          tagLabel = 'Overdue';
-        } else {
-          icon = Icons.warning_amber_rounded;
-          iconColor = isDark ? Colors.amber.shade300 : Colors.amber.shade800;
-          tagLabel = 'Overdue';
-        }
+      if (task.isCompletedOverdueByMoreThan24Hours) {
+        icon = Icons.warning_amber_rounded;
+        iconColor = theme.colorScheme.error;
+        tagLabel = 'Seriously Overdue';
+      } else if (isOverdue || task.isCompletedOverdue) {
+        icon = Icons.warning_amber_rounded;
+        iconColor = isDark ? Colors.amber.shade300 : Colors.amber.shade800;
+        tagLabel = 'Overdue';
       } else {
         icon = Icons.check_circle;
         iconColor = isDark ? Colors.green.shade300 : Colors.green.shade700;
@@ -349,9 +387,12 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     String? completionTimeStr;
     if (task.completedAt != null) {
       final dt = task.completedAt!;
-      final hour = dt.hour.toString().padLeft(2, '0');
-      final minute = dt.minute.toString().padLeft(2, '0');
-      completionTimeStr = '$hour:$minute';
+      final locale = Localizations.localeOf(context).languageCode;
+      final dateStr = (dt.year != AppClock.now.year)
+          ? DateFormat.yMMMd(locale).format(dt)
+          : DateFormat.MMMd(locale).format(dt);
+      final timeStr = DateFormat('h:mm a').format(dt);
+      completionTimeStr = '$dateStr, $timeStr';
     }
 
     final isSevereOverdue =

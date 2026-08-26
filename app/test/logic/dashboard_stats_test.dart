@@ -238,6 +238,20 @@ void main() {
             completedAt: DateTime(2026, 7, 9, 18, 30),
             completedByUserId: 'user-alice',
           ),
+          // Seriously overdue: scheduled 2026-07-09, due at 17:00, completed next day 2026-07-10 at 19:00 (26h overdue)
+          TaskInstance(
+            id: 'i-seriously-overdue',
+            scheduleId: schedule.id,
+            ruleId: 'r-1',
+            title: 'Seriously Overdue',
+            description: 'Desc',
+            scheduledDate: CivilDay(year: 2026, month: 7, day: 9),
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 10, 19, 0),
+            completedByUserId: 'user-alice',
+          ),
         ]);
         final authSubject = BehaviorSubject<User?>.seeded(MockUser());
 
@@ -270,10 +284,16 @@ void main() {
         final day9 = stats.dailyStats.firstWhere(
           (d) => d.day == CivilDay(year: 2026, month: 7, day: 9),
         );
-        expect(day9.completedCount, 2);
-        expect(day9.completedHours, 2.0);
+        expect(day9.completedCount, 3);
+        expect(day9.completedHours, 3.0);
         expect(day9.completedOnTimeHours, 1.0);
-        expect(day9.completedOverdueHours, 1.0);
+        expect(day9.completedOverdueHours, 2.0);
+        expect(day9.completedSeriouslyOverdueHours, 1.0);
+        expect(day9.completedModeratelyOverdueHours, 1.0);
+        expect(day9.completedOnTimeCount, 1);
+        expect(day9.completedOverdueCount, 1);
+        expect(day9.completedSeriouslyOverdueCount, 1);
+        expect(day9.totalCompletedOverdueCount, 2);
       },
     );
 

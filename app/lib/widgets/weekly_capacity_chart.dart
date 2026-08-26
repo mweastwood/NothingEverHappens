@@ -27,13 +27,17 @@ class DailyCapacityData {
   double get completedOnTimeHours {
     if (statsData != null &&
         (statsData!.completedOnTimeHours > 0 ||
-            statsData!.completedOverdueHours > 0)) {
+            statsData!.completedOverdueHours > 0 ||
+            statsData!.completedSeriouslyOverdueHours > 0)) {
       return statsData!.completedOnTimeHours;
     }
     return completedHours;
   }
 
-  double get completedOverdueHours => statsData?.completedOverdueHours ?? 0.0;
+  double get completedOverdueHours =>
+      statsData?.completedModeratelyOverdueHours ?? 0.0;
+  double get completedSeriouslyOverdueHours =>
+      statsData?.completedSeriouslyOverdueHours ?? 0.0;
   double get skippedHours => statsData?.skippedHours ?? 0.0;
   double get missedHours => statsData?.missedHours ?? 0.0;
 }
@@ -400,6 +404,23 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                     ),
                   ),
                   const SizedBox(width: 12),
+                  Container(
+                    width: 14,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade700,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Seriously Overdue',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(2),
                     child: SizedBox(
@@ -670,14 +691,22 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
     if (isPast) {
       double onTimeHours = data.completedOnTimeHours;
       double overdueHours = data.completedOverdueHours;
+      double seriouslyOverdueHours = data.completedSeriouslyOverdueHours;
       double skippedHours = data.skippedHours + data.missedHours;
 
       if (onTimeHours == 0 &&
           overdueHours == 0 &&
+          seriouslyOverdueHours == 0 &&
           skippedHours == 0 &&
           data.statsData != null) {
         if (data.statsData!.completedCount > 0) {
-          onTimeHours = 0.25;
+          if (data.statsData!.completedSeriouslyOverdueCount > 0) {
+            seriouslyOverdueHours = 0.25;
+          } else if (data.statsData!.completedOverdueCount > 0) {
+            overdueHours = 0.25;
+          } else {
+            onTimeHours = 0.25;
+          }
         }
         if (data.statsData!.skippedCount > 0 ||
             data.statsData!.missedCount > 0) {
@@ -685,7 +714,8 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
         }
       }
 
-      final totalActivity = onTimeHours + overdueHours + skippedHours;
+      final totalActivity =
+          onTimeHours + overdueHours + seriouslyOverdueHours + skippedHours;
       if (totalActivity <= 0) return const SizedBox.shrink();
 
       final double fillHeight = (totalActivity / scaleMax * 120.0).clamp(
@@ -713,6 +743,22 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                       gap: 3.0,
                     ),
                     child: const SizedBox.expand(),
+                  ),
+                ),
+              if (seriouslyOverdueHours > 0)
+                Expanded(
+                  flex: (seriouslyOverdueHours * 1000).round().clamp(
+                    1,
+                    1000000,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.red.shade700, Colors.red.shade600],
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                      ),
+                    ),
                   ),
                 ),
               if (overdueHours > 0)
@@ -754,11 +800,16 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
             data.missedHours > 0)) {
       double onTimeHours = data.completedOnTimeHours;
       double overdueHours = data.completedOverdueHours;
+      double seriouslyOverdueHours = data.completedSeriouslyOverdueHours;
       double skippedHours = data.skippedHours + data.missedHours;
       double plannedHours = data.plannedHours;
 
       final totalActivity =
-          onTimeHours + overdueHours + skippedHours + plannedHours;
+          onTimeHours +
+          overdueHours +
+          seriouslyOverdueHours +
+          skippedHours +
+          plannedHours;
       if (totalActivity <= 0) return const SizedBox.shrink();
 
       final double fillHeight = (totalActivity / scaleMax * 120.0).clamp(
@@ -816,6 +867,22 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                       gap: 3.0,
                     ),
                     child: const SizedBox.expand(),
+                  ),
+                ),
+              if (seriouslyOverdueHours > 0)
+                Expanded(
+                  flex: (seriouslyOverdueHours * 1000).round().clamp(
+                    1,
+                    1000000,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.red.shade700, Colors.red.shade600],
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                      ),
+                    ),
                   ),
                 ),
               if (overdueHours > 0)
