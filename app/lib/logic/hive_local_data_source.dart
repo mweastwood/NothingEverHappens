@@ -969,12 +969,15 @@ class HiveLocalDataSource {
   }
 
   Future<void> dispose() async {
-    await _cancelBoxWatchers();
-    await _tasksSubject.close();
-    await _instancesSubject.close();
-    await _recipesSubject.close();
-    await _settingsSubject.close();
-    await _migrationCompletedSubject.close();
-    await _dirtyTaskIdsSubject.close();
+    try {
+      await _cancelBoxWatchers();
+    } finally {
+      await _tasksSubject.close();
+      await _instancesSubject.close();
+      await _recipesSubject.close();
+      await _settingsSubject.close();
+      await _migrationCompletedSubject.close();
+      await _dirtyTaskIdsSubject.close();
+    }
   }
 }

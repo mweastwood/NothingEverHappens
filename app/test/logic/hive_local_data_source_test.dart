@@ -439,7 +439,28 @@ void main() {
   );
 
   test('cancels box watch subscriptions on dispose', () async {
+    final tasksEvents = <List<TaskSchedule>>[];
+    final instancesEvents = <List<TaskInstance>>[];
+    bool tasksDone = false;
+    bool instancesDone = false;
+
+    dataSource.watchTasks().listen(
+      tasksEvents.add,
+      onDone: () => tasksDone = true,
+    );
+    dataSource.watchInstances().listen(
+      instancesEvents.add,
+      onDone: () => instancesDone = true,
+    );
+
     await dataSource.dispose();
+    await pumpEventQueue();
+
+    expect(tasksDone, isTrue);
+    expect(instancesDone, isTrue);
+
+    final tasksCountPostDispose = tasksEvents.length;
+    final instancesCountPostDispose = instancesEvents.length;
 
     final tasksBox = await Hive.openBox<Map>('tasksBox');
     await tasksBox.put('S-post-dispose', {
@@ -480,5 +501,10 @@ void main() {
     await syncMetaBox.put('dirty_tasks', {
       'list': ['S-post-dispose'],
     });
+
+    await pumpEventQueue();
+
+    expect(tasksEvents.length, equals(tasksCountPostDispose));
+    expect(instancesEvents.length, equals(instancesCountPostDispose));
   });
 }
