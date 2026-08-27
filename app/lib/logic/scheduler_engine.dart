@@ -338,11 +338,29 @@ class SchedulerEngine {
               // The schedule rule is finished and has no future occurrences.
               continue;
             }
-            initialBaseDate = nextOcc;
+            if (s.missedOccurrencePolicy.policy != MissedPolicy.stack &&
+                nextOcc.isBefore(today)) {
+              if (s.scheduledDate.compareTo(today) > 0) {
+                initialBaseDate = s.scheduledDate;
+              } else {
+                initialBaseDate = s.occursOn(today)
+                    ? today
+                    : (s.nextOccurrenceAfter(today) ?? nextOcc);
+              }
+            } else {
+              initialBaseDate = nextOcc;
+            }
           } else {
-            initialBaseDate = s.occursOn(s.scheduledDate)
-                ? s.scheduledDate
-                : (s.nextOccurrenceAfter(s.scheduledDate) ?? s.scheduledDate);
+            if (s.missedOccurrencePolicy.policy == MissedPolicy.preferNewer &&
+                s.scheduledDate.isBefore(today)) {
+              initialBaseDate = s.occursOn(today)
+                  ? today
+                  : (s.nextOccurrenceAfter(today) ?? s.scheduledDate);
+            } else {
+              initialBaseDate = s.occursOn(s.scheduledDate)
+                  ? s.scheduledDate
+                  : (s.nextOccurrenceAfter(s.scheduledDate) ?? s.scheduledDate);
+            }
           }
         }
 

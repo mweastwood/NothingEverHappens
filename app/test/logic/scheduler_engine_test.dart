@@ -3127,6 +3127,210 @@ void main() {
         expect(updatedOld.lastModifiedByUserId, 'user-456');
         expect(updatedOld.lastModifiedByAppVersion, isNotNull);
       });
+
+      test(
+        'preferOlder does not skip today when prior days were skipped or when starting from past resolved date',
+        () {
+          final startDate = const CivilDay(year: 2026, month: 8, day: 16);
+          final today = const CivilDay(year: 2026, month: 8, day: 26);
+          final now = DateTime(
+            2026,
+            8,
+            26,
+            13,
+            0,
+          ); // 1:00 PM, after 9:00 AM start
+
+          final task = TestTaskFactory.createDaily(
+            id: 'prefer-older-cascade-bug',
+            title: 'Clean Kitchen',
+            description: 'Daily chore',
+            startDate: startDate,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
+          );
+
+          // Aug 23 completed
+          final completedAug23 = TaskInstance(
+            id: 'inst_aug23',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: const CivilDay(year: 2026, month: 8, day: 23),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 8, 24, 6, 0),
+          );
+
+          // Lookahead previously created Aug 26 as pending
+          final pendingToday = TaskInstance(
+            id: 'inst_aug26',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          );
+
+          // Evaluating with only the resolved Aug 23 and pending today (Aug 24 & 25 not in DB)
+          final action = const SchedulerEngine().evaluate(
+            task,
+            [completedAug23, pendingToday],
+            now,
+            futureInstancesCount: 5,
+          );
+
+          // Today's instance (Aug 26) must NOT be updated to skipped!
+          final todayUpdate = action.instancesToUpdate.where(
+            (x) => x.scheduledDate == today,
+          );
+          expect(
+            todayUpdate.isEmpty ||
+                todayUpdate.first.status == TaskStatus.pending,
+            isTrue,
+            reason:
+                'Today instance (Aug 26) should stay pending, not get skipped',
+          );
+        },
+      );
+
+      test(
+        'preferOlder does not revive a skipped instance when older instance is completed, but waits for tomorrow',
+        () {
+          final startDate = const CivilDay(year: 2026, month: 8, day: 16);
+          final day1 = const CivilDay(year: 2026, month: 8, day: 24);
+          final day2 = const CivilDay(year: 2026, month: 8, day: 25);
+          final day3 = const CivilDay(year: 2026, month: 8, day: 26);
+
+          final task = TestTaskFactory.createDaily(
+            id: 'prefer-older-no-revival-test',
+            title: 'Clean Kitchen',
+            description: 'Daily chore',
+            startDate: startDate,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
+          );
+
+          // Step 1: On Day 2 morning (10am), Day 1 was still pending, so Day 2 was skipped
+          final pendingDay1 = TaskInstance(
+            id: 'inst_day1',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: day1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          );
+
+          final evalDay2Morning = DateTime(2026, 8, 25, 10, 0);
+          final actionDay2Morning = const SchedulerEngine().evaluate(
+            task,
+            [pendingDay1],
+            evalDay2Morning,
+            futureInstancesCount: 5,
+          );
+
+          // Day 1 remains pending, Day 2 is not spawned as pending (skipped by rule)
+          final spawnedDay2 = actionDay2Morning.instancesToSpawn.where(
+            (x) => x.scheduledDate == day2,
+          );
+          expect(spawnedDay2, isEmpty);
+
+          // Step 2: On Day 2 afternoon (3pm), user completes Day 1
+          final completedDay1 = pendingDay1.copyWith(
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 8, 25, 15, 0),
+          );
+          final skippedDay2 = TaskInstance(
+            id: 'inst_day2',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: day2,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.skipped,
+            statusReason: 'scheduler_prefer_older',
+          );
+
+          final evalDay2Afternoon = DateTime(2026, 8, 25, 16, 0);
+          final actionDay2Afternoon = const SchedulerEngine().evaluate(
+            task,
+            [completedDay1, skippedDay2],
+            evalDay2Afternoon,
+            futureInstancesCount: 5,
+          );
+
+          // Day 2 was skipped and must NOT come back to life (not in instancesToUpdate)
+          final day2Updates = actionDay2Afternoon.instancesToUpdate.where(
+            (x) => x.id == 'inst_day2',
+          );
+          expect(day2Updates, isEmpty);
+
+          // Step 3: On Day 3 morning (10am), Day 3 arrives. Because Day 1 & Day 2 are resolved, Day 3 must be pending!
+          final evalDay3Morning = DateTime(2026, 8, 26, 10, 0);
+          final actionDay3Morning = const SchedulerEngine().evaluate(
+            task,
+            [completedDay1, skippedDay2],
+            evalDay3Morning,
+            futureInstancesCount: 5,
+          );
+
+          // Day 3 should be spawned as pending!
+          final spawnedDay3 = actionDay3Morning.instancesToSpawn.firstWhere(
+            (x) => x.scheduledDate == day3,
+          );
+          expect(spawnedDay3.status, TaskStatus.pending);
+        },
+      );
     });
   });
 }
