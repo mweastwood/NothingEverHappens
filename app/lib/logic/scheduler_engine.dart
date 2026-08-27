@@ -315,17 +315,10 @@ class SchedulerEngine {
           }
         }
 
-        final isPreferOlder =
-            s.missedOccurrencePolicy.policy == MissedPolicy.preferOlder;
         final canonicalInstances = workingInstances.values.toList();
         final pending =
             canonicalInstances
-                .where(
-                  (inst) =>
-                      inst.status == TaskStatus.pending ||
-                      (isPreferOlder &&
-                          inst.statusReason == 'scheduler_prefer_older'),
-                )
+                .where((inst) => inst.status == TaskStatus.pending)
                 .toList()
               ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
@@ -336,12 +329,7 @@ class SchedulerEngine {
         } else {
           final resolved =
               canonicalInstances
-                  .where(
-                    (inst) =>
-                        inst.status != TaskStatus.pending &&
-                        !(isPreferOlder &&
-                            inst.statusReason == 'scheduler_prefer_older'),
-                  )
+                  .where((inst) => inst.status != TaskStatus.pending)
                   .toList()
                 ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
           if (resolved.isNotEmpty) {
@@ -350,11 +338,29 @@ class SchedulerEngine {
               // The schedule rule is finished and has no future occurrences.
               continue;
             }
-            initialBaseDate = nextOcc;
+            if (s.missedOccurrencePolicy.policy != MissedPolicy.stack &&
+                nextOcc.isBefore(today)) {
+              if (s.scheduledDate.compareTo(today) > 0) {
+                initialBaseDate = s.scheduledDate;
+              } else {
+                initialBaseDate = s.occursOn(today)
+                    ? today
+                    : (s.nextOccurrenceAfter(today) ?? nextOcc);
+              }
+            } else {
+              initialBaseDate = nextOcc;
+            }
           } else {
-            initialBaseDate = s.occursOn(s.scheduledDate)
-                ? s.scheduledDate
-                : (s.nextOccurrenceAfter(s.scheduledDate) ?? s.scheduledDate);
+            if (s.missedOccurrencePolicy.policy == MissedPolicy.preferNewer &&
+                s.scheduledDate.isBefore(today)) {
+              initialBaseDate = s.occursOn(today)
+                  ? today
+                  : (s.nextOccurrenceAfter(today) ?? s.scheduledDate);
+            } else {
+              initialBaseDate = s.occursOn(s.scheduledDate)
+                  ? s.scheduledDate
+                  : (s.nextOccurrenceAfter(s.scheduledDate) ?? s.scheduledDate);
+            }
           }
         }
 
@@ -564,10 +570,7 @@ class SchedulerEngine {
             final startedDates = targetDates.where((d) {
               final inst = workingInstances[d]!;
               final isOriginalResolved = canonicalInstances.any(
-                (x) =>
-                    x.id == inst.id &&
-                    x.status != TaskStatus.pending &&
-                    x.statusReason != 'scheduler_prefer_older',
+                (x) => x.id == inst.id && x.status != TaskStatus.pending,
               );
               if (isOriginalResolved) return false;
               final start = inst.startRelativeTime.referenceTo(d);
@@ -581,10 +584,7 @@ class SchedulerEngine {
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
               final isOriginalResolved = canonicalInstances.any(
-                (x) =>
-                    x.id == inst.id &&
-                    x.status != TaskStatus.pending &&
-                    x.statusReason != 'scheduler_prefer_older',
+                (x) => x.id == inst.id && x.status != TaskStatus.pending,
               );
               if (isOriginalResolved) continue;
 
@@ -596,9 +596,7 @@ class SchedulerEngine {
               } else {
                 nextStatus = TaskStatus.pending;
               }
-              if (inst.status != nextStatus ||
-                  (nextStatus == TaskStatus.skipped &&
-                      inst.statusReason != 'scheduler_prefer_older')) {
+              if (inst.status != nextStatus) {
                 workingInstances[date] = inst.copyWith(
                   status: nextStatus,
                   statusReason: nextStatus == TaskStatus.skipped
@@ -608,8 +606,7 @@ class SchedulerEngine {
                   lastModifiedByAppVersion: AppVersion.display,
                   lastModifiedByUserId: context.userId,
                 );
-                if (nextStatus == TaskStatus.skipped &&
-                    inst.status != TaskStatus.skipped) {
+                if (nextStatus == TaskStatus.skipped) {
                   hasNewSkipped = true;
                   logger?.debug(
                     'scheduler',
