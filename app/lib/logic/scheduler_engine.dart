@@ -315,10 +315,17 @@ class SchedulerEngine {
           }
         }
 
+        final isPreferOlder =
+            s.missedOccurrencePolicy.policy == MissedPolicy.preferOlder;
         final canonicalInstances = workingInstances.values.toList();
         final pending =
             canonicalInstances
-                .where((inst) => inst.status == TaskStatus.pending)
+                .where(
+                  (inst) =>
+                      inst.status == TaskStatus.pending ||
+                      (isPreferOlder &&
+                          inst.statusReason == 'scheduler_prefer_older'),
+                )
                 .toList()
               ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
@@ -329,7 +336,12 @@ class SchedulerEngine {
         } else {
           final resolved =
               canonicalInstances
-                  .where((inst) => inst.status != TaskStatus.pending)
+                  .where(
+                    (inst) =>
+                        inst.status != TaskStatus.pending &&
+                        !(isPreferOlder &&
+                            inst.statusReason == 'scheduler_prefer_older'),
+                  )
                   .toList()
                 ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
           if (resolved.isNotEmpty) {
@@ -552,7 +564,10 @@ class SchedulerEngine {
             final startedDates = targetDates.where((d) {
               final inst = workingInstances[d]!;
               final isOriginalResolved = canonicalInstances.any(
-                (x) => x.id == inst.id && x.status != TaskStatus.pending,
+                (x) =>
+                    x.id == inst.id &&
+                    x.status != TaskStatus.pending &&
+                    x.statusReason != 'scheduler_prefer_older',
               );
               if (isOriginalResolved) return false;
               final start = inst.startRelativeTime.referenceTo(d);
@@ -566,7 +581,10 @@ class SchedulerEngine {
             for (final date in targetDates) {
               final inst = workingInstances[date]!;
               final isOriginalResolved = canonicalInstances.any(
-                (x) => x.id == inst.id && x.status != TaskStatus.pending,
+                (x) =>
+                    x.id == inst.id &&
+                    x.status != TaskStatus.pending &&
+                    x.statusReason != 'scheduler_prefer_older',
               );
               if (isOriginalResolved) continue;
 
@@ -578,7 +596,9 @@ class SchedulerEngine {
               } else {
                 nextStatus = TaskStatus.pending;
               }
-              if (inst.status != nextStatus) {
+              if (inst.status != nextStatus ||
+                  (nextStatus == TaskStatus.skipped &&
+                      inst.statusReason != 'scheduler_prefer_older')) {
                 workingInstances[date] = inst.copyWith(
                   status: nextStatus,
                   statusReason: nextStatus == TaskStatus.skipped
@@ -588,7 +608,8 @@ class SchedulerEngine {
                   lastModifiedByAppVersion: AppVersion.display,
                   lastModifiedByUserId: context.userId,
                 );
-                if (nextStatus == TaskStatus.skipped) {
+                if (nextStatus == TaskStatus.skipped &&
+                    inst.status != TaskStatus.skipped) {
                   hasNewSkipped = true;
                   logger?.debug(
                     'scheduler',
