@@ -26,12 +26,16 @@ class DailyStatsData {
   final List<TaskInstance> completedOverdueTasks;
   final List<TaskInstance> completedSeriouslyOverdueTasks;
 
+  // Future / planned day support
+  final List<TaskInstance> plannedTasks;
+  final double plannedHours;
+
   DailyStatsData({
     required this.day,
-    required this.completedCount,
-    required this.skippedCount,
-    required this.missedCount,
-    required this.completedHours,
+    this.completedCount = 0,
+    this.skippedCount = 0,
+    this.missedCount = 0,
+    this.completedHours = 0.0,
     this.completedOnTimeHours = 0.0,
     this.completedOverdueHours = 0.0,
     this.completedSeriouslyOverdueHours = 0.0,
@@ -43,6 +47,8 @@ class DailyStatsData {
     List<TaskInstance>? completedOnTimeTasks,
     List<TaskInstance>? completedOverdueTasks,
     List<TaskInstance>? completedSeriouslyOverdueTasks,
+    this.plannedTasks = const [],
+    this.plannedHours = 0.0,
   }) : completedOnTimeTasks =
            completedOnTimeTasks ??
            completedTasks.where((t) => !t.isCompletedOverdue).toList(),
@@ -67,6 +73,7 @@ class DailyStatsData {
       completedSeriouslyOverdueTasks.length;
   int get totalCompletedOverdueCount =>
       completedOverdueCount + completedSeriouslyOverdueCount;
+  int get plannedCount => plannedTasks.length;
 
   double get completedModeratelyOverdueHours =>
       (completedOverdueHours - completedSeriouslyOverdueHours).clamp(
@@ -197,6 +204,10 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
   final dailyMissedTasks = <CivilDay, List<TaskInstance>>{
     for (final d in days) d: [],
   };
+  final dailyPlannedTasks = <CivilDay, List<TaskInstance>>{
+    for (final d in days) d: [],
+  };
+  final dailyPlannedHours = <CivilDay, double>{for (final d in days) d: 0.0};
 
   int totalCompleted = 0;
   double totalHours = 0.0;
@@ -283,13 +294,18 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
       dailyMissedHours[accountedDay] =
           (dailyMissedHours[accountedDay] ?? 0.0) + duration;
       dailyMissedTasks[accountedDay]?.add(inst);
-    } else if (inst.status == TaskStatus.pending &&
-        inst.scheduledDate.isBefore(today)) {
-      totalMissed++;
-      dailyMissed[accountedDay] = (dailyMissed[accountedDay] ?? 0) + 1;
-      dailyMissedHours[accountedDay] =
-          (dailyMissedHours[accountedDay] ?? 0.0) + duration;
-      dailyMissedTasks[accountedDay]?.add(inst);
+    } else if (inst.status == TaskStatus.pending) {
+      if (inst.scheduledDate.isBefore(today)) {
+        totalMissed++;
+        dailyMissed[accountedDay] = (dailyMissed[accountedDay] ?? 0) + 1;
+        dailyMissedHours[accountedDay] =
+            (dailyMissedHours[accountedDay] ?? 0.0) + duration;
+        dailyMissedTasks[accountedDay]?.add(inst);
+      } else if (accountedDay == today) {
+        dailyPlannedTasks[accountedDay]?.add(inst);
+        dailyPlannedHours[accountedDay] =
+            (dailyPlannedHours[accountedDay] ?? 0.0) + duration;
+      }
     }
   }
 
@@ -314,6 +330,8 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
       completedTasks: dailyCompletedTasks[d] ?? const [],
       skippedTasks: dailySkippedTasks[d] ?? const [],
       missedTasks: dailyMissedTasks[d] ?? const [],
+      plannedTasks: dailyPlannedTasks[d] ?? const [],
+      plannedHours: dailyPlannedHours[d] ?? 0.0,
     );
   }).toList();
 

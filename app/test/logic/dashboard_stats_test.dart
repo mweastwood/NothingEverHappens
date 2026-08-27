@@ -733,5 +733,44 @@ void main() {
       expect(identical(firstOnTime, secondOnTime), isTrue);
       expect(identical(firstOverdue, secondOverdue), isTrue);
     });
+
+    test(
+      'correctly stores and computes plannedTasks, plannedHours, and plannedCount',
+      () {
+        final plannedTask1 = TaskInstance(
+          id: 'plan-1',
+          scheduleId: 's-1',
+          ruleId: 'r-1',
+          title: 'Plan A',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 7, day: 11),
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+        );
+        final plannedTask2 = TaskInstance(
+          id: 'plan-2',
+          scheduleId: 's-2',
+          ruleId: 'r-2',
+          title: 'Plan B',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 7, day: 11),
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+        );
+
+        final data = DailyStatsData(
+          day: const CivilDay(year: 2026, month: 7, day: 11),
+          plannedTasks: [plannedTask1, plannedTask2],
+          plannedHours: 2.5,
+        );
+
+        expect(data.plannedCount, 2);
+        expect(data.plannedTasks.length, 2);
+        expect(data.plannedTasks.first.id, 'plan-1');
+        expect(data.plannedHours, 2.5);
+        expect(data.completedCount, 0);
+        expect(data.completedHours, 0.0);
+      },
+    );
   });
 }
