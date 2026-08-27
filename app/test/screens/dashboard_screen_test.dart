@@ -127,17 +127,56 @@ void main() {
   });
 
   testWidgets(
-    'Tapping a capacity bar opens edit capacity dialog and saves custom capacity override',
+    'Tapping a future capacity bar opens breakdown sheet with planned task details',
     (WidgetTester tester) async {
       AppClock.setMockTime(
         DateTime(2026, 7, 1, 9, 0),
       ); // Wednesday (2026-07-01)
       addTearDown(AppClock.reset);
+
+      final schedule = TaskSchedule(
+        id: 's-future',
+        title: 'Plan Future Event',
+        description: 'Prepare notes',
+        estimatedDuration: const Duration(minutes: 60),
+        schedules: [
+          DailySchedule(
+            startDate: CivilDay(year: 2026, month: 7, day: 1),
+            interval: 1,
+          ),
+        ],
+      );
+
+      final futureInst = TaskInstance(
+        id: 'i-future-1',
+        scheduleId: schedule.id,
+        ruleId: 'r-1',
+        title: 'Plan Future Event',
+        description: 'Prepare notes',
+        scheduledDate: const CivilDay(
+          year: 2026,
+          month: 7,
+          day: 2,
+        ), // Thursday (future)
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 10, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 11, minute: 0),
+        ),
+        status: TaskStatus.pending,
+      );
+
+      tasksSubject.add([schedule]);
+      instancesSubject.add([futureInst]);
+
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
-      // Tap on Wednesday capacity bar (July 1st)
-      final barKey = const Key('capacity_bar_2026-07-01');
+      // Tap on Thursday capacity bar (July 2nd)
+      final barKey = const Key('capacity_bar_2026-07-02');
       expect(find.byKey(barKey), findsOneWidget);
       await tester.ensureVisible(find.byKey(barKey));
       await tester.pumpAndSettle();
@@ -145,32 +184,15 @@ void main() {
       await tester.tap(find.byKey(barKey));
       await tester.pumpAndSettle();
 
-      // Verify edit dialog/bottom sheet is shown
-      expect(find.text('Adjust Capacity'), findsOneWidget);
-
-      // Tap increment button (+15m)
-      final incBtn = find.byKey(const Key('capacity_increment_button'));
-      expect(incBtn, findsOneWidget);
-      await tester.tap(incBtn);
-      await tester.pumpAndSettle();
-
-      // Tap Save button
-      final saveBtn = find.byKey(const Key('capacity_save_button'));
-      expect(saveBtn, findsOneWidget);
-      await tester.tap(saveBtn);
-      await tester.pumpAndSettle();
-
-      // Verify settings were updated with override for 2026-07-01
-      verify(
-        mockUserSettingsRepository.updateSettings(
-          argThat(
-            predicate<UserSettings>(
-              (settings) =>
-                  settings.dailyCapacityOverrides?['2026-07-01'] != null,
-            ),
-          ),
-        ),
-      ).called(1);
+      // Verify breakdown sheet is shown with future planned task
+      expect(
+        find.byKey(const Key('daily_activity_breakdown_sheet')),
+        findsOneWidget,
+      );
+      expect(find.text('Thursday, Jul 2, 2026'), findsOneWidget);
+      expect(find.text('Plan Future Event'), findsOneWidget);
+      expect(find.text('1 planned'), findsOneWidget);
+      expect(find.text('Planned (1)'), findsOneWidget);
     },
   );
 

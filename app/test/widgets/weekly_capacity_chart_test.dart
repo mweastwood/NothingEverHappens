@@ -135,6 +135,56 @@ void main() {
       expect(tappedDate, equals(DateTime(2026, 7, 1)));
     });
 
+    testWidgets('tapping future day with statsData triggers onDayActivityTap', (
+      tester,
+    ) async {
+      AppClock.setMockTime(DateTime(2026, 7, 1));
+      DailyStatsData? tappedStats;
+
+      final futureStats = DailyStatsData(
+        day: CivilDay(year: 2026, month: 7, day: 2),
+        plannedHours: 2.0,
+      );
+
+      final daysWithStats = [
+        DailyCapacityData(
+          date: DateTime(2026, 7, 1), // Wednesday (today)
+          capacityHours: 4.0,
+          plannedMinutes: 120.0,
+          isOverridden: false,
+        ),
+        DailyCapacityData(
+          date: DateTime(2026, 7, 2), // Thursday (future)
+          capacityHours: 8.0,
+          plannedMinutes: 120.0,
+          isOverridden: false,
+          statsData: futureStats,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: WeeklyCapacityChart(
+              daysData: daysWithStats,
+              onDayTap: (_) {},
+              onDayActivityTap: (stats) => tappedStats = stats,
+              onEditDefaultCapacity: () {},
+            ),
+          ),
+        ),
+      );
+
+      // Tap Thursday (future) bar
+      final thuBarKey = const Key('capacity_bar_2026-07-02');
+      expect(find.byKey(thuBarKey), findsOneWidget);
+      await tester.tap(find.byKey(thuBarKey));
+
+      expect(tappedStats, isNotNull);
+      expect(tappedStats!.day, equals(CivilDay(year: 2026, month: 7, day: 2)));
+      expect(tappedStats!.plannedHours, 2.0);
+    });
+
     testWidgets('history bars display time spent without capacity label', (
       tester,
     ) async {

@@ -553,16 +553,8 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
     final dayLabel = weekdays[date.weekday - 1];
     final isOverCapacity = workHours > capacity;
 
-    final hasRecordedTasks =
-        data.statsData != null &&
-        (data.statsData!.completedTasks.isNotEmpty ||
-            data.statsData!.skippedTasks.isNotEmpty ||
-            data.statsData!.missedTasks.isNotEmpty);
-
     final shouldOpenBreakdown =
-        widget.onDayActivityTap != null &&
-        data.statsData != null &&
-        (isPast || hasRecordedTasks);
+        widget.onDayActivityTap != null && data.statsData != null;
 
     // History is labeled with time spent only, without capacity label
     final String topLabel = isPast

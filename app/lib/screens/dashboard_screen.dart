@@ -12,6 +12,8 @@ import '../widgets/family_history_stats_card.dart';
 import '../widgets/weekly_capacity_chart.dart';
 import '../widgets/daily_activity_breakdown_sheet.dart';
 import '../widgets/system_task_widget.dart';
+import '../logic/auth_repository.dart';
+import '../logic/task_instance.dart';
 import '../logic/system_tasks/system_task_providers.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -102,6 +104,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           // Combined Activity & Capacity Timeline Card
           Builder(
             builder: (context) {
+              final instances = instancesVal.value ?? [];
+              final currentUserId = ref
+                  .watch(authStateProvider)
+                  .valueOrNull
+                  ?.uid;
+
               final daysData = timelineDays.map((date) {
                 final capacity = settings.getCapacityForDate(date);
                 final day = CivilDay.fromDateTime(date);
@@ -112,11 +120,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     settings.dailyCapacityOverrides?.containsKey(dateStr) ??
                     false;
 
-                final dayStats = personalStats.dailyStats
+                DailyStatsData? dayStats = personalStats.dailyStats
                     .where((d) => d.day == day)
                     .firstOrNull;
-                final completedMinutes =
-                    (dayStats?.completedHours ?? 0.0) * 60.0;
+
+                if (dayStats == null) {
+                  final futureTasks = instances.where((inst) {
+                    if (inst.scheduledDate != day) return false;
+                    if (inst.status == TaskStatus.skipped) return false;
+                    if (inst.isFamily) {
+                      return inst.assignedUserId == currentUserId;
+                    } else {
+                      return inst.assignedUserId == null ||
+                          inst.assignedUserId == currentUserId;
+                    }
+                  }).toList();
+
+                  final futurePlannedHours = plannedMinutes / 60.0;
+
+                  dayStats = DailyStatsData(
+                    day: day,
+                    completedCount: 0,
+                    skippedCount: 0,
+                    missedCount: 0,
+                    completedHours: 0.0,
+                    plannedTasks: futureTasks,
+                    plannedHours: futurePlannedHours,
+                  );
+                }
+
+                final completedMinutes = (dayStats.completedHours) * 60.0;
 
                 return DailyCapacityData(
                   date: date,

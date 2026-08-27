@@ -61,6 +61,32 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     return a.title.compareTo(b.title);
   }
 
+  int _comparePlannedOrder(TaskInstance a, TaskInstance b) {
+    final aStart =
+        a.startRelativeTime.dayOffset * 1440 +
+        a.startRelativeTime.time.hour * 60 +
+        a.startRelativeTime.time.minute;
+    final bStart =
+        b.startRelativeTime.dayOffset * 1440 +
+        b.startRelativeTime.time.hour * 60 +
+        b.startRelativeTime.time.minute;
+    final cmpStart = aStart.compareTo(bStart);
+    if (cmpStart != 0) return cmpStart;
+
+    final aDue =
+        a.dueRelativeTime.dayOffset * 1440 +
+        a.dueRelativeTime.time.hour * 60 +
+        a.dueRelativeTime.time.minute;
+    final bDue =
+        b.dueRelativeTime.dayOffset * 1440 +
+        b.dueRelativeTime.time.hour * 60 +
+        b.dueRelativeTime.time.minute;
+    final cmpDue = aDue.compareTo(bDue);
+    if (cmpDue != 0) return cmpDue;
+
+    return a.title.compareTo(b.title);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -68,8 +94,10 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     final totalTasks =
         dayData.completedTasks.length +
         dayData.skippedTasks.length +
-        dayData.missedTasks.length;
+        dayData.missedTasks.length +
+        dayData.plannedTasks.length;
 
+    final plannedTasks = [...dayData.plannedTasks]..sort(_comparePlannedOrder);
     final onTimeTasks = [...dayData.completedOnTimeTasks]
       ..sort(_compareResolvedOrder);
     final overdueTasks = [...dayData.completedOverdueTasks]
@@ -139,6 +167,22 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
                   : ListView(
                       shrinkWrap: true,
                       children: [
+                        if (plannedTasks.isNotEmpty) ...[
+                          _buildSectionHeader(
+                            context,
+                            'Planned',
+                            plannedTasks.length,
+                            theme.colorScheme.primary,
+                          ),
+                          ...plannedTasks.map(
+                            (task) => _buildTaskTile(
+                              context,
+                              task,
+                              status: TaskStatus.pending,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         if (onTimeTasks.isNotEmpty) ...[
                           _buildSectionHeader(
                             context,
@@ -219,11 +263,23 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final chips = <Widget>[];
 
+    final plannedCount = dayData.plannedCount;
     final onTimeCount = dayData.completedOnTimeCount;
     final overdueCount = dayData.completedOverdueCount;
     final seriouslyOverdueCount = dayData.completedSeriouslyOverdueCount;
 
     final totalSkippedCount = dayData.skippedCount + dayData.missedCount;
+
+    if (plannedCount > 0) {
+      chips.add(
+        _buildChip(
+          context,
+          icon: Icons.assignment_outlined,
+          label: '$plannedCount planned',
+          color: theme.colorScheme.primary,
+        ),
+      );
+    }
 
     if (onTimeCount > 0) {
       chips.add(
@@ -275,6 +331,15 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
           context,
           icon: Icons.schedule,
           label: formatDurationHours(dayData.completedHours),
+          color: theme.colorScheme.primary,
+        ),
+      );
+    } else if (dayData.plannedHours > 0) {
+      chips.add(
+        _buildChip(
+          context,
+          icon: Icons.schedule,
+          label: formatDurationHours(dayData.plannedHours),
           color: theme.colorScheme.primary,
         ),
       );
@@ -378,6 +443,10 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       icon = Icons.remove_circle_outline;
       iconColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
       tagLabel = 'Skipped';
+    } else if (status == TaskStatus.pending) {
+      icon = Icons.schedule_outlined;
+      iconColor = theme.colorScheme.primary;
+      tagLabel = 'Planned';
     } else {
       icon = Icons.cancel_outlined;
       iconColor = theme.colorScheme.error;
@@ -459,6 +528,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
+    final isFuture = dayData.day.isAfter(CivilDay.fromDateTime(AppClock.now));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Column(
@@ -471,7 +541,9 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No activity recorded for this day',
+            isFuture
+                ? 'No tasks scheduled for this day'
+                : 'No activity recorded for this day',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
