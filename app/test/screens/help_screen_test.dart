@@ -722,10 +722,10 @@ void main() {
       taskWidgets = tester
           .widgetList<TaskWidget>(find.byType(TaskWidget))
           .toList();
-      expect(taskWidgets.length, equals(10));
+      expect(taskWidgets.length, equals(11));
       expect(
         taskWidgets.first.instance.scheduledDate,
-        equals(const CivilDay(year: 2026, month: 6, day: 3)),
+        equals(const CivilDay(year: 2026, month: 6, day: 2)),
       );
     });
 
