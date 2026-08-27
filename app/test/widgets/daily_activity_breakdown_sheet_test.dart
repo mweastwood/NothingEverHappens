@@ -153,6 +153,43 @@ void main() {
       ],
     );
 
+    final futurePlannedDayData = DailyStatsData(
+      day: CivilDay(year: 2026, month: 7, day: 5),
+      plannedHours: 2.5,
+      plannedTasks: [
+        TaskInstance(
+          id: 'plan-1',
+          scheduleId: 's-1',
+          ruleId: 'r-1',
+          title: 'Mow lawn',
+          description: '',
+          scheduledDate: CivilDay(year: 2026, month: 7, day: 5),
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          status: TaskStatus.pending,
+        ),
+        TaskInstance(
+          id: 'plan-2',
+          scheduleId: 's-2',
+          ruleId: 'r-2',
+          title: 'Wash car',
+          description: '',
+          scheduledDate: CivilDay(year: 2026, month: 7, day: 5),
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          status: TaskStatus.pending,
+        ),
+      ],
+    );
+
+    final futureEmptyDayData = DailyStatsData(
+      day: CivilDay(year: 2026, month: 7, day: 6),
+      completedCount: 0,
+      skippedCount: 0,
+      missedCount: 0,
+      completedHours: 0.0,
+    );
+
     testWidgets(
       'renders date header, metric chips, section headers, and task tiles',
       (tester) async {
@@ -622,10 +659,19 @@ void main() {
     testGoldens('DailyActivityBreakdownSheet renders correctly', (
       tester,
     ) async {
+      AppClock.setMockTime(DateTime(2026, 7, 4, 12, 0));
+      addTearDown(AppClock.reset);
+
       final builder = GoldenBuilder.column()
         ..addScenario(
           'Active Day Breakdown',
           Material(child: DailyActivityBreakdownSheet(dayData: activeDayData)),
+        )
+        ..addScenario(
+          'Future Day Planned Breakdown',
+          Material(
+            child: DailyActivityBreakdownSheet(dayData: futurePlannedDayData),
+          ),
         )
         ..addScenario(
           'Completed Only Breakdown',
@@ -636,12 +682,18 @@ void main() {
         ..addScenario(
           'Empty Day Breakdown',
           Material(child: DailyActivityBreakdownSheet(dayData: emptyDayData)),
+        )
+        ..addScenario(
+          'Future Empty Day Breakdown',
+          Material(
+            child: DailyActivityBreakdownSheet(dayData: futureEmptyDayData),
+          ),
         );
 
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(500, 1600),
+        surfaceSize: const Size(500, 2400),
       );
 
       await screenMatchesGolden(
