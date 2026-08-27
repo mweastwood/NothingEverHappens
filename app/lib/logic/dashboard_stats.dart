@@ -161,9 +161,9 @@ class FamilyLastWeekStats {
 }
 
 final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
-  final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
-  final schedules = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
-  final currentUserId = ref.watch(authStateProvider).valueOrNull?.uid;
+  final instances = ref.watch(taskInstancesProvider).value ?? [];
+  final schedules = ref.watch(taskSchedulesProvider).value ?? [];
+  final currentUserId = ref.watch(authStateProvider).value?.uid;
 
   final today = CivilDay.fromDateTime(AppClock.now);
   final startDay = today.addDays(-6);
@@ -349,19 +349,19 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
 
 final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
   final profileVal = ref.watch(familyProfileStreamProvider);
-  final familyProfile = profileVal.valueOrNull;
+  final familyProfile = profileVal.value;
   if (familyProfile == null || familyProfile.familyId.isEmpty) {
     return null;
   }
 
   final familyVal = ref.watch(familyStreamProvider(familyProfile.familyId));
-  final family = familyVal.valueOrNull;
+  final family = familyVal.value;
   if (family == null) {
     return null;
   }
 
-  final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
-  final schedules = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
+  final instances = ref.watch(taskInstancesProvider).value ?? [];
+  final schedules = ref.watch(taskSchedulesProvider).value ?? [];
 
   final today = CivilDay.fromDateTime(AppClock.now);
   final startDay = today.addDays(-6);

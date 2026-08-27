@@ -9,6 +9,7 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
@@ -38,14 +39,16 @@ Widget buildTestProviderScope({
   required Widget child,
   List<Override> overrides = const [],
 }) {
-  return ProviderScope(
-    overrides: [
-      authStateProvider.overrideWith((ref) => Stream.value(null)),
-      ...defaultTestOverrides,
-      ...overrides,
-    ],
-    child: child,
-  );
+  final allOverrides = [
+    authStateProvider.overrideWithValue(const AsyncData(null)),
+    ...defaultTestOverrides,
+    ...overrides,
+  ];
+  final map = <Override, Override>{};
+  for (final o in allOverrides) {
+    map[o.origin] = o;
+  }
+  return ProviderScope(overrides: map.values.toList(), child: child);
 }
 
 @GenerateMocks([TaskRepository])
@@ -1102,7 +1105,7 @@ void main() {
         await tester.pumpWidget(
           createWidget(
             extraOverrides: [
-              authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
+              authStateProvider.overrideWithValue(AsyncData(mockUser)),
             ],
           ),
         );

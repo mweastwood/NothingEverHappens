@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import '../logic/auth_repository.dart';
 import '../widgets/task_widget.dart';
@@ -100,7 +101,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       valueListenable: AppClock.timeNotifier,
       builder: (context, mockTime, _) {
         final isMocked = mockTime != null;
-        final currentUserId = ref.watch(authStateProvider).valueOrNull?.uid;
+        final currentUserId = ref.watch(authStateProvider).value?.uid;
         final schedulesVal = ref.watch(taskSchedulesProvider);
         final instancesVal = ref.watch(taskInstancesProvider);
         final settingsVal = ref.watch(userSettingsProvider);

@@ -655,10 +655,10 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                   () {
                     final familyProfile = ref
                         .watch(familyProfileStreamProvider)
-                        .valueOrNull;
+                        .value;
                     final familyId = familyProfile?.familyId ?? '';
                     final family = familyId.isNotEmpty
-                        ? ref.watch(familyStreamProvider(familyId)).valueOrNull
+                        ? ref.watch(familyStreamProvider(familyId)).value
                         : null;
                     final totalMembers = family?.members.length ?? 0;
                     final completedCount =

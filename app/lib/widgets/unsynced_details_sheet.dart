@@ -29,7 +29,7 @@ class UnsyncedDetailsSheet extends ConsumerWidget {
 
     final unsyncedTasks = ref.watch(unsyncedTasksProvider);
     final unsyncedInstances = ref.watch(unsyncedInstancesProvider);
-    final isSyncing = ref.watch(isSyncingProvider).valueOrNull ?? false;
+    final isSyncing = ref.watch(isSyncingProvider).value ?? false;
     final totalCount = unsyncedTasks.length + unsyncedInstances.length;
 
     final amberColor = isDark ? Colors.amber.shade300 : Colors.amber.shade800;

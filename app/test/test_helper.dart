@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' as gt;
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';

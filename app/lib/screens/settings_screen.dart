@@ -333,8 +333,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Builder(
                   builder: (context) {
                     final hasSuspectedStaleData =
-                        ref.watch(hasSuspectedStaleDataProvider).valueOrNull ??
-                        false;
+                        ref.watch(hasSuspectedStaleDataProvider).value ?? false;
                     return Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),

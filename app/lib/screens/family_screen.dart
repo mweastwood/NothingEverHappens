@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/family.dart';
 import '../logic/family_repository.dart';
 import '../logic/error_handler.dart';

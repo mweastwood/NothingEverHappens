@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_repository.dart';

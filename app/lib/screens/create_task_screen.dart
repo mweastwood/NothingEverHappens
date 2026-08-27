@@ -288,7 +288,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       createTaskFormNotifierProvider(args).notifier,
     );
 
-    final currentUserId = ref.watch(authStateProvider).valueOrNull?.uid;
+    final currentUserId = ref.watch(authStateProvider).value?.uid;
     final familyRepo = ref.watch(familyRepositoryProvider);
     final instancesVal = ref.watch(taskInstancesProvider);
     final dbInstances =
@@ -311,8 +311,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             ? ref.watch(familyStreamProvider(familyId))
             : null;
         final members =
-            (familyAsync?.valueOrNull?.members.values.toList() ??
-                  <FamilyMember>[])
+            (familyAsync?.value?.members.values.toList() ?? <FamilyMember>[])
               ..sort(
                 (a, b) => a.displayName.toLowerCase().compareTo(
                   b.displayName.toLowerCase(),

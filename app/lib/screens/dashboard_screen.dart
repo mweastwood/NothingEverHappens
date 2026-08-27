@@ -105,10 +105,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Builder(
             builder: (context) {
               final instances = instancesVal.value ?? [];
-              final currentUserId = ref
-                  .watch(authStateProvider)
-                  .valueOrNull
-                  ?.uid;
+              final currentUserId = ref.watch(authStateProvider).value?.uid;
 
               final daysData = timelineDays.map((date) {
                 final capacity = settings.getCapacityForDate(date);

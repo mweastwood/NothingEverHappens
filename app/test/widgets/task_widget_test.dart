@@ -14,7 +14,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:mockito/mockito.dart';

@@ -4,6 +4,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:rxdart/rxdart.dart';
 import '../test_helper.dart';
 

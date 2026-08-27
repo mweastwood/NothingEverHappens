@@ -13,7 +13,7 @@ final recipeRepositoryProvider = Provider<RecipeRepository>((ref) {
   final user = ref.watch(authStateProvider).value;
   final subState = ref.watch(subscriptionServiceProvider);
   final firestore = ref.watch(firestoreProvider);
-  final familyProfile = ref.watch(familyProfileStreamProvider).valueOrNull;
+  final familyProfile = ref.watch(familyProfileStreamProvider).value;
 
   return RecipeRepository(
     localDataSource: localDataSource,

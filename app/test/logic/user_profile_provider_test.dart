@@ -1,6 +1,6 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -79,6 +79,7 @@ void main() {
       );
       addTearDown(container.dispose);
 
+      container.listen(userNameProvider('user-1'), (p, n) {});
       final result = await container.read(userNameProvider('user-1').future);
       expect(result, 'Alice');
     });
@@ -115,6 +116,7 @@ void main() {
         );
         addTearDown(container.dispose);
 
+        container.listen(userNameProvider('user-2'), (p, n) {});
         final result = await container.read(userNameProvider('user-2').future);
         expect(result, 'bob');
       },
@@ -139,6 +141,7 @@ void main() {
         );
         addTearDown(container.dispose);
 
+        container.listen(userNameProvider('current-user-id'), (p, n) {});
         final result = await container.read(
           userNameProvider('current-user-id').future,
         );
@@ -181,6 +184,7 @@ void main() {
         );
         addTearDown(container.dispose);
 
+        container.listen(userNameProvider('user-1'), (p, n) {});
         final result = await container.read(userNameProvider('user-1').future);
         expect(result, 'you');
       },
@@ -205,6 +209,7 @@ void main() {
         );
         addTearDown(container.dispose);
 
+        container.listen(userNameProvider('user-firestore'), (p, n) {});
         final result = await container.read(
           userNameProvider('user-firestore').future,
         );
@@ -230,6 +235,7 @@ void main() {
         );
         addTearDown(container.dispose);
 
+        container.listen(userNameProvider('user-firestore-email'), (p, n) {});
         final result = await container.read(
           userNameProvider('user-firestore-email').future,
         );
@@ -251,6 +257,7 @@ void main() {
         );
         addTearDown(container.dispose);
 
+        container.listen(userNameProvider('unknown-user'), (p, n) {});
         final result = await container.read(
           userNameProvider('unknown-user').future,
         );
