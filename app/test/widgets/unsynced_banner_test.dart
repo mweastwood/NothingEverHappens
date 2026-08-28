@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -426,6 +427,7 @@ void main() {
         ),
       );
       schedulesController.add([unsyncedTask]);
+      await tester.pump();
       await tester.pump();
       await tester.pump(const Duration(seconds: 61));
       await tester.pumpAndSettle();

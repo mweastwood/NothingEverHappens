@@ -20,7 +20,7 @@ final missedFamilyTasksProvider = Provider<List<SystemTask>>((ref) {
   }
   final settings = settingsVal.value ?? const UserSettings(hoursAvailable: 8.0);
 
-  final authUser = ref.watch(authStateProvider).valueOrNull;
+  final authUser = ref.watch(authStateProvider).value;
   final currentUserId = authUser?.uid;
   if (currentUserId == null || currentUserId.isEmpty) {
     return const [];
@@ -30,7 +30,7 @@ final missedFamilyTasksProvider = Provider<List<SystemTask>>((ref) {
   if (instancesVal.isLoading || instancesVal.hasError) {
     return const [];
   }
-  final instances = instancesVal.valueOrNull ?? const [];
+  final instances = instancesVal.value ?? const [];
 
   final now = AppClock.now;
   final cutoff5amToday = DateTime(now.year, now.month, now.day, 5, 0);

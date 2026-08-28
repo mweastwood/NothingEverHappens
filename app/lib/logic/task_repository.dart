@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Family;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'app_clock.dart';
@@ -142,16 +142,16 @@ final dirtyTaskIdsProvider = StreamProvider<List<String>>((ref) {
 });
 
 final unsyncedTasksProvider = Provider<List<TaskSchedule>>((ref) {
-  final tasks = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
-  final dirtyIds = ref.watch(dirtyTaskIdsProvider).valueOrNull ?? [];
+  final tasks = ref.watch(taskSchedulesProvider).value ?? [];
+  final dirtyIds = ref.watch(dirtyTaskIdsProvider).value ?? [];
   return tasks
       .where((t) => t.hasPendingWrites || dirtyIds.contains(t.id))
       .toList();
 });
 
 final unsyncedInstancesProvider = Provider<List<TaskInstance>>((ref) {
-  final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
-  final dirtyIds = ref.watch(dirtyTaskIdsProvider).valueOrNull ?? [];
+  final instances = ref.watch(taskInstancesProvider).value ?? [];
+  final dirtyIds = ref.watch(dirtyTaskIdsProvider).value ?? [];
   return instances
       .where((i) => i.hasPendingWrites || dirtyIds.contains(i.id))
       .toList();
@@ -164,8 +164,8 @@ final unsyncedCountProvider = Provider<int>((ref) {
 });
 
 final isFromCacheProvider = Provider<bool>((ref) {
-  final tasks = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
-  final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
+  final tasks = ref.watch(taskSchedulesProvider).value ?? [];
+  final instances = ref.watch(taskInstancesProvider).value ?? [];
   if (tasks.isEmpty && instances.isEmpty) return false;
   return tasks.every((t) => t.isFromCache) &&
       instances.every((i) => i.isFromCache);
@@ -181,9 +181,9 @@ final showUnsyncedBannerProvider = Provider<bool>((ref) {
 });
 
 final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {
-  final instances = ref.watch(taskInstancesProvider).valueOrNull ?? [];
-  final schedules = ref.watch(taskSchedulesProvider).valueOrNull ?? [];
-  final currentUserId = ref.watch(authStateProvider).valueOrNull?.uid;
+  final instances = ref.watch(taskInstancesProvider).value ?? [];
+  final schedules = ref.watch(taskSchedulesProvider).value ?? [];
+  final currentUserId = ref.watch(authStateProvider).value?.uid;
 
   final today = CivilDay.fromDateTime(AppClock.now);
   final startHorizon = today.addDays(-14);

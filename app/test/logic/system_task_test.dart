@@ -224,9 +224,9 @@ void main() {
 
         final container = ProviderContainer(
           overrides: [
-            userSettingsProvider.overrideWith(
-              (ref) => Stream.value(
-                const UserSettings(
+            userSettingsProvider.overrideWithValue(
+              const AsyncData(
+                UserSettings(
                   hoursAvailable: 8.0,
                   lastCapacityConfirmedWeek: '',
                 ),
@@ -235,8 +235,6 @@ void main() {
           ],
         );
         addTearDown(container.dispose);
-
-        await container.read(userSettingsProvider.future);
 
         final tasks = container.read(activeSystemTasksProvider);
         expect(tasks.length, 1);
@@ -263,9 +261,9 @@ void main() {
 
         final container = ProviderContainer(
           overrides: [
-            userSettingsProvider.overrideWith(
-              (ref) => Stream.value(
-                const UserSettings(
+            userSettingsProvider.overrideWithValue(
+              const AsyncData(
+                UserSettings(
                   hoursAvailable: 8.0,
                   lastCapacityConfirmedWeek: '2026-06-29',
                 ),
@@ -274,8 +272,6 @@ void main() {
           ],
         );
         addTearDown(container.dispose);
-
-        await container.read(userSettingsProvider.future);
 
         final tasks = container.read(activeSystemTasksProvider);
         expect(tasks, isEmpty);
@@ -352,13 +348,11 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
-          taskInstancesProvider.overrideWith(
-            (ref) => Stream.value([overdueInstance]),
-          ),
-          userSettingsProvider.overrideWith(
-            (ref) => Stream.value(
-              const UserSettings(
+          authStateProvider.overrideWithValue(AsyncData(mockUser)),
+          taskInstancesProvider.overrideWithValue(AsyncData([overdueInstance])),
+          userSettingsProvider.overrideWithValue(
+            const AsyncData(
+              UserSettings(
                 hoursAvailable: 8.0,
                 lastCapacityConfirmedWeek: '2026-07-06',
               ),
@@ -367,10 +361,6 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
-
-      await container.read(authStateProvider.future);
-      await container.read(userSettingsProvider.future);
-      await container.read(taskInstancesProvider.future);
 
       final tasks = container.read(missedFamilyTasksProvider);
       expect(tasks, isEmpty);
@@ -391,13 +381,13 @@ void main() {
 
         final container = ProviderContainer(
           overrides: [
-            authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
-            taskInstancesProvider.overrideWith(
-              (ref) => Stream.value([overdueInstance]),
+            authStateProvider.overrideWithValue(AsyncData(mockUser)),
+            taskInstancesProvider.overrideWithValue(
+              AsyncData([overdueInstance]),
             ),
-            userSettingsProvider.overrideWith(
-              (ref) => Stream.value(
-                const UserSettings(
+            userSettingsProvider.overrideWithValue(
+              const AsyncData(
+                UserSettings(
                   hoursAvailable: 8.0,
                   lastCapacityConfirmedWeek: '2026-07-06',
                 ),
@@ -406,10 +396,6 @@ void main() {
           ],
         );
         addTearDown(container.dispose);
-
-        await container.read(authStateProvider.future);
-        await container.read(userSettingsProvider.future);
-        await container.read(taskInstancesProvider.future);
 
         final tasks = container.read(missedFamilyTasksProvider);
         expect(tasks.length, 1);
@@ -465,9 +451,9 @@ void main() {
 
         final container = ProviderContainer(
           overrides: [
-            authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
-            taskInstancesProvider.overrideWith(
-              (ref) => Stream.value([
+            authStateProvider.overrideWithValue(AsyncData(mockUser)),
+            taskInstancesProvider.overrideWithValue(
+              AsyncData([
                 nonFamily,
                 assignedToOther,
                 alreadyCompleted,
@@ -475,9 +461,9 @@ void main() {
                 notYetDue,
               ]),
             ),
-            userSettingsProvider.overrideWith(
-              (ref) => Stream.value(
-                const UserSettings(
+            userSettingsProvider.overrideWithValue(
+              const AsyncData(
+                UserSettings(
                   hoursAvailable: 8.0,
                   lastCapacityConfirmedWeek: '2026-07-06',
                 ),
@@ -486,10 +472,6 @@ void main() {
           ],
         );
         addTearDown(container.dispose);
-
-        await container.read(authStateProvider.future);
-        await container.read(userSettingsProvider.future);
-        await container.read(taskInstancesProvider.future);
 
         final tasks = container.read(missedFamilyTasksProvider);
         expect(tasks, isEmpty);
@@ -509,13 +491,13 @@ void main() {
 
         final container = ProviderContainer(
           overrides: [
-            authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
-            taskInstancesProvider.overrideWith(
-              (ref) => Stream.value([overdueInstance]),
+            authStateProvider.overrideWithValue(AsyncData(mockUser)),
+            taskInstancesProvider.overrideWithValue(
+              AsyncData([overdueInstance]),
             ),
-            userSettingsProvider.overrideWith(
-              (ref) => Stream.value(
-                const UserSettings(
+            userSettingsProvider.overrideWithValue(
+              const AsyncData(
+                UserSettings(
                   hoursAvailable: 8.0,
                   lastCapacityConfirmedWeek: '2026-07-06',
                   acknowledgedMissedTaskCommunications: [
@@ -527,10 +509,6 @@ void main() {
           ],
         );
         addTearDown(container.dispose);
-
-        await container.read(authStateProvider.future);
-        await container.read(userSettingsProvider.future);
-        await container.read(taskInstancesProvider.future);
 
         final tasks = container.read(missedFamilyTasksProvider);
         expect(tasks, isEmpty);
@@ -551,13 +529,11 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           userSettingsRepositoryProvider.overrideWithValue(fakeRepo),
-          authStateProvider.overrideWith((ref) => Stream.value(mockUser)),
-          taskInstancesProvider.overrideWith(
-            (ref) => Stream.value([overdueInstance]),
-          ),
-          userSettingsProvider.overrideWith(
-            (ref) => Stream.value(
-              const UserSettings(
+          authStateProvider.overrideWithValue(AsyncData(mockUser)),
+          taskInstancesProvider.overrideWithValue(AsyncData([overdueInstance])),
+          userSettingsProvider.overrideWithValue(
+            const AsyncData(
+              UserSettings(
                 hoursAvailable: 8.0,
                 lastCapacityConfirmedWeek: '2026-07-06',
               ),
@@ -566,10 +542,6 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
-
-      await container.read(authStateProvider.future);
-      await container.read(userSettingsProvider.future);
-      await container.read(taskInstancesProvider.future);
 
       final tasks = container.read(missedFamilyTasksProvider);
       expect(tasks.length, 1);

@@ -1542,7 +1542,7 @@ void main() {
 
         final container = ProviderContainer(
           overrides: [
-            authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
+            authStateProvider.overrideWithValue(AsyncData(FakeUser())),
             firestoreProvider.overrideWithValue(firestore),
             taskRepositoryProvider.overrideWith(
               (ref) => FirestoreTaskRepository(
@@ -1551,8 +1551,8 @@ void main() {
                 notificationService: ref.watch(notificationServiceProvider),
               ),
             ),
-            userSettingsProvider.overrideWith(
-              (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+            userSettingsProvider.overrideWithValue(
+              const AsyncData(UserSettings(hoursAvailable: 8.0)),
             ),
             notificationServiceProvider.overrideWithValue(
               LoggingNotificationService(),
@@ -1560,9 +1560,6 @@ void main() {
           ],
         );
         addTearDown(container.dispose);
-
-        // Await the auth state stream to emit the fake user
-        await container.read(authStateProvider.future);
 
         // Read taskRepositoryProvider to initialize the repository
         final repository = container.read(taskRepositoryProvider);
@@ -1657,7 +1654,7 @@ void main() {
           final firestore = FakeFirebaseFirestore();
           final container = ProviderContainer(
             overrides: [
-              authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
+              authStateProvider.overrideWithValue(AsyncData(FakeUser())),
               firestoreProvider.overrideWithValue(firestore),
               taskRepositoryProvider.overrideWith(
                 (ref) => FirestoreTaskRepository(
@@ -1673,7 +1670,6 @@ void main() {
           );
           addTearDown(container.dispose);
 
-          await container.read(authStateProvider.future);
           final repository = container.read(taskRepositoryProvider)!;
 
           // Perform two operations rapidly without waiting for Firestore propagation
@@ -1713,7 +1709,7 @@ void main() {
           final firestore = FakeFirebaseFirestore();
           final container = ProviderContainer(
             overrides: [
-              authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
+              authStateProvider.overrideWithValue(AsyncData(FakeUser())),
               firestoreProvider.overrideWithValue(firestore),
               taskRepositoryProvider.overrideWith(
                 (ref) => FirestoreTaskRepository(
@@ -1729,7 +1725,6 @@ void main() {
           );
           addTearDown(container.dispose);
 
-          await container.read(authStateProvider.future);
           final repository = container.read(taskRepositoryProvider)!;
 
           // Trigger evaluation
@@ -1990,7 +1985,7 @@ void main() {
 
           final container = ProviderContainer(
             overrides: [
-              authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
+              authStateProvider.overrideWithValue(AsyncData(FakeUser())),
               firestoreProvider.overrideWithValue(firestore),
               taskRepositoryProvider.overrideWith(
                 (ref) => FirestoreTaskRepository(
@@ -1999,8 +1994,8 @@ void main() {
                   notificationService: ref.watch(notificationServiceProvider),
                 ),
               ),
-              userSettingsProvider.overrideWith(
-                (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+              userSettingsProvider.overrideWithValue(
+                const AsyncData(UserSettings(hoursAvailable: 8.0)),
               ),
               notificationServiceProvider.overrideWithValue(
                 LoggingNotificationService(),
@@ -2008,7 +2003,6 @@ void main() {
             ],
           );
           addTearDown(container.dispose);
-          await container.read(authStateProvider.future);
 
           final repository = container.read(taskRepositoryProvider);
           expect(repository, isNotNull);
@@ -2734,7 +2728,7 @@ void main() {
               taskInstancesProvider.overrideWith(
                 (ref) => instancesSubject.stream,
               ),
-              authStateProvider.overrideWith((ref) => Stream.value(null)),
+              authStateProvider.overrideWithValue(const AsyncData(null)),
             ],
             child: Consumer(
               builder: (context, ref, child) {
@@ -2811,7 +2805,7 @@ void main() {
               taskInstancesProvider.overrideWith(
                 (ref) => instancesSubject.stream,
               ),
-              authStateProvider.overrideWith((ref) => Stream.value(null)),
+              authStateProvider.overrideWithValue(const AsyncData(null)),
             ],
             child: Consumer(
               builder: (context, ref, child) {
@@ -2953,7 +2947,7 @@ void main() {
               taskInstancesProvider.overrideWith(
                 (ref) => instancesSubject.stream,
               ),
-              authStateProvider.overrideWith((ref) => Stream.value(FakeUser())),
+              authStateProvider.overrideWithValue(AsyncData(FakeUser())),
             ],
             child: Consumer(
               builder: (context, ref, child) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../logic/auth_repository.dart';
 import '../widgets/home_search_and_shortcut_widget.dart';
 import '../logic/app_route_manager.dart';
