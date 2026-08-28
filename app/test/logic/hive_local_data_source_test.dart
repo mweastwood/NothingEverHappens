@@ -164,7 +164,7 @@ void main() {
     await dataSource.saveTask(task);
     await dataSource.saveInstance(instance);
 
-    await Future.delayed(const Duration(milliseconds: 200));
+    await pumpEventQueue();
 
     expect(taskEmitted, true);
 
@@ -345,7 +345,7 @@ void main() {
     await dataSource.setMigrationCompleted(false);
     await dataSource.setMigrationCompleted(true);
 
-    await Future.delayed(const Duration(milliseconds: 100));
+    await pumpEventQueue();
 
     expect(emissions, containsAllInOrder([false, true, false, true]));
     await sub.cancel();
