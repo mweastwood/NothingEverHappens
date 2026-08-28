@@ -139,8 +139,8 @@ void main() {
           .doc('S-remote-unmigrated')
           .set(remoteTask.toFirestore());
 
-      // Give stream time to process if it were active
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      // Flush event queue to process any stream events if active
+      await pumpEventQueue();
 
       final localTask = localDataSource
           .getTasks()
@@ -196,8 +196,7 @@ void main() {
           'updatedAt': remoteTime.toIso8601String(),
         });
 
-    // Wait a bit for the stream to process
-    await Future.delayed(const Duration(milliseconds: 100));
+    await pumpEventQueue();
 
     final tasks = localDataSource.getTasks();
     expect(tasks.any((t) => t.id == 'S-2'), true);
@@ -238,7 +237,7 @@ void main() {
           'updatedAt': remoteTime.toIso8601String(),
         });
 
-    await Future.delayed(const Duration(milliseconds: 100));
+    await pumpEventQueue();
 
     final docSnap = await firestore
         .collection('users')
@@ -283,7 +282,7 @@ void main() {
           'updatedAt': remoteTime.toIso8601String(),
         });
 
-    await Future.delayed(const Duration(milliseconds: 100));
+    await pumpEventQueue();
 
     final localTask = localDataSource.getTasks().firstWhere(
       (t) => t.id == 'S-1',
@@ -351,7 +350,7 @@ void main() {
           .doc('I-2')
           .set(remoteInst.toFirestore());
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pumpEventQueue();
 
       final instances = localDataSource.getInstances();
       expect(instances.any((i) => i.id == 'I-1'), isFalse);
@@ -422,7 +421,7 @@ void main() {
           .doc('I-2')
           .set(remoteInst.toFirestore());
 
-      await Future.delayed(const Duration(milliseconds: 100));
+      await pumpEventQueue();
 
       final instances = localDataSource.getInstances();
       expect(instances.any((i) => i.id == 'I-1'), isTrue);
@@ -581,7 +580,7 @@ void main() {
       addTearDown(() => service.dispose());
 
       // Wait a microtask for listener attachment
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await pumpEventQueue();
 
       // Push remote family task
       await firestore
@@ -610,7 +609,7 @@ void main() {
             'updatedAt': DateTime.now().toIso8601String(),
           });
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       final localTasks = localDataSource.getTasks();
       expect(localTasks.any((t) => t.id == 'S-fam-remote'), isTrue);
@@ -660,7 +659,7 @@ void main() {
           });
 
       // Wait for remote listener to receive and save
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       // Now delete locally and mark dirty (simulating user deleting task)
       await localDataSource.deleteTask('S-to-delete');
@@ -729,7 +728,7 @@ void main() {
           });
 
       // Allow listeners to catch up
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       // Parent user changes task and instance to personal (isFamily = false)
       final updatedTask = TaskSchedule(
@@ -847,7 +846,7 @@ void main() {
           });
 
       // Allow listeners to catch up
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       // User changes task and instance to family (isFamily = true)
       final updatedTask = TaskSchedule(
@@ -952,7 +951,7 @@ void main() {
             'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
           });
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
       expect(
         localDataSource.getTasks().any((t) => t.id == 'S-kitchen'),
         isTrue,
@@ -974,7 +973,7 @@ void main() {
       await service.sync();
 
       // Allow listeners to process the remote family deletion
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       // Parent still retains the task locally as personal
       expect(
@@ -1020,7 +1019,7 @@ void main() {
             'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
           });
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
       expect(
         localDataSource.getTasks().any((t) => t.id == 'S-kitchen-fam'),
         isTrue,
@@ -1042,7 +1041,7 @@ void main() {
           .delete();
 
       // Allow member listener to process the remote family deletion
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       // Member should have had the task removed from local storage
       expect(
@@ -1067,7 +1066,7 @@ void main() {
       );
       addTearDown(() => service.dispose());
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       // Add a recipe in fam1
       await firestore
@@ -1083,13 +1082,13 @@ void main() {
             'updatedAt': DateTime.now().toIso8601String(),
           });
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
       expect(localDataSource.getRecipes().any((r) => r.id == 'R-1'), isTrue);
 
       // Now user leaves family (familyId becomes null)
       await firestore.collection('users').doc('user1').set({'familyId': null});
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       // Add another recipe to old family fam1
       await firestore
@@ -1105,7 +1104,7 @@ void main() {
             'updatedAt': DateTime.now().toIso8601String(),
           });
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
 
       // R-2 should NOT be synced to local data source because stream was cancelled
       expect(localDataSource.getRecipes().any((r) => r.id == 'R-2'), isFalse);
@@ -1151,7 +1150,7 @@ void main() {
             .set(inst.toFirestore());
       }
 
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await pumpEventQueue();
       expect(localDataSource.getInstances().length, 200);
     },
   );
@@ -1231,7 +1230,7 @@ void main() {
           .set(cachedRecipe.toFirestore());
 
       // Allow stream to process
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await pumpEventQueue();
 
       // Local tasks, instances, and recipes should now have isFromCache == false
       final updatedTask = localDataSource.getTasks().firstWhere(
@@ -1272,7 +1271,7 @@ void main() {
         'familyId': 'fam-123',
       }, SetOptions(merge: true));
 
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await pumpEventQueue();
 
       final familyDoc = await firestore
           .collection('families')
