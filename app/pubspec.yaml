@@ -39,7 +39,7 @@ dependencies:
   cupertino_icons: ^1.0.9
   dynamic_color: ^1.9.0
   flutter_markdown: ^0.7.7+1
-  firebase_core: ^4.13.0
+  firebase_core: ^4.14.0
   firebase_analytics: ^12.4.6
   firebase_crashlytics: ^5.0.0
   firebase_remote_config: ^6.1.0
