@@ -126,75 +126,30 @@ void main() {
     ).called(1);
   });
 
-  testWidgets(
-    'Tapping a future capacity bar opens breakdown sheet with planned task details',
-    (WidgetTester tester) async {
-      AppClock.setMockTime(
-        DateTime(2026, 7, 1, 9, 0),
-      ); // Wednesday (2026-07-01)
-      addTearDown(AppClock.reset);
+  testWidgets('Tapping a capacity bar opens daily activity breakdown sheet', (
+    WidgetTester tester,
+  ) async {
+    AppClock.setMockTime(DateTime(2026, 7, 1, 9, 0)); // Wednesday (2026-07-01)
+    addTearDown(AppClock.reset);
+    await tester.pumpWidget(createTestWidget());
+    await tester.pumpAndSettle();
 
-      final schedule = TaskSchedule(
-        id: 's-future',
-        title: 'Plan Future Event',
-        description: 'Prepare notes',
-        estimatedDuration: const Duration(minutes: 60),
-        schedules: [
-          DailySchedule(
-            startDate: CivilDay(year: 2026, month: 7, day: 1),
-            interval: 1,
-          ),
-        ],
-      );
+    // Tap on Wednesday capacity bar (July 1st)
+    final barKey = const Key('capacity_bar_2026-07-01');
+    expect(find.byKey(barKey), findsOneWidget);
+    await tester.ensureVisible(find.byKey(barKey));
+    await tester.pumpAndSettle();
 
-      final futureInst = TaskInstance(
-        id: 'i-future-1',
-        scheduleId: schedule.id,
-        ruleId: 'r-1',
-        title: 'Plan Future Event',
-        description: 'Prepare notes',
-        scheduledDate: const CivilDay(
-          year: 2026,
-          month: 7,
-          day: 2,
-        ), // Thursday (future)
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 10, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 11, minute: 0),
-        ),
-        status: TaskStatus.pending,
-      );
+    await tester.tap(find.byKey(barKey));
+    await tester.pumpAndSettle();
 
-      tasksSubject.add([schedule]);
-      instancesSubject.add([futureInst]);
-
-      await tester.pumpWidget(createTestWidget());
-      await tester.pumpAndSettle();
-
-      // Tap on Thursday capacity bar (July 2nd)
-      final barKey = const Key('capacity_bar_2026-07-02');
-      expect(find.byKey(barKey), findsOneWidget);
-      await tester.ensureVisible(find.byKey(barKey));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(barKey));
-      await tester.pumpAndSettle();
-
-      // Verify breakdown sheet is shown with future planned task
-      expect(
-        find.byKey(const Key('daily_activity_breakdown_sheet')),
-        findsOneWidget,
-      );
-      expect(find.text('Thursday, Jul 2, 2026'), findsOneWidget);
-      expect(find.text('Plan Future Event'), findsOneWidget);
-      expect(find.text('1 planned'), findsOneWidget);
-      expect(find.text('Planned (1)'), findsOneWidget);
-    },
-  );
+    // Verify breakdown bottom sheet is shown
+    expect(
+      find.byKey(const Key('daily_activity_breakdown_sheet')),
+      findsOneWidget,
+    );
+    expect(find.text('Wednesday, Jul 1, 2026'), findsOneWidget);
+  });
 
   testWidgets(
     'Tapping pencil icon opens default template dialog and lets user edit weekday baseline',
@@ -405,8 +360,17 @@ void main() {
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
-      // Total planned = 2h 15m. Capacity = 2h.
-      expect(find.text('2h 15m/2h'), findsOneWidget);
+      // Tapping Wednesday bar opens breakdown sheet showing planned work and task details
+      final wedBar = find.byKey(const Key('capacity_bar_2026-07-01'));
+      expect(wedBar, findsOneWidget);
+      await tester.tap(wedBar);
+      await tester.pumpAndSettle();
+
+      expect(find.text('2 planned'), findsOneWidget);
+      expect(find.text('2h 15m'), findsOneWidget);
+      expect(find.text('Planned (2)'), findsOneWidget);
+      expect(find.text('Task A Instance'), findsOneWidget);
+      expect(find.text('Task B Instance'), findsOneWidget);
     },
   );
 
@@ -621,18 +585,16 @@ void main() {
 
       // Verify Personal Timeline card is shown
       expect(find.text('Personal Timeline'), findsOneWidget);
+      expect(find.text('Past'), findsOneWidget);
+      expect(find.text('Future'), findsOneWidget);
 
-      // Verify standardized 3-letter day labels and legend
+      // Verify standardized 3-letter day labels
       expect(find.text('Wed'), findsWidgets);
-      expect(find.text('Completed'), findsOneWidget);
-      expect(find.text('Completed Overdue'), findsOneWidget);
-      expect(find.text('Skipped'), findsOneWidget);
-      expect(find.text('Capacity'), findsOneWidget);
-      expect(find.text('Workload'), findsOneWidget);
-      expect(find.text('Over Capacity'), findsOneWidget);
 
-      // Verify Sunday (2026-07-05, history): Dishes completed (60m) - time spent only, without /8h capacity
-      expect(find.text('1h'), findsWidgets);
+      // Legend is removed
+      expect(find.text('Completed Overdue'), findsNothing);
+      expect(find.text('Workload'), findsNothing);
+      expect(find.text('Over Capacity'), findsNothing);
     },
   );
 

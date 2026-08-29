@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../logic/app_clock.dart';
 import '../logic/dashboard_stats.dart';
-import '../logic/utils/format_utils.dart';
 
 class DailyCapacityData {
   final DateTime date;
@@ -104,16 +103,6 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
         _scrollController.jumpTo(targetOffset.clamp(0.0, maxScroll));
       }
     }
-  }
-
-  String _formatForecastLabel({
-    required double workHours,
-    required double capacityHours,
-  }) {
-    if (workHours == 0) {
-      return formatDurationHours(capacityHours);
-    }
-    return '${formatDurationHours(workHours)}/${formatDurationHours(capacityHours)}';
   }
 
   String _formatDateRange(DateTime start, DateTime end) {
@@ -242,7 +231,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
 
             const SizedBox(height: 16),
 
-            // Timeline Guide (Past 6 Days / Today / Next 6 Days)
+            // Timeline Guide (Past 6 Days / Today / Future 6 Days)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -296,7 +285,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                     children: [
                       Flexible(
                         child: Text(
-                          'Next',
+                          'Future',
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
@@ -361,148 +350,6 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
                 );
               },
             ),
-
-            const SizedBox(height: 16),
-
-            // Legend
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 14,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade600,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Completed',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 14,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade700,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Completed Overdue',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 14,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade700,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Seriously Overdue',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: SizedBox(
-                      width: 14,
-                      height: 10,
-                      child: CustomPaint(
-                        painter: HatchedPatternPainter(
-                          backgroundColor: theme.colorScheme.error.withValues(
-                            alpha: 0.15,
-                          ),
-                          stripeColor: theme.colorScheme.error,
-                          stripeWidth: 1.5,
-                          gap: 2.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Skipped',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 14,
-                    height: 10,
-                    child: CustomPaint(
-                      painter: DashedRectPainter(
-                        color: theme.colorScheme.outlineVariant,
-                        strokeWidth: 1.5,
-                        borderRadius: 2.0,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Capacity',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 14,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Workload',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 14,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.error,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Over Capacity',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -553,19 +400,11 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
     final dayLabel = weekdays[date.weekday - 1];
     final isOverCapacity = workHours > capacity;
 
-    final shouldOpenBreakdown =
-        widget.onDayActivityTap != null && data.statsData != null;
-
-    // History is labeled with time spent only, without capacity label
-    final String topLabel = isPast
-        ? formatDurationHours(data.completedHours)
-        : _formatForecastLabel(workHours: workHours, capacityHours: capacity);
-
     return GestureDetector(
       key: Key('capacity_bar_$dateStr'),
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        if (shouldOpenBreakdown) {
+        if (widget.onDayActivityTap != null && data.statsData != null) {
           widget.onDayActivityTap!(data.statsData!);
         } else {
           widget.onDayTap(date);
@@ -588,24 +427,6 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              SizedBox(
-                height: 14,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    topLabel,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 9,
-                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                      color: isToday
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
               SizedBox(
                 height: 120,
                 child: Stack(
