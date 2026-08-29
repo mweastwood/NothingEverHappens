@@ -61,30 +61,16 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     return a.title.compareTo(b.title);
   }
 
-  int _comparePlannedOrder(TaskInstance a, TaskInstance b) {
-    final aStart =
-        a.startRelativeTime.dayOffset * 1440 +
-        a.startRelativeTime.time.hour * 60 +
-        a.startRelativeTime.time.minute;
-    final bStart =
-        b.startRelativeTime.dayOffset * 1440 +
-        b.startRelativeTime.time.hour * 60 +
-        b.startRelativeTime.time.minute;
-    final cmpStart = aStart.compareTo(bStart);
-    if (cmpStart != 0) return cmpStart;
-
-    final aDue =
-        a.dueRelativeTime.dayOffset * 1440 +
-        a.dueRelativeTime.time.hour * 60 +
-        a.dueRelativeTime.time.minute;
-    final bDue =
-        b.dueRelativeTime.dayOffset * 1440 +
-        b.dueRelativeTime.time.hour * 60 +
-        b.dueRelativeTime.time.minute;
-    final cmpDue = aDue.compareTo(bDue);
-    if (cmpDue != 0) return cmpDue;
-
-    return a.title.compareTo(b.title);
+  String _formatTaskTime(BuildContext context, TaskInstance task) {
+    final dt =
+        task.completedAt ??
+        task.dueRelativeTime.referenceTo(task.scheduledDate);
+    final locale = Localizations.localeOf(context).languageCode;
+    final dateStr = (dt.year != AppClock.now.year)
+        ? DateFormat.yMMMd(locale).format(dt)
+        : DateFormat.MMMd(locale).format(dt);
+    final timeStr = DateFormat('h:mm a', locale).format(dt);
+    return '$dateStr, $timeStr';
   }
 
   @override
@@ -97,7 +83,6 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
         dayData.missedTasks.length +
         dayData.plannedTasks.length;
 
-    final plannedTasks = [...dayData.plannedTasks]..sort(_comparePlannedOrder);
     final onTimeTasks = [...dayData.completedOnTimeTasks]
       ..sort(_compareResolvedOrder);
     final overdueTasks = [...dayData.completedOverdueTasks]
@@ -108,6 +93,14 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       ...dayData.skippedTasks,
       ...dayData.missedTasks,
     ]..sort(_compareResolvedOrder);
+    final plannedTasks = [...dayData.plannedTasks]
+      ..sort((a, b) {
+        final aTime = a.dueRelativeTime.referenceTo(a.scheduledDate);
+        final bTime = b.dueRelativeTime.referenceTo(b.scheduledDate);
+        final cmp = aTime.compareTo(bTime);
+        if (cmp != 0) return cmp;
+        return a.title.compareTo(b.title);
+      });
 
     return SafeArea(
       child: Container(
@@ -263,18 +256,17 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final chips = <Widget>[];
 
-    final plannedCount = dayData.plannedCount;
     final onTimeCount = dayData.completedOnTimeCount;
     final overdueCount = dayData.completedOverdueCount;
     final seriouslyOverdueCount = dayData.completedSeriouslyOverdueCount;
-
     final totalSkippedCount = dayData.skippedCount + dayData.missedCount;
+    final plannedCount = dayData.plannedTasks.length;
 
     if (plannedCount > 0) {
       chips.add(
         _buildChip(
           context,
-          icon: Icons.assignment_outlined,
+          icon: Icons.schedule,
           label: '$plannedCount planned',
           color: theme.colorScheme.primary,
         ),
@@ -444,7 +436,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       iconColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
       tagLabel = 'Skipped';
     } else if (status == TaskStatus.pending) {
-      icon = Icons.schedule_outlined;
+      icon = Icons.schedule;
       iconColor = theme.colorScheme.primary;
       tagLabel = 'Planned';
     } else {
@@ -453,16 +445,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       tagLabel = 'Missed';
     }
 
-    String? completionTimeStr;
-    if (task.completedAt != null) {
-      final dt = task.completedAt!;
-      final locale = Localizations.localeOf(context).languageCode;
-      final dateStr = (dt.year != AppClock.now.year)
-          ? DateFormat.yMMMd(locale).format(dt)
-          : DateFormat.MMMd(locale).format(dt);
-      final timeStr = DateFormat('h:mm a', locale).format(dt);
-      completionTimeStr = '$dateStr, $timeStr';
-    }
+    final taskTimeStr = _formatTaskTime(context, task);
 
     final isSevereOverdue =
         task.status == TaskStatus.completed &&
@@ -496,15 +479,13 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
               ),
             ),
           ),
-          if (completionTimeStr != null) ...[
-            const SizedBox(width: 8),
-            Text(
-              completionTimeStr,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+          const SizedBox(width: 8),
+          Text(
+            taskTimeStr,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-          ],
+          ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -528,7 +509,6 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
-    final isFuture = dayData.day.isAfter(CivilDay.fromDateTime(AppClock.now));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Column(
@@ -541,9 +521,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            isFuture
-                ? 'No tasks scheduled for this day'
-                : 'No activity recorded for this day',
+            'No activity recorded for this day',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

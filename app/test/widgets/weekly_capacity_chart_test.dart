@@ -47,7 +47,8 @@ void main() {
       expect(find.text('Personal Timeline'), findsOneWidget);
       expect(find.text('Jul 1 – 2'), findsOneWidget);
       expect(find.text('Past'), findsOneWidget);
-      expect(find.text('Next'), findsOneWidget);
+      expect(find.text('Future'), findsOneWidget);
+      expect(find.text('Next'), findsNothing);
       expect(find.text('Past 6 Days'), findsNothing);
       expect(find.text('Next 6 Days'), findsNothing);
       expect(
@@ -119,10 +120,6 @@ void main() {
         ),
       );
 
-      // Verify formatted forecast labels for today (Wed) and future (Thu)
-      expect(find.text('2h 15m/4h'), findsOneWidget);
-      expect(find.text('8h'), findsOneWidget);
-
       // Verify day labels (Wed, Thu)
       expect(find.text('Wed'), findsOneWidget);
       expect(find.text('Thu'), findsOneWidget);
@@ -135,57 +132,7 @@ void main() {
       expect(tappedDate, equals(DateTime(2026, 7, 1)));
     });
 
-    testWidgets('tapping future day with statsData triggers onDayActivityTap', (
-      tester,
-    ) async {
-      AppClock.setMockTime(DateTime(2026, 7, 1));
-      DailyStatsData? tappedStats;
-
-      final futureStats = DailyStatsData(
-        day: CivilDay(year: 2026, month: 7, day: 2),
-        plannedHours: 2.0,
-      );
-
-      final daysWithStats = [
-        DailyCapacityData(
-          date: DateTime(2026, 7, 1), // Wednesday (today)
-          capacityHours: 4.0,
-          plannedMinutes: 120.0,
-          isOverridden: false,
-        ),
-        DailyCapacityData(
-          date: DateTime(2026, 7, 2), // Thursday (future)
-          capacityHours: 8.0,
-          plannedMinutes: 120.0,
-          isOverridden: false,
-          statsData: futureStats,
-        ),
-      ];
-
-      await tester.pumpWidget(
-        buildTestableWidget(
-          child: Scaffold(
-            body: WeeklyCapacityChart(
-              daysData: daysWithStats,
-              onDayTap: (_) {},
-              onDayActivityTap: (stats) => tappedStats = stats,
-              onEditDefaultCapacity: () {},
-            ),
-          ),
-        ),
-      );
-
-      // Tap Thursday (future) bar
-      final thuBarKey = const Key('capacity_bar_2026-07-02');
-      expect(find.byKey(thuBarKey), findsOneWidget);
-      await tester.tap(find.byKey(thuBarKey));
-
-      expect(tappedStats, isNotNull);
-      expect(tappedStats!.day, equals(CivilDay(year: 2026, month: 7, day: 2)));
-      expect(tappedStats!.plannedHours, 2.0);
-    });
-
-    testWidgets('history bars display time spent without capacity label', (
+    testWidgets('bars do not display time labels above the bars', (
       tester,
     ) async {
       // Mock clock to July 2, 2026 (Thursday), so July 1 (Wednesday) is history
@@ -220,12 +167,10 @@ void main() {
         ),
       );
 
-      // For Wednesday (history), label is "1h 30m" without capacity (/4h)
-      expect(find.text('1h 30m'), findsOneWidget);
+      // Top labels are removed
+      expect(find.text('1h 30m'), findsNothing);
       expect(find.text('1h 30m/4h'), findsNothing);
-
-      // For Thursday (today), label is "1h/8h"
-      expect(find.text('1h/8h'), findsOneWidget);
+      expect(find.text('1h/8h'), findsNothing);
     });
 
     testWidgets(
@@ -277,51 +222,52 @@ void main() {
       },
     );
 
-    testWidgets(
-      'renders seriously overdue in legend and stacks red gradient segment for past days',
-      (tester) async {
-        AppClock.setMockTime(DateTime(2026, 7, 2));
+    testWidgets('legend is removed from the personal timeline card', (
+      tester,
+    ) async {
+      AppClock.setMockTime(DateTime(2026, 7, 2));
 
-        final statsData = DailyStatsData(
-          day: CivilDay(year: 2026, month: 7, day: 1),
-          completedCount: 3,
-          skippedCount: 0,
-          missedCount: 0,
-          completedHours: 3.0,
-          completedOnTimeHours: 1.0,
-          completedOverdueHours: 2.0,
-          completedSeriouslyOverdueHours: 1.0,
-        );
+      final statsData = DailyStatsData(
+        day: CivilDay(year: 2026, month: 7, day: 1),
+        completedCount: 3,
+        skippedCount: 0,
+        missedCount: 0,
+        completedHours: 3.0,
+        completedOnTimeHours: 1.0,
+        completedOverdueHours: 2.0,
+        completedSeriouslyOverdueHours: 1.0,
+      );
 
-        final historyDays = [
-          DailyCapacityData(
-            date: DateTime(2026, 7, 1),
-            capacityHours: 4.0,
-            plannedMinutes: 0.0,
-            completedMinutes: 180.0,
-            isOverridden: false,
-            statsData: statsData,
-          ),
-        ];
+      final historyDays = [
+        DailyCapacityData(
+          date: DateTime(2026, 7, 1),
+          capacityHours: 4.0,
+          plannedMinutes: 0.0,
+          completedMinutes: 180.0,
+          isOverridden: false,
+          statsData: statsData,
+        ),
+      ];
 
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: Scaffold(
-              body: WeeklyCapacityChart(
-                daysData: historyDays,
-                onDayTap: (_) {},
-                onEditDefaultCapacity: () {},
-              ),
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: WeeklyCapacityChart(
+              daysData: historyDays,
+              onDayTap: (_) {},
+              onEditDefaultCapacity: () {},
             ),
           ),
-        );
+        ),
+      );
 
-        // Legend should include 'Seriously Overdue'
-        expect(find.text('Seriously Overdue'), findsOneWidget);
-        expect(find.text('Completed Overdue'), findsOneWidget);
-        expect(find.text('Completed'), findsOneWidget);
-      },
-    );
+      // Legend is removed
+      expect(find.text('Completed'), findsNothing);
+      expect(find.text('Completed Overdue'), findsNothing);
+      expect(find.text('Seriously Overdue'), findsNothing);
+      expect(find.text('Workload'), findsNothing);
+      expect(find.text('Over Capacity'), findsNothing);
+    });
 
     testWidgets('respects AppClock.now for current day highlighting', (
       tester,

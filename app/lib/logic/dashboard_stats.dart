@@ -13,43 +13,44 @@ class DailyStatsData {
   final int completedCount;
   final int skippedCount;
   final int missedCount;
+  final int plannedCount;
   final double completedHours;
   final double completedOnTimeHours;
   final double completedOverdueHours;
   final double completedSeriouslyOverdueHours;
   final double skippedHours;
   final double missedHours;
+  final double plannedHours;
   final List<TaskInstance> completedTasks;
   final List<TaskInstance> skippedTasks;
   final List<TaskInstance> missedTasks;
+  final List<TaskInstance> plannedTasks;
   final List<TaskInstance> completedOnTimeTasks;
   final List<TaskInstance> completedOverdueTasks;
   final List<TaskInstance> completedSeriouslyOverdueTasks;
-
-  // Future / planned day support
-  final List<TaskInstance> plannedTasks;
-  final double plannedHours;
 
   DailyStatsData({
     required this.day,
     this.completedCount = 0,
     this.skippedCount = 0,
     this.missedCount = 0,
+    int? plannedCount,
     this.completedHours = 0.0,
     this.completedOnTimeHours = 0.0,
     this.completedOverdueHours = 0.0,
     this.completedSeriouslyOverdueHours = 0.0,
     this.skippedHours = 0.0,
     this.missedHours = 0.0,
+    this.plannedHours = 0.0,
     this.completedTasks = const [],
     this.skippedTasks = const [],
     this.missedTasks = const [],
+    this.plannedTasks = const [],
     List<TaskInstance>? completedOnTimeTasks,
     List<TaskInstance>? completedOverdueTasks,
     List<TaskInstance>? completedSeriouslyOverdueTasks,
-    this.plannedTasks = const [],
-    this.plannedHours = 0.0,
-  }) : completedOnTimeTasks =
+  }) : plannedCount = plannedCount ?? plannedTasks.length,
+       completedOnTimeTasks =
            completedOnTimeTasks ??
            completedTasks.where((t) => !t.isCompletedOverdue).toList(),
        completedOverdueTasks =
@@ -73,7 +74,6 @@ class DailyStatsData {
       completedSeriouslyOverdueTasks.length;
   int get totalCompletedOverdueCount =>
       completedOverdueCount + completedSeriouslyOverdueCount;
-  int get plannedCount => plannedTasks.length;
 
   double get completedModeratelyOverdueHours =>
       (completedOverdueHours - completedSeriouslyOverdueHours).clamp(
@@ -183,6 +183,7 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
   final dailyCompleted = <CivilDay, int>{for (final d in days) d: 0};
   final dailySkipped = <CivilDay, int>{for (final d in days) d: 0};
   final dailyMissed = <CivilDay, int>{for (final d in days) d: 0};
+  final dailyPlanned = <CivilDay, int>{for (final d in days) d: 0};
   final dailyHours = <CivilDay, double>{for (final d in days) d: 0.0};
   final dailyCompletedOnTimeHours = <CivilDay, double>{
     for (final d in days) d: 0.0,
@@ -195,6 +196,7 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
   };
   final dailySkippedHours = <CivilDay, double>{for (final d in days) d: 0.0};
   final dailyMissedHours = <CivilDay, double>{for (final d in days) d: 0.0};
+  final dailyPlannedHours = <CivilDay, double>{for (final d in days) d: 0.0};
   final dailyCompletedTasks = <CivilDay, List<TaskInstance>>{
     for (final d in days) d: [],
   };
@@ -207,7 +209,6 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
   final dailyPlannedTasks = <CivilDay, List<TaskInstance>>{
     for (final d in days) d: [],
   };
-  final dailyPlannedHours = <CivilDay, double>{for (final d in days) d: 0.0};
 
   int totalCompleted = 0;
   double totalHours = 0.0;
@@ -301,10 +302,11 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
         dailyMissedHours[accountedDay] =
             (dailyMissedHours[accountedDay] ?? 0.0) + duration;
         dailyMissedTasks[accountedDay]?.add(inst);
-      } else if (accountedDay == today) {
-        dailyPlannedTasks[accountedDay]?.add(inst);
+      } else {
+        dailyPlanned[accountedDay] = (dailyPlanned[accountedDay] ?? 0) + 1;
         dailyPlannedHours[accountedDay] =
             (dailyPlannedHours[accountedDay] ?? 0.0) + duration;
+        dailyPlannedTasks[accountedDay]?.add(inst);
       }
     }
   }
@@ -320,6 +322,7 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
       completedCount: dailyCompleted[d] ?? 0,
       skippedCount: dailySkipped[d] ?? 0,
       missedCount: dailyMissed[d] ?? 0,
+      plannedCount: dailyPlanned[d] ?? 0,
       completedHours: dailyHours[d] ?? 0.0,
       completedOnTimeHours: dailyCompletedOnTimeHours[d] ?? 0.0,
       completedOverdueHours: dailyCompletedOverdueHours[d] ?? 0.0,
@@ -327,11 +330,11 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
           dailyCompletedSeriouslyOverdueHours[d] ?? 0.0,
       skippedHours: dailySkippedHours[d] ?? 0.0,
       missedHours: dailyMissedHours[d] ?? 0.0,
+      plannedHours: dailyPlannedHours[d] ?? 0.0,
       completedTasks: dailyCompletedTasks[d] ?? const [],
       skippedTasks: dailySkippedTasks[d] ?? const [],
       missedTasks: dailyMissedTasks[d] ?? const [],
       plannedTasks: dailyPlannedTasks[d] ?? const [],
-      plannedHours: dailyPlannedHours[d] ?? 0.0,
     );
   }).toList();
 
@@ -345,6 +348,173 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
     startDay: startDay,
     endDay: endDay,
   );
+});
+
+final personalTimelineStatsProvider = Provider<Map<CivilDay, DailyStatsData>>((
+  ref,
+) {
+  final instances = ref.watch(taskInstancesProvider).value ?? [];
+  final schedules = ref.watch(taskSchedulesProvider).value ?? [];
+  final currentUserId = ref.watch(authStateProvider).value?.uid;
+
+  final today = CivilDay.fromDateTime(AppClock.now);
+  final startDay = today.addDays(-6);
+  final endDay = today.addDays(6);
+
+  final durationMap = <String, double>{
+    for (final s in schedules)
+      if (s.estimatedDuration != null)
+        s.id: s.estimatedDuration!.inMinutes / 60.0,
+  };
+
+  final scheduleMap = <String, TaskSchedule>{
+    for (final s in schedules) s.id: s,
+  };
+
+  final days = List.generate(13, (index) => startDay.addDays(index));
+  final dailyCompleted = <CivilDay, int>{for (final d in days) d: 0};
+  final dailySkipped = <CivilDay, int>{for (final d in days) d: 0};
+  final dailyMissed = <CivilDay, int>{for (final d in days) d: 0};
+  final dailyPlanned = <CivilDay, int>{for (final d in days) d: 0};
+  final dailyHours = <CivilDay, double>{for (final d in days) d: 0.0};
+  final dailyCompletedOnTimeHours = <CivilDay, double>{
+    for (final d in days) d: 0.0,
+  };
+  final dailyCompletedOverdueHours = <CivilDay, double>{
+    for (final d in days) d: 0.0,
+  };
+  final dailyCompletedSeriouslyOverdueHours = <CivilDay, double>{
+    for (final d in days) d: 0.0,
+  };
+  final dailySkippedHours = <CivilDay, double>{for (final d in days) d: 0.0};
+  final dailyMissedHours = <CivilDay, double>{for (final d in days) d: 0.0};
+  final dailyPlannedHours = <CivilDay, double>{for (final d in days) d: 0.0};
+  final dailyCompletedTasks = <CivilDay, List<TaskInstance>>{
+    for (final d in days) d: [],
+  };
+  final dailySkippedTasks = <CivilDay, List<TaskInstance>>{
+    for (final d in days) d: [],
+  };
+  final dailyMissedTasks = <CivilDay, List<TaskInstance>>{
+    for (final d in days) d: [],
+  };
+  final dailyPlannedTasks = <CivilDay, List<TaskInstance>>{
+    for (final d in days) d: [],
+  };
+
+  for (final inst in instances) {
+    final schedule = scheduleMap[inst.scheduleId];
+    final rule = schedule?.schedules
+        .where((r) => r.id == inst.ruleId)
+        .firstOrNull;
+    final bool isOneOff =
+        rule is OneOffSchedule ||
+        (rule == null &&
+            schedule != null &&
+            schedule.schedules.isNotEmpty &&
+            schedule.schedules.every((r) => r is OneOffSchedule));
+
+    final CivilDay accountedDay =
+        (isOneOff &&
+            inst.status == TaskStatus.completed &&
+            inst.completedAt != null)
+        ? CivilDay.fromDateTime(inst.completedAt!)
+        : inst.scheduledDate;
+
+    if (accountedDay.isBefore(startDay) || accountedDay.isAfter(endDay)) {
+      continue;
+    }
+
+    final bool isUserTask;
+    if (inst.isFamily) {
+      if (inst.status == TaskStatus.completed ||
+          inst.status == TaskStatus.skipped) {
+        isUserTask = inst.completedByUserId == currentUserId;
+      } else {
+        isUserTask = inst.assignedUserId == currentUserId;
+      }
+    } else {
+      if (inst.status == TaskStatus.completed ||
+          inst.status == TaskStatus.skipped) {
+        isUserTask =
+            inst.completedByUserId == currentUserId ||
+            (inst.completedByUserId == null &&
+                (inst.assignedUserId == null ||
+                    inst.assignedUserId == currentUserId));
+      } else {
+        isUserTask =
+            inst.assignedUserId == null || inst.assignedUserId == currentUserId;
+      }
+    }
+
+    if (!isUserTask) continue;
+
+    final duration = durationMap[inst.scheduleId] ?? 0.0;
+
+    if (inst.status == TaskStatus.completed) {
+      dailyCompleted[accountedDay] = (dailyCompleted[accountedDay] ?? 0) + 1;
+      dailyHours[accountedDay] = (dailyHours[accountedDay] ?? 0.0) + duration;
+      dailyCompletedTasks[accountedDay]?.add(inst);
+
+      if (inst.isCompletedOverdue) {
+        dailyCompletedOverdueHours[accountedDay] =
+            (dailyCompletedOverdueHours[accountedDay] ?? 0.0) + duration;
+        if (inst.isCompletedOverdueByMoreThan24Hours) {
+          dailyCompletedSeriouslyOverdueHours[accountedDay] =
+              (dailyCompletedSeriouslyOverdueHours[accountedDay] ?? 0.0) +
+              duration;
+        }
+      } else {
+        dailyCompletedOnTimeHours[accountedDay] =
+            (dailyCompletedOnTimeHours[accountedDay] ?? 0.0) + duration;
+      }
+    } else if (inst.status == TaskStatus.skipped) {
+      dailySkipped[accountedDay] = (dailySkipped[accountedDay] ?? 0) + 1;
+      dailySkippedHours[accountedDay] =
+          (dailySkippedHours[accountedDay] ?? 0.0) + duration;
+      dailySkippedTasks[accountedDay]?.add(inst);
+    } else if (inst.status == TaskStatus.failed) {
+      dailyMissed[accountedDay] = (dailyMissed[accountedDay] ?? 0) + 1;
+      dailyMissedHours[accountedDay] =
+          (dailyMissedHours[accountedDay] ?? 0.0) + duration;
+      dailyMissedTasks[accountedDay]?.add(inst);
+    } else if (inst.status == TaskStatus.pending) {
+      if (inst.scheduledDate.isBefore(today)) {
+        dailyMissed[accountedDay] = (dailyMissed[accountedDay] ?? 0) + 1;
+        dailyMissedHours[accountedDay] =
+            (dailyMissedHours[accountedDay] ?? 0.0) + duration;
+        dailyMissedTasks[accountedDay]?.add(inst);
+      } else {
+        dailyPlanned[accountedDay] = (dailyPlanned[accountedDay] ?? 0) + 1;
+        dailyPlannedHours[accountedDay] =
+            (dailyPlannedHours[accountedDay] ?? 0.0) + duration;
+        dailyPlannedTasks[accountedDay]?.add(inst);
+      }
+    }
+  }
+
+  return {
+    for (final d in days)
+      d: DailyStatsData(
+        day: d,
+        completedCount: dailyCompleted[d] ?? 0,
+        skippedCount: dailySkipped[d] ?? 0,
+        missedCount: dailyMissed[d] ?? 0,
+        plannedCount: dailyPlanned[d] ?? 0,
+        completedHours: dailyHours[d] ?? 0.0,
+        completedOnTimeHours: dailyCompletedOnTimeHours[d] ?? 0.0,
+        completedOverdueHours: dailyCompletedOverdueHours[d] ?? 0.0,
+        completedSeriouslyOverdueHours:
+            dailyCompletedSeriouslyOverdueHours[d] ?? 0.0,
+        skippedHours: dailySkippedHours[d] ?? 0.0,
+        missedHours: dailyMissedHours[d] ?? 0.0,
+        plannedHours: dailyPlannedHours[d] ?? 0.0,
+        completedTasks: dailyCompletedTasks[d] ?? const [],
+        skippedTasks: dailySkippedTasks[d] ?? const [],
+        missedTasks: dailyMissedTasks[d] ?? const [],
+        plannedTasks: dailyPlannedTasks[d] ?? const [],
+      ),
+  };
 });
 
 final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
-import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/dashboard_stats.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
@@ -154,40 +153,46 @@ void main() {
     );
 
     final futurePlannedDayData = DailyStatsData(
-      day: CivilDay(year: 2026, month: 7, day: 5),
-      plannedHours: 2.5,
-      plannedTasks: [
-        TaskInstance(
-          id: 'plan-1',
-          scheduleId: 's-1',
-          ruleId: 'r-1',
-          title: 'Mow lawn',
-          description: '',
-          scheduledDate: CivilDay(year: 2026, month: 7, day: 5),
-          startRelativeTime: dummyStart,
-          dueRelativeTime: dummyDue,
-          status: TaskStatus.pending,
-        ),
-        TaskInstance(
-          id: 'plan-2',
-          scheduleId: 's-2',
-          ruleId: 'r-2',
-          title: 'Wash car',
-          description: '',
-          scheduledDate: CivilDay(year: 2026, month: 7, day: 5),
-          startRelativeTime: dummyStart,
-          dueRelativeTime: dummyDue,
-          status: TaskStatus.pending,
-        ),
-      ],
-    );
-
-    final futureEmptyDayData = DailyStatsData(
-      day: CivilDay(year: 2026, month: 7, day: 6),
+      day: CivilDay(year: 2026, month: 7, day: 2), // Thursday
       completedCount: 0,
       skippedCount: 0,
       missedCount: 0,
+      plannedCount: 2,
       completedHours: 0.0,
+      plannedHours: 2.5,
+      plannedTasks: [
+        TaskInstance(
+          id: 'p-1',
+          scheduleId: 's-p1',
+          ruleId: 'r-p1',
+          title: 'Morning Yoga',
+          description: '',
+          scheduledDate: CivilDay(year: 2026, month: 7, day: 2),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 7, minute: 30),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 8, minute: 30),
+          ),
+          status: TaskStatus.pending,
+        ),
+        TaskInstance(
+          id: 'p-2',
+          scheduleId: 's-p2',
+          ruleId: 'r-p2',
+          title: 'Grocery shopping',
+          description: '',
+          scheduledDate: CivilDay(year: 2026, month: 7, day: 2),
+          startRelativeTime: dummyStart,
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 16, minute: 0),
+          ),
+          status: TaskStatus.pending,
+        ),
+      ],
     );
 
     testWidgets(
@@ -224,12 +229,16 @@ void main() {
         expect(find.text('Seriously Overdue (1)'), findsOneWidget);
         expect(find.text('Skipped (2)'), findsOneWidget);
 
-        // Single-line task tiles (no descriptions shown)
+        // Single-line task tiles with associated times
         expect(find.text('Clean the kitchen'), findsOneWidget);
         expect(find.text('Jul 1, 2:30 PM'), findsOneWidget);
         expect(find.text('Wash dishes and wipe counters'), findsNothing);
 
         expect(find.text('Water plants'), findsOneWidget);
+        expect(
+          find.text('Jul 1, 5:00 PM'),
+          findsNWidgets(3),
+        ); // Water plants, Vacuum living room, Take out recycling
 
         expect(find.text('Take medication'), findsOneWidget);
         expect(find.text('Jul 1, 7:00 PM'), findsOneWidget);
@@ -580,98 +589,35 @@ void main() {
       expect(find.text('Jul 1, 2:30 PM'), findsOneWidget);
     });
 
-    testWidgets(
-      'renders planned tasks, chips, and Planned section header on future days',
-      (tester) async {
-        AppClock.setMockTime(DateTime(2026, 7, 1, 12, 0));
-        addTearDown(AppClock.reset);
-
-        final futureDay = CivilDay(year: 2026, month: 7, day: 5);
-        final futureDayData = DailyStatsData(
-          day: futureDay,
-          plannedHours: 1.5,
-          plannedTasks: [
-            TaskInstance(
-              id: 'plan-1',
-              scheduleId: 's-1',
-              ruleId: 'r-1',
-              title: 'Mow lawn',
-              description: '',
-              scheduledDate: futureDay,
-              startRelativeTime: dummyStart,
-              dueRelativeTime: dummyDue,
-            ),
-            TaskInstance(
-              id: 'plan-2',
-              scheduleId: 's-2',
-              ruleId: 'r-2',
-              title: 'Wash car',
-              description: '',
-              scheduledDate: futureDay,
-              startRelativeTime: dummyStart,
-              dueRelativeTime: dummyDue,
-            ),
-          ],
-        );
-
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: Scaffold(
-              body: DailyActivityBreakdownSheet(dayData: futureDayData),
-            ),
+    testWidgets('renders planned tasks with scheduled time and planned tag', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: DailyActivityBreakdownSheet(dayData: futurePlannedDayData),
           ),
-        );
+        ),
+      );
 
-        expect(find.text('Sunday, Jul 5, 2026'), findsOneWidget);
-        expect(find.text('2 planned'), findsOneWidget);
-        expect(find.text('1h 30m'), findsOneWidget);
-        expect(find.text('Planned (2)'), findsOneWidget);
-        expect(find.text('Mow lawn'), findsOneWidget);
-        expect(find.text('Wash car'), findsOneWidget);
-        expect(find.text('Planned'), findsNWidgets(2));
-      },
-    );
-
-    testWidgets(
-      'renders future empty state message when day is in the future',
-      (tester) async {
-        AppClock.setMockTime(DateTime(2026, 7, 1, 12, 0));
-        addTearDown(AppClock.reset);
-
-        final futureEmptyDay = CivilDay(year: 2026, month: 7, day: 5);
-        final futureEmptyData = DailyStatsData(day: futureEmptyDay);
-
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: Scaffold(
-              body: DailyActivityBreakdownSheet(dayData: futureEmptyData),
-            ),
-          ),
-        );
-
-        expect(find.text('Sunday, Jul 5, 2026'), findsOneWidget);
-        expect(find.text('No tasks recorded'), findsOneWidget);
-        expect(find.text('No tasks scheduled for this day'), findsOneWidget);
-        expect(find.byIcon(Icons.event_busy_outlined), findsOneWidget);
-      },
-    );
+      expect(find.text('Thursday, Jul 2, 2026'), findsOneWidget);
+      expect(find.text('2 planned'), findsOneWidget);
+      expect(find.text('2h 30m'), findsOneWidget);
+      expect(find.text('Planned (2)'), findsOneWidget);
+      expect(find.text('Morning Yoga'), findsOneWidget);
+      expect(find.text('Jul 2, 8:30 AM'), findsOneWidget);
+      expect(find.text('Grocery shopping'), findsOneWidget);
+      expect(find.text('Jul 2, 4:00 PM'), findsOneWidget);
+      expect(find.text('Planned'), findsNWidgets(2));
+    });
 
     testGoldens('DailyActivityBreakdownSheet renders correctly', (
       tester,
     ) async {
-      AppClock.setMockTime(DateTime(2026, 7, 4, 12, 0));
-      addTearDown(AppClock.reset);
-
       final builder = GoldenBuilder.column()
         ..addScenario(
           'Active Day Breakdown',
           Material(child: DailyActivityBreakdownSheet(dayData: activeDayData)),
-        )
-        ..addScenario(
-          'Future Day Planned Breakdown',
-          Material(
-            child: DailyActivityBreakdownSheet(dayData: futurePlannedDayData),
-          ),
         )
         ..addScenario(
           'Completed Only Breakdown',
@@ -680,20 +626,20 @@ void main() {
           ),
         )
         ..addScenario(
-          'Empty Day Breakdown',
-          Material(child: DailyActivityBreakdownSheet(dayData: emptyDayData)),
+          'Future Planned Day Breakdown',
+          Material(
+            child: DailyActivityBreakdownSheet(dayData: futurePlannedDayData),
+          ),
         )
         ..addScenario(
-          'Future Empty Day Breakdown',
-          Material(
-            child: DailyActivityBreakdownSheet(dayData: futureEmptyDayData),
-          ),
+          'Empty Day Breakdown',
+          Material(child: DailyActivityBreakdownSheet(dayData: emptyDayData)),
         );
 
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(500, 2400),
+        surfaceSize: const Size(500, 2200),
       );
 
       await screenMatchesGolden(
