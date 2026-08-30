@@ -6,8 +6,13 @@ import 'daily_activity_breakdown_sheet.dart';
 
 class PersonalHistoryStatsCard extends StatelessWidget {
   final PersonalLastWeekStats stats;
+  final void Function(DailyStatsData)? onDayActivityTap;
 
-  const PersonalHistoryStatsCard({super.key, required this.stats});
+  const PersonalHistoryStatsCard({
+    super.key,
+    required this.stats,
+    this.onDayActivityTap,
+  });
 
   String _formatDayLabel(CivilDay day) {
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -295,8 +300,17 @@ class PersonalHistoryStatsCard extends StatelessWidget {
                 child: InkWell(
                   key: Key('daily_activity_bar_${day.toIso8601String()}'),
                   borderRadius: BorderRadius.circular(8),
-                  onTap: () =>
-                      DailyActivityBreakdownSheet.show(context, dayData),
+                  onTap: () {
+                    if (onDayActivityTap != null) {
+                      onDayActivityTap!(dayData);
+                    } else {
+                      DailyActivityBreakdownSheet.show(
+                        context,
+                        dayData,
+                        isFamilyTimeline: false,
+                      );
+                    }
+                  },
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [

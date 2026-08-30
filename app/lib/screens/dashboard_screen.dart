@@ -6,6 +6,7 @@ import '../logic/user_settings_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/civil_day.dart';
 import '../logic/task_repository.dart';
+import '../logic/task_schedule.dart';
 import '../logic/utils/format_utils.dart';
 import '../logic/dashboard_stats.dart';
 import '../widgets/family_history_stats_card.dart';
@@ -134,6 +135,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 );
               }).toList();
 
+              final schedules = schedulesVal.value ?? [];
+              final scheduleMap = <String, TaskSchedule>{
+                for (final s in schedules) s.id: s,
+              };
+              final familyMemberCount = familyStats?.memberStats.length ?? 1;
+
               return WeeklyCapacityChart(
                 daysData: daysData,
                 stats: personalStats,
@@ -143,8 +150,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   date,
                   isOverride: true,
                 ),
-                onDayActivityTap: (dayData) =>
-                    DailyActivityBreakdownSheet.show(context, dayData),
+                onDayActivityTap: (dayData) => DailyActivityBreakdownSheet.show(
+                  context,
+                  dayData,
+                  isFamilyTimeline: false,
+                  scheduleMap: scheduleMap,
+                  familyMemberCount: familyMemberCount,
+                ),
                 onEditDefaultCapacity: () =>
                     _showDefaultCapacityTemplateDialog(context, settings),
               );
@@ -154,10 +166,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           // Family Timeline Card (if part of a family)
           if (familyStats != null) ...[
-            FamilyHistoryStatsCard(
-              stats: familyStats,
-              onDayActivityTap: (dayData) =>
-                  DailyActivityBreakdownSheet.show(context, dayData),
+            Builder(
+              builder: (context) {
+                final schedules = schedulesVal.value ?? [];
+                final scheduleMap = <String, TaskSchedule>{
+                  for (final s in schedules) s.id: s,
+                };
+                final familyMemberCount = familyStats.memberStats.length;
+
+                return FamilyHistoryStatsCard(
+                  stats: familyStats,
+                  onDayActivityTap: (dayData) =>
+                      DailyActivityBreakdownSheet.show(
+                        context,
+                        dayData,
+                        isFamilyTimeline: true,
+                        scheduleMap: scheduleMap,
+                        familyMemberCount: familyMemberCount,
+                      ),
+                );
+              },
             ),
             const SizedBox(height: 16),
           ],

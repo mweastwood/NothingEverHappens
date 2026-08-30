@@ -5,6 +5,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/dashboard_stats.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
+import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/widgets/daily_activity_breakdown_sheet.dart';
 import '../test_helper.dart';
 
@@ -610,6 +611,161 @@ void main() {
       expect(find.text('Jul 2, 4:00 PM'), findsOneWidget);
       expect(find.text('Planned'), findsNWidgets(2));
     });
+
+    testWidgets(
+      'displays allocated time (<time>x<num>) for individual tasks on family timeline',
+      (tester) async {
+        final schedule = TaskSchedule(
+          id: 's-indiv',
+          title: 'Clean Rooms',
+          description: '',
+          estimatedDuration: const Duration(minutes: 60),
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          schedules: [],
+        );
+
+        final task = TaskInstance(
+          id: 't-indiv',
+          scheduleId: schedule.id,
+          ruleId: 'r-1',
+          title: 'Clean Rooms',
+          description: '',
+          scheduledDate: day,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.pending,
+        );
+
+        final dayData = DailyStatsData(
+          day: day,
+          plannedTasks: [task],
+          plannedHours: 3.0,
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: DailyActivityBreakdownSheet(
+                dayData: dayData,
+                isFamilyTimeline: true,
+                scheduleMap: {schedule.id: schedule},
+                familyMemberCount: 3,
+              ),
+            ),
+          ),
+        );
+
+        // Subtitle should contain Individual badge and allocated time 3h (1hx3)
+        expect(
+          find.text('Individual (All members must complete) · 3h (1hx3)'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'displays allocated time (<time>/<num>) for unassigned anyone tasks on individual timeline',
+      (tester) async {
+        final schedule = TaskSchedule(
+          id: 's-anyone',
+          title: 'Mow Lawn',
+          description: '',
+          estimatedDuration: const Duration(minutes: 60),
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.anyone,
+          schedules: [],
+        );
+
+        final task = TaskInstance(
+          id: 't-anyone',
+          scheduleId: schedule.id,
+          ruleId: 'r-1',
+          title: 'Mow Lawn',
+          description: '',
+          scheduledDate: day,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.anyone,
+          status: TaskStatus.pending,
+        );
+
+        final dayData = DailyStatsData(
+          day: day,
+          plannedTasks: [task],
+          plannedHours: 0.5,
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: DailyActivityBreakdownSheet(
+                dayData: dayData,
+                isFamilyTimeline: false,
+                scheduleMap: {schedule.id: schedule},
+                familyMemberCount: 2,
+              ),
+            ),
+          ),
+        );
+
+        // Subtitle should contain Shared badge and allocated time 30m (1h/2)
+        expect(
+          find.text('Shared (Anyone in family) · 30m (1h/2)'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'displays normal allocated time for assigned and personal tasks',
+      (tester) async {
+        final schedule = TaskSchedule(
+          id: 's-personal',
+          title: 'Read Book',
+          description: '',
+          estimatedDuration: const Duration(minutes: 45),
+          isFamily: false,
+          schedules: [],
+        );
+
+        final task = TaskInstance(
+          id: 't-personal',
+          scheduleId: schedule.id,
+          ruleId: 'r-1',
+          title: 'Read Book',
+          description: '',
+          scheduledDate: day,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          status: TaskStatus.pending,
+        );
+
+        final dayData = DailyStatsData(
+          day: day,
+          plannedTasks: [task],
+          plannedHours: 0.75,
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: DailyActivityBreakdownSheet(
+                dayData: dayData,
+                isFamilyTimeline: false,
+                scheduleMap: {schedule.id: schedule},
+              ),
+            ),
+          ),
+        );
+
+        // Should contain 45m in the metric chip and 45m in the task tile subtitle
+        expect(find.text('45m'), findsNWidgets(2));
+      },
+    );
 
     testGoldens('DailyActivityBreakdownSheet renders correctly', (
       tester,

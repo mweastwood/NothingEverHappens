@@ -4,14 +4,30 @@ import '../logic/app_clock.dart';
 import '../logic/civil_day.dart';
 import '../logic/dashboard_stats.dart';
 import '../logic/task_instance.dart';
+import '../logic/task_schedule.dart';
 import '../logic/utils/format_utils.dart';
 
 class DailyActivityBreakdownSheet extends StatelessWidget {
   final DailyStatsData dayData;
+  final bool isFamilyTimeline;
+  final Map<String, TaskSchedule>? scheduleMap;
+  final int? familyMemberCount;
 
-  const DailyActivityBreakdownSheet({super.key, required this.dayData});
+  const DailyActivityBreakdownSheet({
+    super.key,
+    required this.dayData,
+    this.isFamilyTimeline = false,
+    this.scheduleMap,
+    this.familyMemberCount,
+  });
 
-  static Future<void> show(BuildContext context, DailyStatsData dayData) {
+  static Future<void> show(
+    BuildContext context,
+    DailyStatsData dayData, {
+    bool isFamilyTimeline = false,
+    Map<String, TaskSchedule>? scheduleMap,
+    int? familyMemberCount,
+  }) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -19,7 +35,12 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => DailyActivityBreakdownSheet(dayData: dayData),
+      builder: (context) => DailyActivityBreakdownSheet(
+        dayData: dayData,
+        isFamilyTimeline: isFamilyTimeline,
+        scheduleMap: scheduleMap,
+        familyMemberCount: familyMemberCount,
+      ),
     );
   }
 
@@ -260,13 +281,13 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     final overdueCount = dayData.completedOverdueCount;
     final seriouslyOverdueCount = dayData.completedSeriouslyOverdueCount;
     final totalSkippedCount = dayData.skippedCount + dayData.missedCount;
-    final plannedCount = dayData.plannedTasks.length;
+    final plannedCount = dayData.plannedCount;
 
     if (plannedCount > 0) {
       chips.add(
         _buildChip(
           context,
-          icon: Icons.schedule,
+          icon: Icons.assignment_outlined,
           label: '$plannedCount planned',
           color: theme.colorScheme.primary,
         ),
@@ -436,7 +457,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
       iconColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
       tagLabel = 'Skipped';
     } else if (status == TaskStatus.pending) {
-      icon = Icons.schedule;
+      icon = Icons.schedule_outlined;
       iconColor = theme.colorScheme.primary;
       tagLabel = 'Planned';
     } else {
@@ -450,6 +471,22 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     final isSevereOverdue =
         task.status == TaskStatus.completed &&
         task.isCompletedOverdueByMoreThan24Hours;
+
+    final allocatedTime = _getAllocatedTimeString(task, status);
+    final familySubtitle = task.isFamily
+        ? _buildFamilyTaskSubtitle(task)
+        : null;
+
+    final String subtitle;
+    if (familySubtitle != null && allocatedTime != null) {
+      subtitle = '$familySubtitle · $allocatedTime';
+    } else if (familySubtitle != null) {
+      subtitle = familySubtitle;
+    } else if (allocatedTime != null) {
+      subtitle = allocatedTime;
+    } else {
+      subtitle = '';
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -470,30 +507,37 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
           Icon(icon, size: 20, color: iconColor),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  task.title.isEmpty ? 'Untitled Task' : task.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (task.isFamily) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    _buildFamilyTaskSubtitle(task),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 11,
-                      color: theme.colorScheme.onSurfaceVariant,
+            child: subtitle.isNotEmpty
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        task.title.isEmpty ? 'Untitled Task' : task.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    task.title.isEmpty ? 'Untitled Task' : task.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ],
-            ),
           ),
           const SizedBox(width: 8),
           Text(
@@ -523,6 +567,51 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
     );
   }
 
+  String? _getAllocatedTimeString(TaskInstance task, TaskStatus status) {
+    final schedule = scheduleMap?[task.scheduleId];
+    if (schedule?.estimatedDuration == null) return null;
+    final duration = schedule!.estimatedDuration!;
+    if (duration == Duration.zero) return null;
+
+    final baseTimeStr = _formatDuration(duration);
+    final count = (familyMemberCount != null && familyMemberCount! > 0)
+        ? familyMemberCount!
+        : 1;
+
+    if (isFamilyTimeline) {
+      if (task.isFamily &&
+          task.familyCompletionMode == FamilyCompletionMode.individual &&
+          count > 1) {
+        final totalHours = (duration.inMinutes / 60.0) * count;
+        return '${formatDurationHours(totalHours)} (${baseTimeStr}x$count)';
+      }
+      return baseTimeStr;
+    } else {
+      // Individual timeline
+      if (task.isFamily &&
+          (task.assignedUserId == null || task.assignedUserId!.isEmpty) &&
+          task.familyCompletionMode == FamilyCompletionMode.anyone &&
+          count > 1 &&
+          status == TaskStatus.pending) {
+        final dividedHours = (duration.inMinutes / 60.0) / count;
+        return '${formatDurationHours(dividedHours)} ($baseTimeStr/$count)';
+      }
+      return baseTimeStr;
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    final h = duration.inHours;
+    final m = duration.inMinutes % 60;
+    if (h > 0 && m > 0) {
+      return '${h}h ${m}m';
+    } else if (h > 0) {
+      return '${h}h';
+    } else {
+      return '${m}m';
+    }
+  }
+
   String _buildFamilyTaskSubtitle(TaskInstance task) {
     if (task.familyCompletionMode == FamilyCompletionMode.individual) {
       if (task.completedByUserIds.isNotEmpty) {
@@ -538,6 +627,7 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
+    final isFuture = dayData.day.isAfter(CivilDay.fromDateTime(AppClock.now));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Column(
@@ -550,7 +640,9 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No activity recorded for this day',
+            isFuture
+                ? 'No tasks scheduled for this day'
+                : 'No activity recorded for this day',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
