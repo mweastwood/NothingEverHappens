@@ -119,40 +119,6 @@ void main() {
       completedHours: 0.0,
     );
 
-    final completedOnlyDayData = DailyStatsData(
-      day: CivilDay(year: 2026, month: 7, day: 5),
-      completedCount: 2,
-      skippedCount: 0,
-      missedCount: 0,
-      completedHours: 1.5,
-      completedTasks: [
-        TaskInstance(
-          id: 't-5',
-          scheduleId: 's-5',
-          ruleId: 'r-5',
-          title: 'Read chapter 4',
-          description: 'Pages 50-80',
-          scheduledDate: CivilDay(year: 2026, month: 7, day: 5),
-          startRelativeTime: dummyStart,
-          dueRelativeTime: dummyDue,
-          status: TaskStatus.completed,
-          completedAt: DateTime(2026, 7, 5, 10, 15),
-        ),
-        TaskInstance(
-          id: 't-6',
-          scheduleId: 's-6',
-          ruleId: 'r-6',
-          title: 'Morning stretch',
-          description: '',
-          scheduledDate: CivilDay(year: 2026, month: 7, day: 5),
-          startRelativeTime: dummyStart,
-          dueRelativeTime: dummyDue,
-          status: TaskStatus.completed,
-          completedAt: DateTime(2026, 7, 5, 8, 0),
-        ),
-      ],
-    );
-
     final futurePlannedDayData = DailyStatsData(
       day: CivilDay(year: 2026, month: 7, day: 2), // Thursday
       completedCount: 0,
@@ -767,24 +733,213 @@ void main() {
       },
     );
 
+    final defaultScheduleMap = <String, TaskSchedule>{
+      's-1': TaskSchedule(
+        id: 's-1',
+        title: 'Clean the kitchen',
+        description: 'Wash dishes and wipe counters',
+        estimatedDuration: const Duration(minutes: 60),
+        schedules: [],
+      ),
+      's-2': TaskSchedule(
+        id: 's-2',
+        title: 'Water plants',
+        description: '',
+        estimatedDuration: const Duration(minutes: 30),
+        schedules: [],
+      ),
+      's-overdue': TaskSchedule(
+        id: 's-overdue',
+        title: 'Take medication',
+        description: 'Evening dose',
+        estimatedDuration: const Duration(minutes: 15),
+        schedules: [],
+      ),
+      's-severe': TaskSchedule(
+        id: 's-severe',
+        title: 'Submit quarterly report',
+        description: '',
+        estimatedDuration: const Duration(hours: 2),
+        schedules: [],
+      ),
+      's-3': TaskSchedule(
+        id: 's-3',
+        title: 'Vacuum living room',
+        description: 'Carpet in hallway and living room',
+        estimatedDuration: const Duration(minutes: 45),
+        schedules: [],
+      ),
+      's-4': TaskSchedule(
+        id: 's-4',
+        title: 'Take out recycling',
+        description: '',
+        estimatedDuration: const Duration(minutes: 15),
+        schedules: [],
+      ),
+      's-5': TaskSchedule(
+        id: 's-5',
+        title: 'Read chapter 4',
+        description: 'Pages 50-80',
+        estimatedDuration: const Duration(minutes: 60),
+        schedules: [],
+      ),
+      's-6': TaskSchedule(
+        id: 's-6',
+        title: 'Morning stretch',
+        description: '',
+        estimatedDuration: const Duration(minutes: 30),
+        schedules: [],
+      ),
+      's-p1': TaskSchedule(
+        id: 's-p1',
+        title: 'Morning Yoga',
+        description: '',
+        estimatedDuration: const Duration(hours: 1),
+        schedules: [],
+      ),
+      's-p2': TaskSchedule(
+        id: 's-p2',
+        title: 'Grocery shopping',
+        description: '',
+        estimatedDuration: const Duration(minutes: 90),
+        schedules: [],
+      ),
+      's-fam-indiv': TaskSchedule(
+        id: 's-fam-indiv',
+        title: 'Clean Bedrooms',
+        description: '',
+        estimatedDuration: const Duration(minutes: 60),
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.individual,
+        schedules: [],
+      ),
+      's-fam-assign': TaskSchedule(
+        id: 's-fam-assign',
+        title: 'Mow Lawn',
+        description: '',
+        estimatedDuration: const Duration(minutes: 60),
+        isFamily: true,
+        schedules: [],
+      ),
+      's-fam-anyone': TaskSchedule(
+        id: 's-fam-anyone',
+        title: 'Wash Dishes',
+        description: '',
+        estimatedDuration: const Duration(minutes: 60),
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.anyone,
+        schedules: [],
+      ),
+    };
+
+    final familyTimelineDayData = DailyStatsData(
+      day: CivilDay(year: 2026, month: 7, day: 11),
+      plannedCount: 2,
+      plannedHours: 4.0,
+      plannedTasks: [
+        TaskInstance(
+          id: 'p-fam-1',
+          scheduleId: 's-fam-indiv',
+          ruleId: 'r-1',
+          title: 'Clean Bedrooms',
+          description: '',
+          scheduledDate: CivilDay(year: 2026, month: 7, day: 11),
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.pending,
+        ),
+        TaskInstance(
+          id: 'p-fam-2',
+          scheduleId: 's-fam-assign',
+          ruleId: 'r-2',
+          title: 'Mow Lawn',
+          description: '',
+          scheduledDate: CivilDay(year: 2026, month: 7, day: 11),
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          isFamily: true,
+          assignedUserId: 'user-alice',
+          status: TaskStatus.pending,
+        ),
+      ],
+    );
+
+    final individualTimelineDayData = DailyStatsData(
+      day: CivilDay(year: 2026, month: 7, day: 11),
+      plannedCount: 2,
+      plannedHours: 1.25,
+      plannedTasks: [
+        TaskInstance(
+          id: 'p-ind-1',
+          scheduleId: 's-fam-anyone',
+          ruleId: 'r-1',
+          title: 'Wash Dishes',
+          description: '',
+          scheduledDate: CivilDay(year: 2026, month: 7, day: 11),
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.anyone,
+          status: TaskStatus.pending,
+        ),
+        TaskInstance(
+          id: 'p-ind-2',
+          scheduleId: 's-3',
+          ruleId: 'r-2',
+          title: 'Vacuum living room',
+          description: '',
+          scheduledDate: CivilDay(year: 2026, month: 7, day: 11),
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          status: TaskStatus.pending,
+        ),
+      ],
+    );
+
     testGoldens('DailyActivityBreakdownSheet renders correctly', (
       tester,
     ) async {
       final builder = GoldenBuilder.column()
         ..addScenario(
-          'Active Day Breakdown',
-          Material(child: DailyActivityBreakdownSheet(dayData: activeDayData)),
+          'Active Day Breakdown (with allocated durations)',
+          Material(
+            child: DailyActivityBreakdownSheet(
+              dayData: activeDayData,
+              scheduleMap: defaultScheduleMap,
+            ),
+          ),
         )
         ..addScenario(
-          'Completed Only Breakdown',
+          'Family Timeline Breakdown (individual: 3h (1hx3), assigned: 1h)',
           Material(
-            child: DailyActivityBreakdownSheet(dayData: completedOnlyDayData),
+            child: DailyActivityBreakdownSheet(
+              dayData: familyTimelineDayData,
+              isFamilyTimeline: true,
+              scheduleMap: defaultScheduleMap,
+              familyMemberCount: 3,
+            ),
+          ),
+        )
+        ..addScenario(
+          'Individual Timeline Breakdown (unassigned shared: 30m (1h/2), personal: 45m)',
+          Material(
+            child: DailyActivityBreakdownSheet(
+              dayData: individualTimelineDayData,
+              isFamilyTimeline: false,
+              scheduleMap: defaultScheduleMap,
+              familyMemberCount: 2,
+            ),
           ),
         )
         ..addScenario(
           'Future Planned Day Breakdown',
           Material(
-            child: DailyActivityBreakdownSheet(dayData: futurePlannedDayData),
+            child: DailyActivityBreakdownSheet(
+              dayData: futurePlannedDayData,
+              scheduleMap: defaultScheduleMap,
+            ),
           ),
         )
         ..addScenario(
@@ -795,7 +950,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(500, 2200),
+        surfaceSize: const Size(500, 3000),
       );
 
       await screenMatchesGolden(
