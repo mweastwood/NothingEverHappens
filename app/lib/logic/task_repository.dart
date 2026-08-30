@@ -20,6 +20,8 @@ import 'error_handler.dart';
 import 'app_logger.dart';
 import 'telemetry_service.dart';
 import 'subscription_service.dart';
+import 'family.dart';
+import 'family_repository.dart';
 
 export 'firestore_task_repository.dart';
 export 'family_id_fetcher.dart';
@@ -185,6 +187,16 @@ final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {
   final schedules = ref.watch(taskSchedulesProvider).value ?? [];
   final currentUserId = ref.watch(authStateProvider).value?.uid;
 
+  final profileVal = ref.watch(familyProfileStreamProvider);
+  final familyProfile = profileVal.value;
+  Family? family;
+  if (familyProfile != null && familyProfile.familyId.isNotEmpty) {
+    family = ref.watch(familyStreamProvider(familyProfile.familyId)).value;
+  }
+  final int familyMemberCount = (family?.members.isNotEmpty ?? false)
+      ? family!.members.length
+      : 1;
+
   final today = CivilDay.fromDateTime(AppClock.now);
   final startHorizon = today.addDays(-14);
   final endHorizon = today.addDays(60);
@@ -199,8 +211,7 @@ final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {
   final plannedMinutesPerDay = <CivilDay, double>{};
 
   for (final inst in instances) {
-    if (inst.status == TaskStatus.skipped) continue;
-    if (inst.assignedUserId != null && inst.assignedUserId != currentUserId) {
+    if (inst.status == TaskStatus.skipped || inst.status == TaskStatus.failed) {
       continue;
     }
 
@@ -211,9 +222,38 @@ final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {
     }
 
     final durationMins = durationMap[inst.scheduleId];
-    if (durationMins != null) {
-      plannedMinutesPerDay[scheduledDate] =
-          (plannedMinutesPerDay[scheduledDate] ?? 0.0) + durationMins;
+    if (durationMins == null || durationMins <= 0) continue;
+
+    if (inst.isFamily) {
+      if (inst.assignedUserId != null && inst.assignedUserId!.isNotEmpty) {
+        if (inst.assignedUserId == currentUserId &&
+            inst.status == TaskStatus.pending) {
+          plannedMinutesPerDay[scheduledDate] =
+              (plannedMinutesPerDay[scheduledDate] ?? 0.0) + durationMins;
+        }
+      } else if (inst.familyCompletionMode == FamilyCompletionMode.individual) {
+        final userCompleted =
+            currentUserId != null &&
+            inst.completedByUserIds.contains(currentUserId);
+        if (!userCompleted && inst.status == TaskStatus.pending) {
+          plannedMinutesPerDay[scheduledDate] =
+              (plannedMinutesPerDay[scheduledDate] ?? 0.0) + durationMins;
+        }
+      } else {
+        // Unassigned and anybody can complete
+        if (inst.status == TaskStatus.pending) {
+          plannedMinutesPerDay[scheduledDate] =
+              (plannedMinutesPerDay[scheduledDate] ?? 0.0) +
+              (durationMins / familyMemberCount);
+        }
+      }
+    } else {
+      if (inst.status == TaskStatus.pending &&
+          (inst.assignedUserId == null ||
+              inst.assignedUserId == currentUserId)) {
+        plannedMinutesPerDay[scheduledDate] =
+            (plannedMinutesPerDay[scheduledDate] ?? 0.0) + durationMins;
+      }
     }
   }
 
