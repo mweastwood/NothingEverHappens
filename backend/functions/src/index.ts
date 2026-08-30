@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 import { onRequest } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import { validateTaskEvent, processExternalTaskEvent } from "./task_events";
+import { validateTaskEvent, processExternalTaskEvent, authenticateTaskEventRequest } from "./task_events";
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
@@ -26,6 +26,15 @@ export const reportExternalTaskEvent = onRequest(
     if (!validation.valid || !validation.event) {
       logger.warn("Invalid external task event received:", req.body, validation.error);
       res.status(400).json({ success: false, error: validation.error });
+      return;
+    }
+
+    const authResult = await authenticateTaskEventRequest(req.headers, validation.event.userId);
+    if (!authResult.authenticated) {
+      logger.warn(
+        `Unauthorized external task event attempt for user ${validation.event.userId}: ${authResult.error}`
+      );
+      res.status(authResult.status || 401).json({ success: false, error: authResult.error });
       return;
     }
 

@@ -60,6 +60,67 @@ export function validateTaskEvent(payload: unknown): { valid: boolean; error?: s
   };
 }
 
+export interface AuthValidationResult {
+  authenticated: boolean;
+  status?: number;
+  error?: string;
+}
+
+/**
+ * Authenticates an incoming request for reporting task events.
+ * Accepts either:
+ * 1. A valid Firebase Auth ID token matching the event userId (or with admin claims).
+ * 2. A valid service secret matching TASK_HUB_SECRET or SERVICE_SECRET environment variable.
+ */
+export async function authenticateTaskEventRequest(
+  headers: Record<string, string | string[] | undefined>,
+  targetUserId: string,
+  auth?: admin.auth.Auth
+): Promise<AuthValidationResult> {
+  const authHeaderRaw = headers["authorization"] || headers["Authorization"];
+  const authHeader = Array.isArray(authHeaderRaw) ? authHeaderRaw[0] : authHeaderRaw;
+  const serviceKeyRaw = headers["x-service-secret"] || headers["x-api-key"];
+  const serviceKey = Array.isArray(serviceKeyRaw) ? serviceKeyRaw[0] : serviceKeyRaw;
+
+  const envSecret = process.env.TASK_HUB_SECRET || process.env.SERVICE_SECRET;
+
+  // 1. Check Service Secret Header or Bearer secret
+  if (envSecret && (serviceKey === envSecret || authHeader === `Bearer ${envSecret}`)) {
+    return { authenticated: true };
+  }
+
+  // 2. Check Firebase ID Token in Bearer header
+  if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    const idToken = authHeader.substring(7).trim();
+    if (idToken) {
+      try {
+        const firebaseAuth = auth || admin.auth();
+        const decodedToken = await firebaseAuth.verifyIdToken(idToken);
+        if (decodedToken.uid === targetUserId || decodedToken.admin === true) {
+          return { authenticated: true };
+        }
+        return {
+          authenticated: false,
+          status: 403,
+          error: "Forbidden: Authenticated user does not match target userId.",
+        };
+      } catch {
+        return {
+          authenticated: false,
+          status: 401,
+          error: "Unauthorized: Invalid or expired authentication token.",
+        };
+      }
+    }
+  }
+
+  return {
+    authenticated: false,
+    status: 401,
+    error: "Unauthorized: Missing or invalid authentication credentials.",
+  };
+}
+
 /**
  * Processes an incoming ExternalTaskEvent and updates/creates the corresponding TaskInstance in Firestore.
  */
@@ -99,10 +160,24 @@ export async function processExternalTaskEvent(
   if (!querySnap.empty) {
     // Update existing instance
     const doc = querySnap.docs[0];
+    const existingData = doc.data() || {};
+    let updatedCompletedByUserIds: string[] = Array.isArray(existingData.completedByUserIds)
+      ? [...existingData.completedByUserIds]
+      : [];
+
+    if (event.action === "completed") {
+      if (!updatedCompletedByUserIds.includes(event.userId)) {
+        updatedCompletedByUserIds.push(event.userId);
+      }
+    } else if (event.action === "uncompleted") {
+      updatedCompletedByUserIds = updatedCompletedByUserIds.filter((id) => id !== event.userId);
+    }
+
     await doc.ref.update({
       status: targetStatus,
       completedAt: completedAt,
       completedByUserId: completedByUserId,
+      completedByUserIds: updatedCompletedByUserIds,
       updatedAt: nowIso,
       lastModifiedByUserId: event.userId,
     });
