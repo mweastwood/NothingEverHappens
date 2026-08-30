@@ -139,3 +139,6 @@ flutter_launcher_icons:
     background_color: "#ffffff"
     theme_color: "#e94d51"
 
+dependency_overrides:
+  analyzer: 13.0.0
+

@@ -152,9 +152,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Family Past Week Stats Card (if part of a family)
+          // Family Timeline Card (if part of a family)
           if (familyStats != null) ...[
-            FamilyHistoryStatsCard(stats: familyStats),
+            FamilyHistoryStatsCard(
+              stats: familyStats,
+              onDayActivityTap: (dayData) =>
+                  DailyActivityBreakdownSheet.show(context, dayData),
+            ),
             const SizedBox(height: 16),
           ],
         ],
