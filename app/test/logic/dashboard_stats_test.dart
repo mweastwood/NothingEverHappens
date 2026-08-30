@@ -774,4 +774,315 @@ void main() {
       },
     );
   });
+
+  group('Family task handling in personal and family forecasts/history', () {
+    final scheduleAssigned = TaskSchedule(
+      id: 's-assigned',
+      title: 'Assigned Chore',
+      description: '',
+      estimatedDuration: const Duration(minutes: 60),
+      isFamily: true,
+      schedules: [],
+    );
+
+    final scheduleAnyone = TaskSchedule(
+      id: 's-anyone',
+      title: 'Shared Anyone Chore',
+      description: '',
+      estimatedDuration: const Duration(minutes: 60),
+      isFamily: true,
+      familyCompletionMode: FamilyCompletionMode.anyone,
+      schedules: [],
+    );
+
+    final scheduleIndividual = TaskSchedule(
+      id: 's-individual',
+      title: 'Individual Chore',
+      description: '',
+      estimatedDuration: const Duration(minutes: 60),
+      isFamily: true,
+      familyCompletionMode: FamilyCompletionMode.individual,
+      schedules: [],
+    );
+
+    final profileSubject = BehaviorSubject<FamilyProfile?>.seeded(
+      const FamilyProfile(familyId: 'fam-100', familyRole: 'parent'),
+    );
+    final familySubject = BehaviorSubject<Family?>.seeded(
+      const Family(
+        id: 'fam-100',
+        name: 'Smiths',
+        members: {
+          'user-alice': FamilyMember(
+            userId: 'user-alice',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            role: FamilyRole.parent,
+          ),
+          'user-bob': FamilyMember(
+            userId: 'user-bob',
+            displayName: 'Bob',
+            email: 'bob@example.com',
+            role: FamilyRole.parent,
+          ),
+        },
+      ),
+    );
+
+    testWidgets(
+      'Assigned task: only assigned user sees it in individual forecast, appears normal in family forecast',
+      (tester) async {
+        final tomorrow = CivilDay(year: 2026, month: 7, day: 11);
+        final assignedToAlice = TaskInstance(
+          id: 'i-assign-alice',
+          scheduleId: scheduleAssigned.id,
+          ruleId: 'r-1',
+          title: 'Assigned Chore',
+          description: '',
+          scheduledDate: tomorrow,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          isFamily: true,
+          assignedUserId: 'user-alice',
+          status: TaskStatus.pending,
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          scheduleAssigned,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          assignedToAlice,
+        ]);
+        final aliceAuthSubject = BehaviorSubject<User?>.seeded(MockUser());
+
+        late Map<CivilDay, DailyStatsData> aliceTimeline;
+        late FamilyLastWeekStats? familyStats;
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authStateProvider.overrideWith((ref) => aliceAuthSubject.stream),
+              familyProfileStreamProvider.overrideWith(
+                (ref) => profileSubject.stream,
+              ),
+              familyStreamProvider(
+                'fam-100',
+              ).overrideWith((ref) => familySubject.stream),
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                aliceTimeline = ref.watch(personalTimelineStatsProvider);
+                familyStats = ref.watch(familyLastWeekStatsProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Alice sees it in individual forecast with full duration (1 hr)
+        expect(aliceTimeline[tomorrow]?.plannedCount, 1);
+        expect(aliceTimeline[tomorrow]?.plannedHours, 1.0);
+
+        // Family forecast sees it as normal (1 hr)
+        final familyTomorrow = familyStats?.dailyStats.firstWhere(
+          (d) => d.day == tomorrow,
+        );
+        expect(familyTomorrow?.plannedCount, 1);
+        expect(familyTomorrow?.plannedHours, 1.0);
+      },
+    );
+
+    testWidgets(
+      'Unassigned anyone task: time is divided evenly in individual forecast, normal in family forecast, full credit in history to completer',
+      (tester) async {
+        final tomorrow = CivilDay(year: 2026, month: 7, day: 11);
+        final yesterday = CivilDay(year: 2026, month: 7, day: 9);
+
+        final pendingAnyoneTask = TaskInstance(
+          id: 'i-anyone-pending',
+          scheduleId: scheduleAnyone.id,
+          ruleId: 'r-1',
+          title: 'Shared Anyone Chore',
+          description: '',
+          scheduledDate: tomorrow,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.anyone,
+          status: TaskStatus.pending,
+        );
+
+        final completedAnyoneTask = TaskInstance(
+          id: 'i-anyone-completed',
+          scheduleId: scheduleAnyone.id,
+          ruleId: 'r-1',
+          title: 'Shared Anyone Chore',
+          description: '',
+          scheduledDate: yesterday,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.anyone,
+          status: TaskStatus.completed,
+          completedByUserId: 'user-alice',
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          scheduleAnyone,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          pendingAnyoneTask,
+          completedAnyoneTask,
+        ]);
+        final aliceAuthSubject = BehaviorSubject<User?>.seeded(MockUser());
+
+        late Map<CivilDay, DailyStatsData> aliceTimeline;
+        late FamilyLastWeekStats? familyStats;
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authStateProvider.overrideWith((ref) => aliceAuthSubject.stream),
+              familyProfileStreamProvider.overrideWith(
+                (ref) => profileSubject.stream,
+              ),
+              familyStreamProvider(
+                'fam-100',
+              ).overrideWith((ref) => familySubject.stream),
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                aliceTimeline = ref.watch(personalTimelineStatsProvider);
+                familyStats = ref.watch(familyLastWeekStatsProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Alice individual forecast: 60 min task divided across 2 members = 30 min (0.5 hr)
+        expect(aliceTimeline[tomorrow]?.plannedCount, 1);
+        expect(aliceTimeline[tomorrow]?.plannedHours, 0.5);
+
+        // Alice individual history: full credit for completed task = 1.0 hr
+        expect(aliceTimeline[yesterday]?.completedCount, 1);
+        expect(aliceTimeline[yesterday]?.completedHours, 1.0);
+
+        // Family forecast: appears as normal 1.0 hr
+        final familyTomorrow = familyStats?.dailyStats.firstWhere(
+          (d) => d.day == tomorrow,
+        );
+        expect(familyTomorrow?.plannedCount, 1);
+        expect(familyTomorrow?.plannedHours, 1.0);
+      },
+    );
+
+    testWidgets(
+      'Individual task: everybody sees in individual forecast, family forecast multiplies by members, family history breaks down by member',
+      (tester) async {
+        final tomorrow = CivilDay(year: 2026, month: 7, day: 11);
+        final yesterday = CivilDay(year: 2026, month: 7, day: 9);
+
+        final pendingIndividualTask = TaskInstance(
+          id: 'i-indiv-pending',
+          scheduleId: scheduleIndividual.id,
+          ruleId: 'r-1',
+          title: 'Individual Chore',
+          description: '',
+          scheduledDate: tomorrow,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.pending,
+        );
+
+        final partiallyCompletedTask = TaskInstance(
+          id: 'i-indiv-partial',
+          scheduleId: scheduleIndividual.id,
+          ruleId: 'r-1',
+          title: 'Individual Chore',
+          description: '',
+          scheduledDate: yesterday,
+          startRelativeTime: dummyStart,
+          dueRelativeTime: dummyDue,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          completedByUserIds: ['user-bob'],
+          status: TaskStatus.pending,
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          scheduleIndividual,
+        ]);
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          pendingIndividualTask,
+          partiallyCompletedTask,
+        ]);
+        final aliceAuthSubject = BehaviorSubject<User?>.seeded(MockUser());
+
+        late Map<CivilDay, DailyStatsData> aliceTimeline;
+        late FamilyLastWeekStats? familyStats;
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authStateProvider.overrideWith((ref) => aliceAuthSubject.stream),
+              familyProfileStreamProvider.overrideWith(
+                (ref) => profileSubject.stream,
+              ),
+              familyStreamProvider(
+                'fam-100',
+              ).overrideWith((ref) => familySubject.stream),
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                aliceTimeline = ref.watch(personalTimelineStatsProvider);
+                familyStats = ref.watch(familyLastWeekStatsProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Alice sees it in individual forecast with full estimated duration (1.0 hr)
+        expect(aliceTimeline[tomorrow]?.plannedCount, 1);
+        expect(aliceTimeline[tomorrow]?.plannedHours, 1.0);
+
+        // Family forecast multiplies estimated time by number of family members that need to complete it (2 members * 1.0 hr = 2.0 hr)
+        final familyTomorrow = familyStats?.dailyStats.firstWhere(
+          (d) => d.day == tomorrow,
+        );
+        expect(familyTomorrow?.plannedCount, 1);
+        expect(familyTomorrow?.plannedHours, 2.0);
+
+        // Family history member breakdown: Bob completed (1 done, 1.0 hr), Alice missed (1 missed)
+        final bobStats = familyStats?.memberStats.firstWhere(
+          (m) => m.userId == 'user-bob',
+        );
+        final aliceStats = familyStats?.memberStats.firstWhere(
+          (m) => m.userId == 'user-alice',
+        );
+        expect(bobStats?.completedCount, 1);
+        expect(bobStats?.completedHours, 1.0);
+        expect(aliceStats?.missedCount, 1);
+        expect(aliceStats?.completedCount, 0);
+      },
+    );
+  });
 }

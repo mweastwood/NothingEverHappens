@@ -470,13 +470,29 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
           Icon(icon, size: 20, color: iconColor),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              task.title.isEmpty ? 'Untitled Task' : task.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  task.title.isEmpty ? 'Untitled Task' : task.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (task.isFamily) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    _buildFamilyTaskSubtitle(task),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           const SizedBox(width: 8),
@@ -505,6 +521,19 @@ class DailyActivityBreakdownSheet extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _buildFamilyTaskSubtitle(TaskInstance task) {
+    if (task.familyCompletionMode == FamilyCompletionMode.individual) {
+      if (task.completedByUserIds.isNotEmpty) {
+        return 'Individual (${task.completedByUserIds.length} completed)';
+      }
+      return 'Individual (All members must complete)';
+    }
+    if (task.assignedUserId != null && task.assignedUserId!.isNotEmpty) {
+      return 'Assigned family task';
+    }
+    return 'Shared (Anyone in family)';
   }
 
   Widget _buildEmptyState(BuildContext context) {
