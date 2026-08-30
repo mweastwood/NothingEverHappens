@@ -157,6 +157,38 @@ void main() {
       expect(tappedData!.completedCount, 2);
     });
 
+    testWidgets('centers scroll controller on Today on narrow viewports', (
+      tester,
+    ) async {
+      AppClock.setMockTime(DateTime(2026, 7, 7, 12, 0));
+      addTearDown(AppClock.reset);
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: Center(
+                child: SizedBox(
+                  width: 300,
+                  child: FamilyHistoryStatsCard(stats: stats),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final horizontalScrollableFinder = find.byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.right,
+      );
+      expect(horizontalScrollableFinder, findsOneWidget);
+      final scrollableState = tester.state<ScrollableState>(
+        horizontalScrollableFinder,
+      );
+      expect(scrollableState.position.pixels, greaterThan(0));
+    });
+
     testGoldens('FamilyHistoryStatsCard renders correctly', (tester) async {
       AppClock.setMockTime(DateTime(2026, 7, 7, 12, 0));
       addTearDown(AppClock.reset);

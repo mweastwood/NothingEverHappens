@@ -23,7 +23,44 @@ class FamilyHistoryStatsCard extends StatefulWidget {
 
 class _FamilyHistoryStatsCardState extends State<FamilyHistoryStatsCard> {
   static const double _itemWidth = 44.0;
-  final ScrollController _scrollController = ScrollController();
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _centerOnToday());
+  }
+
+  @override
+  void didUpdateWidget(covariant FamilyHistoryStatsCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _centerOnToday());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _centerOnToday() {
+    if (!_scrollController.hasClients) return;
+    final today = CivilDay.fromDateTime(AppClock.now);
+    final todayIndex = widget.stats.dailyStats.indexWhere(
+      (d) => d.day == today,
+    );
+
+    if (todayIndex >= 0) {
+      final viewportWidth = _scrollController.position.viewportDimension;
+      final targetOffset =
+          (todayIndex * _itemWidth + _itemWidth / 2) - (viewportWidth / 2);
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      if (maxScroll > 0) {
+        _scrollController.jumpTo(targetOffset.clamp(0.0, maxScroll));
+      }
+    }
+  }
 
   static const List<Color> _memberColors = [
     Color(0xFF2E7D32), // Forest green
@@ -33,12 +70,6 @@ class _FamilyHistoryStatsCardState extends State<FamilyHistoryStatsCard> {
     Color(0xFF00838F), // Teal
     Color(0xFFC2185B), // Pink
   ];
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   Color _getColorForIndex(int index) {
     return _memberColors[index % _memberColors.length];
