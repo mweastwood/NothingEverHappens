@@ -71,6 +71,31 @@ jobs:
       - name: Run security rules tests
         run: npm test
 
+  test-functions:
+    name: Backend Tests (Cloud Functions)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./backend/functions
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build TypeScript
+        run: npm run build
+
   test-scripts:
     name: Script Tests (Python)
     runs-on: ubuntu-latest
@@ -85,4 +110,5 @@ jobs:
 
       - name: Run Python unit tests
         run: python3 -m unittest discover -s bin -p "test_*.py"
+
 
