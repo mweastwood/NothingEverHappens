@@ -748,8 +748,8 @@ void main() {
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
-      // Verify Family Team Activity card is shown with family name badge
-      expect(find.text('Family Team Activity'), findsOneWidget);
+      // Verify Family Timeline card is shown with family name badge
+      expect(find.text('Family Timeline'), findsOneWidget);
       expect(find.text('The Incredibles'), findsOneWidget);
 
       // Family total stats: 2 family tasks completed (1 each for Helen & Bob), personal task excluded

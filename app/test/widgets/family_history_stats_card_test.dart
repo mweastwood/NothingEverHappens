@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/dashboard_stats.dart';
 import 'package:nothing_ever_happens/logic/family.dart';
@@ -10,7 +11,39 @@ import '../test_helper.dart';
 void main() {
   group('FamilyHistoryStatsCard', () {
     final startDay = CivilDay(year: 2026, month: 7, day: 1);
-    final endDay = CivilDay(year: 2026, month: 7, day: 7);
+    final endDay = CivilDay(year: 2026, month: 7, day: 13);
+    final days = List.generate(13, (i) => startDay.addDays(i));
+
+    final sampleDailyStats = days.map((d) {
+      if (d.day == 2) {
+        return DailyStatsData(
+          day: d,
+          completedCount: 2,
+          completedHours: 1.5,
+          completedOnTimeHours: 1.5,
+        );
+      } else if (d.day == 4) {
+        return DailyStatsData(
+          day: d,
+          completedCount: 3,
+          completedHours: 2.0,
+          completedOverdueHours: 2.0,
+        );
+      } else if (d.day == 7) {
+        // Today
+        return DailyStatsData(
+          day: d,
+          completedCount: 1,
+          completedHours: 1.0,
+          plannedCount: 2,
+          plannedHours: 1.5,
+        );
+      } else if (d.day == 9) {
+        // Future planned
+        return DailyStatsData(day: d, plannedCount: 2, plannedHours: 2.0);
+      }
+      return DailyStatsData(day: d);
+    }).toList();
 
     final stats = FamilyLastWeekStats(
       familyId: 'fam-1',
@@ -19,9 +52,12 @@ void main() {
       totalCompletedHours: 4.5,
       totalSkippedCount: 1,
       totalMissedCount: 1,
+      totalPlannedCount: 4,
+      totalPlannedHours: 3.5,
       completionRate: 6 / 8,
       startDay: startDay,
       endDay: endDay,
+      dailyStats: sampleDailyStats,
       memberStats: [
         const FamilyMemberStats(
           userId: 'u-1',
@@ -49,8 +85,11 @@ void main() {
     );
 
     testWidgets(
-      'renders family header badge, metrics, chore distribution, and member tiles',
+      'renders family header badge, timeline guide, metrics, and member tiles',
       (tester) async {
+        AppClock.setMockTime(DateTime(2026, 7, 7, 12, 0));
+        addTearDown(AppClock.reset);
+
         await tester.pumpWidget(
           buildTestableWidget(
             child: Scaffold(
@@ -61,15 +100,24 @@ void main() {
           ),
         );
 
-        expect(find.text('Family Team Activity'), findsOneWidget);
+        expect(find.text('Family Timeline'), findsOneWidget);
+        expect(find.text('Jul 1 – 13'), findsOneWidget);
         expect(find.text('The Parrs'), findsOneWidget);
-        expect(find.text('6'), findsOneWidget);
+        expect(find.text('Past'), findsOneWidget);
+        expect(find.text('Today'), findsOneWidget);
+        expect(find.text('Future'), findsOneWidget);
+
+        // Metric tiles
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('family_stats_completed_tile')),
+            matching: find.text('6'),
+          ),
+          findsOneWidget,
+        );
         expect(find.text('4h 30m'), findsOneWidget);
         expect(find.text('75%'), findsOneWidget);
         expect(find.text('1 family tasks skipped · 1 missed'), findsOneWidget);
-
-        // Chore Distribution section
-        expect(find.text('Chore Distribution'), findsOneWidget);
 
         // Member items
         expect(find.text('Helen'), findsOneWidget);
@@ -79,7 +127,72 @@ void main() {
       },
     );
 
+    testWidgets('tapping day bar triggers onDayActivityTap callback', (
+      tester,
+    ) async {
+      AppClock.setMockTime(DateTime(2026, 7, 7, 12, 0));
+      addTearDown(AppClock.reset);
+
+      DailyStatsData? tappedData;
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: FamilyHistoryStatsCard(
+                stats: stats,
+                onDayActivityTap: (data) => tappedData = data,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final barKey = const Key('family_day_bar_2026-07-02');
+      expect(find.byKey(barKey), findsOneWidget);
+      await tester.tap(find.byKey(barKey));
+
+      expect(tappedData, isNotNull);
+      expect(tappedData!.day, equals(CivilDay(year: 2026, month: 7, day: 2)));
+      expect(tappedData!.completedCount, 2);
+    });
+
+    testWidgets('centers scroll controller on Today on narrow viewports', (
+      tester,
+    ) async {
+      AppClock.setMockTime(DateTime(2026, 7, 7, 12, 0));
+      addTearDown(AppClock.reset);
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: Center(
+                child: SizedBox(
+                  width: 300,
+                  child: FamilyHistoryStatsCard(stats: stats),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final horizontalScrollableFinder = find.byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.right,
+      );
+      expect(horizontalScrollableFinder, findsOneWidget);
+      final scrollableState = tester.state<ScrollableState>(
+        horizontalScrollableFinder,
+      );
+      expect(scrollableState.position.pixels, greaterThan(0));
+    });
+
     testGoldens('FamilyHistoryStatsCard renders correctly', (tester) async {
+      AppClock.setMockTime(DateTime(2026, 7, 7, 12, 0));
+      addTearDown(AppClock.reset);
+
       final threeMemberStats = FamilyLastWeekStats(
         familyId: 'fam-1',
         familyName: 'The Incredibles',
@@ -87,9 +200,12 @@ void main() {
         totalCompletedHours: 8.0,
         totalSkippedCount: 0,
         totalMissedCount: 0,
+        totalPlannedCount: 3,
+        totalPlannedHours: 2.0,
         completionRate: 1.0,
         startDay: startDay,
         endDay: endDay,
+        dailyStats: sampleDailyStats,
         memberStats: [
           const FamilyMemberStats(
             userId: 'u-1',
@@ -134,9 +250,12 @@ void main() {
         totalCompletedHours: 0.0,
         totalSkippedCount: 1,
         totalMissedCount: 1,
+        totalPlannedCount: 2,
+        totalPlannedHours: 1.0,
         completionRate: 0.0,
         startDay: startDay,
         endDay: endDay,
+        dailyStats: days.map((d) => DailyStatsData(day: d)).toList(),
         memberStats: [
           const FamilyMemberStats(
             userId: 'u-1',
@@ -165,22 +284,22 @@ void main() {
 
       final builder = GoldenBuilder.column()
         ..addScenario(
-          'Family Team Activity - Multi Member',
+          'Family Timeline - Multi Member',
           FamilyHistoryStatsCard(stats: stats),
         )
         ..addScenario(
-          'Family Team Activity - Three Members',
+          'Family Timeline - Three Members',
           FamilyHistoryStatsCard(stats: threeMemberStats),
         )
         ..addScenario(
-          'Family Team Activity - Zero Completed',
+          'Family Timeline - Zero Completed',
           FamilyHistoryStatsCard(stats: zeroCompletedStats),
         );
 
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(500, 1600),
+        surfaceSize: const Size(500, 2200),
       );
 
       await screenMatchesGolden(tester, 'family_history_stats_card_golden');

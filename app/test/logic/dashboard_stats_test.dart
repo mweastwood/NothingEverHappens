@@ -628,6 +628,7 @@ void main() {
         expect(stats!.totalCompletedHours, 1.5); // 45m + 45m = 90m = 1.5h
         expect(stats!.totalSkippedCount, 1);
         expect(stats!.completionRate, 2 / 3);
+        expect(stats!.dailyStats.length, 13);
 
         final alice = stats!.memberStats.firstWhere(
           (m) => m.userId == 'user-alice',
