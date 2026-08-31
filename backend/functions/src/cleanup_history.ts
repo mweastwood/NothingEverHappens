@@ -66,7 +66,10 @@ export async function processHistoryCleanup(
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    logger.error("Error during history cleanup processing:", error);
+    logger.error(
+      `Error during history cleanup processing after ${durationMs}ms:`,
+      error
+    );
     throw error;
   }
 }
