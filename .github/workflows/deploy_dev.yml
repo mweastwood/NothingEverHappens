@@ -12,9 +12,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy_dev_firebase_web:
+  deploy_dev_backend:
+    name: Deploy Backend (Firestore Rules)
     runs-on: ubuntu-latest
-    needs: deploy_dev_firebase_rules
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Firebase Service Account Secret
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV }}" ]; then
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Deploy Firestore Rules
+        working-directory: ./backend
+        env:
+          FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT_DEV" > service-account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
+          npx --yes firebase-tools@15.22.3 deploy --only firestore:rules --project nothing-ever-happens-dev
+          rm -f service-account.json
+
+  deploy_dev_firebase_web:
+    name: Deploy Web (Firebase Hosting)
+    needs: [deploy_dev_backend]
+    runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
     defaults:
@@ -61,8 +92,9 @@ jobs:
           FIREBASE_CLI_PREVIEWS: hostingchannels
 
   deploy_dev_firebase_android:
+    name: Deploy Android (Firebase App Distribution)
+    needs: [deploy_dev_backend]
     runs-on: ubuntu-latest
-    needs: deploy_dev_firebase_rules
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
     defaults:
@@ -116,32 +148,5 @@ jobs:
           groups: testers
           file: app/build/app/outputs/flutter-apk/app-dev-release.apk
 
-  deploy_dev_firebase_rules:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Verify Firebase Service Account Secret
-        run: |
-          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV }}" ]; then
-            echo "ERROR: FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV is empty or not configured in GitHub Secrets!"
-            exit 1
-          fi
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Deploy Firestore Rules
-        env:
-          FIREBASE_SERVICE_ACCOUNT_DEV: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_DEV }}
-        run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT_DEV" > service-account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
-          npx --yes firebase-tools@15.22.3 deploy --only firestore:rules --project nothing-ever-happens-dev
-        working-directory: ./backend
 
 
