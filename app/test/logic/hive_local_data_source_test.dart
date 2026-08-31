@@ -10,6 +10,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/app_logger.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -507,4 +508,31 @@ void main() {
     expect(tasksEvents.length, equals(tasksCountPostDispose));
     expect(instancesEvents.length, equals(instancesCountPostDispose));
   });
+
+  test(
+    'HiveLocalDataSource logs errors to AppLogger when logger is provided',
+    () async {
+      final logger = AppLogger();
+      final customDataSource = HiveLocalDataSource(logger: logger);
+      await customDataSource.init();
+
+      final settingsBox = Hive.box<Map>('settingsBox');
+      await settingsBox.put('agile', {'hoursAvailable': 'invalid_double'});
+      await pumpEventQueue();
+      final settings = customDataSource.getSettings();
+      expect(settings.hoursAvailable, 8.0);
+
+      final errorEvents = logger
+          .getEvents()
+          .where((e) => e.level == LogLevel.error)
+          .toList();
+      expect(errorEvents.isNotEmpty, true);
+      expect(
+        errorEvents.any(
+          (e) => e.category == 'hive' && e.message.contains('parse settings'),
+        ),
+        true,
+      );
+    },
+  );
 }

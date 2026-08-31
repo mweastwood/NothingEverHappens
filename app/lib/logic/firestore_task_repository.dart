@@ -422,8 +422,12 @@ class FirestoreTaskRepository implements TaskRepository {
           await _doProcessMissedPolicies(tasksToProcess);
         } catch (e, st) {
           errorHandler?.report(e, stackTrace: st);
-          // ignore: avoid_print
-          print('Error in auto-processing missed policies loop: $e');
+          logger?.error(
+            'task',
+            'Error in auto-processing missed policies loop',
+            error: e,
+            stackTrace: st,
+          );
         }
 
         for (final cb in callbacksToRun) {
@@ -431,8 +435,12 @@ class FirestoreTaskRepository implements TaskRepository {
             await cb();
           } catch (e, st) {
             errorHandler?.report(e, stackTrace: st);
-            // ignore: avoid_print
-            print('Error in postProcess callback: $e');
+            logger?.error(
+              'task',
+              'Error in postProcess callback',
+              error: e,
+              stackTrace: st,
+            );
           }
         }
       }
@@ -814,8 +822,12 @@ class FirestoreTaskRepository implements TaskRepository {
       _scheduleNextDynamicTrigger(allTriggerTimes, now);
     } catch (e, st) {
       errorHandler?.report(e, stackTrace: st);
-      // ignore: avoid_print
-      print('Error in auto-processing missed policies: $e');
+      logger?.error(
+        'task',
+        'Error in auto-processing missed policies',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
@@ -867,8 +879,12 @@ class FirestoreTaskRepository implements TaskRepository {
       );
     } catch (e, st) {
       errorHandler?.report(e, stackTrace: st);
-      // ignore: avoid_print
-      print('Error in triggering missed policy processing: $e');
+      logger?.error(
+        'task',
+        'Error in triggering missed policy processing',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
