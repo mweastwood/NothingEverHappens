@@ -10,6 +10,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/family_id_fetcher.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -1286,6 +1287,234 @@ void main() {
       expect(memberData?['lastSeenAt'], isNotNull);
     },
   );
+
+  test(
+    'sync() triggered before _userDocSub first event uses FamilyIdFetcher without race condition',
+    () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam-immediate',
+      });
+
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      final task = TaskSchedule(
+        id: 'S-fam-immediate',
+        title: 'Immediate Family Task',
+        description: 'Desc',
+        schedules: [],
+        isFamily: true,
+        updatedAt: DateTime(2026, 8, 4, 10, 0),
+      );
+      await localDataSource.saveTask(task);
+      await localDataSource.markDirty('S-fam-immediate');
+
+      // Call sync immediately before pumping event queue for userDoc stream
+      await service.sync();
+
+      final familyDoc = await firestore
+          .collection('families')
+          .doc('fam-immediate')
+          .collection('tasks')
+          .doc('S-fam-immediate')
+          .get();
+      expect(familyDoc.exists, isTrue);
+      expect(familyDoc.data()?['title'], 'Immediate Family Task');
+
+      // Stream fires later with the same familyId
+      await pumpEventQueue();
+
+      final userTasksDoc = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-fam-immediate')
+          .get();
+      expect(userTasksDoc.exists, isFalse);
+    },
+  );
+
+  test(
+    'transitions correctly when _userDocSub emits family added, changed, and removed',
+    () async {
+      final fetcher = FamilyIdFetcher(firestore: firestore, userId: 'user1');
+
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+        familyIdFetcher: fetcher,
+      );
+      addTearDown(() => service.dispose());
+
+      // 1. Initial state: user has no family
+      expect(await fetcher.getFamilyId(), isNull);
+
+      // 2. Family added: user doc updated with fam-alpha
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam-alpha',
+      });
+      await pumpEventQueue();
+
+      // Remote task in fam-alpha is received
+      await firestore
+          .collection('families')
+          .doc('fam-alpha')
+          .collection('tasks')
+          .doc('S-alpha-1')
+          .set({
+            'id': 'S-alpha-1',
+            'title': 'Alpha Task',
+            'description': '',
+            'schedules': [],
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
+          });
+      await pumpEventQueue();
+
+      expect(
+        localDataSource.getTasks().any((t) => t.id == 'S-alpha-1'),
+        isTrue,
+      );
+
+      // 3. Family changed: user switches to fam-beta
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'fam-beta',
+      });
+      await pumpEventQueue();
+
+      // New task in fam-alpha is ignored since subscription cancelled
+      await firestore
+          .collection('families')
+          .doc('fam-alpha')
+          .collection('tasks')
+          .doc('S-alpha-2')
+          .set({
+            'id': 'S-alpha-2',
+            'title': 'Alpha Task 2',
+            'description': '',
+            'schedules': [],
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
+          });
+      await pumpEventQueue();
+
+      expect(
+        localDataSource.getTasks().any((t) => t.id == 'S-alpha-2'),
+        isFalse,
+      );
+
+      // Remote task in fam-beta is received
+      await firestore
+          .collection('families')
+          .doc('fam-beta')
+          .collection('tasks')
+          .doc('S-beta-1')
+          .set({
+            'id': 'S-beta-1',
+            'title': 'Beta Task 1',
+            'description': '',
+            'schedules': [],
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
+          });
+      await pumpEventQueue();
+
+      expect(localDataSource.getTasks().any((t) => t.id == 'S-beta-1'), isTrue);
+
+      // 4. Family removed: user leaves family
+      await firestore.collection('users').doc('user1').set({'familyId': null});
+      await pumpEventQueue();
+
+      // New task in fam-beta is ignored
+      await firestore
+          .collection('families')
+          .doc('fam-beta')
+          .collection('tasks')
+          .doc('S-beta-2')
+          .set({
+            'id': 'S-beta-2',
+            'title': 'Beta Task 2',
+            'description': '',
+            'schedules': [],
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
+          });
+      await pumpEventQueue();
+
+      expect(
+        localDataSource.getTasks().any((t) => t.id == 'S-beta-2'),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'TaskSyncService accepts custom FamilyIdFetcher and uses it during sync',
+    () async {
+      final customFetcher = _TrackingFamilyIdFetcher(
+        firestore: firestore,
+        userId: 'user1',
+        stubbedId: 'fam-injected',
+      );
+
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+        familyIdFetcher: customFetcher,
+      );
+      addTearDown(() => service.dispose());
+
+      final task = TaskSchedule(
+        id: 'S-fam-injected',
+        title: 'Injected Fetcher Task',
+        description: 'Desc',
+        schedules: [],
+        isFamily: true,
+        updatedAt: DateTime(2026, 8, 4, 10, 0),
+      );
+      await localDataSource.saveTask(task);
+      await localDataSource.markDirty('S-fam-injected');
+
+      await service.sync();
+
+      final familyDoc = await firestore
+          .collection('families')
+          .doc('fam-injected')
+          .collection('tasks')
+          .doc('S-fam-injected')
+          .get();
+      expect(familyDoc.exists, isTrue);
+      expect(familyDoc.data()?['title'], 'Injected Fetcher Task');
+      expect(customFetcher.getFamilyIdCalls, greaterThanOrEqualTo(1));
+    },
+  );
+}
+
+class _TrackingFamilyIdFetcher extends FamilyIdFetcher {
+  int getFamilyIdCalls = 0;
+  final String? stubbedId;
+
+  _TrackingFamilyIdFetcher({
+    required super.firestore,
+    required super.userId,
+    this.stubbedId,
+  });
+
+  @override
+  Future<String?> getFamilyId() async {
+    getFamilyIdCalls++;
+    if (stubbedId != null) return stubbedId;
+    return super.getFamilyId();
+  }
 }
 
 class _FailingHiveLocalDataSource extends HiveLocalDataSource {

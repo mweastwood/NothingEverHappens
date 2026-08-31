@@ -49,6 +49,7 @@ class TaskSyncService {
   final bool _isActivePremium;
   final ErrorHandler? errorHandler;
   final AppLogger? logger;
+  final FamilyIdFetcher _familyIdFetcher;
 
   StreamSubscription? _tasksSub;
   StreamSubscription? _instancesSub;
@@ -71,10 +72,18 @@ class TaskSyncService {
     required bool isActivePremium,
     this.errorHandler,
     this.logger,
+    FamilyIdFetcher? familyIdFetcher,
   }) : _firestore = firestore,
        _localDataSource = localDataSource,
        _userId = userId,
-       _isActivePremium = isActivePremium {
+       _isActivePremium = isActivePremium,
+       _familyIdFetcher =
+           familyIdFetcher ??
+           FamilyIdFetcher(
+             firestore: firestore,
+             userId: userId,
+             errorHandler: errorHandler,
+           ) {
     if (_isActivePremium &&
         _userId.isNotEmpty &&
         _localDataSource.isMigrationCompleted()) {
@@ -155,6 +164,7 @@ class TaskSyncService {
             final newFamilyId = snapshot.data()?['familyId'] as String?;
             if (newFamilyId != _familyId) {
               _familyId = newFamilyId;
+              _familyIdFetcher.clearCache();
               _familyTasksSub?.cancel();
               _familyInstancesSub?.cancel();
               _familyRecipesSub?.cancel();
@@ -332,14 +342,11 @@ class TaskSyncService {
 
   Future<String?> _getFamilyId() async {
     if (_familyId != null) return _familyId;
-    if (_userId.isEmpty) return null;
-    try {
-      final userDoc = await _firestore.collection('users').doc(_userId).get();
-      _familyId = userDoc.data()?['familyId'] as String?;
-      return _familyId;
-    } catch (_) {
-      return null;
+    final fetched = await _familyIdFetcher.getFamilyId();
+    if (_familyId == null && fetched != null) {
+      _familyId = fetched;
     }
+    return _familyId ?? fetched;
   }
 
   Future<void> _handleRemoteTasksSnapshot(
