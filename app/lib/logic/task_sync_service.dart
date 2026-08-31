@@ -691,8 +691,6 @@ class TaskSyncService {
     } catch (e, st) {
       logger?.error('sync', 'Firestore sync failed', error: e, stackTrace: st);
       errorHandler?.report(e, stackTrace: st);
-      // ignore: avoid_print
-      print('Sync failed: $e');
     } finally {
       _isSyncing = false;
       if (!_isSyncingSubject.isClosed) {

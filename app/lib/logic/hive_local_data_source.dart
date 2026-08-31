@@ -68,20 +68,22 @@ class HiveLocalDataSource {
       return await Hive.openBox<Map>(boxName);
     } catch (e, st) {
       errorHandler?.report(e, stackTrace: st);
-      // ignore: avoid_print
-      print(
-        '⚠️ [HIVE_UPGRADE_RECOVERY] Box "$boxName" opening failed on app '
-        'upgrade: $e\n$st. Re-creating clean box.',
+      logger?.error(
+        'hive',
+        'Box "$boxName" opening failed on app upgrade. Re-creating clean box.',
+        error: e,
+        stackTrace: st,
       );
       try {
         await Hive.deleteBoxFromDisk(boxName);
         return await Hive.openBox<Map>(boxName);
       } catch (err, stack) {
         errorHandler?.report(err, stackTrace: stack);
-        // ignore: avoid_print
-        print(
-          '⚠️ [HIVE_UPGRADE_RECOVERY_FAILED] Failed to recreate box '
-          '"$boxName": $err\n$stack',
+        logger?.error(
+          'hive',
+          'Failed to recreate box "$boxName"',
+          error: err,
+          stackTrace: stack,
         );
         return null;
       }
@@ -108,10 +110,11 @@ class HiveLocalDataSource {
     } catch (e, st) {
       isFallbackInMemoryMode = true;
       errorHandler?.report(e, stackTrace: st);
-      // ignore: avoid_print
-      print(
-        '⚠️ [HIVE_STORAGE_FALLBACK] Hive storage failed to initialize. '
-        'Falling back to in-memory mode: $e\n$st',
+      logger?.error(
+        'hive',
+        'Hive storage failed to initialize. Falling back to in-memory mode',
+        error: e,
+        stackTrace: st,
       );
     }
 
@@ -136,10 +139,11 @@ class HiveLocalDataSource {
           _memTasks[task.id] = task;
         } catch (e, st) {
           errorHandler?.report(e, stackTrace: st);
-          // ignore: avoid_print
-          print(
-            '⚠️ [HIVE_TASK_PARSE_ERROR] Failed to parse task schedule from '
-            'Hive: $e\n$st',
+          logger?.error(
+            'hive',
+            'Failed to parse task schedule from Hive',
+            error: e,
+            stackTrace: st,
           );
         }
       }
@@ -154,10 +158,11 @@ class HiveLocalDataSource {
           _memInstances[inst.id] = inst;
         } catch (e, st) {
           errorHandler?.report(e, stackTrace: st);
-          // ignore: avoid_print
-          print(
-            '⚠️ [HIVE_INSTANCE_PARSE_ERROR] Failed to parse task instance '
-            'from Hive: $e\n$st',
+          logger?.error(
+            'hive',
+            'Failed to parse task instance from Hive',
+            error: e,
+            stackTrace: st,
           );
         }
       }
@@ -172,10 +177,11 @@ class HiveLocalDataSource {
           _memRecipes[recipe.id] = recipe;
         } catch (e, st) {
           errorHandler?.report(e, stackTrace: st);
-          // ignore: avoid_print
-          print(
-            '⚠️ [HIVE_RECIPE_PARSE_ERROR] Failed to parse recipe from '
-            'Hive: $e\n$st',
+          logger?.error(
+            'hive',
+            'Failed to parse recipe from Hive',
+            error: e,
+            stackTrace: st,
           );
         }
       }
@@ -190,10 +196,11 @@ class HiveLocalDataSource {
         }
       } catch (e, st) {
         errorHandler?.report(e, stackTrace: st);
-        // ignore: avoid_print
-        print(
-          '⚠️ [HIVE_SETTINGS_PARSE_ERROR] Failed to parse settings from '
-          'Hive: $e\n$st',
+        logger?.error(
+          'hive',
+          'Failed to parse settings from Hive',
+          error: e,
+          stackTrace: st,
         );
       }
     }
@@ -216,6 +223,12 @@ class HiveLocalDataSource {
             } catch (e, st) {
               _memTasks.remove(event.key.toString());
               errorHandler?.report(e, stackTrace: st);
+              logger?.error(
+                'hive',
+                'Failed to parse task schedule from box watcher',
+                error: e,
+                stackTrace: st,
+              );
             }
           }
           _emitTasks();
@@ -237,6 +250,12 @@ class HiveLocalDataSource {
             } catch (e, st) {
               _memInstances.remove(event.key.toString());
               errorHandler?.report(e, stackTrace: st);
+              logger?.error(
+                'hive',
+                'Failed to parse task instance from box watcher',
+                error: e,
+                stackTrace: st,
+              );
             }
           }
           _emitInstances();
@@ -258,6 +277,12 @@ class HiveLocalDataSource {
             } catch (e, st) {
               _memRecipes.remove(event.key.toString());
               errorHandler?.report(e, stackTrace: st);
+              logger?.error(
+                'hive',
+                'Failed to parse recipe from box watcher',
+                error: e,
+                stackTrace: st,
+              );
             }
           }
           _emitRecipes();
@@ -275,6 +300,12 @@ class HiveLocalDataSource {
               _memSettings = UserSettings.fromJson(data);
             } catch (e, st) {
               errorHandler?.report(e, stackTrace: st);
+              logger?.error(
+                'hive',
+                'Failed to parse settings from box watcher',
+                error: e,
+                stackTrace: st,
+              );
             }
           }
           _emitSettings();

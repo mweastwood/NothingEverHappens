@@ -89,9 +89,14 @@ class UnifiedTaskRepository implements TaskRepository {
               triggerMissedPolicyProcessing();
             }
           })
-          .catchError((e) {
-            // ignore: avoid_print
-            print('Initial migration error: $e');
+          .catchError((e, st) {
+            errorHandler?.report(e, stackTrace: st);
+            logger?.error(
+              'task',
+              'Initial migration error',
+              error: e,
+              stackTrace: st,
+            );
           });
     } else if (_localDataSource.isMigrationCompleted()) {
       _syncService.startListeningToRemote();
@@ -525,17 +530,27 @@ class UnifiedTaskRepository implements TaskRepository {
 
         try {
           await _doProcessMissedPolicies();
-        } catch (e) {
-          // ignore: avoid_print
-          print('Error in auto-processing missed policies loop: $e');
+        } catch (e, st) {
+          errorHandler?.report(e, stackTrace: st);
+          logger?.error(
+            'task',
+            'Error in auto-processing missed policies loop',
+            error: e,
+            stackTrace: st,
+          );
         }
 
         for (final cb in callbacksToRun) {
           try {
             await cb();
-          } catch (e) {
-            // ignore: avoid_print
-            print('Error in postProcess callback: $e');
+          } catch (e, st) {
+            errorHandler?.report(e, stackTrace: st);
+            logger?.error(
+              'task',
+              'Error in postProcess callback',
+              error: e,
+              stackTrace: st,
+            );
           }
         }
       } while (_hasQueuedProcessing || _queuedPostProcessCallbacks.isNotEmpty);

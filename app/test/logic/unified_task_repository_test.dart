@@ -11,6 +11,8 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/telemetry_service.dart';
+import 'package:nothing_ever_happens/logic/app_logger.dart';
+import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'dart:io';
@@ -990,6 +992,42 @@ void main() {
         trackingSync.dispose();
         trackingDataSource.dispose();
       }
+    },
+  );
+
+  test(
+    'UnifiedTaskRepository logs error and reports to ErrorHandler when postProcess callback fails',
+    () async {
+      final logger = AppLogger();
+      final errorHandler = ErrorHandler();
+      final repo = UnifiedTaskRepository(
+        localDataSource: localDataSource,
+        syncService: syncService,
+        firestore: firestore,
+        userId: 'user1',
+        logger: logger,
+        errorHandler: errorHandler,
+      );
+
+      await repo.triggerMissedPolicyProcessing(
+        postProcess: () async {
+          throw Exception('postProcess callback failed test');
+        },
+      );
+
+      final errorEvents = logger
+          .getEvents()
+          .where((e) => e.level == LogLevel.error)
+          .toList();
+      expect(
+        errorEvents.any(
+          (e) =>
+              e.category == 'task' &&
+              e.message.contains('postProcess callback'),
+        ),
+        true,
+      );
+      expect(errorHandler.history.isNotEmpty, true);
     },
   );
 }

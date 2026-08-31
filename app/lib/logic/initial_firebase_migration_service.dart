@@ -253,8 +253,6 @@ class InitialFirebaseMigrationService {
           'errorType': e.runtimeType.toString(),
         },
       );
-      // ignore: avoid_print
-      print('Migration failed: $e');
       rethrow;
     }
   }
