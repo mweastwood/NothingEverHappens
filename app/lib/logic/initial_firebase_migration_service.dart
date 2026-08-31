@@ -4,6 +4,7 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:nothing_ever_happens/logic/firestore_extensions.dart';
+import 'package:nothing_ever_happens/logic/firestore_paths.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 
 class InitialFirebaseMigrationService {
@@ -60,7 +61,7 @@ class InitialFirebaseMigrationService {
       _logger?.debug('sync', '[Migration 1/5] Fetching user profile doc...');
       final userStepWatch = Stopwatch()..start();
       final userDoc = await _firestore
-          .collection('users')
+          .collection(FirestorePaths.users)
           .doc(_userId)
           .safeGet();
       final familyId = userDoc.data()?['familyId'] as String?;
@@ -81,9 +82,9 @@ class InitialFirebaseMigrationService {
       _logger?.debug('sync', '[Migration 2/5] Fetching personal tasks...');
       final taskStepWatch = Stopwatch()..start();
       final personalTasksSnap = await _firestore
-          .collection('users')
+          .collection(FirestorePaths.users)
           .doc(_userId)
-          .collection('tasks')
+          .collection(FirestorePaths.tasks)
           .safeGet();
       tasksToMigrate.addAll(
         personalTasksSnap.docs.map((doc) => TaskSchedule.fromFirestore(doc)),
@@ -105,16 +106,16 @@ class InitialFirebaseMigrationService {
       QuerySnapshot<Map<String, dynamic>> personalInstancesSnap;
       try {
         personalInstancesSnap = await _firestore
-            .collection('users')
+            .collection(FirestorePaths.users)
             .doc(_userId)
-            .collection('instances')
+            .collection(FirestorePaths.instances)
             .where('updatedAt', isGreaterThan: cutoffDate)
             .safeGet(timeout: const Duration(seconds: 15));
         if (personalInstancesSnap.docs.isEmpty) {
           final fallbackSnap = await _firestore
-              .collection('users')
+              .collection(FirestorePaths.users)
               .doc(_userId)
-              .collection('instances')
+              .collection(FirestorePaths.instances)
               .limit(300)
               .safeGet(timeout: const Duration(seconds: 15));
           if (fallbackSnap.docs.isNotEmpty) {
@@ -128,9 +129,9 @@ class InitialFirebaseMigrationService {
           error: e,
         );
         personalInstancesSnap = await _firestore
-            .collection('users')
+            .collection(FirestorePaths.users)
             .doc(_userId)
-            .collection('instances')
+            .collection(FirestorePaths.instances)
             .limit(300)
             .safeGet(timeout: const Duration(seconds: 15));
       }
@@ -154,9 +155,9 @@ class InitialFirebaseMigrationService {
         _logger?.debug('sync', '[Migration 3b] Fetching family data...');
         final familyStepWatch = Stopwatch()..start();
         final familyTasksSnap = await _firestore
-            .collection('families')
+            .collection(FirestorePaths.families)
             .doc(familyId)
-            .collection('tasks')
+            .collection(FirestorePaths.tasks)
             .safeGet(timeout: const Duration(seconds: 15));
         tasksToMigrate.addAll(
           familyTasksSnap.docs.map((doc) => TaskSchedule.fromFirestore(doc)),
@@ -165,16 +166,16 @@ class InitialFirebaseMigrationService {
         QuerySnapshot<Map<String, dynamic>> familyInstancesSnap;
         try {
           familyInstancesSnap = await _firestore
-              .collection('families')
+              .collection(FirestorePaths.families)
               .doc(familyId)
-              .collection('instances')
+              .collection(FirestorePaths.instances)
               .where('updatedAt', isGreaterThan: cutoffDate)
               .safeGet(timeout: const Duration(seconds: 15));
           if (familyInstancesSnap.docs.isEmpty) {
             final fallbackSnap = await _firestore
-                .collection('families')
+                .collection(FirestorePaths.families)
                 .doc(familyId)
-                .collection('instances')
+                .collection(FirestorePaths.instances)
                 .limit(300)
                 .safeGet(timeout: const Duration(seconds: 15));
             if (fallbackSnap.docs.isNotEmpty) {
@@ -188,9 +189,9 @@ class InitialFirebaseMigrationService {
             error: e,
           );
           familyInstancesSnap = await _firestore
-              .collection('families')
+              .collection(FirestorePaths.families)
               .doc(familyId)
-              .collection('instances')
+              .collection(FirestorePaths.instances)
               .limit(300)
               .safeGet(timeout: const Duration(seconds: 15));
         }

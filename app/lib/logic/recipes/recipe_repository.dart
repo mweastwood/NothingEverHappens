@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth_repository.dart';
 import '../family_repository.dart';
+import '../firestore_paths.dart';
 import '../hive_local_data_source.dart';
 import '../subscription_service.dart';
 import '../task_repository.dart';
@@ -73,7 +74,10 @@ class RecipeRepository {
     if (_familyId != null && _familyId!.isNotEmpty) return _familyId;
     if (_userId.isEmpty || _firestore == null) return null;
     try {
-      final userDoc = await _firestore.collection('users').doc(_userId).get();
+      final userDoc = await _firestore
+          .collection(FirestorePaths.users)
+          .doc(_userId)
+          .get();
       _familyId = userDoc.data()?['familyId'] as String?;
       return _familyId;
     } catch (_) {
@@ -93,9 +97,9 @@ class RecipeRepository {
         final familyId = await _getFamilyId();
         if (updatedRecipe.isFamily && familyId != null && familyId.isNotEmpty) {
           final docRef = _firestore
-              .collection('families')
+              .collection(FirestorePaths.families)
               .doc(familyId)
-              .collection('recipes')
+              .collection(FirestorePaths.recipes)
               .doc(updatedRecipe.id);
           await docRef.set(
             updatedRecipe.toFirestore(),
@@ -104,16 +108,16 @@ class RecipeRepository {
 
           // Clean up personal copy if it was converted from personal to family
           await _firestore
-              .collection('users')
+              .collection(FirestorePaths.users)
               .doc(_userId)
-              .collection('recipes')
+              .collection(FirestorePaths.recipes)
               .doc(updatedRecipe.id)
               .delete();
         } else {
           final docRef = _firestore
-              .collection('users')
+              .collection(FirestorePaths.users)
               .doc(_userId)
-              .collection('recipes')
+              .collection(FirestorePaths.recipes)
               .doc(updatedRecipe.id);
           await docRef.set(
             updatedRecipe.toFirestore(),
@@ -123,9 +127,9 @@ class RecipeRepository {
           // Clean up family copy if it was converted from family to personal
           if (familyId != null && familyId.isNotEmpty) {
             await _firestore
-                .collection('families')
+                .collection(FirestorePaths.families)
                 .doc(familyId)
-                .collection('recipes')
+                .collection(FirestorePaths.recipes)
                 .doc(updatedRecipe.id)
                 .delete();
           }
@@ -150,31 +154,31 @@ class RecipeRepository {
             familyId != null &&
             familyId.isNotEmpty) {
           final docRef = _firestore
-              .collection('families')
+              .collection(FirestorePaths.families)
               .doc(familyId)
-              .collection('recipes')
+              .collection(FirestorePaths.recipes)
               .doc(id);
           await docRef.delete();
 
           await _firestore
-              .collection('users')
+              .collection(FirestorePaths.users)
               .doc(_userId)
-              .collection('recipes')
+              .collection(FirestorePaths.recipes)
               .doc(id)
               .delete();
         } else {
           final docRef = _firestore
-              .collection('users')
+              .collection(FirestorePaths.users)
               .doc(_userId)
-              .collection('recipes')
+              .collection(FirestorePaths.recipes)
               .doc(id);
           await docRef.delete();
 
           if (familyId != null && familyId.isNotEmpty) {
             await _firestore
-                .collection('families')
+                .collection(FirestorePaths.families)
                 .doc(familyId)
-                .collection('recipes')
+                .collection(FirestorePaths.recipes)
                 .doc(id)
                 .delete();
           }

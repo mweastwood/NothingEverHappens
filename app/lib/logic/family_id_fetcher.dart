@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'app_clock.dart';
 import 'error_handler.dart';
+import 'firestore_paths.dart';
 
 /// Helper class for querying and caching the user's family ID from Firestore.
 class FamilyIdFetcher {
@@ -46,7 +47,7 @@ class FamilyIdFetcher {
 
     try {
       final userDoc = await _firestore
-          .collection('users')
+          .collection(FirestorePaths.users)
           .doc(_userId)
           .get(const GetOptions(source: Source.serverAndCache))
           .timeout(familyIdFetchTimeout);
@@ -58,7 +59,7 @@ class FamilyIdFetcher {
       _errorHandler?.report(e, stackTrace: st);
       try {
         final cacheDoc = await _firestore
-            .collection('users')
+            .collection(FirestorePaths.users)
             .doc(_userId)
             .get(const GetOptions(source: Source.cache));
         _cachedFamilyId = cacheDoc.data()?['familyId'] as String?;

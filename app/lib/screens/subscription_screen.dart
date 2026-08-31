@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import '../logic/subscription_service.dart';
 import '../logic/auth_repository.dart';
+import '../logic/firestore_paths.dart';
+import '../logic/subscription_service.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -40,9 +41,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           }
         }
 
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'subscriptionTier': 'standard',
-        }, SetOptions(merge: true));
+        await FirebaseFirestore.instance
+            .collection(FirestorePaths.users)
+            .doc(user.uid)
+            .set({'subscriptionTier': 'standard'}, SetOptions(merge: true));
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -87,9 +89,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           }
         }
 
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'subscriptionTier': 'family',
-        }, SetOptions(merge: true));
+        await FirebaseFirestore.instance
+            .collection(FirestorePaths.users)
+            .doc(user.uid)
+            .set({'subscriptionTier': 'family'}, SetOptions(merge: true));
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_repository.dart';
 import 'family.dart';
+import 'firestore_paths.dart';
 
 final familyRepositoryProvider = Provider<FamilyRepository?>((ref) {
   try {
@@ -72,7 +73,7 @@ class FamilyRepository {
 
   Stream<FamilyProfile> getProfile() {
     return _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(_userId)
         .snapshots()
         .map((snapshot) => FamilyProfile.fromJson(snapshot.data() ?? {}));
@@ -80,18 +81,20 @@ class FamilyRepository {
 
   Stream<Family?> getFamily(String familyId) {
     if (familyId.isEmpty) return Stream.value(null);
-    return _firestore.collection('families').doc(familyId).snapshots().map((
-      snapshot,
-    ) {
-      if (!snapshot.exists || snapshot.data() == null) return null;
-      return Family.fromJson(snapshot.data()!, snapshot.id);
-    });
+    return _firestore
+        .collection(FirestorePaths.families)
+        .doc(familyId)
+        .snapshots()
+        .map((snapshot) {
+          if (!snapshot.exists || snapshot.data() == null) return null;
+          return Family.fromJson(snapshot.data()!, snapshot.id);
+        });
   }
 
   Stream<List<FamilyInvite>> getPendingInvites() {
     if (_userEmail == null || _userEmail.isEmpty) return Stream.value([]);
     return _firestore
-        .collection('invites')
+        .collection(FirestorePaths.invites)
         .where('toEmail', isEqualTo: _userEmail.trim().toLowerCase())
         .where('status', isEqualTo: FamilyInviteStatus.pending.toJson())
         .snapshots()
@@ -103,7 +106,7 @@ class FamilyRepository {
   }
 
   Future<void> createFamily(String name) async {
-    final familyRef = _firestore.collection('families').doc();
+    final familyRef = _firestore.collection(FirestorePaths.families).doc();
     final familyId = familyRef.id;
 
     final creator = FamilyMember(
@@ -121,7 +124,7 @@ class FamilyRepository {
 
     final batch = _firestore.batch();
     batch.set(familyRef, family.toJson());
-    batch.set(_firestore.collection('users').doc(_userId), {
+    batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
       'familyId': familyId,
       'familyRole': FamilyRole.parent.toJson(),
     }, SetOptions(merge: true));
@@ -135,7 +138,7 @@ class FamilyRepository {
     required String toEmail,
     required FamilyRole role,
   }) async {
-    final inviteRef = _firestore.collection('invites').doc();
+    final inviteRef = _firestore.collection(FirestorePaths.invites).doc();
     final invite = FamilyInvite(
       id: inviteRef.id,
       familyId: familyId,
@@ -152,10 +155,15 @@ class FamilyRepository {
   }
 
   Future<void> acceptInvite(FamilyInvite invite) async {
-    final userDoc = await _firestore.collection('users').doc(_userId).get();
+    final userDoc = await _firestore
+        .collection(FirestorePaths.users)
+        .doc(_userId)
+        .get();
     final prevFamilyId = userDoc.data()?['familyId'] as String?;
 
-    final familyRef = _firestore.collection('families').doc(invite.familyId);
+    final familyRef = _firestore
+        .collection(FirestorePaths.families)
+        .doc(invite.familyId);
 
     final newMember = FamilyMember(
       userId: _userId,
@@ -174,12 +182,12 @@ class FamilyRepository {
 
     batch.update(familyRef, {'members.$_userId': newMember.toJson()});
 
-    batch.set(_firestore.collection('users').doc(_userId), {
+    batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
       'familyId': invite.familyId,
       'familyRole': invite.role.toJson(),
     }, SetOptions(merge: true));
 
-    batch.update(_firestore.collection('invites').doc(invite.id), {
+    batch.update(_firestore.collection(FirestorePaths.invites).doc(invite.id), {
       'status': FamilyInviteStatus.accepted.toJson(),
     });
 
@@ -187,7 +195,7 @@ class FamilyRepository {
   }
 
   Future<void> declineInvite(FamilyInvite invite) async {
-    await _firestore.collection('invites').doc(invite.id).update({
+    await _firestore.collection(FirestorePaths.invites).doc(invite.id).update({
       'status': FamilyInviteStatus.declined.toJson(),
     });
   }
@@ -197,12 +205,14 @@ class FamilyRepository {
     required String memberUserId,
     required FamilyRole newRole,
   }) async {
-    final familyRef = _firestore.collection('families').doc(familyId);
+    final familyRef = _firestore
+        .collection(FirestorePaths.families)
+        .doc(familyId);
     final batch = _firestore.batch();
 
     batch.update(familyRef, {'members.$memberUserId.role': newRole.toJson()});
 
-    batch.set(_firestore.collection('users').doc(memberUserId), {
+    batch.set(_firestore.collection(FirestorePaths.users).doc(memberUserId), {
       'familyRole': newRole.toJson(),
     }, SetOptions(merge: true));
 
@@ -212,7 +222,7 @@ class FamilyRepository {
   Stream<List<FamilyInvite>> getOutstandingFamilyInvites(String familyId) {
     if (familyId.isEmpty) return Stream.value([]);
     return _firestore
-        .collection('invites')
+        .collection(FirestorePaths.invites)
         .where('familyId', isEqualTo: familyId)
         .where('status', isEqualTo: FamilyInviteStatus.pending.toJson())
         .snapshots()
@@ -224,7 +234,7 @@ class FamilyRepository {
   }
 
   Future<void> revokeInvite(String inviteId) async {
-    await _firestore.collection('invites').doc(inviteId).delete();
+    await _firestore.collection(FirestorePaths.invites).doc(inviteId).delete();
   }
 
   Future<void> _commitInChunks(
@@ -242,7 +252,9 @@ class FamilyRepository {
   }
 
   Future<void> leaveFamily(String familyId, {WriteBatch? batch}) async {
-    final familyRef = _firestore.collection('families').doc(familyId);
+    final familyRef = _firestore
+        .collection(FirestorePaths.families)
+        .doc(familyId);
     final familyDoc = await familyRef.get();
     final familyData = familyDoc.data();
     final isExternalBatch = batch != null;
@@ -262,42 +274,48 @@ class FamilyRepository {
           .toList();
 
       if (remainingMembers.isEmpty) {
-        final tasksSnap = await familyRef.collection('tasks').get();
+        final tasksSnap = await familyRef
+            .collection(FirestorePaths.tasks)
+            .get();
         for (final doc in tasksSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
           final userDocRef = _firestore
-              .collection('users')
+              .collection(FirestorePaths.users)
               .doc(_userId)
-              .collection('tasks')
+              .collection(FirestorePaths.tasks)
               .doc(doc.id);
           final docRef = doc.reference;
           ops.add((b) => b.set(userDocRef, data));
           ops.add((b) => b.delete(docRef));
         }
 
-        final instancesSnap = await familyRef.collection('instances').get();
+        final instancesSnap = await familyRef
+            .collection(FirestorePaths.instances)
+            .get();
         for (final doc in instancesSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
           final userDocRef = _firestore
-              .collection('users')
+              .collection(FirestorePaths.users)
               .doc(_userId)
-              .collection('instances')
+              .collection(FirestorePaths.instances)
               .doc(doc.id);
           final docRef = doc.reference;
           ops.add((b) => b.set(userDocRef, data));
           ops.add((b) => b.delete(docRef));
         }
 
-        final recipesSnap = await familyRef.collection('recipes').get();
+        final recipesSnap = await familyRef
+            .collection(FirestorePaths.recipes)
+            .get();
         for (final doc in recipesSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
           final userDocRef = _firestore
-              .collection('users')
+              .collection(FirestorePaths.users)
               .doc(_userId)
-              .collection('recipes')
+              .collection(FirestorePaths.recipes)
               .doc(doc.id);
           final docRef = doc.reference;
           ops.add((b) => b.set(userDocRef, data));
@@ -324,7 +342,9 @@ class FamilyRepository {
             );
             ops.add(
               (b) => b.set(
-                _firestore.collection('users').doc(nextParent.userId),
+                _firestore
+                    .collection(FirestorePaths.users)
+                    .doc(nextParent.userId),
                 {'familyRole': FamilyRole.parent.toJson()},
                 SetOptions(merge: true),
               ),
@@ -340,7 +360,7 @@ class FamilyRepository {
       }
     } else {
       ops.add(
-        (b) => b.set(_firestore.collection('users').doc(_userId), {
+        (b) => b.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
           'familyId': FieldValue.delete(),
           'familyRole': FieldValue.delete(),
         }, SetOptions(merge: true)),
@@ -357,18 +377,21 @@ class FamilyRepository {
   }) async {
     final now = DateTime.now().toUtc();
     final batch = _firestore.batch();
-    batch.set(_firestore.collection('users').doc(_userId), {
+    batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
       'appVersion': appVersion,
       'platform': platform,
       'lastSeenAt': now.toIso8601String(),
     }, SetOptions(merge: true));
 
     if (familyId != null && familyId.isNotEmpty) {
-      batch.update(_firestore.collection('families').doc(familyId), {
-        'members.$_userId.appVersion': appVersion,
-        'members.$_userId.platform': platform,
-        'members.$_userId.lastSeenAt': now.toIso8601String(),
-      });
+      batch.update(
+        _firestore.collection(FirestorePaths.families).doc(familyId),
+        {
+          'members.$_userId.appVersion': appVersion,
+          'members.$_userId.platform': platform,
+          'members.$_userId.lastSeenAt': now.toIso8601String(),
+        },
+      );
     }
     await batch.commit();
   }

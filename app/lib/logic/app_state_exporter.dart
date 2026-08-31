@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_logger.dart';
 import 'auth_repository.dart';
 import 'firestore_extensions.dart';
+import 'firestore_paths.dart';
 import 'hive_local_data_source.dart';
 import 'task_repository.dart';
 import 'utils/app_version.dart';
@@ -108,7 +109,7 @@ class AppStateExporter {
     } else {
       final List<String> errors = [];
       bool networkErrorOccurred = false;
-      final userDocRef = _firestore.collection('users').doc(uid);
+      final userDocRef = _firestore.collection(FirestorePaths.users).doc(uid);
       final String? email = user?.email;
 
       bool isNetworkOrTimeoutError(dynamic e) {
@@ -119,34 +120,24 @@ class AppStateExporter {
           if (code == 'unavailable' ||
               code == 'network-request-failed' ||
               code == 'deadline-exceeded' ||
-              code == 'unknown') {
-            return true;
-          }
-          if (message.contains('offline') ||
+              code == 'cancelled' ||
               message.contains('network') ||
-              message.contains('unavailable') ||
-              message.contains('timed out') ||
-              message.contains('timeout')) {
+              message.contains('timeout') ||
+              message.contains('offline')) {
             return true;
           }
         }
-        final str = e.toString().toLowerCase();
-        return str.contains('timeout') ||
-            str.contains('network') ||
-            str.contains('offline') ||
-            str.contains('unavailable') ||
-            str.contains('socketexception');
+        return false;
       }
 
       final phase1Futures = <Future<void>>[
         () async {
           try {
-            final userDocSnap = await userDocRef.safeGet(
+            final userSnap = await userDocRef.safeGet(
               timeout: const Duration(seconds: 5),
             );
-            final userProfileData = userDocSnap.data();
-            if (userDocSnap.exists && userProfileData != null) {
-              remoteFirebaseState['userProfileDoc'] = userProfileData;
+            if (userSnap.exists && userSnap.data() != null) {
+              remoteFirebaseState['userProfileDoc'] = userSnap.data();
             }
           } catch (e) {
             if (isNetworkOrTimeoutError(e)) {
@@ -158,7 +149,7 @@ class AppStateExporter {
         () async {
           try {
             final settingsSnap = await userDocRef
-                .collection('settings')
+                .collection(FirestorePaths.settings)
                 .doc('agile')
                 .safeGet(timeout: const Duration(seconds: 5));
             if (settingsSnap.exists && settingsSnap.data() != null) {
@@ -174,7 +165,7 @@ class AppStateExporter {
         () async {
           try {
             final tasksQuery = await userDocRef
-                .collection('tasks')
+                .collection(FirestorePaths.tasks)
                 .limit(500)
                 .safeGet(timeout: const Duration(seconds: 5));
             remoteFirebaseState['tasks'] = tasksQuery.docs
@@ -190,7 +181,7 @@ class AppStateExporter {
         () async {
           try {
             final instancesQuery = await userDocRef
-                .collection('instances')
+                .collection(FirestorePaths.instances)
                 .limit(500)
                 .safeGet(timeout: const Duration(seconds: 5));
             remoteFirebaseState['instances'] = instancesQuery.docs
@@ -209,7 +200,7 @@ class AppStateExporter {
         phase1Futures.add(() async {
           try {
             final invitesQuery = await _firestore
-                .collection('invites')
+                .collection(FirestorePaths.invites)
                 .where('toEmail', isEqualTo: email.trim().toLowerCase())
                 .limit(500)
                 .safeGet(timeout: const Duration(seconds: 5));
@@ -237,7 +228,9 @@ class AppStateExporter {
       }
 
       if (familyId != null && familyId.isNotEmpty) {
-        final familyRef = _firestore.collection('families').doc(familyId);
+        final familyRef = _firestore
+            .collection(FirestorePaths.families)
+            .doc(familyId);
 
         final phase2Futures = <Future<void>>[
           () async {
@@ -259,7 +252,7 @@ class AppStateExporter {
                   for (final memberUid in membersMap.keys) {
                     try {
                       final memberDocSnap = await _firestore
-                          .collection('users')
+                          .collection(FirestorePaths.users)
                           .doc(memberUid)
                           .safeGet(timeout: const Duration(seconds: 5));
                       if (memberDocSnap.exists &&
@@ -286,7 +279,7 @@ class AppStateExporter {
           () async {
             try {
               final familyTasksQuery = await familyRef
-                  .collection('tasks')
+                  .collection(FirestorePaths.tasks)
                   .limit(500)
                   .safeGet(timeout: const Duration(seconds: 5));
               remoteFirebaseState['familyTasks'] = familyTasksQuery.docs
@@ -302,7 +295,7 @@ class AppStateExporter {
           () async {
             try {
               final familyInstancesQuery = await familyRef
-                  .collection('instances')
+                  .collection(FirestorePaths.instances)
                   .limit(500)
                   .safeGet(timeout: const Duration(seconds: 5));
               remoteFirebaseState['familyInstances'] = familyInstancesQuery.docs
@@ -395,7 +388,7 @@ class AppStateExporter {
     // 2. Firestore Connectivity Probes
     if (_firestore != null && uid != null && uid.isNotEmpty) {
       final firestoreProbes = <String, dynamic>{};
-      final userDocRef = _firestore.collection('users').doc(uid);
+      final userDocRef = _firestore.collection(FirestorePaths.users).doc(uid);
 
       // Probe A: Server get()
       final serverGetWatch = Stopwatch()..start();
@@ -461,7 +454,7 @@ class AppStateExporter {
       final queryWatch = Stopwatch()..start();
       try {
         final qSnap = await userDocRef
-            .collection('tasks')
+            .collection(FirestorePaths.tasks)
             .limit(1)
             .get(const GetOptions(source: Source.server))
             .timeout(const Duration(seconds: 4));

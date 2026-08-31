@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_repository.dart';
+import 'firestore_paths.dart';
 import 'task_repository.dart';
 import 'app_logger.dart' hide LogLevel;
 import 'error_handler.dart';
@@ -178,7 +179,7 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
     );
 
     _firestoreSub = _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(uid)
         .snapshots()
         .listen(
@@ -227,7 +228,7 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
     if (user != null) {
       final logger = _ref.read(appLoggerProvider);
       try {
-        await _firestore.collection('users').doc(user.uid).set({
+        await _firestore.collection(FirestorePaths.users).doc(user.uid).set({
           'subscriptionTier': tier.name,
         }, SetOptions(merge: true));
         logger.info(

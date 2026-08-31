@@ -13,6 +13,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
 import 'package:nothing_ever_happens/logic/telemetry_service.dart';
 import 'package:nothing_ever_happens/logic/family.dart';
+import 'package:nothing_ever_happens/logic/firestore_paths.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
@@ -267,7 +268,7 @@ class UnifiedTaskRepository implements TaskRepository {
         if (familyId != null && familyId.isNotEmpty && _rawFirestore != null) {
           try {
             final familyDoc = await _rawFirestore
-                .collection('families')
+                .collection(FirestorePaths.families)
                 .doc(familyId)
                 .get();
             if (familyDoc.exists && familyDoc.data() != null) {
