@@ -446,6 +446,135 @@ void main() {
             .doc(userId)
             .get();
         expect(updatedAlice.data()?['familyId'], familyId2);
+        expect(updatedAlice.data()?['familyRole'], 'non-parent');
+      },
+    );
+
+    test(
+      'leaveFamily with external batch stages mutations without committing or clearing user familyId',
+      () async {
+        await repository.createFamily('The Simpsons');
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        final familyId = userDoc.data()?['familyId'] as String;
+
+        final customBatch = firestore.batch();
+        await repository.leaveFamily(familyId, batch: customBatch);
+
+        // Before committing customBatch, changes are not yet applied in Firestore
+        final familyDocBefore = await firestore
+            .collection('families')
+            .doc(familyId)
+            .get();
+        expect(familyDocBefore.exists, isTrue);
+
+        // Commit customBatch
+        await customBatch.commit();
+
+        // After committing customBatch, family doc is deleted (sole member)
+        final familyDocAfter = await firestore
+            .collection('families')
+            .doc(familyId)
+            .get();
+        expect(familyDocAfter.exists, isFalse);
+
+        // User doc familyId/familyRole is NOT cleared when external batch is provided (caller manages user doc)
+        final userDocAfter = await firestore
+            .collection('users')
+            .doc(userId)
+            .get();
+        expect(userDocAfter.data()?['familyId'], familyId);
+      },
+    );
+
+    test(
+      'acceptInvite atomically converts tasks and promotes successor parent when switching families',
+      () async {
+        // Alice and Charlie are in Family 1 (Alice is parent, Charlie is non-parent)
+        await repository.createFamily('Family 1');
+        final userDoc1 = await firestore.collection('users').doc(userId).get();
+        final familyId1 = userDoc1.data()?['familyId'] as String;
+
+        await firestore.collection('families').doc(familyId1).update({
+          'members.user-charlie': {
+            'userId': 'user-charlie',
+            'displayName': 'Charlie',
+            'email': 'charlie@example.com',
+            'role': 'non-parent',
+          },
+        });
+        await firestore.collection('users').doc('user-charlie').set({
+          'familyId': familyId1,
+          'familyRole': 'non-parent',
+        });
+
+        // Bob creates Family 2
+        final bobRepo = FamilyRepository(
+          firestore: firestore,
+          userId: 'user-bob',
+          userEmail: 'bob@example.com',
+          userDisplayName: 'Bob',
+        );
+        await bobRepo.createFamily('Family 2');
+        final bobDoc = await firestore
+            .collection('users')
+            .doc('user-bob')
+            .get();
+        final familyId2 = bobDoc.data()?['familyId'] as String;
+
+        // Bob invites Alice to Family 2 as parent
+        await bobRepo.inviteMember(
+          familyId: familyId2,
+          familyName: 'Family 2',
+          toEmail: userEmail,
+          role: FamilyRole.parent,
+        );
+
+        final inviteSnap = await firestore
+            .collection('invites')
+            .where('toEmail', isEqualTo: userEmail)
+            .get();
+        final invite = FamilyInvite.fromJson(
+          inviteSnap.docs.first.data(),
+          inviteSnap.docs.first.id,
+        );
+
+        // Alice accepts invite to Family 2
+        await repository.acceptInvite(invite);
+
+        // Charlie should now be promoted to parent in Family 1
+        final f1Doc = await firestore
+            .collection('families')
+            .doc(familyId1)
+            .get();
+        final f1 = Family.fromJson(f1Doc.data()!, f1Doc.id);
+        expect(f1.members.containsKey(userId), isFalse);
+        expect(f1.members['user-charlie']?.role, FamilyRole.parent);
+
+        final charlieDoc = await firestore
+            .collection('users')
+            .doc('user-charlie')
+            .get();
+        expect(charlieDoc.data()?['familyRole'], 'parent');
+
+        // Alice should be in Family 2 as parent
+        final f2Doc = await firestore
+            .collection('families')
+            .doc(familyId2)
+            .get();
+        final f2 = Family.fromJson(f2Doc.data()!, f2Doc.id);
+        expect(f2.members[userId]?.role, FamilyRole.parent);
+
+        // Alice user doc should have Family 2
+        final aliceDoc = await firestore.collection('users').doc(userId).get();
+        expect(aliceDoc.data()?['familyId'], familyId2);
+        expect(aliceDoc.data()?['familyRole'], 'parent');
+
+        // Invite should be accepted
+        final inviteDoc = await firestore
+            .collection('invites')
+            .doc(invite.id)
+            .get();
+        expect(inviteDoc.data()?['status'], 'accepted');
       },
     );
 
