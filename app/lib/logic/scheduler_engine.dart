@@ -212,8 +212,9 @@ class SchedulerEngine {
     final taskInstances = context.taskInstances;
     final now = context.now;
     final policy = s.schedulingPolicy as CompletionRelativePolicy;
-    final ruleInstances =
-        taskInstances.where((inst) => _isInstanceForRule(inst, s, task)).toList();
+    final ruleInstances = taskInstances
+        .where((inst) => _isInstanceForRule(inst, s, task))
+        .toList();
 
     final Map<CivilDay, List<TaskInstance>> instancesByDate = {};
     for (final inst in ruleInstances) {
@@ -283,11 +284,7 @@ class SchedulerEngine {
           dayOffset: 0,
           time: policy.targetTime,
         );
-        final dueRelative = _getCompletionRelativeDue(
-          s,
-          policy,
-          dateToSpawn,
-        );
+        final dueRelative = _getCompletionRelativeDue(s, policy, dateToSpawn);
         final notifRelative = _getCompletionRelativeNotifications(
           s,
           policy,
@@ -330,8 +327,9 @@ class SchedulerEngine {
     final today = context.today;
     final futureInstancesCount = context.futureInstancesCount;
 
-    final ruleInstances =
-        taskInstances.where((inst) => _isInstanceForRule(inst, s, task)).toList();
+    final ruleInstances = taskInstances
+        .where((inst) => _isInstanceForRule(inst, s, task))
+        .toList();
 
     final Map<CivilDay, List<TaskInstance>> instancesByDate = {};
     for (final inst in ruleInstances) {
@@ -475,8 +473,7 @@ class SchedulerEngine {
           WorkflowInstancePayload? workflowPayload;
 
           if (task.workflowType == 'mealWorkflow') {
-            final cfg =
-                task.mealWorkflowConfig ?? const MealWorkflowConfig();
+            final cfg = task.mealWorkflowConfig ?? const MealWorkflowConfig();
             startRelative = cfg.selectTime;
             dueRelative = cfg.selectTime;
             workflowPayload = WorkflowInstancePayload(
@@ -538,8 +535,7 @@ class SchedulerEngine {
         } else {
           final lastEvaluatedDate = targetDates.last;
           final nextOcc = s.nextOccurrenceAfter(lastEvaluatedDate);
-          if (nextOcc != null &&
-              nextOcc.compareTo(maxEvaluationDate) <= 0) {
+          if (nextOcc != null && nextOcc.compareTo(maxEvaluationDate) <= 0) {
             currentBaseDate = nextOcc;
             continue;
           }
@@ -642,9 +638,7 @@ class SchedulerEngine {
         (x) => x.id == inst.id && x.status != TaskStatus.pending,
       );
       if (!isOriginalResolved) {
-        workingInstances[date] = inst.copyWith(
-          status: TaskStatus.pending,
-        );
+        workingInstances[date] = inst.copyWith(status: TaskStatus.pending);
       }
     }
   }
