@@ -718,6 +718,11 @@ class SchedulerEngine {
 
     final List<TaskInstance> finalToSpawn = [];
     final List<TaskInstance> finalToUpdate = List.from(toUpdate);
+    final Map<String, int> updateIndexById = {
+      for (var i = 0; i < finalToUpdate.length; i++) finalToUpdate[i].id: i,
+    };
+    final Set<String> toDeleteSet = toDelete.toSet();
+    final Set<String> taskInstanceIds = {for (final x in taskInstances) x.id};
 
     if (task.skipIfNoCapacity && applyCapacityLimits) {
       final double taskDuration =
@@ -732,12 +737,13 @@ class SchedulerEngine {
         final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
         final isFuture = now.isBefore(start);
 
-        final isMarkedForDelete = toDelete.contains(inst.id);
-        final isMarkedForUpdate = finalToUpdate.any((x) => x.id == inst.id);
+        final isMarkedForDelete = toDeleteSet.contains(inst.id);
+        final updateIdx = updateIndexById[inst.id];
+        final isMarkedForUpdate = updateIdx != null;
         if (isMarkedForDelete) continue;
 
         final effectiveInst = isMarkedForUpdate
-            ? finalToUpdate.firstWhere((x) => x.id == inst.id)
+            ? finalToUpdate[updateIdx]
             : inst;
         final effectiveStatus = effectiveInst.status;
 
@@ -754,11 +760,14 @@ class SchedulerEngine {
           if (capacity - planned < taskDuration) {
             if (effectiveStatus == TaskStatus.pending) {
               if (isMarkedForUpdate) {
-                final idx = finalToUpdate.indexWhere((x) => x.id == inst.id);
                 if (inst.status == TaskStatus.skipped) {
-                  finalToUpdate.removeAt(idx);
+                  finalToUpdate.removeAt(updateIdx);
+                  updateIndexById.remove(inst.id);
+                  for (var i = updateIdx; i < finalToUpdate.length; i++) {
+                    updateIndexById[finalToUpdate[i].id] = i;
+                  }
                 } else {
-                  finalToUpdate[idx] = finalToUpdate[idx].copyWith(
+                  finalToUpdate[updateIdx] = finalToUpdate[updateIdx].copyWith(
                     status: TaskStatus.skipped,
                     statusReason: 'scheduler_capacity_limit',
                     lastModifiedByAppVersion: AppVersion.display,
@@ -766,27 +775,27 @@ class SchedulerEngine {
                   );
                 }
               } else {
-                finalToUpdate.add(
-                  inst.copyWith(
-                    status: TaskStatus.skipped,
-                    statusReason: 'scheduler_capacity_limit',
-                    lastModifiedByAppVersion: AppVersion.display,
-                    lastModifiedByUserId: context.userId,
-                  ),
+                final newUpdate = inst.copyWith(
+                  status: TaskStatus.skipped,
+                  statusReason: 'scheduler_capacity_limit',
+                  lastModifiedByAppVersion: AppVersion.display,
+                  lastModifiedByUserId: context.userId,
                 );
+                updateIndexById[newUpdate.id] = finalToUpdate.length;
+                finalToUpdate.add(newUpdate);
               }
             }
           } else {
             if (effectiveStatus == TaskStatus.skipped) {
               if (!isMarkedForUpdate) {
-                finalToUpdate.add(
-                  inst.copyWith(
-                    status: TaskStatus.pending,
-                    clearStatusReason: true,
-                    lastModifiedByAppVersion: AppVersion.display,
-                    lastModifiedByUserId: context.userId,
-                  ),
+                final newUpdate = inst.copyWith(
+                  status: TaskStatus.pending,
+                  clearStatusReason: true,
+                  lastModifiedByAppVersion: AppVersion.display,
+                  lastModifiedByUserId: context.userId,
                 );
+                updateIndexById[newUpdate.id] = finalToUpdate.length;
+                finalToUpdate.add(newUpdate);
                 tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
               }
             } else if (effectiveStatus == TaskStatus.pending) {
@@ -828,7 +837,7 @@ class SchedulerEngine {
       // 3. Process toUpdate instances that were NOT in taskInstances (e.g. newly created/modified)
       for (int i = 0; i < finalToUpdate.length; i++) {
         final inst = finalToUpdate[i];
-        final wasProcessed = taskInstances.any((x) => x.id == inst.id);
+        final wasProcessed = taskInstanceIds.contains(inst.id);
         if (!wasProcessed &&
             inst.status == TaskStatus.pending &&
             inst.scheduledDate.compareTo(today) >= 0) {
@@ -858,16 +867,17 @@ class SchedulerEngine {
           final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
           final isFuture = now.isBefore(start);
           if (inst.status == TaskStatus.skipped && isFuture) {
-            final isMarkedForDelete = toDelete.contains(inst.id);
+            final isMarkedForDelete = toDeleteSet.contains(inst.id);
             if (isMarkedForDelete) continue;
-            final isMarkedForUpdate = finalToUpdate.any((x) => x.id == inst.id);
-            if (isMarkedForUpdate) {
-              final idx = finalToUpdate.indexWhere((x) => x.id == inst.id);
-              finalToUpdate[idx] = finalToUpdate[idx].copyWith(
+            final updateIdx = updateIndexById[inst.id];
+            if (updateIdx != null) {
+              finalToUpdate[updateIdx] = finalToUpdate[updateIdx].copyWith(
                 status: TaskStatus.pending,
               );
             } else {
-              finalToUpdate.add(inst.copyWith(status: TaskStatus.pending));
+              final newUpdate = inst.copyWith(status: TaskStatus.pending);
+              updateIndexById[newUpdate.id] = finalToUpdate.length;
+              finalToUpdate.add(newUpdate);
             }
           }
         }
