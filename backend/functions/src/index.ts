@@ -1,8 +1,11 @@
 import * as admin from "firebase-admin";
 import { onRequest } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 import { validateTaskEvent, processExternalTaskEvent, authenticateTaskEventRequest } from "./task_events";
 import { handleDeleteUserAccount } from "./account_deletion";
+import { processHistoryCleanup } from "./cleanup_history";
+
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
@@ -70,6 +73,31 @@ export const reportExternalTaskEvent = onRequest(
 );
 
 /**
+ * Scheduled Cloud Function for automated task history cleanup.
+ * Runs daily at 03:00 UTC to batch delete expired history deltas across all users and families.
+ */
+export const cleanupExpiredHistory = onSchedule(
+  {
+    schedule: "0 3 * * *",
+    timeZone: "UTC",
+    memory: "256MiB",
+    timeoutSeconds: 120,
+  },
+  async () => {
+    logger.info("Starting scheduled task history cleanup...");
+    try {
+      const result = await processHistoryCleanup(db, admin.firestore.Timestamp.now());
+      logger.info(
+        `Scheduled task history cleanup finished successfully. Total deleted: ${result.totalDeleted}, Batches: ${result.batchesProcessed}, Duration: ${result.durationMs}ms`
+      );
+    } catch (error) {
+      logger.error("Scheduled task history cleanup failed:", error);
+      throw error;
+    }
+  }
+);
+
+/**
  * Health check / status endpoint for the Nothing Ever Happens Task Hub Functions.
  * GET /status
  */
@@ -84,3 +112,7 @@ export const status = onRequest(
     });
   }
 );
+
+export { processHistoryCleanup };
+
+
