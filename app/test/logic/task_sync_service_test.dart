@@ -1497,6 +1497,161 @@ void main() {
       expect(customFetcher.getFamilyIdCalls, greaterThanOrEqualTo(1));
     },
   );
+
+  test(
+    'Disposal during in-flight sync aborts remaining item processing without throwing StateError',
+    () async {
+      final hookedDataSource = _HookedHiveLocalDataSource();
+      await hookedDataSource.init();
+      await hookedDataSource.setMigrationCompleted(true);
+
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: hookedDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+
+      final task1 = TaskSchedule(
+        id: 'S-1',
+        title: 'Task 1',
+        description: 'Desc 1',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      final task2 = TaskSchedule(
+        id: 'S-2',
+        title: 'Task 2',
+        description: 'Desc 2',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      await hookedDataSource.saveTask(task1);
+      await hookedDataSource.saveTask(task2);
+      await hookedDataSource.markDirty('S-1');
+      await hookedDataSource.markDirty('S-2');
+
+      hookedDataSource.onClearDirty = (id) {
+        if (id == 'S-1') {
+          service.dispose();
+        }
+      };
+
+      // Calling sync should not throw StateError when disposing mid-sync
+      await service.sync();
+
+      expect(service.isDisposed, isTrue);
+      expect(service.isSyncing, isFalse);
+
+      // S-1 was synced, but S-2 was aborted due to disposal mid-loop
+      final doc1 = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-1')
+          .get();
+      expect(doc1.exists, isTrue);
+
+      final doc2 = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-2')
+          .get();
+      expect(doc2.exists, isFalse);
+      expect(hookedDataSource.getDirtyTaskIds(), contains('S-2'));
+    },
+  );
+
+  test('sync() after dispose() is an immediate no-op', () async {
+    final service = TaskSyncService(
+      firestore: firestore,
+      localDataSource: localDataSource,
+      userId: 'user1',
+      isActivePremium: true,
+    );
+
+    service.dispose();
+    expect(service.isDisposed, isTrue);
+
+    final task = TaskSchedule(
+      id: 'S-disposed-noop',
+      title: 'Task Disposed No-op',
+      description: 'Desc',
+      schedules: [],
+      updatedAt: DateTime.now(),
+    );
+    await localDataSource.saveTask(task);
+    await localDataSource.markDirty('S-disposed-noop');
+
+    await service.sync();
+
+    final docSnap = await firestore
+        .collection('users')
+        .doc('user1')
+        .collection('tasks')
+        .doc('S-disposed-noop')
+        .get();
+    expect(docSnap.exists, isFalse);
+    expect(localDataSource.getDirtyTaskIds(), contains('S-disposed-noop'));
+  });
+
+  test(
+    'Exception recovery resets _isSyncing to false and allows subsequent sync',
+    () async {
+      final intermittentDataSource = _IntermittentHiveLocalDataSource();
+      await intermittentDataSource.init();
+      await intermittentDataSource.setMigrationCompleted(true);
+
+      final errorHandler = ErrorHandler();
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: intermittentDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+        errorHandler: errorHandler,
+      );
+      addTearDown(() => service.dispose());
+
+      final task1 = TaskSchedule(
+        id: 'S-fail-then-pass',
+        title: 'Retry Task',
+        description: 'Desc',
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      await intermittentDataSource.saveTask(task1);
+      await intermittentDataSource.markDirty('S-fail-then-pass');
+
+      intermittentDataSource.shouldFail = true;
+      await service.sync();
+
+      expect(service.isSyncing, isFalse);
+      expect(errorHandler.history.isNotEmpty, isTrue);
+
+      final docBeforeRetry = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-fail-then-pass')
+          .get();
+      expect(docBeforeRetry.exists, isFalse);
+
+      // Subsequent sync succeeds
+      intermittentDataSource.shouldFail = false;
+      await service.sync();
+
+      expect(service.isSyncing, isFalse);
+      final docAfterRetry = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('tasks')
+          .doc('S-fail-then-pass')
+          .get();
+      expect(docAfterRetry.exists, isTrue);
+      expect(docAfterRetry.data()?['title'], 'Retry Task');
+    },
+  );
 }
 
 class _TrackingFamilyIdFetcher extends FamilyIdFetcher {
@@ -1524,5 +1679,33 @@ class _FailingHiveLocalDataSource extends HiveLocalDataSource {
   @override
   List<String> getDirtyTaskIds() {
     throw Exception('Simulated local data source failure');
+  }
+}
+
+class _HookedHiveLocalDataSource extends HiveLocalDataSource {
+  void Function(String id)? onClearDirty;
+
+  @override
+  bool isMigrationCompleted() => true;
+
+  @override
+  Future<void> clearDirty(String id) async {
+    onClearDirty?.call(id);
+    await super.clearDirty(id);
+  }
+}
+
+class _IntermittentHiveLocalDataSource extends HiveLocalDataSource {
+  bool shouldFail = false;
+
+  @override
+  bool isMigrationCompleted() => true;
+
+  @override
+  List<TaskSchedule> getTasks() {
+    if (shouldFail) {
+      throw Exception('Simulated transient error during getTasks()');
+    }
+    return super.getTasks();
   }
 }

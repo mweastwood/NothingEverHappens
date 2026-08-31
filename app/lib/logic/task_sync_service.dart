@@ -60,7 +60,10 @@ class TaskSyncService {
   StreamSubscription? _familyRecipesSub;
   String? _familyId;
 
+  bool _isDisposed = false;
+  bool get isDisposed => _isDisposed;
   bool _isSyncing = false;
+  bool get isSyncing => _isSyncing;
   final _isSyncingSubject = BehaviorSubject<bool>.seeded(false);
   Stream<bool> get isSyncingStream => _isSyncingSubject.stream;
   Timer? _periodicSyncTimer;
@@ -92,8 +95,11 @@ class TaskSyncService {
   }
 
   void dispose() {
+    _isDisposed = true;
     _periodicSyncTimer?.cancel();
-    _isSyncingSubject.close();
+    if (!_isSyncingSubject.isClosed) {
+      _isSyncingSubject.close();
+    }
     _tasksSub?.cancel();
     _instancesSub?.cancel();
     _recipesSub?.cancel();
@@ -104,7 +110,8 @@ class TaskSyncService {
   }
 
   void startListeningToRemote() {
-    if (!_isActivePremium ||
+    if (_isDisposed ||
+        !_isActivePremium ||
         _userId.isEmpty ||
         !_localDataSource.isMigrationCompleted()) {
       return;
@@ -120,6 +127,7 @@ class TaskSyncService {
 
     _periodicSyncTimer?.cancel();
     _periodicSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_isDisposed) return;
       try {
         if (_localDataSource.getDirtyTaskIds().isNotEmpty) {
           sync();
@@ -610,14 +618,15 @@ class TaskSyncService {
   }
 
   Future<void> sync() async {
-    if (!_isActivePremium ||
+    if (_isDisposed ||
+        !_isActivePremium ||
         _userId.isEmpty ||
         _isSyncing ||
         !_localDataSource.isMigrationCompleted()) {
       return;
     }
     _isSyncing = true;
-    if (!_isSyncingSubject.isClosed) {
+    if (!_isSyncingSubject.isClosed && !_isDisposed) {
       _isSyncingSubject.add(true);
     }
 
@@ -636,6 +645,7 @@ class TaskSyncService {
       final familyId = await _getFamilyId();
 
       for (final taskId in dirtyTaskIds) {
+        if (_isDisposed) break;
         try {
           if (taskId.startsWith('S-')) {
             final task = tasksMap[taskId];
@@ -679,6 +689,7 @@ class TaskSyncService {
                   .delete();
             }
           }
+          if (_isDisposed) break;
           await _localDataSource.clearDirty(taskId);
         } catch (e, st) {
           logger?.error(
@@ -694,13 +705,15 @@ class TaskSyncService {
           }
         }
       }
-      logger?.info('sync', 'Firestore sync completed successfully');
+      if (!_isDisposed) {
+        logger?.info('sync', 'Firestore sync completed successfully');
+      }
     } catch (e, st) {
       logger?.error('sync', 'Firestore sync failed', error: e, stackTrace: st);
       errorHandler?.report(e, stackTrace: st);
     } finally {
       _isSyncing = false;
-      if (!_isSyncingSubject.isClosed) {
+      if (!_isSyncingSubject.isClosed && !_isDisposed) {
         _isSyncingSubject.add(false);
       }
     }
