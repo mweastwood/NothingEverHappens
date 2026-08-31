@@ -62,8 +62,8 @@ class WeeklyCapacityChart extends StatefulWidget {
 }
 
 class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
+  static const double _itemWidth = 44.0;
   late final ScrollController _scrollController;
-  final double _itemWidth = 52.0;
 
   @override
   void initState() {
@@ -630,6 +630,12 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
         120.0,
       );
 
+      final Color plannedColor = isOverCapacity
+          ? theme.colorScheme.error
+          : isOverridden
+          ? theme.colorScheme.tertiary
+          : theme.colorScheme.primary;
+
       return Container(
         height: fillHeight,
         margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -640,32 +646,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
               if (plannedHours > 0)
                 Expanded(
                   flex: (plannedHours * 1000).round().clamp(1, 1000000),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isOverCapacity
-                            ? [
-                                theme.colorScheme.error,
-                                theme.colorScheme.error.withValues(alpha: 0.7),
-                              ]
-                            : isOverridden
-                            ? [
-                                theme.colorScheme.tertiary,
-                                theme.colorScheme.tertiary.withValues(
-                                  alpha: 0.7,
-                                ),
-                              ]
-                            : [
-                                theme.colorScheme.primary,
-                                theme.colorScheme.primary.withValues(
-                                  alpha: 0.7,
-                                ),
-                              ],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
+                  child: Container(color: plannedColor.withValues(alpha: 0.5)),
                 ),
               if (skippedHours > 0)
                 Expanded(
@@ -741,28 +722,17 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
 
     if (fillHeight <= 0) return const SizedBox.shrink();
 
+    final Color plannedColor = isOverCapacity
+        ? theme.colorScheme.error
+        : isOverridden
+        ? theme.colorScheme.tertiary
+        : theme.colorScheme.primary;
+
     return Container(
       height: fillHeight,
       margin: const EdgeInsets.symmetric(horizontal: 3),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isOverCapacity
-              ? [
-                  theme.colorScheme.error,
-                  theme.colorScheme.error.withValues(alpha: 0.7),
-                ]
-              : isOverridden
-              ? [
-                  theme.colorScheme.tertiary,
-                  theme.colorScheme.tertiary.withValues(alpha: 0.7),
-                ]
-              : [
-                  theme.colorScheme.primary,
-                  theme.colorScheme.primary.withValues(alpha: 0.7),
-                ],
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-        ),
+        color: isToday ? plannedColor.withValues(alpha: 0.5) : plannedColor,
         borderRadius: BorderRadius.circular(6),
       ),
     );
