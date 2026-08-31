@@ -826,5 +826,96 @@ void main() {
         expect(member['lastSeenAt'], isNotNull);
       },
     );
+
+    test(
+      'leaveFamily successfully handles large number of documents exceeding 500 batch write operations',
+      () async {
+        await repository.createFamily('The Simpsons');
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        final familyId = userDoc.data()?['familyId'] as String;
+
+        // Seed 300 tasks (300 set + 300 delete = 600 operations)
+        for (int i = 0; i < 300; i++) {
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc('task-$i')
+              .set({'id': 'task-$i', 'title': 'Task $i', 'isFamily': true});
+        }
+
+        // Seed 50 instances (50 set + 50 delete = 100 operations)
+        for (int i = 0; i < 50; i++) {
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc('inst-$i')
+              .set({
+                'id': 'inst-$i',
+                'scheduleId': 'task-$i',
+                'isFamily': true,
+              });
+        }
+
+        // Seed 50 recipes (50 set + 50 delete = 100 operations)
+        for (int i = 0; i < 50; i++) {
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('recipes')
+              .doc('recipe-$i')
+              .set({'id': 'recipe-$i', 'title': 'Recipe $i', 'isFamily': true});
+        }
+
+        await repository.leaveFamily(familyId);
+
+        // Verify family doc is deleted
+        final familyDoc = await firestore
+            .collection('families')
+            .doc(familyId)
+            .get();
+        expect(familyDoc.exists, isFalse);
+
+        // Verify user profile is cleared
+        final updatedUserDoc = await firestore
+            .collection('users')
+            .doc(userId)
+            .get();
+        expect(updatedUserDoc.data()?['familyId'], isNull);
+        expect(updatedUserDoc.data()?['familyRole'], isNull);
+
+        // Verify all 300 tasks migrated to user collection and deleted from family
+        final userTasksSnap = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('tasks')
+            .get();
+        expect(userTasksSnap.docs.length, 300);
+
+        final familyTasksSnap = await firestore
+            .collection('families')
+            .doc(familyId)
+            .collection('tasks')
+            .get();
+        expect(familyTasksSnap.docs.length, 0);
+
+        // Verify all 50 instances migrated
+        final userInstancesSnap = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('instances')
+            .get();
+        expect(userInstancesSnap.docs.length, 50);
+
+        // Verify all 50 recipes migrated
+        final userRecipesSnap = await firestore
+            .collection('users')
+            .doc(userId)
+            .collection('recipes')
+            .get();
+        expect(userRecipesSnap.docs.length, 50);
+      },
+    );
   });
 }
