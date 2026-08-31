@@ -322,4 +322,68 @@ describe('Firestore Security Rules', () => {
       }));
     });
   });
+
+  describe('History collection', () => {
+    it('allows a user to read and write their own private history entries', async () => {
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const db = aliceContext.firestore();
+
+      await assertSucceeds(db.collection('users').doc('alice').collection('history').doc('delta-1').set({
+        action: 'taskCompleted',
+        taskId: 'task-123',
+        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+      }));
+
+      await assertSucceeds(db.collection('users').doc('alice').collection('history').doc('delta-1').get());
+    });
+
+    it('denies a user from reading or writing another user\'s private history entries', async () => {
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const db = aliceContext.firestore();
+
+      await assertFails(db.collection('users').doc('bob').collection('history').doc('delta-1').set({
+        action: 'taskCompleted',
+        taskId: 'task-123'
+      }));
+
+      await assertFails(db.collection('users').doc('bob').collection('history').doc('delta-1').get());
+    });
+
+    it('allows family members to read and create family history, but denies update and delete (append-only)', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' },
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+      });
+
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const aliceDb = aliceContext.firestore();
+      const bobContext = testEnv.authenticatedContext('bob');
+      const bobDb = bobContext.firestore();
+
+      // Bob creates family history entry
+      await assertSucceeds(bobDb.collection('families').doc('fam-1').collection('history').doc('delta-1').set({
+        action: 'familyTaskCompleted',
+        taskId: 'task-fam-1',
+        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+      }));
+
+      // Alice reads family history entry
+      await assertSucceeds(aliceDb.collection('families').doc('fam-1').collection('history').doc('delta-1').get());
+
+      // Alice tries to update history entry (denied: append-only)
+      await assertFails(aliceDb.collection('families').doc('fam-1').collection('history').doc('delta-1').update({
+        action: 'tampered'
+      }));
+
+      // Alice (parent) tries to delete history entry (denied: append-only for clients)
+      await assertFails(aliceDb.collection('families').doc('fam-1').collection('history').doc('delta-1').delete());
+    });
+  });
 });
+
