@@ -12,7 +12,7 @@ concurrency:
 jobs:
   deploy_prod_firebase_web:
     runs-on: ubuntu-latest
-    needs: deploy_prod_firebase_rules
+    needs: [deploy_prod_backend]
     
     defaults:
       run:
@@ -64,7 +64,7 @@ jobs:
 
   deploy_prod_firebase_android:
     runs-on: ubuntu-latest
-    needs: deploy_prod_firebase_rules
+    needs: [deploy_prod_backend]
     
     defaults:
       run:
@@ -124,7 +124,7 @@ jobs:
 
   deploy_prod_google_play:
     runs-on: ubuntu-latest
-    needs: deploy_prod_firebase_rules
+    needs: [deploy_prod_backend]
     
     defaults:
       run:
@@ -183,7 +183,8 @@ jobs:
           track: internal
           status: completed
 
-  deploy_prod_firebase_rules:
+  deploy_prod_backend:
+    name: Deploy Backend (Firestore Rules & Cloud Functions)
     runs-on: ubuntu-latest
 
     steps:
@@ -202,11 +203,24 @@ jobs:
           node-version: 20
 
       - name: Deploy Firestore Rules
+        working-directory: ./backend
         env:
           FIREBASE_SERVICE_ACCOUNT_PROD: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT_PROD" > service-account.json
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
           npx --yes firebase-tools@15.22.3 deploy --only firestore:rules --project nothing-ever-happens-prod
+          rm -f service-account.json
+
+      - name: Deploy Cloud Functions
         working-directory: ./backend
+        env:
+          FIREBASE_SERVICE_ACCOUNT_PROD: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NOTHING_EVER_HAPPENS_PROD }}
+        run: |
+          npm --prefix functions ci
+          echo "$FIREBASE_SERVICE_ACCOUNT_PROD" > service-account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
+          npx --yes firebase-tools@15.22.3 deploy --only functions --project nothing-ever-happens-prod
+          rm -f service-account.json
+
 
