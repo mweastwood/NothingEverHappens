@@ -167,7 +167,7 @@ class FamilyRepository {
     if (prevFamilyId != null &&
         prevFamilyId.isNotEmpty &&
         prevFamilyId != invite.familyId) {
-      await leaveFamily(prevFamilyId);
+      await leaveFamily(prevFamilyId, batch: batch);
     }
 
     batch.update(familyRef, {'members.$_userId': newMember.toJson()});
@@ -225,11 +225,12 @@ class FamilyRepository {
     await _firestore.collection('invites').doc(inviteId).delete();
   }
 
-  Future<void> leaveFamily(String familyId) async {
+  Future<void> leaveFamily(String familyId, {WriteBatch? batch}) async {
     final familyRef = _firestore.collection('families').doc(familyId);
     final familyDoc = await familyRef.get();
     final familyData = familyDoc.data();
-    final batch = _firestore.batch();
+    final isExternalBatch = batch != null;
+    final targetBatch = batch ?? _firestore.batch();
 
     if (familyData != null) {
       final membersJson = familyData['members'] as Map<String, dynamic>? ?? {};
@@ -249,7 +250,7 @@ class FamilyRepository {
         for (final doc in tasksSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
-          batch.set(
+          targetBatch.set(
             _firestore
                 .collection('users')
                 .doc(_userId)
@@ -257,14 +258,14 @@ class FamilyRepository {
                 .doc(doc.id),
             data,
           );
-          batch.delete(doc.reference);
+          targetBatch.delete(doc.reference);
         }
 
         final instancesSnap = await familyRef.collection('instances').get();
         for (final doc in instancesSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
-          batch.set(
+          targetBatch.set(
             _firestore
                 .collection('users')
                 .doc(_userId)
@@ -272,14 +273,14 @@ class FamilyRepository {
                 .doc(doc.id),
             data,
           );
-          batch.delete(doc.reference);
+          targetBatch.delete(doc.reference);
         }
 
         final recipesSnap = await familyRef.collection('recipes').get();
         for (final doc in recipesSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
-          batch.set(
+          targetBatch.set(
             _firestore
                 .collection('users')
                 .doc(_userId)
@@ -287,12 +288,14 @@ class FamilyRepository {
                 .doc(doc.id),
             data,
           );
-          batch.delete(doc.reference);
+          targetBatch.delete(doc.reference);
         }
 
-        batch.delete(familyRef);
+        targetBatch.delete(familyRef);
       } else {
-        batch.update(familyRef, {'members.$_userId': FieldValue.delete()});
+        targetBatch.update(familyRef, {
+          'members.$_userId': FieldValue.delete(),
+        });
 
         final currentMember = members[_userId];
         if (currentMember?.role == FamilyRole.parent) {
@@ -301,23 +304,27 @@ class FamilyRepository {
           );
           if (!hasOtherParent && remainingMembers.isNotEmpty) {
             final nextParent = remainingMembers.first;
-            batch.update(familyRef, {
+            targetBatch.update(familyRef, {
               'members.${nextParent.userId}.role': FamilyRole.parent.toJson(),
             });
-            batch.set(_firestore.collection('users').doc(nextParent.userId), {
-              'familyRole': FamilyRole.parent.toJson(),
-            }, SetOptions(merge: true));
+            targetBatch.set(
+              _firestore.collection('users').doc(nextParent.userId),
+              {'familyRole': FamilyRole.parent.toJson()},
+              SetOptions(merge: true),
+            );
           }
         }
       }
     }
 
-    batch.set(_firestore.collection('users').doc(_userId), {
-      'familyId': FieldValue.delete(),
-      'familyRole': FieldValue.delete(),
-    }, SetOptions(merge: true));
+    if (!isExternalBatch) {
+      targetBatch.set(_firestore.collection('users').doc(_userId), {
+        'familyId': FieldValue.delete(),
+        'familyRole': FieldValue.delete(),
+      }, SetOptions(merge: true));
 
-    await batch.commit();
+      await targetBatch.commit();
+    }
   }
 
   Future<void> updateClientMetadata({
