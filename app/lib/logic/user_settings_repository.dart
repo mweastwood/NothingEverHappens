@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'user_settings.dart';
+import 'firestore_paths.dart';
 import 'auth_repository.dart';
 import 'task_repository.dart';
 import 'hive_local_data_source.dart';
@@ -68,9 +69,9 @@ class UserSettingsRepository {
   void _startListeningToRemoteSettings() {
     if (_firestore == null || _userId.isEmpty) return;
     final docRef = _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(_userId)
-        .collection('settings')
+        .collection(FirestorePaths.settings)
         .doc('agile');
 
     _remoteSettingsSub?.cancel();
@@ -101,9 +102,9 @@ class UserSettingsRepository {
   DocumentReference<UserSettings>? _settingsRefForUser(String userId) {
     if (_firestore == null || userId.isEmpty) return null;
     return _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(userId)
-        .collection('settings')
+        .collection(FirestorePaths.settings)
         .doc('agile')
         .withConverter<UserSettings>(
           fromFirestore: (snapshot, _) =>

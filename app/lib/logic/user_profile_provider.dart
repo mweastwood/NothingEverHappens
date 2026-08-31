@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_repository.dart';
 import 'family_repository.dart';
+import 'firestore_paths.dart';
 import 'task_repository.dart';
 
 String extractFirstName(String rawName) {
@@ -58,7 +59,10 @@ final userNameProvider = FutureProvider.family<String, String>((
     try {
       final firestore =
           ref.watch(firestoreProvider) ?? FirebaseFirestore.instance;
-      final doc = await firestore.collection('users').doc(userId).get();
+      final doc = await firestore
+          .collection(FirestorePaths.users)
+          .doc(userId)
+          .get();
       final data = doc.data();
       final displayName = data?['displayName'] as String?;
       if (displayName != null && displayName.trim().isNotEmpty) {

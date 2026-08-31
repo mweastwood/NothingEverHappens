@@ -9,6 +9,7 @@ import 'app_logger.dart';
 import 'civil_day.dart';
 import 'error_handler.dart';
 import 'family.dart';
+import 'firestore_paths.dart';
 import 'notification_service.dart';
 import 'relative_time.dart';
 import 'scheduler_engine.dart';
@@ -74,14 +75,7 @@ class FirestoreTaskRepository implements TaskRepository {
   }
 
   CollectionReference<TaskSchedule> _tasksRefForUser(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('tasks')
-        .withConverter<TaskSchedule>(
-          fromFirestore: (snapshot, _) => TaskSchedule.fromFirestore(snapshot),
-          toFirestore: (task, _) => task.toFirestore(),
-        );
+    return FirestoreCollections.userTasks(_firestore, userId);
   }
 
   CollectionReference<TaskSchedule> get _tasksRef => _tasksRefForUser(_userId);
@@ -93,14 +87,7 @@ class FirestoreTaskRepository implements TaskRepository {
   }
 
   CollectionReference<TaskInstance> _instancesRefForUser(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('instances')
-        .withConverter<TaskInstance>(
-          fromFirestore: (snapshot, _) => TaskInstance.fromFirestore(snapshot),
-          toFirestore: (instance, _) => instance.toFirestore(),
-        );
+    return FirestoreCollections.userInstances(_firestore, userId);
   }
 
   CollectionReference<TaskInstance> get _instancesRef =>
@@ -120,16 +107,10 @@ class FirestoreTaskRepository implements TaskRepository {
     String? familyId,
   ) {
     if (task.isFamily && familyId != null && familyId.isNotEmpty) {
-      return _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('tasks')
-          .doc(task.id)
-          .withConverter<TaskSchedule>(
-            fromFirestore: (snapshot, _) =>
-                TaskSchedule.fromFirestore(snapshot),
-            toFirestore: (task, _) => task.toFirestore(),
-          );
+      return FirestoreCollections.familyTasks(
+        _firestore,
+        familyId,
+      ).doc(task.id);
     }
     return _tasksRef.doc(task.id);
   }
@@ -140,16 +121,7 @@ class FirestoreTaskRepository implements TaskRepository {
     String? familyId,
   ) {
     if (isFamily && familyId != null && familyId.isNotEmpty) {
-      return _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('instances')
-          .doc(id)
-          .withConverter<TaskInstance>(
-            fromFirestore: (snapshot, _) =>
-                TaskInstance.fromFirestore(snapshot),
-            toFirestore: (instance, _) => instance.toFirestore(),
-          );
+      return FirestoreCollections.familyInstances(_firestore, familyId).doc(id);
     }
     return _instancesRef.doc(id);
   }
@@ -176,9 +148,9 @@ class FirestoreTaskRepository implements TaskRepository {
       // Try raw personal doc fetch first
       try {
         final rawDoc = await _firestore
-            .collection('users')
+            .collection(FirestorePaths.users)
             .doc(_userId)
-            .collection('tasks')
+            .collection(FirestorePaths.tasks)
             .doc(searchId)
             .get();
         if (rawDoc.exists && rawDoc.data() != null) {
@@ -203,9 +175,9 @@ class FirestoreTaskRepository implements TaskRepository {
       if (familyId != null && familyId.isNotEmpty) {
         try {
           final familyDoc = await _firestore
-              .collection('families')
+              .collection(FirestorePaths.families)
               .doc(familyId)
-              .collection('tasks')
+              .collection(FirestorePaths.tasks)
               .doc(searchId)
               .get();
           if (familyDoc.exists && familyDoc.data() != null) {
@@ -225,17 +197,10 @@ class FirestoreTaskRepository implements TaskRepository {
 
     final familyId = await getFamilyId();
     if (familyId != null && familyId.isNotEmpty) {
-      final familyDoc = await _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('instances')
-          .doc(id)
-          .withConverter<TaskInstance>(
-            fromFirestore: (snapshot, _) =>
-                TaskInstance.fromFirestore(snapshot),
-            toFirestore: (instance, _) => instance.toFirestore(),
-          )
-          .get();
+      final familyDoc = await FirestoreCollections.familyInstances(
+        _firestore,
+        familyId,
+      ).doc(id).get();
       if (familyDoc.exists) return familyDoc.data();
     }
     return null;
@@ -282,7 +247,7 @@ class FirestoreTaskRepository implements TaskRepository {
     });
 
     return _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(_userId)
         .snapshots()
         .map((doc) => doc.data()?['familyId'] as String? ?? '')
@@ -296,15 +261,10 @@ class FirestoreTaskRepository implements TaskRepository {
               return personalTasks;
             });
           } else {
-            final familyTasksRef = _firestore
-                .collection('families')
-                .doc(familyId)
-                .collection('tasks')
-                .withConverter<TaskSchedule>(
-                  fromFirestore: (snapshot, _) =>
-                      TaskSchedule.fromFirestore(snapshot),
-                  toFirestore: (task, _) => task.toFirestore(),
-                );
+            final familyTasksRef = FirestoreCollections.familyTasks(
+              _firestore,
+              familyId,
+            );
 
             final familyStream = Rx.retry(
               () => familyTasksRef.snapshots().map((snapshot) {
@@ -333,7 +293,7 @@ class FirestoreTaskRepository implements TaskRepository {
     });
 
     return _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(_userId)
         .snapshots()
         .map((doc) => doc.data()?['familyId'] as String? ?? '')
@@ -342,15 +302,10 @@ class FirestoreTaskRepository implements TaskRepository {
           if (familyId.isEmpty) {
             return personalStream;
           } else {
-            final familyInstancesRef = _firestore
-                .collection('families')
-                .doc(familyId)
-                .collection('instances')
-                .withConverter<TaskInstance>(
-                  fromFirestore: (snapshot, _) =>
-                      TaskInstance.fromFirestore(snapshot),
-                  toFirestore: (instance, _) => instance.toFirestore(),
-                );
+            final familyInstancesRef = FirestoreCollections.familyInstances(
+              _firestore,
+              familyId,
+            );
 
             final familyStream = Rx.retry(
               () => familyInstancesRef.snapshots().map((snapshot) {
@@ -460,15 +415,10 @@ class FirestoreTaskRepository implements TaskRepository {
         .map((d) => d.data())
         .toList();
     if (familyId != null && familyId.isNotEmpty) {
-      final familyInstancesRef = _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('instances')
-          .withConverter<TaskInstance>(
-            fromFirestore: (snapshot, _) =>
-                TaskInstance.fromFirestore(snapshot),
-            toFirestore: (instance, _) => instance.toFirestore(),
-          );
+      final familyInstancesRef = FirestoreCollections.familyInstances(
+        _firestore,
+        familyId,
+      );
       final familyInstances = await familyInstancesRef
           .where('updatedAt', isGreaterThan: cutoffDate)
           .get();
@@ -479,9 +429,9 @@ class FirestoreTaskRepository implements TaskRepository {
 
   Future<UserSettings> _fetchAgileUserSettings() async {
     final settingsSnapshot = await _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(_userId)
-        .collection('settings')
+        .collection(FirestorePaths.settings)
         .doc('agile')
         .get();
     return UserSettings.fromJson(settingsSnapshot.data() ?? {});
@@ -497,15 +447,10 @@ class FirestoreTaskRepository implements TaskRepository {
       freshTasksMap[doc.id] = doc.data();
     }
     if (familyId != null && familyId.isNotEmpty) {
-      final familyTasksRef = _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('tasks')
-          .withConverter<TaskSchedule>(
-            fromFirestore: (snapshot, _) =>
-                TaskSchedule.fromFirestore(snapshot),
-            toFirestore: (task, _) => task.toFirestore(),
-          );
+      final familyTasksRef = FirestoreCollections.familyTasks(
+        _firestore,
+        familyId,
+      );
       final familyTasksSnap = await familyTasksRef.get();
       for (final doc in familyTasksSnap.docs) {
         freshTasksMap[doc.id] = doc.data();
@@ -859,15 +804,10 @@ class FirestoreTaskRepository implements TaskRepository {
           .toList();
 
       if (familyId != null && familyId.isNotEmpty) {
-        final familyTasksRef = _firestore
-            .collection('families')
-            .doc(familyId)
-            .collection('tasks')
-            .withConverter<TaskSchedule>(
-              fromFirestore: (snapshot, _) =>
-                  TaskSchedule.fromFirestore(snapshot),
-              toFirestore: (task, _) => task.toFirestore(),
-            );
+        final familyTasksRef = FirestoreCollections.familyTasks(
+          _firestore,
+          familyId,
+        );
         final familyTasksSnap = await familyTasksRef.get();
         allTasks.addAll(familyTasksSnap.docs.map((d) => d.data()));
       }
@@ -925,9 +865,9 @@ class FirestoreTaskRepository implements TaskRepository {
         // Family -> Personal
         final familyDocRef = (familyId != null && familyId.isNotEmpty)
             ? _firestore
-                  .collection('families')
+                  .collection(FirestorePaths.families)
                   .doc(familyId)
-                  .collection('tasks')
+                  .collection(FirestorePaths.tasks)
                   .doc(newTask.id)
             : null;
         if (familyDocRef != null) {
@@ -948,17 +888,10 @@ class FirestoreTaskRepository implements TaskRepository {
 
     final Future<QuerySnapshot<TaskInstance>>? familySnapFuture =
         (familyId != null && familyId.isNotEmpty)
-        ? _firestore
-              .collection('families')
-              .doc(familyId)
-              .collection('instances')
-              .withConverter<TaskInstance>(
-                fromFirestore: (snapshot, _) =>
-                    TaskInstance.fromFirestore(snapshot),
-                toFirestore: (instance, _) => instance.toFirestore(),
-              )
-              .where('scheduleId', isEqualTo: newTask.id)
-              .get()
+        ? FirestoreCollections.familyInstances(
+            _firestore,
+            familyId,
+          ).where('scheduleId', isEqualTo: newTask.id).get()
         : null;
 
     final results = await Future.wait([personalSnapFuture, ?familySnapFuture]);
@@ -1043,17 +976,10 @@ class FirestoreTaskRepository implements TaskRepository {
     }
 
     if (familyId != null && familyId.isNotEmpty) {
-      final familyInstances = await _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('instances')
-          .where('scheduleId', isEqualTo: targetId)
-          .withConverter<TaskInstance>(
-            fromFirestore: (snapshot, _) =>
-                TaskInstance.fromFirestore(snapshot),
-            toFirestore: (instance, _) => instance.toFirestore(),
-          )
-          .get();
+      final familyInstances = await FirestoreCollections.familyInstances(
+        _firestore,
+        familyId,
+      ).where('scheduleId', isEqualTo: targetId).get();
       for (final doc in familyInstances.docs) {
         if (doc.data().status == TaskStatus.pending) {
           pendingInstances.add(doc.data());
@@ -1103,7 +1029,10 @@ class FirestoreTaskRepository implements TaskRepository {
 
   Future<Family?> _fetchFamily(String familyId) async {
     try {
-      final doc = await _firestore.collection('families').doc(familyId).get();
+      final doc = await _firestore
+          .collection(FirestorePaths.families)
+          .doc(familyId)
+          .get();
       if (doc.exists && doc.data() != null) {
         return Family.fromJson(doc.data()!, doc.id);
       }
@@ -1394,17 +1323,10 @@ class FirestoreTaskRepository implements TaskRepository {
     String? familyId,
   ) async {
     if (isFamily && familyId != null && familyId.isNotEmpty) {
-      final familySnap = await _firestore
-          .collection('families')
-          .doc(familyId)
-          .collection('instances')
-          .withConverter<TaskInstance>(
-            fromFirestore: (snapshot, _) =>
-                TaskInstance.fromFirestore(snapshot),
-            toFirestore: (instance, _) => instance.toFirestore(),
-          )
-          .where('scheduleId', isEqualTo: scheduleId)
-          .get();
+      final familySnap = await FirestoreCollections.familyInstances(
+        _firestore,
+        familyId,
+      ).where('scheduleId', isEqualTo: scheduleId).get();
       return familySnap.docs.map((d) => d.data()).toList();
     }
     final personalSnap = await _instancesRef

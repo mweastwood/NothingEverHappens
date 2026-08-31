@@ -9,6 +9,7 @@ import 'package:nothing_ever_happens/logic/subscription_service.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/firestore_paths.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 import 'package:rxdart/rxdart.dart';
@@ -164,7 +165,7 @@ class TaskSyncService {
     _updateClientMetadata();
 
     _userDocSub = _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(_userId)
         .snapshots()
         .listen(
@@ -194,9 +195,9 @@ class TaskSyncService {
         );
 
     _tasksSub = _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(_userId)
-        .collection('tasks')
+        .collection(FirestorePaths.tasks)
         .snapshots(includeMetadataChanges: true)
         .listen(
           (snapshot) async {
@@ -222,9 +223,9 @@ class TaskSyncService {
         );
 
     _instancesSub = _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(_userId)
-        .collection('instances')
+        .collection(FirestorePaths.instances)
         .snapshots(includeMetadataChanges: true)
         .listen(
           (snapshot) async {
@@ -250,9 +251,9 @@ class TaskSyncService {
         );
 
     _recipesSub = _firestore
-        .collection('users')
+        .collection(FirestorePaths.users)
         .doc(_userId)
-        .collection('recipes')
+        .collection(FirestorePaths.recipes)
         .snapshots()
         .listen(
           (snapshot) async {
@@ -272,9 +273,9 @@ class TaskSyncService {
 
   void _startListeningToFamilyRemote(String familyId) {
     _familyTasksSub = _firestore
-        .collection('families')
+        .collection(FirestorePaths.families)
         .doc(familyId)
-        .collection('tasks')
+        .collection(FirestorePaths.tasks)
         .snapshots(includeMetadataChanges: true)
         .listen(
           (snapshot) async {
@@ -300,9 +301,9 @@ class TaskSyncService {
         );
 
     _familyInstancesSub = _firestore
-        .collection('families')
+        .collection(FirestorePaths.families)
         .doc(familyId)
-        .collection('instances')
+        .collection(FirestorePaths.instances)
         .snapshots(includeMetadataChanges: true)
         .listen(
           (snapshot) async {
@@ -328,9 +329,9 @@ class TaskSyncService {
         );
 
     _familyRecipesSub = _firestore
-        .collection('families')
+        .collection(FirestorePaths.families)
         .doc(familyId)
-        .collection('recipes')
+        .collection(FirestorePaths.recipes)
         .snapshots()
         .listen(
           (snapshot) async {
@@ -544,16 +545,16 @@ class TaskSyncService {
     for (final remId in remoteIdsToDelete) {
       if (isFamily && familyId != null && familyId.isNotEmpty) {
         await _firestore
-            .collection('families')
+            .collection(FirestorePaths.families)
             .doc(familyId)
-            .collection('instances')
+            .collection(FirestorePaths.instances)
             .doc(remId)
             .delete();
       } else {
         await _firestore
-            .collection('users')
+            .collection(FirestorePaths.users)
             .doc(_userId)
-            .collection('instances')
+            .collection(FirestorePaths.instances)
             .doc(remId)
             .delete();
       }
@@ -655,16 +656,16 @@ class TaskSyncService {
               // Deleted locally, remove from remote
               if (familyId != null && familyId.isNotEmpty) {
                 await _firestore
-                    .collection('families')
+                    .collection(FirestorePaths.families)
                     .doc(familyId)
-                    .collection('tasks')
+                    .collection(FirestorePaths.tasks)
                     .doc(taskId)
                     .delete();
               }
               await _firestore
-                  .collection('users')
+                  .collection(FirestorePaths.users)
                   .doc(_userId)
-                  .collection('tasks')
+                  .collection(FirestorePaths.tasks)
                   .doc(taskId)
                   .delete();
             }
@@ -675,16 +676,16 @@ class TaskSyncService {
             } else {
               if (familyId != null && familyId.isNotEmpty) {
                 await _firestore
-                    .collection('families')
+                    .collection(FirestorePaths.families)
                     .doc(familyId)
-                    .collection('instances')
+                    .collection(FirestorePaths.instances)
                     .doc(taskId)
                     .delete();
               }
               await _firestore
-                  .collection('users')
+                  .collection(FirestorePaths.users)
                   .doc(_userId)
-                  .collection('instances')
+                  .collection(FirestorePaths.instances)
                   .doc(taskId)
                   .delete();
             }
@@ -723,29 +724,29 @@ class TaskSyncService {
     final familyId = await _getFamilyId();
     if (task.isFamily && familyId != null && familyId.isNotEmpty) {
       await _firestore
-          .collection('families')
+          .collection(FirestorePaths.families)
           .doc(familyId)
-          .collection('tasks')
+          .collection(FirestorePaths.tasks)
           .doc(task.id)
           .set(task.toFirestore());
       await _firestore
-          .collection('users')
+          .collection(FirestorePaths.users)
           .doc(_userId)
-          .collection('tasks')
+          .collection(FirestorePaths.tasks)
           .doc(task.id)
           .delete();
     } else {
       await _firestore
-          .collection('users')
+          .collection(FirestorePaths.users)
           .doc(_userId)
-          .collection('tasks')
+          .collection(FirestorePaths.tasks)
           .doc(task.id)
           .set(task.toFirestore());
       if (familyId != null && familyId.isNotEmpty) {
         await _firestore
-            .collection('families')
+            .collection(FirestorePaths.families)
             .doc(familyId)
-            .collection('tasks')
+            .collection(FirestorePaths.tasks)
             .doc(task.id)
             .delete();
       }
@@ -767,29 +768,29 @@ class TaskSyncService {
     final familyId = await _getFamilyId();
     if (inst.isFamily && familyId != null && familyId.isNotEmpty) {
       await _firestore
-          .collection('families')
+          .collection(FirestorePaths.families)
           .doc(familyId)
-          .collection('instances')
+          .collection(FirestorePaths.instances)
           .doc(inst.id)
           .set(inst.toFirestore());
       await _firestore
-          .collection('users')
+          .collection(FirestorePaths.users)
           .doc(_userId)
-          .collection('instances')
+          .collection(FirestorePaths.instances)
           .doc(inst.id)
           .delete();
     } else {
       await _firestore
-          .collection('users')
+          .collection(FirestorePaths.users)
           .doc(_userId)
-          .collection('instances')
+          .collection(FirestorePaths.instances)
           .doc(inst.id)
           .set(inst.toFirestore());
       if (familyId != null && familyId.isNotEmpty) {
         await _firestore
-            .collection('families')
+            .collection(FirestorePaths.families)
             .doc(familyId)
-            .collection('instances')
+            .collection(FirestorePaths.instances)
             .doc(inst.id)
             .delete();
       }
@@ -811,20 +812,23 @@ class TaskSyncService {
     try {
       final now = DateTime.now().toUtc();
       final batch = _firestore.batch();
-      batch.set(_firestore.collection('users').doc(_userId), {
+      batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
         'appVersion': AppVersion.display,
         'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
         'lastSeenAt': now.toIso8601String(),
       }, SetOptions(merge: true));
 
       if (_familyId != null && _familyId!.isNotEmpty) {
-        batch.update(_firestore.collection('families').doc(_familyId), {
-          'members.$_userId.appVersion': AppVersion.display,
-          'members.$_userId.platform': kIsWeb
-              ? 'web'
-              : defaultTargetPlatform.name,
-          'members.$_userId.lastSeenAt': now.toIso8601String(),
-        });
+        batch.update(
+          _firestore.collection(FirestorePaths.families).doc(_familyId),
+          {
+            'members.$_userId.appVersion': AppVersion.display,
+            'members.$_userId.platform': kIsWeb
+                ? 'web'
+                : defaultTargetPlatform.name,
+            'members.$_userId.lastSeenAt': now.toIso8601String(),
+          },
+        );
       }
       await batch.commit();
     } catch (e) {
