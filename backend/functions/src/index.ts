@@ -2,10 +2,27 @@ import * as admin from "firebase-admin";
 import { onRequest } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { validateTaskEvent, processExternalTaskEvent, authenticateTaskEventRequest } from "./task_events";
+import { handleDeleteUserAccount } from "./account_deletion";
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
 const db = admin.firestore();
+const auth = admin.auth();
+
+/**
+ * HTTP endpoint for permanently deleting a user account and cascading all associated data.
+ * POST /deleteUserAccount
+ */
+export const deleteUserAccount = onRequest(
+  {
+    cors: true,
+    memory: "256MiB",
+  },
+  async (req, res) => {
+    await handleDeleteUserAccount(req, res, db, auth);
+  }
+);
+
 
 /**
  * HTTP endpoint for receiving external task events from satellite apps (PetalCount, TwelveStars, etc.).

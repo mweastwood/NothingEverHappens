@@ -6,13 +6,17 @@
     <title>Account Deletion Request - Nothing Ever Happens</title>
     
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Request account and data deletion for the Nothing Ever Happens application. Find steps to delete your account in-app or via request.">
+    <meta name="description" content="Request account and data deletion for the Nothing Ever Happens application. Find steps to delete your account online or in-app.">
     <meta name="robots" content="index, follow">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Firebase App & Auth SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     
     <style>
         :root {
@@ -25,11 +29,20 @@
             --accent: #e94d51;
             --accent-hover: #d13d41;
             --accent-light: #fde8e8;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --danger-bg: #fef2f2;
+            --danger-border: #fecaca;
+            --success: #16a34a;
+            --success-bg: #f0fdf4;
+            --success-border: #bbf7d0;
             --border-color: #e2e8f0;
+            --border-subtle: #f1f5f9;
             --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
             --font-body: 'Inter', system-ui, -apple-system, sans-serif;
             --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -41,7 +54,12 @@
                 --text-secondary: #cbd5e1;
                 --text-muted: #94a3b8;
                 --accent-light: #3b2022;
+                --danger-bg: #450a0a;
+                --danger-border: #7f1d1d;
+                --success-bg: #052e16;
+                --success-border: #14532d;
                 --border-color: #334155;
+                --border-subtle: #1e293b;
                 --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
                 --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
             }
@@ -69,7 +87,7 @@
 
         header {
             text-align: center;
-            margin-bottom: 3rem;
+            margin-bottom: 2.5rem;
             padding-bottom: 2rem;
             border-bottom: 1px solid var(--border-color);
         }
@@ -113,15 +131,41 @@
             margin-bottom: 2rem;
         }
 
+        .interactive-card {
+            border: 2px solid var(--accent);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .interactive-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: #ffffff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            margin-bottom: 1rem;
+        }
+
         h2 {
             font-family: var(--font-heading);
             font-size: 1.5rem;
             font-weight: 700;
-            margin-top: 2rem;
+            margin-top: 1.5rem;
             margin-bottom: 1rem;
             color: var(--text-primary);
             border-left: 4px solid var(--accent);
             padding-left: 0.75rem;
+        }
+
+        .interactive-card h2 {
+            margin-top: 0;
+            border-left: none;
+            padding-left: 0;
+            font-size: 1.75rem;
         }
 
         p {
@@ -139,33 +183,72 @@
             margin-bottom: 0.5rem;
         }
 
+        /* Buttons */
         .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background-color: var(--accent);
-            color: #ffffff;
+            gap: 0.5rem;
             font-weight: 600;
-            padding: 0.75rem 1.5rem;
+            padding: 0.85rem 1.75rem;
             border-radius: 12px;
             text-decoration: none;
-            transition: background-color 0.2s ease, transform 0.1s ease;
+            transition: all 0.2s ease;
             box-shadow: var(--shadow);
-            margin-top: 1rem;
             font-family: var(--font-body);
+            font-size: 1rem;
             border: none;
             cursor: pointer;
         }
 
-        .btn:hover {
-            background-color: var(--accent-hover);
+        .btn-google {
+            background-color: #ffffff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-google:hover:not(:disabled) {
+            background-color: #f9fafb;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             transform: translateY(-1px);
         }
 
-        .btn:active {
-            transform: translateY(0);
+        .btn-danger {
+            background-color: var(--danger);
+            color: #ffffff;
         }
 
+        .btn-danger:hover:not(:disabled) {
+            background-color: var(--danger-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: var(--border-subtle);
+            color: var(--text-primary);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            margin-top: 1.5rem;
+        }
+
+        /* Alert / Box Styles */
         .warning-box {
             background-color: var(--accent-light);
             border: 1px solid var(--accent);
@@ -179,6 +262,140 @@
             margin-bottom: 0;
         }
 
+        .alert-error {
+            background-color: var(--danger-bg);
+            border: 1px solid var(--danger-border);
+            color: var(--text-primary);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .alert-success {
+            background-color: var(--success-bg);
+            border: 1px solid var(--success-border);
+            color: var(--text-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        /* User Profile Info Card */
+        .user-profile-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem;
+            background-color: var(--border-subtle);
+            border-radius: 16px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            background-color: var(--accent-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .user-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-email {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-uid {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+            word-break: break-all;
+        }
+
+        /* Checkbox Container */
+        .checkbox-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background-color: var(--danger-bg);
+            border: 1px solid var(--danger-border);
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            margin-top: 0.25rem;
+            width: 1.2rem;
+            height: 1.2rem;
+            accent-color: var(--danger);
+            cursor: pointer;
+        }
+
+        .checkbox-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            user-select: none;
+            cursor: pointer;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid rgba(233, 77, 81, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-view {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        .success-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+
         footer {
             text-align: center;
             padding: 2rem 0;
@@ -186,6 +403,15 @@
             font-size: 0.9rem;
             border-top: 1px solid var(--border-color);
             margin-top: 4rem;
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
         }
 
         /* Responsive adjustments */
@@ -206,6 +432,15 @@
             h2 {
                 font-size: 1.25rem;
             }
+
+            .btn-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -219,15 +454,100 @@
             <p class="subtitle">Account Deletion & Data Removal</p>
         </header>
 
+        <!-- Section 1: Interactive Online Deletion Form -->
+        <div class="card interactive-card" id="interactiveDeletionCard">
+            <span class="interactive-badge">Web Request Form</span>
+            <h2>Online Account Deletion</h2>
+            <p>If you have uninstalled the app or wish to request deletion online, you can authenticate below with your Google Account to immediately and permanently delete your account and all associated cloud data.</p>
+
+            <!-- Error Banner -->
+            <div id="errorBanner" class="alert-error" style="display: none;">
+                <span style="font-size: 1.25rem;">⚠️</span>
+                <div style="flex: 1;">
+                    <strong id="errorTitle">An error occurred</strong>
+                    <div id="errorMessage" style="font-size: 0.9rem; margin-top: 0.25rem;"></div>
+                </div>
+            </div>
+
+            <!-- State 1: Unauthenticated State -->
+            <div id="unauthState">
+                <button type="button" class="btn btn-google" id="googleSignInBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    Sign in with Google to Delete Account
+                </button>
+            </div>
+
+            <!-- State 2: Authenticated Confirmation State -->
+            <div id="authState" style="display: none;">
+                <div class="user-profile-card">
+                    <img id="userPhoto" class="user-avatar" style="display: none;" alt="User avatar" />
+                    <div id="userAvatarFallback" class="user-avatar">👤</div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">User</div>
+                        <div class="user-email" id="userEmail">user@example.com</div>
+                        <div class="user-uid" id="userUid">UID: ...</div>
+                    </div>
+                </div>
+
+                <div class="warning-box" style="margin-top: 0;">
+                    <p><strong>⚠️ Warning: Permanent Account Deletion</strong></p>
+                    <p style="margin-bottom: 0.5rem;">Continuing with this action will immediately and irreversibly delete:</p>
+                    <ul style="margin-bottom: 0;">
+                        <li>Your authentication credentials and profile information</li>
+                        <li>All created tasks, schedules, instances, recurrence rules, and history</li>
+                        <li>Your custom recipes and configuration settings</li>
+                        <li>Your family associations and pending family invitations</li>
+                    </ul>
+                </div>
+
+                <label class="checkbox-container" for="confirmCheckbox">
+                    <input type="checkbox" id="confirmCheckbox" />
+                    <span class="checkbox-label">I understand that this action is irreversible and all my data will be permanently deleted.</span>
+                </label>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-danger" id="deleteAccountBtn" disabled>
+                        Permanently Delete My Account
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancelSignOutBtn">
+                        Cancel / Sign Out
+                    </button>
+                </div>
+            </div>
+
+            <!-- State 3: Processing State -->
+            <div id="loadingState" class="loading-view" style="display: none;">
+                <div class="spinner"></div>
+                <h3 style="font-family: var(--font-heading); margin-bottom: 0.5rem;">Deleting Account...</h3>
+                <p>Purging your profile and all synced task data. Please do not close or refresh this page.</p>
+            </div>
+
+            <!-- State 4: Success State -->
+            <div id="successState" class="alert-success" style="display: none;">
+                <div class="success-icon">✅</div>
+                <h3 style="font-family: var(--font-heading); font-size: 1.5rem; margin-bottom: 0.75rem;">Account Successfully Deleted</h3>
+                <p>Your <strong>Nothing Ever Happens</strong> user account, authentication profile, and all synced data have been permanently removed from our databases.</p>
+                <div class="btn-group" style="justify-content: center; margin-top: 1.5rem;">
+                    <a href="index.html" class="btn btn-secondary">Return to Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: In-App Deletion Guidance & Policies -->
         <main class="card">
-            <p>Under Google Play policies, <strong>Nothing Ever Happens</strong> (developed by <strong>mweastwood</strong>) provides a straightforward process for deleting your user account and all associated personal data.</p>
+            <p>Under Google Play policies, <strong>Nothing Ever Happens</strong> (developed by <strong>mweastwood</strong>) provides transparent options for deleting your user account and all associated personal data.</p>
             
             <div class="warning-box">
                 <p><strong>⚠️ Action is Permanent:</strong> Once your account is deleted, your data cannot be recovered. Any active session in the app will be terminated immediately.</p>
             </div>
 
-            <h2>How to Request Account Deletion</h2>
-            <p>You can request the deletion of your account and personal data directly from within the application:</p>
+            <h2>Alternative: In-App Account Deletion</h2>
+            <p>You can also request the deletion of your account directly from within the mobile or desktop application:</p>
 
             <ol>
                 <li>Open the <strong>Nothing Ever Happens</strong> app on your device.</li>
@@ -238,17 +558,19 @@
             </ol>
 
             <h2>What Data Is Deleted?</h2>
-            <p>When you delete your account, the following data is permanently purged from our Firebase Auth and Cloud Firestore servers:</p>
+            <p>When you delete your account (either via the web form above or in-app), the following data is permanently purged from our Firebase Auth and Cloud Firestore servers:</p>
             <ul>
                 <li><strong>Account Profile Data:</strong> Display name, email address, profile picture URL, and system User ID (UID).</li>
                 <li><strong>User-Generated Content:</strong> All tasks, categories, task check-off dates, and history logs created by your account.</li>
+                <li><strong>Recipes & Custom Settings:</strong> All personalized scheduling presets and customized configuration parameters.</li>
+                <li><strong>Family Links & Invites:</strong> Any memberships in family groups or pending invitations sent to/from your email.</li>
                 <li><strong>Device Tokens & Sessions:</strong> Active login tokens and credentials used to authorize updates.</li>
             </ul>
 
             <h2>What Data Is Kept / Retention Period</h2>
             <ul>
                 <li><strong>No User Data is Kept:</strong> We do not retain any of your personal identifiers or task lists once deletion is processed.</li>
-                <li><strong>Backups:</strong> Encrypted backup snapshots of the Firebase databases are automatically rotated and completely overwritten/deleted within **30 days**.</li>
+                <li><strong>Backups:</strong> Encrypted backup snapshots of the Firebase databases are automatically rotated and completely overwritten/deleted within <strong>30 days</strong>.</li>
             </ul>
         </main>
 
@@ -257,5 +579,164 @@
             <p><a href="index.html">Back to Privacy Policy</a></p>
         </footer>
     </div>
+
+    <!-- Web Deletion Script -->
+    <script>
+        // Production Firebase Client Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPUySln1rPeM1bSIIL9tRYeGzNT_mr10I",
+            authDomain: "nothing-ever-happens-prod.firebaseapp.com",
+            projectId: "nothing-ever-happens-prod",
+            storageBucket: "nothing-ever-happens-prod.firebasestorage.app",
+            messagingSenderId: "936469690744",
+            appId: "1:936469690744:web:bb27a0b6f2c88dd3f8708d",
+            measurementId: "G-G0JD64ZTQD"
+        };
+
+        const DELETION_ENDPOINT = "https://us-central1-nothing-ever-happens-prod.cloudfunctions.net/deleteUserAccount";
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+
+        // DOM Elements
+        const unauthState = document.getElementById("unauthState");
+        const authState = document.getElementById("authState");
+        const loadingState = document.getElementById("loadingState");
+        const successState = document.getElementById("successState");
+
+        const googleSignInBtn = document.getElementById("googleSignInBtn");
+        const deleteAccountBtn = document.getElementById("deleteAccountBtn");
+        const cancelSignOutBtn = document.getElementById("cancelSignOutBtn");
+        const confirmCheckbox = document.getElementById("confirmCheckbox");
+
+        const userPhoto = document.getElementById("userPhoto");
+        const userAvatarFallback = document.getElementById("userAvatarFallback");
+        const userName = document.getElementById("userName");
+        const userEmail = document.getElementById("userEmail");
+        const userUid = document.getElementById("userUid");
+
+        const errorBanner = document.getElementById("errorBanner");
+        const errorTitle = document.getElementById("errorTitle");
+        const errorMessage = document.getElementById("errorMessage");
+
+        let currentUser = null;
+
+        function showError(title, message) {
+            errorTitle.textContent = title || "Error";
+            errorMessage.textContent = message || "An unexpected error occurred.";
+            errorBanner.style.display = "flex";
+        }
+
+        function clearError() {
+            errorBanner.style.display = "none";
+            errorTitle.textContent = "";
+            errorMessage.textContent = "";
+        }
+
+        function showState(state) {
+            unauthState.style.display = state === "unauth" ? "block" : "none";
+            authState.style.display = state === "auth" ? "block" : "none";
+            loadingState.style.display = state === "loading" ? "block" : "none";
+            successState.style.display = state === "success" ? "block" : "none";
+        }
+
+        // Listen for Auth State changes
+        auth.onAuthStateChanged((user) => {
+            currentUser = user;
+            if (user) {
+                userName.textContent = user.displayName || "User";
+                userEmail.textContent = user.email || "No email";
+                userUid.textContent = "UID: " + user.uid;
+
+                if (user.photoURL) {
+                    userPhoto.src = user.photoURL;
+                    userPhoto.style.display = "block";
+                    userAvatarFallback.style.display = "none";
+                } else {
+                    userPhoto.style.display = "none";
+                    userAvatarFallback.style.display = "flex";
+                    userAvatarFallback.textContent = (user.displayName || user.email || "U").charAt(0).toUpperCase();
+                }
+
+                confirmCheckbox.checked = false;
+                deleteAccountBtn.disabled = true;
+                showState("auth");
+            } else {
+                showState("unauth");
+            }
+        });
+
+        // Sign in with Google
+        googleSignInBtn.addEventListener("click", async () => {
+            clearError();
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                await auth.signInWithPopup(provider);
+            } catch (err) {
+                console.error("Sign-in error:", err);
+                if (err.code === "auth/popup-closed-by-user") {
+                    showError("Sign-in Canceled", "The Google sign-in window was closed before completing verification.");
+                } else {
+                    showError("Authentication Failed", err.message || "Failed to sign in with Google.");
+                }
+            }
+        });
+
+        // Toggle delete button enabled state based on checkbox
+        confirmCheckbox.addEventListener("change", () => {
+            deleteAccountBtn.disabled = !confirmCheckbox.checked;
+        });
+
+        // Cancel / Sign out
+        cancelSignOutBtn.addEventListener("click", async () => {
+            clearError();
+            try {
+                await auth.signOut();
+            } catch (err) {
+                console.error("Sign out error:", err);
+            }
+        });
+
+        // Delete Account Permanently
+        deleteAccountBtn.addEventListener("click", async () => {
+            if (!currentUser || !confirmCheckbox.checked) return;
+
+            clearError();
+            showState("loading");
+
+            try {
+                // Obtain current user ID Token
+                const idToken = await currentUser.getIdToken(true);
+
+                const response = await fetch(DELETION_ENDPOINT, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + idToken
+                    }
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || "Server returned status " + response.status);
+                }
+
+                // Successfully deleted on backend -> sign out locally and show success
+                try {
+                    await auth.signOut();
+                } catch (_) {}
+
+                showState("success");
+            } catch (err) {
+                console.error("Deletion error:", err);
+                showState("auth");
+                showError("Account Deletion Failed", err.message || "Could not complete account deletion. Please try again or contact support.");
+            }
+        });
+    </script>
 </body>
 </html>
