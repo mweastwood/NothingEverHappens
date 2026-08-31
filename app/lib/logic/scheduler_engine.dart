@@ -167,11 +167,6 @@ class SchedulerEngine {
   })
   _evaluateRecurringRules(SchedulerEvaluationContext context) {
     final task = context.task;
-    final taskInstances = context.taskInstances;
-    final now = context.now;
-    final today = context.today;
-    final futureInstancesCount = context.futureInstancesCount;
-
     final List<TaskInstance> toUpdate = [];
     final List<TaskInstance> toSpawn = [];
     final List<String> toDelete = [];
@@ -181,515 +176,21 @@ class SchedulerEngine {
       final s = task.schedules[i];
 
       if (s.schedulingPolicy is CompletionRelativePolicy) {
-        final policy = s.schedulingPolicy as CompletionRelativePolicy;
-        final ruleInstances = taskInstances
-            .where((inst) => _isInstanceForRule(inst, s, task))
-            .toList();
-
-        final Map<CivilDay, List<TaskInstance>> instancesByDate = {};
-        for (final inst in ruleInstances) {
-          instancesByDate.putIfAbsent(inst.scheduledDate, () => []).add(inst);
-        }
-
-        final List<TaskInstance> canonicalInstances = [];
-        for (final entry in instancesByDate.entries) {
-          final insts = entry.value;
-          if (insts.length > 1) {
-            final canonical = _selectCanonicalInstance(insts);
-            canonicalInstances.add(canonical);
-            for (final inst in insts) {
-              if (inst.id != canonical.id && !toDelete.contains(inst.id)) {
-                toDelete.add(inst.id);
-              }
-            }
-          } else {
-            canonicalInstances.add(insts.first);
-          }
-        }
-
-        final pendingForSchedule =
-            canonicalInstances
-                .where((inst) => inst.status == TaskStatus.pending)
-                .toList()
-              ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-
-        if (pendingForSchedule.length > 1) {
-          for (int p = 1; p < pendingForSchedule.length; p++) {
-            if (!toDelete.contains(pendingForSchedule[p].id)) {
-              toDelete.add(pendingForSchedule[p].id);
-            }
-          }
-        }
-
-        if (pendingForSchedule.isEmpty) {
-          CivilDay? dateToSpawn;
-          if (canonicalInstances.isEmpty) {
-            dateToSpawn = s.scheduledDate;
-          } else {
-            final resolved =
-                canonicalInstances
-                    .where((inst) => inst.status != TaskStatus.pending)
-                    .toList()
-                  ..sort(
-                    (a, b) =>
-                        (b.completedAt ??
-                                DateTime.fromMillisecondsSinceEpoch(0))
-                            .compareTo(
-                              a.completedAt ??
-                                  DateTime.fromMillisecondsSinceEpoch(0),
-                            ),
-                  );
-            if (resolved.isNotEmpty) {
-              final latest = resolved.first;
-              final completedAtTime = latest.completedAt ?? now;
-              final nextSpawnTime = completedAtTime.add(policy.interval);
-              if (!now.isBefore(nextSpawnTime)) {
-                dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
-              }
-            }
-          }
-
-          if (dateToSpawn != null) {
-            final instId = generateId();
-            final startRelative = RelativeTime(
-              dayOffset: 0,
-              time: policy.targetTime,
-            );
-            final dueRelative = _getCompletionRelativeDue(
-              s,
-              policy,
-              dateToSpawn,
-            );
-            final notifRelative = _getCompletionRelativeNotifications(
-              s,
-              policy,
-              dateToSpawn,
-            );
-
-            toSpawn.add(
-              TaskInstance(
-                id: instId,
-                scheduleId: task.id,
-                ruleId: s.id,
-                title: task.title,
-                description: task.description,
-                scheduledDate: dateToSpawn,
-                startRelativeTime: startRelative,
-                dueRelativeTime: dueRelative,
-                notificationRelativeTimes: notifRelative,
-                isFamily: task.isFamily,
-                familyCompletionMode: task.familyCompletionMode,
-                priority: task.priority,
-                cycleId: task.cycleId,
-                assignedUserId: task.assignedUserId,
-                status: TaskStatus.pending,
-              ),
-            );
-          }
-        }
+        _evaluateCompletionRelativeRule(
+          context,
+          s,
+          toSpawn: toSpawn,
+          toDelete: toDelete,
+        );
       } else {
-        // FixedCalendarPolicy: N future instances queue-based model
-        final ruleInstances = taskInstances
-            .where((inst) => _isInstanceForRule(inst, s, task))
-            .toList();
-
-        final Map<CivilDay, List<TaskInstance>> instancesByDate = {};
-        for (final inst in ruleInstances) {
-          instancesByDate.putIfAbsent(inst.scheduledDate, () => []).add(inst);
-        }
-
-        final Map<CivilDay, TaskInstance> workingInstances = {};
-        for (final entry in instancesByDate.entries) {
-          final date = entry.key;
-          final insts = entry.value;
-          if (insts.length > 1) {
-            final canonical = _selectCanonicalInstance(insts);
-            workingInstances[date] = canonical;
-            for (final inst in insts) {
-              if (inst.id != canonical.id && !toDelete.contains(inst.id)) {
-                toDelete.add(inst.id);
-              }
-            }
-          } else {
-            workingInstances[date] = insts.first;
-          }
-        }
-
-        final canonicalInstances = workingInstances.values.toList();
-        final pending =
-            canonicalInstances
-                .where((inst) => inst.status == TaskStatus.pending)
-                .toList()
-              ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-
-        // 1. Determine the initial baseDate
-        CivilDay initialBaseDate;
-        if (pending.isNotEmpty) {
-          initialBaseDate = pending.first.scheduledDate;
-        } else {
-          final resolved =
-              canonicalInstances
-                  .where((inst) => inst.status != TaskStatus.pending)
-                  .toList()
-                ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
-          if (resolved.isNotEmpty) {
-            final nextOcc = s.nextOccurrenceAfter(resolved.first.scheduledDate);
-            if (nextOcc == null) {
-              // The schedule rule is finished and has no future occurrences.
-              continue;
-            }
-            if (s.missedOccurrencePolicy.policy != MissedPolicy.stack &&
-                nextOcc.isBefore(today)) {
-              if (s.scheduledDate.compareTo(today) > 0) {
-                initialBaseDate = s.scheduledDate;
-              } else {
-                initialBaseDate = s.occursOn(today)
-                    ? today
-                    : (s.nextOccurrenceAfter(today) ?? nextOcc);
-              }
-            } else {
-              initialBaseDate = nextOcc;
-            }
-          } else {
-            if (s.missedOccurrencePolicy.policy == MissedPolicy.preferNewer &&
-                s.scheduledDate.isBefore(today)) {
-              initialBaseDate = s.occursOn(today)
-                  ? today
-                  : (s.nextOccurrenceAfter(today) ?? s.scheduledDate);
-            } else {
-              initialBaseDate = s.occursOn(s.scheduledDate)
-                  ? s.scheduledDate
-                  : (s.nextOccurrenceAfter(s.scheduledDate) ?? s.scheduledDate);
-            }
-          }
-        }
-
-        final maxEvaluationDate = initialBaseDate.addDays(maxEvaluationDays);
-
-        // Loop to maintain the queue of N future pending instances
-        var currentBaseDate = initialBaseDate;
-        final List<CivilDay> targetDates = [];
-        while (true) {
-          // If the currentBaseDate is past the 30-day cap, we must stop!
-          if (currentBaseDate.compareTo(maxEvaluationDate) > 0) {
-            break;
-          }
-
-          // Generate target pending dates (currentBaseDate up to today, plus N future occurrences after today)
-          targetDates.clear();
-
-          // 1. Generate occurrences from currentBaseDate up to today
-          var current = currentBaseDate;
-          while (current.compareTo(today) <= 0 &&
-              current.compareTo(maxEvaluationDate) <= 0) {
-            targetDates.add(current);
-            final next = s.nextOccurrenceAfter(current);
-            if (next != null) {
-              current = next;
-            } else {
-              break;
-            }
-          }
-
-          // 2. Generate N future occurrences after today
-          var startFuture = today.isBefore(currentBaseDate)
-              ? currentBaseDate
-              : current;
-          if (startFuture.compareTo(today) <= 0) {
-            final next = s.nextOccurrenceAfter(startFuture);
-            if (next != null) {
-              startFuture = next;
-            }
-          }
-
-          current = startFuture;
-          int spawnedFutureCount = 0;
-          final ruleFutureInstancesCount =
-              futureInstancesCount ?? s.futureInstancesCount;
-          while (spawnedFutureCount < ruleFutureInstancesCount) {
-            if (current.compareTo(maxEvaluationDate) > 0) {
-              break;
-            }
-            if (current.compareTo(today) > 0) {
-              final existing = workingInstances[current];
-              final isResolved =
-                  existing != null && existing.status != TaskStatus.pending;
-              if (!isResolved) {
-                targetDates.add(current);
-                spawnedFutureCount++;
-              }
-            }
-            final next = s.nextOccurrenceAfter(current);
-            if (next != null) {
-              current = next;
-            } else {
-              break;
-            }
-          }
-
-          for (final date in targetDates) {
-            if (!workingInstances.containsKey(date)) {
-              final instId = generateId();
-              RelativeTime startRelative = s.startRelativeTime;
-              RelativeTime dueRelative = s.dueRelativeTime;
-              WorkflowInstancePayload? workflowPayload;
-
-              if (task.workflowType == 'mealWorkflow') {
-                final cfg =
-                    task.mealWorkflowConfig ?? const MealWorkflowConfig();
-                startRelative = cfg.selectTime;
-                dueRelative = cfg.selectTime;
-                workflowPayload = WorkflowInstancePayload(
-                  workflowType: 'mealWorkflow',
-                  stage: WorkflowStage.selectMeal,
-                  workflowGroupId:
-                      '${task.id}-${date.year}-${date.month}-${date.day}',
-                );
-              }
-
-              workingInstances[date] = TaskInstance(
-                id: instId,
-                scheduleId: task.id,
-                ruleId: s.id,
-                title: task.title,
-                description: task.description,
-                scheduledDate: date,
-                startRelativeTime: startRelative,
-                dueRelativeTime: dueRelative,
-                notificationRelativeTimes: s.notificationRelativeTimes,
-                isFamily: task.isFamily,
-                familyCompletionMode: task.familyCompletionMode,
-                priority: task.priority,
-                cycleId: task.cycleId,
-                assignedUserId: task.assignedUserId,
-                workflowPayload: workflowPayload,
-                status: TaskStatus.pending,
-              );
-            }
-          }
-
-          // Apply missed policies to the targetDates
-          final policy = s.missedOccurrencePolicy.policy;
-          bool hasNewSkipped = false;
-
-          if (policy == MissedPolicy.stack) {
-            for (final date in targetDates) {
-              final inst = workingInstances[date]!;
-              final isOriginalResolved = canonicalInstances.any(
-                (x) => x.id == inst.id && x.status != TaskStatus.pending,
-              );
-              if (!isOriginalResolved) {
-                workingInstances[date] = inst.copyWith(
-                  status: TaskStatus.pending,
-                );
-              }
-            }
-          } else if (policy == MissedPolicy.autoDismiss) {
-            for (final date in targetDates) {
-              final inst = workingInstances[date]!;
-              final isOriginalResolved = canonicalInstances.any(
-                (x) => x.id == inst.id && x.status != TaskStatus.pending,
-              );
-              if (isOriginalResolved) continue;
-
-              final isExpired = s.missedOccurrencePolicy.isInstanceExpired(
-                inst,
-                now,
-              );
-              final nextStatus = isExpired
-                  ? TaskStatus.skipped
-                  : TaskStatus.pending;
-              if (inst.status != nextStatus) {
-                workingInstances[date] = inst.copyWith(
-                  status: nextStatus,
-                  statusReason: nextStatus == TaskStatus.skipped
-                      ? 'scheduler_auto_dismiss'
-                      : null,
-                  clearStatusReason: nextStatus != TaskStatus.skipped,
-                  lastModifiedByAppVersion: AppVersion.display,
-                  lastModifiedByUserId: context.userId,
-                );
-                if (nextStatus == TaskStatus.skipped) {
-                  hasNewSkipped = true;
-                  logger?.debug(
-                    'scheduler',
-                    'autoDismiss: expired instance skipped for "${task.title}" ($date)',
-                  );
-                }
-              }
-            }
-          } else if (policy == MissedPolicy.preferNewer) {
-            final startedDates = targetDates.where((d) {
-              final inst = workingInstances[d]!;
-              final isOriginalResolved = canonicalInstances.any(
-                (x) => x.id == inst.id && x.status != TaskStatus.pending,
-              );
-              if (isOriginalResolved) return false;
-              final start = inst.startRelativeTime.referenceTo(d);
-              return !now.isBefore(start);
-            }).toList();
-
-            final CivilDay? latestStartedDate = startedDates.isEmpty
-                ? null
-                : startedDates.reduce((a, b) => a.isAfter(b) ? a : b);
-
-            for (final date in targetDates) {
-              final inst = workingInstances[date]!;
-              final isOriginalResolved = canonicalInstances.any(
-                (x) => x.id == inst.id && x.status != TaskStatus.pending,
-              );
-              if (isOriginalResolved) continue;
-
-              final TaskStatus nextStatus;
-              if (latestStartedDate == null ||
-                  date.compareTo(latestStartedDate) >= 0) {
-                nextStatus = TaskStatus.pending;
-              } else {
-                nextStatus = TaskStatus.skipped;
-              }
-              if (inst.status != nextStatus) {
-                workingInstances[date] = inst.copyWith(
-                  status: nextStatus,
-                  statusReason: nextStatus == TaskStatus.skipped
-                      ? 'scheduler_prefer_newer'
-                      : null,
-                  clearStatusReason: nextStatus != TaskStatus.skipped,
-                  lastModifiedByAppVersion: AppVersion.display,
-                  lastModifiedByUserId: context.userId,
-                );
-                if (nextStatus == TaskStatus.skipped) {
-                  hasNewSkipped = true;
-                  logger?.debug(
-                    'scheduler',
-                    'preferNewer: older instance skipped for "${task.title}" ($date in favor of $latestStartedDate)',
-                  );
-                }
-              }
-            }
-          } else if (policy == MissedPolicy.preferOlder) {
-            final startedDates = targetDates.where((d) {
-              final inst = workingInstances[d]!;
-              final isOriginalResolved = canonicalInstances.any(
-                (x) => x.id == inst.id && x.status != TaskStatus.pending,
-              );
-              if (isOriginalResolved) return false;
-              final start = inst.startRelativeTime.referenceTo(d);
-              return !now.isBefore(start);
-            }).toList();
-
-            final CivilDay? earliestStartedDate = startedDates.isEmpty
-                ? null
-                : startedDates.reduce((a, b) => a.isBefore(b) ? a : b);
-
-            for (final date in targetDates) {
-              final inst = workingInstances[date]!;
-              final isOriginalResolved = canonicalInstances.any(
-                (x) => x.id == inst.id && x.status != TaskStatus.pending,
-              );
-              if (isOriginalResolved) continue;
-
-              final TaskStatus nextStatus;
-              if (!now.isBefore(inst.startRelativeTime.referenceTo(date))) {
-                nextStatus = date == earliestStartedDate
-                    ? TaskStatus.pending
-                    : TaskStatus.skipped;
-              } else {
-                nextStatus = TaskStatus.pending;
-              }
-              if (inst.status != nextStatus) {
-                workingInstances[date] = inst.copyWith(
-                  status: nextStatus,
-                  statusReason: nextStatus == TaskStatus.skipped
-                      ? 'scheduler_prefer_older'
-                      : null,
-                  clearStatusReason: nextStatus != TaskStatus.skipped,
-                  lastModifiedByAppVersion: AppVersion.display,
-                  lastModifiedByUserId: context.userId,
-                );
-                if (nextStatus == TaskStatus.skipped) {
-                  hasNewSkipped = true;
-                  logger?.debug(
-                    'scheduler',
-                    'preferOlder: subsequent instance skipped for "${task.title}" ($date, keeping $earliestStartedDate active)',
-                  );
-                }
-              }
-            }
-          }
-
-          // If we had any new skipped instances, the baseDate of the queue might have shifted forward.
-          if (hasNewSkipped) {
-            final pendingAfterMissed =
-                workingInstances.values
-                    .where(
-                      (inst) =>
-                          inst.status == TaskStatus.pending &&
-                          inst.scheduledDate.compareTo(maxEvaluationDate) <= 0,
-                    )
-                    .toList()
-                  ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-
-            if (pendingAfterMissed.isNotEmpty) {
-              final nextBase = pendingAfterMissed.first.scheduledDate;
-              if (nextBase != currentBaseDate) {
-                currentBaseDate = nextBase;
-                continue; // Loop again to fill the queue from the new base date
-              }
-            } else {
-              final lastEvaluatedDate = targetDates.last;
-              final nextOcc = s.nextOccurrenceAfter(lastEvaluatedDate);
-              if (nextOcc != null &&
-                  nextOcc.compareTo(maxEvaluationDate) <= 0) {
-                currentBaseDate = nextOcc;
-                continue;
-              }
-            }
-          }
-
-          break; // Queue is stable
-        }
-
-        // 4. Update, Spawn, or Delete based on the final workingInstances state
-
-        for (final entry in workingInstances.entries) {
-          final date = entry.key;
-          final inst = entry.value;
-          if (date.compareTo(today) <= 0) {
-            if (maxSpawned == null || date.compareTo(maxSpawned) > 0) {
-              maxSpawned = date;
-            }
-          }
-
-          final existsInDb = canonicalInstances.any((x) => x.id == inst.id);
-          if (existsInDb) {
-            final orig = canonicalInstances.firstWhere((x) => x.id == inst.id);
-            if (orig.status != inst.status) {
-              toUpdate.add(inst);
-            }
-          } else {
-            final isSkipOrOlderNewer =
-                (s.missedOccurrencePolicy.policy == MissedPolicy.preferNewer ||
-                s.missedOccurrencePolicy.policy == MissedPolicy.preferOlder);
-            if (inst.status == TaskStatus.skipped && isSkipOrOlderNewer) {
-              // Do not spawn!
-            } else {
-              toSpawn.add(inst);
-            }
-          }
-        }
-
-        // 5. Delete pending instances that are no longer in the target queue (pruning)
-        final futureTargetDates = targetDates
-            .where((d) => d.compareTo(today) > 0)
-            .toSet();
-        for (final inst in pending) {
-          if (inst.scheduledDate.compareTo(today) > 0 &&
-              !futureTargetDates.contains(inst.scheduledDate)) {
-            if (!toDelete.contains(inst.id)) {
-              toDelete.add(inst.id);
-            }
-          }
-        }
+        maxSpawned = _evaluateFixedCalendarRule(
+          context,
+          s,
+          toUpdate: toUpdate,
+          toSpawn: toSpawn,
+          toDelete: toDelete,
+          maxSpawned: maxSpawned,
+        );
       }
     }
 
@@ -699,6 +200,640 @@ class SchedulerEngine {
       toDelete: toDelete,
       maxSpawned: maxSpawned,
     );
+  }
+
+  void _evaluateCompletionRelativeRule(
+    SchedulerEvaluationContext context,
+    TaskScheduleRule s, {
+    required List<TaskInstance> toSpawn,
+    required List<String> toDelete,
+  }) {
+    final task = context.task;
+    final taskInstances = context.taskInstances;
+    final now = context.now;
+    final policy = s.schedulingPolicy as CompletionRelativePolicy;
+    final ruleInstances =
+        taskInstances.where((inst) => _isInstanceForRule(inst, s, task)).toList();
+
+    final Map<CivilDay, List<TaskInstance>> instancesByDate = {};
+    for (final inst in ruleInstances) {
+      instancesByDate.putIfAbsent(inst.scheduledDate, () => []).add(inst);
+    }
+
+    final List<TaskInstance> canonicalInstances = [];
+    for (final entry in instancesByDate.entries) {
+      final insts = entry.value;
+      if (insts.length > 1) {
+        final canonical = _selectCanonicalInstance(insts);
+        canonicalInstances.add(canonical);
+        for (final inst in insts) {
+          if (inst.id != canonical.id && !toDelete.contains(inst.id)) {
+            toDelete.add(inst.id);
+          }
+        }
+      } else {
+        canonicalInstances.add(insts.first);
+      }
+    }
+
+    final pendingForSchedule =
+        canonicalInstances
+            .where((inst) => inst.status == TaskStatus.pending)
+            .toList()
+          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+    if (pendingForSchedule.length > 1) {
+      for (int p = 1; p < pendingForSchedule.length; p++) {
+        if (!toDelete.contains(pendingForSchedule[p].id)) {
+          toDelete.add(pendingForSchedule[p].id);
+        }
+      }
+    }
+
+    if (pendingForSchedule.isEmpty) {
+      CivilDay? dateToSpawn;
+      if (canonicalInstances.isEmpty) {
+        dateToSpawn = s.scheduledDate;
+      } else {
+        final resolved =
+            canonicalInstances
+                .where((inst) => inst.status != TaskStatus.pending)
+                .toList()
+              ..sort(
+                (a, b) =>
+                    (b.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+                        .compareTo(
+                          a.completedAt ??
+                              DateTime.fromMillisecondsSinceEpoch(0),
+                        ),
+              );
+        if (resolved.isNotEmpty) {
+          final latest = resolved.first;
+          final completedAtTime = latest.completedAt ?? now;
+          final nextSpawnTime = completedAtTime.add(policy.interval);
+          if (!now.isBefore(nextSpawnTime)) {
+            dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
+          }
+        }
+      }
+
+      if (dateToSpawn != null) {
+        final instId = generateId();
+        final startRelative = RelativeTime(
+          dayOffset: 0,
+          time: policy.targetTime,
+        );
+        final dueRelative = _getCompletionRelativeDue(
+          s,
+          policy,
+          dateToSpawn,
+        );
+        final notifRelative = _getCompletionRelativeNotifications(
+          s,
+          policy,
+          dateToSpawn,
+        );
+
+        toSpawn.add(
+          TaskInstance(
+            id: instId,
+            scheduleId: task.id,
+            ruleId: s.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: dateToSpawn,
+            startRelativeTime: startRelative,
+            dueRelativeTime: dueRelative,
+            notificationRelativeTimes: notifRelative,
+            isFamily: task.isFamily,
+            familyCompletionMode: task.familyCompletionMode,
+            priority: task.priority,
+            cycleId: task.cycleId,
+            assignedUserId: task.assignedUserId,
+            status: TaskStatus.pending,
+          ),
+        );
+      }
+    }
+  }
+
+  CivilDay? _evaluateFixedCalendarRule(
+    SchedulerEvaluationContext context,
+    TaskScheduleRule s, {
+    required List<TaskInstance> toUpdate,
+    required List<TaskInstance> toSpawn,
+    required List<String> toDelete,
+    CivilDay? maxSpawned,
+  }) {
+    final task = context.task;
+    final taskInstances = context.taskInstances;
+    final today = context.today;
+    final futureInstancesCount = context.futureInstancesCount;
+
+    final ruleInstances =
+        taskInstances.where((inst) => _isInstanceForRule(inst, s, task)).toList();
+
+    final Map<CivilDay, List<TaskInstance>> instancesByDate = {};
+    for (final inst in ruleInstances) {
+      instancesByDate.putIfAbsent(inst.scheduledDate, () => []).add(inst);
+    }
+
+    final Map<CivilDay, TaskInstance> workingInstances = {};
+    for (final entry in instancesByDate.entries) {
+      final date = entry.key;
+      final insts = entry.value;
+      if (insts.length > 1) {
+        final canonical = _selectCanonicalInstance(insts);
+        workingInstances[date] = canonical;
+        for (final inst in insts) {
+          if (inst.id != canonical.id && !toDelete.contains(inst.id)) {
+            toDelete.add(inst.id);
+          }
+        }
+      } else {
+        workingInstances[date] = insts.first;
+      }
+    }
+
+    final canonicalInstances = workingInstances.values.toList();
+    final pending =
+        canonicalInstances
+            .where((inst) => inst.status == TaskStatus.pending)
+            .toList()
+          ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+
+    // 1. Determine the initial baseDate
+    CivilDay initialBaseDate;
+    if (pending.isNotEmpty) {
+      initialBaseDate = pending.first.scheduledDate;
+    } else {
+      final resolved =
+          canonicalInstances
+              .where((inst) => inst.status != TaskStatus.pending)
+              .toList()
+            ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
+      if (resolved.isNotEmpty) {
+        final nextOcc = s.nextOccurrenceAfter(resolved.first.scheduledDate);
+        if (nextOcc == null) {
+          // The schedule rule is finished and has no future occurrences.
+          return maxSpawned;
+        }
+        if (s.missedOccurrencePolicy.policy != MissedPolicy.stack &&
+            nextOcc.isBefore(today)) {
+          if (s.scheduledDate.compareTo(today) > 0) {
+            initialBaseDate = s.scheduledDate;
+          } else {
+            initialBaseDate = s.occursOn(today)
+                ? today
+                : (s.nextOccurrenceAfter(today) ?? nextOcc);
+          }
+        } else {
+          initialBaseDate = nextOcc;
+        }
+      } else {
+        if (s.missedOccurrencePolicy.policy == MissedPolicy.preferNewer &&
+            s.scheduledDate.isBefore(today)) {
+          initialBaseDate = s.occursOn(today)
+              ? today
+              : (s.nextOccurrenceAfter(today) ?? s.scheduledDate);
+        } else {
+          initialBaseDate = s.occursOn(s.scheduledDate)
+              ? s.scheduledDate
+              : (s.nextOccurrenceAfter(s.scheduledDate) ?? s.scheduledDate);
+        }
+      }
+    }
+
+    final maxEvaluationDate = initialBaseDate.addDays(maxEvaluationDays);
+
+    // Loop to maintain the queue of N future pending instances
+    var currentBaseDate = initialBaseDate;
+    final List<CivilDay> targetDates = [];
+    while (true) {
+      // If the currentBaseDate is past the 30-day cap, we must stop!
+      if (currentBaseDate.compareTo(maxEvaluationDate) > 0) {
+        break;
+      }
+
+      // Generate target pending dates (currentBaseDate up to today, plus N future occurrences after today)
+      targetDates.clear();
+
+      // 1. Generate occurrences from currentBaseDate up to today
+      var current = currentBaseDate;
+      while (current.compareTo(today) <= 0 &&
+          current.compareTo(maxEvaluationDate) <= 0) {
+        targetDates.add(current);
+        final next = s.nextOccurrenceAfter(current);
+        if (next != null) {
+          current = next;
+        } else {
+          break;
+        }
+      }
+
+      // 2. Generate N future occurrences after today
+      var startFuture = today.isBefore(currentBaseDate)
+          ? currentBaseDate
+          : current;
+      if (startFuture.compareTo(today) <= 0) {
+        final next = s.nextOccurrenceAfter(startFuture);
+        if (next != null) {
+          startFuture = next;
+        }
+      }
+
+      current = startFuture;
+      int spawnedFutureCount = 0;
+      final ruleFutureInstancesCount =
+          futureInstancesCount ?? s.futureInstancesCount;
+      while (spawnedFutureCount < ruleFutureInstancesCount) {
+        if (current.compareTo(maxEvaluationDate) > 0) {
+          break;
+        }
+        if (current.compareTo(today) > 0) {
+          final existing = workingInstances[current];
+          final isResolved =
+              existing != null && existing.status != TaskStatus.pending;
+          if (!isResolved) {
+            targetDates.add(current);
+            spawnedFutureCount++;
+          }
+        }
+        final next = s.nextOccurrenceAfter(current);
+        if (next != null) {
+          current = next;
+        } else {
+          break;
+        }
+      }
+
+      for (final date in targetDates) {
+        if (!workingInstances.containsKey(date)) {
+          final instId = generateId();
+          RelativeTime startRelative = s.startRelativeTime;
+          RelativeTime dueRelative = s.dueRelativeTime;
+          WorkflowInstancePayload? workflowPayload;
+
+          if (task.workflowType == 'mealWorkflow') {
+            final cfg =
+                task.mealWorkflowConfig ?? const MealWorkflowConfig();
+            startRelative = cfg.selectTime;
+            dueRelative = cfg.selectTime;
+            workflowPayload = WorkflowInstancePayload(
+              workflowType: 'mealWorkflow',
+              stage: WorkflowStage.selectMeal,
+              workflowGroupId:
+                  '${task.id}-${date.year}-${date.month}-${date.day}',
+            );
+          }
+
+          workingInstances[date] = TaskInstance(
+            id: instId,
+            scheduleId: task.id,
+            ruleId: s.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: date,
+            startRelativeTime: startRelative,
+            dueRelativeTime: dueRelative,
+            notificationRelativeTimes: s.notificationRelativeTimes,
+            isFamily: task.isFamily,
+            familyCompletionMode: task.familyCompletionMode,
+            priority: task.priority,
+            cycleId: task.cycleId,
+            assignedUserId: task.assignedUserId,
+            workflowPayload: workflowPayload,
+            status: TaskStatus.pending,
+          );
+        }
+      }
+
+      // Apply missed policies to the targetDates
+      final hasNewSkipped = _applyMissedPolicy(
+        workingInstances,
+        canonicalInstances,
+        targetDates,
+        s,
+        context,
+      );
+
+      // If we had any new skipped instances, the baseDate of the queue might have shifted forward.
+      if (hasNewSkipped) {
+        final pendingAfterMissed =
+            workingInstances.values
+                .where(
+                  (inst) =>
+                      inst.status == TaskStatus.pending &&
+                      inst.scheduledDate.compareTo(maxEvaluationDate) <= 0,
+                )
+                .toList()
+              ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+
+        if (pendingAfterMissed.isNotEmpty) {
+          final nextBase = pendingAfterMissed.first.scheduledDate;
+          if (nextBase != currentBaseDate) {
+            currentBaseDate = nextBase;
+            continue; // Loop again to fill the queue from the new base date
+          }
+        } else {
+          final lastEvaluatedDate = targetDates.last;
+          final nextOcc = s.nextOccurrenceAfter(lastEvaluatedDate);
+          if (nextOcc != null &&
+              nextOcc.compareTo(maxEvaluationDate) <= 0) {
+            currentBaseDate = nextOcc;
+            continue;
+          }
+        }
+      }
+
+      break; // Queue is stable
+    }
+
+    // 4. Update, Spawn, or Delete based on the final workingInstances state
+    for (final entry in workingInstances.entries) {
+      final date = entry.key;
+      final inst = entry.value;
+      if (date.compareTo(today) <= 0) {
+        if (maxSpawned == null || date.compareTo(maxSpawned) > 0) {
+          maxSpawned = date;
+        }
+      }
+
+      final existsInDb = canonicalInstances.any((x) => x.id == inst.id);
+      if (existsInDb) {
+        final orig = canonicalInstances.firstWhere((x) => x.id == inst.id);
+        if (orig.status != inst.status) {
+          toUpdate.add(inst);
+        }
+      } else {
+        final isSkipOrOlderNewer =
+            (s.missedOccurrencePolicy.policy == MissedPolicy.preferNewer ||
+            s.missedOccurrencePolicy.policy == MissedPolicy.preferOlder);
+        if (inst.status == TaskStatus.skipped && isSkipOrOlderNewer) {
+          // Do not spawn!
+        } else {
+          toSpawn.add(inst);
+        }
+      }
+    }
+
+    // 5. Delete pending instances that are no longer in the target queue (pruning)
+    _pruneStaleQueueEntries(
+      pendingInstances: pending,
+      targetDates: targetDates,
+      today: today,
+      toDelete: toDelete,
+    );
+
+    return maxSpawned;
+  }
+
+  bool _applyMissedPolicy(
+    Map<CivilDay, TaskInstance> workingInstances,
+    List<TaskInstance> canonicalInstances,
+    List<CivilDay> targetDates,
+    TaskScheduleRule rule,
+    SchedulerEvaluationContext context,
+  ) {
+    final policy = rule.missedOccurrencePolicy.policy;
+    switch (policy) {
+      case MissedPolicy.stack:
+        _applyStackPolicy(workingInstances, canonicalInstances, targetDates);
+        return false;
+      case MissedPolicy.autoDismiss:
+        return _applyAutoDismissPolicy(
+          workingInstances,
+          canonicalInstances,
+          targetDates,
+          rule,
+          context.now,
+          context.userId,
+          context.task,
+        );
+      case MissedPolicy.preferNewer:
+        return _applyPreferNewerPolicy(
+          workingInstances,
+          canonicalInstances,
+          targetDates,
+          context.now,
+          context.userId,
+          context.task,
+        );
+      case MissedPolicy.preferOlder:
+        return _applyPreferOlderPolicy(
+          workingInstances,
+          canonicalInstances,
+          targetDates,
+          context.now,
+          context.userId,
+          context.task,
+        );
+    }
+  }
+
+  void _applyStackPolicy(
+    Map<CivilDay, TaskInstance> workingInstances,
+    List<TaskInstance> canonicalInstances,
+    List<CivilDay> targetDates,
+  ) {
+    for (final date in targetDates) {
+      final inst = workingInstances[date]!;
+      final isOriginalResolved = canonicalInstances.any(
+        (x) => x.id == inst.id && x.status != TaskStatus.pending,
+      );
+      if (!isOriginalResolved) {
+        workingInstances[date] = inst.copyWith(
+          status: TaskStatus.pending,
+        );
+      }
+    }
+  }
+
+  bool _applyAutoDismissPolicy(
+    Map<CivilDay, TaskInstance> workingInstances,
+    List<TaskInstance> canonicalInstances,
+    List<CivilDay> targetDates,
+    TaskScheduleRule rule,
+    DateTime now,
+    String? userId,
+    TaskSchedule task,
+  ) {
+    bool hasNewSkipped = false;
+    for (final date in targetDates) {
+      final inst = workingInstances[date]!;
+      final isOriginalResolved = canonicalInstances.any(
+        (x) => x.id == inst.id && x.status != TaskStatus.pending,
+      );
+      if (isOriginalResolved) continue;
+
+      final isExpired = rule.missedOccurrencePolicy.isInstanceExpired(
+        inst,
+        now,
+      );
+      final nextStatus = isExpired ? TaskStatus.skipped : TaskStatus.pending;
+      if (_updateInstanceStatus(
+        workingInstances,
+        date,
+        nextStatus,
+        statusReason: 'scheduler_auto_dismiss',
+        userId: userId,
+        logMessage:
+            'autoDismiss: expired instance skipped for "${task.title}" ($date)',
+      )) {
+        hasNewSkipped = true;
+      }
+    }
+    return hasNewSkipped;
+  }
+
+  bool _applyPreferNewerPolicy(
+    Map<CivilDay, TaskInstance> workingInstances,
+    List<TaskInstance> canonicalInstances,
+    List<CivilDay> targetDates,
+    DateTime now,
+    String? userId,
+    TaskSchedule task,
+  ) {
+    bool hasNewSkipped = false;
+    final startedDates = targetDates.where((d) {
+      final inst = workingInstances[d]!;
+      final isOriginalResolved = canonicalInstances.any(
+        (x) => x.id == inst.id && x.status != TaskStatus.pending,
+      );
+      if (isOriginalResolved) return false;
+      final start = inst.startRelativeTime.referenceTo(d);
+      return !now.isBefore(start);
+    }).toList();
+
+    final CivilDay? latestStartedDate = startedDates.isEmpty
+        ? null
+        : startedDates.reduce((a, b) => a.isAfter(b) ? a : b);
+
+    for (final date in targetDates) {
+      final inst = workingInstances[date]!;
+      final isOriginalResolved = canonicalInstances.any(
+        (x) => x.id == inst.id && x.status != TaskStatus.pending,
+      );
+      if (isOriginalResolved) continue;
+
+      final TaskStatus nextStatus;
+      if (latestStartedDate == null || date.compareTo(latestStartedDate) >= 0) {
+        nextStatus = TaskStatus.pending;
+      } else {
+        nextStatus = TaskStatus.skipped;
+      }
+      if (_updateInstanceStatus(
+        workingInstances,
+        date,
+        nextStatus,
+        statusReason: 'scheduler_prefer_newer',
+        userId: userId,
+        logMessage:
+            'preferNewer: older instance skipped for "${task.title}" ($date in favor of $latestStartedDate)',
+      )) {
+        hasNewSkipped = true;
+      }
+    }
+    return hasNewSkipped;
+  }
+
+  bool _applyPreferOlderPolicy(
+    Map<CivilDay, TaskInstance> workingInstances,
+    List<TaskInstance> canonicalInstances,
+    List<CivilDay> targetDates,
+    DateTime now,
+    String? userId,
+    TaskSchedule task,
+  ) {
+    bool hasNewSkipped = false;
+    final startedDates = targetDates.where((d) {
+      final inst = workingInstances[d]!;
+      final isOriginalResolved = canonicalInstances.any(
+        (x) => x.id == inst.id && x.status != TaskStatus.pending,
+      );
+      if (isOriginalResolved) return false;
+      final start = inst.startRelativeTime.referenceTo(d);
+      return !now.isBefore(start);
+    }).toList();
+
+    final CivilDay? earliestStartedDate = startedDates.isEmpty
+        ? null
+        : startedDates.reduce((a, b) => a.isBefore(b) ? a : b);
+
+    for (final date in targetDates) {
+      final inst = workingInstances[date]!;
+      final isOriginalResolved = canonicalInstances.any(
+        (x) => x.id == inst.id && x.status != TaskStatus.pending,
+      );
+      if (isOriginalResolved) continue;
+
+      final TaskStatus nextStatus;
+      if (!now.isBefore(inst.startRelativeTime.referenceTo(date))) {
+        nextStatus = date == earliestStartedDate
+            ? TaskStatus.pending
+            : TaskStatus.skipped;
+      } else {
+        nextStatus = TaskStatus.pending;
+      }
+      if (_updateInstanceStatus(
+        workingInstances,
+        date,
+        nextStatus,
+        statusReason: 'scheduler_prefer_older',
+        userId: userId,
+        logMessage:
+            'preferOlder: subsequent instance skipped for "${task.title}" ($date, keeping $earliestStartedDate active)',
+      )) {
+        hasNewSkipped = true;
+      }
+    }
+    return hasNewSkipped;
+  }
+
+  bool _updateInstanceStatus(
+    Map<CivilDay, TaskInstance> workingInstances,
+    CivilDay date,
+    TaskStatus nextStatus, {
+    String? statusReason,
+    String? userId,
+    String? logMessage,
+  }) {
+    final inst = workingInstances[date]!;
+    if (inst.status != nextStatus) {
+      workingInstances[date] = inst.copyWith(
+        status: nextStatus,
+        statusReason: nextStatus == TaskStatus.skipped ? statusReason : null,
+        clearStatusReason: nextStatus != TaskStatus.skipped,
+        lastModifiedByAppVersion: AppVersion.display,
+        lastModifiedByUserId: userId,
+      );
+      if (nextStatus == TaskStatus.skipped) {
+        if (logMessage != null) {
+          logger?.debug('scheduler', logMessage);
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _pruneStaleQueueEntries({
+    required List<TaskInstance> pendingInstances,
+    required List<CivilDay> targetDates,
+    required CivilDay today,
+    required List<String> toDelete,
+  }) {
+    final futureTargetDates = targetDates
+        .where((d) => d.compareTo(today) > 0)
+        .toSet();
+    for (final inst in pendingInstances) {
+      if (inst.scheduledDate.compareTo(today) > 0 &&
+          !futureTargetDates.contains(inst.scheduledDate)) {
+        if (!toDelete.contains(inst.id)) {
+          toDelete.add(inst.id);
+        }
+      }
+    }
   }
 
   ({List<TaskInstance> finalToSpawn, List<TaskInstance> finalToUpdate})
