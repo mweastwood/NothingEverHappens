@@ -3385,6 +3385,47 @@ void main() {
           expect(updatedInst.lastModifiedByUserId, userId);
         },
       );
+
+      test(
+        'uncompleteTaskInstance completes safely without throwing StateError when next occurrence is absent in allInstances',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          const userId = 'test-user-id';
+          final repo = FirestoreTaskRepository(
+            firestore: firestore,
+            userId: userId,
+          );
+
+          final dailyTask = TestTaskFactory.createDaily(
+            id: 'task-uncomplete-safe',
+            title: 'Daily Task Safe',
+            description: 'desc',
+            startDate: const CivilDay(year: 2026, month: 6, day: 1),
+            interval: 1,
+          );
+
+          AppClock.setMockTime(DateTime(2026, 6, 1, 12, 0));
+          addTearDown(AppClock.reset);
+
+          await repo.addTaskSchedule(dailyTask);
+          await Future(() {});
+
+          final instanceId = await _findInstanceId(
+            firestore,
+            userId,
+            dailyTask.id,
+            const CivilDay(year: 2026, month: 6, day: 1),
+          );
+
+          await repo.completeTaskInstance(instanceId);
+          await Future(() {});
+
+          expect(
+            () => repo.uncompleteTaskInstance(instanceId),
+            returnsNormally,
+          );
+        },
+      );
     });
   });
 }

@@ -3332,5 +3332,44 @@ void main() {
         },
       );
     });
+
+    group('Safe element lookup tests', () {
+      test(
+        'evaluates safely without StateError when candidate instances are absent',
+        () {
+          final dailyRule = DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 25),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+          );
+          final task = TaskSchedule(
+            id: 'task-safe-test',
+            title: 'Daily Task',
+            description: 'Desc',
+            schedules: [dailyRule],
+            skipIfNoCapacity: true,
+          );
+
+          final now = DateTime(2026, 8, 25, 10, 0);
+          expect(
+            () => const SchedulerEngine().evaluate(
+              task,
+              [],
+              now,
+              applyCapacityLimits: true,
+              userSettings: const UserSettings(hoursAvailable: 1.0),
+            ),
+            returnsNormally,
+          );
+        },
+      );
+    });
   });
 }
