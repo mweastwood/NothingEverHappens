@@ -34,14 +34,32 @@ class PlatformNotificationService implements NotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin;
   final Map<String, List<Timer>> _webTimers = {};
+  final Map<String, TaskSchedule> _scheduledTasks = {};
+  final TaskSchedule? Function(String taskId)? _taskLookup;
+  final bool _isWeb;
+  final void Function(String title, String body)? _onWebNotification;
 
-  PlatformNotificationService({FlutterLocalNotificationsPlugin? plugin})
-    : _plugin = plugin ?? FlutterLocalNotificationsPlugin() {
+  PlatformNotificationService({
+    FlutterLocalNotificationsPlugin? plugin,
+    TaskSchedule? Function(String taskId)? taskLookup,
+    bool isWeb = kIsWeb,
+    void Function(String title, String body)? onWebNotification,
+  }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+       _taskLookup = taskLookup,
+       _isWeb = isWeb,
+       _onWebNotification = onWebNotification {
     _initialize();
   }
 
+  /// Exposes a read-only view of currently scheduled tasks.
+  Map<String, TaskSchedule> get scheduledTasks =>
+      Map.unmodifiable(_scheduledTasks);
+
+  @visibleForTesting
+  Map<String, List<Timer>> get webTimers => Map.unmodifiable(_webTimers);
+
   Future<void> _initialize() async {
-    if (kIsWeb) {
+    if (_isWeb) {
       if (_isDisposed || _runId != _currentRunId) return;
       requestWebNotificationPermission();
       return;
@@ -89,9 +107,13 @@ class PlatformNotificationService implements NotificationService {
 
     if (_isDisposed || _runId != _currentRunId) return;
 
+    _scheduledTasks[task.id] = task;
+
     debugPrint(
       'PlatformNotificationService: Scheduling notifications for task: ${task.title} (ID: ${task.id})',
     );
+
+    final taskId = task.id;
 
     for (var i = 0; i < task.schedules.length; i++) {
       final s = task.schedules[i];
@@ -99,7 +121,7 @@ class PlatformNotificationService implements NotificationService {
 
       for (var j = 0; j < s.notificationRelativeTimes.length; j++) {
         final notifRel = s.notificationRelativeTimes[j];
-        if (kIsWeb) {
+        if (_isWeb) {
           final scheduledDate = _calculateNextNotificationDateTimeForNotif(
             task,
             s,
@@ -113,18 +135,25 @@ class PlatformNotificationService implements NotificationService {
           );
           final timer = Timer(delay, () {
             if (_isDisposed || _runId != _currentRunId) return;
-            showWebNotification(
-              task.title,
-              task.description.isNotEmpty
-                  ? task.description
-                  : 'Reminder for your task',
-            );
+
+            final currentTask =
+                _taskLookup?.call(taskId) ?? _scheduledTasks[taskId];
+            if (currentTask == null) return;
+
+            final title = currentTask.title;
+            final body = currentTask.description.isNotEmpty
+                ? currentTask.description
+                : 'Reminder for your task';
+
+            showWebNotification(title, body);
+            _onWebNotification?.call(title, body);
+
             // Reschedule for the next occurrence once it fires
             if (_isDisposed || _runId != _currentRunId) return;
-            scheduleNotifications(task);
+            scheduleNotifications(currentTask);
           });
 
-          _webTimers.putIfAbsent(task.id, () => []).add(timer);
+          _webTimers.putIfAbsent(taskId, () => []).add(timer);
         } else {
           final scheduledDate = _calculateNextNotificationDateTimeForNotif(
             task,
@@ -195,7 +224,9 @@ class PlatformNotificationService implements NotificationService {
       'PlatformNotificationService: Cancelling notifications for task ID: $taskId',
     );
 
-    if (kIsWeb) {
+    _scheduledTasks.remove(taskId);
+
+    if (_isWeb) {
       final timers = _webTimers.remove(taskId);
       if (timers != null) {
         for (final timer in timers) {
@@ -225,7 +256,9 @@ class PlatformNotificationService implements NotificationService {
 
     debugPrint('PlatformNotificationService: Cancelling all notifications');
 
-    if (kIsWeb) {
+    _scheduledTasks.clear();
+
+    if (_isWeb) {
       for (final timers in _webTimers.values) {
         for (final timer in timers) {
           timer.cancel();
@@ -275,6 +308,7 @@ class PlatformNotificationService implements NotificationService {
     debugPrint(
       'PlatformNotificationService: Disposing and cancelling active web timers',
     );
+    _scheduledTasks.clear();
     for (final timers in _webTimers.values) {
       for (final timer in timers) {
         timer.cancel();
