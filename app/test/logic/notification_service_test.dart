@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:hive/hive.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -14,6 +15,7 @@ class FakeFlutterLocalNotificationsPlugin extends Fake
   InitializationSettings? initSettings;
   final List<Map<String, dynamic>> scheduled = [];
   final List<int> cancelled = [];
+  bool cancelAllCalled = false;
 
   @override
   Future<bool?> initialize({
@@ -53,6 +55,11 @@ class FakeFlutterLocalNotificationsPlugin extends Fake
     cancelled.add(id);
   }
 
+  @override
+  Future<void> cancelAll() async {
+    cancelAllCalled = true;
+  }
+
   FakeAndroidFlutterLocalNotificationsPlugin? androidImplementation;
 
   @override
@@ -83,6 +90,41 @@ class FakeAndroidFlutterLocalNotificationsPlugin extends Fake
   Future<bool?> requestExactAlarmsPermission() async {
     requestExactAlarmsPermissionCalled = true;
     return true;
+  }
+}
+
+class FakeBox<T> extends Fake implements Box<T> {
+  final Map<dynamic, T> _storage = {};
+  final bool _isOpen = true;
+
+  @override
+  bool get isOpen => _isOpen;
+
+  @override
+  Iterable<dynamic> get keys => _storage.keys;
+
+  @override
+  Iterable<T> get values => _storage.values;
+
+  @override
+  T? get(dynamic key, {T? defaultValue}) =>
+      _storage.containsKey(key) ? _storage[key] : defaultValue;
+
+  @override
+  Future<void> put(dynamic key, T value) async {
+    _storage[key] = value;
+  }
+
+  @override
+  Future<void> delete(dynamic key) async {
+    _storage.remove(key);
+  }
+
+  @override
+  Future<int> clear() async {
+    final count = _storage.length;
+    _storage.clear();
+    return count;
   }
 }
 
@@ -210,7 +252,7 @@ void main() {
       () async {
         await notificationService.cancelNotifications(testTask.id);
 
-        // Should attempt to cancel all associated slot IDs (10 rules * 5 notification slots each)
+        // Untracked/legacy task falls back to cancelling 50 slot IDs (10 rules * 5 notification slots each)
         expect(mockPlugin.cancelled.length, 50);
       },
     );
@@ -254,6 +296,150 @@ void main() {
 
         await notificationService.cancelAllNotifications();
         expect(notificationService.scheduledTasks.isEmpty, true);
+      },
+    );
+
+    test(
+      'scheduleNotifications and cancelNotifications handle >10 schedule rules without bounds truncating',
+      () async {
+        final rules = List.generate(
+          15,
+          (index) => DailySchedule(
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: index + 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            notificationRelativeTimes: const [
+              RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 0)),
+            ],
+          ),
+        );
+
+        final largeRulesTask = TaskSchedule(
+          id: 'task-large-rules',
+          title: 'Large Rules Task',
+          description: 'Testing >10 schedule rules',
+          schedules: rules,
+        );
+
+        await notificationService.scheduleNotifications(largeRulesTask);
+        expect(mockPlugin.scheduled.length, 15);
+
+        final scheduledIds = mockPlugin.scheduled
+            .map((n) => n['id'] as int)
+            .toList();
+        expect(scheduledIds.length, 15);
+
+        mockPlugin.cancelled.clear();
+        await notificationService.cancelNotifications(largeRulesTask.id);
+
+        expect(mockPlugin.cancelled.length, 15);
+        expect(mockPlugin.cancelled, containsAll(scheduledIds));
+      },
+    );
+
+    test(
+      'scheduleNotifications and cancelNotifications handle >5 notification relative times per rule',
+      () async {
+        final notifTimes = List.generate(
+          8,
+          (index) => RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 6 + index, minute: 0),
+          ),
+        );
+
+        final manyNotifsTask = TaskSchedule(
+          id: 'task-many-notifs',
+          title: 'Many Notifs Task',
+          description: 'Testing >5 notification times',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2024, month: 1, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 9, minute: 0),
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                time: TimeOfDay(hour: 17, minute: 0),
+              ),
+              notificationRelativeTimes: notifTimes,
+            ),
+          ],
+        );
+
+        await notificationService.scheduleNotifications(manyNotifsTask);
+        expect(mockPlugin.scheduled.length, 8);
+
+        final scheduledIds = mockPlugin.scheduled
+            .map((n) => n['id'] as int)
+            .toList();
+        expect(scheduledIds.length, 8);
+
+        mockPlugin.cancelled.clear();
+        await notificationService.cancelNotifications(manyNotifsTask.id);
+
+        expect(mockPlugin.cancelled.length, 8);
+        expect(mockPlugin.cancelled, containsAll(scheduledIds));
+      },
+    );
+
+    test(
+      'cancelAllNotifications clears tracked IDs and invokes plugin cancelAll',
+      () async {
+        await notificationService.scheduleNotifications(testTask);
+        expect(mockPlugin.scheduled.length, 1);
+
+        await notificationService.cancelAllNotifications();
+        expect(mockPlugin.cancelAllCalled, true);
+
+        mockPlugin.cancelled.clear();
+        // Cancelling after cancelAll will not find tracked IDs, falling back to legacy 50 slots
+        await notificationService.cancelNotifications(testTask.id);
+        expect(mockPlugin.cancelled.length, 50);
+      },
+    );
+
+    test(
+      'PlatformNotificationService persists and restores notification IDs from Hive box',
+      () async {
+        final fakeBox = FakeBox<dynamic>();
+        final serviceWithBox = PlatformNotificationService(
+          plugin: mockPlugin,
+          notificationIdsBox: fakeBox,
+        );
+
+        await serviceWithBox.scheduleNotifications(testTask);
+        expect(fakeBox.get(testTask.id), isNotNull);
+
+        final persistedIds = (fakeBox.get(testTask.id) as List)
+            .cast<int>()
+            .toList();
+        expect(persistedIds.length, 1);
+
+        // Instantiate new service with same box
+        final restoredService = PlatformNotificationService(
+          plugin: mockPlugin,
+          notificationIdsBox: fakeBox,
+        );
+
+        mockPlugin.cancelled.clear();
+        await restoredService.cancelNotifications(testTask.id);
+
+        expect(mockPlugin.cancelled.length, 1);
+        expect(mockPlugin.cancelled.first, persistedIds.first);
+        expect(fakeBox.get(testTask.id), isNull);
+
+        await serviceWithBox.dispose();
+        await restoredService.dispose();
       },
     );
 

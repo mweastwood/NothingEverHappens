@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +30,7 @@ class HiveLocalDataSource {
   static const String _syncMetaBoxName = 'syncMetaBox';
   static const String _settingsBoxName = 'settingsBox';
   static const String _recipesBoxName = 'recipesBox';
+  static const String _notificationIdsBoxName = 'notificationIdsBox';
 
   final ErrorHandler? errorHandler;
   final AppLogger? logger;
@@ -38,6 +40,7 @@ class HiveLocalDataSource {
   Box<Map>? _syncMetaBox;
   Box<Map>? _settingsBox;
   Box<Map>? _recipesBox;
+  Box<dynamic>? _notificationIdsBox;
 
   final List<StreamSubscription<BoxEvent>> _boxWatchSubscriptions = [];
 
@@ -90,6 +93,31 @@ class HiveLocalDataSource {
     }
   }
 
+  Future<Box<dynamic>?> _openBoxSafelyDynamic(String boxName) async {
+    try {
+      return await Hive.openBox(boxName);
+    } catch (e, st) {
+      errorHandler?.report(e, stackTrace: st);
+      // ignore: avoid_print
+      print(
+        '⚠️ [HIVE_UPGRADE_RECOVERY] Box "$boxName" opening failed on app '
+        'upgrade: $e\n$st. Re-creating clean box.',
+      );
+      try {
+        await Hive.deleteBoxFromDisk(boxName);
+        return await Hive.openBox(boxName);
+      } catch (err, stack) {
+        errorHandler?.report(err, stackTrace: stack);
+        // ignore: avoid_print
+        print(
+          '⚠️ [HIVE_UPGRADE_RECOVERY_FAILED] Failed to recreate box '
+          '"$boxName": $err\n$stack',
+        );
+        return null;
+      }
+    }
+  }
+
   bool _isWritingInternally = false;
 
   Future<void> init() async {
@@ -101,12 +129,14 @@ class HiveLocalDataSource {
         _openBoxSafely(_syncMetaBoxName),
         _openBoxSafely(_settingsBoxName),
         _openBoxSafely(_recipesBoxName),
+        _openBoxSafelyDynamic(_notificationIdsBoxName),
       ]);
-      _tasksBox = results[0];
-      _instancesBox = results[1];
-      _syncMetaBox = results[2];
-      _settingsBox = results[3];
-      _recipesBox = results[4];
+      _tasksBox = results[0] as Box<Map>?;
+      _instancesBox = results[1] as Box<Map>?;
+      _syncMetaBox = results[2] as Box<Map>?;
+      _settingsBox = results[3] as Box<Map>?;
+      _recipesBox = results[4] as Box<Map>?;
+      _notificationIdsBox = results[5];
     } catch (e, st) {
       isFallbackInMemoryMode = true;
       errorHandler?.report(e, stackTrace: st);
@@ -649,6 +679,9 @@ class HiveLocalDataSource {
     await setActiveUserId(null);
     if (_settingsBox != null && _settingsBox!.isOpen) {
       await _settingsBox!.clear();
+    }
+    if (_notificationIdsBox != null && _notificationIdsBox!.isOpen) {
+      await _notificationIdsBox!.clear();
     }
     _memSettings = const UserSettings(hoursAvailable: 8.0);
     _memRawSettings = {};
