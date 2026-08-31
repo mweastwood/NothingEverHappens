@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -225,12 +227,26 @@ class FamilyRepository {
     await _firestore.collection('invites').doc(inviteId).delete();
   }
 
+  Future<void> _commitInChunks(
+    FirebaseFirestore db,
+    List<void Function(WriteBatch)> ops,
+  ) async {
+    const chunkSize = 499;
+    for (var i = 0; i < ops.length; i += chunkSize) {
+      final batch = db.batch();
+      for (final op in ops.sublist(i, min(i + chunkSize, ops.length))) {
+        op(batch);
+      }
+      await batch.commit();
+    }
+  }
+
   Future<void> leaveFamily(String familyId, {WriteBatch? batch}) async {
     final familyRef = _firestore.collection('families').doc(familyId);
     final familyDoc = await familyRef.get();
     final familyData = familyDoc.data();
     final isExternalBatch = batch != null;
-    final targetBatch = batch ?? _firestore.batch();
+    final ops = <void Function(WriteBatch)>[];
 
     if (familyData != null) {
       final membersJson = familyData['members'] as Map<String, dynamic>? ?? {};
@@ -250,52 +266,49 @@ class FamilyRepository {
         for (final doc in tasksSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
-          targetBatch.set(
-            _firestore
-                .collection('users')
-                .doc(_userId)
-                .collection('tasks')
-                .doc(doc.id),
-            data,
-          );
-          targetBatch.delete(doc.reference);
+          final userDocRef = _firestore
+              .collection('users')
+              .doc(_userId)
+              .collection('tasks')
+              .doc(doc.id);
+          final docRef = doc.reference;
+          ops.add((b) => b.set(userDocRef, data));
+          ops.add((b) => b.delete(docRef));
         }
 
         final instancesSnap = await familyRef.collection('instances').get();
         for (final doc in instancesSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
-          targetBatch.set(
-            _firestore
-                .collection('users')
-                .doc(_userId)
-                .collection('instances')
-                .doc(doc.id),
-            data,
-          );
-          targetBatch.delete(doc.reference);
+          final userDocRef = _firestore
+              .collection('users')
+              .doc(_userId)
+              .collection('instances')
+              .doc(doc.id);
+          final docRef = doc.reference;
+          ops.add((b) => b.set(userDocRef, data));
+          ops.add((b) => b.delete(docRef));
         }
 
         final recipesSnap = await familyRef.collection('recipes').get();
         for (final doc in recipesSnap.docs) {
           final data = Map<String, dynamic>.from(doc.data());
           data['isFamily'] = false;
-          targetBatch.set(
-            _firestore
-                .collection('users')
-                .doc(_userId)
-                .collection('recipes')
-                .doc(doc.id),
-            data,
-          );
-          targetBatch.delete(doc.reference);
+          final userDocRef = _firestore
+              .collection('users')
+              .doc(_userId)
+              .collection('recipes')
+              .doc(doc.id);
+          final docRef = doc.reference;
+          ops.add((b) => b.set(userDocRef, data));
+          ops.add((b) => b.delete(docRef));
         }
 
-        targetBatch.delete(familyRef);
+        ops.add((b) => b.delete(familyRef));
       } else {
-        targetBatch.update(familyRef, {
-          'members.$_userId': FieldValue.delete(),
-        });
+        ops.add(
+          (b) => b.update(familyRef, {'members.$_userId': FieldValue.delete()}),
+        );
 
         final currentMember = members[_userId];
         if (currentMember?.role == FamilyRole.parent) {
@@ -304,26 +317,36 @@ class FamilyRepository {
           );
           if (!hasOtherParent && remainingMembers.isNotEmpty) {
             final nextParent = remainingMembers.first;
-            targetBatch.update(familyRef, {
-              'members.${nextParent.userId}.role': FamilyRole.parent.toJson(),
-            });
-            targetBatch.set(
-              _firestore.collection('users').doc(nextParent.userId),
-              {'familyRole': FamilyRole.parent.toJson()},
-              SetOptions(merge: true),
+            ops.add(
+              (b) => b.update(familyRef, {
+                'members.${nextParent.userId}.role': FamilyRole.parent.toJson(),
+              }),
+            );
+            ops.add(
+              (b) => b.set(
+                _firestore.collection('users').doc(nextParent.userId),
+                {'familyRole': FamilyRole.parent.toJson()},
+                SetOptions(merge: true),
+              ),
             );
           }
         }
       }
     }
 
-    if (!isExternalBatch) {
-      targetBatch.set(_firestore.collection('users').doc(_userId), {
-        'familyId': FieldValue.delete(),
-        'familyRole': FieldValue.delete(),
-      }, SetOptions(merge: true));
+    if (isExternalBatch) {
+      for (final op in ops) {
+        op(batch);
+      }
+    } else {
+      ops.add(
+        (b) => b.set(_firestore.collection('users').doc(_userId), {
+          'familyId': FieldValue.delete(),
+          'familyRole': FieldValue.delete(),
+        }, SetOptions(merge: true)),
+      );
 
-      await targetBatch.commit();
+      await _commitInChunks(_firestore, ops);
     }
   }
 
