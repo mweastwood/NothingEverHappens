@@ -441,137 +441,327 @@ class FirestoreTaskRepository implements TaskRepository {
     }
   }
 
+  Future<List<TaskInstance>> _fetchAllInstances(
+    String? familyId,
+    DateTime cutoffDate,
+  ) async {
+    final personalInstances = await _instancesRef
+        .where('updatedAt', isGreaterThan: cutoffDate)
+        .get();
+    final List<TaskInstance> allInstances = personalInstances.docs
+        .map((d) => d.data())
+        .toList();
+    if (familyId != null && familyId.isNotEmpty) {
+      final familyInstancesRef = _firestore
+          .collection('families')
+          .doc(familyId)
+          .collection('instances')
+          .withConverter<TaskInstance>(
+            fromFirestore: (snapshot, _) =>
+                TaskInstance.fromFirestore(snapshot),
+            toFirestore: (instance, _) => instance.toFirestore(),
+          );
+      final familyInstances = await familyInstancesRef
+          .where('updatedAt', isGreaterThan: cutoffDate)
+          .get();
+      allInstances.addAll(familyInstances.docs.map((d) => d.data()));
+    }
+    return allInstances;
+  }
+
+  Future<UserSettings> _fetchAgileUserSettings() async {
+    final settingsSnapshot = await _firestore
+        .collection('users')
+        .doc(_userId)
+        .collection('settings')
+        .doc('agile')
+        .get();
+    return UserSettings.fromJson(settingsSnapshot.data() ?? {});
+  }
+
+  Future<Map<String, TaskSchedule>> _fetchAndRebuildTaskMap(
+    String? familyId,
+    List<TaskSchedule> overlayTasks,
+  ) async {
+    final personalTasksSnap = await _tasksRef.get();
+    final freshTasksMap = <String, TaskSchedule>{};
+    for (final doc in personalTasksSnap.docs) {
+      freshTasksMap[doc.id] = doc.data();
+    }
+    if (familyId != null && familyId.isNotEmpty) {
+      final familyTasksRef = _firestore
+          .collection('families')
+          .doc(familyId)
+          .collection('tasks')
+          .withConverter<TaskSchedule>(
+            fromFirestore: (snapshot, _) =>
+                TaskSchedule.fromFirestore(snapshot),
+            toFirestore: (task, _) => task.toFirestore(),
+          );
+      final familyTasksSnap = await familyTasksRef.get();
+      for (final doc in familyTasksSnap.docs) {
+        freshTasksMap[doc.id] = doc.data();
+      }
+    }
+    _cachedTasksMap.clear();
+    _cachedTasksMap.addAll(freshTasksMap);
+
+    final taskMap = Map<String, TaskSchedule>.from(_cachedTasksMap);
+    for (final t in overlayTasks) {
+      taskMap[t.id] = t;
+      _cachedTasksMap[t.id] = t;
+    }
+    return taskMap;
+  }
+
+  Map<CivilDay, double> _computeInitialDayPlannedHours(
+    List<TaskInstance> instances,
+    Map<String, TaskSchedule> taskMap,
+  ) {
+    final Map<CivilDay, double> dayPlannedHours = {};
+    for (final inst in instances) {
+      if (inst.status != TaskStatus.skipped &&
+          inst.status != TaskStatus.failed) {
+        final t = taskMap[inst.scheduleId];
+        if (t != null && t.estimatedDuration != null && !t.skipIfNoCapacity) {
+          final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
+          dayPlannedHours[inst.scheduledDate] =
+              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+        }
+      }
+    }
+    return dayPlannedHours;
+  }
+
+  List<TaskSchedule> _sortTasksForEvaluation(
+    List<TaskSchedule> tasks,
+    List<TaskInstance> allInstances,
+  ) {
+    final Map<String, DateTime> lastCompletionCache = {};
+    DateTime getLastCompletionTime(TaskSchedule task) {
+      return lastCompletionCache.putIfAbsent(task.id, () {
+        final completed = allInstances
+            .where(
+              (inst) =>
+                  inst.scheduleId == task.id &&
+                  inst.status == TaskStatus.completed,
+            )
+            .toList();
+        if (completed.isEmpty) {
+          return DateTime.fromMillisecondsSinceEpoch(0);
+        }
+        return completed
+            .map(
+              (inst) =>
+                  inst.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+            )
+            .reduce((a, b) => a.isAfter(b) ? a : b);
+      });
+    }
+
+    final tasksToEvaluate = List<TaskSchedule>.from(tasks);
+
+    // Prioritize capacity-dependent tasks by Priority (High > Medium > Low)
+    // If priority is equal, prioritize (evaluate first) the least recently completed task.
+    tasksToEvaluate.sort((a, b) {
+      final pCompare = b.priority.index.compareTo(a.priority.index);
+      if (pCompare != 0) return pCompare;
+
+      if (a.skipIfNoCapacity && b.skipIfNoCapacity) {
+        final aTime = getLastCompletionTime(a);
+        final bTime = getLastCompletionTime(b);
+        final timeCompare = aTime.compareTo(bTime);
+        if (timeCompare != 0) return timeCompare;
+      }
+
+      return a.id.compareTo(b.id);
+    });
+
+    return tasksToEvaluate;
+  }
+
+  void _injectVirtualSpawnedInstances(
+    TaskSchedule task,
+    List<TaskInstance> taskInstances,
+    DateTime now,
+  ) {
+    final keysToRemove = <String>[];
+    for (final entry in _spawnedInstancesCache.entries) {
+      final key = entry.key;
+      final spawnTime = entry.value;
+
+      if (now.difference(spawnTime).abs() >= _spawnedInstanceCacheDuration) {
+        keysToRemove.add(key);
+        continue;
+      }
+
+      final parts = key.split(':');
+      if (parts.length == 3) {
+        final sId = parts[0];
+        final rId = parts[1];
+        if (sId == task.id) {
+          final dateParts = parts[2].split('-');
+          if (dateParts.length == 3) {
+            final date = CivilDay(
+              year: int.parse(dateParts[0]),
+              month: int.parse(dateParts[1]),
+              day: int.parse(dateParts[2]),
+            );
+            final exists = taskInstances.any(
+              (inst) => inst.ruleId == rId && inst.scheduledDate == date,
+            );
+            if (!exists) {
+              taskInstances.add(
+                TaskInstance(
+                  id: 'VIRTUAL-${TaskInstance.generateId()}',
+                  scheduleId: sId,
+                  ruleId: rId,
+                  title: task.title,
+                  description: task.description,
+                  scheduledDate: date,
+                  startRelativeTime: RelativeTime(
+                    dayOffset: 0,
+                    time: const TimeOfDay(hour: 9, minute: 0),
+                  ),
+                  dueRelativeTime: RelativeTime(
+                    dayOffset: 0,
+                    time: const TimeOfDay(hour: 17, minute: 0),
+                  ),
+                  status: TaskStatus.pending,
+                ),
+              );
+            }
+          }
+        }
+      }
+    }
+    for (final k in keysToRemove) {
+      _spawnedInstancesCache.remove(k);
+    }
+  }
+
+  void _applyTaskEvaluationResult({
+    required TaskSchedule task,
+    required SchedulerAction action,
+    required WriteBatch batch,
+    required List<TaskInstance> allInstances,
+    required List<TaskInstance> taskInstances,
+    required Map<CivilDay, double> dayPlannedHours,
+    required DateTime now,
+    required String? familyId,
+    required void Function() markChanged,
+  }) {
+    for (final inst in action.instancesToUpdate) {
+      final updatedInst = inst.copyWith(updatedAt: now);
+      batch.set(_instanceRefFor(updatedInst, familyId), updatedInst);
+      markChanged();
+      final idx = allInstances.indexWhere((x) => x.id == inst.id);
+      if (idx >= 0) {
+        allInstances[idx] = updatedInst;
+      }
+    }
+
+    for (final inst in action.instancesToSpawn) {
+      final newInst = inst.copyWith(updatedAt: now);
+      batch.set(_instanceRefFor(newInst, familyId), newInst);
+      _spawnedInstancesCache['${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}'] =
+          now;
+      markChanged();
+      allInstances.add(newInst);
+    }
+
+    for (final instId in action.instancesToDelete) {
+      final inst = taskInstances.firstWhere((x) => x.id == instId);
+      _spawnedInstancesCache.remove(
+        '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
+      );
+      final isFamily = task.isFamily;
+      batch.delete(_instanceRefForId(instId, isFamily, familyId));
+      markChanged();
+      allInstances.removeWhere((x) => x.id == instId);
+    }
+
+    final activeInstances = allInstances.where(
+      (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+    );
+    for (final inst in activeInstances) {
+      if (task.estimatedDuration != null) {
+        final hours = task.estimatedDuration!.inMinutes / _minutesPerHour;
+        dayPlannedHours[inst.scheduledDate] =
+            (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+      }
+    }
+
+    if (action.updatedSchedule != null) {
+      batch.set(
+        _taskRefFor(action.updatedSchedule!, familyId),
+        action.updatedSchedule!,
+      );
+      markChanged();
+    }
+  }
+
+  bool _sweepOrphanedPendingInstances(
+    WriteBatch batch,
+    List<TaskInstance> allInstances,
+    Map<String, TaskSchedule> taskMap,
+    String? familyId,
+  ) {
+    bool hasChanges = false;
+    for (final inst in List<TaskInstance>.from(allInstances)) {
+      if (inst.status == TaskStatus.pending &&
+          !taskMap.containsKey(inst.scheduleId)) {
+        final isFamily = inst.isFamily;
+        batch.delete(_instanceRefForId(inst.id, isFamily, familyId));
+        _spawnedInstancesCache.remove(
+          '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
+        );
+        allInstances.remove(inst);
+        hasChanges = true;
+      }
+    }
+    return hasChanges;
+  }
+
+  void _scheduleNextDynamicTrigger(List<DateTime> triggerTimes, DateTime now) {
+    triggerTimes.sort();
+    final nextTrigger = triggerTimes.firstWhere(
+      (t) => t.isAfter(now),
+      orElse: () => DateTime.fromMillisecondsSinceEpoch(0),
+    );
+    if (nextTrigger.millisecondsSinceEpoch > 0) {
+      _scheduleTriggerTimer(nextTrigger);
+    }
+  }
+
   Future<void> _doProcessMissedPolicies(List<TaskSchedule> tasks) async {
     try {
       final now = AppClock.now;
 
       final familyId = await getFamilyId();
-      final cutoffDate = AppClock.now.subtract(
+      final cutoffDate = now.subtract(
         const Duration(days: _instanceQueryCutoffDays),
       );
 
-      // Fetch all instances
-      final personalInstances = await _instancesRef
-          .where('updatedAt', isGreaterThan: cutoffDate)
-          .get();
-      final List<TaskInstance> allInstances = personalInstances.docs
-          .map((d) => d.data())
-          .toList();
-      if (familyId != null && familyId.isNotEmpty) {
-        final familyInstancesRef = _firestore
-            .collection('families')
-            .doc(familyId)
-            .collection('instances')
-            .withConverter<TaskInstance>(
-              fromFirestore: (snapshot, _) =>
-                  TaskInstance.fromFirestore(snapshot),
-              toFirestore: (instance, _) => instance.toFirestore(),
-            );
-        final familyInstances = await familyInstancesRef
-            .where('updatedAt', isGreaterThan: cutoffDate)
-            .get();
-        allInstances.addAll(familyInstances.docs.map((d) => d.data()));
-      }
+      final allInstances = await _fetchAllInstances(familyId, cutoffDate);
+      final userSettings = await _fetchAgileUserSettings();
+      final taskMap = await _fetchAndRebuildTaskMap(familyId, tasks);
+      final dayPlannedHours = _computeInitialDayPlannedHours(
+        allInstances,
+        taskMap,
+      );
 
-      // Fetch user settings for capacity calculations
-      final settingsSnapshot = await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('settings')
-          .doc('agile')
-          .get();
-      final userSettings = UserSettings.fromJson(settingsSnapshot.data() ?? {});
-
-      final personalTasksSnap = await _tasksRef.get();
-      final freshTasksMap = <String, TaskSchedule>{};
-      for (final doc in personalTasksSnap.docs) {
-        freshTasksMap[doc.id] = doc.data();
-      }
-      if (familyId != null && familyId.isNotEmpty) {
-        final familyTasksRef = _firestore
-            .collection('families')
-            .doc(familyId)
-            .collection('tasks')
-            .withConverter<TaskSchedule>(
-              fromFirestore: (snapshot, _) =>
-                  TaskSchedule.fromFirestore(snapshot),
-              toFirestore: (task, _) => task.toFirestore(),
-            );
-        final familyTasksSnap = await familyTasksRef.get();
-        for (final doc in familyTasksSnap.docs) {
-          freshTasksMap[doc.id] = doc.data();
-        }
-      }
-      _cachedTasksMap.clear();
-      _cachedTasksMap.addAll(freshTasksMap);
-
-      // Build lookup map for durations using cached tasks
-      // (overlaying currently passed tasks)
-      final taskMap = Map<String, TaskSchedule>.from(_cachedTasksMap);
-      for (final t in tasks) {
-        taskMap[t.id] = t;
-        _cachedTasksMap[t.id] = t;
-      }
-
-      // Calculate planned hours per date
-      final Map<CivilDay, double> dayPlannedHours = {};
-      for (final inst in allInstances) {
-        if (inst.status != TaskStatus.skipped &&
-            inst.status != TaskStatus.failed) {
-          final t = taskMap[inst.scheduleId];
-          if (t != null && t.estimatedDuration != null && !t.skipIfNoCapacity) {
-            final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
-            dayPlannedHours[inst.scheduledDate] =
-                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-          }
-        }
-      }
-
-      final Map<String, DateTime> lastCompletionCache = {};
-      DateTime getLastCompletionTime(TaskSchedule task) {
-        return lastCompletionCache.putIfAbsent(task.id, () {
-          final completed = allInstances
-              .where(
-                (inst) =>
-                    inst.scheduleId == task.id &&
-                    inst.status == TaskStatus.completed,
-              )
-              .toList();
-          if (completed.isEmpty) {
-            return DateTime.fromMillisecondsSinceEpoch(0);
-          }
-          return completed
-              .map(
-                (inst) =>
-                    inst.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
-              )
-              .reduce((a, b) => a.isAfter(b) ? a : b);
-        });
-      }
-
-      final tasksToEvaluate = taskMap.values.toList();
-
-      // Prioritize capacity-dependent tasks by Priority (High > Medium > Low)
-      // If priority is equal, prioritize (evaluate first) the least recently completed task.
-      tasksToEvaluate.sort((a, b) {
-        final pCompare = b.priority.index.compareTo(a.priority.index);
-        if (pCompare != 0) return pCompare;
-
-        if (a.skipIfNoCapacity && b.skipIfNoCapacity) {
-          final aTime = getLastCompletionTime(a);
-          final bTime = getLastCompletionTime(b);
-          final timeCompare = aTime.compareTo(bTime);
-          if (timeCompare != 0) return timeCompare;
-        }
-
-        return a.id.compareTo(b.id);
-      });
+      final sortedTasks = _sortTasksForEvaluation(
+        taskMap.values.toList(),
+        allInstances,
+      );
 
       final batch = _firestore.batch();
       bool hasChanges = false;
+      void markChanged() => hasChanges = true;
       final List<DateTime> allTriggerTimes = [];
 
-      for (final task in tasksToEvaluate) {
+      for (final task in sortedTasks) {
         _lastProcessedTasks[task.id] = (
           processedAt: now,
           signature: _getScheduleSignature(task),
@@ -580,60 +770,7 @@ class FirestoreTaskRepository implements TaskRepository {
             .where((inst) => inst.scheduleId == task.id)
             .toList();
 
-        final keysToRemove = <String>[];
-        for (final entry in _spawnedInstancesCache.entries) {
-          final key = entry.key;
-          final spawnTime = entry.value;
-
-          if (now.difference(spawnTime).abs() >=
-              _spawnedInstanceCacheDuration) {
-            keysToRemove.add(key);
-            continue;
-          }
-
-          final parts = key.split(':');
-          if (parts.length == 3) {
-            final sId = parts[0];
-            final rId = parts[1];
-            if (sId == task.id) {
-              final dateParts = parts[2].split('-');
-              if (dateParts.length == 3) {
-                final date = CivilDay(
-                  year: int.parse(dateParts[0]),
-                  month: int.parse(dateParts[1]),
-                  day: int.parse(dateParts[2]),
-                );
-                final exists = taskInstances.any(
-                  (inst) => inst.ruleId == rId && inst.scheduledDate == date,
-                );
-                if (!exists) {
-                  taskInstances.add(
-                    TaskInstance(
-                      id: 'VIRTUAL-${TaskInstance.generateId()}',
-                      scheduleId: sId,
-                      ruleId: rId,
-                      title: task.title,
-                      description: task.description,
-                      scheduledDate: date,
-                      startRelativeTime: RelativeTime(
-                        dayOffset: 0,
-                        time: const TimeOfDay(hour: 9, minute: 0),
-                      ),
-                      dueRelativeTime: RelativeTime(
-                        dayOffset: 0,
-                        time: const TimeOfDay(hour: 17, minute: 0),
-                      ),
-                      status: TaskStatus.pending,
-                    ),
-                  );
-                }
-              }
-            }
-          }
-        }
-        for (final k in keysToRemove) {
-          _spawnedInstancesCache.remove(k);
-        }
+        _injectVirtualSpawnedInstances(task, taskInstances, now);
 
         final action = SchedulerEngine(logger: logger).evaluate(
           task,
@@ -646,85 +783,35 @@ class FirestoreTaskRepository implements TaskRepository {
           userId: _userId,
         );
 
-        for (final inst in action.instancesToUpdate) {
-          final updatedInst = inst.copyWith(updatedAt: now);
-          batch.set(_instanceRefFor(updatedInst, familyId), updatedInst);
-          hasChanges = true;
-          final idx = allInstances.indexWhere((x) => x.id == inst.id);
-          if (idx >= 0) {
-            allInstances[idx] = updatedInst;
-          }
-        }
-
-        for (final inst in action.instancesToSpawn) {
-          final newInst = inst.copyWith(updatedAt: now);
-          batch.set(_instanceRefFor(newInst, familyId), newInst);
-          _spawnedInstancesCache['${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}'] =
-              now;
-          hasChanges = true;
-          allInstances.add(newInst);
-        }
-
-        for (final instId in action.instancesToDelete) {
-          final inst = taskInstances.firstWhere((x) => x.id == instId);
-          _spawnedInstancesCache.remove(
-            '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
-          );
-          final isFamily = task.isFamily;
-          batch.delete(_instanceRefForId(instId, isFamily, familyId));
-          hasChanges = true;
-          allInstances.removeWhere((x) => x.id == instId);
-        }
-
-        final activeInstances = allInstances.where(
-          (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+        _applyTaskEvaluationResult(
+          task: task,
+          action: action,
+          batch: batch,
+          allInstances: allInstances,
+          taskInstances: taskInstances,
+          dayPlannedHours: dayPlannedHours,
+          now: now,
+          familyId: familyId,
+          markChanged: markChanged,
         );
-        for (final inst in activeInstances) {
-          if (task.estimatedDuration != null) {
-            final hours = task.estimatedDuration!.inMinutes / _minutesPerHour;
-            dayPlannedHours[inst.scheduledDate] =
-                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-          }
-        }
-
-        if (action.updatedSchedule != null) {
-          batch.set(
-            _taskRefFor(action.updatedSchedule!, familyId),
-            action.updatedSchedule!,
-          );
-          hasChanges = true;
-        }
 
         allTriggerTimes.addAll(action.triggerTimes);
       }
 
-      // Sweep: delete pending instances whose schedule no longer exists.
-      for (final inst in List<TaskInstance>.from(allInstances)) {
-        if (inst.status == TaskStatus.pending &&
-            !taskMap.containsKey(inst.scheduleId)) {
-          final isFamily = inst.isFamily;
-          batch.delete(_instanceRefForId(inst.id, isFamily, familyId));
-          _spawnedInstancesCache.remove(
-            '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
-          );
-          allInstances.remove(inst);
-          hasChanges = true;
-        }
+      if (_sweepOrphanedPendingInstances(
+        batch,
+        allInstances,
+        taskMap,
+        familyId,
+      )) {
+        hasChanges = true;
       }
 
       if (hasChanges) {
         await batch.commit();
       }
 
-      // Schedule dynamic timer for next critical time
-      allTriggerTimes.sort();
-      final nextTrigger = allTriggerTimes.firstWhere(
-        (t) => t.isAfter(now),
-        orElse: () => DateTime.fromMillisecondsSinceEpoch(0),
-      );
-      if (nextTrigger.millisecondsSinceEpoch > 0) {
-        _scheduleTriggerTimer(nextTrigger);
-      }
+      _scheduleNextDynamicTrigger(allTriggerTimes, now);
     } catch (e, st) {
       errorHandler?.report(e, stackTrace: st);
       // ignore: avoid_print
