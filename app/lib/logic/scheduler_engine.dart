@@ -556,9 +556,7 @@ class SchedulerEngine {
         }
       }
 
-      final orig = canonicalInstances.firstWhereOrNull(
-        (x) => x.id == inst.id,
-      );
+      final orig = canonicalInstances.firstWhereOrNull((x) => x.id == inst.id);
       if (orig != null) {
         if (orig.status != inst.status) {
           toUpdate.add(inst);
