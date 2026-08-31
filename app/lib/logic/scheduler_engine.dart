@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 
 import 'app_logger.dart';
@@ -555,9 +556,10 @@ class SchedulerEngine {
         }
       }
 
-      final existsInDb = canonicalInstances.any((x) => x.id == inst.id);
-      if (existsInDb) {
-        final orig = canonicalInstances.firstWhere((x) => x.id == inst.id);
+      final orig = canonicalInstances.firstWhereOrNull(
+        (x) => x.id == inst.id,
+      );
+      if (orig != null) {
         if (orig.status != inst.status) {
           toUpdate.add(inst);
         }

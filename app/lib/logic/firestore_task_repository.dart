@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -641,10 +642,12 @@ class FirestoreTaskRepository implements TaskRepository {
     for (final instId in action.instancesToDelete) {
       final inst =
           instancesById[instId] ??
-          taskInstances.firstWhere((x) => x.id == instId);
-      _spawnedInstancesCache.remove(
-        '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
-      );
+          taskInstances.firstWhereOrNull((x) => x.id == instId);
+      if (inst != null) {
+        _spawnedInstancesCache.remove(
+          '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
+        );
+      }
       final isFamily = task.isFamily;
       batch.delete(_instanceRefForId(instId, isFamily, familyId));
       markChanged();
@@ -1308,10 +1311,14 @@ class FirestoreTaskRepository implements TaskRepository {
             allInstances,
           );
           if (nextId != null) {
-            final nextInst = allInstances.firstWhere((x) => x.id == nextId);
-            _spawnedInstancesCache.remove(
-              '${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}',
+            final nextInst = allInstances.firstWhereOrNull(
+              (x) => x.id == nextId,
             );
+            if (nextInst != null) {
+              _spawnedInstancesCache.remove(
+                '${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}',
+              );
+            }
             batch.delete(
               _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
             );
@@ -1347,10 +1354,12 @@ class FirestoreTaskRepository implements TaskRepository {
           allInstances,
         );
         if (nextId != null) {
-          final nextInst = allInstances.firstWhere((x) => x.id == nextId);
-          _spawnedInstancesCache.remove(
-            '${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}',
-          );
+          final nextInst = allInstances.firstWhereOrNull((x) => x.id == nextId);
+          if (nextInst != null) {
+            _spawnedInstancesCache.remove(
+              '${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}',
+            );
+          }
           batch.delete(
             _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
           );
