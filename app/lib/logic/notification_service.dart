@@ -1,18 +1,27 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:hive/hive.dart';
+
 import 'task_schedule.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
 import 'notification_helper.dart';
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {
-  final service = PlatformNotificationService();
+  Box<dynamic>? box;
+  try {
+    if (Hive.isBoxOpen(PlatformNotificationService.notificationIdsBoxName)) {
+      box = Hive.box(PlatformNotificationService.notificationIdsBoxName);
+    }
+  } catch (_) {}
+  final service = PlatformNotificationService(notificationIdsBox: box);
   ref.onDispose(() => service.dispose());
   return service;
 });
@@ -28,26 +37,32 @@ abstract class NotificationService {
 /// Production implementation that delegates to `flutter_local_notifications` plugin
 /// to schedule exact zoned alarms on Android and local notifications on iOS.
 class PlatformNotificationService implements NotificationService {
+  static const String notificationIdsBoxName = 'notificationIdsBox';
   static final int _currentRunId = DateTime.now().millisecondsSinceEpoch;
   final int _runId = _currentRunId;
   bool _isDisposed = false;
 
   final FlutterLocalNotificationsPlugin _plugin;
+  Box<dynamic>? _notificationIdsBox;
   final Map<String, List<Timer>> _webTimers = {};
   final Map<String, TaskSchedule> _scheduledTasks = {};
   final TaskSchedule? Function(String taskId)? _taskLookup;
   final bool _isWeb;
   final void Function(String title, String body)? _onWebNotification;
+  final Map<String, List<int>> _scheduledNotificationIds = {};
 
   PlatformNotificationService({
     FlutterLocalNotificationsPlugin? plugin,
+    Box<dynamic>? notificationIdsBox,
     TaskSchedule? Function(String taskId)? taskLookup,
     bool isWeb = kIsWeb,
     void Function(String title, String body)? onWebNotification,
   }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+       _notificationIdsBox = notificationIdsBox,
        _taskLookup = taskLookup,
        _isWeb = isWeb,
        _onWebNotification = onWebNotification {
+    _loadTrackedNotificationIds();
     _initialize();
   }
 
@@ -58,6 +73,24 @@ class PlatformNotificationService implements NotificationService {
   @visibleForTesting
   Map<String, List<Timer>> get webTimers => Map.unmodifiable(_webTimers);
 
+  void _loadTrackedNotificationIds() {
+    if (_notificationIdsBox != null && _notificationIdsBox!.isOpen) {
+      try {
+        for (final key in _notificationIdsBox!.keys) {
+          final raw = _notificationIdsBox!.get(key);
+          if (raw != null) {
+            final list = (raw as List).map((e) => (e as num).toInt()).toList();
+            _scheduledNotificationIds[key.toString()] = list;
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          'PlatformNotificationService: Failed to load tracked notification IDs: $e',
+        );
+      }
+    }
+  }
+
   Future<void> _initialize() async {
     if (_isWeb) {
       if (_isDisposed || _runId != _currentRunId) return;
@@ -66,6 +99,19 @@ class PlatformNotificationService implements NotificationService {
     }
 
     try {
+      if (_notificationIdsBox == null) {
+        try {
+          if (Hive.isBoxOpen(notificationIdsBoxName)) {
+            _notificationIdsBox = Hive.box(notificationIdsBoxName);
+            _loadTrackedNotificationIds();
+          }
+        } catch (e) {
+          debugPrint(
+            'PlatformNotificationService: Hive storage not available for notification IDs, using in-memory tracking: $e',
+          );
+        }
+      }
+
       tz.initializeTimeZones();
       try {
         final tzInfo = await FlutterTimezone.getLocalTimezone();
@@ -114,6 +160,7 @@ class PlatformNotificationService implements NotificationService {
     );
 
     final taskId = task.id;
+    final notifIds = <int>[];
 
     for (var i = 0; i < task.schedules.length; i++) {
       final s = task.schedules[i];
@@ -162,6 +209,7 @@ class PlatformNotificationService implements NotificationService {
           );
           final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
           final notifId = (task.id.hashCode + i * 100 + j) & 0x7FFFFFFF;
+          notifIds.add(notifId);
 
           debugPrint(
             '  - [Android] Scheduling exact notification at $tzDate (ID: $notifId)',
@@ -214,6 +262,17 @@ class PlatformNotificationService implements NotificationService {
         }
       }
     }
+
+    if (!_isWeb && notifIds.isNotEmpty) {
+      _scheduledNotificationIds[task.id] = notifIds;
+      if (_notificationIdsBox != null && _notificationIdsBox!.isOpen) {
+        try {
+          await _notificationIdsBox!.put(task.id, notifIds);
+        } catch (e) {
+          debugPrint('Failed to persist notification IDs to Hive: $e');
+        }
+      }
+    }
   }
 
   @override
@@ -234,17 +293,48 @@ class PlatformNotificationService implements NotificationService {
         }
       }
     } else {
-      // Cancel slots on Android. We can cancel by ID
-      // To cancel safely, we cancel all notification IDs associated with the task
-      // ID calculation is (taskId.hashCode + i * 100 + j) & 0x7FFFFFFF.
-      for (var i = 0; i < 10; i++) {
-        for (var j = 0; j < 5; j++) {
-          final notifId = (taskId.hashCode + i * 100 + j) & 0x7FFFFFFF;
+      List<int>? trackedIds = _scheduledNotificationIds[taskId];
+      if (trackedIds == null &&
+          _notificationIdsBox != null &&
+          _notificationIdsBox!.isOpen) {
+        try {
+          final raw = _notificationIdsBox!.get(taskId);
+          if (raw != null) {
+            trackedIds = (raw as List).map((e) => (e as num).toInt()).toList();
+          }
+        } catch (e) {
+          debugPrint('Error reading notification IDs from Hive: $e');
+        }
+      }
+
+      if (trackedIds != null && trackedIds.isNotEmpty) {
+        for (final notifId in trackedIds) {
           try {
             await _plugin.cancel(id: notifId);
           } catch (e) {
             // Ignore
           }
+        }
+      } else {
+        // Fallback for legacy tasks scheduled prior to tracking (i < 10, j < 5)
+        for (var i = 0; i < 10; i++) {
+          for (var j = 0; j < 5; j++) {
+            final notifId = (taskId.hashCode + i * 100 + j) & 0x7FFFFFFF;
+            try {
+              await _plugin.cancel(id: notifId);
+            } catch (e) {
+              // Ignore
+            }
+          }
+        }
+      }
+
+      _scheduledNotificationIds.remove(taskId);
+      if (_notificationIdsBox != null && _notificationIdsBox!.isOpen) {
+        try {
+          await _notificationIdsBox!.delete(taskId);
+        } catch (e) {
+          // Ignore
         }
       }
     }
@@ -266,6 +356,14 @@ class PlatformNotificationService implements NotificationService {
       }
       _webTimers.clear();
     } else {
+      _scheduledNotificationIds.clear();
+      if (_notificationIdsBox != null && _notificationIdsBox!.isOpen) {
+        try {
+          await _notificationIdsBox!.clear();
+        } catch (e) {
+          // Ignore
+        }
+      }
       try {
         await _plugin.cancelAll();
       } catch (e) {
