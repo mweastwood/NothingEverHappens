@@ -488,18 +488,20 @@ class FirestoreTaskRepository implements TaskRepository {
 
   List<TaskSchedule> _sortTasksForEvaluation(
     List<TaskSchedule> tasks,
-    List<TaskInstance> allInstances,
+    Map<String, List<TaskInstance>> instancesByScheduleId,
+    Set<String> deletedInstanceIds,
   ) {
     final Map<String, DateTime> lastCompletionCache = {};
     DateTime getLastCompletionTime(TaskSchedule task) {
       return lastCompletionCache.putIfAbsent(task.id, () {
-        final completed = allInstances
-            .where(
-              (inst) =>
-                  inst.scheduleId == task.id &&
-                  inst.status == TaskStatus.completed,
-            )
-            .toList();
+        final completed =
+            (instancesByScheduleId[task.id] ?? const <TaskInstance>[])
+                .where(
+                  (inst) =>
+                      !deletedInstanceIds.contains(inst.id) &&
+                      inst.status == TaskStatus.completed,
+                )
+                .toList();
         if (completed.isEmpty) {
           return DateTime.fromMillisecondsSinceEpoch(0);
         }
@@ -597,7 +599,9 @@ class FirestoreTaskRepository implements TaskRepository {
     required TaskSchedule task,
     required SchedulerAction action,
     required WriteBatch batch,
-    required List<TaskInstance> allInstances,
+    required Map<String, TaskInstance> instancesById,
+    required Map<String, List<TaskInstance>> instancesByScheduleId,
+    required Set<String> deletedInstanceIds,
     required List<TaskInstance> taskInstances,
     required Map<CivilDay, double> dayPlannedHours,
     required DateTime now,
@@ -608,9 +612,17 @@ class FirestoreTaskRepository implements TaskRepository {
       final updatedInst = inst.copyWith(updatedAt: now);
       batch.set(_instanceRefFor(updatedInst, familyId), updatedInst);
       markChanged();
-      final idx = allInstances.indexWhere((x) => x.id == inst.id);
-      if (idx >= 0) {
-        allInstances[idx] = updatedInst;
+      instancesById[inst.id] = updatedInst;
+      final sList = instancesByScheduleId[inst.scheduleId];
+      if (sList != null) {
+        final idx = sList.indexWhere((x) => x.id == inst.id);
+        if (idx >= 0) {
+          sList[idx] = updatedInst;
+        } else {
+          sList.add(updatedInst);
+        }
+      } else {
+        instancesByScheduleId[inst.scheduleId] = [updatedInst];
       }
     }
 
@@ -620,22 +632,31 @@ class FirestoreTaskRepository implements TaskRepository {
       _spawnedInstancesCache['${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}'] =
           now;
       markChanged();
-      allInstances.add(newInst);
+      instancesById[newInst.id] = newInst;
+      instancesByScheduleId
+          .putIfAbsent(newInst.scheduleId, () => [])
+          .add(newInst);
     }
 
     for (final instId in action.instancesToDelete) {
-      final inst = taskInstances.firstWhere((x) => x.id == instId);
+      final inst =
+          instancesById[instId] ??
+          taskInstances.firstWhere((x) => x.id == instId);
       _spawnedInstancesCache.remove(
         '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
       );
       final isFamily = task.isFamily;
       batch.delete(_instanceRefForId(instId, isFamily, familyId));
       markChanged();
-      allInstances.removeWhere((x) => x.id == instId);
+      deletedInstanceIds.add(instId);
+      instancesById.remove(instId);
+      instancesByScheduleId[task.id]?.removeWhere((x) => x.id == instId);
     }
 
-    final activeInstances = allInstances.where(
-      (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+    final currentTaskInstances = instancesByScheduleId[task.id] ?? const [];
+    final activeInstances = currentTaskInstances.where(
+      (i) =>
+          !deletedInstanceIds.contains(i.id) && i.status == TaskStatus.pending,
     );
     for (final inst in activeInstances) {
       if (task.estimatedDuration != null) {
@@ -656,20 +677,27 @@ class FirestoreTaskRepository implements TaskRepository {
 
   bool _sweepOrphanedPendingInstances(
     WriteBatch batch,
-    List<TaskInstance> allInstances,
+    Map<String, TaskInstance> instancesById,
+    Map<String, List<TaskInstance>> instancesByScheduleId,
+    Set<String> deletedInstanceIds,
     Map<String, TaskSchedule> taskMap,
     String? familyId,
   ) {
     bool hasChanges = false;
-    for (final inst in List<TaskInstance>.from(allInstances)) {
-      if (inst.status == TaskStatus.pending &&
+    for (final inst in instancesById.values.toList()) {
+      if (!deletedInstanceIds.contains(inst.id) &&
+          inst.status == TaskStatus.pending &&
           !taskMap.containsKey(inst.scheduleId)) {
         final isFamily = inst.isFamily;
         batch.delete(_instanceRefForId(inst.id, isFamily, familyId));
         _spawnedInstancesCache.remove(
           '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
         );
-        allInstances.remove(inst);
+        deletedInstanceIds.add(inst.id);
+        instancesById.remove(inst.id);
+        instancesByScheduleId[inst.scheduleId]?.removeWhere(
+          (x) => x.id == inst.id,
+        );
         hasChanges = true;
       }
     }
@@ -704,9 +732,19 @@ class FirestoreTaskRepository implements TaskRepository {
         taskMap,
       );
 
+      // Group instances by schedule ID upfront and index by ID
+      final instancesByScheduleId = <String, List<TaskInstance>>{};
+      final instancesById = <String, TaskInstance>{};
+      for (final inst in allInstances) {
+        instancesByScheduleId.putIfAbsent(inst.scheduleId, () => []).add(inst);
+        instancesById[inst.id] = inst;
+      }
+      final deletedInstanceIds = <String>{};
+
       final sortedTasks = _sortTasksForEvaluation(
         taskMap.values.toList(),
-        allInstances,
+        instancesByScheduleId,
+        deletedInstanceIds,
       );
 
       final batch = _firestore.batch();
@@ -719,9 +757,11 @@ class FirestoreTaskRepository implements TaskRepository {
           processedAt: now,
           signature: _getScheduleSignature(task),
         );
-        final taskInstances = allInstances
-            .where((inst) => inst.scheduleId == task.id)
-            .toList();
+        final taskInstances = List<TaskInstance>.from(
+          (instancesByScheduleId[task.id] ?? const <TaskInstance>[]).where(
+            (inst) => !deletedInstanceIds.contains(inst.id),
+          ),
+        );
 
         _injectVirtualSpawnedInstances(task, taskInstances, now);
 
@@ -740,7 +780,9 @@ class FirestoreTaskRepository implements TaskRepository {
           task: task,
           action: action,
           batch: batch,
-          allInstances: allInstances,
+          instancesById: instancesById,
+          instancesByScheduleId: instancesByScheduleId,
+          deletedInstanceIds: deletedInstanceIds,
           taskInstances: taskInstances,
           dayPlannedHours: dayPlannedHours,
           now: now,
@@ -753,7 +795,9 @@ class FirestoreTaskRepository implements TaskRepository {
 
       if (_sweepOrphanedPendingInstances(
         batch,
-        allInstances,
+        instancesById,
+        instancesByScheduleId,
+        deletedInstanceIds,
         taskMap,
         familyId,
       )) {
