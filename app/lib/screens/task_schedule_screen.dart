@@ -18,11 +18,11 @@ import '../logic/user_settings.dart';
 import '../logic/sort_helper.dart';
 import '../widgets/sort_bar.dart';
 import '../widgets/unsynced_banner.dart';
-import '../widgets/smooth_shuffle_item.dart';
 import '../logic/user_profile_provider.dart';
 import '../logic/family_repository.dart';
 import '../widgets/markdown_styles.dart';
 import '../logic/utils/layout_breakpoints.dart';
+import '../logic/utils/masonry_layout_helper.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -35,6 +35,7 @@ class TaskScheduleScreen extends ConsumerStatefulWidget {
 
 class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
   final ScrollController _scrollController = ScrollController();
+  final Map<String, int> _columnAffinity = {};
   List<({String column, bool ascending})>? _localSortHistory;
 
   List<TaskSchedule>? _cachedAllTasks;
@@ -415,6 +416,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                       );
                       setState(() {
                         _localSortHistory = updatedSort;
+                        _columnAffinity.clear();
                       });
                       if (settingsRepository != null) {
                         settingsRepository.updateSettings(
@@ -457,6 +459,38 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                         );
 
                         final isWide = isWideScreen(context);
+                        late final List<TaskSchedule> leftTasks;
+                        late final List<TaskSchedule> rightTasks;
+                        if (isWide) {
+                          leftTasks = [];
+                          rightTasks = [];
+                          final currentIds = filteredTasks
+                              .map((e) => e.id)
+                              .toSet();
+                          _columnAffinity.removeWhere(
+                            (id, _) => !currentIds.contains(id),
+                          );
+                          double leftHeight = 0.0;
+                          double rightHeight = 0.0;
+                          for (final task in filteredTasks) {
+                            final taskHeight = estimateTaskScheduleHeight(
+                              task,
+                              showLastSpawnedDate: showLastSpawnedDate,
+                            );
+                            int? col = _columnAffinity[task.id];
+                            if (col == null) {
+                              col = leftHeight <= rightHeight ? 0 : 1;
+                              _columnAffinity[task.id] = col;
+                            }
+                            if (col == 0) {
+                              leftTasks.add(task);
+                              leftHeight += taskHeight;
+                            } else {
+                              rightTasks.add(task);
+                              rightHeight += taskHeight;
+                            }
+                          }
+                        }
 
                         return Stack(
                           children: [
@@ -480,24 +514,14 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.stretch,
                                           children: [
-                                            for (
-                                              int i = 0;
-                                              i < filteredTasks.length;
-                                              i += 2
-                                            )
-                                              SmoothShuffleItem(
-                                                key: ValueKey(
-                                                  'shuffle_sched_${filteredTasks[i].id}',
-                                                ),
-                                                id: 'sched_${filteredTasks[i].id}',
-                                                child: _buildTaskCard(
-                                                  context,
-                                                  filteredTasks[i],
-                                                  theme,
-                                                  taskRepository,
-                                                  showLastSpawnedDate,
-                                                  isParent,
-                                                ),
+                                            for (final task in leftTasks)
+                                              _buildTaskCard(
+                                                context,
+                                                task,
+                                                theme,
+                                                taskRepository,
+                                                showLastSpawnedDate,
+                                                isParent,
                                               ),
                                           ],
                                         ),
@@ -508,24 +532,14 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.stretch,
                                           children: [
-                                            for (
-                                              int i = 1;
-                                              i < filteredTasks.length;
-                                              i += 2
-                                            )
-                                              SmoothShuffleItem(
-                                                key: ValueKey(
-                                                  'shuffle_sched_${filteredTasks[i].id}',
-                                                ),
-                                                id: 'sched_${filteredTasks[i].id}',
-                                                child: _buildTaskCard(
-                                                  context,
-                                                  filteredTasks[i],
-                                                  theme,
-                                                  taskRepository,
-                                                  showLastSpawnedDate,
-                                                  isParent,
-                                                ),
+                                            for (final task in rightTasks)
+                                              _buildTaskCard(
+                                                context,
+                                                task,
+                                                theme,
+                                                taskRepository,
+                                                showLastSpawnedDate,
+                                                isParent,
                                               ),
                                           ],
                                         ),
@@ -549,17 +563,13 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                     return const UnsyncedBanner();
                                   }
                                   final task = filteredTasks[index - 1];
-                                  return SmoothShuffleItem(
-                                    key: ValueKey('shuffle_sched_${task.id}'),
-                                    id: 'sched_${task.id}',
-                                    child: _buildTaskCard(
-                                      context,
-                                      task,
-                                      theme,
-                                      taskRepository,
-                                      showLastSpawnedDate,
-                                      isParent,
-                                    ),
+                                  return _buildTaskCard(
+                                    context,
+                                    task,
+                                    theme,
+                                    taskRepository,
+                                    showLastSpawnedDate,
+                                    isParent,
                                   );
                                 },
                               ),

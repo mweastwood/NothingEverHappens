@@ -232,12 +232,15 @@ void main() {
         final rect3 = tester.getRect(find.text('Task 3 Below Tall'));
         final rect4 = tester.getRect(find.text('Task 4 Below Short'));
 
-        // Left column is Task 1 and Task 3; Right column is Task 2 and Task 4
-        expect(rect1.left, rect3.left);
-        expect(rect2.left, rect4.left);
+        // Height-balanced assignment:
+        // Left column: Task 1 (Tall) and Task 4
+        // Right column: Task 2 (Short) and Task 3 (placed on shorter right column)
+        expect(rect1.left, rect4.left);
+        expect(rect2.left, rect3.left);
         expect(rect2.left, greaterThan(rect1.left));
 
-        expect(rect4.top, lessThan(rect3.top));
+        // Task 3 under short Task 2 starts higher than Task 4 under tall Task 1
+        expect(rect3.top, lessThan(rect4.top));
       },
     );
 
@@ -366,12 +369,177 @@ void main() {
         final rect3 = tester.getRect(find.text('Schedule 3 Below Tall'));
         final rect4 = tester.getRect(find.text('Schedule 4 Below Short'));
 
-        expect(rect1.left, rect3.left);
-        expect(rect2.left, rect4.left);
+        // Height-balanced assignment:
+        // Left column: Schedule 1 (Tall) and Schedule 4
+        // Right column: Schedule 2 (Short) and Schedule 3 (placed on shorter right column)
+        expect(rect1.left, rect4.left);
+        expect(rect2.left, rect3.left);
         expect(rect2.left, greaterThan(rect1.left));
 
-        // Schedule 4 starts higher than Schedule 3 because Schedule 2 is shorter
-        expect(rect4.top, lessThan(rect3.top));
+        // Schedule 3 starts higher than Schedule 4 because Schedule 2 is shorter
+        expect(rect3.top, lessThan(rect4.top));
+      },
+    );
+
+    testWidgets(
+      'TaskListScreen balances columns by height so last task fills shorter column',
+      (WidgetTester tester) async {
+        // T1 (Left): Medium description (~100px)
+        // T2 (Right): Extra tall description (~250px)
+        // T3 (Left): Short task placed in Left column because Left column is shorter than Right column
+        final tasks = [
+          TaskSchedule(
+            id: '1',
+            title: 'Task 1 Medium',
+            description: 'Paragraph 1\n\nParagraph 2',
+            schedules: [
+              OneOffSchedule(
+                date: const CivilDay(year: 2024, month: 1, day: 1),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 9, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+              ),
+            ],
+          ),
+          TaskSchedule(
+            id: '2',
+            title: 'Task 2 Extra Tall',
+            description:
+                'Paragraph 1\n\nParagraph 2\n\nParagraph 3\n\nParagraph 4\n\nParagraph 5\n\nParagraph 6\n\nParagraph 7\n\nParagraph 8',
+            schedules: [
+              OneOffSchedule(
+                date: const CivilDay(year: 2024, month: 1, day: 1),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 9, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+              ),
+            ],
+          ),
+          TaskSchedule(
+            id: '3',
+            title: 'Task 3 Short',
+            description: 'Short',
+            schedules: [
+              OneOffSchedule(
+                date: const CivilDay(year: 2024, month: 1, day: 1),
+                startRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 9, minute: 0),
+                ),
+                dueRelativeTime: const RelativeTime(
+                  dayOffset: 0,
+                  time: TimeOfDay(hour: 17, minute: 0),
+                ),
+              ),
+            ],
+          ),
+        ];
+
+        final instances = [
+          TaskInstance(
+            id: 'I-1',
+            scheduleId: '1',
+            ruleId: 'R-1',
+            title: 'Task 1 Medium',
+            description: 'Paragraph 1\n\nParagraph 2',
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+          TaskInstance(
+            id: 'I-2',
+            scheduleId: '2',
+            ruleId: 'R-2',
+            title: 'Task 2 Extra Tall',
+            description:
+                'Paragraph 1\n\nParagraph 2\n\nParagraph 3\n\nParagraph 4\n\nParagraph 5\n\nParagraph 6\n\nParagraph 7\n\nParagraph 8',
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+          TaskInstance(
+            id: 'I-3',
+            scheduleId: '3',
+            ruleId: 'R-3',
+            title: 'Task 3 Short',
+            description: 'Short',
+            scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 9, minute: 0),
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              time: TimeOfDay(hour: 17, minute: 0),
+            ),
+            status: TaskStatus.pending,
+          ),
+        ];
+
+        when(
+          mockTaskRepository.getTasks(),
+        ).thenAnswer((_) => Stream.value(tasks));
+        when(
+          mockTaskRepository.getInstances(),
+        ).thenAnswer((_) => Stream.value(instances));
+        when(mockUserSettingsRepository.getSettings()).thenAnswer(
+          (_) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+        );
+
+        tester.view.physicalSize = const Size(1000, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authRepositoryProvider.overrideWithValue(mockAuthRepository),
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              userSettingsRepositoryProvider.overrideWithValue(
+                mockUserSettingsRepository,
+              ),
+              userSettingsProvider.overrideWith(
+                (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+              ),
+            ],
+            child: buildTestableWidget(child: const TaskListScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final rect1 = tester.getRect(find.text('Task 1 Medium'));
+        final rect2 = tester.getRect(find.text('Task 2 Extra Tall'));
+        final rect3 = tester.getRect(find.text('Task 3 Short'));
+
+        // Task 1 on Left, Task 2 on Right (very tall).
+        // Task 3 is placed in Left column because Left column is shorter than Right column!
+        expect(rect1.left, rect3.left);
+        expect(rect2.left, greaterThan(rect1.left));
       },
     );
 
