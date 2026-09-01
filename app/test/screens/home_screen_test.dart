@@ -392,6 +392,9 @@ void main() {
           description: 'Test target task',
         );
         tasksSubject.add([task]);
+        when(
+          mockTaskRepository.getTasks(),
+        ).thenAnswer((_) => Stream.value([task]));
 
         await tester.pumpWidget(
           createScreen(
@@ -399,9 +402,6 @@ void main() {
           ),
         );
         await tester.pump();
-        await tester.runAsync(() async {
-          await Future.delayed(const Duration(milliseconds: 100));
-        });
         await tester.pumpAndSettle();
 
         expect(find.byType(CreateTaskScreen), findsOneWidget);
