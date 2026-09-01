@@ -752,38 +752,47 @@ void main() {
       expect(find.text('Family Timeline'), findsOneWidget);
       expect(find.text('The Incredibles'), findsOneWidget);
 
-      // Family total stats: 2 family tasks completed (1 each for Helen & Bob), personal task excluded
+      // Verify removed callouts are no longer present
       expect(
         find.byKey(const Key('family_stats_completed_tile')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(find.byKey(const Key('family_stats_time_tile')), findsNothing);
+      expect(find.byKey(const Key('family_stats_rate_tile')), findsNothing);
+      expect(find.text('1 family tasks skipped'), findsNothing);
+
+      // Verify Family Contributions card is shown
+      expect(find.text('Family Contributions'), findsOneWidget);
       expect(
-        find.descendant(
-          of: find.byKey(const Key('family_stats_completed_tile')),
-          matching: find.text('2'),
-        ),
+        find.byKey(const Key('family_contributions_pie_chart')),
         findsOneWidget,
       );
 
-      // Total team time: 2h (60m + 60m)
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('family_stats_time_tile')),
-          matching: find.text('2h'),
-        ),
-        findsOneWidget,
-      );
-
-      // Skipped callout for family
-      expect(find.text('1 family tasks skipped'), findsOneWidget);
-
-      // Members displayed
+      // Members displayed in contributions card
       expect(find.text('Helen'), findsOneWidget);
       expect(find.text('Bob'), findsOneWidget);
       expect(
         find.text('50%'),
         findsNWidgets(2),
-      ); // Both contributed 1 / 2 = 50%
+      ); // Both contributed 60m / 120m = 50%
+
+      // Tapping on Helen's contribution tile opens bottom sheet modal
+      final helenTile = find.byKey(
+        const Key('family_contribution_tile_user-1'),
+      );
+      expect(helenTile, findsOneWidget);
+      await tester.ensureVisible(helenTile);
+      await tester.pumpAndSettle();
+      await tester.tap(helenTile);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('family_member_contributions_sheet')),
+        findsOneWidget,
+      );
+      expect(find.text('1 completed'), findsOneWidget);
+      expect(find.text('50% of total'), findsOneWidget);
+      expect(find.text('Family Dinner'), findsOneWidget);
     },
   );
 

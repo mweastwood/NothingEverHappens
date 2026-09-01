@@ -85,7 +85,7 @@ void main() {
     );
 
     testWidgets(
-      'renders family header badge, timeline guide, metrics, and member tiles',
+      'renders family header badge, timeline guide, and timeline bars',
       (tester) async {
         AppClock.setMockTime(DateTime(2026, 7, 7, 12, 0));
         addTearDown(AppClock.reset);
@@ -107,23 +107,16 @@ void main() {
         expect(find.text('Today'), findsOneWidget);
         expect(find.text('Future'), findsOneWidget);
 
-        // Metric tiles
+        // Metric tiles and callouts removed
         expect(
-          find.descendant(
-            of: find.byKey(const Key('family_stats_completed_tile')),
-            matching: find.text('6'),
-          ),
-          findsOneWidget,
+          find.byKey(const Key('family_stats_completed_tile')),
+          findsNothing,
         );
-        expect(find.text('4h 30m'), findsOneWidget);
-        expect(find.text('75%'), findsOneWidget);
-        expect(find.text('1 family tasks skipped · 1 missed'), findsOneWidget);
-
-        // Member items
-        expect(find.text('Helen'), findsOneWidget);
-        expect(find.text('Bob'), findsOneWidget);
-        expect(find.text('67%'), findsOneWidget);
-        expect(find.text('33%'), findsOneWidget);
+        expect(find.text('Completed'), findsNothing);
+        expect(find.text('Team Time'), findsNothing);
+        expect(find.text('Team Rate'), findsNothing);
+        expect(find.text('1 family tasks skipped · 1 missed'), findsNothing);
+        expect(find.text('Member Contributions'), findsNothing);
       },
     );
 
@@ -299,7 +292,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(500, 2200),
+        surfaceSize: const Size(500, 1100),
       );
 
       await screenMatchesGolden(tester, 'family_history_stats_card_golden');

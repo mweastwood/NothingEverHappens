@@ -416,7 +416,6 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
           padding: const EdgeInsets.symmetric(horizontal: 2),
           decoration: isToday
               ? BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: theme.colorScheme.primary.withValues(alpha: 0.4),
