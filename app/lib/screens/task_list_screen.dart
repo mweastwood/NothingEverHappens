@@ -19,6 +19,7 @@ import '../logic/system_tasks/system_task.dart';
 import '../logic/system_tasks/system_task_providers.dart';
 
 import '../logic/utils/layout_breakpoints.dart';
+import '../logic/utils/masonry_layout_helper.dart';
 
 final taskSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -125,6 +126,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           final updatedSort = updateSortHistory(sortHistory, column);
           setState(() {
             _localSortHistory = updatedSort;
+            _columnAffinity.clear();
           });
           if (settingsRepository != null) {
             settingsRepository.updateSettings(
@@ -263,19 +265,24 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               final currentIds = filteredInstances.map((e) => e.id).toSet();
               _columnAffinity.removeWhere((id, _) => !currentIds.contains(id));
 
+              final scheduleMap = {for (final s in schedules) s.id: s};
+              double leftHeight = 0.0;
+              double rightHeight = 0.0;
+
               for (final inst in filteredInstances) {
+                final sched = scheduleMap[inst.scheduleId];
+                final instHeight = estimateTaskInstanceHeight(inst, sched);
                 int? col = _columnAffinity[inst.id];
                 if (col == null) {
-                  col =
-                      leftColumnInstances.length <= rightColumnInstances.length
-                      ? 0
-                      : 1;
+                  col = leftHeight <= rightHeight ? 0 : 1;
                   _columnAffinity[inst.id] = col;
                 }
                 if (col == 0) {
                   leftColumnInstances.add(inst);
+                  leftHeight += instHeight;
                 } else {
                   rightColumnInstances.add(inst);
+                  rightHeight += instHeight;
                 }
               }
 
