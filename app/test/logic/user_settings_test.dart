@@ -377,10 +377,9 @@ void main() {
               'dailyCapacityOverrides': {'2026-07-10': 3.0},
             });
 
-        // Give stream a microtask cycle to propagate
-        await Future.delayed(const Duration(milliseconds: 50));
-
-        final current = localDataSource.getSettings();
+        final current = await localDataSource.watchSettings().firstWhere(
+          (settings) => settings.hoursAvailable == 6.0,
+        );
         expect(current.hoursAvailable, 6.0);
         expect(current.defaultDailyCapacity, {'1': 4.0, '2': 5.0});
         expect(current.dailyCapacityOverrides, {'2026-07-10': 3.0});
