@@ -459,16 +459,17 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                         );
 
                         final isWide = isWideScreen(context);
-                        final List<TaskSchedule> leftTasks = [];
-                        final List<TaskSchedule> rightTasks = [];
+                        late final List<TaskSchedule> leftTasks;
+                        late final List<TaskSchedule> rightTasks;
                         if (isWide) {
+                          leftTasks = [];
+                          rightTasks = [];
                           final currentIds = filteredTasks
                               .map((e) => e.id)
                               .toSet();
                           _columnAffinity.removeWhere(
                             (id, _) => !currentIds.contains(id),
                           );
-
                           double leftHeight = 0.0;
                           double rightHeight = 0.0;
                           for (final task in filteredTasks) {

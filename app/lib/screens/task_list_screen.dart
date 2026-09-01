@@ -266,12 +266,13 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               _columnAffinity.removeWhere((id, _) => !currentIds.contains(id));
 
               final scheduleMap = {for (final s in schedules) s.id: s};
+              final now = AppClock.now;
               double leftHeight = 0.0;
               double rightHeight = 0.0;
 
               for (final inst in filteredInstances) {
                 final sched = scheduleMap[inst.scheduleId];
-                final instHeight = estimateTaskInstanceHeight(inst, sched);
+                final instHeight = estimateTaskInstanceHeight(inst, sched, now);
                 int? col = _columnAffinity[inst.id];
                 if (col == null) {
                   col = leftHeight <= rightHeight ? 0 : 1;

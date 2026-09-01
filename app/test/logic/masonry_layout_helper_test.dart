@@ -101,6 +101,43 @@ void main() {
 
       expect(baseHeight, lessThan(badgeHeight));
     });
+
+    test(
+      'deterministic now parameter adds pending badge when before start time',
+      () {
+        final task = TaskInstance(
+          id: '1',
+          scheduleId: 'S-1',
+          ruleId: 'R-1',
+          title: 'Task with start time',
+          description: '',
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 14, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.pending,
+          priority: TaskPriority.high,
+          isFamily: true,
+        );
+
+        final beforeStart = DateTime(2024, 1, 1, 10, 0);
+        final afterStart = DateTime(2024, 1, 1, 15, 0);
+
+        final heightBefore = estimateTaskInstanceHeight(
+          task,
+          null,
+          beforeStart,
+        );
+        final heightAfter = estimateTaskInstanceHeight(task, null, afterStart);
+
+        expect(heightBefore, greaterThan(heightAfter));
+      },
+    );
   });
 
   group('estimateTaskScheduleHeight', () {

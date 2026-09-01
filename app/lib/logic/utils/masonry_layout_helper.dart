@@ -1,33 +1,51 @@
-import '../app_clock.dart';
 import '../task_instance.dart';
 import '../task_schedule.dart';
 
+const double _kBaseInstanceHeight = 76.0;
+const double _kBaseScheduleHeight = 72.0;
+const int _kCharsPerTitleLine = 35;
+const double _kTitleLineHeight = 20.0;
+const int _kCharsPerDescriptionLine = 45;
+const double _kDescriptionLineHeight = 18.0;
+const double _kSectionSpacing = 8.0;
+const double _kEmptyLineHeight = 8.0;
+const int _kBadgesPerRow = 3;
+const double _kInstanceBadgeRowHeight = 26.0;
+const double _kScheduleBadgeRowHeight = 28.0;
+const double _kScheduleRuleHeight = 64.0;
+const double _kLastSpawnedDateHeight = 24.0;
+
 /// Estimates the rendered vertical height of a [TaskInstance] card in logical pixels.
+///
+/// If [now] is provided, it is used to determine whether the task has not yet
+/// started and requires a pending badge. Providing [now] explicitly ensures
+/// deterministic height estimation.
 double estimateTaskInstanceHeight(
   TaskInstance instance, [
   TaskSchedule? schedule,
+  DateTime? now,
 ]) {
   // Base card margins (4 top + 4 bottom = 8) + bottom item padding (8) = 16
   // Base card minimum height (ListTile with single line title, padding, actions) = ~60
-  double height = 76.0;
+  double height = _kBaseInstanceHeight;
 
   // Title: ~35 characters per line in a ~400-500px column
   final titleLength = instance.title.length;
-  if (titleLength > 35) {
-    final extraLines = (titleLength / 35).ceil() - 1;
-    height += extraLines * 20.0;
+  if (titleLength > _kCharsPerTitleLine) {
+    final extraLines = (titleLength / _kCharsPerTitleLine).ceil() - 1;
+    height += extraLines * _kTitleLineHeight;
   }
 
   // Description: markdown content
   if (instance.description.isNotEmpty) {
-    height += 8.0; // Spacing before description
+    height += _kSectionSpacing; // Spacing before description
     final lines = instance.description.split('\n');
     for (final line in lines) {
       if (line.isEmpty) {
-        height += 8.0;
+        height += _kEmptyLineHeight;
       } else {
-        final wrappedLines = (line.length / 45).ceil();
-        height += wrappedLines * 18.0;
+        final wrappedLines = (line.length / _kCharsPerDescriptionLine).ceil();
+        height += wrappedLines * _kDescriptionLineHeight;
       }
     }
   }
@@ -35,10 +53,12 @@ double estimateTaskInstanceHeight(
   // Badges:
   int badgeCount = 1; // Due date badge is always present
   if (instance.workflowPayload != null) badgeCount++;
-  final startDateTime = instance.startRelativeTime.referenceTo(
-    instance.scheduledDate,
-  );
-  if (AppClock.now.isBefore(startDateTime)) badgeCount++;
+  if (now != null) {
+    final startDateTime = instance.startRelativeTime.referenceTo(
+      instance.scheduledDate,
+    );
+    if (now.isBefore(startDateTime)) badgeCount++;
+  }
   if (instance.isFamily) badgeCount++;
   if (instance.isFamily &&
       instance.familyCompletionMode == FamilyCompletionMode.individual) {
@@ -49,9 +69,9 @@ double estimateTaskInstanceHeight(
   if (instance.isFamily && instance.assignedUserId != null) badgeCount++;
 
   // Wrap rows: ~3 badges per row in wide column
-  height += 8.0; // Spacing before badges
-  final badgeRows = (badgeCount / 3).ceil();
-  height += badgeRows * 26.0;
+  height += _kSectionSpacing; // Spacing before badges
+  final badgeRows = (badgeCount / _kBadgesPerRow).ceil();
+  height += badgeRows * _kInstanceBadgeRowHeight;
 
   return height;
 }
@@ -63,13 +83,13 @@ double estimateTaskScheduleHeight(
 }) {
   // Base card margins (4 top + 4 bottom = 8) + bottom item padding (8) = 16
   // Header row (title + copy + edit + delete buttons) = ~48
-  double height = 72.0;
+  double height = _kBaseScheduleHeight;
 
   // Title lines
   final titleLength = schedule.title.length;
-  if (titleLength > 35) {
-    final extraLines = (titleLength / 35).ceil() - 1;
-    height += extraLines * 20.0;
+  if (titleLength > _kCharsPerTitleLine) {
+    final extraLines = (titleLength / _kCharsPerTitleLine).ceil() - 1;
+    height += extraLines * _kTitleLineHeight;
   }
 
   // Family badges
@@ -79,27 +99,28 @@ double estimateTaskScheduleHeight(
       familyBadges++;
     }
     if (schedule.assignedUserId != null) familyBadges++;
-    final rows = (familyBadges / 3).ceil();
-    height += rows * 28.0;
+    final rows = (familyBadges / _kBadgesPerRow).ceil();
+    height += rows * _kScheduleBadgeRowHeight;
   }
 
   // Description
   if (schedule.description.isNotEmpty) {
-    height += 8.0;
+    height += _kSectionSpacing;
     final lines = schedule.description.split('\n');
     for (final line in lines) {
       if (line.isEmpty) {
-        height += 8.0;
+        height += _kEmptyLineHeight;
       } else {
-        final wrappedLines = (line.length / 45).ceil();
-        height += wrappedLines * 18.0;
+        final wrappedLines = (line.length / _kCharsPerDescriptionLine).ceil();
+        height += wrappedLines * _kDescriptionLineHeight;
       }
     }
   }
 
   // Schedule rules
   for (final _ in schedule.schedules) {
-    height += 64.0; // Box padding, interval text, times, missed policy
+    height +=
+        _kScheduleRuleHeight; // Box padding, interval text, times, missed policy
   }
 
   // Priority & Duration badges
@@ -107,12 +128,12 @@ double estimateTaskScheduleHeight(
   if (schedule.priority != TaskPriority.medium) footerBadges++;
   if (schedule.estimatedDuration != null) footerBadges++;
   if (footerBadges > 0) {
-    final rows = (footerBadges / 3).ceil();
-    height += rows * 28.0;
+    final rows = (footerBadges / _kBadgesPerRow).ceil();
+    height += rows * _kScheduleBadgeRowHeight;
   }
 
   if (showLastSpawnedDate && schedule.lastSpawnedDate != null) {
-    height += 24.0;
+    height += _kLastSpawnedDateHeight;
   }
 
   return height;

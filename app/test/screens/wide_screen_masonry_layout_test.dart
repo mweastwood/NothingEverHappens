@@ -384,11 +384,9 @@ void main() {
     testWidgets(
       'TaskListScreen balances columns by height so last task fills shorter column',
       (WidgetTester tester) async {
-        // T1 (Left): Tall description
-        // T2 (Right): Very tall description (2 tall tasks worth)
-        // T3 (Right): Short
-        // T4 (Left): Short
-        // T5 (Left): Should be placed in Left column because Right column is taller overall
+        // T1 (Left): Medium description (~100px)
+        // T2 (Right): Extra tall description (~250px)
+        // T3 (Left): Short task placed in Left column because Left column is shorter than Right column
         final tasks = [
           TaskSchedule(
             id: '1',
