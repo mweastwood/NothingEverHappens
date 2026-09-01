@@ -117,6 +117,7 @@ class FamilyMemberStats {
   final int skippedCount;
   final int missedCount;
   final double contributionPercentage;
+  final List<TaskInstance> completedTasks;
 
   const FamilyMemberStats({
     required this.userId,
@@ -128,6 +129,7 @@ class FamilyMemberStats {
     required this.skippedCount,
     required this.missedCount,
     required this.contributionPercentage,
+    this.completedTasks = const [],
   });
 }
 
@@ -629,12 +631,14 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
   final memberCompletedHours = <String, double>{};
   final memberSkippedCount = <String, int>{};
   final memberMissedCount = <String, int>{};
+  final memberCompletedTasks = <String, List<TaskInstance>>{};
 
   for (final m in family.members.values) {
     memberCompletedCount[m.userId] = 0;
     memberCompletedHours[m.userId] = 0.0;
     memberSkippedCount[m.userId] = 0;
     memberMissedCount[m.userId] = 0;
+    memberCompletedTasks[m.userId] = [];
   }
 
   int totalCompleted = 0;
@@ -688,6 +692,7 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
               (memberCompletedCount[m.userId] ?? 0) + 1;
           memberCompletedHours[m.userId] =
               (memberCompletedHours[m.userId] ?? 0.0) + baseDuration;
+          memberCompletedTasks[m.userId]?.add(inst);
         } else if (inst.status == TaskStatus.failed ||
             (inst.status == TaskStatus.pending &&
                 inst.scheduledDate.isBefore(today))) {
@@ -776,6 +781,7 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
               (memberCompletedCount[userId] ?? 0) + 1;
           memberCompletedHours[userId] =
               (memberCompletedHours[userId] ?? 0.0) + baseDuration;
+          memberCompletedTasks[userId]?.add(inst);
         }
       } else if (inst.status == TaskStatus.skipped) {
         totalSkipped++;
@@ -824,6 +830,7 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
       ? (totalCompleted / totalActionable)
       : 0.0;
 
+  final sumMemberHours = memberCompletedHours.values.fold(0.0, (a, b) => a + b);
   final sumMemberCompleted = memberCompletedCount.values.fold(
     0,
     (a, b) => a + b,
@@ -834,9 +841,10 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
     final hrs = memberCompletedHours[member.userId] ?? 0.0;
     final skipped = memberSkippedCount[member.userId] ?? 0;
     final missed = memberMissedCount[member.userId] ?? 0;
-    final contribution = sumMemberCompleted > 0
-        ? (done / sumMemberCompleted)
-        : (totalCompleted > 0 ? (done / totalCompleted) : 0.0);
+    final tasks = memberCompletedTasks[member.userId] ?? [];
+    final contribution = sumMemberHours > 0
+        ? (hrs / sumMemberHours)
+        : (sumMemberCompleted > 0 ? (done / sumMemberCompleted) : 0.0);
 
     return FamilyMemberStats(
       userId: member.userId,
@@ -850,13 +858,16 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
       skippedCount: skipped,
       missedCount: missed,
       contributionPercentage: contribution,
+      completedTasks: tasks,
     );
   }).toList();
 
-  // Sort member stats: highest completed count first, then name
+  // Sort member stats: highest completed hours first, then completed count, then name
   memberStatsList.sort((a, b) {
-    final cmp = b.completedCount.compareTo(a.completedCount);
-    if (cmp != 0) return cmp;
+    final cmpHrs = b.completedHours.compareTo(a.completedHours);
+    if (cmpHrs != 0) return cmpHrs;
+    final cmpCount = b.completedCount.compareTo(a.completedCount);
+    if (cmpCount != 0) return cmpCount;
     return a.displayName.compareTo(b.displayName);
   });
 

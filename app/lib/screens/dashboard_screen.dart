@@ -10,6 +10,7 @@ import '../logic/task_schedule.dart';
 import '../logic/utils/format_utils.dart';
 import '../logic/dashboard_stats.dart';
 import '../widgets/family_history_stats_card.dart';
+import '../widgets/family_contributions_card.dart';
 import '../widgets/weekly_capacity_chart.dart';
 import '../widgets/daily_activity_breakdown_sheet.dart';
 import '../widgets/system_task_widget.dart';
@@ -184,6 +185,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         scheduleMap: scheduleMap,
                         familyMemberCount: familyMemberCount,
                       ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Family Contributions Card (Pie chart)
+            Builder(
+              builder: (context) {
+                final schedules = schedulesVal.value ?? [];
+                final scheduleMap = <String, TaskSchedule>{
+                  for (final s in schedules) s.id: s,
+                };
+
+                return FamilyContributionsCard(
+                  stats: familyStats,
+                  scheduleMap: scheduleMap,
                 );
               },
             ),
