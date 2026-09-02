@@ -1133,6 +1133,7 @@ class FirestoreTaskRepository implements TaskRepository {
           statusReason: 'user_completed',
           lastModifiedByUserId: _userId,
           lastModifiedByAppVersion: AppVersion.display,
+          lastModifiedByPlatform: AppVersion.platform,
           completedByUserIds: updatedCompletedByUserIds,
         );
         batch.set(
@@ -1181,6 +1182,7 @@ class FirestoreTaskRepository implements TaskRepository {
       statusReason: 'user_completed',
       lastModifiedByUserId: _userId,
       lastModifiedByAppVersion: AppVersion.display,
+      lastModifiedByPlatform: AppVersion.platform,
     );
     batch.set(_instanceRefFor(completedInstance, familyId), completedInstance);
     _spawnedInstancesCache.remove(
@@ -1243,6 +1245,7 @@ class FirestoreTaskRepository implements TaskRepository {
       statusReason: 'user_dismissed',
       lastModifiedByUserId: _userId,
       lastModifiedByAppVersion: AppVersion.display,
+      lastModifiedByPlatform: AppVersion.platform,
     );
     batch.set(_instanceRefFor(dismissedInstance, familyId), dismissedInstance);
     _spawnedInstancesCache.remove(

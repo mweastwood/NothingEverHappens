@@ -461,12 +461,14 @@ void main() {
         statusReason: 'scheduler_prefer_older',
         lastModifiedByUserId: 'user-telemetry-1',
         lastModifiedByAppVersion: 'v1.2.3 (abc1234)',
+        lastModifiedByPlatform: 'android',
       );
 
       final data = instance.toFirestore();
       expect(data['statusReason'], 'scheduler_prefer_older');
       expect(data['lastModifiedByUserId'], 'user-telemetry-1');
       expect(data['lastModifiedByAppVersion'], 'v1.2.3 (abc1234)');
+      expect(data['lastModifiedByPlatform'], 'android');
 
       await ref.set(data);
       final snapshot = await ref.get();
@@ -477,24 +479,29 @@ void main() {
       expect(loaded.statusReason, 'scheduler_prefer_older');
       expect(loaded.lastModifiedByUserId, 'user-telemetry-1');
       expect(loaded.lastModifiedByAppVersion, 'v1.2.3 (abc1234)');
+      expect(loaded.lastModifiedByPlatform, 'android');
 
       final modified = loaded.copyWith(
         statusReason: 'user_dismissed',
         lastModifiedByUserId: 'user-telemetry-2',
         lastModifiedByAppVersion: 'v1.2.4',
+        lastModifiedByPlatform: 'iOS',
       );
       expect(modified.statusReason, 'user_dismissed');
       expect(modified.lastModifiedByUserId, 'user-telemetry-2');
       expect(modified.lastModifiedByAppVersion, 'v1.2.4');
+      expect(modified.lastModifiedByPlatform, 'iOS');
 
       final cleared = modified.copyWith(
         clearStatusReason: true,
         clearLastModifiedByUserId: true,
         clearLastModifiedByAppVersion: true,
+        clearLastModifiedByPlatform: true,
       );
       expect(cleared.statusReason, isNull);
       expect(cleared.lastModifiedByUserId, isNull);
       expect(cleared.lastModifiedByAppVersion, isNull);
+      expect(cleared.lastModifiedByPlatform, isNull);
     });
 
     test(

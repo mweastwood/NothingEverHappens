@@ -11,6 +11,7 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/family_id_fetcher.dart';
+import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -1650,6 +1651,67 @@ void main() {
           .get();
       expect(docAfterRetry.exists, isTrue);
       expect(docAfterRetry.data()?['title'], 'Retry Task');
+    },
+  );
+
+  test(
+    'logs modifiedByPlatform alongside modifiedByAppVersion when remote instance changes are received',
+    () async {
+      final logger = AppLogger();
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+        logger: logger,
+      );
+      addTearDown(() => service.dispose());
+
+      final remoteInstance = TaskInstance(
+        id: 'I-remote-platform-test',
+        scheduleId: 'S-platform-test',
+        ruleId: 'R-platform-test',
+        title: 'Platform Test Instance',
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 2),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.skipped,
+        statusReason: 'scheduler_prefer_older',
+        lastModifiedByUserId: 'user2',
+        lastModifiedByAppVersion: 'v1.8.25 (2198dab)',
+        lastModifiedByPlatform: 'android',
+      );
+
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc(remoteInstance.id)
+          .set(remoteInstance.toFirestore());
+
+      await pumpEventQueue();
+
+      final events = logger.getEvents();
+      final syncEvents = events.where(
+        (e) =>
+            e.category == 'sync' &&
+            e.message.contains(
+              'Remote instance added: "Platform Test Instance"',
+            ),
+      );
+      expect(syncEvents, isNotEmpty);
+      final eventData = syncEvents.first.data;
+      expect(eventData?['modifiedByAppVersion'], 'v1.8.25 (2198dab)');
+      expect(eventData?['modifiedByPlatform'], 'android');
+      expect(eventData?['modifiedByUserId'], 'user2');
+      expect(eventData?['statusReason'], 'scheduler_prefer_older');
     },
   );
 }

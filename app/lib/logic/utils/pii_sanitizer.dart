@@ -87,7 +87,18 @@ class PiiSanitizer {
         lowerKey == 'status' ||
         lowerKey == 'appversion' ||
         lowerKey == 'app_version' ||
+        lowerKey == 'modifiedbyappversion' ||
+        lowerKey == 'lastmodifiedbyappversion' ||
+        lowerKey == 'modified_by_app_version' ||
+        lowerKey == 'last_modified_by_app_version' ||
         lowerKey == 'platform' ||
+        lowerKey == 'modifiedbyplatform' ||
+        lowerKey == 'lastmodifiedbyplatform' ||
+        lowerKey == 'modified_by_platform' ||
+        lowerKey == 'last_modified_by_platform' ||
+        lowerKey.endsWith('platform') ||
+        lowerKey.endsWith('appversion') ||
+        lowerKey.endsWith('app_version') ||
         lowerKey == 'lastseenat' ||
         lowerKey == 'last_seen_at' ||
         lowerKey == 'version' ||

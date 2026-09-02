@@ -944,6 +944,7 @@ class HiveLocalDataSource {
       workflowPayload: workflowPayload,
       lastModifiedByUserId: data['lastModifiedByUserId'] as String?,
       lastModifiedByAppVersion: data['lastModifiedByAppVersion'] as String?,
+      lastModifiedByPlatform: data['lastModifiedByPlatform'] as String?,
       statusReason: data['statusReason'] as String?,
       hasPendingWrites: false,
       isFromCache: true,
