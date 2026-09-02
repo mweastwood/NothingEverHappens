@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -814,24 +813,18 @@ class TaskSyncService {
     try {
       final now = DateTime.now().toUtc();
       final batch = _firestore.batch();
-      batch.set(
-        _firestore.collection(FirestorePaths.users).doc(_userId),
-        {
-          'appVersion': AppVersion.display,
-          'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
-          'lastSeenAt': now.toIso8601String(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
+        'appVersion': AppVersion.display,
+        'platform': AppVersion.platform,
+        'lastSeenAt': now.toIso8601String(),
+      }, SetOptions(merge: true));
 
       if (_familyId != null && _familyId!.isNotEmpty) {
         batch.update(
           _firestore.collection(FirestorePaths.families).doc(_familyId),
           {
             'members.$_userId.appVersion': AppVersion.display,
-            'members.$_userId.platform': kIsWeb
-                ? 'web'
-                : defaultTargetPlatform.name,
+            'members.$_userId.platform': AppVersion.platform,
             'members.$_userId.lastSeenAt': now.toIso8601String(),
           },
         );
