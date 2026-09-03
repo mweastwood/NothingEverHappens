@@ -220,7 +220,7 @@ jobs:
           npm --prefix functions ci
           echo "$FIREBASE_SERVICE_ACCOUNT_PROD" > service-account.json
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
-          npx --yes firebase-tools@15.22.3 deploy --only functions --project nothing-ever-happens-prod
+          npx --yes firebase-tools@15.22.3 deploy --only functions --force --project nothing-ever-happens-prod
           rm -f service-account.json
 
 
