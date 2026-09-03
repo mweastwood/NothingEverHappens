@@ -203,6 +203,37 @@ void main() {
         expect(sanitizedEmail, 's***@test.com');
       });
 
+      test(
+        'preserves telemetry keys for platform and app version without masking',
+        () {
+          final telemetryMap = {
+            'appVersion': 'v1.8.27 (324d0b0)',
+            'app_version': '1.8.27',
+            'platform': 'android',
+            'modifiedByAppVersion': 'v1.8.25',
+            'lastModifiedByAppVersion': 'v1.8.26',
+            'modified_by_app_version': 'v1.8.25',
+            'last_modified_by_app_version': 'v1.8.26',
+            'modifiedByPlatform': 'iOS',
+            'lastModifiedByPlatform': 'macos',
+            'modified_by_platform': 'web',
+            'last_modified_by_platform': 'linux',
+            'clientPlatform': 'windows',
+            'serverAppVersion': 'v2.0.0',
+            'statusReason': 'scheduler_prefer_older',
+            'status_reason': 'scheduler_auto_dismiss',
+            'lastSeenAt': '2026-09-02T11:00:00.000Z',
+            'last_seen_at': '2026-09-02T11:00:00.000Z',
+            'version': '1.0.0',
+          };
+
+          final sanitized =
+              PiiSanitizer.sanitize(telemetryMap) as Map<String, dynamic>;
+
+          expect(sanitized, equals(telemetryMap));
+        },
+      );
+
       test('sanitizeForJson alias delegates directly to sanitize', () {
         final input = {'displayName': 'Test User', 'email': 'test@test.com'};
         expect(

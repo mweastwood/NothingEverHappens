@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class AppVersion {
   static const String rawVersion = String.fromEnvironment(
     'APP_VERSION',
@@ -22,4 +24,6 @@ class AppVersion {
     }
     return rawVersion;
   }
+
+  static String get platform => kIsWeb ? 'web' : defaultTargetPlatform.name;
 }

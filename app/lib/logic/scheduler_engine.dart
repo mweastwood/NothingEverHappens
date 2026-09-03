@@ -799,6 +799,7 @@ class SchedulerEngine {
         statusReason: nextStatus == TaskStatus.skipped ? statusReason : null,
         clearStatusReason: nextStatus != TaskStatus.skipped,
         lastModifiedByAppVersion: AppVersion.display,
+        lastModifiedByPlatform: AppVersion.platform,
         lastModifiedByUserId: userId,
       );
       if (nextStatus == TaskStatus.skipped) {
@@ -900,6 +901,7 @@ class SchedulerEngine {
                     status: TaskStatus.skipped,
                     statusReason: 'scheduler_capacity_limit',
                     lastModifiedByAppVersion: AppVersion.display,
+                    lastModifiedByPlatform: AppVersion.platform,
                     lastModifiedByUserId: context.userId,
                   );
                 }
@@ -908,6 +910,7 @@ class SchedulerEngine {
                   status: TaskStatus.skipped,
                   statusReason: 'scheduler_capacity_limit',
                   lastModifiedByAppVersion: AppVersion.display,
+                  lastModifiedByPlatform: AppVersion.platform,
                   lastModifiedByUserId: context.userId,
                 );
                 updateIndexById[newUpdate.id] = finalToUpdate.length;
@@ -921,6 +924,7 @@ class SchedulerEngine {
                   status: TaskStatus.pending,
                   clearStatusReason: true,
                   lastModifiedByAppVersion: AppVersion.display,
+                  lastModifiedByPlatform: AppVersion.platform,
                   lastModifiedByUserId: context.userId,
                 );
                 updateIndexById[newUpdate.id] = finalToUpdate.length;
@@ -951,6 +955,7 @@ class SchedulerEngine {
                 status: TaskStatus.skipped,
                 statusReason: 'scheduler_capacity_limit',
                 lastModifiedByAppVersion: AppVersion.display,
+                lastModifiedByPlatform: AppVersion.platform,
                 lastModifiedByUserId: context.userId,
               ),
             );
@@ -982,6 +987,7 @@ class SchedulerEngine {
               status: TaskStatus.skipped,
               statusReason: 'scheduler_capacity_limit',
               lastModifiedByAppVersion: AppVersion.display,
+              lastModifiedByPlatform: AppVersion.platform,
               lastModifiedByUserId: context.userId,
             );
           } else {

@@ -3002,6 +3002,7 @@ void main() {
         expect(updatedToday.statusReason, 'scheduler_prefer_older');
         expect(updatedToday.lastModifiedByUserId, 'user-123');
         expect(updatedToday.lastModifiedByAppVersion, isNotNull);
+        expect(updatedToday.lastModifiedByPlatform, isNotNull);
       });
 
       test('sets statusReason and appVersion on preferNewer skips', () {
@@ -3073,6 +3074,7 @@ void main() {
         expect(updatedYesterday.statusReason, 'scheduler_prefer_newer');
         expect(updatedYesterday.lastModifiedByUserId, 'user-123');
         expect(updatedYesterday.lastModifiedByAppVersion, isNotNull);
+        expect(updatedYesterday.lastModifiedByPlatform, isNotNull);
       });
 
       test('sets statusReason and appVersion on autoDismiss skips', () {
@@ -3126,6 +3128,7 @@ void main() {
         expect(updatedOld.statusReason, 'scheduler_auto_dismiss');
         expect(updatedOld.lastModifiedByUserId, 'user-456');
         expect(updatedOld.lastModifiedByAppVersion, isNotNull);
+        expect(updatedOld.lastModifiedByPlatform, isNotNull);
       });
 
       test(

@@ -343,6 +343,7 @@ class UnifiedTaskRepository implements TaskRepository {
       statusReason: 'user_completed',
       lastModifiedByUserId: userId,
       lastModifiedByAppVersion: AppVersion.display,
+      lastModifiedByPlatform: AppVersion.platform,
       hasPendingWrites: true,
       updatedAt: DateTime.now(),
     );
@@ -402,6 +403,7 @@ class UnifiedTaskRepository implements TaskRepository {
       statusReason: 'user_dismissed',
       lastModifiedByUserId: userId,
       lastModifiedByAppVersion: AppVersion.display,
+      lastModifiedByPlatform: AppVersion.platform,
       hasPendingWrites: true,
       updatedAt: DateTime.now(),
     );

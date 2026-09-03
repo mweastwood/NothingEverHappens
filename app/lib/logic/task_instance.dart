@@ -35,6 +35,7 @@ class TaskInstance {
   final WorkflowInstancePayload? workflowPayload;
   final String? lastModifiedByUserId;
   final String? lastModifiedByAppVersion;
+  final String? lastModifiedByPlatform;
   final String? statusReason;
 
   /// Whether this instance document has pending local writes that have not yet synced to Firestore server.
@@ -68,6 +69,7 @@ class TaskInstance {
     this.workflowPayload,
     this.lastModifiedByUserId,
     this.lastModifiedByAppVersion,
+    this.lastModifiedByPlatform,
     this.statusReason,
     this.hasPendingWrites = false,
     this.isFromCache = false,
@@ -212,6 +214,7 @@ class TaskInstance {
     final lastModifiedByUserId = data['lastModifiedByUserId'] as String?;
     final lastModifiedByAppVersion =
         data['lastModifiedByAppVersion'] as String?;
+    final lastModifiedByPlatform = data['lastModifiedByPlatform'] as String?;
     final statusReason = data['statusReason'] as String?;
 
     return TaskInstance(
@@ -236,6 +239,7 @@ class TaskInstance {
       workflowPayload: workflowPayload,
       lastModifiedByUserId: lastModifiedByUserId,
       lastModifiedByAppVersion: lastModifiedByAppVersion,
+      lastModifiedByPlatform: lastModifiedByPlatform,
       statusReason: statusReason,
       hasPendingWrites: snapshot.metadata.hasPendingWrites,
       isFromCache: snapshot.metadata.isFromCache,
@@ -270,6 +274,8 @@ class TaskInstance {
         'lastModifiedByUserId': lastModifiedByUserId,
       if (lastModifiedByAppVersion != null)
         'lastModifiedByAppVersion': lastModifiedByAppVersion,
+      if (lastModifiedByPlatform != null)
+        'lastModifiedByPlatform': lastModifiedByPlatform,
       if (statusReason != null) 'statusReason': statusReason,
       'status': status.toJson(),
       'updatedAt': updatedAt,
@@ -304,6 +310,8 @@ class TaskInstance {
     bool clearLastModifiedByUserId = false,
     String? lastModifiedByAppVersion,
     bool clearLastModifiedByAppVersion = false,
+    String? lastModifiedByPlatform,
+    bool clearLastModifiedByPlatform = false,
     String? statusReason,
     bool clearStatusReason = false,
     bool? hasPendingWrites,
@@ -346,6 +354,9 @@ class TaskInstance {
       lastModifiedByAppVersion: clearLastModifiedByAppVersion
           ? null
           : (lastModifiedByAppVersion ?? this.lastModifiedByAppVersion),
+      lastModifiedByPlatform: clearLastModifiedByPlatform
+          ? null
+          : (lastModifiedByPlatform ?? this.lastModifiedByPlatform),
       statusReason: clearStatusReason
           ? null
           : (statusReason ?? this.statusReason),
