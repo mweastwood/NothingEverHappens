@@ -41,7 +41,7 @@ dependencies:
   dynamic_color: ^1.9.0
   flutter_markdown: ^0.7.7+1
   firebase_core: ^4.14.0
-  firebase_analytics: ^12.4.6
+  firebase_analytics: ^12.5.0
   firebase_crashlytics: ^5.0.0
   firebase_remote_config: ^6.1.0
   firebase_auth: ^6.6.1
