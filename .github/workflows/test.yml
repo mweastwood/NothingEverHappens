@@ -72,7 +72,7 @@ jobs:
         run: npm test
 
   test-functions:
-    name: Backend Tests (Cloud Functions)
+    name: Backend Tests (Cloud Functions - Dart)
     runs-on: ubuntu-latest
 
     defaults:
@@ -82,18 +82,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install Node dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npm test
+      - name: Install Dart dependencies
+        run: dart pub get
 
-      - name: Build TypeScript
+      - name: Run Dart unit tests
+        run: dart test
+
+      - name: Build Dart to JS bundle
         run: npm run build
 
   test-scripts:

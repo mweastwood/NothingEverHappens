@@ -4,9 +4,9 @@ This directory contains Firebase Cloud Functions (v2) for **Nothing Ever Happens
 
 ## Scripts
 
-- `npm run build`: Compiles TypeScript sources in `src/` to JavaScript in `lib/`.
-- `npm run build:watch`: Watches for changes and continuously compiles TypeScript.
-- `npm test`: Runs unit tests with Jest.
+- `npm run build`: Compiles Dart entrypoint (`bin/index.dart`) to JavaScript bundle via `dart compile js` and injects Node preamble.
+- `npm run watch`: Fast development compile of Dart entrypoint to JavaScript.
+- `npm test`: Runs Dart unit test suite via `dart test`.
 - `npm run serve`: Builds and launches the local Firebase Functions emulator.
 
 ## Core Endpoints
