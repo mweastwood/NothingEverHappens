@@ -34,6 +34,7 @@ class UnifiedTaskRepository implements TaskRepository {
 
   Future<void>? _activeProcessingFuture;
   bool _hasQueuedProcessing = false;
+  bool _queuedEvaluateFamilyTasks = false;
   final List<Future<void> Function()> _queuedPostProcessCallbacks = [];
 
   UnifiedTaskRepository({
@@ -65,6 +66,9 @@ class UnifiedTaskRepository implements TaskRepository {
 
   @override
   Future<String?> getFamilyId() => _familyIdFetcher.getFamilyId();
+
+  Future<bool> isFamilyLeader(String userId) =>
+      _familyIdFetcher.isFamilyLeader(userId);
 
   void _initMigration() {
     if (userId.isEmpty) return;
@@ -492,6 +496,7 @@ class UnifiedTaskRepository implements TaskRepository {
 
   @override
   Future<void> triggerMissedPolicyProcessing({
+    bool evaluateFamilyTasks = true,
     Future<void> Function()? postProcess,
   }) async {
     if (!_localDataSource.isMigrationCompleted()) {
@@ -502,6 +507,9 @@ class UnifiedTaskRepository implements TaskRepository {
     }
     if (postProcess != null) {
       _queuedPostProcessCallbacks.add(postProcess);
+    }
+    if (evaluateFamilyTasks) {
+      _queuedEvaluateFamilyTasks = true;
     }
     while (true) {
       final active = _activeProcessingFuture;
@@ -526,13 +534,21 @@ class UnifiedTaskRepository implements TaskRepository {
     try {
       do {
         _hasQueuedProcessing = false;
+        final shouldEvaluateFamily = _queuedEvaluateFamilyTasks;
+        _queuedEvaluateFamilyTasks = false;
+
         final callbacksToRun = List<Future<void> Function()>.from(
           _queuedPostProcessCallbacks,
         );
         _queuedPostProcessCallbacks.clear();
 
         try {
-          await _doProcessMissedPolicies();
+          if (shouldEvaluateFamily) {
+            await _syncService.waitForInitialSync;
+          }
+          await _doProcessMissedPolicies(
+            evaluateFamilyTasks: shouldEvaluateFamily,
+          );
         } catch (e, st) {
           errorHandler?.report(e, stackTrace: st);
           logger?.error(
@@ -562,11 +578,17 @@ class UnifiedTaskRepository implements TaskRepository {
     }
   }
 
-  Future<void> _doProcessMissedPolicies() async {
+  Future<void> _doProcessMissedPolicies({
+    bool evaluateFamilyTasks = true,
+  }) async {
     final now = AppClock.now;
     final tasks = _localDataSource.getTasks();
     final allInstances = _localDataSource.getInstances();
     final userSettings = _localDataSource.getSettings();
+
+    final isLeader = evaluateFamilyTasks
+        ? await _familyIdFetcher.isFamilyLeader(userId)
+        : false;
 
     final Map<CivilDay, double> dayPlannedHours = {};
     for (final inst in allInstances) {
@@ -631,6 +653,18 @@ class UnifiedTaskRepository implements TaskRepository {
     final dirtyIds = <String>[];
 
     for (final task in tasksToEvaluate) {
+      if (task.isFamily) {
+        if (!evaluateFamilyTasks) continue;
+
+        final isDesignatedEvaluator = task.assignedUserId != null
+            ? task.assignedUserId == userId
+            : isLeader;
+
+        if (!isDesignatedEvaluator) {
+          continue;
+        }
+      }
+
       final taskInstances = instancesByScheduleId[task.id] ?? [];
 
       final action = SchedulerEngine(logger: logger).evaluate(
@@ -699,6 +733,13 @@ class UnifiedTaskRepository implements TaskRepository {
     // Sweep: delete pending instances whose schedule no longer exists.
     final taskIds = tasks.map((t) => t.id).toSet();
     for (final inst in List<TaskInstance>.from(allInstances)) {
+      if (inst.isFamily) {
+        if (!evaluateFamilyTasks) continue;
+        final isDesignatedEvaluator = inst.assignedUserId != null
+            ? inst.assignedUserId == userId
+            : isLeader;
+        if (!isDesignatedEvaluator) continue;
+      }
       if (inst.status == TaskStatus.pending &&
           !taskIds.contains(inst.scheduleId)) {
         instancesToDelete.add(inst.id);

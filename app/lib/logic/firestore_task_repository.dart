@@ -839,6 +839,7 @@ class FirestoreTaskRepository implements TaskRepository {
 
   @override
   Future<void> triggerMissedPolicyProcessing({
+    bool evaluateFamilyTasks = true,
     Future<void> Function()? postProcess,
   }) async {
     if (_activeProcessingFuture != null) {
@@ -850,7 +851,7 @@ class FirestoreTaskRepository implements TaskRepository {
           .map((d) => d.data())
           .toList();
 
-      if (familyId != null && familyId.isNotEmpty) {
+      if (evaluateFamilyTasks && familyId != null && familyId.isNotEmpty) {
         final familyTasksRef = FirestoreCollections.familyTasks(
           _firestore,
           familyId,

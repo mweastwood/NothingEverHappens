@@ -114,8 +114,14 @@ class Family {
   final String id;
   final String name;
   final Map<String, FamilyMember> members;
+  final String? creatorId;
 
-  const Family({required this.id, required this.name, required this.members});
+  const Family({
+    required this.id,
+    required this.name,
+    required this.members,
+    this.creatorId,
+  });
 
   factory Family.fromJson(Map<String, dynamic> json, String documentId) {
     final membersJson = json['members'] as Map<String, dynamic>? ?? {};
@@ -129,6 +135,7 @@ class Family {
       id: documentId,
       name: json['name'] as String? ?? '',
       members: members,
+      creatorId: json['creatorId'] as String?,
     );
   }
 
@@ -136,7 +143,46 @@ class Family {
     return {
       'name': name,
       'members': members.map((key, value) => MapEntry(key, value.toJson())),
+      if (creatorId != null) 'creatorId': creatorId,
     };
+  }
+
+  String? get designatedLeaderId {
+    if (creatorId != null &&
+        creatorId!.isNotEmpty &&
+        members.containsKey(creatorId)) {
+      return creatorId;
+    }
+    final parentMembers = members.values
+        .where((m) => m.role == FamilyRole.parent)
+        .toList();
+    if (parentMembers.isNotEmpty) {
+      parentMembers.sort((a, b) => a.userId.compareTo(b.userId));
+      return parentMembers.first.userId;
+    }
+    if (members.isNotEmpty) {
+      final sortedMembers = members.values.toList()
+        ..sort((a, b) => a.userId.compareTo(b.userId));
+      return sortedMembers.first.userId;
+    }
+    return null;
+  }
+
+  bool isLeader(String userId) => designatedLeaderId == userId;
+  bool isFamilyLeader(String userId) => designatedLeaderId == userId;
+
+  Family copyWith({
+    String? id,
+    String? name,
+    Map<String, FamilyMember>? members,
+    String? creatorId,
+  }) {
+    return Family(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      members: members ?? this.members,
+      creatorId: creatorId ?? this.creatorId,
+    );
   }
 }
 

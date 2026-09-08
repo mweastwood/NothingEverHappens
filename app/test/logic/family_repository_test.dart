@@ -33,16 +33,72 @@ void main() {
       final family = Family(
         id: 'f1',
         name: 'The Simpsons',
+        creatorId: 'u1',
         members: {'u1': member},
       );
       final json = family.toJson();
       expect(json['name'], 'The Simpsons');
+      expect(json['creatorId'], 'u1');
       expect(json['members']['u1']['displayName'], 'Alice');
 
       final deserialized = Family.fromJson(json, 'f1');
       expect(deserialized.id, 'f1');
       expect(deserialized.name, 'The Simpsons');
+      expect(deserialized.creatorId, 'u1');
       expect(deserialized.members['u1']?.displayName, 'Alice');
+    });
+
+    test('Family designatedLeaderId and isLeader resolution', () {
+      final parent1 = const FamilyMember(
+        userId: 'u-charlie',
+        displayName: 'Charlie',
+        email: 'charlie@example.com',
+        role: FamilyRole.parent,
+      );
+      final parent2 = const FamilyMember(
+        userId: 'u-alice',
+        displayName: 'Alice',
+        email: 'alice@example.com',
+        role: FamilyRole.parent,
+      );
+      final child = const FamilyMember(
+        userId: 'u-bob',
+        displayName: 'Bob',
+        email: 'bob@example.com',
+        role: FamilyRole.nonParent,
+      );
+
+      // 1. With creatorId specified and still present
+      final f1 = Family(
+        id: 'f1',
+        name: 'Family 1',
+        creatorId: 'u-charlie',
+        members: {'u-charlie': parent1, 'u-alice': parent2, 'u-bob': child},
+      );
+      expect(f1.designatedLeaderId, 'u-charlie');
+      expect(f1.isLeader('u-charlie'), isTrue);
+      expect(f1.isLeader('u-alice'), isFalse);
+      expect(f1.isLeader('u-bob'), isFalse);
+
+      // 2. With creatorId null, deterministic parent fallback (sorted by userId: u-alice < u-charlie)
+      final f2 = Family(
+        id: 'f2',
+        name: 'Family 2',
+        creatorId: null,
+        members: {'u-charlie': parent1, 'u-alice': parent2, 'u-bob': child},
+      );
+      expect(f2.designatedLeaderId, 'u-alice');
+      expect(f2.isLeader('u-alice'), isTrue);
+      expect(f2.isLeader('u-charlie'), isFalse);
+
+      // 3. With creatorId set to someone no longer in the family
+      final f3 = Family(
+        id: 'f3',
+        name: 'Family 3',
+        creatorId: 'u-departed',
+        members: {'u-charlie': parent1, 'u-alice': parent2},
+      );
+      expect(f3.designatedLeaderId, 'u-alice');
     });
 
     test('FamilyProfile serialization and deserialization', () {
@@ -103,6 +159,7 @@ void main() {
         expect(familyDoc.exists, isTrue);
         final family = Family.fromJson(familyDoc.data()!, familyDoc.id);
         expect(family.name, 'The Simpsons');
+        expect(family.creatorId, userId);
         expect(family.members[userId]?.displayName, userName);
         expect(family.members[userId]?.role, FamilyRole.parent);
       },

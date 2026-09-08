@@ -172,10 +172,12 @@ class MockTaskRepository extends _i1.Mock implements _i2.TaskRepository {
 
   @override
   _i4.Future<void> triggerMissedPolicyProcessing({
+    bool? evaluateFamilyTasks = true,
     _i4.Future<void> Function()? postProcess,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#triggerMissedPolicyProcessing, [], {
+              #evaluateFamilyTasks: evaluateFamilyTasks,
               #postProcess: postProcess,
             }),
             returnValue: _i4.Future<void>.value(),

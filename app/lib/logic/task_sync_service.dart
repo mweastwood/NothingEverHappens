@@ -68,6 +68,57 @@ class TaskSyncService {
   Stream<bool> get isSyncingStream => _isSyncingSubject.stream;
   Timer? _periodicSyncTimer;
 
+  final Completer<void> _initialSyncCompleter = Completer<void>();
+  Future<void> get waitForInitialSync {
+    if (!_isActivePremium ||
+        _userId.isEmpty ||
+        !_localDataSource.isMigrationCompleted()) {
+      return Future.value();
+    }
+    if (_initialSyncCompleter.isCompleted) {
+      return Future.value();
+    }
+    return _initialSyncCompleter.future.timeout(
+      const Duration(seconds: 4),
+      onTimeout: () {
+        _completeInitialSync();
+      },
+    );
+  }
+
+  bool _receivedPersonalTasks = false;
+  bool _receivedPersonalInstances = false;
+  bool _receivedUserDoc = false;
+  bool _receivedFamilyTasks = false;
+  bool _receivedFamilyInstances = false;
+  Timer? _initialSyncTimeoutTimer;
+
+  void _completeInitialSync() {
+    _initialSyncTimeoutTimer?.cancel();
+    _initialSyncTimeoutTimer = null;
+    if (!_initialSyncCompleter.isCompleted) {
+      _initialSyncCompleter.complete();
+    }
+  }
+
+  void _checkInitialSyncComplete() {
+    if (_initialSyncCompleter.isCompleted) return;
+
+    if (!_receivedPersonalTasks ||
+        !_receivedPersonalInstances ||
+        !_receivedUserDoc) {
+      return;
+    }
+
+    if (_familyId != null && _familyId!.isNotEmpty) {
+      if (!_receivedFamilyTasks || !_receivedFamilyInstances) {
+        return;
+      }
+    }
+
+    _completeInitialSync();
+  }
+
   TaskSyncService({
     required FirebaseFirestore firestore,
     required HiveLocalDataSource localDataSource,
@@ -91,11 +142,15 @@ class TaskSyncService {
         _userId.isNotEmpty &&
         _localDataSource.isMigrationCompleted()) {
       startListeningToRemote();
+    } else {
+      _completeInitialSync();
     }
   }
 
   void dispose() {
     _isDisposed = true;
+    _initialSyncTimeoutTimer?.cancel();
+    _completeInitialSync();
     _periodicSyncTimer?.cancel();
     if (!_isSyncingSubject.isClosed) {
       _isSyncingSubject.close();
@@ -114,6 +169,7 @@ class TaskSyncService {
         !_isActivePremium ||
         _userId.isEmpty ||
         !_localDataSource.isMigrationCompleted()) {
+      _completeInitialSync();
       return;
     }
     if (_tasksSub != null && _instancesSub != null) return;
@@ -124,6 +180,11 @@ class TaskSyncService {
     _familyTasksSub?.cancel();
     _familyInstancesSub?.cancel();
     _familyRecipesSub?.cancel();
+
+    _initialSyncTimeoutTimer?.cancel();
+    _initialSyncTimeoutTimer = Timer(const Duration(seconds: 3), () {
+      _completeInitialSync();
+    });
 
     _periodicSyncTimer?.cancel();
     _periodicSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -169,18 +230,25 @@ class TaskSyncService {
         .snapshots()
         .listen(
           (snapshot) {
+            _receivedUserDoc = true;
             final newFamilyId = snapshot.data()?['familyId'] as String?;
-            if (newFamilyId != _familyId) {
+            if (newFamilyId != _familyId ||
+                (newFamilyId != null &&
+                    newFamilyId.isNotEmpty &&
+                    _familyTasksSub == null)) {
               _familyId = newFamilyId;
               _familyIdFetcher.clearCache();
               _familyTasksSub?.cancel();
               _familyInstancesSub?.cancel();
               _familyRecipesSub?.cancel();
+              _receivedFamilyTasks = false;
+              _receivedFamilyInstances = false;
               if (_familyId != null && _familyId!.isNotEmpty) {
                 _startListeningToFamilyRemote(_familyId!);
                 _updateClientMetadata();
               }
             }
+            _checkInitialSyncComplete();
           },
           onError: (e, st) {
             logger?.error(
@@ -190,6 +258,8 @@ class TaskSyncService {
               stackTrace: st,
             );
             errorHandler?.report(e, stackTrace: st);
+            _receivedUserDoc = true;
+            _checkInitialSyncComplete();
           },
         );
 
@@ -209,6 +279,8 @@ class TaskSyncService {
               },
             );
             await _handleRemoteTasksSnapshot(snapshot, isFamily: false);
+            _receivedPersonalTasks = true;
+            _checkInitialSyncComplete();
           },
           onError: (e, st) {
             logger?.error(
@@ -218,6 +290,8 @@ class TaskSyncService {
               stackTrace: st,
             );
             errorHandler?.report(e, stackTrace: st);
+            _receivedPersonalTasks = true;
+            _checkInitialSyncComplete();
           },
         );
 
@@ -237,6 +311,8 @@ class TaskSyncService {
               },
             );
             await _handleRemoteInstancesSnapshot(snapshot, isFamily: false);
+            _receivedPersonalInstances = true;
+            _checkInitialSyncComplete();
           },
           onError: (e, st) {
             logger?.error(
@@ -246,6 +322,8 @@ class TaskSyncService {
               stackTrace: st,
             );
             errorHandler?.report(e, stackTrace: st);
+            _receivedPersonalInstances = true;
+            _checkInitialSyncComplete();
           },
         );
 
@@ -287,6 +365,8 @@ class TaskSyncService {
               },
             );
             await _handleRemoteTasksSnapshot(snapshot, isFamily: true);
+            _receivedFamilyTasks = true;
+            _checkInitialSyncComplete();
           },
           onError: (e, st) {
             logger?.error(
@@ -296,6 +376,8 @@ class TaskSyncService {
               stackTrace: st,
             );
             errorHandler?.report(e, stackTrace: st);
+            _receivedFamilyTasks = true;
+            _checkInitialSyncComplete();
           },
         );
 
@@ -315,6 +397,8 @@ class TaskSyncService {
               },
             );
             await _handleRemoteInstancesSnapshot(snapshot, isFamily: true);
+            _receivedFamilyInstances = true;
+            _checkInitialSyncComplete();
           },
           onError: (e, st) {
             logger?.error(
@@ -324,6 +408,8 @@ class TaskSyncService {
               stackTrace: st,
             );
             errorHandler?.report(e, stackTrace: st);
+            _receivedFamilyInstances = true;
+            _checkInitialSyncComplete();
           },
         );
 
@@ -488,7 +574,7 @@ class TaskSyncService {
           );
 
           if (localInst != null) {
-            if (localInst.updatedAt.isAfter(remoteInst.updatedAt)) {
+            if (_doesLocalWin(localInst, remoteInst)) {
               toPush.add(localInst);
             } else {
               toSave.add(remoteInst);
@@ -501,7 +587,7 @@ class TaskSyncService {
                 '${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}';
             final localSlotInst = localSlotMap[slotKey];
             if (localSlotInst != null) {
-              if (localSlotInst.updatedAt.isAfter(remoteInst.updatedAt)) {
+              if (_doesLocalWin(localSlotInst, remoteInst)) {
                 toPush.add(localSlotInst);
                 remoteIdsToDelete.add(remoteInst.id);
               } else {
@@ -560,6 +646,29 @@ class TaskSyncService {
             .delete();
       }
     }
+  }
+
+  bool _doesLocalWin(TaskInstance local, TaskInstance remote) {
+    final localIsUser = local.statusReason?.startsWith('user_') ?? false;
+    final remoteIsUser = remote.statusReason?.startsWith('user_') ?? false;
+    final localIsScheduler =
+        local.statusReason?.startsWith('scheduler_') ?? false;
+    final remoteIsScheduler =
+        remote.statusReason?.startsWith('scheduler_') ?? false;
+
+    // 1. User vs. Scheduler Conflict & Non-downgrade Invariant:
+    // A user action (user_completed, user_dismissed) always wins over an automated
+    // scheduler action (scheduler_*), regardless of updatedAt timestamps.
+    if (localIsUser && remoteIsScheduler) {
+      return true;
+    }
+    if (remoteIsUser && localIsScheduler) {
+      return false;
+    }
+
+    // 3. Homogeneous Resolution:
+    // If both records are user_*, both are scheduler_*, or neither, fall back to Last-Write-Wins based on updatedAt.
+    return local.updatedAt.isAfter(remote.updatedAt);
   }
 
   Future<void> _handleRemoteRecipesSnapshot(

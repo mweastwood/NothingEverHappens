@@ -51,7 +51,7 @@ void callbackDispatcher() {
         firestore: FirebaseFirestore.instance,
         notificationService: PlatformNotificationService(),
       );
-      await repo.triggerMissedPolicyProcessing();
+      await repo.triggerMissedPolicyProcessing(evaluateFamilyTasks: false);
     }
 
     return true;
