@@ -1714,6 +1714,351 @@ void main() {
       expect(eventData?['statusReason'], 'scheduler_prefer_older');
     },
   );
+
+  group('Semantic Precedence Conflict Resolution (Issue #713)', () {
+    test(
+      'local user_dismissed or user_completed instance is preserved when incoming remote contains newer scheduler_prefer_older skip',
+      () async {
+        final service = TaskSyncService(
+          firestore: firestore,
+          localDataSource: localDataSource,
+          userId: 'user1',
+          isActivePremium: true,
+        );
+        addTearDown(() => service.dispose());
+
+        final localTime = DateTime(2026, 9, 6, 12, 54);
+        final remoteTime = DateTime(2026, 9, 7, 22, 15); // Newer timestamp
+
+        // 1. Test local user_dismissed preserved
+        final localDismissed = TaskInstance(
+          id: 'I-kitchen-dismissed',
+          scheduleId: 'S-kitchen',
+          ruleId: 'R-kitchen',
+          title: 'Kitchen Task',
+          description: 'Clean Kitchen',
+          scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.skipped,
+          statusReason: 'user_dismissed',
+          updatedAt: localTime,
+        );
+        await localDataSource.saveInstance(localDismissed);
+
+        final remoteSchedulerSkip = localDismissed.copyWith(
+          status: TaskStatus.skipped,
+          statusReason: 'scheduler_prefer_older',
+          updatedAt: remoteTime,
+        );
+
+        await firestore
+            .collection('users')
+            .doc('user1')
+            .collection('instances')
+            .doc('I-kitchen-dismissed')
+            .set(remoteSchedulerSkip.toFirestore());
+
+        await pumpEventQueue();
+
+        var localInst = localDataSource.getInstances().firstWhere(
+          (i) => i.id == 'I-kitchen-dismissed',
+        );
+        expect(localInst.statusReason, 'user_dismissed');
+
+        // 2. Test local user_completed preserved
+        final localCompleted = TaskInstance(
+          id: 'I-kitchen-completed',
+          scheduleId: 'S-kitchen',
+          ruleId: 'R-kitchen',
+          title: 'Kitchen Task Completed',
+          description: 'Clean Kitchen',
+          scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.completed,
+          statusReason: 'user_completed',
+          updatedAt: localTime,
+        );
+        await localDataSource.saveInstance(localCompleted);
+
+        final remoteSchedulerSkip2 = localCompleted.copyWith(
+          status: TaskStatus.skipped,
+          statusReason: 'scheduler_prefer_older',
+          updatedAt: remoteTime,
+        );
+
+        await firestore
+            .collection('users')
+            .doc('user1')
+            .collection('instances')
+            .doc('I-kitchen-completed')
+            .set(remoteSchedulerSkip2.toFirestore());
+
+        await pumpEventQueue();
+
+        localInst = localDataSource.getInstances().firstWhere(
+          (i) => i.id == 'I-kitchen-completed',
+        );
+        expect(localInst.status, TaskStatus.completed);
+        expect(localInst.statusReason, 'user_completed');
+      },
+    );
+
+    test(
+      'remote user_completed instance overwrites a local newer scheduler_prefer_older skip',
+      () async {
+        final service = TaskSyncService(
+          firestore: firestore,
+          localDataSource: localDataSource,
+          userId: 'user1',
+          isActivePremium: true,
+        );
+        addTearDown(() => service.dispose());
+
+        final localTime = DateTime(2026, 9, 7, 22, 15); // Newer local timestamp
+        final remoteTime = DateTime(
+          2026,
+          9,
+          6,
+          12,
+          54,
+        ); // Older remote timestamp
+
+        final localSchedulerSkip = TaskInstance(
+          id: 'I-kitchen-sweep',
+          scheduleId: 'S-kitchen',
+          ruleId: 'R-kitchen',
+          title: 'Kitchen Task',
+          description: 'Clean Kitchen',
+          scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 9, minute: 0),
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            time: TimeOfDay(hour: 17, minute: 0),
+          ),
+          status: TaskStatus.skipped,
+          statusReason: 'scheduler_prefer_older',
+          updatedAt: localTime,
+        );
+        await localDataSource.saveInstance(localSchedulerSkip);
+
+        final remoteUserCompleted = localSchedulerSkip.copyWith(
+          status: TaskStatus.completed,
+          statusReason: 'user_completed',
+          updatedAt: remoteTime,
+        );
+
+        await firestore
+            .collection('users')
+            .doc('user1')
+            .collection('instances')
+            .doc('I-kitchen-sweep')
+            .set(remoteUserCompleted.toFirestore());
+
+        await pumpEventQueue();
+
+        final localInst = localDataSource.getInstances().firstWhere(
+          (i) => i.id == 'I-kitchen-sweep',
+        );
+        expect(localInst.status, TaskStatus.completed);
+        expect(localInst.statusReason, 'user_completed');
+      },
+    );
+
+    test('slot-level conflict resolution adheres to semantic precedence', () async {
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: true,
+      );
+      addTearDown(() => service.dispose());
+
+      final olderUserTime = DateTime(2026, 9, 6, 12, 0);
+      final newerBotTime = DateTime(2026, 9, 7, 10, 0);
+
+      // Case A: Local is user_dismissed (older), Remote is scheduler_prefer_older (newer, different UUID on same slot)
+      final localSlotUser = TaskInstance(
+        id: 'I-slot-local',
+        scheduleId: 'S-shared',
+        ruleId: 'R-shared',
+        title: 'Shared Slot Task',
+        description: 'Slot test',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.skipped,
+        statusReason: 'user_dismissed',
+        updatedAt: olderUserTime,
+      );
+      await localDataSource.saveInstance(localSlotUser);
+
+      final remoteSlotBot = TaskInstance(
+        id: 'I-slot-remote',
+        scheduleId: 'S-shared',
+        ruleId: 'R-shared',
+        title: 'Shared Slot Task (Remote Bot)',
+        description: 'Slot test',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.skipped,
+        statusReason: 'scheduler_prefer_older',
+        updatedAt: newerBotTime,
+      );
+
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc('I-slot-remote')
+          .set(remoteSlotBot.toFirestore());
+
+      await pumpEventQueue();
+
+      final instances = localDataSource.getInstances();
+      // Local user action should win: local kept, remote duplicate not saved
+      expect(instances.any((i) => i.id == 'I-slot-local'), isTrue);
+      expect(instances.any((i) => i.id == 'I-slot-remote'), isFalse);
+      final saved = instances.firstWhere((i) => i.id == 'I-slot-local');
+      expect(saved.statusReason, 'user_dismissed');
+
+      // Remote duplicate doc should have been deleted
+      final remoteDoc = await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc('I-slot-remote')
+          .get();
+      expect(remoteDoc.exists, isFalse);
+
+      // Case B: Local is scheduler_prefer_older (newer), Remote is user_completed (older, different UUID on same slot)
+      final localSlotBot = TaskInstance(
+        id: 'I-slot2-local',
+        scheduleId: 'S-shared2',
+        ruleId: 'R-shared2',
+        title: 'Shared Slot Task 2',
+        description: 'Slot test 2',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 7),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.skipped,
+        statusReason: 'scheduler_prefer_older',
+        updatedAt: newerBotTime,
+      );
+      await localDataSource.saveInstance(localSlotBot);
+
+      final remoteSlotUser = TaskInstance(
+        id: 'I-slot2-remote',
+        scheduleId: 'S-shared2',
+        ruleId: 'R-shared2',
+        title: 'Shared Slot Task 2 (User Completed)',
+        description: 'Slot test 2',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 7),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 9, minute: 0),
+        ),
+        dueRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          time: TimeOfDay(hour: 17, minute: 0),
+        ),
+        status: TaskStatus.completed,
+        statusReason: 'user_completed',
+        updatedAt: olderUserTime,
+      );
+
+      await firestore
+          .collection('users')
+          .doc('user1')
+          .collection('instances')
+          .doc('I-slot2-remote')
+          .set(remoteSlotUser.toFirestore());
+
+      await pumpEventQueue();
+
+      final instances2 = localDataSource.getInstances();
+      // Remote user action wins: local deleted, remote saved
+      expect(instances2.any((i) => i.id == 'I-slot2-local'), isFalse);
+      expect(instances2.any((i) => i.id == 'I-slot2-remote'), isTrue);
+      final saved2 = instances2.firstWhere((i) => i.id == 'I-slot2-remote');
+      expect(saved2.status, TaskStatus.completed);
+      expect(saved2.statusReason, 'user_completed');
+    });
+
+    test(
+      'waitForInitialSync resolves after receiving initial snapshots',
+      () async {
+        final service = TaskSyncService(
+          firestore: firestore,
+          localDataSource: localDataSource,
+          userId: 'user1',
+          isActivePremium: true,
+        );
+        addTearDown(() => service.dispose());
+
+        var resolved = false;
+        service.waitForInitialSync.then((_) {
+          resolved = true;
+        });
+
+        await pumpEventQueue();
+        expect(resolved, isTrue);
+      },
+    );
+
+    test('waitForInitialSync resolves immediately for free user', () async {
+      final service = TaskSyncService(
+        firestore: firestore,
+        localDataSource: localDataSource,
+        userId: 'user1',
+        isActivePremium: false,
+      );
+      addTearDown(() => service.dispose());
+
+      var resolved = false;
+      service.waitForInitialSync.then((_) {
+        resolved = true;
+      });
+
+      await pumpEventQueue();
+      expect(resolved, isTrue);
+    });
+  });
 }
 
 class _TrackingFamilyIdFetcher extends FamilyIdFetcher {

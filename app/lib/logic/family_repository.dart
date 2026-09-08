@@ -120,6 +120,7 @@ class FamilyRepository {
       id: familyId,
       name: name,
       members: {_userId: creator},
+      creatorId: _userId,
     );
 
     final batch = _firestore.batch();

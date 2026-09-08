@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/task_sync_service.dart';
+import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/unified_task_repository.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
@@ -1030,6 +1032,243 @@ void main() {
       expect(errorHandler.history.isNotEmpty, true);
     },
   );
+
+  group('Designated Evaluator and Gating (Issue #713)', () {
+    test(
+      'triggerMissedPolicyProcessing(evaluateFamilyTasks: false) skips family tasks but evaluates personal tasks',
+      () async {
+        final personalTask = TaskSchedule(
+          id: 'S-personal-1',
+          title: 'Personal Task',
+          description: 'Desc',
+          isFamily: false,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+        final familyTask = TaskSchedule(
+          id: 'S-family-1',
+          title: 'Family Task',
+          description: 'Desc',
+          isFamily: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        await localDataSource.saveTask(personalTask);
+        await localDataSource.saveTask(familyTask);
+
+        await repository.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: false,
+        );
+
+        final instances = localDataSource.getInstances();
+        // Personal task was evaluated and spawned an instance
+        expect(instances.any((i) => i.scheduleId == 'S-personal-1'), isTrue);
+        // Family task was skipped and spawned no instances
+        expect(instances.any((i) => i.scheduleId == 'S-family-1'), isFalse);
+      },
+    );
+
+    test(
+      'assigned family task is only evaluated by assigned user, not other users',
+      () async {
+        final assignedToOther = TaskSchedule(
+          id: 'S-fam-assigned-other',
+          title: 'Assigned to Other',
+          description: 'Desc',
+          isFamily: true,
+          assignedUserId: 'user2',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+        final assignedToMe = TaskSchedule(
+          id: 'S-fam-assigned-me',
+          title: 'Assigned to Me',
+          description: 'Desc',
+          isFamily: true,
+          assignedUserId: 'user1',
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        await localDataSource.saveTask(assignedToOther);
+        await localDataSource.saveTask(assignedToMe);
+
+        // Current repository user is 'user1'
+        await repository.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: true,
+        );
+
+        final instances = localDataSource.getInstances();
+        // Assigned to other should NOT be evaluated/spawned by user1
+        expect(
+          instances.any((i) => i.scheduleId == 'S-fam-assigned-other'),
+          isFalse,
+        );
+        // Assigned to user1 SHOULD be evaluated and spawned
+        expect(
+          instances.any((i) => i.scheduleId == 'S-fam-assigned-me'),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'unassigned family task is evaluated by designated family leader, but not by non-leader member',
+      () async {
+        // Set up family in Firestore with creatorId: 'user-leader'
+        await firestore.collection('families').doc('family-test').set({
+          'name': 'Test Family',
+          'creatorId': 'user-leader',
+          'members': {
+            'user-leader': {
+              'userId': 'user-leader',
+              'displayName': 'Leader Parent',
+              'email': 'leader@example.com',
+              'role': 'parent',
+            },
+            'user-member': {
+              'userId': 'user-member',
+              'displayName': 'Regular Member',
+              'email': 'member@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+        await firestore.collection('users').doc('user-leader').set({
+          'familyId': 'family-test',
+        });
+        await firestore.collection('users').doc('user-member').set({
+          'familyId': 'family-test',
+        });
+
+        final unassignedFamilyTask = TaskSchedule(
+          id: 'S-unassigned-fam',
+          title: 'Unassigned Shared Task',
+          description: 'Desc',
+          isFamily: true,
+          assignedUserId: null,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        // 1. Non-leader repository evaluates
+        final memberLocalSource = HiveLocalDataSource();
+        await memberLocalSource.init();
+        await memberLocalSource.setMigrationCompleted(true);
+
+        final memberSync = TaskSyncService(
+          firestore: firestore,
+          localDataSource: memberLocalSource,
+          userId: 'user-member',
+          isActivePremium: false,
+        );
+        addTearDown(() => memberSync.dispose());
+
+        final memberRepo = UnifiedTaskRepository(
+          localDataSource: memberLocalSource,
+          syncService: memberSync,
+          firestore: firestore,
+          userId: 'user-member',
+        );
+
+        await memberLocalSource.saveTask(unassignedFamilyTask);
+        await memberRepo.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: true,
+        );
+
+        var memberInstances = memberLocalSource.getInstances();
+        expect(
+          memberInstances.any((i) => i.scheduleId == 'S-unassigned-fam'),
+          isFalse,
+          reason: 'Non-leader member must not evaluate unassigned family task',
+        );
+
+        // 2. Leader repository evaluates
+        final leaderLocalSource = HiveLocalDataSource();
+        await leaderLocalSource.init();
+        await leaderLocalSource.setMigrationCompleted(true);
+
+        final leaderSync = TaskSyncService(
+          firestore: firestore,
+          localDataSource: leaderLocalSource,
+          userId: 'user-leader',
+          isActivePremium: false,
+        );
+        addTearDown(() => leaderSync.dispose());
+
+        final leaderRepo = UnifiedTaskRepository(
+          localDataSource: leaderLocalSource,
+          syncService: leaderSync,
+          firestore: firestore,
+          userId: 'user-leader',
+        );
+
+        await leaderLocalSource.saveTask(unassignedFamilyTask);
+        await leaderRepo.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: true,
+        );
+
+        var leaderInstances = leaderLocalSource.getInstances();
+        expect(
+          leaderInstances.any((i) => i.scheduleId == 'S-unassigned-fam'),
+          isTrue,
+          reason: 'Leader must evaluate unassigned family task',
+        );
+      },
+    );
+
+    test(
+      'lifecycle resume gates triggerMissedPolicyProcessing on initial sync',
+      () async {
+        var initialSyncAwaited = false;
+        var policyProcessingTriggered = false;
+
+        final syncCompleter = Completer<void>();
+
+        final observer = AppLifecycleObserver(
+          onResume: () async {
+            initialSyncAwaited = true;
+            await syncCompleter.future;
+            policyProcessingTriggered = true;
+          },
+        );
+
+        observer.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        expect(initialSyncAwaited, isTrue);
+        expect(policyProcessingTriggered, isFalse);
+
+        syncCompleter.complete();
+        await pumpEventQueue();
+        expect(policyProcessingTriggered, isTrue);
+      },
+    );
+  });
 }
 
 class _TrackingHiveLocalDataSource extends HiveLocalDataSource {

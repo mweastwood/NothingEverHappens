@@ -26,10 +26,11 @@ import 'family_repository.dart';
 export 'firestore_task_repository.dart';
 export 'family_id_fetcher.dart';
 
-class _AppLifecycleObserver extends WidgetsBindingObserver {
-  final VoidCallback onResume;
+@visibleForTesting
+class AppLifecycleObserver extends WidgetsBindingObserver {
+  final FutureOr<void> Function() onResume;
 
-  _AppLifecycleObserver({required this.onResume});
+  AppLifecycleObserver({required this.onResume});
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -85,10 +86,11 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
   AppClock.timeNotifier.addListener(clockListener);
 
   // Monitor app lifecycle changes to trigger sync on resume
-  _AppLifecycleObserver? lifecycleObserver;
+  AppLifecycleObserver? lifecycleObserver;
   try {
-    lifecycleObserver = _AppLifecycleObserver(
-      onResume: () {
+    lifecycleObserver = AppLifecycleObserver(
+      onResume: () async {
+        await syncService.waitForInitialSync;
         repo.triggerMissedPolicyProcessing();
       },
     );
@@ -295,6 +297,7 @@ abstract class TaskRepository {
   Future<void> saveTaskInstance(TaskInstance instance);
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance);
   Future<void> triggerMissedPolicyProcessing({
+    bool evaluateFamilyTasks = true,
     Future<void> Function()? postProcess,
   });
   Future<void> resetLocalDataAndResync();
