@@ -1,11 +1,15 @@
-/// Escapes single quotes for insertion into JS string literals.
-String escapeNotificationText(String text) => text.replaceAll("'", "\\'");
+import 'dart:convert';
+
+/// Escapes characters for insertion into single-quoted JS string literals.
+String escapeNotificationText(String text) => text
+    .replaceAll(r'\', r'\\')
+    .replaceAll("'", r"\'")
+    .replaceAll('\n', r'\n')
+    .replaceAll('\r', r'\r');
 
 /// Builds the JS script for creating a browser Notification.
 String buildNotificationScript(String title, String body) {
-  final escapedTitle = escapeNotificationText(title);
-  final escapedBody = escapeNotificationText(body);
-  return "new Notification('$escapedTitle', { body: '$escapedBody' });";
+  return 'new Notification(${jsonEncode(title)}, { body: ${jsonEncode(body)} });';
 }
 
 /// Abstract representation of the browser's Notification object.

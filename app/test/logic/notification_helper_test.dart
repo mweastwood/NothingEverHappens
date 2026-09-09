@@ -91,6 +91,29 @@ void main() {
     });
 
     test(
+      'escapeNotificationText escapes backslashes including trailing backslashes',
+      () {
+        expect(
+          escapeNotificationText(r'path\to\file'),
+          equals(r'path\\to\\file'),
+        );
+        expect(escapeNotificationText(r'test\'), equals(r'test\\'));
+        expect(escapeNotificationText(r"\'"), equals(r"\\\'"));
+        expect(
+          escapeNotificationText(r"\'); alert(1);//"),
+          equals(r"\\\'); alert(1);//"),
+        );
+      },
+    );
+
+    test('escapeNotificationText escapes newlines and carriage returns', () {
+      expect(
+        escapeNotificationText("line1\nline2\rline3\r\nline4"),
+        equals(r"line1\nline2\rline3\r\nline4"),
+      );
+    });
+
+    test(
       'buildNotificationScript constructs valid Notification instantiation code',
       () {
         final script = buildNotificationScript(
@@ -100,29 +123,77 @@ void main() {
         expect(
           script,
           equals(
-            "new Notification('Meeting Alert', { body: 'Team sync in 5 minutes' });",
+            'new Notification("Meeting Alert", { body: "Team sync in 5 minutes" });',
           ),
         );
       },
     );
 
-    test('buildNotificationScript escapes single quotes in title and body', () {
+    test('buildNotificationScript handles quotes in title and body', () {
       final script = buildNotificationScript(
         "Don't forget",
-        "It's time for lunch!",
+        'It\'s "time" for lunch!',
       );
       expect(
         script,
         equals(
-          "new Notification('Don\\'t forget', { body: 'It\\'s time for lunch!' });",
+          'new Notification("Don\'t forget", { body: "It\'s \\"time\\" for lunch!" });',
         ),
       );
     });
 
     test('buildNotificationScript handles empty title and body', () {
       final script = buildNotificationScript('', '');
-      expect(script, equals("new Notification('', { body: '' });"));
+      expect(script, equals('new Notification("", { body: "" });'));
     });
+
+    test(
+      'buildNotificationScript safely handles backslashes and trailing backslashes',
+      () {
+        final script = buildNotificationScript(
+          r'C:\Program Files\App\',
+          r'path\to\file\',
+        );
+        expect(
+          script,
+          equals(
+            'new Notification("C:\\\\Program Files\\\\App\\\\", { body: "path\\\\to\\\\file\\\\" });',
+          ),
+        );
+      },
+    );
+
+    test(
+      'buildNotificationScript safely escapes multi-line text containing \\n and \\r',
+      () {
+        final script = buildNotificationScript(
+          "Title Line 1\nTitle Line 2",
+          "Body Line 1\r\nBody Line 2\rBody Line 3",
+        );
+        expect(
+          script,
+          equals(
+            'new Notification("Title Line 1\\nTitle Line 2", { body: "Body Line 1\\r\\nBody Line 2\\rBody Line 3" });',
+          ),
+        );
+      },
+    );
+
+    test(
+      'buildNotificationScript prevents JS injection and maintains string encapsulation',
+      () {
+        final script = buildNotificationScript(
+          r"\'); alert(1);//",
+          r'"); alert(2);//',
+        );
+        expect(
+          script,
+          equals(
+            'new Notification("\\\\\'); alert(1);//", { body: "\\"); alert(2);//" });',
+          ),
+        );
+      },
+    );
   });
 
   group(
@@ -247,7 +318,7 @@ void main() {
       expect(
         context.evaluatedScripts.first,
         equals(
-          "new Notification('Reminder: Don\\'t forget', { body: 'It\\'s 2 PM' });",
+          'new Notification("Reminder: Don\'t forget", { body: "It\'s 2 PM" });',
         ),
       );
     });
