@@ -39,9 +39,7 @@ class _NotificationListWidgetState extends State<NotificationListWidget> {
     if (widget.notifications.length >= _maxNotifications) return;
     final updated = List<RelativeTime>.from(widget.notifications);
     // Default to 'Day of' (offset 0) at 9:00 AM
-    updated.add(
-      const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-    );
+    updated.add(const RelativeTime(dayOffset: 0, hour: 9, minute: 0));
     widget.onChanged(updated);
   }
 
@@ -213,7 +211,8 @@ class _NotificationItemWidgetState extends State<_NotificationItemWidget> {
     final dayOffset = targetUtc.difference(refUtc).inDays;
     final relative = RelativeTime(
       dayOffset: dayOffset,
-      time: TimeOfDay(hour: dt.hour, minute: dt.minute),
+      hour: dt.hour,
+      minute: dt.minute,
     );
     widget.onChanged(relative);
   }

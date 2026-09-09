@@ -13,14 +13,8 @@ void main() {
     final startDay = CivilDay(year: 2026, month: 7, day: 1); // Wednesday
     final endDay = CivilDay(year: 2026, month: 7, day: 7); // Tuesday
 
-    const dummyStart = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 9, minute: 0),
-    );
-    const dummyDue = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 17, minute: 0),
-    );
+    const dummyStart = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+    const dummyDue = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
     final stats = PersonalLastWeekStats(
       completedCount: 5,

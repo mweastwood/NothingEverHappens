@@ -67,14 +67,8 @@ class _RelativeTimingTestWrapperState
 void main() {
   group('RelativeTimingWidget Widget Tests', () {
     testWidgets('renders initial values correctly', (tester) async {
-      const initialStart = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      );
-      const initialDue = RelativeTime(
-        dayOffset: 1,
-        time: TimeOfDay(hour: 17, minute: 0),
-      );
+      const initialStart = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+      const initialDue = RelativeTime(dayOffset: 1, hour: 17, minute: 0);
 
       await tester.pumpWidget(
         buildTestableWidget(
@@ -107,14 +101,8 @@ void main() {
     testWidgets('triggers time picker when tapping time buttons', (
       tester,
     ) async {
-      const initialStart = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      );
-      const initialDue = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      );
+      const initialStart = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+      const initialDue = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
       await tester.pumpWidget(
         buildTestableWidget(
@@ -140,14 +128,8 @@ void main() {
     });
 
     testWidgets('allows changing dropdown selection', (tester) async {
-      const initialStart = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      );
-      const initialDue = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      );
+      const initialStart = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+      const initialDue = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
       RelativeTime? updatedStart;
 
@@ -188,14 +170,8 @@ void main() {
     testWidgets('shows custom offset input when Custom is selected', (
       tester,
     ) async {
-      const initialStart = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      );
-      const initialDue = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      );
+      const initialStart = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+      const initialDue = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
       RelativeTime? updatedStart;
 
@@ -243,14 +219,8 @@ void main() {
     testWidgets('enabling notifications displays notification timing', (
       tester,
     ) async {
-      const initialStart = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      );
-      const initialDue = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      );
+      const initialStart = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+      const initialDue = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
       RelativeTime? updatedNotification;
 
@@ -290,11 +260,13 @@ void main() {
             child: RelativeTimingWidget(
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 1,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
               notificationRelativeTime: null,
               onStartChanged: (_) {},
@@ -309,15 +281,18 @@ void main() {
             child: RelativeTimingWidget(
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
               notificationRelativeTime: const RelativeTime(
                 dayOffset: -1,
-                time: TimeOfDay(hour: 8, minute: 30),
+                hour: 8,
+                minute: 30,
               ),
               onStartChanged: (_) {},
               onDueChanged: (_) {},

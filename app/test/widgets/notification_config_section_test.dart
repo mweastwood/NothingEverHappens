@@ -7,10 +7,7 @@ import '../test_helper.dart';
 
 void main() {
   group('NotificationConfigSection Widget Tests', () {
-    const fixtureRelativeTime = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 9, minute: 0),
-    );
+    const fixtureRelativeTime = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
 
     group('Visibility & Conditional Rendering', () {
       testWidgets('renders SizedBox.shrink when showNotification is false', (

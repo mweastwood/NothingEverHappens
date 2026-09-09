@@ -32,18 +32,9 @@ void main() {
       'toJson and fromJson round-trip with custom RelativeTime configurations',
       () {
         const config = MealWorkflowConfig(
-          selectTime: RelativeTime(
-            dayOffset: -1,
-            time: TimeOfDay(hour: 20, minute: 0),
-          ),
-          shopTime: RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 12, minute: 15),
-          ),
-          prepTime: RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 19, minute: 45),
-          ),
+          selectTime: RelativeTime(dayOffset: -1, hour: 20, minute: 0),
+          shopTime: RelativeTime(dayOffset: 0, hour: 12, minute: 15),
+          prepTime: RelativeTime(dayOffset: 0, hour: 19, minute: 45),
         );
 
         final json = config.toJson();
@@ -62,24 +53,15 @@ void main() {
 
         expect(
           deserialized.selectTime,
-          const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 10, minute: 0),
-          ),
+          const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
         );
         expect(
           deserialized.shopTime,
-          const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 16, minute: 0),
-          ),
+          const RelativeTime(dayOffset: 0, hour: 16, minute: 0),
         );
         expect(
           deserialized.prepTime,
-          const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 18, minute: 30),
-          ),
+          const RelativeTime(dayOffset: 0, hour: 18, minute: 30),
         );
       },
     );
@@ -88,10 +70,7 @@ void main() {
       const original = MealWorkflowConfig();
 
       final updatedSelect = original.copyWith(
-        selectTime: const RelativeTime(
-          dayOffset: -1,
-          time: TimeOfDay(hour: 8, minute: 0),
-        ),
+        selectTime: const RelativeTime(dayOffset: -1, hour: 8, minute: 0),
       );
       expect(updatedSelect.selectTime.dayOffset, -1);
       expect(
@@ -102,10 +81,7 @@ void main() {
       expect(updatedSelect.prepTime, original.prepTime);
 
       final updatedShop = original.copyWith(
-        shopTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 14, minute: 30),
-        ),
+        shopTime: const RelativeTime(dayOffset: 0, hour: 14, minute: 30),
       );
       expect(updatedShop.selectTime, original.selectTime);
       expect(updatedShop.shopTime.dayOffset, 0);
@@ -113,10 +89,7 @@ void main() {
       expect(updatedShop.prepTime, original.prepTime);
 
       final updatedPrep = original.copyWith(
-        prepTime: const RelativeTime(
-          dayOffset: 1,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        prepTime: const RelativeTime(dayOffset: 1, hour: 17, minute: 0),
       );
       expect(updatedPrep.selectTime, original.selectTime);
       expect(updatedPrep.shopTime, original.shopTime);

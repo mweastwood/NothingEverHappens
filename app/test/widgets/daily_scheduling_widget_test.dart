@@ -17,14 +17,8 @@ void main() {
       final startDate = CivilDay(year: 2026, month: 10, day: 26);
       int interval = 1;
       SchedulingPolicy policy = const FixedCalendarPolicy();
-      const startRelative = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      );
-      const dueRelative = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      );
+      const startRelative = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+      const dueRelative = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
       const missed = MissedOccurrencePolicy.stack();
 
       await tester.pumpWidget(
@@ -87,12 +81,14 @@ void main() {
                 onSchedulingPolicyChanged: (_) {},
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 9, minute: 0),
+                  hour: 9,
+                  minute: 0,
                 ),
                 onStartRelativeTimeChanged: (_) {},
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 17, minute: 0),
+                  hour: 17,
+                  minute: 0,
                 ),
                 onDueRelativeTimeChanged: (_) {},
                 notificationRelativeTime: null,
@@ -114,14 +110,8 @@ void main() {
 
     testGoldens('DailySchedulingWidget renders correctly', (tester) async {
       final startDate = CivilDay(year: 2026, month: 10, day: 26);
-      const startRelative = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      );
-      const dueRelative = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      );
+      const startRelative = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+      const dueRelative = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
       const missed = MissedOccurrencePolicy.stack();
 
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1.1)

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -313,14 +312,8 @@ void main() {
         title: 'Local Instance',
         description: 'Local desc',
         scheduledDate: const CivilDay(year: 2026, month: 8, day: 15),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.pending,
         updatedAt: t1,
       );
@@ -333,14 +326,8 @@ void main() {
         title: 'Remote Instance (Newer)',
         description: 'Remote desc',
         scheduledDate: const CivilDay(year: 2026, month: 8, day: 15),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.completed,
         updatedAt: t2,
       );
@@ -384,14 +371,8 @@ void main() {
         title: 'Local Instance (Newer)',
         description: 'Local desc',
         scheduledDate: const CivilDay(year: 2026, month: 8, day: 15),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.completed,
         updatedAt: t2,
       );
@@ -404,14 +385,8 @@ void main() {
         title: 'Remote Instance (Older)',
         description: 'Remote desc',
         scheduledDate: const CivilDay(year: 2026, month: 8, day: 15),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.pending,
         updatedAt: t1,
       );
@@ -508,12 +483,10 @@ void main() {
         scheduledDate: CivilDay(year: 2026, month: 8, day: 16),
         startRelativeTime: const RelativeTime(
           dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
+          hour: 17,
+          minute: 0,
         ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 23, minute: 0),
-        ),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 23, minute: 0),
         isFamily: true,
         updatedAt: DateTime.now(),
       );
@@ -750,12 +723,10 @@ void main() {
         scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
         startRelativeTime: const RelativeTime(
           dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
+          hour: 17,
+          minute: 0,
         ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 23, minute: 0),
-        ),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 23, minute: 0),
         isFamily: false,
         status: TaskStatus.pending,
         updatedAt: DateTime(2026, 8, 16, 11, 0),
@@ -868,12 +839,10 @@ void main() {
         scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
         startRelativeTime: const RelativeTime(
           dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
+          hour: 17,
+          minute: 0,
         ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 23, minute: 0),
-        ),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 23, minute: 0),
         isFamily: true,
         status: TaskStatus.pending,
         updatedAt: DateTime(2026, 8, 16, 11, 0),
@@ -1134,11 +1103,13 @@ void main() {
           scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.pending,
           isFamily: false,
@@ -1176,14 +1147,8 @@ void main() {
         title: 'Cached Task',
         description: 'Desc',
         scheduledDate: const CivilDay(year: 2026, month: 8, day: 21),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         isFromCache: true,
         updatedAt: DateTime(2026, 8, 20, 10, 0),
       );
@@ -1674,14 +1639,8 @@ void main() {
         title: 'Platform Test Instance',
         description: '',
         scheduledDate: const CivilDay(year: 2026, month: 9, day: 2),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.skipped,
         statusReason: 'scheduler_prefer_older',
         lastModifiedByUserId: 'user2',
@@ -1740,11 +1699,13 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.skipped,
           statusReason: 'user_dismissed',
@@ -1782,11 +1743,13 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.completed,
           statusReason: 'user_completed',
@@ -1846,11 +1809,13 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.skipped,
           statusReason: 'scheduler_prefer_older',
@@ -1901,14 +1866,8 @@ void main() {
         title: 'Shared Slot Task',
         description: 'Slot test',
         scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.skipped,
         statusReason: 'user_dismissed',
         updatedAt: olderUserTime,
@@ -1922,14 +1881,8 @@ void main() {
         title: 'Shared Slot Task (Remote Bot)',
         description: 'Slot test',
         scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.skipped,
         statusReason: 'scheduler_prefer_older',
         updatedAt: newerBotTime,
@@ -1968,14 +1921,8 @@ void main() {
         title: 'Shared Slot Task 2',
         description: 'Slot test 2',
         scheduledDate: const CivilDay(year: 2026, month: 9, day: 7),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.skipped,
         statusReason: 'scheduler_prefer_older',
         updatedAt: newerBotTime,
@@ -1989,14 +1936,8 @@ void main() {
         title: 'Shared Slot Task 2 (User Completed)',
         description: 'Slot test 2',
         scheduledDate: const CivilDay(year: 2026, month: 9, day: 7),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.completed,
         statusReason: 'user_completed',
         updatedAt: olderUserTime,

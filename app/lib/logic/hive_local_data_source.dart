@@ -854,15 +854,12 @@ class HiveLocalDataSource {
     final startRelativeTimeRaw = data['startRelativeTime'] as Map?;
     final startRelativeTime = startRelativeTimeRaw != null
         ? RelativeTime.fromJson(Map<String, dynamic>.from(startRelativeTimeRaw))
-        : const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0));
+        : const RelativeTime(dayOffset: 0, hour: 9, minute: 0);
 
     final dueRelativeTimeRaw = data['dueRelativeTime'] as Map?;
     final dueRelativeTime = dueRelativeTimeRaw != null
         ? RelativeTime.fromJson(Map<String, dynamic>.from(dueRelativeTimeRaw))
-        : const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          );
+        : const RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
     List<RelativeTime> notificationRelativeTimes = [];
     if (data['notificationRelativeTimes'] != null) {

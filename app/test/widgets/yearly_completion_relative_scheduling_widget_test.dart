@@ -9,14 +9,8 @@ import '../test_helper.dart';
 
 void main() {
   group('YearlyCompletionRelativeSchedulingWidget', () {
-    const startRelative = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 9, minute: 0),
-    );
-    const dueRelative = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 17, minute: 0),
-    );
+    const startRelative = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+    const dueRelative = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
     testWidgets('renders all fields when fully configured', (tester) async {
       await tester.pumpWidget(

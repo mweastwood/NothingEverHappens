@@ -35,7 +35,8 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
         if (policy is CompletionRelativePolicy) {
           policy = CompletionRelativePolicy(
             interval: Duration(days: val),
-            targetTime: policy.targetTime,
+            targetHour: policy.targetHour,
+            targetMinute: policy.targetMinute,
           );
         }
         state.widget.onChanged(
@@ -91,7 +92,8 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
         if (policy is CompletionRelativePolicy) {
           policy = CompletionRelativePolicy(
             interval: Duration(days: val * 7),
-            targetTime: policy.targetTime,
+            targetHour: policy.targetHour,
+            targetMinute: policy.targetMinute,
           );
         }
         state.widget.onChanged(
@@ -165,7 +167,8 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
         if (policy is CompletionRelativePolicy) {
           policy = CompletionRelativePolicy(
             interval: Duration(days: val * 30),
-            targetTime: policy.targetTime,
+            targetHour: policy.targetHour,
+            targetMinute: policy.targetMinute,
           );
         }
         state.widget.onChanged(
@@ -313,7 +316,8 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
         if (policy is CompletionRelativePolicy) {
           policy = CompletionRelativePolicy(
             interval: Duration(days: val * 365),
-            targetTime: policy.targetTime,
+            targetHour: policy.targetHour,
+            targetMinute: policy.targetMinute,
           );
         }
         state.widget.onChanged(
@@ -689,10 +693,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     );
     final absUtc = DateTime.utc(abs.year, abs.month, abs.day);
     final offset = absUtc.difference(occUtc).inDays;
-    return RelativeTime(
-      dayOffset: offset,
-      time: TimeOfDay(hour: abs.hour, minute: abs.minute),
-    );
+    return RelativeTime(dayOffset: offset, hour: abs.hour, minute: abs.minute);
   }
 
   @override

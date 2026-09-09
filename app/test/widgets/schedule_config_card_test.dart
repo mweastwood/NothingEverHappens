@@ -389,7 +389,8 @@ void main() {
           interval: 2,
           schedulingPolicy: const CompletionRelativePolicy(
             interval: Duration(days: 2),
-            targetTime: TimeOfDay(hour: 9, minute: 0),
+            targetHour: 9,
+            targetMinute: 0,
           ),
         );
 

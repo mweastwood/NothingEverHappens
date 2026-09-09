@@ -63,8 +63,8 @@ void main() {
       tester,
     ) async {
       final notifs = [
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 0)),
-        const RelativeTime(dayOffset: -1, time: TimeOfDay(hour: 18, minute: 0)),
+        const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+        const RelativeTime(dayOffset: -1, hour: 18, minute: 0),
       ];
 
       await tester.pumpWidget(
@@ -91,8 +91,8 @@ void main() {
       tester,
     ) async {
       final notifs = [
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 0)),
-        const RelativeTime(dayOffset: -1, time: TimeOfDay(hour: 18, minute: 0)),
+        const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+        const RelativeTime(dayOffset: -1, hour: 18, minute: 0),
       ];
       List<RelativeTime>? changedList;
 
@@ -123,9 +123,7 @@ void main() {
     testWidgets('hides add button and limit counters in read-only mode', (
       tester,
     ) async {
-      final notifs = [
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 0)),
-      ];
+      final notifs = [const RelativeTime(dayOffset: 0, hour: 8, minute: 0)];
 
       await tester.pumpWidget(
         buildTestableWidget(
@@ -147,10 +145,7 @@ void main() {
     testWidgets('hides add button when limit of 5 is reached', (tester) async {
       final notifs = List.generate(
         5,
-        (index) => RelativeTime(
-          dayOffset: index,
-          time: const TimeOfDay(hour: 9, minute: 0),
-        ),
+        (index) => RelativeTime(dayOffset: index, hour: 9, minute: 0),
       );
 
       await tester.pumpWidget(
@@ -171,11 +166,8 @@ void main() {
     testGoldens('NotificationListWidget renders correctly', (tester) async {
       const refDate = CivilDay(year: 2026, month: 6, day: 15);
       final notifs = [
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
-        const RelativeTime(
-          dayOffset: -1,
-          time: TimeOfDay(hour: 18, minute: 30),
-        ),
+        const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        const RelativeTime(dayOffset: -1, hour: 18, minute: 30),
       ];
 
       final builder = GoldenBuilder.column()
@@ -202,7 +194,8 @@ void main() {
               5,
               (index) => RelativeTime(
                 dayOffset: index - 2,
-                time: TimeOfDay(hour: 8 + index, minute: 0),
+                hour: 8 + index,
+                minute: 0,
               ),
             ),
             onChanged: (_) {},

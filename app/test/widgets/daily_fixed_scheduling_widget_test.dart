@@ -14,14 +14,8 @@ import '../test_helper.dart';
 void main() {
   group('DailyFixedSchedulingWidget', () {
     final startDate = CivilDay(year: 2026, month: 10, day: 26);
-    const startRelative = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 9, minute: 0),
-    );
-    const dueRelative = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 17, minute: 0),
-    );
+    const startRelative = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+    const dueRelative = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
     const missed = MissedOccurrencePolicy.stack();
 
     testWidgets('renders all fields when fully configured', (tester) async {
@@ -124,7 +118,8 @@ void main() {
                 onDueRelativeTimeChanged: (_) {},
                 notificationRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 8, minute: 0),
+                  hour: 8,
+                  minute: 0,
                 ),
                 onNotificationRelativeTimeChanged: (_) {},
                 missedOccurrencePolicy: missed,

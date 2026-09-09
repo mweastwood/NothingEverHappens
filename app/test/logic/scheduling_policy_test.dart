@@ -33,15 +33,18 @@ void main() {
       test('equality and hashCode', () {
         const policy1 = CompletionRelativePolicy(
           interval: Duration(days: 7),
-          targetTime: TimeOfDay(hour: 9, minute: 0),
+          targetHour: 9,
+          targetMinute: 0,
         );
         const policy2 = CompletionRelativePolicy(
           interval: Duration(days: 7),
-          targetTime: TimeOfDay(hour: 9, minute: 0),
+          targetHour: 9,
+          targetMinute: 0,
         );
         const policy3 = CompletionRelativePolicy(
           interval: Duration(days: 5),
-          targetTime: TimeOfDay(hour: 9, minute: 0),
+          targetHour: 9,
+          targetMinute: 0,
         );
 
         expect(policy1, equals(policy2));
@@ -52,7 +55,8 @@ void main() {
       test('toJson and fromJson serialization', () {
         const policy = CompletionRelativePolicy(
           interval: Duration(days: 7),
-          targetTime: TimeOfDay(hour: 9, minute: 30),
+          targetHour: 9,
+          targetMinute: 30,
         );
         final json = policy.toJson();
 
@@ -71,11 +75,12 @@ void main() {
       test('toString matches expected output', () {
         const policy = CompletionRelativePolicy(
           interval: Duration(days: 1),
-          targetTime: TimeOfDay(hour: 12, minute: 0),
+          targetHour: 12,
+          targetMinute: 0,
         );
         expect(
           policy.toString(),
-          'CompletionRelativePolicy(interval: 24:00:00.000000, targetTime: TimeOfDay(12:00))',
+          'CompletionRelativePolicy(interval: 24:00:00.000000, targetHour: 12, targetMinute: 0)',
         );
       });
     });

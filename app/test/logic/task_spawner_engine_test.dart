@@ -39,11 +39,13 @@ void main() {
                 interval: 1,
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 9, minute: 0),
+                  hour: 9,
+                  minute: 0,
                 ),
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 10, minute: 0),
+                  hour: 10,
+                  minute: 0,
                 ),
                 missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
               ),
@@ -110,11 +112,13 @@ void main() {
               interval: 2, // Changed interval
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 10, minute: 0),
+                hour: 10,
+                minute: 0,
               ),
             ),
           ],
@@ -144,11 +148,13 @@ void main() {
               daysOfWeek: {DateTime.monday},
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 10, minute: 0),
+                hour: 10,
+                minute: 0,
               ),
             ),
           ],
@@ -378,7 +384,8 @@ void main() {
                 interval: 1,
                 schedulingPolicy: const CompletionRelativePolicy(
                   interval: Duration(days: 3),
-                  targetTime: TimeOfDay(hour: 14, minute: 0),
+                  targetHour: 14,
+                  targetMinute: 0,
                 ),
               ),
             ],

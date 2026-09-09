@@ -922,11 +922,15 @@ class TaskSyncService {
     try {
       final now = DateTime.now().toUtc();
       final batch = _firestore.batch();
-      batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
-        'appVersion': AppVersion.display,
-        'platform': AppVersion.platform,
-        'lastSeenAt': now.toIso8601String(),
-      }, SetOptions(merge: true));
+      batch.set(
+        _firestore.collection(FirestorePaths.users).doc(_userId),
+        {
+          'appVersion': AppVersion.display,
+          'platform': AppVersion.platform,
+          'lastSeenAt': now.toIso8601String(),
+        },
+        SetOptions(merge: true),
+      );
 
       if (_familyId != null && _familyId!.isNotEmpty) {
         batch.update(

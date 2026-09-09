@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
-import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'app_clock.dart';
@@ -577,11 +576,13 @@ class FirestoreTaskRepository implements TaskRepository {
                   scheduledDate: date,
                   startRelativeTime: RelativeTime(
                     dayOffset: 0,
-                    time: const TimeOfDay(hour: 9, minute: 0),
+                    hour: 9,
+                    minute: 0,
                   ),
                   dueRelativeTime: RelativeTime(
                     dayOffset: 0,
-                    time: const TimeOfDay(hour: 17, minute: 0),
+                    hour: 17,
+                    minute: 0,
                   ),
                   status: TaskStatus.pending,
                 ),

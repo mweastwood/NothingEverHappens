@@ -26,11 +26,13 @@ void main() {
           interval: 2,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         ),
       ],
@@ -49,11 +51,13 @@ void main() {
           daysOfWeek: {1, 3},
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 10, minute: 30),
+            hour: 10,
+            minute: 30,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 12, minute: 0),
+            hour: 12,
+            minute: 0,
           ),
         ),
       ],
@@ -72,12 +76,10 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 0),
+            hour: 8,
+            minute: 0,
           ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
+          dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
         ),
       ],
     );
@@ -96,12 +98,10 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 0),
+            hour: 8,
+            minute: 0,
           ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
+          dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
         ),
       ],
     );

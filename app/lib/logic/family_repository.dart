@@ -125,10 +125,11 @@ class FamilyRepository {
 
     final batch = _firestore.batch();
     batch.set(familyRef, family.toJson());
-    batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
-      'familyId': familyId,
-      'familyRole': FamilyRole.parent.toJson(),
-    }, SetOptions(merge: true));
+    batch.set(
+      _firestore.collection(FirestorePaths.users).doc(_userId),
+      {'familyId': familyId, 'familyRole': FamilyRole.parent.toJson()},
+      SetOptions(merge: true),
+    );
 
     await batch.commit();
   }
@@ -183,10 +184,11 @@ class FamilyRepository {
 
     batch.update(familyRef, {'members.$_userId': newMember.toJson()});
 
-    batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
-      'familyId': invite.familyId,
-      'familyRole': invite.role.toJson(),
-    }, SetOptions(merge: true));
+    batch.set(
+      _firestore.collection(FirestorePaths.users).doc(_userId),
+      {'familyId': invite.familyId, 'familyRole': invite.role.toJson()},
+      SetOptions(merge: true),
+    );
 
     batch.update(_firestore.collection(FirestorePaths.invites).doc(invite.id), {
       'status': FamilyInviteStatus.accepted.toJson(),
@@ -213,9 +215,11 @@ class FamilyRepository {
 
     batch.update(familyRef, {'members.$memberUserId.role': newRole.toJson()});
 
-    batch.set(_firestore.collection(FirestorePaths.users).doc(memberUserId), {
-      'familyRole': newRole.toJson(),
-    }, SetOptions(merge: true));
+    batch.set(
+      _firestore.collection(FirestorePaths.users).doc(memberUserId),
+      {'familyRole': newRole.toJson()},
+      SetOptions(merge: true),
+    );
 
     await batch.commit();
   }
@@ -361,10 +365,11 @@ class FamilyRepository {
       }
     } else {
       ops.add(
-        (b) => b.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
-          'familyId': FieldValue.delete(),
-          'familyRole': FieldValue.delete(),
-        }, SetOptions(merge: true)),
+        (b) => b.set(
+          _firestore.collection(FirestorePaths.users).doc(_userId),
+          {'familyId': FieldValue.delete(), 'familyRole': FieldValue.delete()},
+          SetOptions(merge: true),
+        ),
       );
 
       await _commitInChunks(_firestore, ops);
@@ -378,11 +383,15 @@ class FamilyRepository {
   }) async {
     final now = DateTime.now().toUtc();
     final batch = _firestore.batch();
-    batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
-      'appVersion': appVersion,
-      'platform': platform,
-      'lastSeenAt': now.toIso8601String(),
-    }, SetOptions(merge: true));
+    batch.set(
+      _firestore.collection(FirestorePaths.users).doc(_userId),
+      {
+        'appVersion': appVersion,
+        'platform': platform,
+        'lastSeenAt': now.toIso8601String(),
+      },
+      SetOptions(merge: true),
+    );
 
     if (familyId != null && familyId.isNotEmpty) {
       batch.update(

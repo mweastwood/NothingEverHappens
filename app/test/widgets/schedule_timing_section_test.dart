@@ -6,15 +6,9 @@ import 'package:nothing_ever_happens/widgets/schedule_timing_section.dart';
 import '../test_helper.dart';
 
 void main() {
-  const initialStartTime = RelativeTime(
-    dayOffset: 0,
-    time: TimeOfDay(hour: 9, minute: 0),
-  );
+  const initialStartTime = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
 
-  const initialDueTime = RelativeTime(
-    dayOffset: 0,
-    time: TimeOfDay(hour: 17, minute: 0),
-  );
+  const initialDueTime = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
   Widget buildWidget({
     required ValueNotifier<RelativeTime> startController,
@@ -260,7 +254,8 @@ void main() {
         // Update start controller externally
         startController.value = const RelativeTime(
           dayOffset: 1,
-          time: TimeOfDay(hour: 10, minute: 30),
+          hour: 10,
+          minute: 30,
         );
         await tester.pumpAndSettle();
 
@@ -286,7 +281,8 @@ void main() {
         // Update due controller externally
         dueController.value = const RelativeTime(
           dayOffset: 2,
-          time: TimeOfDay(hour: 20, minute: 15),
+          hour: 20,
+          minute: 15,
         );
         await tester.pumpAndSettle();
 
@@ -314,11 +310,13 @@ void main() {
 
           startController.value = const RelativeTime(
             dayOffset: 3,
-            time: TimeOfDay(hour: 8, minute: 0),
+            hour: 8,
+            minute: 0,
           );
           dueController.value = const RelativeTime(
             dayOffset: 4,
-            time: TimeOfDay(hour: 18, minute: 0),
+            hour: 18,
+            minute: 0,
           );
 
           expect(startNotified, 1);

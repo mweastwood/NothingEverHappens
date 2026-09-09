@@ -42,21 +42,40 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
     final start = startDateTime != null
         ? RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay.fromDateTime(startDateTime!),
+            hour: startDateTime!.hour,
+            minute: startDateTime!.minute,
           )
         : s.startRelativeTime;
 
     final due = dueDateTime != null
-        ? RelativeTime(dayOffset: 0, time: TimeOfDay.fromDateTime(dueDateTime!))
+        ? RelativeTime(
+            dayOffset: 0,
+            hour: dueDateTime!.hour,
+            minute: dueDateTime!.minute,
+          )
         : s.dueRelativeTime;
 
     if (dailyTimes.isNotEmpty) {
       return dailyTimes.map((dt) {
         return s.copyWithTiming(
-          startRelativeTime: RelativeTime(dayOffset: 0, time: dt.startTime),
-          dueRelativeTime: RelativeTime(dayOffset: 0, time: dt.dueTime),
+          startRelativeTime: RelativeTime(
+            dayOffset: 0,
+            hour: dt.startTime.hour,
+            minute: dt.startTime.minute,
+          ),
+          dueRelativeTime: RelativeTime(
+            dayOffset: 0,
+            hour: dt.dueTime.hour,
+            minute: dt.dueTime.minute,
+          ),
           notificationRelativeTimes: dt.notificationTime != null
-              ? [RelativeTime(dayOffset: 0, time: dt.notificationTime!)]
+              ? [
+                  RelativeTime(
+                    dayOffset: 0,
+                    hour: dt.notificationTime!.hour,
+                    minute: dt.notificationTime!.minute,
+                  ),
+                ]
               : const [],
         );
       }).toList();

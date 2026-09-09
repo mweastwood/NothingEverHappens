@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -49,17 +48,11 @@ class _UnrecognizedScheduleRule extends TaskScheduleRule {
 }
 
 void main() {
-  const defaultStart = RelativeTime(
-    dayOffset: 0,
-    time: TimeOfDay(hour: 9, minute: 0),
-  );
-  const defaultDue = RelativeTime(
-    dayOffset: 0,
-    time: TimeOfDay(hour: 17, minute: 30),
-  );
+  const defaultStart = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+  const defaultDue = RelativeTime(dayOffset: 0, hour: 17, minute: 30);
   final defaultNotifications = [
-    const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 30)),
-    const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 12, minute: 0)),
+    const RelativeTime(dayOffset: 0, hour: 8, minute: 30),
+    const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
   ];
   const customPolicy = MissedOccurrencePolicy.autoDismiss(
     gracePeriod: Duration(hours: 4),
@@ -102,7 +95,8 @@ void main() {
             startRelativeTime: defaultStart,
             schedulingPolicy: const CompletionRelativePolicy(
               interval: Duration(days: 1),
-              targetTime: TimeOfDay(hour: 9, minute: 0),
+              targetHour: 9,
+              targetMinute: 0,
             ),
           );
           expect(
@@ -136,7 +130,8 @@ void main() {
             startRelativeTime: defaultStart,
             schedulingPolicy: const CompletionRelativePolicy(
               interval: Duration(days: 7),
-              targetTime: TimeOfDay(hour: 9, minute: 0),
+              targetHour: 9,
+              targetMinute: 0,
             ),
           );
           expect(
@@ -191,7 +186,8 @@ void main() {
             startRelativeTime: defaultStart,
             schedulingPolicy: const CompletionRelativePolicy(
               interval: Duration(days: 30),
-              targetTime: TimeOfDay(hour: 9, minute: 0),
+              targetHour: 9,
+              targetMinute: 0,
             ),
           );
           expect(
@@ -227,7 +223,8 @@ void main() {
             startRelativeTime: defaultStart,
             schedulingPolicy: const CompletionRelativePolicy(
               interval: Duration(days: 365),
-              targetTime: TimeOfDay(hour: 9, minute: 0),
+              targetHour: 9,
+              targetMinute: 0,
             ),
           );
           expect(
@@ -444,7 +441,8 @@ void main() {
             daily.schedulingPolicy,
             const CompletionRelativePolicy(
               interval: Duration(days: 2),
-              targetTime: TimeOfDay(hour: 9, minute: 0),
+              targetHour: 9,
+              targetMinute: 0,
             ),
           );
           expect(
@@ -488,7 +486,8 @@ void main() {
             weekly.schedulingPolicy,
             const CompletionRelativePolicy(
               interval: Duration(days: 2 * 7),
-              targetTime: TimeOfDay(hour: 9, minute: 0),
+              targetHour: 9,
+              targetMinute: 0,
             ),
           );
           expect(
@@ -685,7 +684,8 @@ void main() {
             monthly.schedulingPolicy,
             const CompletionRelativePolicy(
               interval: Duration(days: 2 * 30),
-              targetTime: TimeOfDay(hour: 9, minute: 0),
+              targetHour: 9,
+              targetMinute: 0,
             ),
           );
           expect(
@@ -742,7 +742,8 @@ void main() {
             yearly.schedulingPolicy,
             const CompletionRelativePolicy(
               interval: Duration(days: 2 * 365),
-              targetTime: TimeOfDay(hour: 9, minute: 0),
+              targetHour: 9,
+              targetMinute: 0,
             ),
           );
           expect(
@@ -775,7 +776,8 @@ void main() {
             date: tomorrowCivil,
             startRelativeTime: const RelativeTime(
               dayOffset: -1,
-              time: TimeOfDay(hour: 20, minute: 15),
+              hour: 20,
+              minute: 15,
             ),
             dueRelativeTime: defaultDue,
           );
@@ -791,10 +793,7 @@ void main() {
             );
             expect(
               converted.startRelativeTime,
-              const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 20, minute: 15),
-              ),
+              const RelativeTime(dayOffset: 0, hour: 20, minute: 15),
               reason: 'startRelativeTime normalized to dayOffset 0 for $kind',
             );
           }
@@ -808,7 +807,8 @@ void main() {
             date: tomorrowCivil,
             startRelativeTime: const RelativeTime(
               dayOffset: -1,
-              time: TimeOfDay(hour: 20, minute: 15),
+              hour: 20,
+              minute: 15,
             ),
           );
 
@@ -822,10 +822,7 @@ void main() {
           expect(converted.date, tomorrowCivil);
           expect(
             converted.startRelativeTime,
-            const RelativeTime(
-              dayOffset: -1,
-              time: TimeOfDay(hour: 20, minute: 15),
-            ),
+            const RelativeTime(dayOffset: -1, hour: 20, minute: 15),
           );
         },
       );
@@ -839,7 +836,8 @@ void main() {
           date: dayAfterTomorrow,
           startRelativeTime: const RelativeTime(
             dayOffset: -1,
-            time: TimeOfDay(hour: 20, minute: 15),
+            hour: 20,
+            minute: 15,
           ),
         );
 
@@ -851,10 +849,7 @@ void main() {
         expect(converted.scheduledDate, dayAfterTomorrow);
         expect(
           converted.startRelativeTime,
-          const RelativeTime(
-            dayOffset: -1,
-            time: TimeOfDay(hour: 20, minute: 15),
-          ),
+          const RelativeTime(dayOffset: -1, hour: 20, minute: 15),
         );
       });
 
@@ -863,7 +858,8 @@ void main() {
           date: tomorrowCivil,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 20, minute: 15),
+            hour: 20,
+            minute: 15,
           ),
         );
 
@@ -875,10 +871,7 @@ void main() {
         expect(converted.scheduledDate, tomorrowCivil);
         expect(
           converted.startRelativeTime,
-          const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 20, minute: 15),
-          ),
+          const RelativeTime(dayOffset: 0, hour: 20, minute: 15),
         );
       });
 
@@ -888,7 +881,8 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: -1,
-            time: TimeOfDay(hour: 20, minute: 15),
+            hour: 20,
+            minute: 15,
           ),
         );
 
@@ -900,10 +894,7 @@ void main() {
         expect(converted.scheduledDate, tomorrowCivil);
         expect(
           converted.startRelativeTime,
-          const RelativeTime(
-            dayOffset: -1,
-            time: TimeOfDay(hour: 20, minute: 15),
-          ),
+          const RelativeTime(dayOffset: -1, hour: 20, minute: 15),
         );
       });
     });
@@ -930,7 +921,8 @@ void main() {
               startRelativeTime: defaultStart,
               schedulingPolicy: const CompletionRelativePolicy(
                 interval: Duration(days: 2),
-                targetTime: TimeOfDay(hour: 9, minute: 0),
+                targetHour: 9,
+                targetMinute: 0,
               ),
             );
           case HierarchicalRecurrenceKind.weeklyFixed:
@@ -949,7 +941,8 @@ void main() {
               startRelativeTime: defaultStart,
               schedulingPolicy: const CompletionRelativePolicy(
                 interval: Duration(days: 14),
-                targetTime: TimeOfDay(hour: 9, minute: 0),
+                targetHour: 9,
+                targetMinute: 0,
               ),
             );
           case HierarchicalRecurrenceKind.monthlyFixedDay:
@@ -977,7 +970,8 @@ void main() {
               startRelativeTime: defaultStart,
               schedulingPolicy: const CompletionRelativePolicy(
                 interval: Duration(days: 60),
-                targetTime: TimeOfDay(hour: 9, minute: 0),
+                targetHour: 9,
+                targetMinute: 0,
               ),
             );
           case HierarchicalRecurrenceKind.yearlyFixed:
@@ -998,7 +992,8 @@ void main() {
               startRelativeTime: defaultStart,
               schedulingPolicy: const CompletionRelativePolicy(
                 interval: Duration(days: 730),
-                targetTime: TimeOfDay(hour: 9, minute: 0),
+                targetHour: 9,
+                targetMinute: 0,
               ),
             );
         }

@@ -100,10 +100,7 @@ void main() {
         final now = DateTime.utc(2026, 8, 17, 12, 0, 0);
         final timestamp = Timestamp.fromDate(now);
         const civilDay = CivilDay(year: 2026, month: 8, day: 17);
-        const relativeTime = RelativeTime(
-          dayOffset: 2,
-          time: TimeOfDay(hour: 15, minute: 45),
-        );
+        const relativeTime = RelativeTime(dayOffset: 2, hour: 15, minute: 45);
         const timeOfDay = TimeOfDay(hour: 9, minute: 30);
         const duration = Duration(minutes: 90);
         const geoPoint = GeoPoint(37.7749, -122.4194);

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -45,16 +44,10 @@ class TestTaskFactory {
           interval: interval,
           startRelativeTime:
               startRelativeTime ??
-              const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
+              const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
           dueRelativeTime:
               dueRelativeTime ??
-              const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
+              const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
           notificationRelativeTimes: notificationRelativeTimes ?? const [],
           schedulingPolicy: schedulingPolicy,
           missedOccurrencePolicy: missedOccurrencePolicy,
@@ -105,16 +98,10 @@ class TestTaskFactory {
           daysOfWeek: daysOfWeek ?? {DateTime.monday},
           startRelativeTime:
               startRelativeTime ??
-              const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
+              const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
           dueRelativeTime:
               dueRelativeTime ??
-              const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
+              const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
           notificationRelativeTimes: notificationRelativeTimes ?? const [],
           schedulingPolicy: schedulingPolicy,
           missedOccurrencePolicy: missedOccurrencePolicy,
@@ -161,16 +148,10 @@ class TestTaskFactory {
           date: date ?? const CivilDay(year: 2024, month: 1, day: 1),
           startRelativeTime:
               startRelativeTime ??
-              const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
-              ),
+              const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
           dueRelativeTime:
               dueRelativeTime ??
-              const RelativeTime(
-                dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
-              ),
+              const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
           notificationRelativeTimes: notificationRelativeTimes ?? const [],
           schedulingPolicy: schedulingPolicy,
           missedOccurrencePolicy: missedOccurrencePolicy,
@@ -207,13 +188,10 @@ class TestTaskFactory {
           scheduledDate ?? const CivilDay(year: 2024, month: 1, day: 1),
       startRelativeTime:
           startRelativeTime ??
-          const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+          const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
       dueRelativeTime:
           dueRelativeTime ??
-          const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
-          ),
+          const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
       notificationRelativeTimes: notificationRelativeTimes ?? const [],
       isFamily: isFamily,
       priority: priority,
@@ -230,9 +208,6 @@ class TestTaskFactory {
     int hour = 9,
     int minute = 0,
   }) {
-    return RelativeTime(
-      dayOffset: dayOffset,
-      time: TimeOfDay(hour: hour, minute: minute),
-    );
+    return RelativeTime(dayOffset: dayOffset, hour: hour, minute: minute);
   }
 }

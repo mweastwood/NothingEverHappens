@@ -1,6 +1,5 @@
 // ignore_for_file: subtype_of_sealed_class
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
@@ -185,14 +184,8 @@ void main() {
         title: 'Stale Inst',
         description: 'Stale',
         scheduledDate: CivilDay(year: 2026, month: 8, day: 1),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         updatedAt: DateTime.now(),
       );
       await localDataSource.saveTask(staleTask);

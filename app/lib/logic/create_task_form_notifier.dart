@@ -126,11 +126,13 @@ class CreateTaskFormState {
             interval: 1,
             startRelativeTime: RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay.fromDateTime(now),
+              hour: now.hour,
+              minute: now.minute,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             schedulingPolicy: const FixedCalendarPolicy(),
           ),
@@ -165,12 +167,10 @@ class CreateTaskFormState {
       date: civilTomorrow,
       startRelativeTime: RelativeTime(
         dayOffset: diff,
-        time: TimeOfDay.fromDateTime(now),
+        hour: now.hour,
+        minute: now.minute,
       ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
     );
   }
 

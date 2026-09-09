@@ -81,11 +81,13 @@ void main() {
           interval: 2,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         ),
       ],
@@ -102,11 +104,13 @@ void main() {
           daysOfWeek: const {1, 3},
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 10, minute: 30),
+            hour: 10,
+            minute: 30,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 12, minute: 0),
+            hour: 12,
+            minute: 0,
           ),
         ),
       ],
@@ -121,11 +125,13 @@ void main() {
           date: const CivilDay(year: 2024, month: 1, day: 1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         ),
       ],
@@ -166,11 +172,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -203,11 +211,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -224,11 +234,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -263,11 +275,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -310,11 +324,13 @@ void main() {
               interval: 1,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
             ),
           ],
@@ -382,11 +398,13 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 7, minute: 0),
+            hour: 7,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 30),
+            hour: 8,
+            minute: 30,
           ),
         ),
       ],
@@ -403,11 +421,13 @@ void main() {
           daysOfWeek: const {6, 7},
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 10, minute: 0),
+            hour: 10,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 12, minute: 0),
+            hour: 12,
+            minute: 0,
           ),
         ),
       ],
@@ -457,11 +477,13 @@ void main() {
             daysOfWeek: const {6},
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 11, minute: 0),
+              hour: 11,
+              minute: 0,
             ),
           ),
         ],
@@ -479,11 +501,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 19, minute: 0),
+              hour: 19,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 20, minute: 0),
+              hour: 20,
+              minute: 0,
             ),
           ),
         ],
@@ -500,11 +524,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 21, minute: 0),
+              hour: 21,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 22, minute: 0),
+              hour: 22,
+              minute: 0,
             ),
           ),
         ],
@@ -560,11 +586,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 7, minute: 0),
+              hour: 7,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 30),
+              hour: 8,
+              minute: 30,
             ),
           ),
         ],
@@ -627,11 +655,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 7, minute: 0),
+              hour: 7,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 30),
+              hour: 8,
+              minute: 30,
             ),
           ),
         ],
@@ -695,11 +725,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 7, minute: 0),
+              hour: 7,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 30),
+              hour: 8,
+              minute: 30,
             ),
           ),
         ],
@@ -741,11 +773,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 7, minute: 0),
+              hour: 7,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 30),
+              hour: 8,
+              minute: 30,
             ),
           ),
         ],
@@ -786,11 +820,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -877,11 +913,13 @@ void main() {
               interval: 1,
               startRelativeTime: RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: startHour, minute: 0),
+                hour: startHour,
+                minute: 0,
               ),
               dueRelativeTime: RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: dueHour, minute: 0),
+                hour: dueHour,
+                minute: 0,
               ),
             ),
           ],
@@ -985,10 +1023,7 @@ void main() {
     WidgetTester tester,
   ) async {
     final startDate = const CivilDay(year: 2024, month: 1, day: 1);
-    final relTime = const RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 9, minute: 0),
-    );
+    final relTime = const RelativeTime(dayOffset: 0, hour: 9, minute: 0);
     final defaultSchedule = [
       DailySchedule(
         startDate: startDate,
@@ -1104,11 +1139,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 7, minute: 0),
+              hour: 7,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 30),
+              hour: 8,
+              minute: 30,
             ),
           ),
         ],
@@ -1158,11 +1195,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 7, minute: 0),
+              hour: 7,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 30),
+              hour: 8,
+              minute: 30,
             ),
           ),
         ],
@@ -1208,11 +1247,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 7, minute: 0),
+              hour: 7,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 0),
+              hour: 8,
+              minute: 0,
             ),
           ),
         ],
@@ -1248,11 +1289,13 @@ void main() {
             interval: 3,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 0),
+              hour: 8,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
           ),
         ],
@@ -1323,11 +1366,13 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 7, minute: 0),
+            hour: 7,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 30),
+            hour: 8,
+            minute: 30,
           ),
         ),
       ],
@@ -1345,11 +1390,13 @@ void main() {
           daysOfWeek: const {6, 7},
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 10, minute: 0),
+            hour: 10,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 12, minute: 0),
+            hour: 12,
+            minute: 0,
           ),
         ),
       ],
@@ -1410,11 +1457,13 @@ void main() {
               interval: 1,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 7, minute: 0),
+                hour: 7,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 8, minute: 0),
+                hour: 8,
+                minute: 0,
               ),
             ),
           ],
@@ -1432,11 +1481,13 @@ void main() {
               daysOfWeek: {1},
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 10, minute: 0),
+                hour: 10,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 12, minute: 0),
+                hour: 12,
+                minute: 0,
               ),
             ),
           ],
@@ -1503,11 +1554,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 7, minute: 0),
+              hour: 7,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 0),
+              hour: 8,
+              minute: 0,
             ),
           ),
         ],
@@ -1525,11 +1578,13 @@ void main() {
             daysOfWeek: {1},
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 12, minute: 0),
+              hour: 12,
+              minute: 0,
             ),
           ),
         ],

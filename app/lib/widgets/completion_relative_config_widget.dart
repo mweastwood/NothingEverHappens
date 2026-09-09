@@ -81,7 +81,11 @@ class _CompletionRelativeConfigWidgetState
     final newTime = targetTime ?? widget.policy.targetTime;
 
     widget.onChanged(
-      CompletionRelativePolicy(interval: newDuration, targetTime: newTime),
+      CompletionRelativePolicy(
+        interval: newDuration,
+        targetHour: newTime.hour,
+        targetMinute: newTime.minute,
+      ),
     );
   }
 

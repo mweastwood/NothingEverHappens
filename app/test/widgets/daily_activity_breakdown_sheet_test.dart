@@ -13,14 +13,8 @@ void main() {
   group('DailyActivityBreakdownSheet', () {
     final day = CivilDay(year: 2026, month: 7, day: 1); // Wednesday
 
-    const dummyStart = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 9, minute: 0),
-    );
-    const dummyDue = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 17, minute: 0),
-    );
+    const dummyStart = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+    const dummyDue = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
     final activeDayData = DailyStatsData(
       day: day,
@@ -137,11 +131,13 @@ void main() {
           scheduledDate: CivilDay(year: 2026, month: 7, day: 2),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 7, minute: 30),
+            hour: 7,
+            minute: 30,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 30),
+            hour: 8,
+            minute: 30,
           ),
           status: TaskStatus.pending,
         ),
@@ -155,7 +151,8 @@ void main() {
           startRelativeTime: dummyStart,
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 16, minute: 0),
+            hour: 16,
+            minute: 0,
           ),
           status: TaskStatus.pending,
         ),

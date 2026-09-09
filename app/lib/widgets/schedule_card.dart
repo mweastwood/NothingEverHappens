@@ -84,14 +84,8 @@ class ScheduleCard extends ConsumerWidget {
             id: 'R-fallback-${task.id}',
             scheduleId: task.id,
             date: CivilDay.fromDateTime(DateTime.now()),
-            startRelativeTime: RelativeTime(
-              dayOffset: 0,
-              time: const TimeOfDay(hour: 9, minute: 0),
-            ),
-            dueRelativeTime: RelativeTime(
-              dayOffset: 0,
-              time: const TimeOfDay(hour: 17, minute: 0),
-            ),
+            startRelativeTime: RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+            dueRelativeTime: RelativeTime(dayOffset: 0, hour: 17, minute: 0),
           );
 
     String intervalStr = '';

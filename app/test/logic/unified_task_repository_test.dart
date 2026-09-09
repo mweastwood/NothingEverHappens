@@ -95,14 +95,8 @@ void main() {
       title: 'Test Instance',
       description: 'Desc 1',
       scheduledDate: CivilDay(year: 2026, month: 8, day: 4),
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
       updatedAt: DateTime.now(),
       status: TaskStatus.pending,
     );
@@ -148,14 +142,8 @@ void main() {
         title: 'Restore Instance',
         description: 'Desc',
         scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.pending,
         updatedAt: DateTime.now(),
       );
@@ -661,14 +649,8 @@ void main() {
         title: 'Telemetry Task',
         description: 'Testing telemetry on completion',
         scheduledDate: CivilDay(year: 2026, month: 8, day: 10),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         updatedAt: DateTime.now(),
         status: TaskStatus.pending,
       );
@@ -758,14 +740,8 @@ void main() {
         title: 'Orphan Task Instance',
         description: 'No schedule attached',
         scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.pending,
         updatedAt: DateTime(2026, 8, 19, 9, 0),
       );
@@ -796,14 +772,8 @@ void main() {
         title: 'Completed Orphan Instance',
         description: 'Completed history preserved',
         scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.completed,
         completedAt: DateTime(2026, 8, 19, 10, 0),
         updatedAt: DateTime(2026, 8, 19, 10, 0),
@@ -816,14 +786,8 @@ void main() {
         title: 'Skipped Orphan Instance',
         description: 'Skipped history preserved',
         scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.skipped,
         updatedAt: DateTime(2026, 8, 19, 10, 0),
       );
@@ -873,14 +837,8 @@ void main() {
         title: task.title,
         description: task.description,
         scheduledDate: const CivilDay(year: 2026, month: 8, day: 19),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 8, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 20, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 20, minute: 0),
         isFamily: true,
         familyCompletionMode: FamilyCompletionMode.individual,
         status: TaskStatus.pending,
@@ -960,12 +918,10 @@ void main() {
           scheduledDate: today,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 7, minute: 0),
+            hour: 7,
+            minute: 0,
           ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 0),
-          ),
+          dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
           status: TaskStatus.pending,
         );
         await trackingDataSource.saveInstance(orphanInstance);

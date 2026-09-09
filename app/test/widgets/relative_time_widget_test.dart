@@ -16,7 +16,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       final controller = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 14, minute: 30)),
+        const RelativeTime(dayOffset: 0, hour: 14, minute: 30),
       );
       final robot = RelativeTimeWidgetRobot(tester);
 
@@ -50,7 +50,7 @@ void main() {
 
     testWidgets('renders correctly with "1 day after" state', (tester) async {
       final controller = ValueNotifier(
-        const RelativeTime(dayOffset: 1, time: TimeOfDay(hour: 9, minute: 0)),
+        const RelativeTime(dayOffset: 1, hour: 9, minute: 0),
       );
 
       await tester.pumpWidget(
@@ -75,7 +75,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       final controller = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
+        const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
       );
       final robot = RelativeTimeWidgetRobot(tester);
 
@@ -100,7 +100,7 @@ void main() {
       tester,
     ) async {
       final controller = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
+        const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
       );
       final robot = RelativeTimeWidgetRobot(tester);
 
@@ -127,7 +127,7 @@ void main() {
       tester,
     ) async {
       final controller = ValueNotifier(
-        const RelativeTime(dayOffset: 1, time: TimeOfDay(hour: 10, minute: 0)),
+        const RelativeTime(dayOffset: 1, hour: 10, minute: 0),
       );
       final robot = RelativeTimeWidgetRobot(tester);
 
@@ -154,7 +154,7 @@ void main() {
 
     testWidgets('updates controller when time is picked', (tester) async {
       final controller = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
+        const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
       );
       final robot = RelativeTimeWidgetRobot(tester);
 
@@ -184,7 +184,7 @@ void main() {
       tester,
     ) async {
       final controller = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
+        const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
       );
 
       await tester.pumpWidget(
@@ -200,10 +200,7 @@ void main() {
 
       expect(find.textContaining('10:00'), findsOneWidget);
 
-      controller.value = const RelativeTime(
-        dayOffset: 1,
-        time: TimeOfDay(hour: 12, minute: 15),
-      );
+      controller.value = const RelativeTime(dayOffset: 1, hour: 12, minute: 15);
       await tester.pump();
 
       expect(find.textContaining('12:15'), findsOneWidget);
@@ -213,7 +210,7 @@ void main() {
   group('RelativeTimeWidget (dayOfOrBefore)', () {
     testWidgets('renders correctly with "1 day before" state', (tester) async {
       final controller = ValueNotifier(
-        const RelativeTime(dayOffset: -1, time: TimeOfDay(hour: 9, minute: 0)),
+        const RelativeTime(dayOffset: -1, hour: 9, minute: 0),
       );
 
       await tester.pumpWidget(
@@ -238,7 +235,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       final controller = ValueNotifier(
-        const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
+        const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
       );
       final robot = RelativeTimeWidgetRobot(tester);
 
@@ -257,7 +254,7 @@ void main() {
 
       expect(
         controller.value,
-        const RelativeTime(dayOffset: -1, time: TimeOfDay(hour: 10, minute: 0)),
+        const RelativeTime(dayOffset: -1, hour: 10, minute: 0),
       );
     });
 
@@ -269,10 +266,7 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
 
         final controller = ValueNotifier(
-          const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 10, minute: 0),
-          ),
+          const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
         );
         final robot = RelativeTimeWidgetRobot(tester);
 
@@ -293,10 +287,7 @@ void main() {
 
         expect(
           controller.value,
-          const RelativeTime(
-            dayOffset: -5,
-            time: TimeOfDay(hour: 10, minute: 0),
-          ),
+          const RelativeTime(dayOffset: -5, hour: 10, minute: 0),
         );
       },
     );
@@ -307,10 +298,7 @@ void main() {
         'DayOfOrAfter - Day of',
         RelativeTimeWidget(
           controller: ValueNotifier(
-            const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
-            ),
+            const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
           ),
           constraint: RelativeTimeConstraint.dayOfOrAfter,
         ),
@@ -319,10 +307,7 @@ void main() {
         'DayOfOrBefore - Day of',
         RelativeTimeWidget(
           controller: ValueNotifier(
-            const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
-            ),
+            const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
           ),
           constraint: RelativeTimeConstraint.dayOfOrBefore,
         ),
@@ -331,10 +316,7 @@ void main() {
         'DayOfOrAfter - 1 day after',
         RelativeTimeWidget(
           controller: ValueNotifier(
-            const RelativeTime(
-              dayOffset: 1,
-              time: TimeOfDay(hour: 10, minute: 0),
-            ),
+            const RelativeTime(dayOffset: 1, hour: 10, minute: 0),
           ),
           constraint: RelativeTimeConstraint.dayOfOrAfter,
         ),
@@ -343,10 +325,7 @@ void main() {
         'DayOfOrBefore - 1 day before',
         RelativeTimeWidget(
           controller: ValueNotifier(
-            const RelativeTime(
-              dayOffset: -1,
-              time: TimeOfDay(hour: 10, minute: 0),
-            ),
+            const RelativeTime(dayOffset: -1, hour: 10, minute: 0),
           ),
           constraint: RelativeTimeConstraint.dayOfOrBefore,
         ),
@@ -355,10 +334,7 @@ void main() {
         'Unconstrained - 5 days later',
         RelativeTimeWidget(
           controller: ValueNotifier(
-            const RelativeTime(
-              dayOffset: 5,
-              time: TimeOfDay(hour: 10, minute: 0),
-            ),
+            const RelativeTime(dayOffset: 5, hour: 10, minute: 0),
           ),
           constraint: RelativeTimeConstraint.unconstrained,
         ),
@@ -367,10 +343,7 @@ void main() {
         'Unconstrained - 5 days before',
         RelativeTimeWidget(
           controller: ValueNotifier(
-            const RelativeTime(
-              dayOffset: -5,
-              time: TimeOfDay(hour: 10, minute: 0),
-            ),
+            const RelativeTime(dayOffset: -5, hour: 10, minute: 0),
           ),
           constraint: RelativeTimeConstraint.unconstrained,
         ),
@@ -388,7 +361,7 @@ void main() {
     tester,
   ) async {
     final controller = ValueNotifier(
-      const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 10, minute: 0)),
+      const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
     );
 
     await tester.pumpWidgetBuilder(
@@ -415,7 +388,7 @@ void main() {
     tester,
   ) async {
     final controller = ValueNotifier(
-      const RelativeTime(dayOffset: 5, time: TimeOfDay(hour: 10, minute: 0)),
+      const RelativeTime(dayOffset: 5, hour: 10, minute: 0),
     );
 
     await tester.pumpWidgetBuilder(

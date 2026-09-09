@@ -86,11 +86,13 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
               date: tomorrowDay,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
             ),
           ],

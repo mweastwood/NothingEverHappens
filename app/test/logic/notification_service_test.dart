@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive/hive.dart';
@@ -156,14 +155,16 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           notificationRelativeTimes: const [
-            RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 30)),
+            RelativeTime(dayOffset: 0, hour: 8, minute: 30),
           ],
         ),
       ],
@@ -199,25 +200,18 @@ void main() {
               interval: 1,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
               notificationRelativeTimes: const [
-                RelativeTime(
-                  dayOffset: -1,
-                  time: TimeOfDay(hour: 18, minute: 0),
-                ),
-                RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 8, minute: 30),
-                ),
-                RelativeTime(
-                  dayOffset: 0,
-                  time: TimeOfDay(hour: 12, minute: 0),
-                ),
+                RelativeTime(dayOffset: -1, hour: 18, minute: 0),
+                RelativeTime(dayOffset: 0, hour: 8, minute: 30),
+                RelativeTime(dayOffset: 0, hour: 12, minute: 0),
               ],
             ),
           ],
@@ -309,14 +303,16 @@ void main() {
             interval: index + 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             notificationRelativeTimes: const [
-              RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 0)),
+              RelativeTime(dayOffset: 0, hour: 8, minute: 0),
             ],
           ),
         );
@@ -349,10 +345,7 @@ void main() {
       () async {
         final notifTimes = List.generate(
           8,
-          (index) => RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 6 + index, minute: 0),
-          ),
+          (index) => RelativeTime(dayOffset: 0, hour: 6 + index, minute: 0),
         );
 
         final manyNotifsTask = TaskSchedule(
@@ -365,11 +358,13 @@ void main() {
               interval: 1,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
               notificationRelativeTimes: notifTimes,
             ),
@@ -494,14 +489,16 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 0, minute: 0),
+            hour: 0,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 23, minute: 59),
+            hour: 23,
+            minute: 59,
           ),
           notificationRelativeTimes: const [
-            RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 23, minute: 59)),
+            RelativeTime(dayOffset: 0, hour: 23, minute: 59),
           ],
         ),
       ],
