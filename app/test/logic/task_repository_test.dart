@@ -2103,15 +2103,25 @@ void main() {
         await Future(() {});
 
         await Future.wait([future1, future2, future3]);
-        await Future.delayed(const Duration(milliseconds: 50));
 
-        final instances = await firestore
+        final instancesSnapshot = await firestore
             .collection('users')
             .doc('test-user-id')
             .collection('instances')
-            .get();
+            .snapshots()
+            .firstWhere((snap) {
+              final ids = snap.docs
+                  .map((doc) => doc.data()['scheduleId'] as String?)
+                  .toSet();
+              return ids.containsAll([
+                'S-queue-test-task-1',
+                'S-queue-test-task-2',
+                'S-queue-test-task-3',
+              ]);
+            })
+            .timeout(const Duration(seconds: 3));
 
-        final taskIds = instances.docs
+        final taskIds = instancesSnapshot.docs
             .map((doc) => doc.data()['scheduleId'] as String)
             .toSet();
 
