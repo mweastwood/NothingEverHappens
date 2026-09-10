@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task_list.dart';
@@ -17,11 +16,13 @@ void main() {
           date: const CivilDay(year: 2024, month: 1, day: 1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         ),
       ],
@@ -60,11 +61,13 @@ void main() {
               interval: 2,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
             ),
           ],
@@ -104,11 +107,13 @@ void main() {
               daysOfWeek: const {3}, // Wednesday only
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
             ),
           ],
@@ -187,18 +192,9 @@ void main() {
           appLaunchUrl: 'duolingo://',
           workflowType: 'mealWorkflow',
           mealWorkflowConfig: const MealWorkflowConfig(
-            selectTime: RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 11, minute: 0),
-            ),
-            shopTime: RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 15, minute: 0),
-            ),
-            prepTime: RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 19, minute: 0),
-            ),
+            selectTime: RelativeTime(dayOffset: 0, hour: 11, minute: 0),
+            shopTime: RelativeTime(dayOffset: 0, hour: 15, minute: 0),
+            prepTime: RelativeTime(dayOffset: 0, hour: 19, minute: 0),
           ),
           skipIfNoCapacity: true,
           schedules: [
@@ -207,11 +203,13 @@ void main() {
               interval: 1,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
             ),
           ],
@@ -248,24 +246,15 @@ void main() {
         expect(updatedTask.mealWorkflowConfig, isNotNull);
         expect(
           updatedTask.mealWorkflowConfig?.selectTime,
-          const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 11, minute: 0),
-          ),
+          const RelativeTime(dayOffset: 0, hour: 11, minute: 0),
         );
         expect(
           updatedTask.mealWorkflowConfig?.shopTime,
-          const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 15, minute: 0),
-          ),
+          const RelativeTime(dayOffset: 0, hour: 15, minute: 0),
         );
         expect(
           updatedTask.mealWorkflowConfig?.prepTime,
-          const RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 19, minute: 0),
-          ),
+          const RelativeTime(dayOffset: 0, hour: 19, minute: 0),
         );
         expect(updatedTask.skipIfNoCapacity, true);
 

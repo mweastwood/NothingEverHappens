@@ -5,14 +5,8 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 
 void main() {
-  const testStart = RelativeTime(
-    dayOffset: 0,
-    time: TimeOfDay(hour: 9, minute: 0),
-  );
-  const testDue = RelativeTime(
-    dayOffset: 0,
-    time: TimeOfDay(hour: 17, minute: 0),
-  );
+  const testStart = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+  const testDue = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
   group('Recurrence Logic with CivilDay', () {
     test('OneOffSchedule occurs only on the specific date', () {
@@ -900,15 +894,18 @@ void main() {
           interval: 5,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           schedulingPolicy: const CompletionRelativePolicy(
             interval: Duration(days: 5),
-            targetTime: TimeOfDay(hour: 9, minute: 0),
+            targetHour: 9,
+            targetMinute: 0,
           ),
         );
 
@@ -916,7 +913,8 @@ void main() {
             schedule.copyWithTiming(
                   startRelativeTime: const RelativeTime(
                     dayOffset: 0,
-                    time: TimeOfDay(hour: 11, minute: 30),
+                    hour: 11,
+                    minute: 30,
                   ),
                 )
                 as DailySchedule;
@@ -946,7 +944,8 @@ void main() {
         date: const CivilDay(year: 2026, month: 8, day: 14),
         startRelativeTime: const RelativeTime(
           dayOffset: 0,
-          time: TimeOfDay(hour: 10, minute: 0),
+          hour: 10,
+          minute: 0,
         ),
       );
       final sDifferentDate = OneOffSchedule(

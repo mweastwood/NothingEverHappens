@@ -21,14 +21,8 @@ import 'absolute_time_widget_robot.dart';
 
 void main() {
   final testStartDate = CivilDay(year: 2026, month: 10, day: 26);
-  const testStartRelative = RelativeTime(
-    dayOffset: 0,
-    time: TimeOfDay(hour: 9, minute: 0),
-  );
-  const testDueRelative = RelativeTime(
-    dayOffset: 0,
-    time: TimeOfDay(hour: 17, minute: 0),
-  );
+  const testStartRelative = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+  const testDueRelative = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
   DailySchedule createDefaultDailySchedule({
     int interval = 1,
@@ -676,10 +670,7 @@ void main() {
       TaskScheduleRule? changedRule;
       final schedule = createDefaultOneOffSchedule(
         date: CivilDay(year: 2026, month: 10, day: 26),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 12, minute: 0),
-        ),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
       );
 
       final oneOffRobot = OneOffSchedulingWidgetRobot(tester);
@@ -713,10 +704,7 @@ void main() {
       // Re-pump widget with updated OneOffSchedule (didUpdateWidget test)
       final updatedSchedule = createDefaultOneOffSchedule(
         date: CivilDay(year: 2026, month: 10, day: 28),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 15, minute: 30),
-        ),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 15, minute: 30),
       );
 
       await tester.pumpWidget(
@@ -857,7 +845,8 @@ void main() {
                   schedule: createDefaultDailySchedule(
                     policy: CompletionRelativePolicy(
                       interval: const Duration(days: 2),
-                      targetTime: const TimeOfDay(hour: 9, minute: 0),
+                      targetHour: 9,
+                      targetMinute: 0,
                     ),
                   ),
                   onChanged: (_) {},
@@ -909,18 +898,12 @@ void main() {
         expect((changedRule as DailySchedule).interval, 3);
 
         // Verify onStartRelativeTimeChanged
-        const newStartRel = RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 8, minute: 30),
-        );
+        const newStartRel = RelativeTime(dayOffset: 0, hour: 8, minute: 30);
         dailyWidget.onStartRelativeTimeChanged(newStartRel);
         expect((changedRule as DailySchedule).startRelativeTime, newStartRel);
 
         // Verify onDueRelativeTimeChanged
-        const newDueRel = RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 18, minute: 0),
-        );
+        const newDueRel = RelativeTime(dayOffset: 0, hour: 18, minute: 0);
         dailyWidget.onDueRelativeTimeChanged(newDueRel);
         expect((changedRule as DailySchedule).dueRelativeTime, newDueRel);
 
@@ -1101,9 +1084,7 @@ void main() {
         final notifWidget = tester.widget<NotificationListWidget>(
           find.byType(NotificationListWidget),
         );
-        const newNotifs = [
-          RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 0)),
-        ];
+        const newNotifs = [RelativeTime(dayOffset: 0, hour: 8, minute: 0)];
         notifWidget.onChanged(newNotifs);
         expect(changedRule!.notificationRelativeTimes, newNotifs);
 

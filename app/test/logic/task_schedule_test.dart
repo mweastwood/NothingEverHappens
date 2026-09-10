@@ -18,14 +18,8 @@ void main() {
         title: 'Test',
         description: 'Test',
         date: todayCivil,
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 0, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 12, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 0, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
       );
 
       // 10:00 AM
@@ -47,11 +41,13 @@ void main() {
               interval: 1,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 8, minute: 0),
+                hour: 8,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
             ),
             DailySchedule(
@@ -59,11 +55,13 @@ void main() {
               interval: 1,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 20, minute: 0),
+                hour: 20,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 21, minute: 0),
+                hour: 21,
+                minute: 0,
               ),
             ),
           ],
@@ -92,7 +90,8 @@ void main() {
           date: const CivilDay(year: 2026, month: 6, day: 1),
           schedulingPolicy: const CompletionRelativePolicy(
             interval: Duration(days: 7),
-            targetTime: TimeOfDay(hour: 9, minute: 30),
+            targetHour: 9,
+            targetMinute: 30,
           ),
           missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
             gracePeriod: Duration(hours: 4),
@@ -144,14 +143,8 @@ void main() {
         title: 'TaskSchedule with duration',
         description: 'Desc',
         date: const CivilDay(year: 2026, month: 3, day: 8),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         estimatedDuration: const Duration(minutes: 45),
       );
 
@@ -173,14 +166,8 @@ void main() {
         title: 'TaskSchedule without duration',
         description: 'Desc',
         date: const CivilDay(year: 2026, month: 3, day: 8),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
       );
 
       final map = task.toFirestore();
@@ -209,14 +196,8 @@ void main() {
         assignedUserId: 'user-1',
         preferredBy: const {'user-1': true, 'user-2': false},
         date: const CivilDay(year: 2026, month: 3, day: 8),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
       );
 
       final map = task.toFirestore();
@@ -251,11 +232,13 @@ void main() {
             date: const CivilDay(year: 2026, month: 3, day: 8),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -286,11 +269,13 @@ void main() {
           date: const CivilDay(year: 2026, month: 3, day: 8),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         );
 
@@ -302,11 +287,13 @@ void main() {
               date: const CivilDay(year: 2026, month: 3, day: 9),
               startRelativeTime: const RelativeTime(
                 dayOffset: -1,
-                time: TimeOfDay(hour: 10, minute: 0),
+                hour: 10,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 18, minute: 0),
+                hour: 18,
+                minute: 0,
               ),
             ),
           ],
@@ -357,14 +344,8 @@ void main() {
         description: '',
         isFamily: true,
         date: const CivilDay(year: 2026, month: 3, day: 8),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
       );
 
       final result = task.edit(
@@ -393,11 +374,13 @@ void main() {
           date: const CivilDay(year: 2026, month: 6, day: 1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         );
 
@@ -422,11 +405,13 @@ void main() {
           date: const CivilDay(year: 2026, month: 6, day: 1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         );
 
@@ -452,11 +437,13 @@ void main() {
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -482,11 +469,13 @@ void main() {
           date: const CivilDay(year: 2026, month: 6, day: 1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         );
 
@@ -520,11 +509,13 @@ void main() {
             interval: 2,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
           WeeklySchedule(
@@ -533,11 +524,13 @@ void main() {
             daysOfWeek: const {1, 3}, // Mon, Wed
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 18, minute: 0),
+              hour: 18,
+              minute: 0,
             ),
           ),
         ];
@@ -614,11 +607,13 @@ void main() {
             interval: 3,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
           MonthlySchedule(
@@ -627,11 +622,13 @@ void main() {
             dayOfMonth: 15,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 18, minute: 0),
+              hour: 18,
+              minute: 0,
             ),
           ),
         ];
@@ -1431,7 +1428,8 @@ void main() {
                 daysOfWeek: const {1, 3, 5},
                 schedulingPolicy: const CompletionRelativePolicy(
                   interval: Duration(days: 3),
-                  targetTime: TimeOfDay(hour: 15, minute: 0),
+                  targetHour: 15,
+                  targetMinute: 0,
                 ),
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
@@ -1558,7 +1556,8 @@ void main() {
                 interval: 1,
                 schedulingPolicy: const CompletionRelativePolicy(
                   interval: Duration(days: 1),
-                  targetTime: TimeOfDay(hour: 9, minute: 0),
+                  targetHour: 9,
+                  targetMinute: 0,
                 ),
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
@@ -1622,7 +1621,8 @@ void main() {
           interval: 1,
           schedulingPolicy: const CompletionRelativePolicy(
             interval: Duration(days: 3),
-            targetTime: TimeOfDay(hour: 10, minute: 0),
+            targetHour: 10,
+            targetMinute: 0,
           ),
           missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
         );
@@ -1663,15 +1663,18 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             schedulingPolicy: const CompletionRelativePolicy(
               interval: Duration(days: 3),
-              targetTime: TimeOfDay(hour: 10, minute: 0),
+              targetHour: 10,
+              targetMinute: 0,
             ),
           );
 
@@ -1754,15 +1757,18 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           schedulingPolicy: const CompletionRelativePolicy(
             interval: Duration(days: 3),
-            targetTime: TimeOfDay(hour: 10, minute: 0),
+            targetHour: 10,
+            targetMinute: 0,
           ),
           missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
             gracePeriod: Duration(hours: 1),
@@ -1815,7 +1821,8 @@ void main() {
             interval: 1,
             schedulingPolicy: const CompletionRelativePolicy(
               interval: Duration(days: 3),
-              targetTime: TimeOfDay(hour: 10, minute: 0),
+              targetHour: 10,
+              targetMinute: 0,
             ),
           );
 

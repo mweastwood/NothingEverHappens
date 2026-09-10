@@ -394,11 +394,13 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 10, minute: 0),
+            hour: 10,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 10, minute: 0),
+            hour: 10,
+            minute: 0,
           ),
           workflowPayload: const WorkflowInstancePayload(
             workflowType: 'mealWorkflow',
@@ -462,11 +464,13 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 16, minute: 0),
+            hour: 16,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 16, minute: 0),
+            hour: 16,
+            minute: 0,
           ),
           workflowPayload: const WorkflowInstancePayload(
             workflowType: 'mealWorkflow',

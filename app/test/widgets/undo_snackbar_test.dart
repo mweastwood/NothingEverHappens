@@ -59,11 +59,13 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.completed,
         );
@@ -164,14 +166,8 @@ void main() {
         title: 'Test Instance',
         description: 'Desc',
         scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.completed,
       );
 
@@ -208,14 +204,8 @@ void main() {
         title: 'Test Instance',
         description: 'Desc',
         scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.completed,
       );
 

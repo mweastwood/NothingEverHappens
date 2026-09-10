@@ -47,14 +47,8 @@ void main() {
       id: 'rule-1',
       scheduleId: 'task-1',
       date: CivilDay(year: 2026, month: 3, day: 9),
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
     );
 
     testWidgets('renders list of schedules and add schedule button', (

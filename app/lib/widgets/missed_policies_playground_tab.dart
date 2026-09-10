@@ -80,11 +80,13 @@ class _MissedPoliciesPlaygroundTabState
               interval: 1,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
               missedOccurrencePolicy: policy,
             )
@@ -96,11 +98,13 @@ class _MissedPoliciesPlaygroundTabState
               daysOfWeek: {3, 6}, // Wednesday and Saturday
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 18, minute: 0),
+                hour: 18,
+                minute: 0,
               ),
               missedOccurrencePolicy: policy,
             );

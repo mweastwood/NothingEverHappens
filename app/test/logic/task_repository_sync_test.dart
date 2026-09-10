@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
@@ -40,11 +39,13 @@ void main() {
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -62,11 +63,13 @@ void main() {
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -95,11 +98,13 @@ void main() {
           date: const CivilDay(year: 2026, month: 6, day: 1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         ),
       ],
@@ -195,11 +200,13 @@ void main() {
           date: const CivilDay(year: 2026, month: 6, day: 1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         ),
       ],

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../test_factories.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
@@ -22,11 +21,13 @@ void main() {
           date: today,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         );
 
@@ -49,11 +50,13 @@ void main() {
           date: today,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         );
 
@@ -66,11 +69,13 @@ void main() {
           scheduledDate: today,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.pending,
         );
@@ -217,11 +222,13 @@ void main() {
           scheduledDate: yesterday,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.pending,
         );
@@ -267,11 +274,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -309,11 +318,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0), // Starts at 10:00 AM
+              hour: 10,
+              minute: 0, // Starts at 10:00 AM
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
           );
@@ -327,11 +338,13 @@ void main() {
             scheduledDate: yesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -366,11 +379,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
           );
@@ -384,11 +399,13 @@ void main() {
             scheduledDate: dayBeforeYesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -402,11 +419,13 @@ void main() {
             scheduledDate: yesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.completed,
             completedAt: DateTime(2026, 6, 18, 11, 0),
@@ -451,11 +470,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
           );
@@ -469,11 +490,13 @@ void main() {
             scheduledDate: yesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.completed,
             completedAt: DateTime(2026, 6, 18, 12, 0),
@@ -488,11 +511,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -534,11 +559,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
           );
@@ -552,11 +579,13 @@ void main() {
             scheduledDate: yesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.skipped,
           );
@@ -570,11 +599,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -620,11 +651,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
           );
@@ -638,11 +671,13 @@ void main() {
             scheduledDate: dayBeforeYesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -656,11 +691,13 @@ void main() {
             scheduledDate: yesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.completed,
             completedAt: DateTime(2026, 6, 18, 12, 0),
@@ -675,11 +712,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -770,11 +809,13 @@ void main() {
             scheduledDate: yesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -818,11 +859,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0), // Starts at 10:00 AM
+              hour: 10,
+              minute: 0, // Starts at 10:00 AM
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
           );
@@ -836,11 +879,13 @@ void main() {
             scheduledDate: yesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -891,11 +936,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
           );
@@ -909,11 +956,13 @@ void main() {
             scheduledDate: yesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.completed,
             completedAt: DateTime(2026, 6, 19, 1, 0),
@@ -928,11 +977,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -974,11 +1025,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
           );
@@ -992,11 +1045,13 @@ void main() {
             scheduledDate: yesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.skipped,
           );
@@ -1010,11 +1065,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -1055,7 +1112,8 @@ void main() {
           interval: 1,
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 12, minute: 0),
+            hour: 12,
+            minute: 0,
           ),
           missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
             gracePeriod: Duration(hours: 2),
@@ -1071,11 +1129,13 @@ void main() {
           scheduledDate: yesterday,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 12, minute: 0),
+            hour: 12,
+            minute: 0,
           ),
           status: TaskStatus.pending,
         );
@@ -1112,7 +1172,8 @@ void main() {
             interval: 3,
             schedulingPolicy: const CompletionRelativePolicy(
               interval: Duration(days: 3),
-              targetTime: TimeOfDay(hour: 9, minute: 0),
+              targetHour: 9,
+              targetMinute: 0,
             ),
           );
 
@@ -1125,11 +1186,13 @@ void main() {
             scheduledDate: today.addDays(-1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.completed,
             completedAt: DateTime(2026, 6, 19, 14, 0),
@@ -1268,11 +1331,13 @@ void main() {
             scheduledDate: today.addDays(1), // June 20
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -1285,11 +1350,13 @@ void main() {
             scheduledDate: today.addDays(2), // June 21
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -1302,11 +1369,13 @@ void main() {
             scheduledDate: today.addDays(3), // June 22
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -1319,11 +1388,13 @@ void main() {
             scheduledDate: today.addDays(4), // June 23
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -1383,11 +1454,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           );
           final task = TaskSchedule(
@@ -1443,11 +1516,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.stack(),
           );
@@ -1704,11 +1779,13 @@ void main() {
               scheduledDate: today.addDays(-1),
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
               status: TaskStatus.completed,
               completedAt: now.subtract(const Duration(days: 1)),
@@ -1721,11 +1798,13 @@ void main() {
               scheduledDate: today.addDays(-2),
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
               status: TaskStatus.completed,
               completedAt: now.subtract(const Duration(days: 2)),
@@ -1813,11 +1892,13 @@ void main() {
             scheduledDate: today.addDays(1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.skipped,
           );
@@ -1858,11 +1939,13 @@ void main() {
             scheduledDate: today.addDays(1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.skipped,
           );
@@ -1917,11 +2000,13 @@ void main() {
             scheduledDate: today.addDays(1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.skipped,
           );
@@ -1959,11 +2044,13 @@ void main() {
             scheduledDate: today.addDays(1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -2019,11 +2106,13 @@ void main() {
                     ),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 9, minute: 0),
+                  hour: 9,
+                  minute: 0,
                 ),
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 17, minute: 0),
+                  hour: 17,
+                  minute: 0,
                 ),
               ),
             ],
@@ -2075,11 +2164,13 @@ void main() {
                     ),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 9, minute: 0),
+                  hour: 9,
+                  minute: 0,
                 ),
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 17, minute: 0),
+                  hour: 17,
+                  minute: 0,
                 ),
               ),
               DailySchedule(
@@ -2091,11 +2182,13 @@ void main() {
                     ),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 9, minute: 0),
+                  hour: 9,
+                  minute: 0,
                 ),
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 17, minute: 0),
+                  hour: 17,
+                  minute: 0,
                 ),
               ),
             ],
@@ -2170,11 +2263,13 @@ void main() {
                     ),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 5, minute: 0),
+                  hour: 5,
+                  minute: 0,
                 ),
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 11, minute: 0),
+                  hour: 11,
+                  minute: 0,
                 ),
               ),
               DailySchedule(
@@ -2186,11 +2281,13 @@ void main() {
                     ),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 20, minute: 0),
+                  hour: 20,
+                  minute: 0,
                 ),
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 1,
-                  time: TimeOfDay(hour: 2, minute: 0),
+                  hour: 2,
+                  minute: 0,
                 ),
               ),
             ],
@@ -2278,11 +2375,13 @@ void main() {
                 interval: 1,
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 9, minute: 0),
+                  hour: 9,
+                  minute: 0,
                 ),
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 17, minute: 0),
+                  hour: 17,
+                  minute: 0,
                 ),
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
@@ -2337,11 +2436,13 @@ void main() {
                 interval: 1,
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 9, minute: 0),
+                  hour: 9,
+                  minute: 0,
                 ),
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 17, minute: 0),
+                  hour: 17,
+                  minute: 0,
                 ),
               ),
             ],
@@ -2428,7 +2529,8 @@ void main() {
                 interval: 1,
                 schedulingPolicy: const CompletionRelativePolicy(
                   interval: Duration(days: 1),
-                  targetTime: TimeOfDay(hour: 9, minute: 0),
+                  targetHour: 9,
+                  targetMinute: 0,
                 ),
               ),
             ],
@@ -2492,7 +2594,8 @@ void main() {
             interval: 1,
             schedulingPolicy: const CompletionRelativePolicy(
               interval: Duration(days: 2),
-              targetTime: TimeOfDay(hour: 9, minute: 0),
+              targetHour: 9,
+              targetMinute: 0,
             ),
           );
           final task = TaskSchedule(
@@ -2544,11 +2647,13 @@ void main() {
                 date: today.addDays(1),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 10, minute: 0),
+                  hour: 10,
+                  minute: 0,
                 ),
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 18, minute: 0),
+                  hour: 18,
+                  minute: 0,
                 ),
               ),
             ],
@@ -2563,11 +2668,13 @@ void main() {
             scheduledDate: today.addDays(1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 18, minute: 0),
+              hour: 18,
+              minute: 0,
             ),
             status: TaskStatus.skipped,
           );
@@ -2605,11 +2712,13 @@ void main() {
             date: tomorrow,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 14, minute: 0),
+              hour: 14,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 18, minute: 0),
+              hour: 18,
+              minute: 0,
             ),
           );
           final task = TaskSchedule(
@@ -2630,11 +2739,13 @@ void main() {
             scheduledDate: tomorrow,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 0),
+              hour: 8,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 12, minute: 0),
+              hour: 12,
+              minute: 0,
             ),
             status: TaskStatus.completed,
           );
@@ -2680,7 +2791,8 @@ void main() {
                 interval: 1,
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 12, minute: 0),
+                  hour: 12,
+                  minute: 0,
                 ),
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
@@ -2699,11 +2811,13 @@ void main() {
             scheduledDate: yesterday,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 12, minute: 0),
+              hour: 12,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -2735,11 +2849,13 @@ void main() {
               date: tomorrow,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 10, minute: 0),
+                hour: 10,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 18, minute: 0),
+                hour: 18,
+                minute: 0,
               ),
             ),
           ],
@@ -2773,11 +2889,13 @@ void main() {
                 date: tomorrow,
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 10, minute: 0),
+                  hour: 10,
+                  minute: 0,
                 ),
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 18, minute: 0),
+                  hour: 18,
+                  minute: 0,
                 ),
               ),
             ],
@@ -2824,11 +2942,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.completed,
             completedAt: now.subtract(const Duration(hours: 1)),
@@ -2844,11 +2964,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
             updatedAt: now,
@@ -2889,11 +3011,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
             updatedAt: now.subtract(const Duration(hours: 2)),
@@ -2908,11 +3032,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
             updatedAt: now.subtract(const Duration(hours: 1)),
@@ -2941,11 +3067,13 @@ void main() {
           startDate: today.addDays(-1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           missedOccurrencePolicy: const MissedOccurrencePolicy(
             policy: MissedPolicy.preferOlder,
@@ -2961,11 +3089,13 @@ void main() {
           scheduledDate: today.addDays(-1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.pending,
         );
@@ -2979,11 +3109,13 @@ void main() {
           scheduledDate: today,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.pending,
         );
@@ -3013,11 +3145,13 @@ void main() {
           startDate: today.addDays(-1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           missedOccurrencePolicy: const MissedOccurrencePolicy(
             policy: MissedPolicy.preferNewer,
@@ -3033,11 +3167,13 @@ void main() {
           scheduledDate: today.addDays(-1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.pending,
         );
@@ -3051,11 +3187,13 @@ void main() {
           scheduledDate: today,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.pending,
         );
@@ -3085,11 +3223,13 @@ void main() {
           startDate: today.addDays(-2),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
             gracePeriod: Duration(hours: 12),
@@ -3105,11 +3245,13 @@ void main() {
           scheduledDate: today.addDays(-2),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.pending,
         );
@@ -3152,11 +3294,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
           );
@@ -3171,11 +3315,13 @@ void main() {
             scheduledDate: const CivilDay(year: 2026, month: 8, day: 23),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.completed,
             completedAt: DateTime(2026, 8, 24, 6, 0),
@@ -3191,11 +3337,13 @@ void main() {
             scheduledDate: today,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -3238,11 +3386,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
           );
@@ -3257,11 +3407,13 @@ void main() {
             scheduledDate: day1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.pending,
           );
@@ -3294,11 +3446,13 @@ void main() {
             scheduledDate: day2,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
             status: TaskStatus.skipped,
             statusReason: 'scheduler_prefer_older',
@@ -3345,11 +3499,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           );
           final task = TaskSchedule(

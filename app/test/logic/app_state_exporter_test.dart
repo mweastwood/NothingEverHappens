@@ -93,7 +93,8 @@ void main() {
         final civilDay = const CivilDay(year: 2026, month: 8, day: 12);
         final relativeTime = const RelativeTime(
           dayOffset: 1,
-          time: TimeOfDay(hour: 14, minute: 30),
+          hour: 14,
+          minute: 30,
         );
         final duration = const Duration(minutes: 45);
 
@@ -390,11 +391,13 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 8, day: 12),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           notificationRelativeTimes: const [],
           updatedAt: DateTime.utc(2026, 8, 12),
@@ -568,7 +571,8 @@ void main() {
         final civilDay = const CivilDay(year: 2026, month: 8, day: 14);
         final relativeTime = const RelativeTime(
           dayOffset: 0,
-          time: TimeOfDay(hour: 10, minute: 15),
+          hour: 10,
+          minute: 15,
         );
         const timeOfDay = TimeOfDay(hour: 12, minute: 30);
 

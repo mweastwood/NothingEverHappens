@@ -47,11 +47,13 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 8, minute: 0),
+            hour: 8,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 12, minute: 0),
+            hour: 12,
+            minute: 0,
           ),
         ),
       ],
@@ -70,11 +72,13 @@ void main() {
           daysOfWeek: {1, 3, 5},
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         ),
       ],
@@ -90,14 +94,8 @@ void main() {
       description: 'Living room, kitchen, and balcony plants.',
       priority: TaskPriority.high,
       scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 8, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 12, minute: 0),
-      ),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
       status: TaskStatus.pending,
     ),
     TaskInstance(
@@ -108,14 +106,8 @@ void main() {
       description: 'Check calendar and meal schedule for the week.',
       priority: TaskPriority.medium,
       scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
       status: TaskStatus.pending,
     ),
   ];

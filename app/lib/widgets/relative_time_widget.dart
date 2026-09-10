@@ -22,7 +22,7 @@ enum RelativeTimeConstraint {
 /// Example:
 /// ```dart
 /// final controller = ValueNotifier(
-///   const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+///   const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
 /// );
 /// // Log changes
 /// controller.addListener(() {
@@ -161,7 +161,8 @@ class _RelativeTimeWidgetState extends State<RelativeTimeWidget> {
 
     final newRelativeTime = RelativeTime(
       dayOffset: _daysNotifier.value,
-      time: _timeNotifier.value,
+      hour: _timeNotifier.value.hour,
+      minute: _timeNotifier.value.minute,
     );
     if (widget.controller.value != newRelativeTime) {
       widget.controller.value = newRelativeTime;

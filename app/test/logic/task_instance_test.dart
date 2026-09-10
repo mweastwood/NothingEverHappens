@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
@@ -10,18 +9,9 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 void main() {
   group('TaskInstance Serialization and Helpers', () {
     const testDate = CivilDay(year: 2026, month: 6, day: 13);
-    const testStart = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 9, minute: 0),
-    );
-    const testDue = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 17, minute: 0),
-    );
-    const testNotification = RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 8, minute: 30),
-    );
+    const testStart = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+    const testDue = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
+    const testNotification = RelativeTime(dayOffset: 0, hour: 8, minute: 30);
 
     test('Constructor initializes all fields correctly', () {
       final completedAt = DateTime(2026, 6, 13, 10, 0);
@@ -149,14 +139,8 @@ void main() {
       () async {
         final firestore = FakeFirebaseFirestore();
         final ref = firestore.collection('instances').doc('instance-multi');
-        final notif1 = const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 8, minute: 0),
-        );
-        final notif2 = const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 12, minute: 0),
-        );
+        final notif1 = const RelativeTime(dayOffset: 0, hour: 8, minute: 0);
+        final notif2 = const RelativeTime(dayOffset: 0, hour: 12, minute: 0);
 
         await ref.set({
           'scheduleId': 'schedule-456',
@@ -229,12 +213,10 @@ void main() {
         scheduledDate: const CivilDay(year: 2026, month: 6, day: 14),
         startRelativeTime: const RelativeTime(
           dayOffset: 1,
-          time: TimeOfDay(hour: 10, minute: 0),
+          hour: 10,
+          minute: 0,
         ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 1,
-          time: TimeOfDay(hour: 18, minute: 0),
-        ),
+        dueRelativeTime: const RelativeTime(dayOffset: 1, hour: 18, minute: 0),
         clearNotificationRelativeTimes: true,
         isFamily: true,
         priority: TaskPriority.high,
@@ -256,11 +238,11 @@ void main() {
       );
       expect(
         updated.startRelativeTime,
-        const RelativeTime(dayOffset: 1, time: TimeOfDay(hour: 10, minute: 0)),
+        const RelativeTime(dayOffset: 1, hour: 10, minute: 0),
       );
       expect(
         updated.dueRelativeTime,
-        const RelativeTime(dayOffset: 1, time: TimeOfDay(hour: 18, minute: 0)),
+        const RelativeTime(dayOffset: 1, hour: 18, minute: 0),
       );
       expect(updated.notificationRelativeTimes, isEmpty);
       expect(updated.isFamily, true);
@@ -516,11 +498,13 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 7, day: 1),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           status: TaskStatus.completed,
         );

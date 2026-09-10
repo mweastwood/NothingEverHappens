@@ -25,24 +25,20 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         ),
       ],
     );
 
-    final startRel = const RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 9, minute: 0),
-    );
-    final dueRel = const RelativeTime(
-      dayOffset: 0,
-      time: TimeOfDay(hour: 17, minute: 0),
-    );
+    final startRel = const RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+    final dueRel = const RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
     final dbInstances = [
       // Completed instance
@@ -191,11 +187,13 @@ void main() {
             date: CivilDay(year: 2026, month: 10, day: 25), // In the past
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -213,11 +211,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -364,11 +364,13 @@ void main() {
             dayOfMonth: 25,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],
@@ -449,11 +451,13 @@ void main() {
             dayOfMonth: 25,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
         ],

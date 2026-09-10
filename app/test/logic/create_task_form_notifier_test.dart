@@ -53,11 +53,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 8, minute: 0),
+              hour: 8,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 12, minute: 0),
+              hour: 12,
+              minute: 0,
             ),
             schedulingPolicy: const FixedCalendarPolicy(),
           ),
@@ -69,18 +71,9 @@ void main() {
         skipIfNoCapacity: true,
         workflowType: 'mealWorkflow',
         mealWorkflowConfig: const MealWorkflowConfig(
-          selectTime: RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
-          ),
-          shopTime: RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 15, minute: 0),
-          ),
-          prepTime: RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 30),
-          ),
+          selectTime: RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+          shopTime: RelativeTime(dayOffset: 0, hour: 15, minute: 0),
+          prepTime: RelativeTime(dayOffset: 0, hour: 17, minute: 30),
         ),
       );
 
@@ -112,11 +105,13 @@ void main() {
             date: CivilDay(year: 2026, month: 3, day: 10),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 18, minute: 0),
+              hour: 18,
+              minute: 0,
             ),
           ),
         ],
@@ -124,18 +119,9 @@ void main() {
         priority: TaskPriority.low,
         workflowType: 'mealWorkflow',
         mealWorkflowConfig: const MealWorkflowConfig(
-          selectTime: RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 30),
-          ),
-          shopTime: RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 14, minute: 0),
-          ),
-          prepTime: RelativeTime(
-            dayOffset: 0,
-            time: TimeOfDay(hour: 18, minute: 0),
-          ),
+          selectTime: RelativeTime(dayOffset: 0, hour: 9, minute: 30),
+          shopTime: RelativeTime(dayOffset: 0, hour: 14, minute: 0),
+          prepTime: RelativeTime(dayOffset: 0, hour: 18, minute: 0),
         ),
       );
 
@@ -171,14 +157,8 @@ void main() {
         scheduleId: notifier.state.taskScheduleId,
         startDate: CivilDay(year: 2026, month: 3, day: 8),
         interval: 2,
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         schedulingPolicy: const FixedCalendarPolicy(),
       );
       notifier.updateSchedule(0, newRule);

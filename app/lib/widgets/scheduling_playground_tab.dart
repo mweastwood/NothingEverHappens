@@ -42,14 +42,8 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
       id: TaskScheduleRule.generateId(),
       scheduleId: 'S-playground-task',
       date: civilToday,
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {

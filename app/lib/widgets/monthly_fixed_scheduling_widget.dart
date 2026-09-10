@@ -78,7 +78,7 @@ class _MonthlyFixedSchedulingWidgetState
     _dueController = ValueNotifier(widget.dueRelativeTime);
     _notificationController = ValueNotifier(
       widget.notificationRelativeTime ??
-          const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+          const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
     );
     final initialDay = widget.dayOfMonth ?? 1;
     _fromStart = initialDay > 0;

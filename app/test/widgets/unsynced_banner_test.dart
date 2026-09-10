@@ -69,14 +69,8 @@ void main() {
         title: 'Offline Instance',
         description: 'Test description',
         scheduledDate: CivilDay(year: 2026, month: 8, day: 4),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         hasPendingWrites: true,
         isFromCache: true,
       );
@@ -455,11 +449,13 @@ void main() {
           scheduledDate: CivilDay(year: 2026, month: 8, day: 4),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           hasPendingWrites: true,
         );
@@ -502,11 +498,13 @@ void main() {
               interval: 1,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
             ),
           ],
@@ -559,14 +557,8 @@ void main() {
         title: 'Water the plants',
         description: 'Living room and balcony',
         scheduledDate: CivilDay(year: 2026, month: 8, day: 4),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.completed,
         hasPendingWrites: true,
       );
@@ -666,11 +658,13 @@ void main() {
               interval: 1,
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 9, minute: 0),
+                hour: 9,
+                minute: 0,
               ),
               dueRelativeTime: const RelativeTime(
                 dayOffset: 0,
-                time: TimeOfDay(hour: 17, minute: 0),
+                hour: 17,
+                minute: 0,
               ),
             ),
           ],
@@ -685,11 +679,13 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 8, day: 4),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           hasPendingWrites: true,
         );

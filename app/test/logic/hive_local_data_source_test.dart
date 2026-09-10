@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
@@ -104,14 +103,8 @@ void main() {
       title: 'Inst 1',
       description: 'Desc 1',
       scheduledDate: CivilDay(year: 2026, month: 8, day: 4),
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
       updatedAt: DateTime.now(),
     );
 
@@ -141,14 +134,8 @@ void main() {
       title: 'Inst 2',
       description: 'Desc 2',
       scheduledDate: CivilDay(year: 2026, month: 8, day: 4),
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
       updatedAt: DateTime.now(),
     );
 
@@ -275,14 +262,8 @@ void main() {
         title: 'Clear Inst',
         description: 'Desc',
         scheduledDate: CivilDay(year: 2026, month: 8, day: 15),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         updatedAt: DateTime.now(),
       );
 
@@ -409,11 +390,13 @@ void main() {
           scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
           updatedAt: DateTime.now(),
         ),

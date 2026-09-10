@@ -74,7 +74,7 @@ void main() {
       expect(json['dayOffset'], equals(0));
       expect(json['hour'], equals(9));
       expect(json['minute'], equals(15));
-      expect(json['minutes'], equals(555));
+      expect(rt.minutes, equals(555));
 
       final fromJson = RelativeTime.fromJson(json);
       expect(fromJson, equals(rt));

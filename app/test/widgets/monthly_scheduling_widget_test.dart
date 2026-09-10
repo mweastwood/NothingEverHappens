@@ -17,14 +17,8 @@ void main() {
       tester,
     ) async {
       final startDate = CivilDay(year: 2026, month: 10, day: 26);
-      const startRelative = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      );
-      const dueRelative = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      );
+      const startRelative = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+      const dueRelative = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
       const missed = MissedOccurrencePolicy.stack();
 
       await tester.pumpWidget(
@@ -82,17 +76,12 @@ void main() {
       'renders all fields when fully configured (Completion Relative)',
       (tester) async {
         final startDate = CivilDay(year: 2026, month: 10, day: 26);
-        const startRelative = RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        );
-        const dueRelative = RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        );
+        const startRelative = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+        const dueRelative = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
         final policy = CompletionRelativePolicy(
           interval: const Duration(days: 60),
-          targetTime: const TimeOfDay(hour: 9, minute: 0),
+          targetHour: 9,
+          targetMinute: 0,
         );
 
         await tester.pumpWidget(
@@ -173,12 +162,14 @@ void main() {
                 onDayOfWeekChanged: (_) {},
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 9, minute: 0),
+                  hour: 9,
+                  minute: 0,
                 ),
                 onStartRelativeTimeChanged: (_) {},
                 dueRelativeTime: const RelativeTime(
                   dayOffset: 0,
-                  time: TimeOfDay(hour: 17, minute: 0),
+                  hour: 17,
+                  minute: 0,
                 ),
                 onDueRelativeTimeChanged: (_) {},
                 notificationRelativeTime: null,
@@ -204,14 +195,8 @@ void main() {
 
     testGoldens('MonthlySchedulingWidget renders correctly', (tester) async {
       final startDate = CivilDay(year: 2026, month: 10, day: 26);
-      const startRelative = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      );
-      const dueRelative = RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      );
+      const startRelative = RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+      const dueRelative = RelativeTime(dayOffset: 0, hour: 17, minute: 0);
       const missed = MissedOccurrencePolicy.stack();
 
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.5)
@@ -287,7 +272,8 @@ void main() {
               onIntervalChanged: (_) {},
               schedulingPolicy: CompletionRelativePolicy(
                 interval: const Duration(days: 60),
-                targetTime: const TimeOfDay(hour: 9, minute: 0),
+                targetHour: 9,
+                targetMinute: 0,
               ),
               onSchedulingPolicyChanged: (_) {},
               ruleType: 'dayOfMonth',

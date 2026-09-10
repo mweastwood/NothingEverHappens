@@ -325,14 +325,8 @@ void main() {
         title: 'Task A Instance',
         description: 'Desc',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 1),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.pending,
       );
 
@@ -343,14 +337,8 @@ void main() {
         title: 'Task B Instance',
         description: 'Desc',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 1),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.pending,
       );
 
@@ -407,14 +395,8 @@ void main() {
       title: 'Task A Instance',
       description: 'Desc',
       scheduledDate: CivilDay(year: 2026, month: 7, day: 1),
-      startRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 9, minute: 0),
-      ),
-      dueRelativeTime: const RelativeTime(
-        dayOffset: 0,
-        time: TimeOfDay(hour: 17, minute: 0),
-      ),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
       status: TaskStatus.pending,
     );
 
@@ -509,14 +491,8 @@ void main() {
         title: 'Dishes',
         description: 'Wash dishes',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 5),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.completed,
       );
 
@@ -528,14 +504,8 @@ void main() {
         title: 'Trash',
         description: 'Take out trash',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 8),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.completed,
       );
 
@@ -547,14 +517,8 @@ void main() {
         title: 'Dishes',
         description: 'Wash dishes',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 6),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.skipped,
       );
 
@@ -566,14 +530,8 @@ void main() {
         title: 'Trash',
         description: 'Take out trash',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 4),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.failed,
       );
 
@@ -666,14 +624,8 @@ void main() {
         title: 'Private Journal',
         description: 'Write diary',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 7),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         isFamily: false,
         status: TaskStatus.completed,
         completedByUserId: 'user-1',
@@ -687,14 +639,8 @@ void main() {
         title: 'Family Dinner',
         description: 'Cook dinner',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 7),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         isFamily: true,
         status: TaskStatus.completed,
         completedByUserId: 'user-1',
@@ -708,14 +654,8 @@ void main() {
         title: 'Family Dinner',
         description: 'Cook dinner',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 6),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         isFamily: true,
         status: TaskStatus.completed,
         completedByUserId: 'user-2',
@@ -729,14 +669,8 @@ void main() {
         title: 'Family Dinner',
         description: 'Cook dinner',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 5),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 17, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         isFamily: true,
         status: TaskStatus.skipped,
         completedByUserId: 'user-2',
@@ -822,14 +756,8 @@ void main() {
         title: 'Morning Yoga',
         description: 'Stretch and breathe',
         scheduledDate: CivilDay(year: 2026, month: 7, day: 7),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 8, minute: 0),
-        ),
-        dueRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 9, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
         status: TaskStatus.completed,
       );
 

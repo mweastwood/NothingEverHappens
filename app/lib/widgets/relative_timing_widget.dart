@@ -36,10 +36,7 @@ class _RelativeTimingWidgetState extends State<RelativeTimingWidget> {
   late final ValueNotifier<RelativeTime> _notificationController =
       ValueNotifier(
         widget.notificationRelativeTime ??
-            const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
-            ),
+            const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
       );
 
   bool _ignoreEvents = false;

@@ -81,7 +81,7 @@ class _YearlyFixedSchedulingWidgetState
     _dueController = ValueNotifier(widget.dueRelativeTime);
     _notificationController = ValueNotifier(
       widget.notificationRelativeTime ??
-          const RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 9, minute: 0)),
+          const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
     );
     _dayController =
         widget.dayController ??

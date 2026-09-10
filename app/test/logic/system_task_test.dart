@@ -318,16 +318,10 @@ void main() {
         status: status,
         scheduledDate:
             scheduledDate ?? const CivilDay(year: 2026, month: 7, day: 9),
-        startRelativeTime: const RelativeTime(
-          dayOffset: 0,
-          time: TimeOfDay(hour: 8, minute: 0),
-        ),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
         dueRelativeTime:
             dueRelativeTime ??
-            const RelativeTime(
-              dayOffset: 0,
-              time: TimeOfDay(hour: 20, minute: 0),
-            ),
+            const RelativeTime(dayOffset: 0, hour: 20, minute: 0),
         familyCompletionMode: familyCompletionMode,
         completedByUserIds: completedByUserIds,
       );
@@ -445,7 +439,8 @@ void main() {
           scheduledDate: const CivilDay(year: 2026, month: 7, day: 10),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 14, minute: 0),
+            hour: 14,
+            minute: 0,
           ), // due today at 2pm (> 5am today)
         );
 

@@ -163,10 +163,19 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             ? MealWorkflowConfig(
                 selectTime: RelativeTime(
                   dayOffset: 0,
-                  time: formState.selectTime,
+                  hour: formState.selectTime.hour,
+                  minute: formState.selectTime.minute,
                 ),
-                shopTime: RelativeTime(dayOffset: 0, time: formState.shopTime),
-                prepTime: RelativeTime(dayOffset: 0, time: formState.prepTime),
+                shopTime: RelativeTime(
+                  dayOffset: 0,
+                  hour: formState.shopTime.hour,
+                  minute: formState.shopTime.minute,
+                ),
+                prepTime: RelativeTime(
+                  dayOffset: 0,
+                  hour: formState.prepTime.hour,
+                  minute: formState.prepTime.minute,
+                ),
               )
             : null;
 

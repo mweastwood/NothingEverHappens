@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
@@ -16,11 +15,13 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         ),
         WeeklySchedule(
@@ -29,14 +30,16 @@ void main() {
           daysOfWeek: const {1, 5},
           startRelativeTime: const RelativeTime(
             dayOffset: -1,
-            time: TimeOfDay(hour: 18, minute: 0),
+            hour: 18,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 1,
-            time: TimeOfDay(hour: 12, minute: 0),
+            hour: 12,
+            minute: 0,
           ),
           notificationRelativeTimes: const [
-            RelativeTime(dayOffset: 0, time: TimeOfDay(hour: 8, minute: 0)),
+            RelativeTime(dayOffset: 0, hour: 8, minute: 0),
           ],
         ),
       ];
@@ -72,11 +75,13 @@ void main() {
           interval: 1,
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 9, minute: 0),
+            hour: 9,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 17, minute: 0),
+            hour: 17,
+            minute: 0,
           ),
         ),
         WeeklySchedule(
@@ -85,11 +90,13 @@ void main() {
           daysOfWeek: const {1, 3}, // Monday, Wednesday
           startRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 10, minute: 0),
+            hour: 10,
+            minute: 0,
           ),
           dueRelativeTime: const RelativeTime(
             dayOffset: 0,
-            time: TimeOfDay(hour: 18, minute: 0),
+            hour: 18,
+            minute: 0,
           ),
         ),
       ];
@@ -133,11 +140,13 @@ void main() {
             date: start, // June 1
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 17, minute: 0),
+              hour: 17,
+              minute: 0,
             ),
           ),
           OneOffSchedule(
@@ -148,11 +157,13 @@ void main() {
             ), // June 5 (future)
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 18, minute: 0),
+              hour: 18,
+              minute: 0,
             ),
           ),
           DailySchedule(
@@ -160,11 +171,13 @@ void main() {
             interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 11, minute: 0),
+              hour: 11,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 19, minute: 0),
+              hour: 19,
+              minute: 0,
             ),
           ),
         ];
@@ -214,22 +227,26 @@ void main() {
             date: start,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
           ),
           OneOffSchedule(
             date: start,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 14, minute: 0),
+              hour: 14,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 15, minute: 0),
+              hour: 15,
+              minute: 0,
             ),
           ),
         ];
@@ -273,22 +290,26 @@ void main() {
             date: const CivilDay(year: 2026, month: 6, day: 1),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 9, minute: 0),
+              hour: 9,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 10, minute: 0),
+              hour: 10,
+              minute: 0,
             ),
           ),
           OneOffSchedule(
             date: const CivilDay(year: 2026, month: 6, day: 3),
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 14, minute: 0),
+              hour: 14,
+              minute: 0,
             ),
             dueRelativeTime: const RelativeTime(
               dayOffset: 0,
-              time: TimeOfDay(hour: 15, minute: 0),
+              hour: 15,
+              minute: 0,
             ),
           ),
         ];

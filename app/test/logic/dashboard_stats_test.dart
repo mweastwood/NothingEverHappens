@@ -29,14 +29,8 @@ void main() {
     AppClock.reset();
   });
 
-  final dummyStart = const RelativeTime(
-    dayOffset: 0,
-    time: TimeOfDay(hour: 9, minute: 0),
-  );
-  final dummyDue = const RelativeTime(
-    dayOffset: 0,
-    time: TimeOfDay(hour: 17, minute: 0),
-  );
+  final dummyStart = const RelativeTime(dayOffset: 0, hour: 9, minute: 0);
+  final dummyDue = const RelativeTime(dayOffset: 0, hour: 17, minute: 0);
 
   group('personalLastWeekStatsProvider', () {
     testWidgets(

@@ -12,7 +12,8 @@ void main() {
     ) async {
       const policy = CompletionRelativePolicy(
         interval: Duration(days: 3),
-        targetTime: TimeOfDay(hour: 10, minute: 30),
+        targetHour: 10,
+        targetMinute: 30,
       );
 
       await tester.pumpWidget(
@@ -39,7 +40,8 @@ void main() {
     ) async {
       const policy = CompletionRelativePolicy(
         interval: Duration(days: 3),
-        targetTime: TimeOfDay(hour: 10, minute: 30),
+        targetHour: 10,
+        targetMinute: 30,
       );
       CompletionRelativePolicy? changedPolicy;
 
@@ -65,7 +67,8 @@ void main() {
     testWidgets('triggers onChanged when unit is changed', (tester) async {
       const policy = CompletionRelativePolicy(
         interval: Duration(days: 3),
-        targetTime: TimeOfDay(hour: 10, minute: 30),
+        targetHour: 10,
+        targetMinute: 30,
       );
       CompletionRelativePolicy? changedPolicy;
 
@@ -98,7 +101,8 @@ void main() {
     ) async {
       const policy = CompletionRelativePolicy(
         interval: Duration(days: 3),
-        targetTime: TimeOfDay(hour: 10, minute: 30),
+        targetHour: 10,
+        targetMinute: 30,
       );
 
       final builder = GoldenBuilder.column()
