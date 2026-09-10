@@ -34,15 +34,34 @@ Future<FamilySchedulerAuthResult> authenticateFamilySchedulerRequest(
   AuthService? auth,
   String? envSecret,
 }) async {
-  final authHeaderRaw = headers['authorization'] ?? headers['Authorization'];
-  final authHeader = authHeaderRaw is List
-      ? (authHeaderRaw.isNotEmpty ? authHeaderRaw.first.toString() : null)
-      : authHeaderRaw?.toString();
+  String? getHeader(List<String> targetNames) {
+    for (final name in targetNames) {
+      if (headers.containsKey(name)) {
+        final val = headers[name];
+        return val is List
+            ? (val.isNotEmpty ? val.first.toString() : null)
+            : val?.toString();
+      }
+    }
+    final lowerTargets = targetNames.map((n) => n.toLowerCase()).toSet();
+    for (final entry in headers.entries) {
+      if (lowerTargets.contains(entry.key.toLowerCase())) {
+        final val = entry.value;
+        return val is List
+            ? (val.isNotEmpty ? val.first.toString() : null)
+            : val?.toString();
+      }
+    }
+    return null;
+  }
 
-  final serviceKeyRaw = headers['x-service-secret'] ?? headers['x-api-key'];
-  final serviceKey = serviceKeyRaw is List
-      ? (serviceKeyRaw.isNotEmpty ? serviceKeyRaw.first.toString() : null)
-      : serviceKeyRaw?.toString();
+  final authHeader = getHeader(['authorization', 'Authorization']);
+  final serviceKey = getHeader([
+    'x-service-secret',
+    'X-Service-Secret',
+    'x-api-key',
+    'X-Api-Key',
+  ]);
 
   final secret =
       envSecret ?? getEnv('TASK_HUB_SECRET') ?? getEnv('SERVICE_SECRET');
@@ -148,15 +167,7 @@ Future<void> handleProcessFamilySchedule(
       : <String, dynamic>{};
 
   final familyId = body['familyId'] as String?;
-  final nowRaw = body['now'];
-  DateTime? now;
-  if (nowRaw != null) {
-    if (nowRaw is int) {
-      now = DateTime.fromMillisecondsSinceEpoch(nowRaw, isUtc: true);
-    } else if (nowRaw is String) {
-      now = DateTime.tryParse(nowRaw);
-    }
-  }
+  final now = parseScheduleTimestamp(body['now']);
 
   final firestoreDb = db ?? getFirebaseAdminDb();
   final authResult = await authenticateFamilySchedulerRequest(
@@ -181,12 +192,26 @@ Future<void> handleProcessFamilySchedule(
 
     if (familyId != null && familyId.isNotEmpty) {
       final summary = await schedulerService.processFamily(familyId, now: now);
+      if (summary.error != null) {
+        logError(
+          'Error evaluating family schedule for familyId=$familyId: ${summary.error}',
+        );
+        res.status(500).json(summary.toJson());
+        return;
+      }
       logInfo(
         'Processed family schedule for familyId=$familyId: spawned=${summary.instancesSpawned}, updated=${summary.instancesUpdated}, deleted=${summary.instancesDeleted}',
       );
       res.status(200).json(summary.toJson());
     } else {
       final result = await schedulerService.processAllFamilies(now: now);
+      if (!result.success) {
+        logWarn(
+          'Processed all family schedules with errors: families=${result.familiesProcessed}, spawned=${result.totalInstancesSpawned}, updated=${result.totalInstancesUpdated}',
+        );
+        res.status(500).json(result.toJson());
+        return;
+      }
       logInfo(
         'Processed all family schedules: families=${result.familiesProcessed}, spawned=${result.totalInstancesSpawned}, updated=${result.totalInstancesUpdated}',
       );
@@ -196,5 +221,37 @@ Future<void> handleProcessFamilySchedule(
     logError('Error executing family scheduler handler:', error);
     final errorMessage = error.toString().replaceFirst('Exception: ', '');
     res.status(500).json({'success': false, 'error': errorMessage});
+  }
+}
+
+/// Parses an incoming dynamic timestamp from HTTP payloads or JS interop.
+/// Supports epoch milliseconds as `int`, `num`, or numeric `String`, ISO strings, and `DateTime`.
+DateTime? parseScheduleTimestamp(dynamic now) {
+  if (now == null) return null;
+  if (now is DateTime) return now.toUtc();
+  if (now is num) {
+    return DateTime.fromMillisecondsSinceEpoch(now.toInt(), isUtc: true);
+  }
+  final str = now.toString().trim();
+  if (str.isEmpty) return null;
+  final asInt = int.tryParse(str);
+  if (asInt != null) {
+    return DateTime.fromMillisecondsSinceEpoch(asInt, isUtc: true);
+  }
+  return DateTime.tryParse(str)?.toUtc();
+}
+
+/// Direct invocation helper for family scheduling, used by JS interop and direct calls.
+Future<dynamic> processFamilyScheduleDirect(
+  FirestoreDatabase db, {
+  String? familyId,
+  dynamic now,
+}) async {
+  final service = FamilySchedulerService(db);
+  final effectiveNow = parseScheduleTimestamp(now);
+  if (familyId != null && familyId.isNotEmpty) {
+    return service.processFamily(familyId, now: effectiveNow);
+  } else {
+    return service.processAllFamilies(now: effectiveNow);
   }
 }

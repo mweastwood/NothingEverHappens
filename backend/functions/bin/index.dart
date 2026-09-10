@@ -131,19 +131,16 @@ void main() {
     'processFamilyScheduleDirect',
     js.allowInterop(([dynamic jsDb, String? familyId, dynamic now]) {
       final db = getFirebaseAdminDb(jsDb);
-      final service = FamilySchedulerService(db);
-      final effectiveNow = now != null ? DateTime.parse(now.toString()) : null;
-      if (familyId != null && familyId.isNotEmpty) {
-        return service
-            .processFamily(familyId, now: effectiveNow)
-            .then((res) => js.JsObject.jsify(res.toJson()))
-            .toJS;
-      } else {
-        return service
-            .processAllFamilies(now: effectiveNow)
-            .then((res) => js.JsObject.jsify(res.toJson()))
-            .toJS;
-      }
+      return processFamilyScheduleDirect(
+        db,
+        familyId: familyId,
+        now: now,
+      ).then((res) {
+        final json = res is FamilyScheduleSummary
+            ? res.toJson()
+            : (res as FamilySchedulerResult).toJson();
+        return js.JsObject.jsify(json);
+      }).toJS;
     }),
   );
 }

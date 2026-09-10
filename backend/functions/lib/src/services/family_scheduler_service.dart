@@ -314,7 +314,7 @@ class FamilySchedulerService {
 
     final durationMs = DateTime.now().millisecondsSinceEpoch - startTime;
     return FamilySchedulerResult(
-      success: true,
+      success: !summaries.any((s) => s.error != null),
       familiesProcessed: summaries.length,
       totalTasksEvaluated: totalTasks,
       totalInstancesSpawned: totalSpawned,

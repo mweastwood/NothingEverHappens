@@ -344,6 +344,20 @@ void main() {
       expect(result.familiesProcessed, equals(0));
       expect(result.totalInstancesSpawned, equals(0));
     });
+
+    test('marks result success as false if any family encountered an error',
+        () async {
+      db.collection('families').doc('fam_ok').set({'name': 'OK Family'});
+      db.collection('families').doc('fam_err').set({'name': 'Err Family'});
+
+      db.collection('families/fam_err/tasks').onGet =
+          () => throw Exception('Firestore query failed');
+
+      final result = await service.processAllFamilies();
+      expect(result.success, isFalse);
+      expect(result.familiesProcessed, equals(2));
+      expect(result.familySummaries.any((s) => s.error != null), isTrue);
+    });
   });
 
   group('authenticateFamilySchedulerRequest', () {
@@ -373,10 +387,41 @@ void main() {
       expect(result.isAdmin, isTrue);
     });
 
+    test('authenticates valid service secret in capitalized X-Service-Secret',
+        () async {
+      final result = await authenticateFamilySchedulerRequest(
+        {'X-Service-Secret': 'test_secret_123'},
+        envSecret: 'test_secret_123',
+      );
+      expect(result.authenticated, isTrue);
+      expect(result.isAdmin, isTrue);
+    });
+
+    test('authenticates valid service secret in capitalized X-Api-Key',
+        () async {
+      final result = await authenticateFamilySchedulerRequest(
+        {'X-Api-Key': 'test_secret_123'},
+        envSecret: 'test_secret_123',
+      );
+      expect(result.authenticated, isTrue);
+      expect(result.isAdmin, isTrue);
+    });
+
     test('authenticates valid service secret in Authorization Bearer',
         () async {
       final result = await authenticateFamilySchedulerRequest(
         {'authorization': 'Bearer test_secret_123'},
+        envSecret: 'test_secret_123',
+      );
+      expect(result.authenticated, isTrue);
+      expect(result.isAdmin, isTrue);
+    });
+
+    test(
+        'authenticates valid service secret in capitalized Authorization Bearer',
+        () async {
+      final result = await authenticateFamilySchedulerRequest(
+        {'Authorization': 'Bearer test_secret_123'},
         envSecret: 'test_secret_123',
       );
       expect(result.authenticated, isTrue);
@@ -576,6 +621,189 @@ void main() {
       expect(res.statusCode, equals(200));
       expect(res.responseData, isNotNull);
       expect(res.responseData['success'], isTrue);
+    });
+
+    test('returns HTTP 500 when single family evaluation results in an error',
+        () async {
+      final req = TestHttpRequest(
+        method: 'POST',
+        headers: {'X-Service-Secret': 'sec123'},
+        body: {'familyId': 'fam_err'},
+      );
+      final res = TestHttpResponse();
+
+      db.collection('families/fam_err/tasks').onGet =
+          () => throw Exception('Database failure');
+
+      await handleProcessFamilySchedule(
+        req,
+        res,
+        db: db,
+        auth: auth,
+        service: FamilySchedulerService(db),
+        envSecret: 'sec123',
+      );
+
+      expect(res.statusCode, equals(500));
+      expect(res.responseData, isNotNull);
+      expect(res.responseData['familyId'], equals('fam_err'));
+      expect(res.responseData['error'], contains('Database failure'));
+    });
+
+    test('returns HTTP 500 when processAllFamilies encounters errors',
+        () async {
+      auth.onVerifyIdToken = (token) async => const DecodedIdToken(
+            uid: 'admin_1',
+            admin: true,
+          );
+
+      final req = TestHttpRequest(
+        method: 'POST',
+        headers: {'Authorization': 'Bearer admin_token'},
+        body: {},
+      );
+      final res = TestHttpResponse();
+
+      db.collection('families').doc('fam_err').set({'name': 'Err Family'});
+      db.collection('families/fam_err/tasks').onGet =
+          () => throw Exception('Database failure');
+
+      await handleProcessFamilySchedule(
+        req,
+        res,
+        db: db,
+        auth: auth,
+        service: FamilySchedulerService(db),
+      );
+
+      expect(res.statusCode, equals(500));
+      expect(res.responseData, isNotNull);
+      expect(res.responseData['success'], isFalse);
+    });
+
+    test('accepts numeric epoch timestamp in request body', () async {
+      final req = TestHttpRequest(
+        method: 'POST',
+        headers: {'x-service-secret': 'sec123'},
+        body: {
+          'familyId': 'fam_1',
+          'now': 1725964800000,
+        },
+      );
+      final res = TestHttpResponse();
+
+      await handleProcessFamilySchedule(
+        req,
+        res,
+        db: db,
+        auth: auth,
+        service: FamilySchedulerService(db),
+        envSecret: 'sec123',
+      );
+
+      expect(res.statusCode, equals(200));
+    });
+  });
+
+  group('processFamilyScheduleDirect & parseScheduleTimestamp', () {
+    late MockFirestoreDatabase db;
+
+    setUp(() {
+      db = MockFirestoreDatabase();
+    });
+
+    test('parseScheduleTimestamp parses diverse formats correctly', () {
+      expect(parseScheduleTimestamp(null), isNull);
+
+      final dt = DateTime.utc(2026, 9, 10, 12, 0);
+      expect(parseScheduleTimestamp(dt), equals(dt));
+
+      const epochMs = 1725964800000;
+      final expectedDate =
+          DateTime.fromMillisecondsSinceEpoch(epochMs, isUtc: true);
+
+      // int epoch
+      expect(parseScheduleTimestamp(epochMs), equals(expectedDate));
+
+      // double/num epoch
+      expect(parseScheduleTimestamp(1725964800000.0), equals(expectedDate));
+
+      // numeric string epoch
+      expect(parseScheduleTimestamp('1725964800000'), equals(expectedDate));
+
+      // ISO 8601 string
+      expect(
+        parseScheduleTimestamp('2026-09-10T10:40:00Z'),
+        equals(DateTime.utc(2026, 9, 10, 10, 40)),
+      );
+
+      // invalid string returns null
+      expect(parseScheduleTimestamp('invalid-date'), isNull);
+    });
+
+    test(
+        'processFamilyScheduleDirect handles single family with numeric epoch timestamp',
+        () async {
+      final task = TaskSchedule(
+        id: 'task_dir_1',
+        title: 'Direct family chore',
+        description: 'Direct task description',
+        isFamily: true,
+        schedules: [
+          DailySchedule(
+            id: 'rule_1',
+            scheduleId: 'task_dir_1',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 9, minute: 0),
+          ),
+        ],
+      );
+      db
+          .collection('families/fam_direct/tasks')
+          .doc(task.id)
+          .set(task.toFirestore());
+
+      final result = await processFamilyScheduleDirect(
+        db,
+        familyId: 'fam_direct',
+        now: 1725964800000,
+      );
+
+      expect(result, isA<FamilyScheduleSummary>());
+      final summary = result as FamilyScheduleSummary;
+      expect(summary.familyId, equals('fam_direct'));
+      expect(summary.tasksEvaluated, equals(1));
+      expect(summary.error, isNull);
+    });
+
+    test(
+        'processFamilyScheduleDirect handles single family with numeric string timestamp',
+        () async {
+      final result = await processFamilyScheduleDirect(
+        db,
+        familyId: 'fam_direct',
+        now: '1725964800000',
+      );
+
+      expect(result, isA<FamilyScheduleSummary>());
+      final summary = result as FamilyScheduleSummary;
+      expect(summary.familyId, equals('fam_direct'));
+      expect(summary.error, isNull);
+    });
+
+    test(
+        'processFamilyScheduleDirect handles all families with ISO timestamp string',
+        () async {
+      final result = await processFamilyScheduleDirect(
+        db,
+        now: '2026-09-10T10:00:00Z',
+      );
+
+      expect(result, isA<FamilySchedulerResult>());
+      final allResult = result as FamilySchedulerResult;
+      expect(allResult.success, isTrue);
     });
   });
 }
