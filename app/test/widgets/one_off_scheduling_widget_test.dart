@@ -67,6 +67,153 @@ void main() {
       expect(due.value.hour, 22);
     });
 
+    testWidgets('renders notification section with initial time', (
+      tester,
+    ) async {
+      final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
+      final notificationTime = ValueNotifier<TimeOfDay?>(
+        const TimeOfDay(hour: 14, minute: 30),
+      );
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: OneOffSchedulingWidget(
+              dueDateTime: due,
+              notificationTimeController: notificationTime,
+              showNotification: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('2:30 PM'), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_active), findsOneWidget);
+      expect(
+        find.byKey(const Key('one_off_notification_clear')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('renders notification section with null initial time', (
+      tester,
+    ) async {
+      final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
+      final notificationTime = ValueNotifier<TimeOfDay?>(null);
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: OneOffSchedulingWidget(
+              dueDateTime: due,
+              notificationTimeController: notificationTime,
+              showNotification: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('None'), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_none), findsOneWidget);
+      expect(find.byKey(const Key('one_off_notification_clear')), findsNothing);
+    });
+
+    testWidgets('picking notification time updates controller and UI', (
+      tester,
+    ) async {
+      final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
+      final notificationTime = ValueNotifier<TimeOfDay?>(null);
+      final oneOffRobot = OneOffSchedulingWidgetRobot(tester);
+      final absoluteRobot = AbsoluteTimeWidgetRobot(tester);
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: OneOffSchedulingWidget(
+              dueDateTime: due,
+              notificationTimeController: notificationTime,
+              showNotification: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('None'), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_none), findsOneWidget);
+      expect(oneOffRobot.clearNotificationButton, findsNothing);
+
+      await oneOffRobot.openNotificationTimePicker();
+      await absoluteRobot.pickTime(9, 0, isAM: true);
+
+      expect(notificationTime.value, const TimeOfDay(hour: 9, minute: 0));
+      expect(find.text('9:00 AM'), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_active), findsOneWidget);
+      expect(oneOffRobot.clearNotificationButton, findsOneWidget);
+    });
+
+    testWidgets('clearing notification time resets controller and UI', (
+      tester,
+    ) async {
+      final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
+      final notificationTime = ValueNotifier<TimeOfDay?>(
+        const TimeOfDay(hour: 9, minute: 0),
+      );
+      final oneOffRobot = OneOffSchedulingWidgetRobot(tester);
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: OneOffSchedulingWidget(
+              dueDateTime: due,
+              notificationTimeController: notificationTime,
+              showNotification: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('9:00 AM'), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_active), findsOneWidget);
+      expect(oneOffRobot.clearNotificationButton, findsOneWidget);
+
+      await oneOffRobot.tapClearNotification();
+
+      expect(notificationTime.value, isNull);
+      expect(find.text('None'), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_none), findsOneWidget);
+      expect(oneOffRobot.clearNotificationButton, findsNothing);
+    });
+
+    testWidgets(
+      'canceling notification time picker leaves controller unchanged',
+      (tester) async {
+        final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
+        final notificationTime = ValueNotifier<TimeOfDay?>(
+          const TimeOfDay(hour: 14, minute: 30),
+        );
+        final oneOffRobot = OneOffSchedulingWidgetRobot(tester);
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: OneOffSchedulingWidget(
+                dueDateTime: due,
+                notificationTimeController: notificationTime,
+                showNotification: true,
+              ),
+            ),
+          ),
+        );
+
+        await oneOffRobot.openNotificationTimePicker();
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+
+        expect(notificationTime.value, const TimeOfDay(hour: 14, minute: 30));
+        expect(find.text('2:30 PM'), findsOneWidget);
+      },
+    );
+
     testGoldens('OneOffSchedulingWidget renders correctly', (tester) async {
       final due = ValueNotifier(DateTime(2026, 10, 26, 12, 0));
 

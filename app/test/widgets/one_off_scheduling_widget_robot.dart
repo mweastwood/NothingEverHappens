@@ -12,8 +12,24 @@ class OneOffSchedulingWidgetRobot {
     matching: find.byIcon(Icons.access_time),
   );
 
+  Finder get notificationButton =>
+      find.byKey(const Key('one_off_notification_button'));
+
+  Finder get clearNotificationButton =>
+      find.byKey(const Key('one_off_notification_clear'));
+
   Future<void> openDueTimePicker() async {
     await tester.tap(dueTimeWidget);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> openNotificationTimePicker() async {
+    await tester.tap(notificationButton);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tapClearNotification() async {
+    await tester.tap(clearNotificationButton);
     await tester.pumpAndSettle();
   }
 }
