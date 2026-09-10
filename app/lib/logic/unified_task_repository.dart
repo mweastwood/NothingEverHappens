@@ -36,6 +36,11 @@ class UnifiedTaskRepository implements TaskRepository {
   bool _hasQueuedProcessing = false;
   bool _queuedEvaluateFamilyTasks = false;
   final List<Future<void> Function()> _queuedPostProcessCallbacks = [];
+  Future<void>? _initializationFuture;
+
+  /// Completes when the initial migration and repository setup finishes.
+  Future<void> get initializationFuture =>
+      _initializationFuture ?? Future.value();
 
   UnifiedTaskRepository({
     required HiveLocalDataSource localDataSource,
@@ -71,7 +76,10 @@ class UnifiedTaskRepository implements TaskRepository {
       _familyIdFetcher.isFamilyLeader(userId);
 
   void _initMigration() {
-    if (userId.isEmpty) return;
+    if (userId.isEmpty) {
+      _initializationFuture = Future.value();
+      return;
+    }
 
     final activeUserId = _localDataSource.getActiveUserId();
     final isDifferentUser =
@@ -86,12 +94,12 @@ class UnifiedTaskRepository implements TaskRepository {
         userId: userId,
         logger: logger,
       );
-      migrationService
+      _initializationFuture = migrationService
           .migrateIfNeeded(force: isDifferentUser)
-          .then((_) {
+          .then((_) async {
             if (_localDataSource.isMigrationCompleted()) {
               _syncService.startListeningToRemote();
-              triggerMissedPolicyProcessing();
+              await triggerMissedPolicyProcessing();
             }
           })
           .catchError((e, st) {
@@ -105,6 +113,9 @@ class UnifiedTaskRepository implements TaskRepository {
           });
     } else if (_localDataSource.isMigrationCompleted()) {
       _syncService.startListeningToRemote();
+      _initializationFuture = Future.value();
+    } else {
+      _initializationFuture = Future.value();
     }
   }
 

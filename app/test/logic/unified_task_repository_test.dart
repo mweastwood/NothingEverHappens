@@ -732,7 +732,7 @@ void main() {
       );
 
       // Wait for initial migration to complete
-      await Future.delayed(const Duration(milliseconds: 100));
+      await repoUser2.initializationFuture;
 
       final tasksStream = repoUser2.getTasks();
       final tasks = await tasksStream.first;
