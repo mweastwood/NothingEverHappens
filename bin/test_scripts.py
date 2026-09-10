@@ -15,6 +15,7 @@ class TestRepositoryScripts(unittest.TestCase):
     def test_scripts_exist_and_executable(self):
         scripts = [
             "build_agent_container.sh",
+            "generate_icons.sh",
             "run_agent_container.sh",
             "run_webhook_listener.sh",
             "tag.sh",
