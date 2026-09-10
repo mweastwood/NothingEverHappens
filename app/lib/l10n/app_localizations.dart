@@ -1838,6 +1838,12 @@ abstract class AppLocalizations {
   /// **'Changes to \"{title}\" reverted'**
   String editsReverted(String title);
 
+  /// No description provided for @dueIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Due in {timeRemaining}'**
+  String dueIn(String timeRemaining);
+
   /// No description provided for @dueTodayAt.
   ///
   /// In en, this message translates to:

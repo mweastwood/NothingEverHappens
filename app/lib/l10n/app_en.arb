@@ -613,6 +613,14 @@
       }
     }
   },
+  "dueIn": "Due in {timeRemaining}",
+  "@dueIn": {
+    "placeholders": {
+      "timeRemaining": {
+        "type": "String"
+      }
+    }
+  },
   "dueTodayAt": "Due Today at {time}",
   "@dueTodayAt": {
     "placeholders": {

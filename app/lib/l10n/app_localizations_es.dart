@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1023,6 +1024,11 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String editsReverted(String title) {
     return 'Se deshicieron los cambios en \"$title\"';
+  }
+
+  @override
+  String dueIn(String timeRemaining) {
+    return 'Vence en $timeRemaining';
   }
 
   @override
