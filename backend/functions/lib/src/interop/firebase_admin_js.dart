@@ -64,7 +64,7 @@ class JsFirestoreDatabase implements FirestoreDatabase {
   @override
   WriteBatch batch() {
     final b = _db.callMethod('batch') as js.JsObject;
-    return JsWriteBatch(b);
+    return JsWriteBatch(b, _adminRef);
   }
 
   @override
@@ -220,8 +220,23 @@ class JsDocumentSnapshot implements DocumentSnapshot {
 
 class JsWriteBatch implements WriteBatch {
   final js.JsObject _batch;
+  final js.JsObject _adminRef;
 
-  JsWriteBatch(this._batch);
+  JsWriteBatch(this._batch, this._adminRef);
+
+  @override
+  void set(DocumentReference ref, Map<String, dynamic> data) {
+    final jsRef = (ref as JsDocumentReference).rawJsRef;
+    final converted = _convertMapForJs(data, _adminRef);
+    _batch.callMethod('set', [jsRef, converted]);
+  }
+
+  @override
+  void update(DocumentReference ref, Map<String, dynamic> data) {
+    final jsRef = (ref as JsDocumentReference).rawJsRef;
+    final converted = _convertMapForJs(data, _adminRef);
+    _batch.callMethod('update', [jsRef, converted]);
+  }
 
   @override
   void delete(DocumentReference ref) {
