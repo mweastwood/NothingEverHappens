@@ -369,6 +369,14 @@
       }
     }
   },
+  "dueIn": "Vence en {timeRemaining}",
+  "@dueIn": {
+    "placeholders": {
+      "timeRemaining": {
+        "type": "String"
+      }
+    }
+  },
   "dueTodayAt": "Vence hoy a las {time}",
   "@dueTodayAt": {
     "placeholders": {

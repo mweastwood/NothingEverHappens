@@ -156,21 +156,23 @@ void main() {
         );
   });
 
-  Widget createWidget(TaskSchedule task) {
+  Widget createWidget(TaskSchedule task, {ThemeData? theme, Locale? locale}) {
     final instance = createInstanceFor(task);
-    return buildTestableWidget(
-      child: MediaQuery(
-        data: const MediaQueryData(size: Size(400, 800)),
-        child: Scaffold(
-          body: ProviderScope(
-            overrides: [
-              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
-            ],
-            child: TaskWidget(instance: instance, schedule: task),
-          ),
+    Widget content = MediaQuery(
+      data: const MediaQueryData(size: Size(400, 800)),
+      child: Scaffold(
+        body: ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+          ],
+          child: TaskWidget(instance: instance, schedule: task),
         ),
       ),
     );
+    if (theme != null) {
+      content = Theme(data: theme, child: content);
+    }
+    return buildTestableWidget(child: content, locale: locale);
   }
 
   testWidgets('TaskWidget shows title and description', (tester) async {
@@ -1429,61 +1431,38 @@ void main() {
       AppClock.setMockTime(now);
       addTearDown(AppClock.reset);
 
-      final overdueTask = TaskSchedule(
+      TaskSchedule createTaskWithDue({
+        required String id,
+        required CivilDay date,
+        required int hour,
+        required int minute,
+      }) {
+        return TaskSchedule(
+          id: id,
+          title: 'Task $id',
+          description: 'Description for $id',
+          schedules: [
+            OneOffSchedule(
+              id: 'R-$id',
+              scheduleId: id,
+              date: date,
+              dueRelativeTime: RelativeTime(
+                dayOffset: 0,
+                hour: hour,
+                minute: minute,
+              ),
+            ),
+          ],
+        );
+      }
+
+      // 1. Overdue: Yesterday at 5:00 PM (16 hours overdue) -> Red error color & overdue string
+      final overdueTask = createTaskWithDue(
         id: 'S-overdue_1',
-        title: 'Overdue Task',
-        description: 'Due yesterday',
-        schedules: [
-          OneOffSchedule(
-            id: 'R-overdue_1',
-            scheduleId: 'S-overdue_1',
-            date: const CivilDay(year: 2026, month: 6, day: 18),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-          ),
-        ],
+        date: const CivilDay(year: 2026, month: 6, day: 18),
+        hour: 17,
+        minute: 0,
       );
-
-      final dueTodayTask = TaskSchedule(
-        id: 'S-today_1',
-        title: 'Due Today Task',
-        description: 'Due today at 5:00 PM',
-        schedules: [
-          OneOffSchedule(
-            id: 'R-today_1',
-            scheduleId: 'S-today_1',
-            date: const CivilDay(year: 2026, month: 6, day: 19),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-          ),
-        ],
-      );
-
-      final dueTomorrowTask = TaskSchedule(
-        id: 'S-tomorrow_1',
-        title: 'Due Tomorrow Task',
-        description: 'Due tomorrow at 5:00 PM',
-        schedules: [
-          OneOffSchedule(
-            id: 'R-tomorrow_1',
-            scheduleId: 'S-tomorrow_1',
-            date: const CivilDay(year: 2026, month: 6, day: 20),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-          ),
-        ],
-      );
-
-      // Test Overdue
       await tester.pumpWidget(createWidget(overdueTask));
       await tester.pumpAndSettle();
       expect(find.text('Overdue: Yesterday at 5:00 PM'), findsOneWidget);
@@ -1497,16 +1476,172 @@ void main() {
         ).colorScheme.error,
       );
 
-      // Test Due Today
-      await tester.pumpWidget(createWidget(dueTodayTask));
-      await tester.pumpAndSettle();
-      expect(find.text('Due Today at 5:00 PM'), findsOneWidget);
-      final Text todayTextWidget = tester.widget(
-        find.text('Due Today at 5:00 PM'),
+      // 2. Edge case: < 1 minute remaining (due at 9:00 AM today) -> Orange & "Due in < 1m"
+      final under1mTask = createTaskWithDue(
+        id: 'S-under_1m',
+        date: const CivilDay(year: 2026, month: 6, day: 19),
+        hour: 9,
+        minute: 0,
       );
-      expect(todayTextWidget.style?.color, Colors.orange.shade800);
+      await tester.pumpWidget(createWidget(under1mTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due in < 1m'), findsOneWidget);
+      final Text under1mTextWidget = tester.widget(find.text('Due in < 1m'));
+      expect(under1mTextWidget.style?.color, Colors.orange.shade800);
 
-      // Test Due Tomorrow
+      // 3. Under 2 hours remaining:
+      // a) 45 minutes remaining (due at 9:45 AM today) -> Orange & "Due in 45m"
+      final under2h45mTask = createTaskWithDue(
+        id: 'S-under_2h_45m',
+        date: const CivilDay(year: 2026, month: 6, day: 19),
+        hour: 9,
+        minute: 45,
+      );
+      await tester.pumpWidget(createWidget(under2h45mTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due in 45m'), findsOneWidget);
+      final Text under2h45mTextWidget = tester.widget(find.text('Due in 45m'));
+      expect(under2h45mTextWidget.style?.color, Colors.orange.shade800);
+
+      // b) 1h 30m remaining (due at 10:30 AM today) -> Orange & "Due in 1h 30m"
+      final under2h1h30mTask = createTaskWithDue(
+        id: 'S-under_2h_1h30m',
+        date: const CivilDay(year: 2026, month: 6, day: 19),
+        hour: 10,
+        minute: 30,
+      );
+      await tester.pumpWidget(createWidget(under2h1h30mTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due in 1h 30m'), findsOneWidget);
+      final Text under2h1h30mTextWidget = tester.widget(
+        find.text('Due in 1h 30m'),
+      );
+      expect(under2h1h30mTextWidget.style?.color, Colors.orange.shade800);
+
+      // c) Dark mode: Orange shade 300
+      await tester.pumpWidget(
+        createWidget(under2h1h30mTask, theme: ThemeData.dark()),
+      );
+      await tester.pumpAndSettle();
+      final Text under2hDarkTextWidget = tester.widget(
+        find.text('Due in 1h 30m'),
+      );
+      expect(under2hDarkTextWidget.style?.color, Colors.orange.shade300);
+
+      // 4. Under 6 hours remaining (2h to 6h):
+      // a) Exactly 2 hours remaining (due at 11:00 AM today) -> Yellow/Amber & "Due in 2h"
+      final boundary2hTask = createTaskWithDue(
+        id: 'S-boundary_2h',
+        date: const CivilDay(year: 2026, month: 6, day: 19),
+        hour: 11,
+        minute: 0,
+      );
+      await tester.pumpWidget(createWidget(boundary2hTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due in 2h'), findsOneWidget);
+      final Text boundary2hTextWidget = tester.widget(find.text('Due in 2h'));
+      expect(boundary2hTextWidget.style?.color, Colors.amber.shade800);
+
+      // b) 3h 15m remaining (due at 12:15 PM today) -> Yellow/Amber & "Due in 3h 15m"
+      final under6hTask = createTaskWithDue(
+        id: 'S-under_6h',
+        date: const CivilDay(year: 2026, month: 6, day: 19),
+        hour: 12,
+        minute: 15,
+      );
+      await tester.pumpWidget(createWidget(under6hTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due in 3h 15m'), findsOneWidget);
+      final Text under6hTextWidget = tester.widget(find.text('Due in 3h 15m'));
+      expect(under6hTextWidget.style?.color, Colors.amber.shade800);
+
+      // c) Dark mode: Amber shade 300
+      await tester.pumpWidget(
+        createWidget(under6hTask, theme: ThemeData.dark()),
+      );
+      await tester.pumpAndSettle();
+      final Text under6hDarkTextWidget = tester.widget(
+        find.text('Due in 3h 15m'),
+      );
+      expect(under6hDarkTextWidget.style?.color, Colors.amber.shade300);
+
+      // 5. 6 to 12 hours remaining:
+      // a) Exactly 6 hours remaining (due at 3:00 PM today) -> Secondary color & "Due in 6h"
+      final boundary6hTask = createTaskWithDue(
+        id: 'S-boundary_6h',
+        date: const CivilDay(year: 2026, month: 6, day: 19),
+        hour: 15,
+        minute: 0,
+      );
+      await tester.pumpWidget(createWidget(boundary6hTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due in 6h'), findsOneWidget);
+      final Text boundary6hTextWidget = tester.widget(find.text('Due in 6h'));
+      expect(
+        boundary6hTextWidget.style?.color,
+        Theme.of(tester.element(find.text('Due in 6h'))).colorScheme.secondary,
+      );
+
+      // b) 8 hours remaining (due at 5:00 PM today) -> Secondary color & "Due in 8h"
+      final under12h8hTask = createTaskWithDue(
+        id: 'S-under_12h_8h',
+        date: const CivilDay(year: 2026, month: 6, day: 19),
+        hour: 17,
+        minute: 0,
+      );
+      await tester.pumpWidget(createWidget(under12h8hTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due in 8h'), findsOneWidget);
+      final Text under12h8hTextWidget = tester.widget(find.text('Due in 8h'));
+      expect(
+        under12h8hTextWidget.style?.color,
+        Theme.of(tester.element(find.text('Due in 8h'))).colorScheme.secondary,
+      );
+
+      // c) Exactly 12 hours remaining (due at 9:00 PM today) -> Secondary color & "Due in 12h"
+      final boundary12hTask = createTaskWithDue(
+        id: 'S-boundary_12h',
+        date: const CivilDay(year: 2026, month: 6, day: 19),
+        hour: 21,
+        minute: 0,
+      );
+      await tester.pumpWidget(createWidget(boundary12hTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due in 12h'), findsOneWidget);
+      final Text boundary12hTextWidget = tester.widget(find.text('Due in 12h'));
+      expect(
+        boundary12hTextWidget.style?.color,
+        Theme.of(tester.element(find.text('Due in 12h'))).colorScheme.secondary,
+      );
+
+      // 6. More than 12 hours remaining -> Secondary color & absolute time format:
+      // a) Due today at 10:00 PM (13 hours away) -> "Due Today at 10:00 PM"
+      final over12hTodayTask = createTaskWithDue(
+        id: 'S-over_12h_today',
+        date: const CivilDay(year: 2026, month: 6, day: 19),
+        hour: 22,
+        minute: 0,
+      );
+      await tester.pumpWidget(createWidget(over12hTodayTask));
+      await tester.pumpAndSettle();
+      expect(find.text('Due Today at 10:00 PM'), findsOneWidget);
+      final Text over12hTodayTextWidget = tester.widget(
+        find.text('Due Today at 10:00 PM'),
+      );
+      expect(
+        over12hTodayTextWidget.style?.color,
+        Theme.of(
+          tester.element(find.text('Due Today at 10:00 PM')),
+        ).colorScheme.secondary,
+      );
+
+      // b) Due tomorrow at 5:00 PM (32 hours away) -> "Due Tomorrow at 5:00 PM"
+      final dueTomorrowTask = createTaskWithDue(
+        id: 'S-tomorrow_1',
+        date: const CivilDay(year: 2026, month: 6, day: 20),
+        hour: 17,
+        minute: 0,
+      );
       await tester.pumpWidget(createWidget(dueTomorrowTask));
       await tester.pumpAndSettle();
       expect(find.text('Due Tomorrow at 5:00 PM'), findsOneWidget);
@@ -1519,6 +1654,13 @@ void main() {
           tester.element(find.text('Due Tomorrow at 5:00 PM')),
         ).colorScheme.secondary,
       );
+
+      // 7. Spanish localization test -> "Vence en 3h 15m"
+      await tester.pumpWidget(
+        createWidget(under6hTask, locale: const Locale('es')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Vence en 3h 15m'), findsOneWidget);
     },
   );
 

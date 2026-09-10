@@ -330,20 +330,16 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     final dueDateTime = widget.instance.dueRelativeTime.referenceTo(
       widget.instance.scheduledDate,
     );
-    final isOverdue = dueDateTime.isBefore(now);
-    final today = DateTime(now.year, now.month, now.day);
-    final dueDay = DateTime(
-      dueDateTime.year,
-      dueDateTime.month,
-      dueDateTime.day,
-    );
+    final difference = dueDateTime.difference(now);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Color color;
-    if (isOverdue) {
+    if (difference < Duration.zero) {
       color = Theme.of(context).colorScheme.error;
-    } else if (dueDay == today) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
+    } else if (difference < const Duration(hours: 2)) {
       color = isDark ? Colors.orange.shade300 : Colors.orange.shade800;
+    } else if (difference < const Duration(hours: 6)) {
+      color = isDark ? Colors.amber.shade300 : Colors.amber.shade800;
     } else {
       color = Theme.of(context).colorScheme.secondary;
     }
@@ -356,11 +352,31 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     );
   }
 
+  String _formatTimeRemaining(Duration difference) {
+    final hours = difference.inHours;
+    final minutes = difference.inMinutes % 60;
+    if (hours > 0) {
+      return minutes > 0 ? '${hours}h ${minutes}m' : '${hours}h';
+    }
+    if (minutes > 0) {
+      return '${minutes}m';
+    }
+    return '< 1m';
+  }
+
   String _formatDueDate(
     BuildContext context,
     DateTime dueDateTime,
     DateTime now,
   ) {
+    final difference = dueDateTime.difference(now);
+    final isOverdue = dueDateTime.isBefore(now);
+    final l10n = context.l10n;
+
+    if (!isOverdue && difference <= const Duration(hours: 12)) {
+      return l10n.dueIn(_formatTimeRemaining(difference));
+    }
+
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final tomorrow = today.add(const Duration(days: 1));
@@ -371,8 +387,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
       dueDateTime.day,
     );
     final timeStr = TimeOfDay.fromDateTime(dueDateTime).format(context);
-    final isOverdue = dueDateTime.isBefore(now);
-    final l10n = context.l10n;
 
     if (dueDay == today) {
       return isOverdue
