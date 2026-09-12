@@ -22,9 +22,11 @@ import 'telemetry_service.dart';
 import 'subscription_service.dart';
 import 'family.dart';
 import 'family_repository.dart';
+import 'cloud_family_scheduler_client.dart';
 
 export 'firestore_task_repository.dart';
 export 'family_id_fetcher.dart';
+export 'cloud_family_scheduler_client.dart';
 
 @visibleForTesting
 class AppLifecycleObserver extends WidgetsBindingObserver {
@@ -76,6 +78,7 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
     errorHandler: ref.read(errorHandlerProvider),
     logger: ref.watch(appLoggerProvider),
     telemetryService: ref.watch(telemetryServiceProvider),
+    cloudFamilySchedulerClient: ref.watch(cloudFamilySchedulerClientProvider),
   );
 
   // Re-evaluate schedules when the mock clock advances in dev/test

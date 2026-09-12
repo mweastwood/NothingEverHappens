@@ -1951,6 +1951,8 @@ void main() {
           .set(remoteSlotUser.toFirestore());
 
       await pumpEventQueue();
+      await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
 
       final instances2 = localDataSource.getInstances();
       // Remote user action wins: local deleted, remote saved

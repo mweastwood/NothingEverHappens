@@ -5,6 +5,7 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
 
 void main() {
   late FakeFirebaseFirestore firestore;
@@ -223,6 +224,26 @@ void main() {
         .doc(task.id)
         .get();
     expect(familyDoc.exists, isTrue);
+
+    // Seed family instance (as created by Cloud Family Scheduler)
+    final familyInstance = TaskInstance(
+      id: 'inst-migrate-fam',
+      scheduleId: task.id,
+      ruleId: 'r-migrate',
+      title: task.title,
+      description: task.description,
+      scheduledDate: const CivilDay(year: 2026, month: 6, day: 1),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      isFamily: true,
+      status: TaskStatus.pending,
+    );
+    await firestore
+        .collection('families')
+        .doc(familyId)
+        .collection('instances')
+        .doc(familyInstance.id)
+        .set(familyInstance.toFirestore());
 
     // Verify it exists in family instances
     final familyInstances = await firestore

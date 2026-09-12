@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -28,6 +29,7 @@ void main() {
   late TaskSyncService syncService;
   late UnifiedTaskRepository repository;
   late Directory tempDir;
+  late _FakeCloudFamilySchedulerClient fakeCloudScheduler;
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('hive_test');
@@ -55,11 +57,13 @@ void main() {
       isActivePremium: false,
     );
 
+    fakeCloudScheduler = _FakeCloudFamilySchedulerClient();
     repository = UnifiedTaskRepository(
       localDataSource: localDataSource,
       syncService: syncService,
       firestore: firestore,
       userId: 'user1',
+      cloudFamilySchedulerClient: fakeCloudScheduler,
     );
   });
 
@@ -1036,8 +1040,11 @@ void main() {
     );
 
     test(
-      'assigned family task is only evaluated by assigned user, not other users',
+      'family tasks are not evaluated locally and trigger Cloud Family Scheduler',
       () async {
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'family-test',
+        });
         final assignedToOther = TaskSchedule(
           id: 'S-fam-assigned-other',
           title: 'Assigned to Other',
@@ -1076,23 +1083,25 @@ void main() {
         );
 
         final instances = localDataSource.getInstances();
-        // Assigned to other should NOT be evaluated/spawned by user1
+        // Neither assigned task should be evaluated/spawned locally
         expect(
           instances.any((i) => i.scheduleId == 'S-fam-assigned-other'),
           isFalse,
+          reason: 'Family tasks must not spawn instances locally',
         );
-        // Assigned to user1 SHOULD be evaluated and spawned
         expect(
           instances.any((i) => i.scheduleId == 'S-fam-assigned-me'),
-          isTrue,
+          isFalse,
+          reason: 'Family tasks must not spawn instances locally',
         );
+        // Cloud Family Scheduler must be triggered
+        expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
       },
     );
 
     test(
-      'unassigned family task is evaluated by designated family leader, but not by non-leader member',
+      'unassigned family task is not evaluated locally by leader or member, but triggers cloud scheduler',
       () async {
-        // Set up family in Firestore with creatorId: 'user-leader'
         await firestore.collection('families').doc('family-test').set({
           'name': 'Test Family',
           'creatorId': 'user-leader',
@@ -1146,11 +1155,13 @@ void main() {
         );
         addTearDown(() => memberSync.dispose());
 
+        final memberScheduler = _FakeCloudFamilySchedulerClient();
         final memberRepo = UnifiedTaskRepository(
           localDataSource: memberLocalSource,
           syncService: memberSync,
           firestore: firestore,
           userId: 'user-member',
+          cloudFamilySchedulerClient: memberScheduler,
         );
 
         await memberLocalSource.saveTask(unassignedFamilyTask);
@@ -1162,8 +1173,10 @@ void main() {
         expect(
           memberInstances.any((i) => i.scheduleId == 'S-unassigned-fam'),
           isFalse,
-          reason: 'Non-leader member must not evaluate unassigned family task',
+          reason:
+              'Non-leader member must not evaluate unassigned family task locally',
         );
+        expect(memberScheduler.triggeredFamilyIds, contains('family-test'));
 
         // 2. Leader repository evaluates
         final leaderLocalSource = HiveLocalDataSource();
@@ -1178,11 +1191,13 @@ void main() {
         );
         addTearDown(() => leaderSync.dispose());
 
+        final leaderScheduler = _FakeCloudFamilySchedulerClient();
         final leaderRepo = UnifiedTaskRepository(
           localDataSource: leaderLocalSource,
           syncService: leaderSync,
           firestore: firestore,
           userId: 'user-leader',
+          cloudFamilySchedulerClient: leaderScheduler,
         );
 
         await leaderLocalSource.saveTask(unassignedFamilyTask);
@@ -1193,8 +1208,406 @@ void main() {
         var leaderInstances = leaderLocalSource.getInstances();
         expect(
           leaderInstances.any((i) => i.scheduleId == 'S-unassigned-fam'),
+          isFalse,
+          reason:
+              'Leader must not evaluate unassigned family task locally (cloud is single authority)',
+        );
+        expect(leaderScheduler.triggeredFamilyIds, contains('family-test'));
+      },
+    );
+
+    test('mutations on family tasks trigger Cloud Family Scheduler', () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'family-test',
+      });
+
+      final familyTask = TaskSchedule(
+        id: 'S-fam-mutation',
+        title: 'Family Task Mutation',
+        description: 'Desc',
+        isFamily: true,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 1),
+            interval: 1,
+          ),
+        ],
+        updatedAt: DateTime(2026, 8, 1),
+      );
+
+      // Add family task
+      fakeCloudScheduler.triggeredFamilyIds.clear();
+      await repository.addTaskSchedule(familyTask);
+      expect(fakeCloudScheduler.triggeredFamilyIds.length, 1);
+      expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+
+      // Update family task
+      fakeCloudScheduler.triggeredFamilyIds.clear();
+      final mod = familyTask.edit(
+        newTitle: 'Updated Title',
+        newDescription: familyTask.description,
+        newSchedules: familyTask.schedules,
+        newEstimatedDuration: familyTask.estimatedDuration,
+        newMissedPolicy: familyTask.missedPolicy,
+        newIsMaster: familyTask.isMaster,
+        newLastSpawnedDate: familyTask.lastSpawnedDate,
+        newIsFamily: familyTask.isFamily,
+        newPriority: familyTask.priority,
+      );
+      await repository.updateTaskSchedule(mod);
+      expect(fakeCloudScheduler.triggeredFamilyIds.length, 1);
+      expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+
+      // Delete family task
+      fakeCloudScheduler.triggeredFamilyIds.clear();
+      final deleted = await repository.deleteTaskSchedule(familyTask.id);
+      expect(deleted, isNotNull);
+      expect(fakeCloudScheduler.triggeredFamilyIds.length, 1);
+      expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+
+      // Restore family task
+      fakeCloudScheduler.triggeredFamilyIds.clear();
+      await repository.restoreTaskSchedule(
+        deleted!.task,
+        deleted.pendingInstances,
+      );
+      expect(fakeCloudScheduler.triggeredFamilyIds.length, 1);
+      expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+    });
+
+    test(
+      'mutations on personal tasks do not trigger Cloud Family Scheduler',
+      () async {
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'family-test',
+        });
+
+        final personalTask = TaskSchedule(
+          id: 'S-personal-mutation',
+          title: 'Personal Task Mutation',
+          description: 'Desc',
+          isFamily: false,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        // Add personal task
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+        await repository.addTaskSchedule(personalTask);
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+
+        // Update personal task
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+        final mod = personalTask.edit(
+          newTitle: 'Updated Personal Title',
+          newDescription: personalTask.description,
+          newSchedules: personalTask.schedules,
+          newEstimatedDuration: personalTask.estimatedDuration,
+          newMissedPolicy: personalTask.missedPolicy,
+          newIsMaster: personalTask.isMaster,
+          newLastSpawnedDate: personalTask.lastSpawnedDate,
+          newIsFamily: personalTask.isFamily,
+          newPriority: personalTask.priority,
+        );
+        await repository.updateTaskSchedule(mod);
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+
+        // Delete personal task
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+        final deleted = await repository.deleteTaskSchedule(personalTask.id);
+        expect(deleted, isNotNull);
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+
+        // Restore personal task
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+        await repository.restoreTaskSchedule(
+          deleted!.task,
+          deleted.pendingInstances,
+        );
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+      },
+    );
+
+    test(
+      'dismissTaskInstance triggers Cloud Family Scheduler for family tasks',
+      () async {
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'family-test',
+        });
+
+        final familyTask = TaskSchedule(
+          id: 'S-fam-dismiss',
+          title: 'Family Dismiss Task',
+          description: 'Desc',
+          isFamily: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        // Seed a pending family instance in local store
+        final pendingInstance = TaskInstance(
+          id: 'I-fam-dismiss-1',
+          scheduleId: familyTask.id,
+          ruleId: 'r1',
+          title: familyTask.title,
+          description: familyTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveTask(familyTask);
+        await localDataSource.saveInstance(pendingInstance);
+
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+        final dismissed = await repository.dismissTaskInstance(
+          pendingInstance.id,
+        );
+        expect(dismissed, isNotNull);
+        expect(dismissed?.status, TaskStatus.skipped);
+        expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+      },
+    );
+
+    test(
+      'undoResolveTaskInstance triggers Cloud Family Scheduler and skips local next-occurrence deletion for family tasks',
+      () async {
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'family-test',
+        });
+
+        final familyTask = TaskSchedule(
+          id: 'S-fam-undo',
+          title: 'Family Undo Task',
+          description: 'Desc',
+          isFamily: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        final completedInstance = TaskInstance(
+          id: 'I-fam-undo-1',
+          scheduleId: familyTask.id,
+          ruleId: 'r1',
+          title: familyTask.title,
+          description: familyTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 8, 1, 10),
+        );
+
+        // Simulate a locally-present "next occurrence" that must NOT be deleted
+        // by undoResolveTaskInstance for family tasks (cloud scheduler owns this)
+        final nextInstance = TaskInstance(
+          id: 'I-fam-undo-next',
+          scheduleId: familyTask.id,
+          ruleId: 'r1',
+          title: familyTask.title,
+          description: familyTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 2),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          status: TaskStatus.pending,
+        );
+
+        await localDataSource.saveTask(familyTask);
+        await localDataSource.saveInstance(completedInstance);
+        await localDataSource.saveInstance(nextInstance);
+
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+
+        await repository.undoResolveTaskInstance(completedInstance);
+
+        // Cloud scheduler must be triggered
+        expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+
+        // The "next occurrence" must NOT have been deleted on-device
+        final instances = localDataSource.getInstances();
+        expect(
+          instances.any((i) => i.id == nextInstance.id),
           isTrue,
-          reason: 'Leader must evaluate unassigned family task',
+          reason:
+              'undoResolveTaskInstance must not delete family next occurrences locally',
+        );
+      },
+    );
+
+    test(
+      'completeTaskInstance triggers CloudFamilySchedulerClient when all members complete a family task with familyCompletionMode == FamilyCompletionMode.individual',
+      () async {
+        const familyId = 'fam-indiv-all-complete';
+        const user1 = 'user1';
+        const user2 = 'user2';
+
+        await firestore.collection('families').doc(familyId).set({
+          'name': 'Family',
+          'members': {
+            user1: {'role': 'parent', 'displayName': 'User 1'},
+            user2: {'role': 'child', 'displayName': 'User 2'},
+          },
+        });
+        await firestore.collection('users').doc(user1).set({
+          'familyId': familyId,
+        });
+
+        final familyTask = TaskSchedule(
+          id: 'S-fam-indiv-all',
+          title: 'Family Chore',
+          description: 'All members clean',
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        final pendingInstance = TaskInstance(
+          id: 'I-fam-indiv-all-1',
+          scheduleId: familyTask.id,
+          ruleId: 'r1',
+          title: familyTask.title,
+          description: familyTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.pending,
+          completedByUserIds: [user2], // user2 already completed
+        );
+
+        await localDataSource.saveTask(familyTask);
+        await localDataSource.saveInstance(pendingInstance);
+
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+
+        // User 1 completes (now both user1 and user2 completed -> allCompleted is true)
+        final completed = await repository.completeTaskInstance(
+          pendingInstance.id,
+        );
+
+        expect(completed, isNotNull);
+        expect(completed?.status, TaskStatus.completed);
+        expect(completed?.completedByUserIds, containsAll([user1, user2]));
+
+        // Cloud scheduler must be triggered because all members completed
+        expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
+      },
+    );
+
+    test(
+      'uncompleteTaskInstance triggers CloudFamilySchedulerClient exactly once without duplicate requests',
+      () async {
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'family-test',
+        });
+
+        final familyTask = TaskSchedule(
+          id: 'S-fam-uncomplete-single',
+          title: 'Family Task Single',
+          description: 'Desc',
+          isFamily: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        final completedInstance = TaskInstance(
+          id: 'I-fam-uncomplete-single-1',
+          scheduleId: familyTask.id,
+          ruleId: 'r1',
+          title: familyTask.title,
+          description: familyTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 8, 1, 10),
+        );
+
+        await localDataSource.saveTask(familyTask);
+        await localDataSource.saveInstance(completedInstance);
+
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+
+        await repository.uncompleteTaskInstance(completedInstance.id);
+
+        expect(
+          fakeCloudScheduler.triggeredFamilyIds
+              .where((id) => id == 'family-test')
+              .length,
+          1,
+          reason:
+              'uncompleteTaskInstance should trigger cloud family scheduler exactly once',
         );
       },
     );
@@ -1312,5 +1725,21 @@ class _TestTelemetryService extends NoOpTelemetryService {
         totalCompletedCount: totalCompletedCount,
       );
     }
+  }
+}
+
+class _FakeCloudFamilySchedulerClient extends Fake
+    implements CloudFamilySchedulerClient {
+  final List<String> triggeredFamilyIds = [];
+  final List<DateTime?> triggeredNows = [];
+
+  @override
+  Future<bool> triggerFamilyScheduleProcessing({
+    required String familyId,
+    DateTime? now,
+  }) async {
+    triggeredFamilyIds.add(familyId);
+    triggeredNows.add(now);
+    return true;
   }
 }
