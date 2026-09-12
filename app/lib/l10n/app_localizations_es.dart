@@ -37,10 +37,43 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tasksTab => 'Tareas';
 
   @override
-  String get scheduleTab => 'Calendario';
+  String get scheduleTab => 'Programación';
 
   @override
   String get dashboardTab => 'Panel';
+
+  @override
+  String get calendarTab => 'Calendario';
+
+  @override
+  String get calendarJumpToToday => 'Hoy';
+
+  @override
+  String get calendarCurrentMonth => 'Este mes';
+
+  @override
+  String get calendarNoTasks => 'No hay tareas programadas';
+
+  @override
+  String tasksForDate(String date) {
+    return 'Tareas para $date';
+  }
+
+  @override
+  String taskCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tareas',
+      one: '1 tarea',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String moreTasksCount(int count) {
+    return '+$count más';
+  }
 
   @override
   String get capacityPromptTitle => 'Ajusta tu capacidad semanal';

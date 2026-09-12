@@ -8,10 +8,9 @@ import '../logic/app_route_manager.dart';
 import 'create_task_screen.dart';
 import 'task_list_screen.dart';
 import 'task_schedule_screen.dart';
-import 'dashboard_screen.dart';
+import 'calendar_screen.dart';
 import 'settings_screen.dart';
 import 'subscription_screen.dart';
-import 'family_screen.dart';
 import 'help_screen.dart';
 import 'recipes/recipe_list_screen.dart';
 import '../logic/l10n_extension.dart';
@@ -58,6 +57,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             CreateTaskScreen(defaultToRepeating: currentIndex == 1),
       ),
     );
+    if (!mounted) return;
     _routeManager.updateUrlPath(currentIndex);
   }
 
@@ -70,9 +70,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? const TaskListScreen()
         : currentIndex == 1
         ? const TaskScheduleScreen()
-        : currentIndex == 2
-        ? const DashboardScreen()
-        : const FamilyScreen();
+        : const CalendarScreen();
 
     return HomeSearchAndShortcutWidget(
       currentIndex: currentIndex,
@@ -97,19 +95,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           label: Text(context.l10n.tasksTab),
                         ),
                         NavigationRailDestination(
-                          icon: const Icon(Icons.calendar_month_outlined),
-                          selectedIcon: const Icon(Icons.calendar_month),
+                          icon: const Icon(Icons.event_repeat_outlined),
+                          selectedIcon: const Icon(Icons.event_repeat),
                           label: Text(context.l10n.scheduleTab),
                         ),
                         NavigationRailDestination(
-                          icon: const Icon(Icons.dashboard_outlined),
-                          selectedIcon: const Icon(Icons.dashboard),
-                          label: Text(context.l10n.dashboardTab),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.people_outline),
-                          selectedIcon: const Icon(Icons.people),
-                          label: Text(context.l10n.familyTab),
+                          icon: const Icon(Icons.calendar_month_outlined),
+                          selectedIcon: const Icon(Icons.calendar_month),
+                          label: Text(context.l10n.calendarTab),
                         ),
                       ],
                     ),
@@ -133,19 +126,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       label: context.l10n.tasksTab,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.calendar_month_outlined),
-                      selectedIcon: const Icon(Icons.calendar_month),
+                      icon: const Icon(Icons.event_repeat_outlined),
+                      selectedIcon: const Icon(Icons.event_repeat),
                       label: context.l10n.scheduleTab,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.dashboard_outlined),
-                      selectedIcon: const Icon(Icons.dashboard),
-                      label: context.l10n.dashboardTab,
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.people_outline),
-                      selectedIcon: const Icon(Icons.people),
-                      label: context.l10n.familyTab,
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      selectedIcon: const Icon(Icons.calendar_month),
+                      label: context.l10n.calendarTab,
                     ),
                   ],
                 ),
@@ -180,6 +168,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           ListTile(
+            key: const Key('drawer_dashboard_tile'),
+            leading: const Icon(Icons.dashboard_outlined),
+            title: Text(context.l10n.dashboardTab),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+              _routeManager.openDashboard(
+                context: context,
+                currentIndex: currentIndex,
+              );
+            },
+          ),
+          ListTile(
+            key: const Key('drawer_family_tile'),
+            leading: const Icon(Icons.people_outline),
+            title: Text(context.l10n.familyTab),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+              _routeManager.openFamily(
+                context: context,
+                currentIndex: currentIndex,
+              );
+            },
+          ),
+          ListTile(
             key: const Key('drawer_recipes_tile'),
             leading: const Icon(Icons.restaurant_menu),
             title: const Text('Recipes'),
@@ -206,6 +218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
               ).then((_) {
+                if (!mounted) return;
                 _routeManager.updateUrlPath(currentIndex);
               });
             },
@@ -225,6 +238,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   builder: (context) => const SubscriptionScreen(),
                 ),
               ).then((_) {
+                if (!mounted) return;
                 _routeManager.updateUrlPath(currentIndex);
               });
             },

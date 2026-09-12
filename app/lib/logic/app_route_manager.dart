@@ -7,6 +7,9 @@ import 'task_repository.dart';
 import '../screens/settings_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../screens/create_task_screen.dart';
+import '../screens/dashboard_screen.dart';
+import '../screens/family_screen.dart';
+import 'l10n_extension.dart';
 
 class AppRouteManager {
   final Uri? mockUri;
@@ -24,10 +27,7 @@ class AppRouteManager {
         path = '/schedules';
         break;
       case 2:
-        path = '/dashboard';
-        break;
-      case 3:
-        path = '/family';
+        path = '/calendar';
         break;
       default:
         return;
@@ -78,6 +78,52 @@ class AppRouteManager {
         .catchError((_) {});
   }
 
+  Future<void> openDashboard({
+    required BuildContext context,
+    required int currentIndex,
+  }) async {
+    SystemNavigator.routeInformationUpdated(uri: Uri.parse('/dashboard'));
+    final container = ProviderScope.containerOf(context);
+    final title = context.l10n.dashboardTab;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (routeContext) => UncontrolledProviderScope(
+          container: container,
+          child: Scaffold(
+            appBar: AppBar(title: Text(title)),
+            body: const DashboardScreen(),
+          ),
+        ),
+      ),
+    );
+    if (!context.mounted) return;
+    updateUrlPath(currentIndex);
+  }
+
+  Future<void> openFamily({
+    required BuildContext context,
+    required int currentIndex,
+  }) async {
+    SystemNavigator.routeInformationUpdated(uri: Uri.parse('/family'));
+    final container = ProviderScope.containerOf(context);
+    final title = context.l10n.familyTab;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (routeContext) => UncontrolledProviderScope(
+          container: container,
+          child: Scaffold(
+            appBar: AppBar(title: Text(title)),
+            body: const FamilyScreen(),
+          ),
+        ),
+      ),
+    );
+    if (!context.mounted) return;
+    updateUrlPath(currentIndex);
+  }
+
   void handleUrlParameters({
     required BuildContext context,
     required WidgetRef ref,
@@ -103,13 +149,17 @@ class AppRouteManager {
         onIndexChanged(1);
         updateUrlPath(1);
       },
-      'dashboard': () {
+      'calendar': () {
         onIndexChanged(2);
         updateUrlPath(2);
       },
+      'dashboard': () {
+        onIndexChanged(currentIndex);
+        openDashboard(context: context, currentIndex: currentIndex);
+      },
       'family': () {
-        onIndexChanged(3);
-        updateUrlPath(3);
+        onIndexChanged(currentIndex);
+        openFamily(context: context, currentIndex: currentIndex);
       },
       'settings': () {
         onIndexChanged(0);

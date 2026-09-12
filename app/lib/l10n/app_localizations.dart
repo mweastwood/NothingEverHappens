@@ -164,6 +164,48 @@ abstract class AppLocalizations {
   /// **'Dashboard'**
   String get dashboardTab;
 
+  /// No description provided for @calendarTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get calendarTab;
+
+  /// No description provided for @calendarJumpToToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get calendarJumpToToday;
+
+  /// No description provided for @calendarCurrentMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This Month'**
+  String get calendarCurrentMonth;
+
+  /// No description provided for @calendarNoTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks scheduled'**
+  String get calendarNoTasks;
+
+  /// Header showing tasks for a given date in calendar
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks for {date}'**
+  String tasksForDate(String date);
+
+  /// Task count label
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 task} other{{count} tasks}}'**
+  String taskCount(int count);
+
+  /// Label indicating additional tasks on a calendar day cell
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String moreTasksCount(int count);
+
   /// No description provided for @capacityPromptTitle.
   ///
   /// In en, this message translates to:
