@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -22,7 +23,7 @@ class CalendarDayTask {
   final bool isInstance;
   final TaskInstance? instance;
   final TaskSchedule? schedule;
-  final String? timeWindow;
+  final TaskScheduleRule? matchingRule;
   final bool isCompleted;
 
   const CalendarDayTask({
@@ -34,9 +35,34 @@ class CalendarDayTask {
     required this.isInstance,
     this.instance,
     this.schedule,
-    this.timeWindow,
+    this.matchingRule,
     bool? isCompleted,
   }) : isCompleted = isCompleted ?? (status == TaskStatus.completed);
+
+  String? getTimeWindow(BuildContext context) {
+    if (instance != null) {
+      final startTod = TimeOfDay(
+        hour: instance!.startRelativeTime.hour,
+        minute: instance!.startRelativeTime.minute,
+      );
+      final dueTod = TimeOfDay(
+        hour: instance!.dueRelativeTime.hour,
+        minute: instance!.dueRelativeTime.minute,
+      );
+      return '${startTod.format(context)} – ${dueTod.format(context)}';
+    } else if (matchingRule != null) {
+      final startTod = TimeOfDay(
+        hour: matchingRule!.startRelativeTime.hour,
+        minute: matchingRule!.startRelativeTime.minute,
+      );
+      final dueTod = TimeOfDay(
+        hour: matchingRule!.dueRelativeTime.hour,
+        minute: matchingRule!.dueRelativeTime.minute,
+      );
+      return '${startTod.format(context)} – ${dueTod.format(context)}';
+    }
+    return null;
+  }
 }
 
 class CalendarScreen extends ConsumerStatefulWidget {
@@ -59,6 +85,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   List<TaskSchedule>? _cachedSchedules;
   String? _cachedLocale;
   String? _cachedUserId;
+  String? _cachedHeadersLocale;
+  List<String> _cachedWeekdayHeaders = const [];
 
   @override
   void initState() {
@@ -138,12 +166,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   List<String> _getWeekdayHeaders(String locale) {
+    if (_cachedHeadersLocale == locale && _cachedWeekdayHeaders.isNotEmpty) {
+      return _cachedWeekdayHeaders;
+    }
     try {
       final symbols = DateFormat(null, locale).dateSymbols;
       final narrow = symbols.STANDALONENARROWWEEKDAYS.isNotEmpty
           ? symbols.STANDALONENARROWWEEKDAYS
           : symbols.NARROWWEEKDAYS;
-      return [for (int i = 1; i <= 6; i++) narrow[i], narrow[0]];
+      _cachedHeadersLocale = locale;
+      _cachedWeekdayHeaders = [
+        for (int i = 1; i <= 6; i++) narrow[i],
+        narrow[0],
+      ];
+      return _cachedWeekdayHeaders;
     } catch (_) {
       return const ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     }
@@ -173,18 +209,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       }
       instanceScheduleDateKeys.add('${inst.scheduleId}_$scheduledDate');
 
-      final startTod = TimeOfDay(
-        hour: inst.startRelativeTime.hour,
-        minute: inst.startRelativeTime.minute,
-      );
-      final dueTod = TimeOfDay(
-        hour: inst.dueRelativeTime.hour,
-        minute: inst.dueRelativeTime.minute,
-      );
-      final startTimeStr = startTod.format(context);
-      final dueTimeStr = dueTod.format(context);
-      final timeWindow = '$startTimeStr – $dueTimeStr';
-
       final bool isCompleted = (inst.isFamily && currentUserId != null)
           ? inst.isCompletedForUser(currentUserId)
           : (inst.status == TaskStatus.completed);
@@ -197,7 +221,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         status: inst.status,
         isInstance: true,
         instance: inst,
-        timeWindow: timeWindow,
         isCompleted: isCompleted,
       );
 
@@ -226,18 +249,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             );
 
         if (matchingRule != null) {
-          final startTod = TimeOfDay(
-            hour: matchingRule.startRelativeTime.hour,
-            minute: matchingRule.startRelativeTime.minute,
-          );
-          final dueTod = TimeOfDay(
-            hour: matchingRule.dueRelativeTime.hour,
-            minute: matchingRule.dueRelativeTime.minute,
-          );
-          final startTimeStr = startTod.format(context);
-          final dueTimeStr = dueTod.format(context);
-          final timeWindow = '$startTimeStr – $dueTimeStr';
-
           final task = CalendarDayTask(
             id: 'projected_${sched.id}_$civilDay',
             title: sched.title,
@@ -246,7 +257,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             status: TaskStatus.pending,
             isInstance: false,
             schedule: sched,
-            timeWindow: timeWindow,
+            matchingRule: matchingRule,
           );
 
           map.putIfAbsent(civilDay, () => []).add(task);
@@ -511,32 +522,42 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                             fontWeight: FontWeight.w600,
                                           ),
                                     ),
-                                    subtitle: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        if (task.timeWindow != null) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            task.timeWindow!,
-                                            style: theme.textTheme.bodySmall
-                                                ?.copyWith(
-                                                  color: theme
-                                                      .colorScheme
-                                                      .onSurfaceVariant,
-                                                ),
-                                          ),
-                                        ],
-                                        if (task.description.isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            task.description,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: theme.textTheme.bodySmall,
-                                          ),
-                                        ],
-                                      ],
+                                    subtitle: Builder(
+                                      builder: (context) {
+                                        final timeWindow = task.getTimeWindow(
+                                          consumerContext,
+                                        );
+                                        return Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (timeWindow != null) ...[
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                timeWindow,
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      color: theme
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                              ),
+                                            ],
+                                            if (task
+                                                .description
+                                                .isNotEmpty) ...[
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                task.description,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style:
+                                                    theme.textTheme.bodySmall,
+                                              ),
+                                            ],
+                                          ],
+                                        );
+                                      },
                                     ),
                                     trailing: Container(
                                       padding: const EdgeInsets.symmetric(
@@ -643,12 +664,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         Positioned(
           right: 16,
           bottom: 16,
-          child: IconButton.filledTonal(
+          child: FloatingActionButton(
             key: const Key('calendar_jump_to_today_button'),
+            heroTag: 'calendar_jump_to_today_fab',
             tooltip: context.l10n.calendarJumpToToday,
-            iconSize: 22,
             onPressed: () => _scrollToCurrentMonth(animate: true),
-            icon: const Icon(Icons.today),
+            child: const Icon(Icons.today),
           ),
         ),
       ],
@@ -666,6 +687,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     return ListView.builder(
       controller: _scrollController,
+      scrollCacheExtent: const ScrollCacheExtent.viewport(1.0),
       padding: const EdgeInsets.all(16),
       itemCount: rowCount,
       itemBuilder: (context, rowIndex) {
@@ -718,6 +740,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }) {
     return ListView.builder(
       controller: _scrollController,
+      scrollCacheExtent: const ScrollCacheExtent.viewport(1.0),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       itemCount: _months.length,
       itemBuilder: (context, index) {
@@ -770,113 +793,133 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final isCurrentMonth =
         monthDate.year == today.year && monthDate.month == today.month;
 
-    return Card(
-      key: Key('month_card_${monthDate.year}_${monthDate.month}'),
-      elevation: isCurrentMonth ? 2.5 : 1.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: isCurrentMonth
-            ? BorderSide(
-                color: theme.colorScheme.primary.withValues(alpha: 0.6),
-                width: 1.5,
-              )
-            : BorderSide(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-                width: 0.5,
-              ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Month Header
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      monthTitle,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: isCurrentMonth
-                            ? theme.colorScheme.primary
-                            : null,
+    return RepaintBoundary(
+      child: Card(
+        key: Key('month_card_${monthDate.year}_${monthDate.month}'),
+        elevation: isCurrentMonth ? 2.5 : 1.0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: isCurrentMonth
+              ? BorderSide(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                  width: 1.5,
+                )
+              : BorderSide(
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.4,
+                  ),
+                  width: 0.5,
+                ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Month Header
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        monthTitle,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isCurrentMonth
+                              ? theme.colorScheme.primary
+                              : null,
+                        ),
                       ),
                     ),
-                  ),
-                  if (isCurrentMonth)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
+                    if (isCurrentMonth)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          context.l10n.calendarCurrentMonth,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        context.l10n.calendarCurrentMonth,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onPrimaryContainer,
+                  ],
+                ),
+              ),
+              // Weekday Headers
+              Row(
+                children: [
+                  for (final dayLabel in weekdayHeaders)
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          dayLabel,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.7),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
                 ],
               ),
-            ),
-            // Weekday Headers
-            Row(
-              children: [
-                for (final dayLabel in weekdayHeaders)
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        dayLabel,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant.withValues(
-                            alpha: 0.7,
+              const SizedBox(height: 6),
+              const Divider(height: 1, thickness: 0.5),
+              const SizedBox(height: 4),
+              // Calendar Day Grid
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final cellWidth = constraints.maxWidth / 7;
+                  final cellHeight = isWide ? 62.0 : 54.0;
+                  final bool isTier1 = cellWidth >= 60 && cellHeight >= 50;
+                  final bool isTier2 =
+                      !isTier1 && cellWidth >= 42 && cellHeight >= 42;
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int r = 0; r < rowCount; r++) ...[
+                        SizedBox(
+                          height: cellHeight,
+                          child: Row(
+                            children: [
+                              for (int c = 0; c < 7; c++) ...[
+                                Expanded(
+                                  child: _buildDayCellSlot(
+                                    r,
+                                    c,
+                                    leadingEmptyCount,
+                                    daysInMonth,
+                                    monthDate,
+                                    dayTaskMap,
+                                    today,
+                                    theme,
+                                    isTier1: isTier1,
+                                    isTier2: isTier2,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                          fontWeight: FontWeight.bold,
                         ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            const Divider(height: 1, thickness: 0.5),
-            const SizedBox(height: 4),
-            // Calendar Day Grid
-            for (int r = 0; r < rowCount; r++) ...[
-              SizedBox(
-                height: isWide ? 62.0 : 54.0,
-                child: Row(
-                  children: [
-                    for (int c = 0; c < 7; c++) ...[
-                      Expanded(
-                        child: _buildDayCellSlot(
-                          r,
-                          c,
-                          leadingEmptyCount,
-                          daysInMonth,
-                          monthDate,
-                          dayTaskMap,
-                          today,
-                          theme,
-                        ),
-                      ),
+                      ],
                     ],
-                  ],
-                ),
+                  );
+                },
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -890,8 +933,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     DateTime monthDate,
     Map<CivilDay, List<CalendarDayTask>> dayTaskMap,
     CivilDay today,
-    ThemeData theme,
-  ) {
+    ThemeData theme, {
+    required bool isTier1,
+    required bool isTier2,
+  }) {
     final slotIndex = row * 7 + col;
     final dayNum = slotIndex - leadingEmptyCount + 1;
 
@@ -907,63 +952,51 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final isToday = civilDay == today;
     final tasks = dayTaskMap[civilDay] ?? const [];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return InkWell(
-          onTap: () => _showDayDetailsSheet(context, civilDay),
+    return InkWell(
+      onTap: () => _showDayDetailsSheet(context, civilDay),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.all(1.5),
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          child: Container(
-            margin: const EdgeInsets.all(1.5),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: isToday
-                  ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-                  : (tasks.isNotEmpty
-                        ? theme.colorScheme.surfaceContainerHighest.withValues(
-                            alpha: 0.25,
-                          )
-                        : null),
-              border: isToday
-                  ? Border.all(color: theme.colorScheme.primary, width: 1.5)
-                  : (tasks.isNotEmpty
-                        ? Border.all(
-                            color: theme.colorScheme.outlineVariant.withValues(
-                              alpha: 0.3,
-                            ),
-                            width: 0.5,
-                          )
-                        : null),
-            ),
-            child: _buildResponsiveDayContent(
-              constraints,
-              dayNum,
-              isToday,
-              tasks,
-              theme,
-            ),
-          ),
-        );
-      },
+          color: isToday
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+              : (tasks.isNotEmpty
+                    ? theme.colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.25,
+                      )
+                    : null),
+          border: isToday
+              ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+              : (tasks.isNotEmpty
+                    ? Border.all(
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.3,
+                        ),
+                        width: 0.5,
+                      )
+                    : null),
+        ),
+        child: _buildResponsiveDayContent(
+          dayNum,
+          isToday,
+          tasks,
+          theme,
+          isTier1: isTier1,
+          isTier2: isTier2,
+        ),
+      ),
     );
   }
 
   Widget _buildResponsiveDayContent(
-    BoxConstraints constraints,
     int dayNum,
     bool isToday,
     List<CalendarDayTask> tasks,
-    ThemeData theme,
-  ) {
-    final width = constraints.maxWidth;
-    final height = constraints.maxHeight;
-
-    // Determine level of detail depending on available space:
-    // Tier 1: Wide & tall cell (e.g. >= 60 width && >= 50 height)
-    // Tier 2: Medium cell (>= 42 width && >= 42 height)
-    // Tier 3: Compact cell (< 42 width or < 42 height)
-    final bool isTier1 = width >= 60 && height >= 50;
-    final bool isTier2 = !isTier1 && width >= 42 && height >= 42;
-
+    ThemeData theme, {
+    required bool isTier1,
+    required bool isTier2,
+  }) {
     if (isTier1) {
       return _buildTier1Day(dayNum, isToday, tasks, theme);
     } else if (isTier2) {
