@@ -62,8 +62,10 @@ class CloudFamilySchedulerClient {
     if (familyId.isEmpty) return false;
 
     try {
-      User? user = _auth?.currentUser;
-      if (user == null) {
+      User? user;
+      if (_auth != null) {
+        user = _auth.currentUser;
+      } else {
         try {
           user = FirebaseAuth.instance.currentUser;
         } catch (_) {

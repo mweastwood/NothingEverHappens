@@ -146,6 +146,31 @@ void main() {
     );
 
     test(
+      'triggerFamilyScheduleProcessing does not fall back to FirebaseAuth.instance when auth is explicitly provided with null currentUser',
+      () async {
+        var called = false;
+        final httpClient = _TestHttpClient((req) async {
+          called = true;
+          return http.Response('ok', 200);
+        });
+
+        // Explicit auth provided where currentUser is null
+        final client = CloudFamilySchedulerClient(
+          httpClient: httpClient,
+          auth: _MockFirebaseAuth(null),
+          errorHandler: errorHandler,
+        );
+
+        final success = await client.triggerFamilyScheduleProcessing(
+          familyId: 'family-456',
+        );
+        expect(success, isFalse);
+        expect(called, isFalse);
+        expect(errorHandler.errors, isEmpty);
+      },
+    );
+
+    test(
       'triggerFamilyScheduleProcessing sends correct POST request with auth header',
       () async {
         http.Request? capturedRequest;

@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import '../test_factories.dart';
+
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -2005,6 +2007,283 @@ void main() {
           // Only the uncompleted instance should exist (no locally-spawned next)
           expect(familyInsts.docs.length, 1);
           expect(familyInsts.docs.first.id, completedInstance.id);
+        },
+      );
+
+      test(
+        'undoResolveTaskInstance triggers Cloud Family Scheduler and preserves existing next-occurrence instances in Firestore without deleting them locally',
+        () async {
+          final now = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(now);
+          addTearDown(AppClock.reset);
+
+          const familyId = 'family-undo-123';
+          await firestore.collection('users').doc('test-user-id').set({
+            'familyId': familyId,
+            'familyRole': 'parent',
+          });
+
+          final fakeCloudScheduler = _FakeCloudFamilySchedulerClient();
+          final repository = FirestoreTaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+            cloudFamilySchedulerClient: fakeCloudScheduler,
+          );
+
+          final task = TestTaskFactory.createDaily(
+            id: 'family-undo-task',
+            title: 'Family Undo Task',
+            description: '',
+            isFamily: true,
+            startDate: const CivilDay(year: 2026, month: 6, day: 23),
+            interval: 1,
+          );
+
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(task.id)
+              .set(task.toFirestore());
+
+          final ruleId = task.schedules.first.id;
+          final completedInstance = TaskInstance(
+            id: 'fam-undo-inst-1',
+            scheduleId: task.id,
+            ruleId: ruleId,
+            title: task.title,
+            description: task.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 23),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            isFamily: true,
+            status: TaskStatus.completed,
+            completedAt: now,
+          );
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(completedInstance.id)
+              .set(completedInstance.toFirestore());
+
+          final nextInstance = TaskInstance(
+            id: 'fam-undo-inst-next',
+            scheduleId: task.id,
+            ruleId: ruleId,
+            title: task.title,
+            description: task.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 24),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            isFamily: true,
+            status: TaskStatus.pending,
+          );
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(nextInstance.id)
+              .set(nextInstance.toFirestore());
+
+          // Verify that calculateOccurrenceIdToUndo would identify nextInstance as the next occurrence to delete
+          final nextId = TaskSpawnerEngine.calculateOccurrenceIdToUndo(
+            task: task,
+            completedInstance: completedInstance,
+            completionTime: now,
+            existingInstances: [completedInstance, nextInstance],
+          );
+          expect(nextId, equals(nextInstance.id));
+
+          fakeCloudScheduler.triggeredFamilyIds.clear();
+
+          // Directly invoke undoResolveTaskInstance (e.g. snackbar undo)
+          await repository.undoResolveTaskInstance(completedInstance);
+
+          // Cloud scheduler must be triggered
+          expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
+
+          // Both original instance and next-occurrence instance must exist in Firestore
+          final familyInsts = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .get();
+          expect(familyInsts.docs.length, 2);
+          expect(
+            familyInsts.docs.map((d) => d.id),
+            containsAll([completedInstance.id, nextInstance.id]),
+          );
+
+          final revertedDoc = familyInsts.docs.firstWhere(
+            (d) => d.id == completedInstance.id,
+          );
+          final revertedInst = TaskInstance.fromFirestore(revertedDoc);
+          expect(revertedInst.status, TaskStatus.pending);
+        },
+      );
+
+      test(
+        'undoResolveTaskInstance in individual completion mode triggers Cloud Family Scheduler and preserves existing next occurrences in Firestore',
+        () async {
+          final now = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(now);
+          addTearDown(AppClock.reset);
+
+          const familyId = 'family-indiv-undo-123';
+          const user1 = 'test-user-id';
+          const user2 = 'other-user-id';
+
+          await firestore.collection('users').doc(user1).set({
+            'familyId': familyId,
+            'familyRole': 'parent',
+          });
+
+          await firestore.collection('families').doc(familyId).set({
+            'name': 'Test Family',
+            'members': {
+              user1: {'role': 'parent', 'displayName': 'User 1'},
+              user2: {'role': 'child', 'displayName': 'User 2'},
+            },
+          });
+
+          final fakeCloudScheduler = _FakeCloudFamilySchedulerClient();
+          final repository = FirestoreTaskRepository(
+            firestore: firestore,
+            userId: user1,
+            cloudFamilySchedulerClient: fakeCloudScheduler,
+          );
+
+          final task = TaskSchedule(
+            id: 'family-indiv-undo-task',
+            title: 'Family Indiv Task',
+            description: '',
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            schedules: [
+              DailySchedule(
+                startDate: const CivilDay(year: 2026, month: 6, day: 23),
+                interval: 1,
+              ),
+            ],
+            updatedAt: DateTime(2026, 6, 23),
+          );
+
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(task.id)
+              .set(task.toFirestore());
+
+          final indivRuleId = task.schedules.first.id;
+          final completedInstance = TaskInstance(
+            id: 'fam-indiv-inst-1',
+            scheduleId: task.id,
+            ruleId: indivRuleId,
+            title: task.title,
+            description: task.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 23),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            status: TaskStatus.completed,
+            completedAt: now,
+            completedByUserIds: [user1, user2],
+          );
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(completedInstance.id)
+              .set(completedInstance.toFirestore());
+
+          final nextInstance = TaskInstance(
+            id: 'fam-indiv-inst-next',
+            scheduleId: task.id,
+            ruleId: indivRuleId,
+            title: task.title,
+            description: task.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 24),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            status: TaskStatus.pending,
+          );
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(nextInstance.id)
+              .set(nextInstance.toFirestore());
+
+          final nextId = TaskSpawnerEngine.calculateOccurrenceIdToUndo(
+            task: task,
+            completedInstance: completedInstance,
+            completionTime: now,
+            existingInstances: [completedInstance, nextInstance],
+          );
+          expect(nextId, equals(nextInstance.id));
+          fakeCloudScheduler.triggeredFamilyIds.clear();
+
+          // User 1 undoes completion
+          await repository.undoResolveTaskInstance(completedInstance);
+
+          // Cloud scheduler must be triggered
+          expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
+
+          // Next occurrence instance must NOT be deleted
+          final familyInsts = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .get();
+          expect(familyInsts.docs.length, 2);
+          expect(
+            familyInsts.docs.map((d) => d.id),
+            containsAll([completedInstance.id, nextInstance.id]),
+          );
+
+          final revertedDoc = familyInsts.docs.firstWhere(
+            (d) => d.id == completedInstance.id,
+          );
+          final revertedInst = TaskInstance.fromFirestore(revertedDoc);
+          expect(revertedInst.status, TaskStatus.pending);
+          expect(revertedInst.completedByUserIds, [user2]);
         },
       );
 

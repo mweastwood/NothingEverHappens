@@ -373,6 +373,16 @@ class UnifiedTaskRepository implements TaskRepository {
         );
 
         _syncService.sync();
+        if (completedInstance.isFamily) {
+          final familyId = await getFamilyId();
+          if (familyId != null && familyId.isNotEmpty) {
+            unawaited(
+              cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+                familyId: familyId,
+              ),
+            );
+          }
+        }
         return completedInstance;
       } else {
         final partialInstance = instance.copyWith(
@@ -441,16 +451,6 @@ class UnifiedTaskRepository implements TaskRepository {
         .firstOrNull;
     if (instance == null) return null;
     await undoResolveTaskInstance(instance);
-    if (instance.isFamily) {
-      final familyId = await getFamilyId();
-      if (familyId != null && familyId.isNotEmpty) {
-        unawaited(
-          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-            familyId: familyId,
-          ),
-        );
-      }
-    }
     return _localDataSource.getInstances().where((i) => i.id == id).firstOrNull;
   }
 
@@ -533,6 +533,14 @@ class UnifiedTaskRepository implements TaskRepository {
         },
       );
       _syncService.sync();
+      final familyId = await getFamilyId();
+      if (familyId != null && familyId.isNotEmpty) {
+        unawaited(
+          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+            familyId: familyId,
+          ),
+        );
+      }
       return;
     }
 
@@ -558,7 +566,8 @@ class UnifiedTaskRepository implements TaskRepository {
         .getTasks()
         .where((t) => t.id == resolvedInstance.scheduleId)
         .firstOrNull;
-    if (task != null && task.isFamily) {
+    final isFamilyTask = resolvedInstance.isFamily || (task?.isFamily ?? false);
+    if (isFamilyTask) {
       // Family task instance lifecycle is managed by the cloud scheduler;
       // do not delete locally spawned next occurrences on-device.
       final familyId = await getFamilyId();

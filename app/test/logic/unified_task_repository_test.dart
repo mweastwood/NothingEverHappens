@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -1409,6 +1410,142 @@ void main() {
           isTrue,
           reason:
               'undoResolveTaskInstance must not delete family next occurrences locally',
+        );
+      },
+    );
+
+    test(
+      'completeTaskInstance triggers CloudFamilySchedulerClient when all members complete a family task with familyCompletionMode == FamilyCompletionMode.individual',
+      () async {
+        const familyId = 'fam-indiv-all-complete';
+        const user1 = 'user1';
+        const user2 = 'user2';
+
+        await firestore.collection('families').doc(familyId).set({
+          'name': 'Family',
+          'members': {
+            user1: {'role': 'parent', 'displayName': 'User 1'},
+            user2: {'role': 'child', 'displayName': 'User 2'},
+          },
+        });
+        await firestore.collection('users').doc(user1).set({
+          'familyId': familyId,
+        });
+
+        final familyTask = TaskSchedule(
+          id: 'S-fam-indiv-all',
+          title: 'Family Chore',
+          description: 'All members clean',
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        final pendingInstance = TaskInstance(
+          id: 'I-fam-indiv-all-1',
+          scheduleId: familyTask.id,
+          ruleId: 'r1',
+          title: familyTask.title,
+          description: familyTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.pending,
+          completedByUserIds: [user2], // user2 already completed
+        );
+
+        await localDataSource.saveTask(familyTask);
+        await localDataSource.saveInstance(pendingInstance);
+
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+
+        // User 1 completes (now both user1 and user2 completed -> allCompleted is true)
+        final completed = await repository.completeTaskInstance(
+          pendingInstance.id,
+        );
+
+        expect(completed, isNotNull);
+        expect(completed?.status, TaskStatus.completed);
+        expect(completed?.completedByUserIds, containsAll([user1, user2]));
+
+        // Cloud scheduler must be triggered because all members completed
+        expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
+      },
+    );
+
+    test(
+      'uncompleteTaskInstance triggers CloudFamilySchedulerClient exactly once without duplicate requests',
+      () async {
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'family-test',
+        });
+
+        final familyTask = TaskSchedule(
+          id: 'S-fam-uncomplete-single',
+          title: 'Family Task Single',
+          description: 'Desc',
+          isFamily: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        final completedInstance = TaskInstance(
+          id: 'I-fam-uncomplete-single-1',
+          scheduleId: familyTask.id,
+          ruleId: 'r1',
+          title: familyTask.title,
+          description: familyTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 8, 1, 10),
+        );
+
+        await localDataSource.saveTask(familyTask);
+        await localDataSource.saveInstance(completedInstance);
+
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+
+        await repository.uncompleteTaskInstance(completedInstance.id);
+
+        expect(
+          fakeCloudScheduler.triggeredFamilyIds
+              .where((id) => id == 'family-test')
+              .length,
+          1,
+          reason:
+              'uncompleteTaskInstance should trigger cloud family scheduler exactly once',
         );
       },
     );
