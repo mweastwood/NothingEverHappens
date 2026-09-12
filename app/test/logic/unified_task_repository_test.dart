@@ -1271,6 +1271,149 @@ void main() {
     });
 
     test(
+      'dismissTaskInstance triggers Cloud Family Scheduler for family tasks',
+      () async {
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'family-test',
+        });
+
+        final familyTask = TaskSchedule(
+          id: 'S-fam-dismiss',
+          title: 'Family Dismiss Task',
+          description: 'Desc',
+          isFamily: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        // Seed a pending family instance in local store
+        final pendingInstance = TaskInstance(
+          id: 'I-fam-dismiss-1',
+          scheduleId: familyTask.id,
+          ruleId: 'r1',
+          title: familyTask.title,
+          description: familyTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveTask(familyTask);
+        await localDataSource.saveInstance(pendingInstance);
+
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+        final dismissed = await repository.dismissTaskInstance(
+          pendingInstance.id,
+        );
+        expect(dismissed, isNotNull);
+        expect(dismissed?.status, TaskStatus.skipped);
+        expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+      },
+    );
+
+    test(
+      'undoResolveTaskInstance triggers Cloud Family Scheduler and skips local next-occurrence deletion for family tasks',
+      () async {
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'family-test',
+        });
+
+        final familyTask = TaskSchedule(
+          id: 'S-fam-undo',
+          title: 'Family Undo Task',
+          description: 'Desc',
+          isFamily: true,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        final completedInstance = TaskInstance(
+          id: 'I-fam-undo-1',
+          scheduleId: familyTask.id,
+          ruleId: 'r1',
+          title: familyTask.title,
+          description: familyTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 8, 1, 10),
+        );
+
+        // Simulate a locally-present "next occurrence" that must NOT be deleted
+        // by undoResolveTaskInstance for family tasks (cloud scheduler owns this)
+        final nextInstance = TaskInstance(
+          id: 'I-fam-undo-next',
+          scheduleId: familyTask.id,
+          ruleId: 'r1',
+          title: familyTask.title,
+          description: familyTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 2),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          status: TaskStatus.pending,
+        );
+
+        await localDataSource.saveTask(familyTask);
+        await localDataSource.saveInstance(completedInstance);
+        await localDataSource.saveInstance(nextInstance);
+
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+
+        await repository.undoResolveTaskInstance(completedInstance);
+
+        // Cloud scheduler must be triggered
+        expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+
+        // The "next occurrence" must NOT have been deleted on-device
+        final instances = localDataSource.getInstances();
+        expect(
+          instances.any((i) => i.id == nextInstance.id),
+          isTrue,
+          reason:
+              'undoResolveTaskInstance must not delete family next occurrences locally',
+        );
+      },
+    );
+
+    test(
       'lifecycle resume gates triggerMissedPolicyProcessing on initial sync',
       () async {
         var initialSyncAwaited = false;

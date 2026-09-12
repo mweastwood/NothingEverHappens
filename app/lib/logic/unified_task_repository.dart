@@ -493,6 +493,16 @@ class UnifiedTaskRepository implements TaskRepository {
     );
 
     _syncService.sync();
+    if (dismissedInstance.isFamily) {
+      final familyId = await getFamilyId();
+      if (familyId != null && familyId.isNotEmpty) {
+        unawaited(
+          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+            familyId: familyId,
+          ),
+        );
+      }
+    }
     return dismissedInstance;
   }
 
@@ -548,7 +558,19 @@ class UnifiedTaskRepository implements TaskRepository {
         .getTasks()
         .where((t) => t.id == resolvedInstance.scheduleId)
         .firstOrNull;
-    if (task != null && task.schedules.any((s) => s is! OneOffSchedule)) {
+    if (task != null && task.isFamily) {
+      // Family task instance lifecycle is managed by the cloud scheduler;
+      // do not delete locally spawned next occurrences on-device.
+      final familyId = await getFamilyId();
+      if (familyId != null && familyId.isNotEmpty) {
+        unawaited(
+          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+            familyId: familyId,
+          ),
+        );
+      }
+    } else if (task != null &&
+        task.schedules.any((s) => s is! OneOffSchedule)) {
       final instances = _localDataSource
           .getInstances()
           .where((i) => i.scheduleId == task.id)

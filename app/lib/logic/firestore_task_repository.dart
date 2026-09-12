@@ -1106,6 +1106,15 @@ class FirestoreTaskRepository implements TaskRepository {
     await _notificationService?.scheduleNotifications(task);
 
     _cachedTasksMap[task.id] = task;
+
+    if (task.isFamily && familyId != null && familyId.isNotEmpty) {
+      unawaited(
+        cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+          familyId: familyId,
+        ),
+      );
+    }
+
     await _checkAndProcessMissedPolicies([task]);
   }
 
@@ -1272,6 +1281,16 @@ class FirestoreTaskRepository implements TaskRepository {
     final instance = await _fetchInstance(id);
     if (instance == null) return null;
     await undoResolveTaskInstance(instance);
+    if (instance.isFamily) {
+      final familyId = await getFamilyId();
+      if (familyId != null && familyId.isNotEmpty) {
+        unawaited(
+          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+            familyId: familyId,
+          ),
+        );
+      }
+    }
     return await _fetchInstance(id);
   }
 
@@ -1308,21 +1327,31 @@ class FirestoreTaskRepository implements TaskRepository {
     );
 
     if (task != null) {
-      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-      if (isRecurring) {
-        final allInstances = await _getInstancesForSchedule(
-          task.id,
-          task.isFamily,
-          familyId,
-        );
-        _spawnNextOccurrence(
-          task,
-          instance,
-          now,
-          batch,
-          familyId,
-          allInstances,
-        );
+      if (task.isFamily) {
+        if (familyId != null && familyId.isNotEmpty) {
+          unawaited(
+            cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+              familyId: familyId,
+            ),
+          );
+        }
+      } else {
+        final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+        if (isRecurring) {
+          final allInstances = await _getInstancesForSchedule(
+            task.id,
+            task.isFamily,
+            familyId,
+          );
+          _spawnNextOccurrence(
+            task,
+            instance,
+            now,
+            batch,
+            familyId,
+            allInstances,
+          );
+        }
       }
     }
 

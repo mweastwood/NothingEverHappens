@@ -1887,6 +1887,216 @@ void main() {
       );
 
       test(
+        'restoreTaskSchedule triggers Cloud Family Scheduler for family tasks',
+        () async {
+          const familyId = 'family-restore-123';
+          await firestore.collection('users').doc('test-user-id').set({
+            'familyId': familyId,
+            'familyRole': 'parent',
+          });
+
+          final fakeCloudScheduler = _FakeCloudFamilySchedulerClient();
+          final repository = FirestoreTaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+            cloudFamilySchedulerClient: fakeCloudScheduler,
+          );
+
+          final task = TestTaskFactory.createDaily(
+            id: 'family-restore-task',
+            title: 'Family Restore Task',
+            description: '',
+            isFamily: true,
+            startDate: const CivilDay(year: 2026, month: 6, day: 23),
+            interval: 1,
+          );
+
+          fakeCloudScheduler.triggeredFamilyIds.clear();
+
+          await repository.restoreTaskSchedule(task, []);
+
+          expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
+        },
+      );
+
+      test(
+        'uncompleteTaskInstance triggers Cloud Family Scheduler and does not spawn next occurrence on-device for family tasks',
+        () async {
+          final now = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(now);
+          addTearDown(AppClock.reset);
+
+          const familyId = 'family-uncomplete-123';
+          await firestore.collection('users').doc('test-user-id').set({
+            'familyId': familyId,
+            'familyRole': 'parent',
+          });
+
+          final fakeCloudScheduler = _FakeCloudFamilySchedulerClient();
+          final repository = FirestoreTaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+            cloudFamilySchedulerClient: fakeCloudScheduler,
+          );
+
+          final task = TestTaskFactory.createDaily(
+            id: 'family-uncomplete-task',
+            title: 'Family Uncomplete Task',
+            description: '',
+            isFamily: true,
+            startDate: const CivilDay(year: 2026, month: 6, day: 23),
+            interval: 1,
+          );
+
+          // Seed the task in Firestore
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(task.id)
+              .set(task.toFirestore());
+
+          // Seed a completed family instance as if spawned by the cloud scheduler
+          final completedInstance = TaskInstance(
+            id: 'fam-uncomplete-inst-1',
+            scheduleId: task.id,
+            ruleId: 'r1',
+            title: task.title,
+            description: task.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 23),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            isFamily: true,
+            status: TaskStatus.completed,
+            completedAt: now,
+          );
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(completedInstance.id)
+              .set(completedInstance.toFirestore());
+
+          fakeCloudScheduler.triggeredFamilyIds.clear();
+
+          final result = await repository.uncompleteTaskInstance(
+            completedInstance.id,
+          );
+          expect(result, isNotNull);
+          expect(result?.status, TaskStatus.pending);
+
+          // Cloud scheduler must be triggered to handle next-occurrence lifecycle
+          expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
+
+          // Verify no additional family instances were spawned locally
+          final familyInsts = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .get();
+          // Only the uncompleted instance should exist (no locally-spawned next)
+          expect(familyInsts.docs.length, 1);
+          expect(familyInsts.docs.first.id, completedInstance.id);
+        },
+      );
+
+      test(
+        'dismissTaskInstance triggers Cloud Family Scheduler and does not spawn next occurrence on-device for family tasks',
+        () async {
+          final now = DateTime(2026, 6, 23, 10, 0, 0);
+          AppClock.setMockTime(now);
+          addTearDown(AppClock.reset);
+
+          const familyId = 'family-dismiss-123';
+          await firestore.collection('users').doc('test-user-id').set({
+            'familyId': familyId,
+            'familyRole': 'parent',
+          });
+
+          final fakeCloudScheduler = _FakeCloudFamilySchedulerClient();
+          final repository = FirestoreTaskRepository(
+            firestore: firestore,
+            userId: 'test-user-id',
+            cloudFamilySchedulerClient: fakeCloudScheduler,
+          );
+
+          final task = TestTaskFactory.createDaily(
+            id: 'family-dismiss-task',
+            title: 'Family Dismiss Task',
+            description: '',
+            isFamily: true,
+            startDate: const CivilDay(year: 2026, month: 6, day: 23),
+            interval: 1,
+          );
+
+          // Seed the task in Firestore
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(task.id)
+              .set(task.toFirestore());
+
+          // Seed a pending family instance as if spawned by the cloud scheduler
+          final pendingInstance = TaskInstance(
+            id: 'fam-dismiss-inst-1',
+            scheduleId: task.id,
+            ruleId: 'r1',
+            title: task.title,
+            description: task.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 23),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            isFamily: true,
+            status: TaskStatus.pending,
+          );
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(pendingInstance.id)
+              .set(pendingInstance.toFirestore());
+
+          fakeCloudScheduler.triggeredFamilyIds.clear();
+
+          final dismissed = await repository.dismissTaskInstance(
+            pendingInstance.id,
+          );
+          expect(dismissed, isNotNull);
+          expect(dismissed?.status, TaskStatus.skipped);
+
+          // Cloud scheduler must be triggered to spawn the next occurrence
+          expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
+
+          // Verify no additional family instances were spawned locally
+          final familyInsts = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .get();
+          // Only the dismissed instance should exist (no locally-spawned next)
+          expect(familyInsts.docs.length, 1);
+          expect(familyInsts.docs.first.id, pendingInstance.id);
+        },
+      );
+
+      test(
         'completing or dismissing orphan task instance commits status update even if task schedule is deleted',
         () async {
           final now = DateTime(2026, 6, 23, 10, 0, 0);
