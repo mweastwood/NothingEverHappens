@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mockito/mockito.dart';
@@ -45,6 +46,7 @@ class _MockFirebaseAuth extends Mock implements FirebaseAuth {
 class _TestHttpClient extends http.BaseClient {
   final Future<http.Response> Function(http.Request request) _handler;
   final List<http.Request> requests = [];
+  bool isClosed = false;
 
   _TestHttpClient(this._handler);
 
@@ -58,6 +60,12 @@ class _TestHttpClient extends http.BaseClient {
       response.statusCode,
       headers: response.headers,
     );
+  }
+
+  @override
+  void close() {
+    isClosed = true;
+    super.close();
   }
 }
 
@@ -257,6 +265,49 @@ void main() {
         expect(success, isFalse);
         expect(errorHandler.errors.length, 1);
         expect(errorHandler.errors.first, isA<http.ClientException>());
+      },
+    );
+
+    test(
+      'triggerFamilyScheduleProcessing handles request timeout gracefully and reports it',
+      () async {
+        final httpClient = _TestHttpClient((req) async {
+          throw TimeoutException('Request timed out');
+        });
+
+        final client = CloudFamilySchedulerClient(
+          baseUrl: 'http://localhost:5001',
+          httpClient: httpClient,
+          auth: _MockFirebaseAuth(_MockUser()),
+          errorHandler: errorHandler,
+        );
+
+        final success = await client.triggerFamilyScheduleProcessing(
+          familyId: 'family-timeout',
+        );
+        expect(success, isFalse);
+        expect(errorHandler.errors.length, 1);
+        expect(errorHandler.errors.first, isA<TimeoutException>());
+      },
+    );
+
+    test('dispose closes underlying httpClient', () {
+      final httpClient = _TestHttpClient(
+        (req) async => http.Response('ok', 200),
+      );
+      final client = CloudFamilySchedulerClient(httpClient: httpClient);
+      expect(httpClient.isClosed, isFalse);
+      client.dispose();
+      expect(httpClient.isClosed, isTrue);
+    });
+
+    test(
+      'cloudFamilySchedulerClientProvider disposes client on container disposal',
+      () {
+        final container = ProviderContainer();
+        final client = container.read(cloudFamilySchedulerClientProvider);
+        expect(client, isNotNull);
+        container.dispose();
       },
     );
   });

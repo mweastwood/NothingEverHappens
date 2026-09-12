@@ -158,17 +158,7 @@ class UnifiedTaskRepository implements TaskRepository {
       data: {'taskId': t.id, 'title': t.title},
     );
     _syncService.sync();
-    if (t.isFamily) {
-      final familyId = await getFamilyId();
-      if (familyId != null && familyId.isNotEmpty) {
-        unawaited(
-          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-            familyId: familyId,
-          ),
-        );
-      }
-    }
-    await triggerMissedPolicyProcessing();
+    await triggerMissedPolicyProcessing(evaluateFamilyTasks: t.isFamily);
   }
 
   @override
@@ -219,17 +209,9 @@ class UnifiedTaskRepository implements TaskRepository {
     }
 
     _syncService.sync();
-    if (t.isFamily || changes.containsKey('isFamily')) {
-      final familyId = await getFamilyId();
-      if (familyId != null && familyId.isNotEmpty) {
-        unawaited(
-          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-            familyId: familyId,
-          ),
-        );
-      }
-    }
-    await triggerMissedPolicyProcessing();
+    await triggerMissedPolicyProcessing(
+      evaluateFamilyTasks: t.isFamily || changes.containsKey('isFamily'),
+    );
   }
 
   @override
@@ -259,17 +241,7 @@ class UnifiedTaskRepository implements TaskRepository {
     }
 
     _syncService.sync();
-    if (task.isFamily) {
-      final familyId = await getFamilyId();
-      if (familyId != null && familyId.isNotEmpty) {
-        unawaited(
-          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-            familyId: familyId,
-          ),
-        );
-      }
-    }
-    await triggerMissedPolicyProcessing();
+    await triggerMissedPolicyProcessing(evaluateFamilyTasks: task.isFamily);
     return (task: task, pendingInstances: pendingInstances);
   }
 
@@ -292,17 +264,7 @@ class UnifiedTaskRepository implements TaskRepository {
       data: {'taskId': task.id, 'title': task.title},
     );
     _syncService.sync();
-    if (task.isFamily) {
-      final familyId = await getFamilyId();
-      if (familyId != null && familyId.isNotEmpty) {
-        unawaited(
-          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-            familyId: familyId,
-          ),
-        );
-      }
-    }
-    await triggerMissedPolicyProcessing();
+    await triggerMissedPolicyProcessing(evaluateFamilyTasks: task.isFamily);
   }
 
   @override
@@ -313,7 +275,13 @@ class UnifiedTaskRepository implements TaskRepository {
         .firstOrNull;
     if (instance == null) return null;
 
-    if (instance.isFamily &&
+    final task = _localDataSource
+        .getTasks()
+        .where((t) => t.id == instance.scheduleId)
+        .firstOrNull;
+    final isFamily = instance.isFamily || (task?.isFamily ?? false);
+
+    if (isFamily &&
         instance.familyCompletionMode == FamilyCompletionMode.individual) {
       final updatedUserIds = {...instance.completedByUserIds, userId}.toList();
 
@@ -373,7 +341,7 @@ class UnifiedTaskRepository implements TaskRepository {
         );
 
         _syncService.sync();
-        if (completedInstance.isFamily) {
+        if (completedInstance.isFamily || isFamily) {
           final familyId = await getFamilyId();
           if (familyId != null && familyId.isNotEmpty) {
             unawaited(
@@ -430,7 +398,7 @@ class UnifiedTaskRepository implements TaskRepository {
     );
 
     _syncService.sync();
-    if (completedInstance.isFamily) {
+    if (completedInstance.isFamily || isFamily) {
       final familyId = await getFamilyId();
       if (familyId != null && familyId.isNotEmpty) {
         unawaited(
@@ -473,6 +441,12 @@ class UnifiedTaskRepository implements TaskRepository {
         .firstOrNull;
     if (instance == null) return null;
 
+    final task = _localDataSource
+        .getTasks()
+        .where((t) => t.id == instance.scheduleId)
+        .firstOrNull;
+    final isFamily = instance.isFamily || (task?.isFamily ?? false);
+
     final dismissedInstance = instance.copyWith(
       status: TaskStatus.skipped,
       completedByUserId: userId,
@@ -493,7 +467,7 @@ class UnifiedTaskRepository implements TaskRepository {
     );
 
     _syncService.sync();
-    if (dismissedInstance.isFamily) {
+    if (dismissedInstance.isFamily || isFamily) {
       final familyId = await getFamilyId();
       if (familyId != null && familyId.isNotEmpty) {
         unawaited(
@@ -508,7 +482,13 @@ class UnifiedTaskRepository implements TaskRepository {
 
   @override
   Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
-    if (resolvedInstance.isFamily &&
+    final task = _localDataSource
+        .getTasks()
+        .where((t) => t.id == resolvedInstance.scheduleId)
+        .firstOrNull;
+    final isFamilyTask = resolvedInstance.isFamily || (task?.isFamily ?? false);
+
+    if (isFamilyTask &&
         resolvedInstance.familyCompletionMode ==
             FamilyCompletionMode.individual) {
       final updatedUserIds = resolvedInstance.completedByUserIds
@@ -562,11 +542,6 @@ class UnifiedTaskRepository implements TaskRepository {
       },
     );
 
-    final task = _localDataSource
-        .getTasks()
-        .where((t) => t.id == resolvedInstance.scheduleId)
-        .firstOrNull;
-    final isFamilyTask = resolvedInstance.isFamily || (task?.isFamily ?? false);
     if (isFamilyTask) {
       // Family task instance lifecycle is managed by the cloud scheduler;
       // do not delete locally spawned next occurrences on-device.

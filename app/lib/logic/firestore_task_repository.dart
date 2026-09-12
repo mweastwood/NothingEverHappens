@@ -1075,15 +1075,7 @@ class FirestoreTaskRepository implements TaskRepository {
     _cachedTasksMap.remove(targetId);
     _cachedTasksMap.remove(id);
 
-    if (task.isFamily && familyId != null && familyId.isNotEmpty) {
-      unawaited(
-        cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-          familyId: familyId,
-        ),
-      );
-    }
-
-    await triggerMissedPolicyProcessing();
+    await triggerMissedPolicyProcessing(evaluateFamilyTasks: task.isFamily);
 
     return (task: task, pendingInstances: pendingInstances);
   }
@@ -1143,7 +1135,9 @@ class FirestoreTaskRepository implements TaskRepository {
     final familyId = await getFamilyId();
     final now = AppClock.now;
 
-    if (instance.isFamily &&
+    final isFamily = instance.isFamily || (task?.isFamily ?? false);
+
+    if (isFamily &&
         instance.familyCompletionMode == FamilyCompletionMode.individual) {
       final updatedCompletedByUserIds = {
         ...instance.completedByUserIds,
@@ -1188,32 +1182,30 @@ class FirestoreTaskRepository implements TaskRepository {
           '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
         );
 
-        if (task != null) {
-          if (task.isFamily) {
-            if (familyId != null && familyId.isNotEmpty) {
-              unawaited(
-                cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-                  familyId: familyId,
-                ),
-              );
-            }
-          } else {
-            final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-            if (isRecurring) {
-              final allInstances = await _getInstancesForSchedule(
-                task.id,
-                task.isFamily,
-                familyId,
-              );
-              _spawnNextOccurrence(
-                task,
-                instance,
-                now,
-                batch,
-                familyId,
-                allInstances,
-              );
-            }
+        if (isFamily) {
+          if (familyId != null && familyId.isNotEmpty) {
+            unawaited(
+              cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+                familyId: familyId,
+              ),
+            );
+          }
+        } else if (task != null) {
+          final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+          if (isRecurring) {
+            final allInstances = await _getInstancesForSchedule(
+              task.id,
+              task.isFamily,
+              familyId,
+            );
+            _spawnNextOccurrence(
+              task,
+              instance,
+              now,
+              batch,
+              familyId,
+              allInstances,
+            );
           }
         }
         await batch.commit();
@@ -1243,32 +1235,30 @@ class FirestoreTaskRepository implements TaskRepository {
       '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
     );
 
-    if (task != null) {
-      if (task.isFamily) {
-        if (familyId != null && familyId.isNotEmpty) {
-          unawaited(
-            cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-              familyId: familyId,
-            ),
-          );
-        }
-      } else {
-        final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-        if (isRecurring) {
-          final allInstances = await _getInstancesForSchedule(
-            task.id,
-            task.isFamily,
-            familyId,
-          );
-          _spawnNextOccurrence(
-            task,
-            instance,
-            now,
-            batch,
-            familyId,
-            allInstances,
-          );
-        }
+    if (isFamily) {
+      if (familyId != null && familyId.isNotEmpty) {
+        unawaited(
+          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+            familyId: familyId,
+          ),
+        );
+      }
+    } else if (task != null) {
+      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+      if (isRecurring) {
+        final allInstances = await _getInstancesForSchedule(
+          task.id,
+          task.isFamily,
+          familyId,
+        );
+        _spawnNextOccurrence(
+          task,
+          instance,
+          now,
+          batch,
+          familyId,
+          allInstances,
+        );
       }
     }
 
@@ -1316,32 +1306,31 @@ class FirestoreTaskRepository implements TaskRepository {
       '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
     );
 
-    if (task != null) {
-      if (task.isFamily) {
-        if (familyId != null && familyId.isNotEmpty) {
-          unawaited(
-            cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-              familyId: familyId,
-            ),
-          );
-        }
-      } else {
-        final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-        if (isRecurring) {
-          final allInstances = await _getInstancesForSchedule(
-            task.id,
-            task.isFamily,
-            familyId,
-          );
-          _spawnNextOccurrence(
-            task,
-            instance,
-            now,
-            batch,
-            familyId,
-            allInstances,
-          );
-        }
+    final isFamily = instance.isFamily || (task?.isFamily ?? false);
+    if (isFamily) {
+      if (familyId != null && familyId.isNotEmpty) {
+        unawaited(
+          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+            familyId: familyId,
+          ),
+        );
+      }
+    } else if (task != null) {
+      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+      if (isRecurring) {
+        final allInstances = await _getInstancesForSchedule(
+          task.id,
+          task.isFamily,
+          familyId,
+        );
+        _spawnNextOccurrence(
+          task,
+          instance,
+          now,
+          batch,
+          familyId,
+          allInstances,
+        );
       }
     }
 
@@ -1358,7 +1347,7 @@ class FirestoreTaskRepository implements TaskRepository {
     final now = resolvedInstance.completedAt ?? AppClock.now;
     final isFamily = resolvedInstance.isFamily || (task?.isFamily ?? false);
 
-    if (resolvedInstance.isFamily &&
+    if (isFamily &&
         resolvedInstance.familyCompletionMode ==
             FamilyCompletionMode.individual) {
       final updatedUserIds = resolvedInstance.completedByUserIds

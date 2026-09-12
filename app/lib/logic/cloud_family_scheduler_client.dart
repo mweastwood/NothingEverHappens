@@ -96,14 +96,16 @@ class CloudFamilySchedulerClient {
         if (now != null) 'now': now.toUtc().toIso8601String(),
       };
 
-      final response = await _httpClient.post(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $idToken',
-        },
-        body: jsonEncode(bodyMap),
-      );
+      final response = await _httpClient
+          .post(
+            Uri.parse(url),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $idToken',
+            },
+            body: jsonEncode(bodyMap),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         _logger?.info(
@@ -131,6 +133,11 @@ class CloudFamilySchedulerClient {
       return false;
     }
   }
+
+  /// Closes the underlying HTTP client.
+  void dispose() {
+    _httpClient.close();
+  }
 }
 
 final cloudFamilySchedulerClientProvider = Provider<CloudFamilySchedulerClient>(
@@ -142,10 +149,12 @@ final cloudFamilySchedulerClientProvider = Provider<CloudFamilySchedulerClient>(
       }
     } catch (_) {}
 
-    return CloudFamilySchedulerClient(
+    final client = CloudFamilySchedulerClient(
       auth: auth,
       logger: ref.watch(appLoggerProvider),
       errorHandler: ref.read(errorHandlerProvider),
     );
+    ref.onDispose(() => client.dispose());
+    return client;
   },
 );

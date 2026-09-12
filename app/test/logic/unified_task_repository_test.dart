@@ -1238,6 +1238,7 @@ void main() {
       // Add family task
       fakeCloudScheduler.triggeredFamilyIds.clear();
       await repository.addTaskSchedule(familyTask);
+      expect(fakeCloudScheduler.triggeredFamilyIds.length, 1);
       expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
 
       // Update family task
@@ -1254,12 +1255,14 @@ void main() {
         newPriority: familyTask.priority,
       );
       await repository.updateTaskSchedule(mod);
+      expect(fakeCloudScheduler.triggeredFamilyIds.length, 1);
       expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
 
       // Delete family task
       fakeCloudScheduler.triggeredFamilyIds.clear();
       final deleted = await repository.deleteTaskSchedule(familyTask.id);
       expect(deleted, isNotNull);
+      expect(fakeCloudScheduler.triggeredFamilyIds.length, 1);
       expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
 
       // Restore family task
@@ -1268,8 +1271,67 @@ void main() {
         deleted!.task,
         deleted.pendingInstances,
       );
+      expect(fakeCloudScheduler.triggeredFamilyIds.length, 1);
       expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
     });
+
+    test(
+      'mutations on personal tasks do not trigger Cloud Family Scheduler',
+      () async {
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'family-test',
+        });
+
+        final personalTask = TaskSchedule(
+          id: 'S-personal-mutation',
+          title: 'Personal Task Mutation',
+          description: 'Desc',
+          isFamily: false,
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 8, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 1),
+        );
+
+        // Add personal task
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+        await repository.addTaskSchedule(personalTask);
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+
+        // Update personal task
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+        final mod = personalTask.edit(
+          newTitle: 'Updated Personal Title',
+          newDescription: personalTask.description,
+          newSchedules: personalTask.schedules,
+          newEstimatedDuration: personalTask.estimatedDuration,
+          newMissedPolicy: personalTask.missedPolicy,
+          newIsMaster: personalTask.isMaster,
+          newLastSpawnedDate: personalTask.lastSpawnedDate,
+          newIsFamily: personalTask.isFamily,
+          newPriority: personalTask.priority,
+        );
+        await repository.updateTaskSchedule(mod);
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+
+        // Delete personal task
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+        final deleted = await repository.deleteTaskSchedule(personalTask.id);
+        expect(deleted, isNotNull);
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+
+        // Restore personal task
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+        await repository.restoreTaskSchedule(
+          deleted!.task,
+          deleted.pendingInstances,
+        );
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+      },
+    );
 
     test(
       'dismissTaskInstance triggers Cloud Family Scheduler for family tasks',
