@@ -5,6 +5,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:material_ui/material_ui.dart' as material_ui;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -175,18 +176,71 @@ void mainCommon(
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
+  @visibleForTesting
+  static ColorScheme bridgeColorScheme(material_ui.ColorScheme scheme) {
+    return ColorScheme(
+      brightness: scheme.brightness,
+      primary: scheme.primary,
+      onPrimary: scheme.onPrimary,
+      primaryContainer: scheme.primaryContainer,
+      onPrimaryContainer: scheme.onPrimaryContainer,
+      primaryFixed: scheme.primaryFixed,
+      primaryFixedDim: scheme.primaryFixedDim,
+      onPrimaryFixed: scheme.onPrimaryFixed,
+      onPrimaryFixedVariant: scheme.onPrimaryFixedVariant,
+      secondary: scheme.secondary,
+      onSecondary: scheme.onSecondary,
+      secondaryContainer: scheme.secondaryContainer,
+      onSecondaryContainer: scheme.onSecondaryContainer,
+      secondaryFixed: scheme.secondaryFixed,
+      secondaryFixedDim: scheme.secondaryFixedDim,
+      onSecondaryFixed: scheme.onSecondaryFixed,
+      onSecondaryFixedVariant: scheme.onSecondaryFixedVariant,
+      tertiary: scheme.tertiary,
+      onTertiary: scheme.onTertiary,
+      tertiaryContainer: scheme.tertiaryContainer,
+      onTertiaryContainer: scheme.onTertiaryContainer,
+      tertiaryFixed: scheme.tertiaryFixed,
+      tertiaryFixedDim: scheme.tertiaryFixedDim,
+      onTertiaryFixed: scheme.onTertiaryFixed,
+      onTertiaryFixedVariant: scheme.onTertiaryFixedVariant,
+      error: scheme.error,
+      onError: scheme.onError,
+      errorContainer: scheme.errorContainer,
+      onErrorContainer: scheme.onErrorContainer,
+      surface: scheme.surface,
+      onSurface: scheme.onSurface,
+      surfaceDim: scheme.surfaceDim,
+      surfaceBright: scheme.surfaceBright,
+      surfaceContainerLowest: scheme.surfaceContainerLowest,
+      surfaceContainerLow: scheme.surfaceContainerLow,
+      surfaceContainer: scheme.surfaceContainer,
+      surfaceContainerHigh: scheme.surfaceContainerHigh,
+      surfaceContainerHighest: scheme.surfaceContainerHighest,
+      onSurfaceVariant: scheme.onSurfaceVariant,
+      outline: scheme.outline,
+      outlineVariant: scheme.outlineVariant,
+      shadow: scheme.shadow,
+      scrim: scheme.scrim,
+      inverseSurface: scheme.inverseSurface,
+      onInverseSurface: scheme.onInverseSurface,
+      inversePrimary: scheme.inversePrimary,
+      surfaceTint: scheme.surfaceTint,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).value;
 
     return DynamicColorBuilder(
-      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        ColorScheme lightScheme;
-        ColorScheme darkScheme;
+      builder: (lightDynamic, darkDynamic) {
+        final ColorScheme lightScheme;
+        final ColorScheme darkScheme;
 
         if (lightDynamic != null && darkDynamic != null) {
-          lightScheme = lightDynamic;
-          darkScheme = darkDynamic;
+          lightScheme = bridgeColorScheme(lightDynamic);
+          darkScheme = bridgeColorScheme(darkDynamic);
         } else {
           lightScheme = ColorScheme.fromSeed(
             seedColor: const Color(0xFFffd9f6),
@@ -216,6 +270,10 @@ class MyApp extends ConsumerWidget {
       },
     );
   }
+}
+
+extension MaterialUiColorSchemeX on material_ui.ColorScheme {
+  ColorScheme toFlutterColorScheme() => MyApp.bridgeColorScheme(this);
 }
 
 enum AppEnvironment { dev, prod }
