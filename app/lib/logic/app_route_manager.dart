@@ -88,7 +88,7 @@ class AppRouteManager {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UncontrolledProviderScope(
+        builder: (routeContext) => UncontrolledProviderScope(
           container: container,
           child: Scaffold(
             appBar: AppBar(title: Text(title)),
@@ -111,7 +111,7 @@ class AppRouteManager {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UncontrolledProviderScope(
+        builder: (routeContext) => UncontrolledProviderScope(
           container: container,
           child: Scaffold(
             appBar: AppBar(title: Text(title)),

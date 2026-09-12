@@ -4,6 +4,7 @@ import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../test_helper.dart';
 
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
@@ -21,6 +22,14 @@ import 'package:nothing_ever_happens/screens/create_task_screen.dart';
 import 'package:nothing_ever_happens/logic/subscription_service.dart';
 
 import 'home_screen_test.mocks.dart';
+
+class MockFirebaseUser extends Fake implements User {
+  final String _uid;
+  MockFirebaseUser([this._uid = 'user-1']);
+
+  @override
+  String get uid => _uid;
+}
 
 void main() {
   late MockAuthRepository mockAuthRepository;
@@ -177,7 +186,7 @@ void main() {
     settingsSubject.close();
   });
 
-  Widget createTestWidget() {
+  Widget createTestWidget({User? currentUser}) {
     final firestore = FakeFirebaseFirestore();
     final familyRepo = FamilyRepository(
       firestore: firestore,
@@ -189,6 +198,7 @@ void main() {
     return ProviderScope(
       overrides: [
         authRepositoryProvider.overrideWithValue(mockAuthRepository),
+        authStateProvider.overrideWithValue(AsyncData<User?>(currentUser)),
         taskRepositoryProvider.overrideWithValue(mockTaskRepository),
         userSettingsRepositoryProvider.overrideWithValue(
           mockUserSettingsRepository,
@@ -386,6 +396,144 @@ void main() {
         find.descendant(
           of: find.byType(BottomSheet),
           matching: find.byIcon(Icons.event_repeat),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'bottom sheet reactively updates when instance stream changes without reading stale cache',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      // Open day 8 bottom sheet
+      final day8Finder = find.descendant(
+        of: find.byKey(const Key('month_card_2026_3')),
+        matching: find.text('8'),
+      );
+      await tester.tap(day8Finder.first);
+      await tester.pumpAndSettle();
+
+      // Initially, I-2 is pending (unchecked)
+      expect(find.byIcon(Icons.radio_button_unchecked), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+
+      // Now stream an updated instances list where I-2 is completed
+      final updatedInstances = [
+        sampleInstances[0],
+        sampleInstances[1].copyWith(
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 3, 8, 12, 0),
+        ),
+      ];
+      instancesSubject.add(updatedInstances);
+      await tester.pumpAndSettle();
+
+      // Because _getMonthTaskMap invalidates cache when instances change,
+      // bottom sheet rebuild shows both tasks completed (2 check_circle icons).
+      expect(find.byIcon(Icons.check_circle), findsNWidgets(2));
+      expect(find.byIcon(Icons.radio_button_unchecked), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'family task completion status is completed for user who completed task',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final familyTask = TaskInstance(
+        id: 'I-family-1',
+        scheduleId: 'S-family',
+        ruleId: 'R-family',
+        title: 'Family Chore',
+        description: 'Clean up the kitchen',
+        priority: TaskPriority.high,
+        scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
+        status: TaskStatus.pending,
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.individual,
+        completedByUserIds: const ['user-1'],
+      );
+
+      instancesSubject.add([familyTask]);
+
+      // Pump with user-1 (who completed the task)
+      await tester.pumpWidget(
+        createTestWidget(currentUser: MockFirebaseUser('user-1')),
+      );
+      await tester.pumpAndSettle();
+
+      final day8Finder = find.descendant(
+        of: find.byKey(const Key('month_card_2026_3')),
+        matching: find.text('8'),
+      );
+      await tester.tap(day8Finder.first);
+      await tester.pumpAndSettle();
+
+      // For user-1, task should be completed (check_circle)
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byIcon(Icons.check_circle),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'family task completion status is incomplete for user who has not completed task',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final familyTask = TaskInstance(
+        id: 'I-family-2',
+        scheduleId: 'S-family',
+        ruleId: 'R-family',
+        title: 'Family Chore',
+        description: 'Clean up the kitchen',
+        priority: TaskPriority.high,
+        scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
+        status: TaskStatus.pending,
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.individual,
+        completedByUserIds: const ['user-1'],
+      );
+
+      instancesSubject.add([familyTask]);
+
+      // Pump with user-2 (who has NOT completed the task)
+      await tester.pumpWidget(
+        createTestWidget(currentUser: MockFirebaseUser('user-2')),
+      );
+      await tester.pumpAndSettle();
+
+      final day8Finder = find.descendant(
+        of: find.byKey(const Key('month_card_2026_3')),
+        matching: find.text('8'),
+      );
+      await tester.tap(day8Finder.first);
+      await tester.pumpAndSettle();
+
+      // For user-2, task should be incomplete (radio_button_unchecked)
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byIcon(Icons.radio_button_unchecked),
         ),
         findsOneWidget,
       );

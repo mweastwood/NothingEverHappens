@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../logic/app_clock.dart';
+import '../logic/auth_repository.dart';
 import '../logic/civil_day.dart';
 import '../logic/task_instance.dart';
 import '../logic/task_schedule.dart';
@@ -22,6 +23,7 @@ class CalendarDayTask {
   final TaskInstance? instance;
   final TaskSchedule? schedule;
   final String? timeWindow;
+  final bool isCompleted;
 
   const CalendarDayTask({
     required this.id,
@@ -33,9 +35,8 @@ class CalendarDayTask {
     this.instance,
     this.schedule,
     this.timeWindow,
-  });
-
-  bool get isCompleted => status == TaskStatus.completed;
+    bool? isCompleted,
+  }) : isCompleted = isCompleted ?? (status == TaskStatus.completed);
 }
 
 class CalendarScreen extends ConsumerStatefulWidget {
@@ -57,6 +58,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   List<TaskInstance>? _cachedInstances;
   List<TaskSchedule>? _cachedSchedules;
   String? _cachedLocale;
+  String? _cachedUserId;
 
   @override
   void initState() {
@@ -151,8 +153,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     DateTime monthDate,
     List<TaskInstance> instances,
     List<TaskSchedule> schedules,
-    BuildContext context,
-  ) {
+    BuildContext context, {
+    String? currentUserId,
+  }) {
     final Map<CivilDay, List<CalendarDayTask>> map = {};
     final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
 
@@ -182,6 +185,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       final dueTimeStr = dueTod.format(context);
       final timeWindow = '$startTimeStr – $dueTimeStr';
 
+      final bool isCompleted = (inst.isFamily && currentUserId != null)
+          ? inst.isCompletedForUser(currentUserId)
+          : (inst.status == TaskStatus.completed);
+
       final task = CalendarDayTask(
         id: inst.id,
         title: inst.title,
@@ -191,6 +198,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         isInstance: true,
         instance: inst,
         timeWindow: timeWindow,
+        isCompleted: isCompleted,
       );
 
       map.putIfAbsent(scheduledDate, () => []).add(task);
@@ -263,12 +271,31 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     DateTime monthDate,
     List<TaskInstance> instances,
     List<TaskSchedule> schedules,
-    BuildContext context,
-  ) {
+    BuildContext context, {
+    String? currentUserId,
+  }) {
+    final currentLocale = Localizations.localeOf(context).toString();
+    if (!identical(instances, _cachedInstances) ||
+        !identical(schedules, _cachedSchedules) ||
+        currentLocale != _cachedLocale ||
+        currentUserId != _cachedUserId) {
+      _monthTaskMapCache.clear();
+      _cachedInstances = instances;
+      _cachedSchedules = schedules;
+      _cachedLocale = currentLocale;
+      _cachedUserId = currentUserId;
+    }
+
     final monthKey = DateTime(monthDate.year, monthDate.month, 1);
     return _monthTaskMapCache.putIfAbsent(
       monthKey,
-      () => _computeMonthTaskMap(monthDate, instances, schedules, context),
+      () => _computeMonthTaskMap(
+        monthDate,
+        instances,
+        schedules,
+        context,
+        currentUserId: currentUserId,
+      ),
     );
   }
 
@@ -293,12 +320,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
               final instances = ref.watch(taskInstancesProvider).value ?? [];
               final schedules = ref.watch(taskSchedulesProvider).value ?? [];
+              final currentUserId = ref.watch(authStateProvider).value?.uid;
               final monthDate = DateTime(day.year, day.month, 1);
               final monthTasks = _getMonthTaskMap(
                 monthDate,
                 instances,
                 schedules,
                 consumerContext,
+                currentUserId: currentUserId,
               );
               final tasks = monthTasks[day] ?? const [];
 
@@ -569,14 +598,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final instances = instancesVal.value ?? [];
     final schedules = schedulesVal.value ?? [];
     final currentLocale = Localizations.localeOf(context).toString();
+    final currentUserId = ref.watch(authStateProvider).value?.uid;
 
     if (!identical(instances, _cachedInstances) ||
         !identical(schedules, _cachedSchedules) ||
-        currentLocale != _cachedLocale) {
+        currentLocale != _cachedLocale ||
+        currentUserId != _cachedUserId) {
       _monthTaskMapCache.clear();
       _cachedInstances = instances;
       _cachedSchedules = schedules;
       _cachedLocale = currentLocale;
+      _cachedUserId = currentUserId;
     }
 
     final isWide = isWideScreen(context);
@@ -594,8 +626,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Stack(
       children: [
         isWide
-            ? _buildWideMonthList(instances, schedules, today, theme)
-            : _buildNarrowMonthList(instances, schedules, today, theme),
+            ? _buildWideMonthList(
+                instances,
+                schedules,
+                today,
+                theme,
+                currentUserId: currentUserId,
+              )
+            : _buildNarrowMonthList(
+                instances,
+                schedules,
+                today,
+                theme,
+                currentUserId: currentUserId,
+              ),
         Positioned(
           right: 16,
           bottom: 16,
@@ -615,8 +659,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     List<TaskInstance> instances,
     List<TaskSchedule> schedules,
     CivilDay today,
-    ThemeData theme,
-  ) {
+    ThemeData theme, {
+    String? currentUserId,
+  }) {
     final rowCount = (_months.length / 2).ceil();
 
     return ListView.builder(
@@ -640,6 +685,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   today,
                   theme,
                   isWide: true,
+                  currentUserId: currentUserId,
                 ),
               ),
               const SizedBox(width: 16),
@@ -652,6 +698,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         today,
                         theme,
                         isWide: true,
+                        currentUserId: currentUserId,
                       )
                     : const SizedBox.shrink(),
               ),
@@ -666,8 +713,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     List<TaskInstance> instances,
     List<TaskSchedule> schedules,
     CivilDay today,
-    ThemeData theme,
-  ) {
+    ThemeData theme, {
+    String? currentUserId,
+  }) {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -682,6 +730,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             today,
             theme,
             isWide: false,
+            currentUserId: currentUserId,
           ),
         );
       },
@@ -695,6 +744,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     CivilDay today,
     ThemeData theme, {
     required bool isWide,
+    String? currentUserId,
   }) {
     final locale = Localizations.localeOf(context).toString();
     final monthTitle = DateFormat.yMMMM(locale).format(monthDate);
@@ -703,6 +753,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       instances,
       schedules,
       context,
+      currentUserId: currentUserId,
     );
     final weekdayHeaders = _getWeekdayHeaders(locale);
     final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
