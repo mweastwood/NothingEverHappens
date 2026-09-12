@@ -83,6 +83,8 @@ abstract class DocumentSnapshot {
 
 /// Abstract Firestore WriteBatch.
 abstract class WriteBatch {
+  void set(DocumentReference ref, Map<String, dynamic> data);
+  void update(DocumentReference ref, Map<String, dynamic> data);
   void delete(DocumentReference ref);
   Future<void> commit();
 }

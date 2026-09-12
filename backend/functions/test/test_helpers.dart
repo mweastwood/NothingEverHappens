@@ -34,7 +34,9 @@ class MockFirestoreDatabase implements FirestoreDatabase {
 
   @override
   MockCollectionReference collection(String path) {
-    return collections.putIfAbsent(path, () => MockCollectionReference(path));
+    final cleanPath = path.replaceAll(RegExp(r'^/+|/+$'), '');
+    return collections.putIfAbsent(
+        cleanPath, () => MockCollectionReference(cleanPath, this));
   }
 
   @override
@@ -69,17 +71,50 @@ class MockFirestoreDatabase implements FirestoreDatabase {
 
 class MockCollectionReference extends MockQuery implements CollectionReference {
   final String path;
+  final MockFirestoreDatabase? db;
   final Map<String, MockDocumentReference> documents = {};
 
-  MockCollectionReference(this.path);
+  MockCollectionReference(this.path, [this.db]);
 
   @override
   MockDocumentReference doc([String? id]) {
     final docId = id ?? 'mock_doc_${documents.length + 1}';
     return documents.putIfAbsent(
       docId,
-      () => MockDocumentReference(docId, path: '$path/$docId'),
+      () => MockDocumentReference(docId, path: '$path/$docId', db: db),
     );
+  }
+
+  @override
+  MockQuery limit(int count) {
+    final q = MockQuery();
+    q.whereConditions.addAll(whereConditions);
+    q.limitCount = count;
+    q.onGet = onGet ??
+        () async {
+          final allDocsSnap = await get();
+          return MockQuerySnapshot(allDocsSnap.docs.take(count).toList());
+        };
+    q.cannedDocs = cannedDocs;
+    return q;
+  }
+
+  @override
+  Future<QuerySnapshot> get() async {
+    if (onGet != null) {
+      return onGet!();
+    }
+    if (cannedDocs.isNotEmpty) {
+      return MockQuerySnapshot(cannedDocs);
+    }
+    var docs = documents.values
+        .where((d) => d.isExisting && d.docData != null)
+        .map((d) => MockDocumentSnapshot(d.id, d.docData, true, d))
+        .toList();
+    if (limitCount != null && limitCount! >= 0 && docs.length > limitCount!) {
+      docs = docs.take(limitCount!).toList();
+    }
+    return MockQuerySnapshot(docs);
   }
 }
 
@@ -115,7 +150,11 @@ class MockQuery implements Query {
     if (onGet != null) {
       return onGet!();
     }
-    return MockQuerySnapshot(cannedDocs);
+    var docs = cannedDocs;
+    if (limitCount != null && limitCount! >= 0 && docs.length > limitCount!) {
+      docs = docs.take(limitCount!).toList();
+    }
+    return MockQuerySnapshot(docs);
   }
 }
 
@@ -136,6 +175,7 @@ class MockDocumentReference implements DocumentReference {
   @override
   final String id;
   final String path;
+  final MockFirestoreDatabase? db;
   Map<String, dynamic>? docData;
   bool isExisting = true;
 
@@ -145,12 +185,16 @@ class MockDocumentReference implements DocumentReference {
   int deleteCalls = 0;
 
   MockDocumentReference(this.id,
-      {this.path = '', this.docData, this.isExisting = true});
+      {this.path = '', this.db, this.docData, this.isExisting = true});
 
   @override
-  MockCollectionReference collection(String path) {
+  MockCollectionReference collection(String subPath) {
+    if (db != null) {
+      final fullPath = path.isEmpty ? subPath : '$path/$subPath';
+      return db!.collection(fullPath);
+    }
     return subcollections.putIfAbsent(
-        path, () => MockCollectionReference('${this.path}/$path'));
+        subPath, () => MockCollectionReference('${this.path}/$subPath'));
   }
 
   @override
@@ -204,6 +248,8 @@ class MockDocumentSnapshot implements DocumentSnapshot {
 }
 
 class MockWriteBatch implements WriteBatch {
+  final Map<DocumentReference, Map<String, dynamic>> setOperations = {};
+  final Map<DocumentReference, Map<String, dynamic>> updateOperations = {};
   final List<DocumentReference> deletedRefs = [];
   final void Function()? onCommit;
   Future<void> Function()? onCommitAsync;
@@ -212,8 +258,27 @@ class MockWriteBatch implements WriteBatch {
   MockWriteBatch({this.onCommit, this.onCommitAsync});
 
   @override
+  void set(DocumentReference ref, Map<String, dynamic> data) {
+    setOperations[ref] = Map<String, dynamic>.from(data);
+    if (ref is MockDocumentReference) {
+      ref.set(data);
+    }
+  }
+
+  @override
+  void update(DocumentReference ref, Map<String, dynamic> data) {
+    updateOperations[ref] = Map<String, dynamic>.from(data);
+    if (ref is MockDocumentReference) {
+      ref.update(data);
+    }
+  }
+
+  @override
   void delete(DocumentReference ref) {
     deletedRefs.add(ref);
+    if (ref is MockDocumentReference) {
+      ref.delete();
+    }
   }
 
   @override
