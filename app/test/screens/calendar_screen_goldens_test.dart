@@ -17,7 +17,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
-import 'package:nothing_ever_happens/screens/home_screen.dart';
+import 'package:nothing_ever_happens/screens/calendar_screen.dart';
 import 'package:nothing_ever_happens/logic/subscription_service.dart';
 
 import 'home_screen_test.mocks.dart';
@@ -83,6 +83,31 @@ void main() {
         ),
       ],
     ),
+    TaskSchedule(
+      id: 'S-3',
+      title: 'Pay Utilities Bill',
+      description: 'Electric and water bills.',
+      priority: TaskPriority.high,
+      schedules: [
+        MonthlySchedule(
+          id: 'R-3',
+          scheduleId: 'S-3',
+          startDate: const CivilDay(year: 2026, month: 3, day: 1),
+          interval: 1,
+          dayOfMonth: 15,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 0,
+          ),
+        ),
+      ],
+    ),
   ];
 
   final sampleInstances = [
@@ -96,7 +121,8 @@ void main() {
       scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
       startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
       dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
-      status: TaskStatus.pending,
+      status: TaskStatus.completed,
+      completedAt: DateTime(2026, 3, 8, 10, 30),
     ),
     TaskInstance(
       id: 'I-2',
@@ -108,6 +134,54 @@ void main() {
       scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
       startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
       dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      status: TaskStatus.pending,
+    ),
+    TaskInstance(
+      id: 'I-3',
+      scheduleId: 'S-1',
+      ruleId: 'R-1',
+      title: 'Grocery Shopping',
+      description: 'Buy vegetables, fruits, and milk.',
+      priority: TaskPriority.low,
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 14, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 16, minute: 0),
+      status: TaskStatus.pending,
+    ),
+    TaskInstance(
+      id: 'I-4',
+      scheduleId: 'S-1',
+      ruleId: 'R-1',
+      title: 'Water the Houseplants',
+      description: 'Living room, kitchen, and balcony plants.',
+      priority: TaskPriority.high,
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 9),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
+      status: TaskStatus.pending,
+    ),
+    TaskInstance(
+      id: 'I-5',
+      scheduleId: 'S-2',
+      ruleId: 'R-2',
+      title: 'Review Weekly Plan',
+      description: 'Check calendar and meal schedule for the week.',
+      priority: TaskPriority.medium,
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 9),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      status: TaskStatus.pending,
+    ),
+    TaskInstance(
+      id: 'I-6',
+      scheduleId: 'S-3',
+      ruleId: 'R-3',
+      title: 'Pay Utilities Bill',
+      description: 'Electric and water bills.',
+      priority: TaskPriority.high,
+      scheduledDate: const CivilDay(year: 2026, month: 3, day: 15),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 18, minute: 0),
       status: TaskStatus.pending,
     ),
   ];
@@ -147,7 +221,7 @@ void main() {
     settingsSubject.close();
   });
 
-  Widget createTestScreen({int initialTab = 0}) {
+  Widget createTestWidget({Brightness brightness = Brightness.light}) {
     final firestore = FakeFirebaseFirestore();
     final familyRepo = FamilyRepository(
       firestore: firestore,
@@ -168,55 +242,16 @@ void main() {
         subscriptionServiceProvider.overrideWith(
           (ref) => FakeSubscriptionService(ref, SubscriptionTier.family),
         ),
-        homeTabIndexProvider.overrideWith((ref) => initialTab),
       ],
-      child: const HomeScreen(),
+      child: const Scaffold(body: CalendarScreen()),
     );
   }
 
-  testGoldens('Wide Screen Layout - Light Theme - Tasks Tab', (tester) async {
-    await tester.pumpWidgetBuilder(
-      createTestScreen(initialTab: 0),
-      wrapper: l10nMaterialAppWrapper(
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.deepPurple,
-            brightness: Brightness.light,
-          ),
-        ),
-      ),
-      surfaceSize: const Size(900, 600),
-    );
-    await tester.pumpAndSettle();
-
-    await screenMatchesGolden(tester, 'wide_screen_light_tasks_tab');
-  });
-
-  testGoldens('Wide Screen Layout - Dark Theme - Tasks Tab', (tester) async {
-    await tester.pumpWidgetBuilder(
-      createTestScreen(initialTab: 0),
-      wrapper: l10nMaterialAppWrapper(
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.deepPurple,
-            brightness: Brightness.dark,
-          ),
-        ),
-      ),
-      surfaceSize: const Size(900, 600),
-    );
-    await tester.pumpAndSettle();
-
-    await screenMatchesGolden(tester, 'wide_screen_dark_tasks_tab');
-  });
-
-  testGoldens('Wide Screen Layout - Light Theme - Schedule Tab', (
+  testGoldens('CalendarScreen - Mobile Portrait (400x800) - Light Theme', (
     tester,
   ) async {
     await tester.pumpWidgetBuilder(
-      createTestScreen(initialTab: 1),
+      createTestWidget(brightness: Brightness.light),
       wrapper: l10nMaterialAppWrapper(
         theme: ThemeData(
           useMaterial3: true,
@@ -226,56 +261,18 @@ void main() {
           ),
         ),
       ),
-      surfaceSize: const Size(900, 600),
+      surfaceSize: const Size(400, 800),
     );
     await tester.pumpAndSettle();
 
-    await screenMatchesGolden(tester, 'wide_screen_light_schedule_tab');
+    await screenMatchesGolden(tester, 'calendar_screen_mobile_portrait_light');
   });
 
-  testGoldens('Wide Screen Layout - Dark Theme - Schedule Tab', (tester) async {
-    await tester.pumpWidgetBuilder(
-      createTestScreen(initialTab: 1),
-      wrapper: l10nMaterialAppWrapper(
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.deepPurple,
-            brightness: Brightness.dark,
-          ),
-        ),
-      ),
-      surfaceSize: const Size(900, 600),
-    );
-    await tester.pumpAndSettle();
-
-    await screenMatchesGolden(tester, 'wide_screen_dark_schedule_tab');
-  });
-
-  testGoldens('Wide Screen Layout - Light Theme - Calendar Tab', (
+  testGoldens('CalendarScreen - Mobile Portrait (400x800) - Dark Theme', (
     tester,
   ) async {
     await tester.pumpWidgetBuilder(
-      createTestScreen(initialTab: 2),
-      wrapper: l10nMaterialAppWrapper(
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.deepPurple,
-            brightness: Brightness.light,
-          ),
-        ),
-      ),
-      surfaceSize: const Size(900, 600),
-    );
-    await tester.pumpAndSettle();
-
-    await screenMatchesGolden(tester, 'wide_screen_light_calendar_tab');
-  });
-
-  testGoldens('Wide Screen Layout - Dark Theme - Calendar Tab', (tester) async {
-    await tester.pumpWidgetBuilder(
-      createTestScreen(initialTab: 2),
+      createTestWidget(brightness: Brightness.dark),
       wrapper: l10nMaterialAppWrapper(
         theme: ThemeData(
           useMaterial3: true,
@@ -285,10 +282,125 @@ void main() {
           ),
         ),
       ),
-      surfaceSize: const Size(900, 600),
+      surfaceSize: const Size(400, 800),
     );
     await tester.pumpAndSettle();
 
-    await screenMatchesGolden(tester, 'wide_screen_dark_calendar_tab');
+    await screenMatchesGolden(tester, 'calendar_screen_mobile_portrait_dark');
+  });
+
+  testGoldens('CalendarScreen - Tablet Landscape (650x420)', (tester) async {
+    await tester.pumpWidgetBuilder(
+      createTestWidget(brightness: Brightness.light),
+      wrapper: l10nMaterialAppWrapper(
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.deepPurple,
+            brightness: Brightness.light,
+          ),
+        ),
+      ),
+      surfaceSize: const Size(650, 420),
+    );
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'calendar_screen_tablet_landscape');
+  });
+
+  testGoldens(
+    'CalendarScreen - Wide Screen Two Columns (900x600) - Light Theme',
+    (tester) async {
+      await tester.pumpWidgetBuilder(
+        createTestWidget(brightness: Brightness.light),
+        wrapper: l10nMaterialAppWrapper(
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.deepPurple,
+              brightness: Brightness.light,
+            ),
+          ),
+        ),
+        surfaceSize: const Size(900, 600),
+      );
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(
+        tester,
+        'calendar_screen_wide_two_columns_light',
+      );
+    },
+  );
+
+  testGoldens(
+    'CalendarScreen - Wide Screen Two Columns (900x600) - Dark Theme',
+    (tester) async {
+      await tester.pumpWidgetBuilder(
+        createTestWidget(brightness: Brightness.dark),
+        wrapper: l10nMaterialAppWrapper(
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.deepPurple,
+              brightness: Brightness.dark,
+            ),
+          ),
+        ),
+        surfaceSize: const Size(900, 600),
+      );
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(
+        tester,
+        'calendar_screen_wide_two_columns_dark',
+      );
+    },
+  );
+
+  testGoldens('CalendarScreen - Desktop Large Screen (1200x800)', (
+    tester,
+  ) async {
+    await tester.pumpWidgetBuilder(
+      createTestWidget(brightness: Brightness.light),
+      wrapper: l10nMaterialAppWrapper(
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.deepPurple,
+            brightness: Brightness.light,
+          ),
+        ),
+      ),
+      surfaceSize: const Size(1200, 800),
+    );
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'calendar_screen_desktop_large');
+  });
+
+  testGoldens('CalendarScreen - Day Details Bottom Sheet (400x800)', (
+    tester,
+  ) async {
+    await tester.pumpWidgetBuilder(
+      createTestWidget(brightness: Brightness.light),
+      wrapper: l10nMaterialAppWrapper(
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.deepPurple,
+            brightness: Brightness.light,
+          ),
+        ),
+      ),
+      surfaceSize: const Size(400, 800),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap on Day 8 (March 8, 2026 - today)
+    await tester.tap(find.text('8').first);
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'calendar_screen_day_details_sheet');
   });
 }

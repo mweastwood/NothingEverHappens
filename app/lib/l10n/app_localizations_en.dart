@@ -43,6 +43,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardTab => 'Dashboard';
 
   @override
+  String get calendarTab => 'Calendar';
+
+  @override
+  String get calendarJumpToToday => 'Today';
+
+  @override
+  String get calendarNoTasks => 'No tasks scheduled';
+
+  @override
+  String tasksForDate(String date) {
+    return 'Tasks for $date';
+  }
+
+  @override
   String get capacityPromptTitle => 'Adjust your weekly capacity';
 
   @override

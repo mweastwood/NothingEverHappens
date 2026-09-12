@@ -16,6 +16,7 @@ import 'package:nothing_ever_happens/screens/home_screen.dart';
 import 'package:nothing_ever_happens/screens/settings_screen.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
+import 'package:nothing_ever_happens/screens/calendar_screen.dart';
 import 'package:nothing_ever_happens/screens/family_screen.dart';
 import 'package:nothing_ever_happens/screens/dashboard_screen.dart';
 import 'package:nothing_ever_happens/screens/help_screen.dart';
@@ -120,7 +121,7 @@ void main() {
     expect(find.byType(FloatingActionButton), findsOneWidget);
   });
 
-  testWidgets('HomeScreen switch tabs to Schedule, Family, and back', (
+  testWidgets('HomeScreen switch tabs to Schedule, Calendar, and back', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(createScreen());
@@ -137,45 +138,27 @@ void main() {
     // Verify TaskScheduleScreen is visible, others are not
     expect(find.byType(TaskScheduleScreen), findsOneWidget);
     expect(find.byType(TaskListScreen), findsNothing);
-    expect(find.byType(FamilyScreen), findsNothing);
+    expect(find.byType(CalendarScreen), findsNothing);
 
     // Verify FAB is still shown on Schedule tab
     expect(find.byType(FloatingActionButton), findsOneWidget);
 
-    // 2. Switch to Dashboard tab
-    await tester.tap(find.text('Dashboard'));
+    // 2. Switch to Calendar tab
+    await tester.tap(find.text('Calendar'));
     await tester.pumpAndSettle();
 
     // Verify selected tab is index 2
-    final NavigationBar navBarDashboard = tester.widget(
+    final NavigationBar navBarCalendar = tester.widget(
       find.byType(NavigationBar),
     );
-    expect(navBarDashboard.selectedIndex, 2);
+    expect(navBarCalendar.selectedIndex, 2);
 
-    // Verify DashboardScreen is visible, others are not
-    expect(find.byType(DashboardScreen), findsOneWidget);
+    // Verify CalendarScreen is visible, others are not
+    expect(find.byType(CalendarScreen), findsOneWidget);
     expect(find.byType(TaskListScreen), findsNothing);
     expect(find.byType(TaskScheduleScreen), findsNothing);
-    expect(find.byType(FamilyScreen), findsNothing);
 
-    // Verify FAB is hidden on Dashboard tab
-    expect(find.byType(FloatingActionButton), findsNothing);
-
-    // 3. Switch to Family tab
-    await tester.tap(find.text('Family'));
-    await tester.pumpAndSettle();
-
-    // Verify selected tab is index 3
-    final NavigationBar navBar2 = tester.widget(find.byType(NavigationBar));
-    expect(navBar2.selectedIndex, 3);
-
-    // Verify FamilyScreen is visible, others are not
-    expect(find.byType(FamilyScreen), findsOneWidget);
-    expect(find.byType(TaskListScreen), findsNothing);
-    expect(find.byType(TaskScheduleScreen), findsNothing);
-    expect(find.byType(DashboardScreen), findsNothing);
-
-    // Verify FAB is hidden on Family tab
+    // Verify FAB is hidden on Calendar tab
     expect(find.byType(FloatingActionButton), findsNothing);
 
     // 3. Switch back to Tasks tab
@@ -189,6 +172,44 @@ void main() {
     // Verify TaskListScreen is visible again and FAB is back
     expect(find.byType(TaskListScreen), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);
+  });
+
+  testWidgets('HomeScreen drawer opens and navigates to dashboard', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle();
+
+    // Open drawer
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('drawer_dashboard_tile')), findsOneWidget);
+
+    // Tap on dashboard tile and verify navigation
+    await tester.tap(find.byKey(const Key('drawer_dashboard_tile')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DashboardScreen), findsOneWidget);
+  });
+
+  testWidgets('HomeScreen drawer opens and navigates to family', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle();
+
+    // Open drawer
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('drawer_family_tile')), findsOneWidget);
+
+    // Tap on family tile and verify navigation
+    await tester.tap(find.byKey(const Key('drawer_family_tile')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FamilyScreen), findsOneWidget);
   });
 
   testWidgets('HomeScreen drawer opens and navigates to settings', (
@@ -346,7 +367,20 @@ void main() {
       expect(find.byType(TaskScheduleScreen), findsOneWidget);
     });
 
-    testWidgets('routes to /dashboard when path is /dashboard', (
+    testWidgets('routes to /calendar when path is /calendar', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        createScreen(mockUri: Uri.parse('https://example.com/calendar')),
+      );
+      await tester.pumpAndSettle();
+
+      final NavigationBar navBar = tester.widget(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 2);
+      expect(find.byType(CalendarScreen), findsOneWidget);
+    });
+
+    testWidgets('routes to /dashboard and pushes DashboardScreen', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -354,12 +388,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final NavigationBar navBar = tester.widget(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 2);
       expect(find.byType(DashboardScreen), findsOneWidget);
     });
 
-    testWidgets('routes to /family when path is /family', (
+    testWidgets('routes to /family and pushes FamilyScreen', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -367,8 +399,6 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final NavigationBar navBar = tester.widget(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 3);
       expect(find.byType(FamilyScreen), findsOneWidget);
     });
 
@@ -451,7 +481,7 @@ void main() {
         // Verify TaskListScreen is visible, others are not
         expect(find.byType(TaskListScreen), findsOneWidget);
         expect(find.byType(TaskScheduleScreen), findsNothing);
-        expect(find.byType(FamilyScreen), findsNothing);
+        expect(find.byType(CalendarScreen), findsNothing);
 
         // Verify FloatingActionButton is shown on Tasks tab
         expect(find.byType(FloatingActionButton), findsOneWidget);
@@ -472,27 +502,21 @@ void main() {
       expect(rail1.selectedIndex, 1);
       expect(find.byType(TaskScheduleScreen), findsOneWidget);
       expect(find.byType(TaskListScreen), findsNothing);
+      expect(find.byType(CalendarScreen), findsNothing);
       expect(find.byType(FloatingActionButton), findsOneWidget);
 
-      // 2. Switch to Dashboard tab
-      await tester.tap(find.text('Dashboard'));
+      // 2. Switch to Calendar tab
+      await tester.tap(find.text('Calendar'));
       await tester.pumpAndSettle();
 
       final NavigationRail rail2 = tester.widget(find.byType(NavigationRail));
       expect(rail2.selectedIndex, 2);
-      expect(find.byType(DashboardScreen), findsOneWidget);
+      expect(find.byType(CalendarScreen), findsOneWidget);
+      expect(find.byType(TaskListScreen), findsNothing);
+      expect(find.byType(TaskScheduleScreen), findsNothing);
       expect(find.byType(FloatingActionButton), findsNothing);
 
-      // 3. Switch to Family tab
-      await tester.tap(find.text('Family'));
-      await tester.pumpAndSettle();
-
-      final NavigationRail rail3 = tester.widget(find.byType(NavigationRail));
-      expect(rail3.selectedIndex, 3);
-      expect(find.byType(FamilyScreen), findsOneWidget);
-      expect(find.byType(FloatingActionButton), findsNothing);
-
-      // 4. Switch back to Tasks tab
+      // 3. Switch back to Tasks tab
       await tester.tap(find.text('Tasks'));
       await tester.pumpAndSettle();
 

@@ -8,6 +8,7 @@ import '../logic/app_route_manager.dart';
 import 'create_task_screen.dart';
 import 'task_list_screen.dart';
 import 'task_schedule_screen.dart';
+import 'calendar_screen.dart';
 import 'dashboard_screen.dart';
 import 'settings_screen.dart';
 import 'subscription_screen.dart';
@@ -70,9 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? const TaskListScreen()
         : currentIndex == 1
         ? const TaskScheduleScreen()
-        : currentIndex == 2
-        ? const DashboardScreen()
-        : const FamilyScreen();
+        : const CalendarScreen();
 
     return HomeSearchAndShortcutWidget(
       currentIndex: currentIndex,
@@ -97,19 +96,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           label: Text(context.l10n.tasksTab),
                         ),
                         NavigationRailDestination(
-                          icon: const Icon(Icons.calendar_month_outlined),
-                          selectedIcon: const Icon(Icons.calendar_month),
+                          icon: const Icon(Icons.event_repeat_outlined),
+                          selectedIcon: const Icon(Icons.event_repeat),
                           label: Text(context.l10n.scheduleTab),
                         ),
                         NavigationRailDestination(
-                          icon: const Icon(Icons.dashboard_outlined),
-                          selectedIcon: const Icon(Icons.dashboard),
-                          label: Text(context.l10n.dashboardTab),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.people_outline),
-                          selectedIcon: const Icon(Icons.people),
-                          label: Text(context.l10n.familyTab),
+                          icon: const Icon(Icons.calendar_month_outlined),
+                          selectedIcon: const Icon(Icons.calendar_month),
+                          label: Text(context.l10n.calendarTab),
                         ),
                       ],
                     ),
@@ -133,19 +127,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       label: context.l10n.tasksTab,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.calendar_month_outlined),
-                      selectedIcon: const Icon(Icons.calendar_month),
+                      icon: const Icon(Icons.event_repeat_outlined),
+                      selectedIcon: const Icon(Icons.event_repeat),
                       label: context.l10n.scheduleTab,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.dashboard_outlined),
-                      selectedIcon: const Icon(Icons.dashboard),
-                      label: context.l10n.dashboardTab,
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.people_outline),
-                      selectedIcon: const Icon(Icons.people),
-                      label: context.l10n.familyTab,
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      selectedIcon: const Icon(Icons.calendar_month),
+                      label: context.l10n.calendarTab,
                     ),
                   ],
                 ),
@@ -178,6 +167,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
             ),
+          ),
+          ListTile(
+            key: const Key('drawer_dashboard_tile'),
+            leading: const Icon(Icons.dashboard_outlined),
+            title: Text(context.l10n.dashboardTab),
+            onTap: () {
+              final container = ProviderScope.containerOf(context);
+              final l10n = context.l10n;
+              Navigator.pop(context); // Close drawer
+              SystemNavigator.routeInformationUpdated(
+                uri: Uri.parse('/dashboard'),
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UncontrolledProviderScope(
+                    container: container,
+                    child: Scaffold(
+                      appBar: AppBar(title: Text(l10n.dashboardTab)),
+                      body: const DashboardScreen(),
+                    ),
+                  ),
+                ),
+              ).then((_) {
+                _routeManager.updateUrlPath(currentIndex);
+              });
+            },
+          ),
+          ListTile(
+            key: const Key('drawer_family_tile'),
+            leading: const Icon(Icons.people_outline),
+            title: Text(context.l10n.familyTab),
+            onTap: () {
+              final container = ProviderScope.containerOf(context);
+              final l10n = context.l10n;
+              Navigator.pop(context); // Close drawer
+              SystemNavigator.routeInformationUpdated(
+                uri: Uri.parse('/family'),
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UncontrolledProviderScope(
+                    container: container,
+                    child: Scaffold(
+                      appBar: AppBar(title: Text(l10n.familyTab)),
+                      body: const FamilyScreen(),
+                    ),
+                  ),
+                ),
+              ).then((_) {
+                _routeManager.updateUrlPath(currentIndex);
+              });
+            },
           ),
           ListTile(
             key: const Key('drawer_recipes_tile'),

@@ -259,8 +259,8 @@ void main() {
       surfaceSize: const Size(400, 800),
     );
 
-    // Tap on Calendario / Schedules Tab
-    await tester.tap(find.byIcon(Icons.calendar_month_outlined));
+    // Tap on Programación / Schedules Tab
+    await tester.tap(find.byIcon(Icons.event_repeat_outlined));
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'task_schedule_screen_es');
@@ -312,10 +312,42 @@ void main() {
       surfaceSize: const Size(400, 800),
     );
 
-    await tester.tap(find.byIcon(Icons.dashboard_outlined));
+    // Open drawer and navigate to Dashboard
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drawer_dashboard_tile')));
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'dashboard_screen_es');
+  });
+
+  testGoldens('Spanish Golden - CalendarScreen (HomeScreen Tab 2)', (
+    tester,
+  ) async {
+    await tester.pumpWidgetBuilder(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(mockAuthRepository),
+          taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+          userSettingsRepositoryProvider.overrideWithValue(
+            mockUserSettingsRepository,
+          ),
+          familyRepositoryProvider.overrideWithValue(null),
+          userSettingsProvider.overrideWith(
+            (ref) => Stream.value(const UserSettings(hoursAvailable: 8.0)),
+          ),
+        ],
+        child: const HomeScreen(),
+      ),
+      wrapper: buildEsWrapper,
+      surfaceSize: const Size(400, 800),
+    );
+
+    // Tap on Calendario / Calendar Tab
+    await tester.tap(find.byIcon(Icons.calendar_month_outlined));
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'calendar_screen_es');
   });
 
   testGoldens('Spanish Golden - FamilyScreen (HomeScreen Tab 3)', (
@@ -377,8 +409,10 @@ void main() {
       surfaceSize: const Size(400, 800),
     );
 
-    // Tap on Familia / Family Tab
-    await tester.tap(find.byIcon(Icons.people_outline));
+    // Open drawer and navigate to Family
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drawer_family_tile')));
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'family_screen_es');

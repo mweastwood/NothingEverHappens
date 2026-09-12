@@ -7,6 +7,9 @@ import 'task_repository.dart';
 import '../screens/settings_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../screens/create_task_screen.dart';
+import '../screens/dashboard_screen.dart';
+import '../screens/family_screen.dart';
+import 'l10n_extension.dart';
 
 class AppRouteManager {
   final Uri? mockUri;
@@ -24,10 +27,7 @@ class AppRouteManager {
         path = '/schedules';
         break;
       case 2:
-        path = '/dashboard';
-        break;
-      case 3:
-        path = '/family';
+        path = '/calendar';
         break;
       default:
         return;
@@ -103,13 +103,47 @@ class AppRouteManager {
         onIndexChanged(1);
         updateUrlPath(1);
       },
-      'dashboard': () {
+      'calendar': () {
         onIndexChanged(2);
         updateUrlPath(2);
       },
+      'dashboard': () {
+        onIndexChanged(currentIndex);
+        SystemNavigator.routeInformationUpdated(uri: Uri.parse('/dashboard'));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UncontrolledProviderScope(
+              container: ProviderScope.containerOf(context),
+              child: Scaffold(
+                appBar: AppBar(title: Text(context.l10n.dashboardTab)),
+                body: const DashboardScreen(),
+              ),
+            ),
+          ),
+        ).then((_) {
+          if (!context.mounted) return;
+          updateUrlPath(currentIndex);
+        });
+      },
       'family': () {
-        onIndexChanged(3);
-        updateUrlPath(3);
+        onIndexChanged(currentIndex);
+        SystemNavigator.routeInformationUpdated(uri: Uri.parse('/family'));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UncontrolledProviderScope(
+              container: ProviderScope.containerOf(context),
+              child: Scaffold(
+                appBar: AppBar(title: Text(context.l10n.familyTab)),
+                body: const FamilyScreen(),
+              ),
+            ),
+          ),
+        ).then((_) {
+          if (!context.mounted) return;
+          updateUrlPath(currentIndex);
+        });
       },
       'settings': () {
         onIndexChanged(0);

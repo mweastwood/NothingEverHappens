@@ -10,6 +10,19 @@
   "tasksTab": "Tasks",
   "scheduleTab": "Schedule",
   "dashboardTab": "Dashboard",
+  "calendarTab": "Calendar",
+  "calendarJumpToToday": "Today",
+  "calendarNoTasks": "No tasks scheduled",
+  "tasksForDate": "Tasks for {date}",
+  "@tasksForDate": {
+    "description": "Header showing tasks for a given date in calendar",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Wednesday, March 18, 2026"
+      }
+    }
+  },
   "capacityPromptTitle": "Adjust your weekly capacity",
   "capacityPromptSubtitle": "Set your available hours for the upcoming days.",
   "communicateMissedChoreTitle": "Communicate missed chore: {taskTitle}",
