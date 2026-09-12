@@ -1804,7 +1804,7 @@ void main() {
       );
 
       test(
-        'completeTaskInstance on a recurring family task spawns next occurrence in family collection',
+        'completeTaskInstance on a recurring family task completes instance and delegates spawning to Cloud Family Scheduler',
         () async {
           final now = DateTime(2026, 6, 23, 10, 0, 0);
           AppClock.setMockTime(now);
@@ -1816,9 +1816,11 @@ void main() {
             'familyRole': 'parent',
           });
 
+          final fakeCloudScheduler = _FakeCloudFamilySchedulerClient();
           final repository = FirestoreTaskRepository(
             firestore: firestore,
             userId: 'test-user-id',
+            cloudFamilySchedulerClient: fakeCloudScheduler,
           );
 
           final task = TestTaskFactory.createDaily(
@@ -1835,29 +1837,52 @@ void main() {
           // Yield event loop to allow background streams and futures to complete
           await Future(() {});
 
-          // Fetch the spawned family instances
+          // Local device should NOT spawn family instances (cloud is single authority)
           final familyInsts = await firestore
               .collection('families')
               .doc(familyId)
               .collection('instances')
               .get();
-          final initialCount = familyInsts.docs.length;
-          expect(initialCount, greaterThan(0));
+          expect(familyInsts.docs.isEmpty, isTrue);
+          expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
 
-          final instId = familyInsts.docs.first.id;
-
-          // Complete the family instance
-          final completed = await repository.completeTaskInstance(instId);
-          expect(completed, isNotNull);
-          expect(completed?.status, TaskStatus.completed);
-
-          // Should have spawned next occurrence in families collection
-          final familyInstsAfter = await firestore
+          // Seed an instance as if spawned by the cloud scheduler
+          final instance = TaskInstance(
+            id: 'fam-inst-1',
+            scheduleId: task.id,
+            ruleId: 'r1',
+            title: task.title,
+            description: task.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 23),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            isFamily: true,
+            status: TaskStatus.pending,
+          );
+          await firestore
               .collection('families')
               .doc(familyId)
               .collection('instances')
-              .get();
-          expect(familyInstsAfter.docs.length, greaterThan(initialCount));
+              .doc(instance.id)
+              .set(instance.toFirestore());
+
+          fakeCloudScheduler.triggeredFamilyIds.clear();
+
+          // Complete the family instance
+          final completed = await repository.completeTaskInstance(instance.id);
+          expect(completed, isNotNull);
+          expect(completed?.status, TaskStatus.completed);
+
+          // Next occurrence spawning is delegated to Cloud Family Scheduler
+          expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
         },
       );
 
@@ -3486,4 +3511,20 @@ class ControlledNotificationService implements NotificationService {
 
   @override
   Future<void> dispose() async {}
+}
+
+class _FakeCloudFamilySchedulerClient extends Fake
+    implements CloudFamilySchedulerClient {
+  final List<String> triggeredFamilyIds = [];
+  final List<DateTime?> triggeredNows = [];
+
+  @override
+  Future<bool> triggerFamilyScheduleProcessing({
+    required String familyId,
+    DateTime? now,
+  }) async {
+    triggeredFamilyIds.add(familyId);
+    triggeredNows.add(now);
+    return true;
+  }
 }

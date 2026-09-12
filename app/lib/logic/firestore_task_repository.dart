@@ -32,6 +32,7 @@ class FirestoreTaskRepository implements TaskRepository {
   final NotificationService? _notificationService;
   final ErrorHandler? errorHandler;
   final FamilyIdFetcher _familyIdFetcher;
+  final CloudFamilySchedulerClient? cloudFamilySchedulerClient;
   Future<void>? _activeProcessingFuture;
   bool _hasQueuedForceRun = false;
   final List<Future<void> Function()> _queuedPostProcessCallbacks = [];
@@ -54,6 +55,7 @@ class FirestoreTaskRepository implements TaskRepository {
     NotificationService? notificationService,
     this.errorHandler,
     this.logger,
+    this.cloudFamilySchedulerClient,
     FamilyIdFetcher? familyIdFetcher,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _userId = userId,
@@ -689,6 +691,10 @@ class FirestoreTaskRepository implements TaskRepository {
   ) {
     bool hasChanges = false;
     for (final inst in instancesById.values.toList()) {
+      if (inst.isFamily) {
+        // Shared family instances are maintained exclusively by the Cloud Family Scheduler.
+        continue;
+      }
       if (!deletedInstanceIds.contains(inst.id) &&
           inst.status == TaskStatus.pending &&
           !taskMap.containsKey(inst.scheduleId)) {
@@ -757,6 +763,10 @@ class FirestoreTaskRepository implements TaskRepository {
       final List<DateTime> allTriggerTimes = [];
 
       for (final task in sortedTasks) {
+        if (task.isFamily) {
+          // Shared family tasks are evaluated exclusively by the Cloud Family Scheduler.
+          continue;
+        }
         _lastProcessedTasks[task.id] = (
           processedAt: now,
           signature: _getScheduleSignature(task),
@@ -853,12 +863,11 @@ class FirestoreTaskRepository implements TaskRepository {
           .toList();
 
       if (evaluateFamilyTasks && familyId != null && familyId.isNotEmpty) {
-        final familyTasksRef = FirestoreCollections.familyTasks(
-          _firestore,
-          familyId,
+        unawaited(
+          cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+            familyId: familyId,
+          ),
         );
-        final familyTasksSnap = await familyTasksRef.get();
-        allTasks.addAll(familyTasksSnap.docs.map((d) => d.data()));
       }
 
       await _checkAndProcessMissedPolicies(
@@ -886,6 +895,13 @@ class FirestoreTaskRepository implements TaskRepository {
     await _notificationService?.scheduleNotifications(task);
 
     _cachedTasksMap[task.id] = task;
+    if (task.isFamily && familyId != null && familyId.isNotEmpty) {
+      unawaited(
+        cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+          familyId: familyId,
+        ),
+      );
+    }
     await _checkAndProcessMissedPolicies([task]);
   }
 
@@ -997,6 +1013,15 @@ class FirestoreTaskRepository implements TaskRepository {
     await _notificationService?.scheduleNotifications(newTask);
 
     _cachedTasksMap[newTask.id] = newTask;
+    if ((newTask.isFamily || isFamilyChanged) &&
+        familyId != null &&
+        familyId.isNotEmpty) {
+      unawaited(
+        cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+          familyId: familyId,
+        ),
+      );
+    }
     await _checkAndProcessMissedPolicies([newTask]);
   }
 
@@ -1049,6 +1074,14 @@ class FirestoreTaskRepository implements TaskRepository {
     _queuedTasksMap.remove(id);
     _cachedTasksMap.remove(targetId);
     _cachedTasksMap.remove(id);
+
+    if (task.isFamily && familyId != null && familyId.isNotEmpty) {
+      unawaited(
+        cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+          familyId: familyId,
+        ),
+      );
+    }
 
     await triggerMissedPolicyProcessing();
 
@@ -1147,21 +1180,31 @@ class FirestoreTaskRepository implements TaskRepository {
         );
 
         if (task != null) {
-          final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-          if (isRecurring) {
-            final allInstances = await _getInstancesForSchedule(
-              task.id,
-              task.isFamily,
-              familyId,
-            );
-            _spawnNextOccurrence(
-              task,
-              instance,
-              now,
-              batch,
-              familyId,
-              allInstances,
-            );
+          if (task.isFamily) {
+            if (familyId != null && familyId.isNotEmpty) {
+              unawaited(
+                cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+                  familyId: familyId,
+                ),
+              );
+            }
+          } else {
+            final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+            if (isRecurring) {
+              final allInstances = await _getInstancesForSchedule(
+                task.id,
+                task.isFamily,
+                familyId,
+              );
+              _spawnNextOccurrence(
+                task,
+                instance,
+                now,
+                batch,
+                familyId,
+                allInstances,
+              );
+            }
           }
         }
         await batch.commit();
@@ -1192,21 +1235,31 @@ class FirestoreTaskRepository implements TaskRepository {
     );
 
     if (task != null) {
-      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-      if (isRecurring) {
-        final allInstances = await _getInstancesForSchedule(
-          task.id,
-          task.isFamily,
-          familyId,
-        );
-        _spawnNextOccurrence(
-          task,
-          instance,
-          now,
-          batch,
-          familyId,
-          allInstances,
-        );
+      if (task.isFamily) {
+        if (familyId != null && familyId.isNotEmpty) {
+          unawaited(
+            cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
+              familyId: familyId,
+            ),
+          );
+        }
+      } else {
+        final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+        if (isRecurring) {
+          final allInstances = await _getInstancesForSchedule(
+            task.id,
+            task.isFamily,
+            familyId,
+          );
+          _spawnNextOccurrence(
+            task,
+            instance,
+            now,
+            batch,
+            familyId,
+            allInstances,
+          );
+        }
       }
     }
 
