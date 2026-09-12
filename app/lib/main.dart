@@ -175,18 +175,59 @@ void mainCommon(
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
+  @visibleForTesting
+  static ColorScheme bridgeColorScheme(dynamic scheme) {
+    return ColorScheme(
+      brightness: scheme.brightness,
+      primary: scheme.primary,
+      onPrimary: scheme.onPrimary,
+      primaryContainer: scheme.primaryContainer,
+      onPrimaryContainer: scheme.onPrimaryContainer,
+      secondary: scheme.secondary,
+      onSecondary: scheme.onSecondary,
+      secondaryContainer: scheme.secondaryContainer,
+      onSecondaryContainer: scheme.onSecondaryContainer,
+      tertiary: scheme.tertiary,
+      onTertiary: scheme.onTertiary,
+      tertiaryContainer: scheme.tertiaryContainer,
+      onTertiaryContainer: scheme.onTertiaryContainer,
+      error: scheme.error,
+      onError: scheme.onError,
+      errorContainer: scheme.errorContainer,
+      onErrorContainer: scheme.onErrorContainer,
+      surface: scheme.surface,
+      onSurface: scheme.onSurface,
+      surfaceDim: scheme.surfaceDim,
+      surfaceBright: scheme.surfaceBright,
+      surfaceContainerLowest: scheme.surfaceContainerLowest,
+      surfaceContainerLow: scheme.surfaceContainerLow,
+      surfaceContainer: scheme.surfaceContainer,
+      surfaceContainerHigh: scheme.surfaceContainerHigh,
+      surfaceContainerHighest: scheme.surfaceContainerHighest,
+      onSurfaceVariant: scheme.onSurfaceVariant,
+      outline: scheme.outline,
+      outlineVariant: scheme.outlineVariant,
+      shadow: scheme.shadow,
+      scrim: scheme.scrim,
+      inverseSurface: scheme.inverseSurface,
+      onInverseSurface: scheme.onInverseSurface,
+      inversePrimary: scheme.inversePrimary,
+      surfaceTint: scheme.surfaceTint,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).value;
 
     return DynamicColorBuilder(
-      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        ColorScheme lightScheme;
-        ColorScheme darkScheme;
+      builder: (lightDynamic, darkDynamic) {
+        final ColorScheme lightScheme;
+        final ColorScheme darkScheme;
 
         if (lightDynamic != null && darkDynamic != null) {
-          lightScheme = lightDynamic;
-          darkScheme = darkDynamic;
+          lightScheme = bridgeColorScheme(lightDynamic);
+          darkScheme = bridgeColorScheme(darkDynamic);
         } else {
           lightScheme = ColorScheme.fromSeed(
             seedColor: const Color(0xFFffd9f6),
