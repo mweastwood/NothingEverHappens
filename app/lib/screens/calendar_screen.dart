@@ -50,6 +50,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late final DateTime _initialNow;
   late final List<DateTime> _months;
   late final int _currentMonthIndex;
+  bool _hasScrolledToCurrentMonth = false;
+
+  final Map<DateTime, Map<CivilDay, List<CalendarDayTask>>> _monthTaskMapCache =
+      {};
+  List<TaskInstance>? _cachedInstances;
+  List<TaskSchedule>? _cachedSchedules;
+  String? _cachedLocale;
 
   @override
   void initState() {
@@ -66,10 +73,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       _months.add(DateTime(_initialNow.year, _initialNow.month + i, 1));
     }
     _currentMonthIndex = pastMonths;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToCurrentMonth();
-    });
   }
 
   @override
@@ -78,16 +81,48 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     super.dispose();
   }
 
+  int _getWeeksInMonth(DateTime monthDate) {
+    final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
+    final firstWeekday = DateTime(
+      monthDate.year,
+      monthDate.month,
+      1,
+    ).weekday; // 1=Mon, 7=Sun
+    final leadingEmptyCount = firstWeekday - 1;
+    final totalSlots = leadingEmptyCount + daysInMonth;
+    return (totalSlots / 7).ceil();
+  }
+
+  double _calculateTargetOffset({required bool isWide}) {
+    if (isWide) {
+      double offset = 16.0; // list top padding
+      final targetRow = _currentMonthIndex ~/ 2;
+      for (int r = 0; r < targetRow; r++) {
+        final idx1 = r * 2;
+        final idx2 = idx1 + 1;
+        final weeks1 = _getWeeksInMonth(_months[idx1]);
+        final weeks2 = idx2 < _months.length
+            ? _getWeeksInMonth(_months[idx2])
+            : 0;
+        final maxWeeks = weeks1 > weeks2 ? weeks1 : weeks2;
+        offset += 83.0 + (maxWeeks * 62.0) + 20.0;
+      }
+      return offset;
+    } else {
+      double offset = 12.0; // list top padding
+      for (int i = 0; i < _currentMonthIndex; i++) {
+        final weeks = _getWeeksInMonth(_months[i]);
+        offset += 83.0 + (weeks * 54.0) + 16.0;
+      }
+      return offset;
+    }
+  }
+
   void _scrollToCurrentMonth({bool animate = false}) {
+    if (!mounted) return;
     if (!_scrollController.hasClients) return;
     final isWide = isWideScreen(context);
-    // Approximate card height
-    final targetRow = isWide ? (_currentMonthIndex ~/ 2) : _currentMonthIndex;
-    final estimatedRowHeight = isWide ? 420.0 : 380.0;
-    final targetOffset = (targetRow * estimatedRowHeight).clamp(
-      0.0,
-      _scrollController.position.maxScrollExtent,
-    );
+    final targetOffset = _calculateTargetOffset(isWide: isWide);
 
     if (animate) {
       _scrollController.animateTo(
@@ -100,12 +135,26 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
   }
 
-  Map<CivilDay, List<CalendarDayTask>> _buildDayTaskMap(
+  List<String> _getWeekdayHeaders(String locale) {
+    try {
+      final symbols = DateFormat(null, locale).dateSymbols;
+      final narrow = symbols.STANDALONENARROWWEEKDAYS.isNotEmpty
+          ? symbols.STANDALONENARROWWEEKDAYS
+          : symbols.NARROWWEEKDAYS;
+      return [for (int i = 1; i <= 6; i++) narrow[i], narrow[0]];
+    } catch (_) {
+      return const ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    }
+  }
+
+  Map<CivilDay, List<CalendarDayTask>> _computeMonthTaskMap(
+    DateTime monthDate,
     List<TaskInstance> instances,
     List<TaskSchedule> schedules,
     BuildContext context,
   ) {
     final Map<CivilDay, List<CalendarDayTask>> map = {};
+    final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
 
     // 1. Concrete instances
     final Set<String> instanceScheduleDateKeys = {};
@@ -114,7 +163,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           inst.status == TaskStatus.failed) {
         continue;
       }
-      instanceScheduleDateKeys.add('${inst.scheduleId}_${inst.scheduledDate}');
+      final scheduledDate = inst.scheduledDate;
+      if (scheduledDate.year != monthDate.year ||
+          scheduledDate.month != monthDate.month) {
+        continue;
+      }
+      instanceScheduleDateKeys.add('${inst.scheduleId}_$scheduledDate');
 
       final startTod = TimeOfDay(
         hour: inst.startRelativeTime.hour,
@@ -139,63 +193,60 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         timeWindow: timeWindow,
       );
 
-      map.putIfAbsent(inst.scheduledDate, () => []).add(task);
+      map.putIfAbsent(scheduledDate, () => []).add(task);
     }
 
     // 2. Projected recurring schedules that do not have an instance for that day
-    for (final monthDate in _months) {
-      final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
-      for (int dayNum = 1; dayNum <= daysInMonth; dayNum++) {
-        final civilDay = CivilDay(
-          year: monthDate.year,
-          month: monthDate.month,
-          day: dayNum,
-        );
+    for (int dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      final civilDay = CivilDay(
+        year: monthDate.year,
+        month: monthDate.month,
+        day: dayNum,
+      );
 
-        for (final sched in schedules) {
-          final key = '${sched.id}_$civilDay';
-          if (instanceScheduleDateKeys.contains(key)) {
-            continue; // Already has concrete instance
-          }
+      for (final sched in schedules) {
+        final key = '${sched.id}_$civilDay';
+        if (instanceScheduleDateKeys.contains(key)) {
+          continue; // Already has concrete instance
+        }
 
-          final matchingRule = sched.schedules
-              .cast<TaskScheduleRule?>()
-              .firstWhere(
-                (r) => r != null && r.occursOn(civilDay),
-                orElse: () => null,
-              );
-
-          if (matchingRule != null) {
-            final startTod = TimeOfDay(
-              hour: matchingRule.startRelativeTime.hour,
-              minute: matchingRule.startRelativeTime.minute,
-            );
-            final dueTod = TimeOfDay(
-              hour: matchingRule.dueRelativeTime.hour,
-              minute: matchingRule.dueRelativeTime.minute,
-            );
-            final startTimeStr = startTod.format(context);
-            final dueTimeStr = dueTod.format(context);
-            final timeWindow = '$startTimeStr – $dueTimeStr';
-
-            final task = CalendarDayTask(
-              id: 'projected_${sched.id}_$civilDay',
-              title: sched.title,
-              description: sched.description,
-              priority: sched.priority,
-              status: TaskStatus.pending,
-              isInstance: false,
-              schedule: sched,
-              timeWindow: timeWindow,
+        final matchingRule = sched.schedules
+            .cast<TaskScheduleRule?>()
+            .firstWhere(
+              (r) => r != null && r.occursOn(civilDay),
+              orElse: () => null,
             );
 
-            map.putIfAbsent(civilDay, () => []).add(task);
-          }
+        if (matchingRule != null) {
+          final startTod = TimeOfDay(
+            hour: matchingRule.startRelativeTime.hour,
+            minute: matchingRule.startRelativeTime.minute,
+          );
+          final dueTod = TimeOfDay(
+            hour: matchingRule.dueRelativeTime.hour,
+            minute: matchingRule.dueRelativeTime.minute,
+          );
+          final startTimeStr = startTod.format(context);
+          final dueTimeStr = dueTod.format(context);
+          final timeWindow = '$startTimeStr – $dueTimeStr';
+
+          final task = CalendarDayTask(
+            id: 'projected_${sched.id}_$civilDay',
+            title: sched.title,
+            description: sched.description,
+            priority: sched.priority,
+            status: TaskStatus.pending,
+            isInstance: false,
+            schedule: sched,
+            timeWindow: timeWindow,
+          );
+
+          map.putIfAbsent(civilDay, () => []).add(task);
         }
       }
     }
 
-    // Sort tasks in each day: high priority first, then medium, then low
+    // Sort tasks in each day: incomplete before completed, then high priority to low
     for (final list in map.values) {
       list.sort((a, b) {
         if (a.isCompleted != b.isCompleted) {
@@ -208,15 +259,21 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return map;
   }
 
-  void _showDayDetailsSheet(
+  Map<CivilDay, List<CalendarDayTask>> _getMonthTaskMap(
+    DateTime monthDate,
+    List<TaskInstance> instances,
+    List<TaskSchedule> schedules,
     BuildContext context,
-    CivilDay day,
-    List<CalendarDayTask> tasks,
   ) {
-    final theme = Theme.of(context);
-    final dt = day.toDateTime();
-    final formattedDate = DateFormat.yMMMMEEEEd().format(dt);
+    final monthKey = DateTime(monthDate.year, monthDate.month, 1);
+    return _monthTaskMapCache.putIfAbsent(
+      monthKey,
+      () => _computeMonthTaskMap(monthDate, instances, schedules, context),
+    );
+  }
 
+  void _showDayDetailsSheet(BuildContext context, CivilDay day) {
+    final container = ProviderScope.containerOf(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -225,164 +282,68 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (bottomSheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom,
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(bottomSheetContext).size.height * 0.75,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Sheet Header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                formattedDate,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                tasks.isEmpty
-                                    ? context.l10n.calendarNoTasks
-                                    : '${tasks.length} ${tasks.length == 1 ? "task" : "tasks"}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton.filledTonal(
-                          icon: const Icon(Icons.add),
-                          tooltip: context.l10n.addTaskTooltip,
-                          onPressed: () {
-                            Navigator.pop(bottomSheetContext);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const CreateTaskScreen(
-                                  defaultToRepeating: false,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  // Tasks List
-                  if (tasks.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Center(
-                        child: Text(
-                          context.l10n.calendarNoTasks,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Flexible(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: tasks.length,
-                        separatorBuilder: (context, _) =>
-                            const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final task = tasks[index];
-                          final priorityColor = _getPriorityColor(
-                            theme.colorScheme,
-                            task.priority,
-                          );
+        return UncontrolledProviderScope(
+          container: container,
+          child: Consumer(
+            builder: (consumerContext, ref, _) {
+              final theme = Theme.of(consumerContext);
+              final dt = day.toDateTime();
+              final locale = Localizations.localeOf(consumerContext).toString();
+              final formattedDate = DateFormat.yMMMMEEEEd(locale).format(dt);
 
-                          return Card(
-                            elevation: 0,
-                            color: theme.colorScheme.surfaceContainerHighest
-                                .withValues(alpha: 0.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: priorityColor.withValues(alpha: 0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: ListTile(
-                              leading: task.isInstance
-                                  ? IconButton(
-                                      icon: Icon(
-                                        task.isCompleted
-                                            ? Icons.check_circle
-                                            : Icons.radio_button_unchecked,
-                                        color: task.isCompleted
-                                            ? theme.colorScheme.primary
-                                            : priorityColor,
-                                      ),
-                                      onPressed: () async {
-                                        final repo = ref.read(
-                                          taskRepositoryProvider,
-                                        );
-                                        if (repo != null &&
-                                            task.instance != null) {
-                                          if (task.isCompleted) {
-                                            await repo.uncompleteTaskInstance(
-                                              task.instance!.id,
-                                            );
-                                          } else {
-                                            await repo.completeTaskInstance(
-                                              task.instance!.id,
-                                            );
-                                          }
-                                        }
-                                        if (bottomSheetContext.mounted) {
-                                          Navigator.pop(bottomSheetContext);
-                                        }
-                                      },
-                                    )
-                                  : Icon(
-                                      Icons.event_repeat,
-                                      color: priorityColor,
-                                    ),
-                              title: Text(
-                                task.title,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  decoration: task.isCompleted
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  color: task.isCompleted
-                                      ? theme.colorScheme.onSurface.withValues(
-                                          alpha: 0.5,
-                                        )
-                                      : null,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (task.timeWindow != null) ...[
-                                    const SizedBox(height: 2),
+              final instances = ref.watch(taskInstancesProvider).value ?? [];
+              final schedules = ref.watch(taskSchedulesProvider).value ?? [];
+              final monthDate = DateTime(day.year, day.month, 1);
+              final monthTasks = _getMonthTaskMap(
+                monthDate,
+                instances,
+                schedules,
+                consumerContext,
+              );
+              final tasks = monthTasks[day] ?? const [];
+
+              return SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight:
+                          MediaQuery.of(bottomSheetContext).size.height * 0.75,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Sheet Header
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     Text(
-                                      task.timeWindow!,
+                                      consumerContext.l10n.tasksForDate(
+                                        formattedDate,
+                                      ),
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      tasks.isEmpty
+                                          ? consumerContext.l10n.calendarNoTasks
+                                          : consumerContext.l10n.taskCount(
+                                              tasks.length,
+                                            ),
                                       style: theme.textTheme.bodySmall
                                           ?.copyWith(
                                             color: theme
@@ -391,43 +352,194 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                           ),
                                     ),
                                   ],
-                                  if (task.description.isNotEmpty) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      task.description,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ],
+                                ),
                               ),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: priorityColor.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  task.priority.name.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: priorityColor,
-                                  ),
+                              IconButton.filledTonal(
+                                icon: const Icon(Icons.add),
+                                tooltip: consumerContext.l10n.addTaskTooltip,
+                                onPressed: () {
+                                  Navigator.pop(bottomSheetContext);
+                                  Navigator.push(
+                                    consumerContext,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const CreateTaskScreen(
+                                            defaultToRepeating: false,
+                                          ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        // Tasks List
+                        if (tasks.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Center(
+                              child: Text(
+                                consumerContext.l10n.calendarNoTasks,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
-                          );
-                        },
-                      ),
+                          )
+                        else
+                          Flexible(
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.all(16),
+                              itemCount: tasks.length,
+                              separatorBuilder: (context, _) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (context, index) {
+                                final task = tasks[index];
+                                final priorityColor = _getPriorityColor(
+                                  theme.colorScheme,
+                                  task.priority,
+                                );
+
+                                return Card(
+                                  elevation: 0,
+                                  color: theme
+                                      .colorScheme
+                                      .surfaceContainerHighest
+                                      .withValues(alpha: 0.5),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: BorderSide(
+                                      color: priorityColor.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: ListTile(
+                                    leading: task.isInstance
+                                        ? IconButton(
+                                            icon: Icon(
+                                              task.isCompleted
+                                                  ? Icons.check_circle
+                                                  : Icons
+                                                        .radio_button_unchecked,
+                                              color: task.isCompleted
+                                                  ? theme.colorScheme.primary
+                                                  : priorityColor,
+                                            ),
+                                            onPressed: () async {
+                                              final repo = ref.read(
+                                                taskRepositoryProvider,
+                                              );
+                                              if (repo != null &&
+                                                  task.instance != null) {
+                                                try {
+                                                  if (task.isCompleted) {
+                                                    await repo
+                                                        .uncompleteTaskInstance(
+                                                          task.instance!.id,
+                                                        );
+                                                  } else {
+                                                    await repo
+                                                        .completeTaskInstance(
+                                                          task.instance!.id,
+                                                        );
+                                                  }
+                                                } catch (e) {
+                                                  if (bottomSheetContext
+                                                      .mounted) {
+                                                    ScaffoldMessenger.of(
+                                                      bottomSheetContext,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          '${consumerContext.l10n.somethingWentWrong} $e',
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                }
+                                              }
+                                            },
+                                          )
+                                        : Icon(
+                                            Icons.event_repeat,
+                                            color: priorityColor,
+                                          ),
+                                    title: Text(
+                                      task.title,
+                                      style: theme.textTheme.bodyLarge
+                                          ?.copyWith(
+                                            decoration: task.isCompleted
+                                                ? TextDecoration.lineThrough
+                                                : null,
+                                            color: task.isCompleted
+                                                ? theme.colorScheme.onSurface
+                                                      .withValues(alpha: 0.5)
+                                                : null,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (task.timeWindow != null) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            task.timeWindow!,
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
+                                        ],
+                                        if (task.description.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            task.description,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.bodySmall,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    trailing: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: priorityColor.withValues(
+                                          alpha: 0.12,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        task.priority.name.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: priorityColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
                     ),
-                ],
-              ),
-            ),
+                  ),
+                ),
+              );
+            },
           ),
         );
       },
@@ -456,18 +568,34 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     final instances = instancesVal.value ?? [];
     final schedules = schedulesVal.value ?? [];
-    final dayTaskMap = _buildDayTaskMap(instances, schedules, context);
+    final currentLocale = Localizations.localeOf(context).toString();
+
+    if (!identical(instances, _cachedInstances) ||
+        !identical(schedules, _cachedSchedules) ||
+        currentLocale != _cachedLocale) {
+      _monthTaskMapCache.clear();
+      _cachedInstances = instances;
+      _cachedSchedules = schedules;
+      _cachedLocale = currentLocale;
+    }
 
     final isWide = isWideScreen(context);
     final theme = Theme.of(context);
     final now = AppClock.now;
     final today = CivilDay.fromDateTime(now);
 
+    if (!_hasScrolledToCurrentMonth) {
+      _hasScrolledToCurrentMonth = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToCurrentMonth();
+      });
+    }
+
     return Stack(
       children: [
         isWide
-            ? _buildWideMonthList(dayTaskMap, today, theme)
-            : _buildNarrowMonthList(dayTaskMap, today, theme),
+            ? _buildWideMonthList(instances, schedules, today, theme)
+            : _buildNarrowMonthList(instances, schedules, today, theme),
         Positioned(
           right: 16,
           bottom: 16,
@@ -484,7 +612,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   Widget _buildWideMonthList(
-    Map<CivilDay, List<CalendarDayTask>> dayTaskMap,
+    List<TaskInstance> instances,
+    List<TaskSchedule> schedules,
     CivilDay today,
     ThemeData theme,
   ) {
@@ -506,7 +635,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               Expanded(
                 child: _buildMonthCard(
                   _months[idx1],
-                  dayTaskMap,
+                  instances,
+                  schedules,
                   today,
                   theme,
                   isWide: true,
@@ -517,7 +647,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 child: idx2 < _months.length
                     ? _buildMonthCard(
                         _months[idx2],
-                        dayTaskMap,
+                        instances,
+                        schedules,
                         today,
                         theme,
                         isWide: true,
@@ -532,7 +663,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   Widget _buildNarrowMonthList(
-    Map<CivilDay, List<CalendarDayTask>> dayTaskMap,
+    List<TaskInstance> instances,
+    List<TaskSchedule> schedules,
     CivilDay today,
     ThemeData theme,
   ) {
@@ -545,7 +677,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           padding: const EdgeInsets.only(bottom: 16),
           child: _buildMonthCard(
             _months[index],
-            dayTaskMap,
+            instances,
+            schedules,
             today,
             theme,
             isWide: false,
@@ -557,12 +690,21 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   Widget _buildMonthCard(
     DateTime monthDate,
-    Map<CivilDay, List<CalendarDayTask>> dayTaskMap,
+    List<TaskInstance> instances,
+    List<TaskSchedule> schedules,
     CivilDay today,
     ThemeData theme, {
     required bool isWide,
   }) {
-    final monthTitle = DateFormat.yMMMM().format(monthDate);
+    final locale = Localizations.localeOf(context).toString();
+    final monthTitle = DateFormat.yMMMM(locale).format(monthDate);
+    final dayTaskMap = _getMonthTaskMap(
+      monthDate,
+      instances,
+      schedules,
+      context,
+    );
+    final weekdayHeaders = _getWeekdayHeaders(locale);
     final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
     final firstWeekday = DateTime(
       monthDate.year,
@@ -626,7 +768,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        context.l10n.calendarJumpToToday,
+                        context.l10n.calendarCurrentMonth,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -637,10 +779,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ],
               ),
             ),
-            // Weekday Headers (M, T, W, T, F, S, S)
+            // Weekday Headers
             Row(
               children: [
-                for (final dayLabel in ['M', 'T', 'W', 'T', 'F', 'S', 'S'])
+                for (final dayLabel in weekdayHeaders)
                   Expanded(
                     child: Center(
                       child: Text(
@@ -717,7 +859,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return InkWell(
-          onTap: () => _showDayDetailsSheet(context, civilDay, tasks),
+          onTap: () => _showDayDetailsSheet(context, civilDay),
           borderRadius: BorderRadius.circular(8),
           child: Container(
             margin: const EdgeInsets.all(1.5),
@@ -828,7 +970,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ],
             if (tasks.length > 2)
               Text(
-                '+${tasks.length - 1} more',
+                context.l10n.moreTasksCount(tasks.length - 1),
                 style: TextStyle(
                   fontSize: 8,
                   fontWeight: FontWeight.bold,

@@ -9,10 +9,8 @@ import 'create_task_screen.dart';
 import 'task_list_screen.dart';
 import 'task_schedule_screen.dart';
 import 'calendar_screen.dart';
-import 'dashboard_screen.dart';
 import 'settings_screen.dart';
 import 'subscription_screen.dart';
-import 'family_screen.dart';
 import 'help_screen.dart';
 import 'recipes/recipe_list_screen.dart';
 import '../logic/l10n_extension.dart';
@@ -59,6 +57,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             CreateTaskScreen(defaultToRepeating: currentIndex == 1),
       ),
     );
+    if (!mounted) return;
     _routeManager.updateUrlPath(currentIndex);
   }
 
@@ -173,26 +172,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             leading: const Icon(Icons.dashboard_outlined),
             title: Text(context.l10n.dashboardTab),
             onTap: () {
-              final container = ProviderScope.containerOf(context);
-              final l10n = context.l10n;
               Navigator.pop(context); // Close drawer
-              SystemNavigator.routeInformationUpdated(
-                uri: Uri.parse('/dashboard'),
+              _routeManager.openDashboard(
+                context: context,
+                currentIndex: currentIndex,
               );
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => UncontrolledProviderScope(
-                    container: container,
-                    child: Scaffold(
-                      appBar: AppBar(title: Text(l10n.dashboardTab)),
-                      body: const DashboardScreen(),
-                    ),
-                  ),
-                ),
-              ).then((_) {
-                _routeManager.updateUrlPath(currentIndex);
-              });
             },
           ),
           ListTile(
@@ -200,26 +184,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             leading: const Icon(Icons.people_outline),
             title: Text(context.l10n.familyTab),
             onTap: () {
-              final container = ProviderScope.containerOf(context);
-              final l10n = context.l10n;
               Navigator.pop(context); // Close drawer
-              SystemNavigator.routeInformationUpdated(
-                uri: Uri.parse('/family'),
+              _routeManager.openFamily(
+                context: context,
+                currentIndex: currentIndex,
               );
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => UncontrolledProviderScope(
-                    container: container,
-                    child: Scaffold(
-                      appBar: AppBar(title: Text(l10n.familyTab)),
-                      body: const FamilyScreen(),
-                    ),
-                  ),
-                ),
-              ).then((_) {
-                _routeManager.updateUrlPath(currentIndex);
-              });
             },
           ),
           ListTile(
@@ -249,6 +218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
               ).then((_) {
+                if (!mounted) return;
                 _routeManager.updateUrlPath(currentIndex);
               });
             },
@@ -268,6 +238,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   builder: (context) => const SubscriptionScreen(),
                 ),
               ).then((_) {
+                if (!mounted) return;
                 _routeManager.updateUrlPath(currentIndex);
               });
             },

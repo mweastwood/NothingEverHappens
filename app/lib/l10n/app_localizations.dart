@@ -176,6 +176,12 @@ abstract class AppLocalizations {
   /// **'Today'**
   String get calendarJumpToToday;
 
+  /// No description provided for @calendarCurrentMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This Month'**
+  String get calendarCurrentMonth;
+
   /// No description provided for @calendarNoTasks.
   ///
   /// In en, this message translates to:
@@ -187,6 +193,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tasks for {date}'**
   String tasksForDate(String date);
+
+  /// Task count label
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 task} other{{count} tasks}}'**
+  String taskCount(int count);
+
+  /// Label indicating additional tasks on a calendar day cell
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String moreTasksCount(int count);
 
   /// No description provided for @capacityPromptTitle.
   ///

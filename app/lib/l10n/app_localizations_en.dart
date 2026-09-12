@@ -49,11 +49,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calendarJumpToToday => 'Today';
 
   @override
+  String get calendarCurrentMonth => 'This Month';
+
+  @override
   String get calendarNoTasks => 'No tasks scheduled';
 
   @override
   String tasksForDate(String date) {
     return 'Tasks for $date';
+  }
+
+  @override
+  String taskCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks',
+      one: '1 task',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String moreTasksCount(int count) {
+    return '+$count more';
   }
 
   @override

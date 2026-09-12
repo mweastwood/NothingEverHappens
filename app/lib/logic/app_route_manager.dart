@@ -78,6 +78,52 @@ class AppRouteManager {
         .catchError((_) {});
   }
 
+  Future<void> openDashboard({
+    required BuildContext context,
+    required int currentIndex,
+  }) async {
+    SystemNavigator.routeInformationUpdated(uri: Uri.parse('/dashboard'));
+    final container = ProviderScope.containerOf(context);
+    final title = context.l10n.dashboardTab;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UncontrolledProviderScope(
+          container: container,
+          child: Scaffold(
+            appBar: AppBar(title: Text(title)),
+            body: const DashboardScreen(),
+          ),
+        ),
+      ),
+    );
+    if (!context.mounted) return;
+    updateUrlPath(currentIndex);
+  }
+
+  Future<void> openFamily({
+    required BuildContext context,
+    required int currentIndex,
+  }) async {
+    SystemNavigator.routeInformationUpdated(uri: Uri.parse('/family'));
+    final container = ProviderScope.containerOf(context);
+    final title = context.l10n.familyTab;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UncontrolledProviderScope(
+          container: container,
+          child: Scaffold(
+            appBar: AppBar(title: Text(title)),
+            body: const FamilyScreen(),
+          ),
+        ),
+      ),
+    );
+    if (!context.mounted) return;
+    updateUrlPath(currentIndex);
+  }
+
   void handleUrlParameters({
     required BuildContext context,
     required WidgetRef ref,
@@ -109,41 +155,11 @@ class AppRouteManager {
       },
       'dashboard': () {
         onIndexChanged(currentIndex);
-        SystemNavigator.routeInformationUpdated(uri: Uri.parse('/dashboard'));
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => UncontrolledProviderScope(
-              container: ProviderScope.containerOf(context),
-              child: Scaffold(
-                appBar: AppBar(title: Text(context.l10n.dashboardTab)),
-                body: const DashboardScreen(),
-              ),
-            ),
-          ),
-        ).then((_) {
-          if (!context.mounted) return;
-          updateUrlPath(currentIndex);
-        });
+        openDashboard(context: context, currentIndex: currentIndex);
       },
       'family': () {
         onIndexChanged(currentIndex);
-        SystemNavigator.routeInformationUpdated(uri: Uri.parse('/family'));
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => UncontrolledProviderScope(
-              container: ProviderScope.containerOf(context),
-              child: Scaffold(
-                appBar: AppBar(title: Text(context.l10n.familyTab)),
-                body: const FamilyScreen(),
-              ),
-            ),
-          ),
-        ).then((_) {
-          if (!context.mounted) return;
-          updateUrlPath(currentIndex);
-        });
+        openFamily(context: context, currentIndex: currentIndex);
       },
       'settings': () {
         onIndexChanged(0);

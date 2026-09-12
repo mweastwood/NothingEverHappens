@@ -12,6 +12,7 @@
   "dashboardTab": "Dashboard",
   "calendarTab": "Calendar",
   "calendarJumpToToday": "Today",
+  "calendarCurrentMonth": "This Month",
   "calendarNoTasks": "No tasks scheduled",
   "tasksForDate": "Tasks for {date}",
   "@tasksForDate": {
@@ -20,6 +21,26 @@
       "date": {
         "type": "String",
         "example": "Wednesday, March 18, 2026"
+      }
+    }
+  },
+  "taskCount": "{count, plural, =1{1 task} other{{count} tasks}}",
+  "@taskCount": {
+    "description": "Task count label",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "moreTasksCount": "+{count} more",
+  "@moreTasksCount": {
+    "description": "Label indicating additional tasks on a calendar day cell",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
       }
     }
   },

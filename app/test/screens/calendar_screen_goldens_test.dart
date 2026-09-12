@@ -398,7 +398,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Tap on Day 8 (March 8, 2026 - today)
-    await tester.tap(find.text('8').first);
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byKey(const Key('month_card_2026_3')),
+            matching: find.text('8'),
+          )
+          .first,
+    );
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'calendar_screen_day_details_sheet');
