@@ -500,6 +500,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please enter a number between 0 and 24';
 
   @override
+  String get firstDayOfWeekLabel => 'First Day of the Week';
+
+  @override
+  String get firstDayOfWeekHelper =>
+      'Choose whether calendar weeks start on Sunday or Monday.';
+
+  @override
   String get settingsSavedSuccessfully => 'Settings saved successfully';
 
   @override

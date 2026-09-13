@@ -297,6 +297,8 @@
   "hoursAvailableLabel": "Available Hours per Day",
   "hoursAvailableHelper": "Number of hours available for agile-based scheduling.",
   "hoursAvailableValidationError": "Please enter a number between 0 and 24",
+  "firstDayOfWeekLabel": "First Day of the Week",
+  "firstDayOfWeekHelper": "Choose whether calendar weeks start on Sunday or Monday.",
   "settingsSavedSuccessfully": "Settings saved successfully",
   "showPendingTasksLabel": "Show Pending Tasks",
   "showPendingTasksHelper": "Show tasks on the main list whose start time is in the future.",

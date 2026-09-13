@@ -11,6 +11,8 @@ import '../logic/l10n_extension.dart';
 import '../logic/task_instance.dart';
 import '../logic/task_repository.dart';
 import '../logic/task_schedule.dart';
+import '../logic/user_settings.dart';
+import '../logic/user_settings_repository.dart';
 import '../logic/utils/layout_breakpoints.dart';
 import '../widgets/calendar_month_card.dart';
 
@@ -82,28 +84,31 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     super.dispose();
   }
 
-  int _getWeeksInMonth(DateTime monthDate) {
+  int _getWeeksInMonth(DateTime monthDate, FirstDayOfWeek firstDayOfWeek) {
     final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
     final firstWeekday = DateTime(
       monthDate.year,
       monthDate.month,
       1,
     ).weekday; // 1=Mon, 7=Sun
-    final leadingEmptyCount = firstWeekday - 1;
+    final leadingEmptyCount = firstDayOfWeek.getLeadingEmptySlots(firstWeekday);
     final totalSlots = leadingEmptyCount + daysInMonth;
     return (totalSlots / 7).ceil();
   }
 
-  double _calculateTargetOffset({required bool isWide}) {
+  double _calculateTargetOffset({
+    required bool isWide,
+    required FirstDayOfWeek firstDayOfWeek,
+  }) {
     if (isWide) {
       double offset = 16.0; // list top padding
       final targetRow = _currentMonthIndex ~/ 2;
       for (int r = 0; r < targetRow; r++) {
         final idx1 = r * 2;
         final idx2 = idx1 + 1;
-        final weeks1 = _getWeeksInMonth(_months[idx1]);
+        final weeks1 = _getWeeksInMonth(_months[idx1], firstDayOfWeek);
         final weeks2 = idx2 < _months.length
-            ? _getWeeksInMonth(_months[idx2])
+            ? _getWeeksInMonth(_months[idx2], firstDayOfWeek)
             : 0;
         final maxWeeks = weeks1 > weeks2 ? weeks1 : weeks2;
         offset += 83.0 + (maxWeeks * 62.0) + 20.0;
@@ -112,18 +117,24 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     } else {
       double offset = 12.0; // list top padding
       for (int i = 0; i < _currentMonthIndex; i++) {
-        final weeks = _getWeeksInMonth(_months[i]);
+        final weeks = _getWeeksInMonth(_months[i], firstDayOfWeek);
         offset += 83.0 + (weeks * 54.0) + 16.0;
       }
       return offset;
     }
   }
 
-  void _scrollToCurrentMonth({bool animate = false}) {
+  void _scrollToCurrentMonth({
+    bool animate = false,
+    required FirstDayOfWeek firstDayOfWeek,
+  }) {
     if (!mounted) return;
     if (!_scrollController.hasClients) return;
     final isWide = isWideScreen(context);
-    final targetOffset = _calculateTargetOffset(isWide: isWide);
+    final targetOffset = _calculateTargetOffset(
+      isWide: isWide,
+      firstDayOfWeek: firstDayOfWeek,
+    );
 
     if (animate) {
       _scrollController.animateTo(
@@ -171,6 +182,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final instancesVal = ref.watch(taskInstancesProvider);
     final schedulesVal = ref.watch(taskSchedulesProvider);
+    final settingsVal = ref.watch(userSettingsProvider);
 
     if (instancesVal.isLoading || schedulesVal.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -179,6 +191,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final instances = instancesVal.value ?? [];
     final schedules = schedulesVal.value ?? [];
     final currentUserId = ref.watch(authStateProvider).value?.uid;
+    final firstDayOfWeek =
+        settingsVal.value?.firstDayOfWeek ?? FirstDayOfWeek.sunday;
 
     final isWide = isWideScreen(context);
     final now = AppClock.now;
@@ -198,7 +212,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     if (!_hasScrolledToCurrentMonth) {
       _hasScrolledToCurrentMonth = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToCurrentMonth();
+        _scrollToCurrentMonth(firstDayOfWeek: firstDayOfWeek);
       });
     }
 
@@ -210,12 +224,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 schedules,
                 today,
                 currentUserId: currentUserId,
+                firstDayOfWeek: firstDayOfWeek,
               )
             : _buildNarrowMonthList(
                 instances,
                 schedules,
                 today,
                 currentUserId: currentUserId,
+                firstDayOfWeek: firstDayOfWeek,
               ),
         Positioned(
           right: 16,
@@ -224,7 +240,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             key: const Key('calendar_jump_to_today_button'),
             heroTag: 'calendar_jump_to_today_fab',
             tooltip: context.l10n.calendarJumpToToday,
-            onPressed: () => _scrollToCurrentMonth(animate: true),
+            onPressed: () => _scrollToCurrentMonth(
+              animate: true,
+              firstDayOfWeek: firstDayOfWeek,
+            ),
             child: const Icon(Icons.today),
           ),
         ),
@@ -237,6 +256,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     List<TaskSchedule> schedules,
     CivilDay today, {
     String? currentUserId,
+    required FirstDayOfWeek firstDayOfWeek,
   }) {
     final rowCount = (_months.length / 2).ceil();
 
@@ -265,6 +285,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   ),
                   today: today,
                   isWide: true,
+                  firstDayOfWeek: firstDayOfWeek,
                 ),
               ),
               const SizedBox(width: 16),
@@ -280,6 +301,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         ),
                         today: today,
                         isWide: true,
+                        firstDayOfWeek: firstDayOfWeek,
                       )
                     : const SizedBox.shrink(),
               ),
@@ -295,6 +317,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     List<TaskSchedule> schedules,
     CivilDay today, {
     String? currentUserId,
+    required FirstDayOfWeek firstDayOfWeek,
   }) {
     return ListView.builder(
       controller: _scrollController,
@@ -314,6 +337,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
             today: today,
             isWide: false,
+            firstDayOfWeek: firstDayOfWeek,
           ),
         );
       },

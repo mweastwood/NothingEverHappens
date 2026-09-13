@@ -53,6 +53,7 @@ void main() {
       final settings = UserSettings.fromJson(const {});
       expect(settings.hoursAvailable, 8.0);
       expect(settings.showLastSpawnedDate, isFalse);
+      expect(settings.firstDayOfWeek, FirstDayOfWeek.sunday);
       expect(settings.showTaskListSortBar, isTrue);
       expect(settings.showScheduleListSortBar, isTrue);
       expect(settings.crashReportingEnabled, isTrue);
@@ -127,6 +128,7 @@ void main() {
       expect(settings.toJson(), {
         'hoursAvailable': 6.0,
         'showLastSpawnedDate': true,
+        'firstDayOfWeek': 'sunday',
         'taskListSort': [
           {'column': 'priority', 'ascending': false},
         ],
@@ -308,6 +310,7 @@ void main() {
       expect(snapshot.data(), {
         'hoursAvailable': 15.0,
         'showLastSpawnedDate': true,
+        'firstDayOfWeek': 'sunday',
         'showTaskListSortBar': true,
         'showScheduleListSortBar': true,
         'telemetryEnabled': true,

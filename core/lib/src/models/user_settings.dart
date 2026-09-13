@@ -1,9 +1,11 @@
 import 'package:collection/collection.dart';
 import '../logic/core_clock.dart';
+import 'first_day_of_week.dart';
 
 class UserSettings {
   final double hoursAvailable;
   final bool showLastSpawnedDate;
+  final FirstDayOfWeek firstDayOfWeek;
   final List<({String column, bool ascending})>? taskListSort;
   final List<({String column, bool ascending})>? scheduleListSort;
   final Map<String, double>? defaultDailyCapacity;
@@ -18,6 +20,7 @@ class UserSettings {
   const UserSettings({
     required this.hoursAvailable,
     this.showLastSpawnedDate = false,
+    this.firstDayOfWeek = FirstDayOfWeek.sunday,
     this.taskListSort,
     this.scheduleListSort,
     this.defaultDailyCapacity,
@@ -146,6 +149,7 @@ class UserSettings {
     return UserSettings(
       hoursAvailable: (json['hoursAvailable'] as num?)?.toDouble() ?? 8.0,
       showLastSpawnedDate: json['showLastSpawnedDate'] as bool? ?? false,
+      firstDayOfWeek: FirstDayOfWeek.fromString(json['firstDayOfWeek']),
       taskListSort: taskListSort,
       scheduleListSort: scheduleListSort,
       defaultDailyCapacity: defaultDailyCapacity,
@@ -173,6 +177,7 @@ class UserSettings {
     return {
       'hoursAvailable': hoursAvailable,
       'showLastSpawnedDate': showLastSpawnedDate,
+      'firstDayOfWeek': firstDayOfWeek.name,
       if (taskListSort != null)
         'taskListSort': taskListSort!
             .map((e) => {'column': e.column, 'ascending': e.ascending})
@@ -198,6 +203,7 @@ class UserSettings {
   UserSettings copyWith({
     double? hoursAvailable,
     bool? showLastSpawnedDate,
+    FirstDayOfWeek? firstDayOfWeek,
     List<({String column, bool ascending})>? taskListSort,
     List<({String column, bool ascending})>? scheduleListSort,
     Map<String, double>? defaultDailyCapacity,
@@ -214,6 +220,7 @@ class UserSettings {
     return UserSettings(
       hoursAvailable: hoursAvailable ?? this.hoursAvailable,
       showLastSpawnedDate: showLastSpawnedDate ?? this.showLastSpawnedDate,
+      firstDayOfWeek: firstDayOfWeek ?? this.firstDayOfWeek,
       taskListSort: taskListSort ?? this.taskListSort,
       scheduleListSort: scheduleListSort ?? this.scheduleListSort,
       defaultDailyCapacity: defaultDailyCapacity ?? this.defaultDailyCapacity,
@@ -244,6 +251,7 @@ class UserSettings {
     if (runtimeType != other.runtimeType) return false;
     return hoursAvailable == other.hoursAvailable &&
         showLastSpawnedDate == other.showLastSpawnedDate &&
+        firstDayOfWeek == other.firstDayOfWeek &&
         const ListEquality().equals(taskListSort, other.taskListSort) &&
         const ListEquality().equals(scheduleListSort, other.scheduleListSort) &&
         const MapEquality()
@@ -265,6 +273,7 @@ class UserSettings {
   int get hashCode => Object.hash(
         hoursAvailable,
         showLastSpawnedDate,
+        firstDayOfWeek,
         taskListSort != null ? Object.hashAll(taskListSort!) : null,
         scheduleListSort != null ? Object.hashAll(scheduleListSort!) : null,
         defaultDailyCapacity?.hashCode,

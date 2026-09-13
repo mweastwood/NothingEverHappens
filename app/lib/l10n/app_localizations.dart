@@ -932,6 +932,18 @@ abstract class AppLocalizations {
   /// **'Please enter a number between 0 and 24'**
   String get hoursAvailableValidationError;
 
+  /// No description provided for @firstDayOfWeekLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'First Day of the Week'**
+  String get firstDayOfWeekLabel;
+
+  /// No description provided for @firstDayOfWeekHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose whether calendar weeks start on Sunday or Monday.'**
+  String get firstDayOfWeekHelper;
+
   /// No description provided for @settingsSavedSuccessfully.
   ///
   /// In en, this message translates to:

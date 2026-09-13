@@ -173,7 +173,7 @@ void main() {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(400, 1150),
+      surfaceSize: const Size(400, 1300),
     );
     await screenMatchesGolden(tester, 'settings_screen_initial');
   });
@@ -182,7 +182,7 @@ void main() {
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(400, 1150),
+      surfaceSize: const Size(400, 1300),
     );
 
     final textFieldFinder = find.byKey(const Key('hours_available_field'));
@@ -198,16 +198,58 @@ void main() {
 
   testGoldens('SettingsScreen with all options enabled golden', (tester) async {
     settingsSubject.add(
-      const UserSettings(hoursAvailable: 8.0, showLastSpawnedDate: true),
+      const UserSettings(
+        hoursAvailable: 8.0,
+        showLastSpawnedDate: true,
+        firstDayOfWeek: FirstDayOfWeek.monday,
+      ),
     );
 
     await tester.pumpWidgetBuilder(
       buildTestWidget(),
       wrapper: l10nMaterialAppWrapper(),
-      surfaceSize: const Size(400, 1150),
+      surfaceSize: const Size(400, 1300),
     );
     await screenMatchesGolden(tester, 'settings_screen_all_enabled');
   });
+
+  testWidgets(
+    'SettingsScreen updates and saves firstDayOfWeek option correctly',
+    (WidgetTester tester) async {
+      when(mockRepository.updateSettings(any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      final mondaySegmentFinder = find.byKey(
+        const Key('first_day_of_week_monday_option'),
+      );
+      expect(mondaySegmentFinder, findsOneWidget);
+
+      await tester.tap(mondaySegmentFinder);
+      await tester.pumpAndSettle();
+
+      final saveButtonFinder = find.byKey(const Key('save_settings_button'));
+      await tester.scrollUntilVisible(
+        saveButtonFinder,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(saveButtonFinder);
+      await tester.pumpAndSettle();
+
+      verify(
+        mockRepository.updateSettings(
+          const UserSettings(
+            hoursAvailable: 8.0,
+            firstDayOfWeek: FirstDayOfWeek.monday,
+          ),
+        ),
+      ).called(1);
+    },
+  );
 
   testWidgets(
     'SettingsScreen updates and saves showLastSpawnedDate switch correctly',
