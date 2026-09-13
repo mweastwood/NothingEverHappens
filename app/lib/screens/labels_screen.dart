@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../logic/auth_repository.dart';
+import '../logic/error_handler.dart';
 import '../logic/family_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/label_repository.dart';
@@ -29,7 +30,7 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, TaskLabel label) async {
+  Future<void> _confirmDelete(TaskLabel label) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -52,17 +53,25 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
     );
 
     if (confirmed == true && mounted) {
-      final repo = ref.read(labelRepositoryProvider);
-      if (label.scope == TaskLabelScope.personal) {
-        final userId = ref.read(authStateProvider).value?.uid ?? '';
-        if (userId.isNotEmpty) {
-          await repo.deletePersonalLabel(userId, label.id);
+      try {
+        final repo = ref.read(labelRepositoryProvider);
+        if (label.scope == TaskLabelScope.personal) {
+          final userId = ref.read(authStateProvider).value?.uid ?? '';
+          if (userId.isNotEmpty) {
+            await repo.deletePersonalLabel(userId, label.id);
+          }
+        } else {
+          final familyProfile = ref.read(familyProfileStreamProvider).value;
+          final familyId = familyProfile?.familyId ?? '';
+          if (familyId.isNotEmpty) {
+            await repo.deleteFamilyLabel(familyId, label.id);
+          }
         }
-      } else {
-        final familyProfile = ref.read(familyProfileStreamProvider).value;
-        final familyId = familyProfile?.familyId ?? '';
-        if (familyId.isNotEmpty) {
-          await repo.deleteFamilyLabel(familyId, label.id);
+      } catch (e, stackTrace) {
+        if (mounted) {
+          final errorHandler = ref.read(errorHandlerProvider);
+          final report = errorHandler.report(e, stackTrace: stackTrace);
+          errorHandler.showErrorDialog(context, report);
         }
       }
     }
@@ -175,7 +184,7 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
     final content = personalLabelsAsync.when(
       data: (labels) {
         if (labels.isEmpty) {
-          return Padding(
+          final emptyCard = Padding(
             padding: const EdgeInsets.all(16.0),
             child: Card(
               elevation: 0,
@@ -213,6 +222,9 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
               ),
             ),
           );
+          return isScrollable
+              ? SingleChildScrollView(child: emptyCard)
+              : emptyCard;
         }
 
         return ListView.builder(
@@ -308,7 +320,7 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
     Widget content;
 
     if (!inFamily) {
-      content = Padding(
+      final notInFamilyCard = Padding(
         padding: const EdgeInsets.all(16.0),
         child: Card(
           elevation: 0,
@@ -355,118 +367,131 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
           ),
         ),
       );
+      content = isScrollable
+          ? SingleChildScrollView(child: notInFamilyCard)
+          : notInFamilyCard;
     } else {
       content = familyLabelsAsync.when(
         data: (labels) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (!isParent)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
-                  child: Container(
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest
-                          .withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                      ),
+          Widget? banner;
+          if (!isParent) {
+            banner = Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
+              child: Container(
+                padding: const EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 20,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        context.l10n.onlyParentsCanManageFamilyLabels,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            context.l10n.onlyParentsCanManageFamilyLabels,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          if (labels.isEmpty) {
+            final emptyCard = Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                elevation: 0,
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 32.0,
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.label_off_outlined,
+                          size: 40,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          isParent
+                              ? context.l10n.noFamilyLabels
+                              : context.l10n.noFamilyLabelsNonParent,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              if (labels.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Card(
-                    elevation: 0,
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24.0,
-                        vertical: 32.0,
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.label_off_outlined,
-                              size: 40,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              isParent
-                                  ? context.l10n.noFamilyLabels
-                                  : context.l10n.noFamilyLabelsNonParent,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: !isScrollable,
-                  physics: isScrollable
-                      ? null
-                      : const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 8.0,
-                  ),
-                  itemCount: labels.length,
-                  itemBuilder: (context, index) {
-                    final label = labels[index];
-                    return _buildLabelCard(
-                      context,
-                      label: label,
-                      canEdit: isParent,
-                    );
-                  },
-                ),
-            ],
+              ),
+            );
+            final emptyContent = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [?banner, emptyCard],
+            );
+            return isScrollable
+                ? SingleChildScrollView(child: emptyContent)
+                : emptyContent;
+          }
+
+          final listView = ListView.builder(
+            shrinkWrap: !isScrollable,
+            physics: isScrollable ? null : const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            itemCount: labels.length,
+            itemBuilder: (context, index) {
+              final label = labels[index];
+              return _buildLabelCard(context, label: label, canEdit: isParent);
+            },
           );
+
+          if (isScrollable) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ?banner,
+                Expanded(child: listView),
+              ],
+            );
+          } else {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [?banner, listView],
+            );
+          }
         },
         loading: () => const Center(
           child: Padding(
@@ -489,7 +514,7 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
         children: [
           header,
           const Divider(height: 1, thickness: 1),
-          Expanded(child: SingleChildScrollView(child: content)),
+          Expanded(child: content),
         ],
       );
     } else {
@@ -544,7 +569,7 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
                   IconButton(
                     key: Key('edit_label_${label.id}'),
                     icon: const Icon(Icons.edit_outlined),
-                    tooltip: 'Edit',
+                    tooltip: context.l10n.editButton,
                     onPressed: () => _openEditDialog(
                       context,
                       existingLabel: label,
@@ -555,7 +580,7 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
                     key: Key('delete_label_${label.id}'),
                     icon: const Icon(Icons.delete_outline),
                     tooltip: context.l10n.deleteButton,
-                    onPressed: () => _confirmDelete(context, label),
+                    onPressed: () => _confirmDelete(label),
                   ),
                 ],
               )
@@ -659,6 +684,12 @@ class _LabelEditDialogState extends ConsumerState<_LabelEditDialog> {
 
       if (mounted) {
         Navigator.of(context).pop();
+      }
+    } catch (e, stackTrace) {
+      if (mounted) {
+        final errorHandler = ref.read(errorHandlerProvider);
+        final report = errorHandler.report(e, stackTrace: stackTrace);
+        errorHandler.showErrorDialog(context, report);
       }
     } finally {
       if (mounted) {

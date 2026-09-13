@@ -237,5 +237,116 @@ void main() {
         expect(find.byKey(const Key('add_family_label_button')), findsNothing);
       },
     );
+    testWidgets(
+      'renders wide screen two-column layout with populated family labels without unbounded viewport error',
+      (tester) async {
+        // Pre-seed both personal and family labels
+        final personalLabel = TaskLabel.create(
+          id: 'L-pers-1',
+          name: 'Personal Errands',
+          colorKey: 'coral',
+          iconKey: 'tag',
+        );
+        await labelRepo.savePersonalLabel(currentUserId, personalLabel);
+
+        final familyLabel = TaskLabel.create(
+          id: 'L-fam-1',
+          name: 'Family Groceries',
+          colorKey: 'teal',
+          iconKey: 'shopping',
+          scope: TaskLabelScope.family,
+        );
+        await labelRepo.saveFamilyLabel(familyId, familyLabel);
+
+        await tester.pumpWidget(
+          buildScreen(screenSize: const Size(900, 800), familyRole: 'parent'),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(VerticalDivider), findsOneWidget);
+        expect(find.text('Personal Labels'), findsOneWidget);
+        expect(find.text('Family Labels'), findsOneWidget);
+        expect(find.text('Personal Errands'), findsOneWidget);
+        expect(find.text('Family Groceries'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('parent can create, edit, and delete a family label', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildScreen(familyRole: 'parent'));
+      await tester.pumpAndSettle();
+
+      // 1. Create a family label
+      await tester.tap(find.byKey(const Key('add_family_label_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New Family Label'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('label_name_field')),
+        'Family Chores',
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('color_picker_emerald')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('icon_picker_cleaning')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('save_label_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New Family Label'), findsNothing);
+      expect(find.text('Family Chores'), findsOneWidget);
+
+      // Verify repository updated
+      final labelsAfterCreate = await labelRepo
+          .watchFamilyLabels(familyId)
+          .first;
+      expect(labelsAfterCreate.length, 1);
+      final createdLabelId = labelsAfterCreate.first.id;
+      expect(labelsAfterCreate.first.name, 'Family Chores');
+      expect(labelsAfterCreate.first.scope, TaskLabelScope.family);
+
+      // 2. Edit the family label
+      await tester.tap(find.byKey(Key('edit_label_$createdLabelId')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit Family Label'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('label_name_field')),
+        'Updated Chores',
+      );
+      await tester.tap(find.byKey(const Key('color_picker_sunflower')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('save_label_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit Family Label'), findsNothing);
+      expect(find.text('Updated Chores'), findsOneWidget);
+      expect(find.text('Family Chores'), findsNothing);
+
+      final labelsAfterEdit = await labelRepo.watchFamilyLabels(familyId).first;
+      expect(labelsAfterEdit.first.name, 'Updated Chores');
+
+      // 3. Delete the family label
+      await tester.tap(find.byKey(Key('delete_label_$createdLabelId')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete Label?'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('confirm_delete_label_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Updated Chores'), findsNothing);
+      final labelsAfterDelete = await labelRepo
+          .watchFamilyLabels(familyId)
+          .first;
+      expect(labelsAfterDelete, isEmpty);
+    });
   });
 }

@@ -566,6 +566,12 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get deleteButton;
 
+  /// No description provided for @editButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editButton;
+
   /// No description provided for @copyScheduleTooltip.
   ///
   /// In en, this message translates to:

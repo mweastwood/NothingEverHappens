@@ -164,6 +164,7 @@
   },
   "cancelButton": "Cancel",
   "deleteButton": "Delete",
+  "editButton": "Edit",
   "copyScheduleTooltip": "Copy Schedule",
   "editScheduleTooltip": "Edit Schedule",
   "deleteTaskTooltip": "Delete Task",

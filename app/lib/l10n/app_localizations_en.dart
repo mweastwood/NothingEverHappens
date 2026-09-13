@@ -280,6 +280,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteButton => 'Delete';
 
   @override
+  String get editButton => 'Edit';
+
+  @override
   String get copyScheduleTooltip => 'Copy Schedule';
 
   @override
