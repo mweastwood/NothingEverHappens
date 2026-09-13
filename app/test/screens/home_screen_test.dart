@@ -158,8 +158,12 @@ void main() {
     expect(find.byType(TaskListScreen), findsNothing);
     expect(find.byType(TaskScheduleScreen), findsNothing);
 
-    // Verify FAB is hidden on Calendar tab
-    expect(find.byType(FloatingActionButton), findsNothing);
+    // Verify Add Task FAB is hidden on Calendar tab, and jump-to-today FAB is visible
+    expect(find.byIcon(Icons.add), findsNothing);
+    expect(
+      find.byKey(const Key('calendar_jump_to_today_button')),
+      findsOneWidget,
+    );
 
     // 3. Switch back to Tasks tab
     await tester.tap(find.text('Tasks'));
@@ -514,7 +518,11 @@ void main() {
       expect(find.byType(CalendarScreen), findsOneWidget);
       expect(find.byType(TaskListScreen), findsNothing);
       expect(find.byType(TaskScheduleScreen), findsNothing);
-      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byIcon(Icons.add), findsNothing);
+      expect(
+        find.byKey(const Key('calendar_jump_to_today_button')),
+        findsOneWidget,
+      );
 
       // 3. Switch back to Tasks tab
       await tester.tap(find.text('Tasks'));
