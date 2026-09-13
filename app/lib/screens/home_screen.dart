@@ -13,6 +13,7 @@ import 'settings_screen.dart';
 import 'subscription_screen.dart';
 import 'help_screen.dart';
 import 'recipes/recipe_list_screen.dart';
+import 'labels_screen.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/utils/app_version.dart';
 import '../logic/utils/layout_breakpoints.dart';
@@ -203,6 +204,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   builder: (context) => const RecipeListScreen(),
                 ),
               );
+            },
+          ),
+          ListTile(
+            key: const Key('drawer_labels_tile'),
+            leading: const Icon(Icons.label_outlined),
+            title: Text(context.l10n.labelsTitle),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+              SystemNavigator.routeInformationUpdated(
+                uri: Uri.parse('/labels'),
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LabelsScreen()),
+              ).then((_) {
+                if (!mounted) return;
+                _routeManager.updateUrlPath(currentIndex);
+              });
             },
           ),
           ListTile(

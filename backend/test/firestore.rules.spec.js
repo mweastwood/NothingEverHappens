@@ -385,5 +385,109 @@ describe('Firestore Security Rules', () => {
       await assertFails(aliceDb.collection('families').doc('fam-1').collection('history').doc('delta-1').delete());
     });
   });
+
+  describe('Labels collection', () => {
+    it('allows a user to read and write their own personal labels', async () => {
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const db = aliceContext.firestore();
+
+      await assertSucceeds(db.collection('users').doc('alice').collection('labels').doc('label-1').set({
+        name: 'Work',
+        colorKey: 'coral',
+        iconKey: 'tag'
+      }));
+
+      await assertSucceeds(db.collection('users').doc('alice').collection('labels').doc('label-1').get());
+
+      await assertSucceeds(db.collection('users').doc('alice').collection('labels').doc('label-1').update({
+        name: 'Office'
+      }));
+
+      await assertSucceeds(db.collection('users').doc('alice').collection('labels').doc('label-1').delete());
+    });
+
+    it('denies a user from reading or writing another user\'s personal labels', async () => {
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const db = aliceContext.firestore();
+
+      await assertFails(db.collection('users').doc('bob').collection('labels').doc('label-1').set({
+        name: 'Bob Label',
+        colorKey: 'coral',
+        iconKey: 'tag'
+      }));
+
+      await assertFails(db.collection('users').doc('bob').collection('labels').doc('label-1').get());
+    });
+
+    it('allows family members to read family labels, but only parents to create, update, or delete', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' },
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+      });
+
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const aliceDb = aliceContext.firestore();
+      const bobContext = testEnv.authenticatedContext('bob');
+      const bobDb = bobContext.firestore();
+
+      // Bob (non-parent) tries to create family label (denied)
+      await assertFails(bobDb.collection('families').doc('fam-1').collection('labels').doc('label-1').set({
+        name: 'Family Chores'
+      }));
+
+      // Alice (parent) creates family label (allowed)
+      await assertSucceeds(aliceDb.collection('families').doc('fam-1').collection('labels').doc('label-1').set({
+        name: 'Family Chores'
+      }));
+
+      // Bob (family member, non-parent) reads family label (allowed)
+      await assertSucceeds(bobDb.collection('families').doc('fam-1').collection('labels').doc('label-1').get());
+
+      // Bob (non-parent) tries to update family label (denied)
+      await assertFails(bobDb.collection('families').doc('fam-1').collection('labels').doc('label-1').update({
+        name: 'Updated Chores'
+      }));
+
+      // Bob (non-parent) tries to delete family label (denied)
+      await assertFails(bobDb.collection('families').doc('fam-1').collection('labels').doc('label-1').delete());
+
+      // Alice (parent) updates family label (allowed)
+      await assertSucceeds(aliceDb.collection('families').doc('fam-1').collection('labels').doc('label-1').update({
+        name: 'Updated Chores'
+      }));
+
+      // Alice (parent) deletes family label (allowed)
+      await assertSucceeds(aliceDb.collection('families').doc('fam-1').collection('labels').doc('label-1').delete());
+    });
+
+    it('denies non-members from reading or writing family labels', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' }
+          }
+        });
+        await db.collection('families').doc('fam-1').collection('labels').doc('label-1').set({
+          name: 'Family Chores'
+        });
+      });
+
+      const charlieContext = testEnv.authenticatedContext('charlie');
+      const charlieDb = charlieContext.firestore();
+
+      await assertFails(charlieDb.collection('families').doc('fam-1').collection('labels').doc('label-1').get());
+      await assertFails(charlieDb.collection('families').doc('fam-1').collection('labels').doc('label-1').set({
+        name: 'Charlie Label'
+      }));
+    });
+  });
 });
 

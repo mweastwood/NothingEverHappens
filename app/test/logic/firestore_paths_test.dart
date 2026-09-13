@@ -4,6 +4,7 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/firestore_paths.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
+import 'package:nothing_ever_happens/logic/task_label.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 
 void main() {
@@ -24,6 +25,7 @@ void main() {
       expect(FirestorePaths.history, equals('history'));
       expect(FirestorePaths.invites, equals('invites'));
       expect(FirestorePaths.recipes, equals('recipes'));
+      expect(FirestorePaths.labels, equals('labels'));
     });
   });
 
@@ -49,6 +51,13 @@ void main() {
       description: 'Vacuum and dust',
       startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
       dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+    );
+
+    final testLabel = TaskLabel.create(
+      id: 'L-test-1',
+      name: 'Errands',
+      colorKey: 'coral',
+      iconKey: 'tag',
     );
 
     test(
@@ -124,6 +133,48 @@ void main() {
         expect(snap.data(), isNotNull);
         expect(snap.data()!.id, equals('I-test-1'));
         expect(snap.data()!.title, equals('Clean Room'));
+      },
+    );
+
+    test(
+      'userLabels provides typed CollectionReference with converter',
+      () async {
+        final collection = FirestoreCollections.userLabels(
+          fakeFirestore,
+          'user123',
+        );
+        expect(collection.path, equals('users/user123/labels'));
+
+        await collection.doc(testLabel.id).set(testLabel);
+
+        final snap = await collection.doc(testLabel.id).get();
+        expect(snap.exists, isTrue);
+        expect(snap.data(), isNotNull);
+        expect(snap.data()!.id, equals('L-test-1'));
+        expect(snap.data()!.name, equals('Errands'));
+        expect(snap.data()!.colorKey, equals('coral'));
+        expect(snap.data()!.iconKey, equals('tag'));
+      },
+    );
+
+    test(
+      'familyLabels provides typed CollectionReference with converter',
+      () async {
+        final collection = FirestoreCollections.familyLabels(
+          fakeFirestore,
+          'fam456',
+        );
+        expect(collection.path, equals('families/fam456/labels'));
+
+        final familyLabel = testLabel.copyWith(scope: TaskLabelScope.family);
+        await collection.doc(familyLabel.id).set(familyLabel);
+
+        final snap = await collection.doc(familyLabel.id).get();
+        expect(snap.exists, isTrue);
+        expect(snap.data(), isNotNull);
+        expect(snap.data()!.id, equals('L-test-1'));
+        expect(snap.data()!.name, equals('Errands'));
+        expect(snap.data()!.scope, equals(TaskLabelScope.family));
       },
     );
   });

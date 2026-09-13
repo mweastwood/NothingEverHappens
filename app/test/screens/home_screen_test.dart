@@ -19,6 +19,7 @@ import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
 import 'package:nothing_ever_happens/screens/calendar_screen.dart';
 import 'package:nothing_ever_happens/screens/family_screen.dart';
 import 'package:nothing_ever_happens/screens/dashboard_screen.dart';
+import 'package:nothing_ever_happens/screens/labels_screen.dart';
 import 'package:nothing_ever_happens/screens/help_screen.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
@@ -214,6 +215,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(FamilyScreen), findsOneWidget);
+  });
+
+  testWidgets('HomeScreen drawer opens and navigates to labels', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(createScreen());
+    await tester.pumpAndSettle();
+
+    // Open drawer
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('drawer_labels_tile')), findsOneWidget);
+
+    // Tap on labels tile and verify navigation
+    await tester.tap(find.byKey(const Key('drawer_labels_tile')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LabelsScreen), findsOneWidget);
   });
 
   testWidgets('HomeScreen drawer opens and navigates to settings', (

@@ -9,6 +9,7 @@ import '../screens/subscription_screen.dart';
 import '../screens/create_task_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/family_screen.dart';
+import '../screens/labels_screen.dart';
 import 'l10n_extension.dart';
 
 class AppRouteManager {
@@ -182,6 +183,18 @@ class AppRouteManager {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const SubscriptionScreen()),
+        ).then((_) {
+          if (!context.mounted) return;
+          updateUrlPath(currentIndex);
+        });
+      },
+      'labels': () {
+        onIndexChanged(0);
+        updateUrlPath(0);
+        SystemNavigator.routeInformationUpdated(uri: Uri.parse('/labels'));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LabelsScreen()),
         ).then((_) {
           if (!context.mounted) return;
           updateUrlPath(currentIndex);

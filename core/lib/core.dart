@@ -19,6 +19,7 @@ export 'src/models/task_workflow.dart';
 export 'src/models/task_schedule.dart';
 export 'src/models/task_instance.dart';
 export 'src/models/user_settings.dart';
+export 'src/models/task_label.dart';
 export 'src/models/app_logger.dart';
 
 // Logic
