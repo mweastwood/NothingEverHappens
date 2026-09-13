@@ -908,5 +908,46 @@ void main() {
         expect(map[pastDay]!.first.isCompleted, isTrue);
       },
     );
+
+    test(
+      'pending concrete instance on a future date suppresses duplicate projection',
+      () {
+        const futureDay = CivilDay(year: 2026, month: 3, day: 10);
+        final pendingInstance = TaskInstance(
+          id: 'I-pending-future',
+          scheduleId: 'S-daily',
+          ruleId: 'R-daily',
+          title: 'Daily Task',
+          description: 'Daily recurring schedule',
+          priority: TaskPriority.high,
+          scheduledDate: futureDay,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 8,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 12,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final map = CalendarScreen.computeMonthTaskMap(
+          march2026,
+          [pendingInstance],
+          [dailySchedule],
+          today: today,
+        );
+
+        expect(map[futureDay], isNotNull);
+        expect(map[futureDay]!.length, 1);
+        final task = map[futureDay]!.first;
+        expect(task.id, 'I-pending-future');
+        expect(task.isInstance, isTrue);
+        expect(task.status, TaskStatus.pending);
+      },
+    );
   });
 }

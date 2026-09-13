@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/app_clock.dart';
 import '../logic/auth_repository.dart';
 import '../logic/calendar_day_task.dart' as calendar_logic;
-import '../logic/calendar_day_task.dart';
 import '../logic/civil_day.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/task_instance.dart';
@@ -28,7 +27,8 @@ class CalendarScreen extends ConsumerStatefulWidget {
   /// Computes a mapping of [CivilDay] to tasks (both concrete instances and projected recurring schedules)
   /// for the specified [monthDate].
   @visibleForTesting
-  static Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap(
+  static Map<CivilDay, List<calendar_logic.CalendarDayTask>>
+  computeMonthTaskMap(
     DateTime monthDate,
     List<TaskInstance> instances,
     List<TaskSchedule> schedules, {
@@ -52,8 +52,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late final int _currentMonthIndex;
   bool _hasScrolledToCurrentMonth = false;
 
-  final Map<DateTime, Map<CivilDay, List<CalendarDayTask>>> _monthTaskMapCache =
-      {};
+  final Map<DateTime, Map<CivilDay, List<calendar_logic.CalendarDayTask>>>
+  _monthTaskMapCache = {};
   List<TaskInstance>? _cachedInstances;
   List<TaskSchedule>? _cachedSchedules;
   String? _cachedUserId;
@@ -136,13 +136,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
   }
 
-  Map<CivilDay, List<CalendarDayTask>> _getMonthTaskMap(
+  Map<CivilDay, List<calendar_logic.CalendarDayTask>> _getMonthTaskMap(
     DateTime monthDate,
     List<TaskInstance> instances,
     List<TaskSchedule> schedules, {
+    required CivilDay today,
     String? currentUserId,
   }) {
-    final today = CivilDay.fromDateTime(AppClock.now);
     if (!identical(instances, _cachedInstances) ||
         !identical(schedules, _cachedSchedules) ||
         currentUserId != _cachedUserId ||
@@ -157,7 +157,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final monthKey = DateTime(monthDate.year, monthDate.month, 1);
     return _monthTaskMapCache.putIfAbsent(
       monthKey,
-      () => computeMonthTaskMap(
+      () => calendar_logic.computeMonthTaskMap(
         monthDate: monthDate,
         instances: instances,
         schedules: schedules,
@@ -181,19 +181,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final currentUserId = ref.watch(authStateProvider).value?.uid;
 
     final isWide = isWideScreen(context);
-    final now = AppClock.now;
-    final today = CivilDay.fromDateTime(now);
-
-    if (!identical(instances, _cachedInstances) ||
-        !identical(schedules, _cachedSchedules) ||
-        currentUserId != _cachedUserId ||
-        today != _cachedToday) {
-      _monthTaskMapCache.clear();
-      _cachedInstances = instances;
-      _cachedSchedules = schedules;
-      _cachedUserId = currentUserId;
-      _cachedToday = today;
-    }
+    final today = CivilDay.fromDateTime(AppClock.now);
 
     if (!_hasScrolledToCurrentMonth) {
       _hasScrolledToCurrentMonth = true;
@@ -261,6 +249,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     _months[idx1],
                     instances,
                     schedules,
+                    today: today,
                     currentUserId: currentUserId,
                   ),
                   today: today,
@@ -276,6 +265,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           _months[idx2],
                           instances,
                           schedules,
+                          today: today,
                           currentUserId: currentUserId,
                         ),
                         today: today,
@@ -310,6 +300,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               _months[index],
               instances,
               schedules,
+              today: today,
               currentUserId: currentUserId,
             ),
             today: today,
