@@ -80,9 +80,33 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
       for (int i = 0; i < filteredTasks.length; i++) filteredTasks[i].id: i,
     };
 
+    final hasNextStart = sortHistory.any((s) => s.column == 'next_start');
+    final hasNextDue = sortHistory.any((s) => s.column == 'next_due');
+
+    final today = CivilDay.fromDateTime(mockTime ?? AppClock.now);
+
+    final nextStartMap = hasNextStart
+        ? <String, DateTime?>{
+            for (final t in filteredTasks) t.id: _getNextStartTime(t, today),
+          }
+        : null;
+
+    final nextDueMap = hasNextDue
+        ? <String, DateTime?>{
+            for (final t in filteredTasks) t.id: _getNextDueTime(t, today),
+          }
+        : null;
+
     filteredTasks.sort((a, b) {
       for (final sort in sortHistory) {
-        final result = _compareTasks(a, b, sort.column, sort.ascending);
+        final result = _compareTasks(
+          a,
+          b,
+          sort.column,
+          sort.ascending,
+          nextStartMap: nextStartMap,
+          nextDueMap: nextDueMap,
+        );
         if (result != 0) return result;
       }
       final indexA = originalIndices[a.id] ?? 0;
@@ -115,17 +139,16 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
         const [(column: 'title', ascending: true)];
   }
 
-  DateTime? _getNextStartTime(TaskSchedule task) {
-    final now = AppClock.now;
-    final today = CivilDay.fromDateTime(now);
+  DateTime? _getNextStartTime(TaskSchedule task, [CivilDay? today]) {
+    final day = today ?? CivilDay.fromDateTime(AppClock.now);
     DateTime? earliest;
 
     for (final s in task.schedules) {
       CivilDay? nextDay;
-      if (s.occursOn(today)) {
-        nextDay = today;
+      if (s.occursOn(day)) {
+        nextDay = day;
       } else {
-        nextDay = s.nextOccurrenceAfter(today);
+        nextDay = s.nextOccurrenceAfter(day);
       }
       if (nextDay != null) {
         final dt = s.startRelativeTime.referenceTo(nextDay);
@@ -137,17 +160,16 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     return earliest;
   }
 
-  DateTime? _getNextDueTime(TaskSchedule task) {
-    final now = AppClock.now;
-    final today = CivilDay.fromDateTime(now);
+  DateTime? _getNextDueTime(TaskSchedule task, [CivilDay? today]) {
+    final day = today ?? CivilDay.fromDateTime(AppClock.now);
     DateTime? earliest;
 
     for (final s in task.schedules) {
       CivilDay? nextDay;
-      if (s.occursOn(today)) {
-        nextDay = today;
+      if (s.occursOn(day)) {
+        nextDay = day;
       } else {
-        nextDay = s.nextOccurrenceAfter(today);
+        nextDay = s.nextOccurrenceAfter(day);
       }
       if (nextDay != null) {
         final dt = s.dueRelativeTime.referenceTo(nextDay);
@@ -163,20 +185,22 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     TaskSchedule a,
     TaskSchedule b,
     String column,
-    bool ascending,
-  ) {
+    bool ascending, {
+    Map<String, DateTime?>? nextStartMap,
+    Map<String, DateTime?>? nextDueMap,
+  }) {
     if (column == 'next_start') {
-      return compareDateTimes(
-        _getNextStartTime(a),
-        _getNextStartTime(b),
-        ascending,
-      );
+      final aStart = nextStartMap != null
+          ? nextStartMap[a.id]
+          : _getNextStartTime(a);
+      final bStart = nextStartMap != null
+          ? nextStartMap[b.id]
+          : _getNextStartTime(b);
+      return compareDateTimes(aStart, bStart, ascending);
     } else if (column == 'next_due') {
-      return compareDateTimes(
-        _getNextDueTime(a),
-        _getNextDueTime(b),
-        ascending,
-      );
+      final aDue = nextDueMap != null ? nextDueMap[a.id] : _getNextDueTime(a);
+      final bDue = nextDueMap != null ? nextDueMap[b.id] : _getNextDueTime(b);
+      return compareDateTimes(aDue, bDue, ascending);
     }
 
     int result = 0;
