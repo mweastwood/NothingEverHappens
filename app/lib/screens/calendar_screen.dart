@@ -188,8 +188,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Map<CivilDay, List<CalendarDayTask>> _computeMonthTaskMap(
     DateTime monthDate,
     List<TaskInstance> instances,
-    List<TaskSchedule> schedules,
-    BuildContext context, {
+    List<TaskSchedule> schedules, {
     String? currentUserId,
   }) {
     final Map<CivilDay, List<CalendarDayTask>> map = {};
@@ -281,19 +280,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Map<CivilDay, List<CalendarDayTask>> _getMonthTaskMap(
     DateTime monthDate,
     List<TaskInstance> instances,
-    List<TaskSchedule> schedules,
-    BuildContext context, {
+    List<TaskSchedule> schedules, {
     String? currentUserId,
   }) {
-    final currentLocale = Localizations.localeOf(context).toString();
     if (!identical(instances, _cachedInstances) ||
         !identical(schedules, _cachedSchedules) ||
-        currentLocale != _cachedLocale ||
         currentUserId != _cachedUserId) {
       _monthTaskMapCache.clear();
       _cachedInstances = instances;
       _cachedSchedules = schedules;
-      _cachedLocale = currentLocale;
       _cachedUserId = currentUserId;
     }
 
@@ -304,7 +299,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         monthDate,
         instances,
         schedules,
-        context,
         currentUserId: currentUserId,
       ),
     );
@@ -337,7 +331,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 monthDate,
                 instances,
                 schedules,
-                consumerContext,
                 currentUserId: currentUserId,
               );
               final tasks = monthTasks[day] ?? const [];
@@ -441,6 +434,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                   theme.colorScheme,
                                   task.priority,
                                 );
+                                final timeWindow = task.getTimeWindow(context);
 
                                 return Card(
                                   elevation: 0,
@@ -522,42 +516,32 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                             fontWeight: FontWeight.w600,
                                           ),
                                     ),
-                                    subtitle: Builder(
-                                      builder: (context) {
-                                        final timeWindow = task.getTimeWindow(
-                                          consumerContext,
-                                        );
-                                        return Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            if (timeWindow != null) ...[
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                timeWindow,
-                                                style: theme.textTheme.bodySmall
-                                                    ?.copyWith(
-                                                      color: theme
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                                    ),
-                                              ),
-                                            ],
-                                            if (task
-                                                .description
-                                                .isNotEmpty) ...[
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                task.description,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style:
-                                                    theme.textTheme.bodySmall,
-                                              ),
-                                            ],
-                                          ],
-                                        );
-                                      },
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (timeWindow != null) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            timeWindow,
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
+                                        ],
+                                        if (task.description.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            task.description,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.bodySmall,
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                     trailing: Container(
                                       padding: const EdgeInsets.symmetric(
@@ -775,7 +759,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       monthDate,
       instances,
       schedules,
-      context,
       currentUserId: currentUserId,
     );
     final weekdayHeaders = _getWeekdayHeaders(locale);

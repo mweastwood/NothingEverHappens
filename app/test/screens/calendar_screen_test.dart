@@ -539,4 +539,124 @@ void main() {
       );
     },
   );
+
+  group('CalendarDayTask.getTimeWindow', () {
+    testWidgets(
+      'formats time window correctly for concrete task instance (instance != null)',
+      (tester) async {
+        late BuildContext capturedContext;
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Builder(
+              builder: (context) {
+                capturedContext = context;
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        final instance = TaskInstance(
+          id: 'I-window-test',
+          scheduleId: 'S-window-test',
+          ruleId: 'R-window-test',
+          title: 'Instance with time window',
+          description: 'Testing instance time window',
+          priority: TaskPriority.high,
+          scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 30,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 11,
+            minute: 45,
+          ),
+          status: TaskStatus.pending,
+        );
+
+        final task = CalendarDayTask(
+          id: 'task-instance',
+          title: 'Instance with time window',
+          priority: TaskPriority.high,
+          isInstance: true,
+          instance: instance,
+        );
+
+        expect(task.getTimeWindow(capturedContext), '9:30 AM – 11:45 AM');
+      },
+    );
+
+    testWidgets(
+      'formats time window correctly for projected recurring rule (matchingRule != null)',
+      (tester) async {
+        late BuildContext capturedContext;
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Builder(
+              builder: (context) {
+                capturedContext = context;
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        final rule = DailySchedule(
+          id: 'R-rule-window',
+          scheduleId: 'S-rule-window',
+          startDate: const CivilDay(year: 2026, month: 3, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 14,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 15,
+            minute: 30,
+          ),
+        );
+
+        final task = CalendarDayTask(
+          id: 'task-rule',
+          title: 'Projected rule task',
+          priority: TaskPriority.medium,
+          isInstance: false,
+          matchingRule: rule,
+        );
+
+        expect(task.getTimeWindow(capturedContext), '2:00 PM – 3:30 PM');
+      },
+    );
+
+    testWidgets(
+      'returns null when neither instance nor matchingRule is present (null fallback)',
+      (tester) async {
+        late BuildContext capturedContext;
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Builder(
+              builder: (context) {
+                capturedContext = context;
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        const task = CalendarDayTask(
+          id: 'task-empty',
+          title: 'Fallback task',
+          priority: TaskPriority.low,
+          isInstance: false,
+        );
+
+        expect(task.getTimeWindow(capturedContext), isNull);
+      },
+    );
+  });
 }
