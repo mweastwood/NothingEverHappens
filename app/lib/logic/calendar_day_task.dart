@@ -79,8 +79,7 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
     }
     instanceScheduleDateKeys.add('${inst.scheduleId}_$scheduledDate');
 
-    if (inst.status == TaskStatus.skipped ||
-        inst.status == TaskStatus.failed) {
+    if (inst.status == TaskStatus.skipped || inst.status == TaskStatus.failed) {
       continue;
     }
 
@@ -125,12 +124,10 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
         continue;
       }
 
-      final matchingRule = sched.schedules
-          .cast<TaskScheduleRule?>()
-          .firstWhere(
-            (r) => r != null && r is! OneOffSchedule && r.occursOn(civilDay),
-            orElse: () => null,
-          );
+      final matchingRule = sched.schedules.cast<TaskScheduleRule?>().firstWhere(
+        (r) => r != null && r is! OneOffSchedule && r.occursOn(civilDay),
+        orElse: () => null,
+      );
 
       if (matchingRule != null) {
         final task = CalendarDayTask(
