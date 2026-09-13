@@ -285,20 +285,44 @@ class JsAuthService implements AuthService {
   }
 }
 
+dynamic _convertValueForJs(
+  dynamic value,
+  js.JsObject adminRef,
+  js.JsObject fieldValueClass,
+  js.JsObject timestampClass,
+) {
+  if (value == FieldValue.deleteToken) {
+    return fieldValueClass.callMethod('delete');
+  } else if (value is DateTime) {
+    return timestampClass
+        .callMethod('fromMillis', [value.millisecondsSinceEpoch]);
+  } else if (value is Map<String, dynamic>) {
+    return _convertMapForJs(value, adminRef);
+  } else if (value is Map) {
+    return _convertMapForJs(Map<String, dynamic>.from(value), adminRef);
+  } else if (value is Iterable) {
+    return js.JsArray.from(value.map(
+      (item) =>
+          _convertValueForJs(item, adminRef, fieldValueClass, timestampClass),
+    ));
+  } else {
+    return js.JsObject.jsify(value);
+  }
+}
+
 dynamic _convertMapForJs(Map<String, dynamic> map, js.JsObject adminRef) {
   final firestoreClass = adminRef['firestore'] as js.JsObject;
   final fieldValueClass = firestoreClass['FieldValue'] as js.JsObject;
+  final timestampClass = firestoreClass['Timestamp'] as js.JsObject;
   final jsObj = js.JsObject(js.context['Object']);
 
   for (final entry in map.entries) {
-    if (entry.value == FieldValue.deleteToken) {
-      jsObj[entry.key] = fieldValueClass.callMethod('delete');
-    } else if (entry.value is Map<String, dynamic>) {
-      jsObj[entry.key] =
-          _convertMapForJs(entry.value as Map<String, dynamic>, adminRef);
-    } else {
-      jsObj[entry.key] = js.JsObject.jsify(entry.value);
-    }
+    jsObj[entry.key] = _convertValueForJs(
+      entry.value,
+      adminRef,
+      fieldValueClass,
+      timestampClass,
+    );
   }
   return jsObj;
 }
