@@ -3211,6 +3211,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{completed} of {total} completed'**
   String completionProgressBadge(int completed, int total);
+
+  /// No description provided for @labelsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get labelsTitle;
+
+  /// No description provided for @personalLabelsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal Labels'**
+  String get personalLabelsSection;
+
+  /// No description provided for @personalLabelsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Only visible to you'**
+  String get personalLabelsSubtitle;
+
+  /// No description provided for @familyLabelsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Family Labels'**
+  String get familyLabelsSection;
+
+  /// No description provided for @familyLabelsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared across the family'**
+  String get familyLabelsSubtitle;
+
+  /// No description provided for @addLabelButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Label'**
+  String get addLabelButton;
+
+  /// No description provided for @newPersonalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New Personal Label'**
+  String get newPersonalLabel;
+
+  /// No description provided for @editPersonalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Personal Label'**
+  String get editPersonalLabel;
+
+  /// No description provided for @newFamilyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New Family Label'**
+  String get newFamilyLabel;
+
+  /// No description provided for @editFamilyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Family Label'**
+  String get editFamilyLabel;
+
+  /// No description provided for @labelNameField.
+  ///
+  /// In en, this message translates to:
+  /// **'Label Name'**
+  String get labelNameField;
+
+  /// No description provided for @labelNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a label name'**
+  String get labelNameRequired;
+
+  /// No description provided for @labelNameTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Label name must be at most 24 characters'**
+  String get labelNameTooLong;
+
+  /// No description provided for @labelColorPickerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get labelColorPickerLabel;
+
+  /// No description provided for @labelIconPickerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get labelIconPickerLabel;
+
+  /// No description provided for @labelPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get labelPreview;
+
+  /// No description provided for @saveLabelButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Label'**
+  String get saveLabelButton;
+
+  /// No description provided for @noPersonalLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'No personal labels yet. Tap \'+ Add Label\' to create one.'**
+  String get noPersonalLabels;
+
+  /// No description provided for @noFamilyLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'No family labels yet. Tap \'+ Add Label\' to create one.'**
+  String get noFamilyLabels;
+
+  /// No description provided for @noFamilyLabelsNonParent.
+  ///
+  /// In en, this message translates to:
+  /// **'No family labels yet.'**
+  String get noFamilyLabelsNonParent;
+
+  /// No description provided for @onlyParentsCanManageFamilyLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Only parents can add, edit, or delete family labels.'**
+  String get onlyParentsCanManageFamilyLabels;
+
+  /// No description provided for @notInFamilyLabelsNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'You are not currently part of a family. Join or create a family to share labels across household members.'**
+  String get notInFamilyLabelsNotice;
+
+  /// No description provided for @deleteLabelConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Label?'**
+  String get deleteLabelConfirmTitle;
+
+  /// No description provided for @deleteLabelConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete \"{name}\"?'**
+  String deleteLabelConfirmMessage(String name);
+
+  /// No description provided for @goToFamilyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Family'**
+  String get goToFamilyButton;
 }
 
 class _AppLocalizationsDelegate

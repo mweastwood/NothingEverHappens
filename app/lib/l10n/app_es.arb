@@ -679,5 +679,37 @@
         "type": "int"
       }
     }
-  }
+  },
+  "labelsTitle": "Etiquetas",
+  "personalLabelsSection": "Etiquetas Personales",
+  "personalLabelsSubtitle": "Solo visibles para ti",
+  "familyLabelsSection": "Etiquetas Familiares",
+  "familyLabelsSubtitle": "Compartidas con toda la familia",
+  "addLabelButton": "Agregar Etiqueta",
+  "newPersonalLabel": "Nueva Etiqueta Personal",
+  "editPersonalLabel": "Editar Etiqueta Personal",
+  "newFamilyLabel": "Nueva Etiqueta Familiar",
+  "editFamilyLabel": "Editar Etiqueta Familiar",
+  "labelNameField": "Nombre de la etiqueta",
+  "labelNameRequired": "Por favor ingresa un nombre",
+  "labelNameTooLong": "El nombre no puede tener más de 24 caracteres",
+  "labelColorPickerLabel": "Color",
+  "labelIconPickerLabel": "Ícono",
+  "labelPreview": "Vista previa",
+  "saveLabelButton": "Guardar Etiqueta",
+  "noPersonalLabels": "No hay etiquetas personales aún. Toca '+ Agregar Etiqueta' para crear una.",
+  "noFamilyLabels": "No hay etiquetas familiares aún. Toca '+ Agregar Etiqueta' para crear una.",
+  "noFamilyLabelsNonParent": "No hay etiquetas familiares aún.",
+  "onlyParentsCanManageFamilyLabels": "Solo los padres pueden agregar, editar o eliminar etiquetas familiares.",
+  "notInFamilyLabelsNotice": "Actualmente no formas parte de una familia. Únete o crea una para compartir etiquetas.",
+  "deleteLabelConfirmTitle": "¿Eliminar Etiqueta?",
+  "deleteLabelConfirmMessage": "¿Estás seguro de que deseas eliminar \"{name}\"?",
+  "@deleteLabelConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "goToFamilyButton": "Ir a Familia"
 }

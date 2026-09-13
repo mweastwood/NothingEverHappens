@@ -1879,4 +1879,86 @@ class AppLocalizationsEs extends AppLocalizations {
   String completionProgressBadge(int completed, int total) {
     return '$completed de $total completados';
   }
+
+  @override
+  String get labelsTitle => 'Etiquetas';
+
+  @override
+  String get personalLabelsSection => 'Etiquetas Personales';
+
+  @override
+  String get personalLabelsSubtitle => 'Solo visibles para ti';
+
+  @override
+  String get familyLabelsSection => 'Etiquetas Familiares';
+
+  @override
+  String get familyLabelsSubtitle => 'Compartidas con toda la familia';
+
+  @override
+  String get addLabelButton => 'Agregar Etiqueta';
+
+  @override
+  String get newPersonalLabel => 'Nueva Etiqueta Personal';
+
+  @override
+  String get editPersonalLabel => 'Editar Etiqueta Personal';
+
+  @override
+  String get newFamilyLabel => 'Nueva Etiqueta Familiar';
+
+  @override
+  String get editFamilyLabel => 'Editar Etiqueta Familiar';
+
+  @override
+  String get labelNameField => 'Nombre de la etiqueta';
+
+  @override
+  String get labelNameRequired => 'Por favor ingresa un nombre';
+
+  @override
+  String get labelNameTooLong =>
+      'El nombre no puede tener más de 24 caracteres';
+
+  @override
+  String get labelColorPickerLabel => 'Color';
+
+  @override
+  String get labelIconPickerLabel => 'Ícono';
+
+  @override
+  String get labelPreview => 'Vista previa';
+
+  @override
+  String get saveLabelButton => 'Guardar Etiqueta';
+
+  @override
+  String get noPersonalLabels =>
+      'No hay etiquetas personales aún. Toca \'+ Agregar Etiqueta\' para crear una.';
+
+  @override
+  String get noFamilyLabels =>
+      'No hay etiquetas familiares aún. Toca \'+ Agregar Etiqueta\' para crear una.';
+
+  @override
+  String get noFamilyLabelsNonParent => 'No hay etiquetas familiares aún.';
+
+  @override
+  String get onlyParentsCanManageFamilyLabels =>
+      'Solo los padres pueden agregar, editar o eliminar etiquetas familiares.';
+
+  @override
+  String get notInFamilyLabelsNotice =>
+      'Actualmente no formas parte de una familia. Únete o crea una para compartir etiquetas.';
+
+  @override
+  String get deleteLabelConfirmTitle => '¿Eliminar Etiqueta?';
+
+  @override
+  String deleteLabelConfirmMessage(String name) {
+    return '¿Estás seguro de que deseas eliminar \"$name\"?';
+  }
+
+  @override
+  String get goToFamilyButton => 'Ir a Familia';
 }

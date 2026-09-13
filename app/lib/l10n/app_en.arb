@@ -1126,5 +1126,37 @@
         "type": "int"
       }
     }
-  }
+  },
+  "labelsTitle": "Labels",
+  "personalLabelsSection": "Personal Labels",
+  "personalLabelsSubtitle": "Only visible to you",
+  "familyLabelsSection": "Family Labels",
+  "familyLabelsSubtitle": "Shared across the family",
+  "addLabelButton": "Add Label",
+  "newPersonalLabel": "New Personal Label",
+  "editPersonalLabel": "Edit Personal Label",
+  "newFamilyLabel": "New Family Label",
+  "editFamilyLabel": "Edit Family Label",
+  "labelNameField": "Label Name",
+  "labelNameRequired": "Please enter a label name",
+  "labelNameTooLong": "Label name must be at most 24 characters",
+  "labelColorPickerLabel": "Color",
+  "labelIconPickerLabel": "Icon",
+  "labelPreview": "Preview",
+  "saveLabelButton": "Save Label",
+  "noPersonalLabels": "No personal labels yet. Tap '+ Add Label' to create one.",
+  "noFamilyLabels": "No family labels yet. Tap '+ Add Label' to create one.",
+  "noFamilyLabelsNonParent": "No family labels yet.",
+  "onlyParentsCanManageFamilyLabels": "Only parents can add, edit, or delete family labels.",
+  "notInFamilyLabelsNotice": "You are not currently part of a family. Join or create a family to share labels across household members.",
+  "deleteLabelConfirmTitle": "Delete Label?",
+  "deleteLabelConfirmMessage": "Are you sure you want to delete \"{name}\"?",
+  "@deleteLabelConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "goToFamilyButton": "Go to Family"
 }
