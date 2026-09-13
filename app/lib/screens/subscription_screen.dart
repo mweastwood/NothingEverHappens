@@ -6,6 +6,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import '../logic/auth_repository.dart';
 import '../logic/firestore_paths.dart';
 import '../logic/subscription_service.dart';
+import '../widgets/app_snackbar.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -47,10 +48,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             .set({'subscriptionTier': 'standard'}, SetOptions(merge: true));
 
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Upgraded to Individual Subscription!'),
-            ),
+          AppSnackBar.show(
+            context,
+            content: const Text('Upgraded to Individual Subscription!'),
           );
         }
       }
@@ -95,8 +95,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             .set({'subscriptionTier': 'family'}, SetOptions(merge: true));
 
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Upgraded to Family Subscription!')),
+          AppSnackBar.show(
+            context,
+            content: const Text('Upgraded to Family Subscription!'),
           );
         }
       }
@@ -117,8 +118,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         await Purchases.restorePurchases();
       }
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Purchases restored successfully.')),
+        AppSnackBar.show(
+          context,
+          content: const Text('Purchases restored successfully.'),
         );
       }
     } catch (e) {

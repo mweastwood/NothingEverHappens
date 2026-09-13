@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_snackbar.dart';
 
 /// A reusable paywall widget that displays premium features and an upgrade call-to-action.
 class SubscriptionPaywallWidget extends StatelessWidget {
@@ -88,10 +89,9 @@ class SubscriptionPaywallWidget extends StatelessWidget {
                 onPressed:
                     onRestore ??
                     () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Purchases restored successfully.'),
-                        ),
+                      AppSnackBar.show(
+                        context,
+                        content: const Text('Purchases restored successfully.'),
                       );
                     },
                 child: const Text('Restore Purchases'),

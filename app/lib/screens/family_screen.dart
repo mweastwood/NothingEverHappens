@@ -8,6 +8,7 @@ import '../widgets/family_invite_card.dart';
 import '../widgets/family_outstanding_invite_tile.dart';
 import '../widgets/family_member_tile.dart';
 import '../widgets/subscription_paywall_widget.dart';
+import '../widgets/app_snackbar.dart';
 import '../logic/subscription_service.dart';
 import 'subscription_screen.dart';
 
@@ -74,8 +75,9 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           role: result['role'] as FamilyRole,
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.inviteSentSuccess)),
+          AppSnackBar.show(
+            context,
+            content: Text(context.l10n.inviteSentSuccess),
           );
         }
       } catch (e, stackTrace) {
@@ -206,8 +208,9 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
       try {
         await repository.revokeInvite(invite.id);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.inviteRevokedSuccess)),
+          AppSnackBar.show(
+            context,
+            content: Text(context.l10n.inviteRevokedSuccess),
           );
         }
       } catch (e, stackTrace) {
@@ -253,12 +256,9 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           newRole: newRole,
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                context.l10n.roleUpdatedSuccess(member.displayName),
-              ),
-            ),
+          AppSnackBar.show(
+            context,
+            content: Text(context.l10n.roleUpdatedSuccess(member.displayName)),
           );
         }
       } catch (e, stackTrace) {

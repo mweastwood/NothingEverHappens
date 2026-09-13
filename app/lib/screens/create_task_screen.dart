@@ -22,6 +22,7 @@ import '../widgets/create_task/task_family_assignment_section.dart';
 import '../widgets/create_task/task_schedule_list_section.dart';
 import '../widgets/spawned_instances_list.dart';
 import '../widgets/undo_snackbar.dart';
+import '../widgets/app_snackbar.dart';
 import 'help_screen.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
@@ -126,9 +127,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     final l10n = context.l10n;
     if (_formKey.currentState!.validate()) {
       if (formState.schedules.isEmpty) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.scheduleRequiredError)));
+        AppSnackBar.show(context, content: Text(l10n.scheduleRequiredError));
         return;
       }
 
@@ -139,8 +138,9 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           : null;
 
       if (formState.skipIfNoCapacity && estimatedDuration == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.capacityDependentEffortRequiredError)),
+        AppSnackBar.show(
+          context,
+          content: Text(l10n.capacityDependentEffortRequiredError),
         );
         return;
       }
