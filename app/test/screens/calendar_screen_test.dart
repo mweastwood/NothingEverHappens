@@ -659,4 +659,254 @@ void main() {
       },
     );
   });
+
+  testWidgets(
+    'day bottom sheet on a day with a skipped task instance does not show phantom unclickable recurring chore',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final skippedInstance = TaskInstance(
+        id: 'I-skipped-only',
+        scheduleId: 'S-1',
+        ruleId: 'R-1',
+        title: 'Water the Houseplants',
+        description: 'Living room, kitchen, and balcony plants.',
+        priority: TaskPriority.high,
+        scheduledDate: const CivilDay(year: 2026, month: 3, day: 8),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
+        status: TaskStatus.skipped,
+      );
+
+      instancesSubject.add([skippedInstance]);
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      // Tap on day 8 of current month
+      final day8Finder = find.descendant(
+        of: find.byKey(const Key('month_card_2026_3')),
+        matching: find.text('8'),
+      );
+      await tester.tap(day8Finder.first);
+      await tester.pumpAndSettle();
+
+      // Water the Houseplants was skipped on day 8; it must NOT be resurrected as a projected chore in bottom sheet
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text('Water the Houseplants'),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byIcon(Icons.event_repeat),
+        ),
+        findsNothing,
+      );
+    },
+  );
+
+  group('CalendarScreen.computeMonthTaskMap', () {
+    final march2026 = DateTime(2026, 3, 1);
+    const today = CivilDay(year: 2026, month: 3, day: 8);
+
+    final dailySchedule = TaskSchedule(
+      id: 'S-daily',
+      title: 'Daily Task',
+      description: 'Daily recurring schedule',
+      priority: TaskPriority.high,
+      schedules: [
+        DailySchedule(
+          id: 'R-daily',
+          scheduleId: 'S-daily',
+          startDate: const CivilDay(year: 2026, month: 3, day: 1),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 8,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 12,
+            minute: 0,
+          ),
+        ),
+      ],
+    );
+
+    final oneOffSchedule = TaskSchedule(
+      id: 'S-oneoff',
+      title: 'One-off Task',
+      description: 'One-off non-recurring schedule',
+      priority: TaskPriority.low,
+      schedules: [
+        OneOffSchedule(
+          id: 'R-oneoff',
+          scheduleId: 'S-oneoff',
+          date: const CivilDay(year: 2026, month: 3, day: 15),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 11,
+            minute: 0,
+          ),
+        ),
+      ],
+    );
+
+    test(
+      'skipped concrete instance is excluded and prevents projected task resurrection',
+      () {
+        final skippedInstance = TaskInstance(
+          id: 'I-skipped',
+          scheduleId: 'S-daily',
+          ruleId: 'R-daily',
+          title: 'Daily Task',
+          description: 'Daily recurring schedule',
+          priority: TaskPriority.high,
+          scheduledDate: today,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 8,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 12,
+            minute: 0,
+          ),
+          status: TaskStatus.skipped,
+        );
+
+        final map = CalendarScreen.computeMonthTaskMap(
+          march2026,
+          [skippedInstance],
+          [dailySchedule],
+          today: today,
+        );
+
+        // On today (March 8), the task was skipped. It must NOT appear in the map.
+        expect(map[today], isNull);
+      },
+    );
+
+    test(
+      'failed concrete instance is excluded and prevents projected task resurrection',
+      () {
+        final failedInstance = TaskInstance(
+          id: 'I-failed',
+          scheduleId: 'S-daily',
+          ruleId: 'R-daily',
+          title: 'Daily Task',
+          description: 'Daily recurring schedule',
+          priority: TaskPriority.high,
+          scheduledDate: today,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 8,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 12,
+            minute: 0,
+          ),
+          status: TaskStatus.failed,
+        );
+
+        final map = CalendarScreen.computeMonthTaskMap(
+          march2026,
+          [failedInstance],
+          [dailySchedule],
+          today: today,
+        );
+
+        // On today (March 8), the task failed. It must NOT appear in the map.
+        expect(map[today], isNull);
+      },
+    );
+
+    test('schedules with only OneOffSchedule rules are never projected', () {
+      final map = CalendarScreen.computeMonthTaskMap(march2026, [], [
+        oneOffSchedule,
+      ], today: today);
+
+      // March 15 has no instance, but oneOffSchedule is non-recurring, so it must not be projected
+      const day15 = CivilDay(year: 2026, month: 3, day: 15);
+      expect(map[day15], isNull);
+      expect(map.isEmpty, isTrue);
+    });
+
+    test('recurring tasks are not projected onto past dates prior to today', () {
+      final map = CalendarScreen.computeMonthTaskMap(march2026, [], [
+        dailySchedule,
+      ], today: today);
+
+      // Days 1 through 7 are prior to today (March 8). No tasks should be projected there.
+      for (int d = 1; d < 8; d++) {
+        final pastDay = CivilDay(year: 2026, month: 3, day: d);
+        expect(
+          map[pastDay],
+          isNull,
+          reason: 'Past day $pastDay should not have projected tasks',
+        );
+      }
+
+      // Today and future days should have projected tasks
+      expect(map[today], isNotNull);
+      expect(map[today]!.first.id, 'projected_S-daily_2026-03-08');
+      const day9 = CivilDay(year: 2026, month: 3, day: 9);
+      expect(map[day9], isNotNull);
+      expect(map[day9]!.first.id, 'projected_S-daily_2026-03-09');
+    });
+
+    test(
+      'past concrete instances are retained while projections are suppressed',
+      () {
+        const pastDay = CivilDay(year: 2026, month: 3, day: 5);
+        final pastInstance = TaskInstance(
+          id: 'I-past',
+          scheduleId: 'S-daily',
+          ruleId: 'R-daily',
+          title: 'Daily Task',
+          description: 'Daily recurring schedule',
+          priority: TaskPriority.high,
+          scheduledDate: pastDay,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 8,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 12,
+            minute: 0,
+          ),
+          status: TaskStatus.completed,
+        );
+
+        final map = CalendarScreen.computeMonthTaskMap(
+          march2026,
+          [pastInstance],
+          [dailySchedule],
+          today: today,
+        );
+
+        expect(map[pastDay], isNotNull);
+        expect(map[pastDay]!.length, 1);
+        expect(map[pastDay]!.first.id, 'I-past');
+        expect(map[pastDay]!.first.isCompleted, isTrue);
+      },
+    );
+  });
 }
