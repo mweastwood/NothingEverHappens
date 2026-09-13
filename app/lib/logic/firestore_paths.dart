@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'task_instance.dart';
+import 'task_label.dart';
 import 'task_schedule.dart';
 
 /// Centralized collection path constants for Firestore across the application.
@@ -13,6 +14,7 @@ abstract final class FirestorePaths {
   static const String history = 'history';
   static const String invites = 'invites';
   static const String recipes = 'recipes';
+  static const String labels = 'labels';
 }
 
 /// Centralized typed collection reference helpers with converters.
@@ -67,5 +69,31 @@ abstract final class FirestoreCollections {
       .withConverter<TaskInstance>(
         fromFirestore: (snapshot, _) => TaskInstance.fromFirestore(snapshot),
         toFirestore: (instance, _) => instance.toFirestore(),
+      );
+
+  /// Returns typed [CollectionReference] for a user's labels.
+  static CollectionReference<TaskLabel> userLabels(
+    FirebaseFirestore firestore,
+    String userId,
+  ) => firestore
+      .collection(FirestorePaths.users)
+      .doc(userId)
+      .collection(FirestorePaths.labels)
+      .withConverter<TaskLabel>(
+        fromFirestore: (snapshot, _) => TaskLabel.fromFirestore(snapshot),
+        toFirestore: (label, _) => label.toFirestore(),
+      );
+
+  /// Returns typed [CollectionReference] for a family's labels.
+  static CollectionReference<TaskLabel> familyLabels(
+    FirebaseFirestore firestore,
+    String familyId,
+  ) => firestore
+      .collection(FirestorePaths.families)
+      .doc(familyId)
+      .collection(FirestorePaths.labels)
+      .withConverter<TaskLabel>(
+        fromFirestore: (snapshot, _) => TaskLabel.fromFirestore(snapshot),
+        toFirestore: (label, _) => label.toFirestore(),
       );
 }

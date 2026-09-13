@@ -1862,4 +1862,85 @@ class AppLocalizationsEn extends AppLocalizations {
   String completionProgressBadge(int completed, int total) {
     return '$completed of $total completed';
   }
+
+  @override
+  String get labelsTitle => 'Labels';
+
+  @override
+  String get personalLabelsSection => 'Personal Labels';
+
+  @override
+  String get personalLabelsSubtitle => 'Only visible to you';
+
+  @override
+  String get familyLabelsSection => 'Family Labels';
+
+  @override
+  String get familyLabelsSubtitle => 'Shared across the family';
+
+  @override
+  String get addLabelButton => 'Add Label';
+
+  @override
+  String get newPersonalLabel => 'New Personal Label';
+
+  @override
+  String get editPersonalLabel => 'Edit Personal Label';
+
+  @override
+  String get newFamilyLabel => 'New Family Label';
+
+  @override
+  String get editFamilyLabel => 'Edit Family Label';
+
+  @override
+  String get labelNameField => 'Label Name';
+
+  @override
+  String get labelNameRequired => 'Please enter a label name';
+
+  @override
+  String get labelNameTooLong => 'Label name must be at most 24 characters';
+
+  @override
+  String get labelColorPickerLabel => 'Color';
+
+  @override
+  String get labelIconPickerLabel => 'Icon';
+
+  @override
+  String get labelPreview => 'Preview';
+
+  @override
+  String get saveLabelButton => 'Save Label';
+
+  @override
+  String get noPersonalLabels =>
+      'No personal labels yet. Tap \'+ Add Label\' to create one.';
+
+  @override
+  String get noFamilyLabels =>
+      'No family labels yet. Tap \'+ Add Label\' to create one.';
+
+  @override
+  String get noFamilyLabelsNonParent => 'No family labels yet.';
+
+  @override
+  String get onlyParentsCanManageFamilyLabels =>
+      'Only parents can add, edit, or delete family labels.';
+
+  @override
+  String get notInFamilyLabelsNotice =>
+      'You are not currently part of a family. Join or create a family to share labels across household members.';
+
+  @override
+  String get deleteLabelConfirmTitle => 'Delete Label?';
+
+  @override
+  String deleteLabelConfirmMessage(String name) {
+    return 'Are you sure you want to delete \"$name\"?';
+  }
+
+  @override
+  String get goToFamilyButton => 'Go to Family';
 }
