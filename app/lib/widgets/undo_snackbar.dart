@@ -4,6 +4,8 @@ import '../logic/undo_notifier.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
 
+import 'app_snackbar.dart';
+
 class UndoSnackBar {
   /// Show an undo snackbar from a synchronous context where [BuildContext] is
   /// still valid (e.g. button tap handlers, animation completion callbacks).
@@ -58,43 +60,6 @@ class UndoSnackBar {
     );
   }
 
-  static SnackBar _buildCustomSnackBar({
-    required ThemeData theme,
-    required Widget content,
-    required Duration duration,
-    Widget? action,
-  }) {
-    return SnackBar(
-      behavior: SnackBarBehavior.fixed,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      padding: EdgeInsets.zero,
-      duration: duration,
-      content: Padding(
-        padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
-        child: Material(
-          color: theme.colorScheme.inverseSurface,
-          elevation: 6,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 14.0,
-            ),
-            child: Row(
-              children: [
-                Expanded(child: content),
-                if (action != null) ...[const SizedBox(width: 8.0), action],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   static void _showSnackBar({
     required UndoNotifier notifier,
     required ScaffoldMessengerState messenger,
@@ -107,7 +72,7 @@ class UndoSnackBar {
     messenger.clearSnackBars();
 
     messenger.showSnackBar(
-      _buildCustomSnackBar(
+      AppSnackBar.build(
         theme: theme,
         duration: const Duration(seconds: 4),
         content: Text(
@@ -126,7 +91,7 @@ class UndoSnackBar {
             if (success) {
               messenger.clearSnackBars();
               messenger.showSnackBar(
-                _buildCustomSnackBar(
+                AppSnackBar.build(
                   theme: theme,
                   duration: const Duration(seconds: 2),
                   content: Text(

@@ -10,6 +10,7 @@ import '../logic/task_repository.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
 import '../widgets/debug_state_share_helper.dart';
+import '../widgets/app_snackbar.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -68,9 +69,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           await taskRepo.resetLocalDataAndResync();
         }
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(l10n.resetLocalDataSuccess)));
+          AppSnackBar.show(context, content: Text(l10n.resetLocalDataSuccess));
         }
       } catch (e, stackTrace) {
         if (mounted) {
@@ -115,8 +114,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             );
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.settingsSavedSuccessfully)),
+          AppSnackBar.show(
+            context,
+            content: Text(context.l10n.settingsSavedSuccessfully),
           );
         }
       } catch (e, stackTrace) {

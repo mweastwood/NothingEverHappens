@@ -12,6 +12,7 @@ import '../logic/app_state_exporter.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/utils/file_downloader/file_downloader.dart';
+import 'app_snackbar.dart';
 
 typedef FileSaver =
     FutureOr<void> Function(String content, String fileName, {String mimeType});
@@ -152,8 +153,9 @@ class DebugStateShareHelper {
           if (!context.mounted) return;
           await Clipboard.setData(ClipboardData(text: jsonString));
           if (!context.mounted) return;
-          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-            SnackBar(content: Text(context.l10n.debugStateCopiedToClipboard)),
+          AppSnackBar.show(
+            context,
+            content: Text(context.l10n.debugStateCopiedToClipboard),
           );
         }
       } finally {

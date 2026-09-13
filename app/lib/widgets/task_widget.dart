@@ -18,6 +18,7 @@ import '../logic/l10n_extension.dart';
 import '../logic/undo_notifier.dart';
 import '../logic/app_clock.dart';
 import 'undo_snackbar.dart';
+import 'app_snackbar.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -578,11 +579,10 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                     : widget.instance.title;
                 await Clipboard.setData(ClipboardData(text: textToCopy));
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(context.l10n.copiedToClipboard),
-                      duration: const Duration(seconds: 2),
-                    ),
+                  AppSnackBar.show(
+                    context,
+                    content: Text(context.l10n.copiedToClipboard),
+                    duration: const Duration(seconds: 2),
                   );
                 }
               },
@@ -752,14 +752,16 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                       mode: LaunchMode.externalApplication,
                     );
                     if (!launched && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Could not open link: $urlStr')),
+                      AppSnackBar.show(
+                        context,
+                        content: Text('Could not open link: $urlStr'),
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Could not open link: $e')),
+                      AppSnackBar.show(
+                        context,
+                        content: Text('Could not open link: $e'),
                       );
                     }
                   }

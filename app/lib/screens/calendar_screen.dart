@@ -11,6 +11,7 @@ import '../logic/task_schedule.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/utils/layout_breakpoints.dart';
+import '../widgets/app_snackbar.dart';
 import 'create_task_screen.dart';
 
 /// Unified representation of a task scheduled for a specific day on the calendar.
@@ -484,13 +485,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                                 } catch (e) {
                                                   if (bottomSheetContext
                                                       .mounted) {
-                                                    ScaffoldMessenger.of(
+                                                    AppSnackBar.show(
                                                       bottomSheetContext,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          '${consumerContext.l10n.somethingWentWrong} $e',
-                                                        ),
+                                                      content: Text(
+                                                        '${consumerContext.l10n.somethingWentWrong} $e',
                                                       ),
                                                     );
                                                   }

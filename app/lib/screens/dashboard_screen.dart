@@ -14,6 +14,7 @@ import '../widgets/family_contributions_card.dart';
 import '../widgets/weekly_capacity_chart.dart';
 import '../widgets/daily_activity_breakdown_sheet.dart';
 import '../widgets/system_task_widget.dart';
+import '../widgets/app_snackbar.dart';
 import '../logic/system_tasks/system_task_providers.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -35,8 +36,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       repository.updateSettings(
         settings.copyWith(lastCapacityConfirmedWeek: weekId),
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Weekly capacity confirmed successfully')),
+      AppSnackBar.show(
+        context,
+        content: const Text('Weekly capacity confirmed successfully'),
       );
     }
   }
