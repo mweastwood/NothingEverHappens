@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app_clock.dart';
 import 'civil_day.dart';
 import 'task_instance.dart';
 import 'task_schedule.dart';
@@ -62,22 +63,26 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
   required List<TaskInstance> instances,
   required List<TaskSchedule> schedules,
   String? currentUserId,
+  CivilDay? today,
 }) {
   final Map<CivilDay, List<CalendarDayTask>> map = {};
   final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
+  final effectiveToday = today ?? CivilDay.fromDateTime(AppClock.now);
 
   // 1. Concrete instances
   final Set<String> instanceScheduleDateKeys = {};
   for (final inst in instances) {
-    if (inst.status == TaskStatus.skipped || inst.status == TaskStatus.failed) {
-      continue;
-    }
     final scheduledDate = inst.scheduledDate;
     if (scheduledDate.year != monthDate.year ||
         scheduledDate.month != monthDate.month) {
       continue;
     }
     instanceScheduleDateKeys.add('${inst.scheduleId}_$scheduledDate');
+
+    if (inst.status == TaskStatus.skipped ||
+        inst.status == TaskStatus.failed) {
+      continue;
+    }
 
     final bool isCompleted = (inst.isFamily && currentUserId != null)
         ? inst.isCompletedForUser(currentUserId)
@@ -105,16 +110,27 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
       day: dayNum,
     );
 
+    if (civilDay.isBefore(effectiveToday)) {
+      continue;
+    }
+
     for (final sched in schedules) {
       final key = '${sched.id}_$civilDay';
       if (instanceScheduleDateKeys.contains(key)) {
         continue; // Already has concrete instance
       }
 
-      final matchingRule = sched.schedules.cast<TaskScheduleRule?>().firstWhere(
-        (r) => r != null && r.occursOn(civilDay),
-        orElse: () => null,
-      );
+      final isRecurring = sched.schedules.any((s) => s is! OneOffSchedule);
+      if (!isRecurring) {
+        continue;
+      }
+
+      final matchingRule = sched.schedules
+          .cast<TaskScheduleRule?>()
+          .firstWhere(
+            (r) => r != null && r is! OneOffSchedule && r.occursOn(civilDay),
+            orElse: () => null,
+          );
 
       if (matchingRule != null) {
         final task = CalendarDayTask(
