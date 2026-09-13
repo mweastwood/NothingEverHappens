@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +48,7 @@ void main() {
     Size screenSize = const Size(400, 800),
     String familyRole = 'parent',
     bool hasFamily = true,
+    String? userId = currentUserId,
   }) {
     return ProviderScope(
       overrides: [
@@ -53,11 +56,13 @@ void main() {
         familyRepositoryProvider.overrideWithValue(familyRepo),
         authStateProvider.overrideWith(
           (ref) => Stream.value(
-            _FakeUser(
-              uid: currentUserId,
-              email: 'test@example.com',
-              displayName: 'Tester',
-            ),
+            userId != null
+                ? _FakeUser(
+                    uid: userId,
+                    email: 'test@example.com',
+                    displayName: 'Tester',
+                  )
+                : null,
           ),
         ),
         familyProfileStreamProvider.overrideWith(
@@ -348,5 +353,86 @@ void main() {
           .first;
       expect(labelsAfterDelete, isEmpty);
     });
+
+    testWidgets(
+      'displays error dialog when saving personal label without authenticated user',
+      (tester) async {
+        await tester.pumpWidget(buildScreen(userId: null));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('add_personal_label_button')));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.byKey(const Key('label_name_field')),
+          'Unauthenticated Label',
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('save_label_button')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Error Occurred'), findsOneWidget);
+        expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'displays error dialog when deleting personal label without authenticated user',
+      (tester) async {
+        final authController = StreamController<User?>.broadcast();
+        final user = _FakeUser(
+          uid: currentUserId,
+          email: 'test@example.com',
+          displayName: 'Tester',
+        );
+        final label = TaskLabel.create(
+          id: 'L-pers-test',
+          name: 'Personal Label',
+          colorKey: 'coral',
+          iconKey: 'tag',
+        );
+        await labelRepo.savePersonalLabel(currentUserId, label);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              labelRepositoryProvider.overrideWithValue(labelRepo),
+              familyRepositoryProvider.overrideWithValue(familyRepo),
+              authStateProvider.overrideWith((ref) => authController.stream),
+              familyProfileStreamProvider.overrideWith(
+                (ref) => Stream.value(
+                  FamilyProfile(familyId: familyId, familyRole: 'parent'),
+                ),
+              ),
+            ],
+            child: MediaQuery(
+              data: const MediaQueryData(size: Size(400, 800)),
+              child: buildTestableWidget(child: const LabelsScreen()),
+            ),
+          ),
+        );
+        authController.add(user);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Personal Label'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('delete_label_L-pers-test')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Delete Label?'), findsOneWidget);
+
+        // Auth state lost before confirming delete
+        authController.add(null);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('confirm_delete_label_button')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Error Occurred'), findsOneWidget);
+        expect(find.byIcon(Icons.error_outline), findsOneWidget);
+
+        await authController.close();
+      },
+    );
   });
 }

@@ -57,15 +57,17 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
         final repo = ref.read(labelRepositoryProvider);
         if (label.scope == TaskLabelScope.personal) {
           final userId = ref.read(authStateProvider).value?.uid ?? '';
-          if (userId.isNotEmpty) {
-            await repo.deletePersonalLabel(userId, label.id);
+          if (userId.isEmpty) {
+            throw StateError('User is not authenticated');
           }
+          await repo.deletePersonalLabel(userId, label.id);
         } else {
           final familyProfile = ref.read(familyProfileStreamProvider).value;
           final familyId = familyProfile?.familyId ?? '';
-          if (familyId.isNotEmpty) {
-            await repo.deleteFamilyLabel(familyId, label.id);
+          if (familyId.isEmpty) {
+            throw StateError('Family ID cannot be resolved');
           }
+          await repo.deleteFamilyLabel(familyId, label.id);
         }
       } catch (e, stackTrace) {
         if (mounted) {
@@ -650,15 +652,17 @@ class _LabelEditDialogState extends ConsumerState<_LabelEditDialog> {
 
         if (widget.scope == TaskLabelScope.personal) {
           final userId = ref.read(authStateProvider).value?.uid ?? '';
-          if (userId.isNotEmpty) {
-            await repo.savePersonalLabel(userId, updatedLabel);
+          if (userId.isEmpty) {
+            throw StateError('User is not authenticated');
           }
+          await repo.savePersonalLabel(userId, updatedLabel);
         } else {
           final familyProfile = ref.read(familyProfileStreamProvider).value;
           final familyId = familyProfile?.familyId ?? '';
-          if (familyId.isNotEmpty) {
-            await repo.saveFamilyLabel(familyId, updatedLabel);
+          if (familyId.isEmpty) {
+            throw StateError('Family ID cannot be resolved');
           }
+          await repo.saveFamilyLabel(familyId, updatedLabel);
         }
       } else {
         final newLabel = TaskLabel.create(
@@ -670,15 +674,17 @@ class _LabelEditDialogState extends ConsumerState<_LabelEditDialog> {
 
         if (widget.scope == TaskLabelScope.personal) {
           final userId = ref.read(authStateProvider).value?.uid ?? '';
-          if (userId.isNotEmpty) {
-            await repo.savePersonalLabel(userId, newLabel);
+          if (userId.isEmpty) {
+            throw StateError('User is not authenticated');
           }
+          await repo.savePersonalLabel(userId, newLabel);
         } else {
           final familyProfile = ref.read(familyProfileStreamProvider).value;
           final familyId = familyProfile?.familyId ?? '';
-          if (familyId.isNotEmpty) {
-            await repo.saveFamilyLabel(familyId, newLabel);
+          if (familyId.isEmpty) {
+            throw StateError('Family ID cannot be resolved');
           }
+          await repo.saveFamilyLabel(familyId, newLabel);
         }
       }
 
