@@ -8,6 +8,7 @@ import '../logic/l10n_extension.dart';
 import '../logic/label_repository.dart';
 import '../logic/task_label.dart';
 import '../logic/utils/layout_breakpoints.dart';
+import '../widgets/save_discard_bar.dart';
 import 'family_screen.dart';
 
 class LabelsScreen extends ConsumerStatefulWidget {
@@ -726,6 +727,8 @@ class _LabelEditDialogState extends ConsumerState<_LabelEditDialog> {
 
     return AlertDialog(
       title: Text(title),
+      contentPadding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 8.0),
+      actionsPadding: EdgeInsets.zero,
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
         child: SingleChildScrollView(
@@ -902,20 +905,12 @@ class _LabelEditDialogState extends ConsumerState<_LabelEditDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
-        ),
-        FilledButton(
-          key: const Key('save_label_button'),
-          onPressed: _isSaving ? null : _save,
-          child: _isSaving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.saveLabelButton),
+        SaveDiscardBar(
+          saveButtonKey: const Key('save_label_button'),
+          onSave: _isSaving ? null : _save,
+          onDiscard: _isSaving ? null : () => Navigator.of(context).pop(),
+          isSaving: _isSaving,
+          includeSafeArea: false,
         ),
       ],
     );

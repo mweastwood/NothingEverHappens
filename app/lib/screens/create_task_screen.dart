@@ -23,6 +23,7 @@ import '../widgets/create_task/task_schedule_list_section.dart';
 import '../widgets/spawned_instances_list.dart';
 import '../widgets/undo_snackbar.dart';
 import '../widgets/app_snackbar.dart';
+import '../widgets/save_discard_bar.dart';
 import 'help_screen.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
@@ -608,47 +609,17 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                           ),
                         ),
                       ),
-                      SafeArea(
-                        top: false,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0,
-                            vertical: 8.0,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              OutlinedButton(
-                                onPressed: formState.isSaving
-                                    ? null
-                                    : () => Navigator.pop(context),
-                                child: Text(context.l10n.discardButton),
-                              ),
-                              const SizedBox(width: 16),
-                              FilledButton(
-                                key: const Key('save_task_button'),
-                                onPressed: (formState.isSaving || readOnly)
-                                    ? null
-                                    : () => _saveTask(formState, formNotifier),
-                                child: formState.isSaving
-                                    ? SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          value:
-                                              CreateTaskScreen
-                                                  .debugDisableAnimations
-                                              ? 0.8
-                                              : null,
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : Text(context.l10n.saveButton),
-                              ),
-                            ],
-                          ),
-                        ),
+                      SaveDiscardBar(
+                        saveButtonKey: const Key('save_task_button'),
+                        onDiscard: formState.isSaving
+                            ? null
+                            : () => Navigator.pop(context),
+                        onSave: (formState.isSaving || readOnly)
+                            ? null
+                            : () => _saveTask(formState, formNotifier),
+                        isSaving: formState.isSaving,
+                        debugDisableAnimations:
+                            CreateTaskScreen.debugDisableAnimations,
                       ),
                     ],
                   );
