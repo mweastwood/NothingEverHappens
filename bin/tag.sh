@@ -6,7 +6,7 @@ set -e
 # Print usage instructions
 usage() {
   echo "Usage: $0 [--major | --minor | --patch] [--dry-run]"
-  echo "       $0 [major | minor | patch] [--dry-run]"
+  echo "       $0 [major | minor | patch] [--dry-run | dry-run]"
   echo "Increments the version tag on git main and pushes it."
   echo ""
   echo "Options:"
@@ -62,7 +62,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$INCREMENT_TYPE" ]; then
-  echo "Error: Increment type is required (--major, --minor, or --patch)." >&2
+  echo "Error: Increment type is required (--major, --minor, --patch, or major, minor, patch)." >&2
   usage
 fi
 

@@ -45,12 +45,43 @@ class TestRepositoryScripts(unittest.TestCase):
     def test_tag_script_help_and_dry_run(self):
         import subprocess
         tag_script = str(BIN_DIR / "tag.sh")
-        # Test help
-        res = subprocess.run([tag_script, "--help"], capture_output=True, text=True)
-        self.assertIn("Usage:", res.stdout)
+        repo_root = str(BIN_DIR.parent)
+        # Test help (--help, -h, and positional help)
+        for help_arg in ["--help", "-h", "help"]:
+            res = subprocess.run([tag_script, help_arg], capture_output=True, text=True, cwd=repo_root)
+            self.assertIn("Usage:", res.stdout)
+            self.assertNotEqual(res.returncode, 0)
+
         # Test invalid argument
-        res_err = subprocess.run([tag_script, "invalid_arg"], capture_output=True, text=True)
+        res_err = subprocess.run([tag_script, "invalid_arg"], capture_output=True, text=True, cwd=repo_root)
         self.assertNotEqual(res_err.returncode, 0)
+        self.assertIn("Error: Unknown option invalid_arg", res_err.stderr)
+
+        # Test missing increment type error when invoking dry-run options
+        for dry_arg in ["--dry-run", "dry-run"]:
+            res_dry = subprocess.run([tag_script, dry_arg], capture_output=True, text=True, cwd=repo_root)
+            self.assertNotEqual(res_dry.returncode, 0)
+            self.assertIn(
+                "Error: Increment type is required (--major, --minor, --patch, or major, minor, patch).",
+                res_dry.stderr,
+            )
+
+        # Test proper argument parsing for positional commands (patch, minor, major)
+        for inc_type in ["patch", "minor", "major"]:
+            for dry_flag in ["--dry-run", "dry-run"]:
+                res_pos = subprocess.run(
+                    [tag_script, inc_type, dry_flag],
+                    capture_output=True,
+                    text=True,
+                    cwd=repo_root,
+                )
+                self.assertEqual(
+                    res_pos.returncode,
+                    0,
+                    f"tag.sh {inc_type} {dry_flag} failed: {res_pos.stderr}",
+                )
+                self.assertIn("Incrementing to new tag:", res_pos.stdout)
+                self.assertIn("[DRY RUN]", res_pos.stdout)
 
 
 if __name__ == "__main__":
