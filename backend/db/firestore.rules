@@ -100,7 +100,7 @@ service cloud.firestore {
         allow update: if isFamilyParent() || (
           isFamilyMember() &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-            'title', 'description', 'estimatedDuration', 'priority', 'isFamily', 'missedPolicy', 'isMaster', 'cycleId'
+            'title', 'description', 'estimatedDuration', 'priority', 'isFamily', 'missedPolicy', 'isMaster', 'cycleId', 'labelIds'
           ])
         );
       }

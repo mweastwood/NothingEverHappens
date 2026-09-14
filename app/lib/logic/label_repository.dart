@@ -35,6 +35,14 @@ final canEditFamilyLabelsProvider = Provider.autoDispose<bool>((ref) {
   return profile.familyRole == FamilyRole.parent.value;
 });
 
+final allLabelsMapProvider = Provider.autoDispose<Map<String, TaskLabel>>((
+  ref,
+) {
+  final personal = ref.watch(personalLabelsStreamProvider).value ?? const [];
+  final family = ref.watch(familyLabelsStreamProvider).value ?? const [];
+  return {for (final l in personal) l.id: l, for (final l in family) l.id: l};
+});
+
 class LabelRepository {
   final FirebaseFirestore _firestore;
 

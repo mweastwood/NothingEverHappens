@@ -15,8 +15,11 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
+import 'package:nothing_ever_happens/logic/label_repository.dart';
+import 'package:nothing_ever_happens/logic/task_label.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 
@@ -62,6 +65,7 @@ void main() {
       cycleId: task.cycleId,
       assignedUserId: task.assignedUserId,
       status: TaskStatus.pending,
+      labelIds: task.labelIds,
     );
   }
 
@@ -156,7 +160,12 @@ void main() {
         );
   });
 
-  Widget createWidget(TaskSchedule task, {ThemeData? theme, Locale? locale}) {
+  Widget createWidget(
+    TaskSchedule task, {
+    ThemeData? theme,
+    Locale? locale,
+    List<Override> overrides = const [],
+  }) {
     final instance = createInstanceFor(task);
     Widget content = MediaQuery(
       data: const MediaQueryData(size: Size(400, 800)),
@@ -164,6 +173,7 @@ void main() {
         body: ProviderScope(
           overrides: [
             taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            ...overrides,
           ],
           child: TaskWidget(instance: instance, schedule: task),
         ),
@@ -2076,6 +2086,70 @@ void main() {
 
       expect(find.text('Weekly'), findsNothing);
       expect(find.byIcon(Icons.view_week), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'TaskWidget displays label badges corresponding to assigned labelIds',
+    (tester) async {
+      final label1 = TaskLabel(
+        id: 'lbl-1',
+        name: 'Cleaning',
+        colorKey: 'emerald',
+        iconKey: 'cleaning',
+        scope: TaskLabelScope.personal,
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      );
+      final label2 = TaskLabel(
+        id: 'lbl-2',
+        name: 'Urgent',
+        colorKey: 'coral',
+        iconKey: 'bolt',
+        scope: TaskLabelScope.personal,
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      );
+
+      final labeledTask = TaskSchedule(
+        id: 'S-labeled',
+        title: 'Clean the kitchen',
+        description: 'Sweep and mop',
+        labelIds: const ['lbl-1', 'lbl-2'],
+        schedules: [
+          OneOffSchedule(
+            id: 'R-labeled-1',
+            scheduleId: 'S-labeled',
+            date: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        createWidget(
+          labeledTask,
+          overrides: [
+            allLabelsMapProvider.overrideWithValue({
+              'lbl-1': label1,
+              'lbl-2': label2,
+            }),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cleaning'), findsOneWidget);
+      expect(find.text('Urgent'), findsOneWidget);
     },
   );
 }

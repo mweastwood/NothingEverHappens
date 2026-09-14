@@ -13,6 +13,8 @@ import 'fun_delete_button.dart';
 import 'markdown_styles.dart';
 
 import '../logic/family_repository.dart';
+import '../logic/label_repository.dart';
+import '../logic/task_label.dart';
 import '../logic/task_instance.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/undo_notifier.dart';
@@ -724,6 +726,25 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                         ),
                     color: Theme.of(context).colorScheme.primary,
                   ),
+                // Labels
+                ...() {
+                  final effectiveLabelIds = widget.instance.labelIds.isNotEmpty
+                      ? widget.instance.labelIds
+                      : (widget.schedule?.labelIds ?? const <String>[]);
+                  if (effectiveLabelIds.isEmpty) return const <Widget>[];
+                  final allLabels = ref.watch(allLabelsMapProvider);
+                  return effectiveLabelIds
+                      .map((id) => allLabels[id])
+                      .whereType<TaskLabel>()
+                      .map(
+                        (label) => _buildBadge(
+                          context,
+                          icon: LabelIcons.getIcon(label.iconKey),
+                          label: label.name,
+                          color: LabelPalette.getColor(label.colorKey, context),
+                        ),
+                      );
+                }(),
               ],
             ),
           ],

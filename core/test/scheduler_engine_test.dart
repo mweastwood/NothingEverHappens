@@ -73,5 +73,53 @@ void main() {
         equals(CivilDay(year: 2026, month: 9, day: 10)),
       );
     });
+
+    test('spawned instances inherit labelIds from parent schedule', () {
+      final today = CivilDay(year: 2026, month: 9, day: 8);
+      final now = DateTime(2026, 9, 8, 8, 0);
+
+      final task = TaskSchedule(
+        id: 'task-labels',
+        title: 'Labeled Daily Task',
+        description: 'Test task',
+        labelIds: const ['L-cleaning', 'L-urgent'],
+        schedules: [
+          DailySchedule(
+            startDate: today,
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+          ),
+        ],
+      );
+
+      final action = const SchedulerEngine().evaluate(task, [], now);
+      expect(action.instancesToSpawn, isNotEmpty);
+      for (final inst in action.instancesToSpawn) {
+        expect(inst.labelIds, equals(['L-cleaning', 'L-urgent']));
+      }
+
+      final oneOffTask = TaskSchedule(
+        id: 'task-oneoff',
+        title: 'One-off Task',
+        description: 'Desc',
+        labelIds: const ['L-groceries'],
+        schedules: [
+          OneOffSchedule(
+            date: today,
+            startRelativeTime: const RelativeTime(hour: 10, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 12, minute: 0),
+          ),
+        ],
+      );
+
+      final oneOffAction =
+          const SchedulerEngine().evaluate(oneOffTask, [], now);
+      expect(oneOffAction.instancesToSpawn, isNotEmpty);
+      expect(
+        oneOffAction.instancesToSpawn.first.labelIds,
+        equals(['L-groceries']),
+      );
+    });
   });
 }

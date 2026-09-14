@@ -994,6 +994,7 @@ class FirestoreTaskRepository implements TaskRepository {
           clearCycleId: newTask.cycleId == null,
           assignedUserId: newTask.assignedUserId,
           clearAssignedUserId: newTask.assignedUserId == null,
+          labelIds: newTask.labelIds,
         );
 
         if (isFamilyChanged) {
