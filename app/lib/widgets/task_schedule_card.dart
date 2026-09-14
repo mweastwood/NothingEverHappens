@@ -92,6 +92,27 @@ class TaskScheduleCard extends ConsumerWidget {
     );
   }
 
+  List<Widget> _buildLabelBadges(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> labelIds,
+  ) {
+    if (labelIds.isEmpty) return const <Widget>[];
+    final allLabels = ref.watch(allLabelsMapProvider);
+    return labelIds
+        .map((id) => allLabels[id])
+        .whereType<TaskLabel>()
+        .map(
+          (label) => _buildBadge(
+            context,
+            icon: LabelIcons.getIcon(label.iconKey),
+            label: label.name,
+            color: LabelPalette.getColor(label.colorKey, context),
+          ),
+        )
+        .toList();
+  }
+
   String _getRecurrenceRuleTypeName(
     BuildContext context,
     TaskScheduleRule? schedule,
@@ -464,23 +485,7 @@ class TaskScheduleCard extends ConsumerWidget {
                             ),
                         color: theme.colorScheme.primary,
                       ),
-                    ...() {
-                      final allLabels = ref.watch(allLabelsMapProvider);
-                      return task.labelIds
-                          .map((id) => allLabels[id])
-                          .whereType<TaskLabel>()
-                          .map(
-                            (label) => _buildBadge(
-                              context,
-                              icon: LabelIcons.getIcon(label.iconKey),
-                              label: label.name,
-                              color: LabelPalette.getColor(
-                                label.colorKey,
-                                context,
-                              ),
-                            ),
-                          );
-                    }(),
+                    ..._buildLabelBadges(context, ref, task.labelIds),
                   ],
                 ),
               ),
