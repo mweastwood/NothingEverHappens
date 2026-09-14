@@ -24,6 +24,8 @@ class TaskLabelsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final canEditFamily = ref.watch(canEditFamilyLabelsProvider);
+    final canManage = !readOnly && (!isFamily || canEditFamily);
     final labelsAsync = isFamily
         ? ref.watch(familyLabelsStreamProvider)
         : ref.watch(personalLabelsStreamProvider);
@@ -51,50 +53,56 @@ class TaskLabelsSection extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  IconButton(
-                    key: const Key('manage_labels_button'),
-                    icon: const Icon(Icons.settings_outlined, size: 18),
-                    tooltip: 'Manage labels',
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const LabelsScreen(),
-                        ),
-                      );
-                    },
-                  ),
+                  if (canManage)
+                    IconButton(
+                      key: const Key('manage_labels_button'),
+                      icon: const Icon(Icons.settings_outlined, size: 18),
+                      tooltip: context.l10n.manageLabelsTooltip,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LabelsScreen(),
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
               const SizedBox(height: 12),
               labelsAsync.when(
                 data: (labels) {
                   if (labels.isEmpty) {
+                    final emptyText = isFamily
+                        ? (canManage
+                              ? context.l10n.noFamilyLabels
+                              : context.l10n.noFamilyLabelsNonParent)
+                        : context.l10n.noPersonalLabels;
+
                     return Row(
                       children: [
                         Expanded(
                           child: Text(
-                            isFamily
-                                ? context.l10n.noFamilyLabelsNonParent
-                                : context.l10n.noPersonalLabels,
+                            emptyText,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
-                        TextButton.icon(
-                          key: const Key('empty_manage_labels_button'),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Manage Labels'),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const LabelsScreen(),
-                              ),
-                            );
-                          },
-                        ),
+                        if (canManage)
+                          TextButton.icon(
+                            key: const Key('empty_manage_labels_button'),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: Text(context.l10n.addLabelButton),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const LabelsScreen(),
+                                ),
+                              );
+                            },
+                          ),
                       ],
                     );
                   }
@@ -151,7 +159,7 @@ class TaskLabelsSection extends ConsumerWidget {
                   ),
                 ),
                 error: (error, _) => Text(
-                  'Error loading labels: $error',
+                  context.l10n.errorLoadingLabels(error.toString()),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.error,
                   ),

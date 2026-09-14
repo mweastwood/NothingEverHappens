@@ -1164,5 +1164,14 @@
       }
     }
   },
-  "goToFamilyButton": "Go to Family"
+  "goToFamilyButton": "Go to Family",
+  "manageLabelsTooltip": "Manage labels",
+  "errorLoadingLabels": "Error loading labels: {error}",
+  "@errorLoadingLabels": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }
