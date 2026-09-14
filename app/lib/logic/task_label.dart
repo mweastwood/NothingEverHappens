@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 export 'package:core/core.dart' show TaskLabel, TaskLabelScope;
 
-/// Represents a single color entry in the 8-color label palette.
+/// Represents a single color entry in the 16-color label palette.
 class LabelColorItem {
   final String key;
   final String name;
@@ -21,7 +21,7 @@ class LabelColorItem {
   }
 }
 
-/// The curated 8-color palette for task labels.
+/// The curated 16-color palette for task labels.
 abstract final class LabelPalette {
   static const coral = LabelColorItem(
     key: 'coral',
@@ -79,6 +79,62 @@ abstract final class LabelPalette {
     darkColor: Color(0xFFEC407A),
   );
 
+  static const peach = LabelColorItem(
+    key: 'peach',
+    name: 'Peach',
+    lightColor: Color(0xFFFF8A65),
+    darkColor: Color(0xFFFFAB91),
+  );
+
+  static const cream = LabelColorItem(
+    key: 'cream',
+    name: 'Cream',
+    lightColor: Color(0xFFFBC02D),
+    darkColor: Color(0xFFFFF59D),
+  );
+
+  static const mint = LabelColorItem(
+    key: 'mint',
+    name: 'Mint',
+    lightColor: Color(0xFF66BB6A),
+    darkColor: Color(0xFFA5D6A7),
+  );
+
+  static const sage = LabelColorItem(
+    key: 'sage',
+    name: 'Sage',
+    lightColor: Color(0xFF78909C),
+    darkColor: Color(0xFFA5B892),
+  );
+
+  static const sky = LabelColorItem(
+    key: 'sky',
+    name: 'Sky',
+    lightColor: Color(0xFF4FC3F7),
+    darkColor: Color(0xFF81D4FA),
+  );
+
+  static const periwinkle = LabelColorItem(
+    key: 'periwinkle',
+    name: 'Periwinkle',
+    lightColor: Color(0xFF7986CB),
+    darkColor: Color(0xFF9FA8DA),
+  );
+
+  static const lavender = LabelColorItem(
+    key: 'lavender',
+    name: 'Lavender',
+    lightColor: Color(0xFFBA68C8),
+    darkColor: Color(0xFFCE93D8),
+  );
+
+  static const blush = LabelColorItem(
+    key: 'blush',
+    name: 'Blush',
+    lightColor: Color(0xFFF06292),
+    darkColor: Color(0xFFF48FB1),
+  );
+
   static const List<LabelColorItem> all = [
     coral,
     tangerine,
@@ -88,6 +144,14 @@ abstract final class LabelPalette {
     cobalt,
     grape,
     rose,
+    peach,
+    cream,
+    mint,
+    sage,
+    sky,
+    periwinkle,
+    lavender,
+    blush,
   ];
 
   static LabelColorItem getItem(String? key) {

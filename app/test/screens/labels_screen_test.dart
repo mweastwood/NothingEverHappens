@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
@@ -77,6 +78,38 @@ void main() {
         data: MediaQueryData(size: screenSize),
         child: buildTestableWidget(child: const LabelsScreen()),
       ),
+    );
+  }
+
+  Widget buildTestWidget({
+    String familyRole = 'parent',
+    bool hasFamily = true,
+    String? userId = currentUserId,
+  }) {
+    return ProviderScope(
+      overrides: [
+        labelRepositoryProvider.overrideWithValue(labelRepo),
+        familyRepositoryProvider.overrideWithValue(familyRepo),
+        authStateProvider.overrideWith(
+          (ref) => Stream.value(
+            userId != null
+                ? _FakeUser(
+                    uid: userId,
+                    email: 'test@example.com',
+                    displayName: 'Tester',
+                  )
+                : null,
+          ),
+        ),
+        familyProfileStreamProvider.overrideWith(
+          (ref) => Stream.value(
+            hasFamily
+                ? FamilyProfile(familyId: familyId, familyRole: familyRole)
+                : null,
+          ),
+        ),
+      ],
+      child: const LabelsScreen(),
     );
   }
 
@@ -432,6 +465,302 @@ void main() {
         expect(find.byIcon(Icons.error_outline), findsOneWidget);
 
         await authController.close();
+      },
+    );
+
+    testWidgets(
+      'renders all 16 color options in dialog with tooltips and correct checkmark contrast',
+      (tester) async {
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('add_personal_label_button')));
+        await tester.pumpAndSettle();
+
+        // Verify all 16 colors are present
+        for (final item in LabelPalette.all) {
+          final colorPickerFinder = find.byKey(Key('color_picker_${item.key}'));
+          expect(colorPickerFinder, findsOneWidget);
+
+          // Verify Tooltip message
+          final tooltipFinder = find.ancestor(
+            of: colorPickerFinder,
+            matching: find.byType(Tooltip),
+          );
+          expect(tooltipFinder, findsOneWidget);
+          final tooltip = tester.widget<Tooltip>(tooltipFinder);
+          expect(tooltip.message, equals(item.name));
+        }
+
+        // Test checkmark contrast when selecting cream (light luminance) vs cobalt (darker luminance)
+        // Select cream
+        await tester.tap(find.byKey(const Key('color_picker_cream')));
+        await tester.pumpAndSettle();
+
+        final creamCheckIcon = tester.widget<Icon>(
+          find.descendant(
+            of: find.byKey(const Key('color_picker_cream')),
+            matching: find.byIcon(Icons.check),
+          ),
+        );
+        expect(creamCheckIcon.color, equals(Colors.black87));
+
+        // Select cobalt
+        await tester.tap(find.byKey(const Key('color_picker_cobalt')));
+        await tester.pumpAndSettle();
+
+        final cobaltCheckIcon = tester.widget<Icon>(
+          find.descendant(
+            of: find.byKey(const Key('color_picker_cobalt')),
+            matching: find.byIcon(Icons.check),
+          ),
+        );
+        expect(cobaltCheckIcon.color, equals(Colors.white));
+      },
+    );
+
+    testWidgets(
+      'creates label with pastel color (mint) and persists colorKey',
+      (tester) async {
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('add_personal_label_button')));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.byKey(const Key('label_name_field')),
+          'Garden Routine',
+        );
+        await tester.tap(find.byKey(const Key('color_picker_mint')));
+        await tester.tap(find.byKey(const Key('icon_picker_yard')));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('save_label_button')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Garden Routine'), findsOneWidget);
+
+        final labels = await labelRepo.watchPersonalLabels(currentUserId).first;
+        expect(labels.length, 1);
+        expect(labels.first.name, 'Garden Routine');
+        expect(labels.first.colorKey, 'mint');
+        expect(labels.first.iconKey, 'yard');
+      },
+    );
+
+    testWidgets(
+      'edits existing label to pastel color (lavender) and updates repository',
+      (tester) async {
+        final label = TaskLabel.create(
+          id: 'L-seed-pastel',
+          name: 'Reading List',
+          colorKey: 'coral',
+          iconKey: 'star',
+        );
+        await labelRepo.savePersonalLabel(currentUserId, label);
+
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        expect(find.text('Reading List'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('edit_label_L-seed-pastel')));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('color_picker_lavender')));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('save_label_button')));
+        await tester.pumpAndSettle();
+
+        final labels = await labelRepo.watchPersonalLabels(currentUserId).first;
+        expect(labels.first.colorKey, 'lavender');
+      },
+    );
+  });
+
+  group('LabelsScreen Golden tests', () {
+    testGoldens(
+      'LabelsScreen renders populated personal and family labels with pastel colors (Light Theme)',
+      (tester) async {
+        await labelRepo.savePersonalLabel(
+          currentUserId,
+          TaskLabel.create(
+            id: 'L-pers-1',
+            name: 'Errands',
+            colorKey: 'coral',
+            iconKey: 'tag',
+          ),
+        );
+        await labelRepo.savePersonalLabel(
+          currentUserId,
+          TaskLabel.create(
+            id: 'L-pers-2',
+            name: 'Garden Routine',
+            colorKey: 'mint',
+            iconKey: 'yard',
+          ),
+        );
+        await labelRepo.savePersonalLabel(
+          currentUserId,
+          TaskLabel.create(
+            id: 'L-pers-3',
+            name: 'Reading List',
+            colorKey: 'lavender',
+            iconKey: 'star',
+          ),
+        );
+
+        await labelRepo.saveFamilyLabel(
+          familyId,
+          TaskLabel.create(
+            id: 'L-fam-1',
+            name: 'Family Chores',
+            colorKey: 'peach',
+            iconKey: 'cleaning',
+            scope: TaskLabelScope.family,
+          ),
+        );
+        await labelRepo.saveFamilyLabel(
+          familyId,
+          TaskLabel.create(
+            id: 'L-fam-2',
+            name: 'Health & Meds',
+            colorKey: 'periwinkle',
+            iconKey: 'medication',
+            scope: TaskLabelScope.family,
+          ),
+        );
+        await labelRepo.saveFamilyLabel(
+          familyId,
+          TaskLabel.create(
+            id: 'L-fam-3',
+            name: 'Vacation Planning',
+            colorKey: 'sky',
+            iconKey: 'beach_access',
+            scope: TaskLabelScope.family,
+          ),
+        );
+
+        await tester.pumpWidgetBuilder(
+          buildTestWidget(),
+          wrapper: l10nMaterialAppWrapper(),
+          surfaceSize: const Size(400, 800),
+        );
+        await tester.pumpAndSettle();
+
+        await screenMatchesGolden(tester, 'labels_screen_populated');
+      },
+    );
+
+    testGoldens(
+      'LabelsScreen renders populated personal and family labels with pastel colors (Dark Theme)',
+      (tester) async {
+        await labelRepo.savePersonalLabel(
+          currentUserId,
+          TaskLabel.create(
+            id: 'L-pers-1',
+            name: 'Errands',
+            colorKey: 'coral',
+            iconKey: 'tag',
+          ),
+        );
+        await labelRepo.savePersonalLabel(
+          currentUserId,
+          TaskLabel.create(
+            id: 'L-pers-2',
+            name: 'Garden Routine',
+            colorKey: 'mint',
+            iconKey: 'yard',
+          ),
+        );
+        await labelRepo.savePersonalLabel(
+          currentUserId,
+          TaskLabel.create(
+            id: 'L-pers-3',
+            name: 'Reading List',
+            colorKey: 'lavender',
+            iconKey: 'star',
+          ),
+        );
+
+        await labelRepo.saveFamilyLabel(
+          familyId,
+          TaskLabel.create(
+            id: 'L-fam-1',
+            name: 'Family Chores',
+            colorKey: 'peach',
+            iconKey: 'cleaning',
+            scope: TaskLabelScope.family,
+          ),
+        );
+        await labelRepo.saveFamilyLabel(
+          familyId,
+          TaskLabel.create(
+            id: 'L-fam-2',
+            name: 'Health & Meds',
+            colorKey: 'periwinkle',
+            iconKey: 'medication',
+            scope: TaskLabelScope.family,
+          ),
+        );
+        await labelRepo.saveFamilyLabel(
+          familyId,
+          TaskLabel.create(
+            id: 'L-fam-3',
+            name: 'Vacation Planning',
+            colorKey: 'sky',
+            iconKey: 'beach_access',
+            scope: TaskLabelScope.family,
+          ),
+        );
+
+        await tester.pumpWidgetBuilder(
+          buildTestWidget(),
+          wrapper: l10nMaterialAppWrapper(
+            theme: ThemeData.dark(
+              useMaterial3: true,
+            ).copyWith(shadowColor: Colors.transparent),
+          ),
+          surfaceSize: const Size(400, 800),
+        );
+        await tester.pumpAndSettle();
+
+        await screenMatchesGolden(tester, 'labels_screen_populated_dark');
+      },
+    );
+
+    testGoldens(
+      'LabelsScreen dialog renders 16-color palette with high contrast checkmark',
+      (tester) async {
+        await tester.pumpWidgetBuilder(
+          buildTestWidget(),
+          wrapper: l10nMaterialAppWrapper(),
+          surfaceSize: const Size(400, 800),
+        );
+        await tester.pumpAndSettle();
+
+        // Open Add Label dialog
+        await tester.tap(find.byKey(const Key('add_personal_label_button')));
+        await tester.pumpAndSettle();
+
+        // Select 'cream' pastel swatch (light luminance with dark checkmark)
+        await tester.tap(find.byKey(const Key('color_picker_cream')));
+        await tester.pumpAndSettle();
+
+        // Select 'yard' icon
+        await tester.tap(find.byKey(const Key('icon_picker_yard')));
+        await tester.pumpAndSettle();
+
+        // Enter label title
+        await tester.enterText(
+          find.byKey(const Key('label_name_field')),
+          'Morning Routine',
+        );
+        await tester.pumpAndSettle();
+
+        await screenMatchesGolden(tester, 'labels_screen_color_picker_dialog');
       },
     );
   });
