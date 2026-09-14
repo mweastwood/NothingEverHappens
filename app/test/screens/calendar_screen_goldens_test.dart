@@ -379,6 +379,68 @@ void main() {
     await screenMatchesGolden(tester, 'calendar_screen_desktop_large');
   });
 
+  testGoldens('CalendarScreen - Day Timeline Mobile (400x800)', (tester) async {
+    await tester.pumpWidgetBuilder(
+      createTestWidget(brightness: Brightness.light),
+      wrapper: l10nMaterialAppWrapper(
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.deepPurple,
+            brightness: Brightness.light,
+          ),
+        ),
+      ),
+      surfaceSize: const Size(400, 800),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap on Day 8 (March 8, 2026 - today) to zoom into daily timeline
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byKey(const Key('month_card_2026_3')),
+            matching: find.text('8'),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'calendar_screen_day_timeline_mobile');
+  });
+
+  testGoldens('CalendarScreen - Day Timeline Desktop (1200x800)', (
+    tester,
+  ) async {
+    await tester.pumpWidgetBuilder(
+      createTestWidget(brightness: Brightness.light),
+      wrapper: l10nMaterialAppWrapper(
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.deepPurple,
+            brightness: Brightness.light,
+          ),
+        ),
+      ),
+      surfaceSize: const Size(1200, 800),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap on Day 8 (March 8, 2026 - today) to zoom into daily timeline
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byKey(const Key('month_card_2026_3')),
+            matching: find.text('8'),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+
+    await screenMatchesGolden(tester, 'calendar_screen_day_timeline_desktop');
+  });
+
   testGoldens('CalendarScreen - Day Details Bottom Sheet (400x800)', (
     tester,
   ) async {
@@ -397,7 +459,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap on Day 8 (March 8, 2026 - today)
+    // Tap on Day 8 (March 8, 2026 - today) to zoom into daily timeline
     await tester.tap(
       find
           .descendant(
@@ -406,6 +468,10 @@ void main() {
           )
           .first,
     );
+    await tester.pumpAndSettle();
+
+    // Tap on the day header chip in the timeline to open the day details sheet
+    await tester.tap(find.byKey(const Key('timeline_day_header_2026_3_8')));
     await tester.pumpAndSettle();
 
     await screenMatchesGolden(tester, 'calendar_screen_day_details_sheet');

@@ -55,6 +55,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calendarNoTasks => 'No tasks scheduled';
 
   @override
+  String get calendarBackToMonth => 'Back to month view';
+
+  @override
+  String get calendarPreviousDay => 'Previous day';
+
+  @override
+  String get calendarNextDay => 'Next day';
+
+  @override
   String tasksForDate(String date) {
     return 'Tasks for $date';
   }
