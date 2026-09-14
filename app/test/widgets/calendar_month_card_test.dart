@@ -5,6 +5,7 @@ import '../test_helper.dart';
 import 'package:nothing_ever_happens/logic/calendar_day_task.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/task_priority.dart';
+import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/widgets/calendar_month_card.dart';
 
 void main() {
@@ -64,13 +65,57 @@ void main() {
     // Current Month badge
     expect(find.text('This Month'), findsOneWidget);
 
-    // Weekday headers: M, T, W, T, F, S, S
+    // Weekday headers: S, M, T, W, T, F, S (or M, T, W, T, F, S, S)
     expect(find.text('M'), findsOneWidget);
     expect(find.text('W'), findsOneWidget);
     expect(find.text('F'), findsOneWidget);
     expect(find.text('T'), findsNWidgets(2));
     expect(find.text('S'), findsNWidgets(2));
   });
+
+  testWidgets(
+    'Verify week starting on Sunday positions day 1 in column 0 for March 2026',
+    (tester) async {
+      await tester.pumpWidget(
+        createTestWidget(
+          child: CalendarMonthCard(
+            monthDate: march2026,
+            today: todayDay8,
+            firstDayOfWeek: FirstDayOfWeek.sunday,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final slotFinders = find.byType(CalendarDayCellSlot);
+      final firstSlot = tester.widget<CalendarDayCellSlot>(slotFinders.first);
+      expect(firstSlot.row, equals(0));
+      expect(firstSlot.col, equals(0));
+      expect(firstSlot.leadingEmptyCount, equals(0));
+    },
+  );
+
+  testWidgets(
+    'Verify week starting on Monday positions day 1 in column 6 for March 2026',
+    (tester) async {
+      await tester.pumpWidget(
+        createTestWidget(
+          child: CalendarMonthCard(
+            monthDate: march2026,
+            today: todayDay8,
+            firstDayOfWeek: FirstDayOfWeek.monday,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final slotFinders = find.byType(CalendarDayCellSlot);
+      final firstSlot = tester.widget<CalendarDayCellSlot>(slotFinders.first);
+      expect(firstSlot.row, equals(0));
+      expect(firstSlot.col, equals(0));
+      expect(firstSlot.leadingEmptyCount, equals(6));
+    },
+  );
 
   testWidgets(
     'Verify current month badge is not shown for past/future months',

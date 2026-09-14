@@ -540,6 +540,50 @@ void main() {
     },
   );
 
+  testWidgets(
+    'changing firstDayOfWeek in settings reactively updates month cards layout',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      settingsSubject.add(
+        const UserSettings(
+          hoursAvailable: 8.0,
+          firstDayOfWeek: FirstDayOfWeek.sunday,
+        ),
+      );
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      final marchCardFinder = find.byWidgetPredicate(
+        (w) =>
+            w is CalendarMonthCard &&
+            w.monthDate.year == 2026 &&
+            w.monthDate.month == 3,
+      );
+      expect(marchCardFinder, findsOneWidget);
+
+      CalendarMonthCard monthCard = tester.widget<CalendarMonthCard>(
+        marchCardFinder,
+      );
+      expect(monthCard.firstDayOfWeek, equals(FirstDayOfWeek.sunday));
+
+      // Now emit updated settings with Monday as first day of week
+      settingsSubject.add(
+        const UserSettings(
+          hoursAvailable: 8.0,
+          firstDayOfWeek: FirstDayOfWeek.monday,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      monthCard = tester.widget<CalendarMonthCard>(marchCardFinder);
+      expect(monthCard.firstDayOfWeek, equals(FirstDayOfWeek.monday));
+    },
+  );
+
   group('CalendarDayTask.getTimeWindow', () {
     testWidgets(
       'formats time window correctly for concrete task instance (instance != null)',

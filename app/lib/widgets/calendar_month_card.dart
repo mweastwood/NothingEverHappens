@@ -5,6 +5,7 @@ import '../logic/civil_day.dart';
 import '../logic/calendar_day_task.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/task_priority.dart';
+import '../logic/user_settings.dart';
 import 'calendar_day_details_sheet.dart';
 
 /// Resolves theme color corresponding to task priority.
@@ -19,16 +20,25 @@ Color getPriorityColor(ColorScheme colorScheme, TaskPriority priority) {
   }
 }
 
-/// Computes localized weekday header initials starting with Monday.
-List<String> getWeekdayHeaders(String locale) {
+/// Computes localized weekday header initials based on [firstDayOfWeek].
+List<String> getWeekdayHeaders(
+  String locale, {
+  FirstDayOfWeek firstDayOfWeek = FirstDayOfWeek.sunday,
+}) {
   try {
     final symbols = DateFormat(null, locale).dateSymbols;
     final narrow = symbols.STANDALONENARROWWEEKDAYS.isNotEmpty
         ? symbols.STANDALONENARROWWEEKDAYS
         : symbols.NARROWWEEKDAYS;
-    return [for (int i = 1; i <= 6; i++) narrow[i], narrow[0]];
+    if (firstDayOfWeek == FirstDayOfWeek.sunday) {
+      return [for (int i = 0; i < 7; i++) narrow[i]];
+    } else {
+      return [for (int i = 1; i <= 6; i++) narrow[i], narrow[0]];
+    }
   } catch (_) {
-    return const ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    return firstDayOfWeek == FirstDayOfWeek.sunday
+        ? const ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+        : const ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   }
 }
 
@@ -39,6 +49,7 @@ class CalendarMonthCard extends StatelessWidget {
   final CivilDay today;
   final bool isWide;
   final void Function(CivilDay day)? onDayTap;
+  final FirstDayOfWeek firstDayOfWeek;
 
   const CalendarMonthCard({
     super.key,
@@ -47,6 +58,7 @@ class CalendarMonthCard extends StatelessWidget {
     required this.today,
     this.isWide = false,
     this.onDayTap,
+    this.firstDayOfWeek = FirstDayOfWeek.sunday,
   });
 
   @override
@@ -54,14 +66,17 @@ class CalendarMonthCard extends StatelessWidget {
     final theme = Theme.of(context);
     final locale = Localizations.localeOf(context).toString();
     final monthTitle = DateFormat.yMMMM(locale).format(monthDate);
-    final weekdayHeaders = getWeekdayHeaders(locale);
+    final weekdayHeaders = getWeekdayHeaders(
+      locale,
+      firstDayOfWeek: firstDayOfWeek,
+    );
     final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
     final firstWeekday = DateTime(
       monthDate.year,
       monthDate.month,
       1,
     ).weekday; // 1=Mon, 7=Sun
-    final leadingEmptyCount = firstWeekday - 1;
+    final leadingEmptyCount = firstDayOfWeek.getLeadingEmptySlots(firstWeekday);
 
     final totalSlots = leadingEmptyCount + daysInMonth;
     final rowCount = (totalSlots / 7).ceil();

@@ -175,6 +175,8 @@
   "hoursAvailableLabel": "Horas Disponibles por Día",
   "hoursAvailableHelper": "Número de horas disponibles para la programación ágil.",
   "hoursAvailableValidationError": "Por favor ingresa un número entre 0 y 24",
+  "firstDayOfWeekLabel": "Primer día de la semana",
+  "firstDayOfWeekHelper": "Elige si las semanas del calendario comienzan en domingo o lunes.",
   "settingsSavedSuccessfully": "Configuración guardada exitosamente",
   "showPendingTasksLabel": "Mostrar tareas pendientes",
   "showPendingTasksHelper": "Mostrar tareas en la lista principal cuya hora de inicio sea en el futuro.",

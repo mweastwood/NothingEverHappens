@@ -26,6 +26,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isResetting = false;
   bool _isInitialized = false;
   bool _showLastSpawnedDate = false;
+  FirstDayOfWeek _firstDayOfWeek = FirstDayOfWeek.sunday;
   bool _telemetryEnabled = true;
   bool _crashReportingEnabled = true;
 
@@ -102,6 +103,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         final updatedSettings = currentSettings.copyWith(
           hoursAvailable: hours,
           showLastSpawnedDate: _showLastSpawnedDate,
+          firstDayOfWeek: _firstDayOfWeek,
           telemetryEnabled: _telemetryEnabled,
           crashReportingEnabled: _crashReportingEnabled,
         );
@@ -165,6 +167,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           if (!_isInitialized) {
             _hoursController.text = settings.hoursAvailable.toString();
             _showLastSpawnedDate = settings.showLastSpawnedDate;
+            _firstDayOfWeek = settings.firstDayOfWeek;
             _telemetryEnabled = settings.telemetryEnabled;
             _crashReportingEnabled = settings.crashReportingEnabled;
             _isInitialized = true;
@@ -223,6 +226,85 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 16),
                 Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_month_outlined, size: 28),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.l10n.firstDayOfWeekLabel,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    context.l10n.firstDayOfWeekHelper,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<FirstDayOfWeek>(
+                            key: const Key(
+                              'first_day_of_week_segmented_button',
+                            ),
+                            segments: [
+                              ButtonSegment<FirstDayOfWeek>(
+                                value: FirstDayOfWeek.sunday,
+                                label: Text(
+                                  context.l10n.weekdaySunday,
+                                  key: const Key(
+                                    'first_day_of_week_sunday_option',
+                                  ),
+                                ),
+                                icon: const Icon(Icons.calendar_today_outlined),
+                              ),
+                              ButtonSegment<FirstDayOfWeek>(
+                                value: FirstDayOfWeek.monday,
+                                label: Text(
+                                  context.l10n.weekdayMonday,
+                                  key: const Key(
+                                    'first_day_of_week_monday_option',
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.calendar_view_week_outlined,
+                                ),
+                              ),
+                            ],
+                            selected: {_firstDayOfWeek},
+                            onSelectionChanged: (newSelection) {
+                              setState(() {
+                                _firstDayOfWeek = newSelection.first;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
                   child: SwitchListTile(
                     key: const Key('show_last_spawned_date_switch'),
                     title: Text(context.l10n.showLastSpawnedDateLabel),
@@ -252,6 +334,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             double.tryParse(_hoursController.text.trim()) ??
                             settings.hoursAvailable,
                         showLastSpawnedDate: _showLastSpawnedDate,
+                        firstDayOfWeek: _firstDayOfWeek,
                         telemetryEnabled: val,
                         crashReportingEnabled: _crashReportingEnabled,
                       );
@@ -276,6 +359,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             double.tryParse(_hoursController.text.trim()) ??
                             settings.hoursAvailable,
                         showLastSpawnedDate: _showLastSpawnedDate,
+                        firstDayOfWeek: _firstDayOfWeek,
                         telemetryEnabled: _telemetryEnabled,
                         crashReportingEnabled: val,
                       );

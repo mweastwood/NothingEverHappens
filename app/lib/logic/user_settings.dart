@@ -1,1 +1,1 @@
-export 'package:core/core.dart' show UserSettings;
+export 'package:core/core.dart' show UserSettings, FirstDayOfWeek;

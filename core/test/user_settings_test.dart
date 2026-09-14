@@ -7,6 +7,7 @@ void main() {
       const settings = UserSettings(hoursAvailable: 8.0);
       expect(settings.hoursAvailable, equals(8.0));
       expect(settings.showLastSpawnedDate, isFalse);
+      expect(settings.firstDayOfWeek, equals(FirstDayOfWeek.sunday));
       expect(settings.showTaskListSortBar, isTrue);
       expect(settings.showScheduleListSortBar, isTrue);
       expect(settings.telemetryEnabled, isTrue);
@@ -23,10 +24,43 @@ void main() {
       final settings = UserSettings.fromJson(const {});
       expect(settings.hoursAvailable, equals(8.0));
       expect(settings.showLastSpawnedDate, isFalse);
+      expect(settings.firstDayOfWeek, equals(FirstDayOfWeek.sunday));
       expect(settings.showTaskListSortBar, isTrue);
       expect(settings.showScheduleListSortBar, isTrue);
       expect(settings.telemetryEnabled, isTrue);
       expect(settings.crashReportingEnabled, isTrue);
+    });
+
+    test('FirstDayOfWeek fromString and getLeadingEmptySlots', () {
+      expect(
+          FirstDayOfWeek.fromString('sunday'), equals(FirstDayOfWeek.sunday));
+      expect(FirstDayOfWeek.fromString('sun'), equals(FirstDayOfWeek.sunday));
+      expect(
+          FirstDayOfWeek.fromString('monday'), equals(FirstDayOfWeek.monday));
+      expect(FirstDayOfWeek.fromString('mon'), equals(FirstDayOfWeek.monday));
+      expect(FirstDayOfWeek.fromString('1'), equals(FirstDayOfWeek.monday));
+      expect(FirstDayOfWeek.fromString(1), equals(FirstDayOfWeek.monday));
+      expect(FirstDayOfWeek.fromString('7'), equals(FirstDayOfWeek.sunday));
+      expect(FirstDayOfWeek.fromString(7), equals(FirstDayOfWeek.sunday));
+      expect(FirstDayOfWeek.fromString(null), equals(FirstDayOfWeek.sunday));
+      expect(
+          FirstDayOfWeek.fromString('unknown'), equals(FirstDayOfWeek.sunday));
+
+      // Sunday start:
+      // Sunday (7) -> 0
+      expect(FirstDayOfWeek.sunday.getLeadingEmptySlots(7), equals(0));
+      // Monday (1) -> 1
+      expect(FirstDayOfWeek.sunday.getLeadingEmptySlots(1), equals(1));
+      // Saturday (6) -> 6
+      expect(FirstDayOfWeek.sunday.getLeadingEmptySlots(6), equals(6));
+
+      // Monday start:
+      // Monday (1) -> 0
+      expect(FirstDayOfWeek.monday.getLeadingEmptySlots(1), equals(0));
+      // Sunday (7) -> 6
+      expect(FirstDayOfWeek.monday.getLeadingEmptySlots(7), equals(6));
+      // Saturday (6) -> 5
+      expect(FirstDayOfWeek.monday.getLeadingEmptySlots(6), equals(5));
     });
 
     test('fromJson and toJson round-trip with full properties', () {
@@ -34,6 +68,7 @@ void main() {
       final original = UserSettings(
         hoursAvailable: 6.5,
         showLastSpawnedDate: true,
+        firstDayOfWeek: FirstDayOfWeek.monday,
         showTaskListSortBar: false,
         showScheduleListSortBar: false,
         telemetryEnabled: false,
@@ -51,6 +86,7 @@ void main() {
 
       expect(deserialized.hoursAvailable, equals(6.5));
       expect(deserialized.showLastSpawnedDate, isTrue);
+      expect(deserialized.firstDayOfWeek, equals(FirstDayOfWeek.monday));
       expect(deserialized.showTaskListSortBar, isFalse);
       expect(deserialized.showScheduleListSortBar, isFalse);
       expect(deserialized.telemetryEnabled, isFalse);
