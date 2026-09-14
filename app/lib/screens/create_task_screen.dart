@@ -611,10 +611,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                       ),
                       SaveDiscardBar(
                         saveButtonKey: const Key('save_task_button'),
-                        onDiscard: formState.isSaving
-                            ? null
-                            : () => Navigator.pop(context),
-                        onSave: (formState.isSaving || readOnly)
+                        onSave: readOnly
                             ? null
                             : () => _saveTask(formState, formNotifier),
                         isSaving: formState.isSaving,

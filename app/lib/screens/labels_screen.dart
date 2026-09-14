@@ -907,8 +907,7 @@ class _LabelEditDialogState extends ConsumerState<_LabelEditDialog> {
       actions: [
         SaveDiscardBar(
           saveButtonKey: const Key('save_label_button'),
-          onSave: _isSaving ? null : _save,
-          onDiscard: _isSaving ? null : () => Navigator.of(context).pop(),
+          onSave: _save,
           isSaving: _isSaving,
           includeSafeArea: false,
         ),

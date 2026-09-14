@@ -123,8 +123,12 @@ void main() {
         final progressIndicator = tester.widget<CircularProgressIndicator>(
           find.byType(CircularProgressIndicator),
         );
+        final BuildContext context = tester.element(
+          find.byType(SaveDiscardBar),
+        );
+        final expectedColor = Theme.of(context).colorScheme.onPrimary;
         expect(progressIndicator.value, 0.8);
-        expect(progressIndicator.color, Colors.white);
+        expect(progressIndicator.color, expectedColor);
         expect(progressIndicator.strokeWidth, 2.0);
       },
     );

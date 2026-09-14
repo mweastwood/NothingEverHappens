@@ -702,7 +702,6 @@
   "labelColorPickerLabel": "Color",
   "labelIconPickerLabel": "Ícono",
   "labelPreview": "Vista previa",
-  "saveLabelButton": "Guardar Etiqueta",
   "noPersonalLabels": "No hay etiquetas personales aún. Toca '+ Agregar Etiqueta' para crear una.",
   "noFamilyLabels": "No hay etiquetas familiares aún. Toca '+ Agregar Etiqueta' para crear una.",
   "noFamilyLabelsNonParent": "No hay etiquetas familiares aún.",

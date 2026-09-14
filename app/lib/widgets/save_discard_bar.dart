@@ -84,7 +84,7 @@ class SaveDiscardBar extends StatelessWidget {
                     child: CircularProgressIndicator(
                       value: debugDisableAnimations ? 0.8 : null,
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   )
                 : Text(saveLabel ?? context.l10n.saveButton),

@@ -3344,12 +3344,6 @@ abstract class AppLocalizations {
   /// **'Preview'**
   String get labelPreview;
 
-  /// No description provided for @saveLabelButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Save Label'**
-  String get saveLabelButton;
-
   /// No description provided for @noPersonalLabels.
   ///
   /// In en, this message translates to:
