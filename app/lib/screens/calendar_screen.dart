@@ -13,10 +13,12 @@ import '../logic/task_schedule.dart';
 import '../logic/user_settings.dart';
 import '../logic/user_settings_repository.dart';
 import '../logic/utils/layout_breakpoints.dart';
+import '../widgets/calendar_day_timeline_view.dart';
 import '../widgets/calendar_month_card.dart';
 
 export '../logic/calendar_day_task.dart';
 export '../widgets/calendar_day_details_sheet.dart';
+export '../widgets/calendar_day_timeline_view.dart';
 export '../widgets/calendar_month_card.dart';
 
 /// Screen displaying a scrollable calendar view of past and future months.
@@ -60,6 +62,22 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   List<TaskSchedule>? _cachedSchedules;
   String? _cachedUserId;
   CivilDay? _cachedToday;
+
+  CivilDay? _zoomedDay;
+  final GlobalKey<CalendarDayTimelineViewState> _timelineKey =
+      GlobalKey<CalendarDayTimelineViewState>();
+
+  void _zoomToDay(CivilDay day) {
+    setState(() {
+      _zoomedDay = day;
+    });
+  }
+
+  void _zoomOutToMonth() {
+    setState(() {
+      _zoomedDay = null;
+    });
+  }
 
   @override
   void initState() {
@@ -204,38 +222,63 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       });
     }
 
-    return Stack(
-      children: [
-        isWide
-            ? _buildWideMonthList(
-                instances,
-                schedules,
-                today,
-                currentUserId: currentUserId,
-                firstDayOfWeek: firstDayOfWeek,
-              )
-            : _buildNarrowMonthList(
-                instances,
-                schedules,
-                today,
-                currentUserId: currentUserId,
-                firstDayOfWeek: firstDayOfWeek,
-              ),
-        Positioned(
-          right: 16,
-          bottom: 16,
-          child: FloatingActionButton(
-            key: const Key('calendar_jump_to_today_button'),
-            heroTag: 'calendar_jump_to_today_fab',
-            tooltip: context.l10n.calendarJumpToToday,
-            onPressed: () => _scrollToCurrentMonth(
-              animate: true,
-              firstDayOfWeek: firstDayOfWeek,
+    return PopScope(
+      canPop: _zoomedDay == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _zoomedDay != null) {
+          _zoomOutToMonth();
+        }
+      },
+      child: Stack(
+        children: [
+          Offstage(
+            offstage: _zoomedDay != null,
+            child: Stack(
+              children: [
+                isWide
+                    ? _buildWideMonthList(
+                        instances,
+                        schedules,
+                        today,
+                        currentUserId: currentUserId,
+                        firstDayOfWeek: firstDayOfWeek,
+                      )
+                    : _buildNarrowMonthList(
+                        instances,
+                        schedules,
+                        today,
+                        currentUserId: currentUserId,
+                        firstDayOfWeek: firstDayOfWeek,
+                      ),
+                Positioned(
+                  right: 16,
+                  bottom: 16,
+                  child: FloatingActionButton(
+                    key: const Key('calendar_jump_to_today_button'),
+                    heroTag: 'calendar_jump_to_today_fab',
+                    tooltip: context.l10n.calendarJumpToToday,
+                    onPressed: () => _scrollToCurrentMonth(
+                      animate: true,
+                      firstDayOfWeek: firstDayOfWeek,
+                    ),
+                    child: const Icon(Icons.today),
+                  ),
+                ),
+              ],
             ),
-            child: const Icon(Icons.today),
           ),
-        ),
-      ],
+          if (_zoomedDay != null)
+            CalendarDayTimelineView(
+              key: _timelineKey,
+              initialDay: _zoomedDay!,
+              onBackToMonth: _zoomOutToMonth,
+              instances: instances,
+              schedules: schedules,
+              currentUserId: currentUserId,
+              today: today,
+            ),
+        ],
+      ),
     );
   }
 
@@ -275,6 +318,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   today: today,
                   isWide: true,
                   firstDayOfWeek: firstDayOfWeek,
+                  onDayTap: _zoomToDay,
                 ),
               ),
               const SizedBox(width: 16),
@@ -292,6 +336,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         today: today,
                         isWide: true,
                         firstDayOfWeek: firstDayOfWeek,
+                        onDayTap: _zoomToDay,
                       )
                     : const SizedBox.shrink(),
               ),
@@ -329,6 +374,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             today: today,
             isWide: false,
             firstDayOfWeek: firstDayOfWeek,
+            onDayTap: _zoomToDay,
           ),
         );
       },

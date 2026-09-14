@@ -214,7 +214,7 @@ void main() {
   }
 
   testWidgets(
-    'tapping a calendar day cell opens modal bottom sheet with expected tasks',
+    'tapping a calendar day cell zooms in to daily timeline view with expected tasks',
     (tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
@@ -232,27 +232,25 @@ void main() {
       await tester.tap(day8Finder.first);
       await tester.pumpAndSettle();
 
-      // Verify bottom sheet title and tasks
-      expect(find.textContaining('March 8, 2026'), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.text('Water the Houseplants'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.text('Review Weekly Plan'),
-        ),
-        findsOneWidget,
-      );
+      // Verify zoomed into CalendarDayTimelineView
+      expect(find.byType(CalendarDayTimelineView), findsOneWidget);
+      expect(find.textContaining('March 2026'), findsWidgets);
+      expect(find.byKey(const Key('timeline_task_I-1')), findsOneWidget);
+      expect(find.byKey(const Key('timeline_task_I-2')), findsOneWidget);
+
+      // Verify zoom out back to month view
+      final backButton = find.byKey(const Key('calendar_back_to_month_button'));
+      expect(backButton, findsOneWidget);
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CalendarDayTimelineView), findsNothing);
+      expect(find.byKey(const Key('month_card_2026_3')), findsOneWidget);
     },
   );
 
   testWidgets(
-    'toggling task completion checkbox calls complete and uncomplete without dismissing sheet',
+    'toggling task completion checkbox calls complete and uncomplete without dismissing timeline',
     (tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
@@ -261,7 +259,7 @@ void main() {
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
-      // Open day 8 bottom sheet of current month
+      // Open day 8 timeline of current month
       final day8Finder = find.descendant(
         of: find.byKey(const Key('month_card_2026_3')),
         matching: find.text('8'),
@@ -278,8 +276,8 @@ void main() {
       // Verify completeTaskInstance called with I-2
       verify(mockTaskRepository.completeTaskInstance('I-2')).called(1);
 
-      // Verify sheet is STILL open (title still visible)
-      expect(find.textContaining('March 8, 2026'), findsOneWidget);
+      // Verify timeline view is STILL open
+      expect(find.byType(CalendarDayTimelineView), findsOneWidget);
 
       // I-1 is completed -> checked circle icon
       final checkedFinder = find.byIcon(Icons.check_circle);
@@ -290,8 +288,8 @@ void main() {
       // Verify uncompleteTaskInstance called with I-1
       verify(mockTaskRepository.uncompleteTaskInstance('I-1')).called(1);
 
-      // Verify sheet is STILL open
-      expect(find.textContaining('March 8, 2026'), findsOneWidget);
+      // Verify timeline view is STILL open
+      expect(find.byType(CalendarDayTimelineView), findsOneWidget);
     },
   );
 
@@ -321,7 +319,7 @@ void main() {
   });
 
   testWidgets(
-    'tapping "+ Add Task" in bottom sheet navigates to CreateTaskScreen',
+    'tapping "+ Add Task" in daily view navigates to CreateTaskScreen',
     (tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
@@ -330,7 +328,7 @@ void main() {
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
-      // Open day 8 bottom sheet
+      // Open day 8 timeline
       final day8Finder = find.descendant(
         of: find.byKey(const Key('month_card_2026_3')),
         matching: find.text('8'),
@@ -338,7 +336,7 @@ void main() {
       await tester.tap(day8Finder.first);
       await tester.pumpAndSettle();
 
-      // Tap + button inside bottom sheet
+      // Tap + button
       final addFinder = find.byIcon(Icons.add);
       expect(addFinder, findsOneWidget);
       await tester.tap(addFinder);
@@ -359,7 +357,7 @@ void main() {
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
-      // Open day 8 bottom sheet (which has skipped and failed instances)
+      // Open day 8 timeline (which has skipped and failed instances)
       final day8Finder = find.descendant(
         of: find.byKey(const Key('month_card_2026_3')),
         matching: find.text('8'),
@@ -371,8 +369,8 @@ void main() {
       expect(find.text('Skipped Task'), findsNothing);
       expect(find.text('Failed Task'), findsNothing);
 
-      // Close sheet
-      await tester.tapAt(const Offset(20, 20));
+      // Zoom back out to month view
+      await tester.tap(find.byKey(const Key('calendar_back_to_month_button')));
       await tester.pumpAndSettle();
 
       // March 10, 2026 is Tuesday. Daily task S-1 recurs every day.
@@ -384,26 +382,17 @@ void main() {
       await tester.tap(day10Finder.first);
       await tester.pumpAndSettle();
 
-      // Verify projected Daily schedule appears
+      // Verify projected Daily schedule appears with event_repeat icon
       expect(
-        find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.text('Water the Houseplants'),
-        ),
+        find.byKey(const Key('timeline_task_projected_S-1_2026-03-10')),
         findsOneWidget,
       );
-      expect(
-        find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.byIcon(Icons.event_repeat),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byIcon(Icons.event_repeat), findsWidgets);
     },
   );
 
   testWidgets(
-    'bottom sheet reactively updates when instance stream changes without reading stale cache',
+    'daily timeline reactively updates when instance stream changes without reading stale cache',
     (tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
@@ -412,7 +401,7 @@ void main() {
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
 
-      // Open day 8 bottom sheet
+      // Open day 8 timeline
       final day8Finder = find.descendant(
         of: find.byKey(const Key('month_card_2026_3')),
         matching: find.text('8'),
@@ -435,8 +424,8 @@ void main() {
       instancesSubject.add(updatedInstances);
       await tester.pumpAndSettle();
 
-      // Because _getMonthTaskMap invalidates cache when instances change,
-      // bottom sheet rebuild shows both tasks completed (2 check_circle icons).
+      // Because _monthTaskMapCache invalidates cache when instances change,
+      // timeline rebuild shows both tasks completed (2 check_circle icons).
       expect(find.byIcon(Icons.check_circle), findsNWidgets(2));
       expect(find.byIcon(Icons.radio_button_unchecked), findsNothing);
     },
@@ -481,13 +470,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // For user-1, task should be completed (check_circle)
-      expect(
-        find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.byIcon(Icons.check_circle),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
     },
   );
 
@@ -530,13 +513,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // For user-2, task should be incomplete (radio_button_unchecked)
-      expect(
-        find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.byIcon(Icons.radio_button_unchecked),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byIcon(Icons.radio_button_unchecked), findsOneWidget);
     },
   );
 

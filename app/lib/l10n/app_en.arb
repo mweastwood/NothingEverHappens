@@ -14,6 +14,11 @@
   "calendarJumpToToday": "Today",
   "calendarCurrentMonth": "This Month",
   "calendarNoTasks": "No tasks scheduled",
+  "calendarBackToMonth": "Back to month view",
+  "calendarDayTimeline": "Daily timeline",
+  "calendarPreviousDay": "Previous day",
+  "calendarNextDay": "Next day",
+  "calendarAllDay": "All day",
   "tasksForDate": "Tasks for {date}",
   "@tasksForDate": {
     "description": "Header showing tasks for a given date in calendar",

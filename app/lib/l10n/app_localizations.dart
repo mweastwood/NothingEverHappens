@@ -188,6 +188,36 @@ abstract class AppLocalizations {
   /// **'No tasks scheduled'**
   String get calendarNoTasks;
 
+  /// No description provided for @calendarBackToMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to month view'**
+  String get calendarBackToMonth;
+
+  /// No description provided for @calendarDayTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily timeline'**
+  String get calendarDayTimeline;
+
+  /// No description provided for @calendarPreviousDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous day'**
+  String get calendarPreviousDay;
+
+  /// No description provided for @calendarNextDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Next day'**
+  String get calendarNextDay;
+
+  /// No description provided for @calendarAllDay.
+  ///
+  /// In en, this message translates to:
+  /// **'All day'**
+  String get calendarAllDay;
+
   /// Header showing tasks for a given date in calendar
   ///
   /// In en, this message translates to:
