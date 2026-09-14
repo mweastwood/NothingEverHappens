@@ -804,36 +804,45 @@ class _LabelEditDialogState extends ConsumerState<_LabelEditDialog> {
                   children: LabelPalette.all.map((colorItem) {
                     final isSelected = colorItem.key == _selectedColorKey;
                     final color = colorItem.getColor(context);
-                    return InkWell(
-                      key: Key('color_picker_${colorItem.key}'),
-                      onTap: () {
-                        setState(() {
-                          _selectedColorKey = colorItem.key;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                  width: 2.5,
+                    return Tooltip(
+                      message: colorItem.name,
+                      child: InkWell(
+                        key: Key('color_picker_${colorItem.key}'),
+                        onTap: () {
+                          setState(() {
+                            _selectedColorKey = colorItem.key;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                    width: 2.5,
+                                  )
+                                : null,
+                          ),
+                          child: isSelected
+                              ? Icon(
+                                  Icons.check,
+                                  color:
+                                      ThemeData.estimateBrightnessForColor(
+                                            color,
+                                          ) ==
+                                          Brightness.light
+                                      ? Colors.black87
+                                      : Colors.white,
+                                  size: 20,
                                 )
                               : null,
                         ),
-                        child: isSelected
-                            ? const Icon(
-                                Icons.check,
-                                color: Colors.white,
-                                size: 20,
-                              )
-                            : null,
                       ),
                     );
                   }).toList(),

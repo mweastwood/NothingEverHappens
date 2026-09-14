@@ -434,5 +434,116 @@ void main() {
         await authController.close();
       },
     );
+
+    testWidgets(
+      'renders all 16 color options in dialog with tooltips and correct checkmark contrast',
+      (tester) async {
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('add_personal_label_button')));
+        await tester.pumpAndSettle();
+
+        // Verify all 16 colors are present
+        for (final item in LabelPalette.all) {
+          final colorPickerFinder = find.byKey(Key('color_picker_${item.key}'));
+          expect(colorPickerFinder, findsOneWidget);
+
+          // Verify Tooltip message
+          final tooltipFinder = find.ancestor(
+            of: colorPickerFinder,
+            matching: find.byType(Tooltip),
+          );
+          expect(tooltipFinder, findsOneWidget);
+          final tooltip = tester.widget<Tooltip>(tooltipFinder);
+          expect(tooltip.message, equals(item.name));
+        }
+
+        // Test checkmark contrast when selecting cream (light luminance) vs cobalt (darker luminance)
+        // Select cream
+        await tester.tap(find.byKey(const Key('color_picker_cream')));
+        await tester.pumpAndSettle();
+
+        final creamCheckIcon = tester.widget<Icon>(
+          find.descendant(
+            of: find.byKey(const Key('color_picker_cream')),
+            matching: find.byIcon(Icons.check),
+          ),
+        );
+        expect(creamCheckIcon.color, equals(Colors.black87));
+
+        // Select cobalt
+        await tester.tap(find.byKey(const Key('color_picker_cobalt')));
+        await tester.pumpAndSettle();
+
+        final cobaltCheckIcon = tester.widget<Icon>(
+          find.descendant(
+            of: find.byKey(const Key('color_picker_cobalt')),
+            matching: find.byIcon(Icons.check),
+          ),
+        );
+        expect(cobaltCheckIcon.color, equals(Colors.white));
+      },
+    );
+
+    testWidgets(
+      'creates label with pastel color (mint) and persists colorKey',
+      (tester) async {
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('add_personal_label_button')));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.byKey(const Key('label_name_field')),
+          'Garden Routine',
+        );
+        await tester.tap(find.byKey(const Key('color_picker_mint')));
+        await tester.tap(find.byKey(const Key('icon_picker_yard')));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('save_label_button')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Garden Routine'), findsOneWidget);
+
+        final labels = await labelRepo.watchPersonalLabels(currentUserId).first;
+        expect(labels.length, 1);
+        expect(labels.first.name, 'Garden Routine');
+        expect(labels.first.colorKey, 'mint');
+        expect(labels.first.iconKey, 'yard');
+      },
+    );
+
+    testWidgets(
+      'edits existing label to pastel color (lavender) and updates repository',
+      (tester) async {
+        final label = TaskLabel.create(
+          id: 'L-seed-pastel',
+          name: 'Reading List',
+          colorKey: 'coral',
+          iconKey: 'star',
+        );
+        await labelRepo.savePersonalLabel(currentUserId, label);
+
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        expect(find.text('Reading List'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('edit_label_L-seed-pastel')));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('color_picker_lavender')));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('save_label_button')));
+        await tester.pumpAndSettle();
+
+        final labels = await labelRepo.watchPersonalLabels(currentUserId).first;
+        expect(labels.first.colorKey, 'lavender');
+      },
+    );
   });
 }

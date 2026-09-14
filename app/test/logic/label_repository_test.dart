@@ -95,8 +95,53 @@ void main() {
       final fallbackColor = LabelPalette.getItem('nonexistent');
       expect(fallbackColor.key, equals('coral'));
 
+      final fallbackNullColor = LabelPalette.getItem(null);
+      expect(fallbackNullColor.key, equals('coral'));
+
       final fallbackIcon = LabelIcons.getItem('nonexistent');
       expect(fallbackIcon.key, equals('tag'));
+    });
+
+    test('LabelPalette.all contains 16 unique colors with valid names', () {
+      expect(LabelPalette.all.length, equals(16));
+
+      final keys = LabelPalette.all.map((c) => c.key).toSet();
+      expect(keys.length, equals(16));
+
+      for (final colorItem in LabelPalette.all) {
+        expect(colorItem.key, isNotEmpty);
+        expect(colorItem.name, isNotEmpty);
+        expect(colorItem.lightColor, isNotNull);
+        expect(colorItem.darkColor, isNotNull);
+      }
+    });
+
+    test('LabelPalette resolves all 8 pastel color additions correctly', () {
+      const expectedPastels = {
+        'peach': ('Peach', 0xFFFF8A65, 0xFFFFAB91),
+        'cream': ('Cream', 0xFFFBC02D, 0xFFFFF59D),
+        'mint': ('Mint', 0xFF66BB6A, 0xFFA5D6A7),
+        'sage': ('Sage', 0xFF78909C, 0xFFA5B892),
+        'sky': ('Sky', 0xFF4FC3F7, 0xFF81D4FA),
+        'periwinkle': ('Periwinkle', 0xFF7986CB, 0xFF9FA8DA),
+        'lavender': ('Lavender', 0xFFBA68C8, 0xFFCE93D8),
+        'blush': ('Blush', 0xFFF06292, 0xFFF48FB1),
+      };
+
+      for (final entry in expectedPastels.entries) {
+        final key = entry.key;
+        final (name, lightValue, darkValue) = entry.value;
+
+        final item = LabelPalette.getItem(key);
+        expect(item.key, equals(key));
+        expect(item.name, equals(name));
+        expect(item.lightColor.toARGB32(), equals(lightValue));
+        expect(item.darkColor.toARGB32(), equals(darkValue));
+
+        // Test case insensitivity and whitespace trimming
+        final uppercaseItem = LabelPalette.getItem('  ${key.toUpperCase()}  ');
+        expect(uppercaseItem.key, equals(key));
+      }
     });
   });
 }
