@@ -178,7 +178,7 @@ void main() {
   testWidgets(
     'on large desktop screen (>=1200px), viewportFraction shows 7 days simultaneously',
     (tester) async {
-      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.physicalSize = const Size(1200, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 

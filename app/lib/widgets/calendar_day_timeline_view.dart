@@ -84,11 +84,17 @@ class CalendarDayTimelineViewState
     _pageController!.addListener(_onPageScroll);
   }
 
+  @visibleForTesting
+  int get visibleDays => _visibleDays;
+
+  @visibleForTesting
+  double get viewportFraction => _viewportFraction;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final width = MediaQuery.sizeOf(context).width - _hourGutterWidth;
-    _updateControllers(width);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    _updateControllers(screenWidth);
   }
 
   @override
@@ -111,17 +117,17 @@ class CalendarDayTimelineViewState
     super.dispose();
   }
 
-  void _updateControllers(double availableWidth) {
+  void _updateControllers(double screenWidth) {
     final int newVisibleDays;
     final double newViewportFraction;
 
-    if (availableWidth >= 1150) {
+    if (screenWidth >= 1150) {
       newVisibleDays = 7;
       newViewportFraction = 1.0 / 7;
-    } else if (availableWidth >= 850) {
+    } else if (screenWidth >= 850) {
       newVisibleDays = 5;
       newViewportFraction = 1.0 / 5;
-    } else if (availableWidth >= 550) {
+    } else if (screenWidth >= 600) {
       newVisibleDays = 3;
       newViewportFraction = 1.0 / 3;
     } else {
