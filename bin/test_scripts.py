@@ -2,8 +2,10 @@
 Sanity tests for repository utility scripts in bin/.
 """
 
+import json
 import os
 from pathlib import Path
+import subprocess
 import unittest
 
 BIN_DIR = Path(__file__).resolve().parent
@@ -31,7 +33,6 @@ class TestRepositoryScripts(unittest.TestCase):
     def test_graviton_config_valid(self):
         config_path = BIN_DIR.parent / ".graviton.json"
         self.assertTrue(config_path.is_file(), ".graviton.json should exist")
-        import json
         with open(config_path, "r", encoding="utf-8") as f:
             cfg = json.load(f)
         self.assertIn("release", cfg)
@@ -43,7 +44,6 @@ class TestRepositoryScripts(unittest.TestCase):
         self.assertIn("major", release["commands"])
 
     def test_tag_script_help_and_dry_run(self):
-        import subprocess
         tag_script = str(BIN_DIR / "tag.sh")
         repo_root = str(BIN_DIR.parent)
         # Test help (--help, -h, and positional help)
@@ -66,22 +66,49 @@ class TestRepositoryScripts(unittest.TestCase):
                 res_dry.stderr,
             )
 
-        # Test proper argument parsing for positional commands (patch, minor, major)
-        for inc_type in ["patch", "minor", "major"]:
-            for dry_flag in ["--dry-run", "dry-run"]:
-                res_pos = subprocess.run(
-                    [tag_script, inc_type, dry_flag],
-                    capture_output=True,
-                    text=True,
-                    cwd=repo_root,
-                )
-                self.assertEqual(
-                    res_pos.returncode,
-                    0,
-                    f"tag.sh {inc_type} {dry_flag} failed: {res_pos.stderr}",
-                )
-                self.assertIn("Incrementing to new tag:", res_pos.stdout)
-                self.assertIn("[DRY RUN]", res_pos.stdout)
+        # Test proper argument parsing for positional and flag-style commands across ordering variations
+        increment_options = ["patch", "minor", "major", "--patch", "--minor", "--major"]
+        dry_run_options = ["--dry-run", "dry-run"]
+        for inc_opt in increment_options:
+            for dry_opt in dry_run_options:
+                for args in [[inc_opt, dry_opt], [dry_opt, inc_opt]]:
+                    res = subprocess.run(
+                        [tag_script] + args,
+                        capture_output=True,
+                        text=True,
+                        cwd=repo_root,
+                    )
+                    self.assertEqual(
+                        res.returncode,
+                        0,
+                        f"tag.sh {' '.join(args)} failed: {res.stderr}",
+                    )
+                    self.assertIn("Incrementing to new tag:", res.stdout)
+                    self.assertIn("[DRY RUN]", res.stdout)
+
+        # Test conflicting increment arguments error handling
+        conflict_cases = [
+            ["patch", "minor"],
+            ["--patch", "--minor"],
+            ["major", "--patch"],
+            ["--minor", "patch"],
+        ]
+        for args in conflict_cases:
+            res_conflict = subprocess.run(
+                [tag_script] + args,
+                capture_output=True,
+                text=True,
+                cwd=repo_root,
+            )
+            self.assertNotEqual(
+                res_conflict.returncode,
+                0,
+                f"tag.sh {' '.join(args)} should fail with non-zero exit code",
+            )
+            self.assertIn(
+                "Error: Only one increment argument or flag can be specified.",
+                res_conflict.stderr,
+            )
 
 
 if __name__ == "__main__":

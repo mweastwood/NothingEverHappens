@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --major|major)
       if [ -n "$INCREMENT_TYPE" ]; then
-        echo "Error: Only one increment flag can be specified." >&2
+        echo "Error: Only one increment argument or flag can be specified." >&2
         usage
       fi
       INCREMENT_TYPE="major"
@@ -33,7 +33,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --minor|minor)
       if [ -n "$INCREMENT_TYPE" ]; then
-        echo "Error: Only one increment flag can be specified." >&2
+        echo "Error: Only one increment argument or flag can be specified." >&2
         usage
       fi
       INCREMENT_TYPE="minor"
@@ -41,7 +41,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --patch|patch)
       if [ -n "$INCREMENT_TYPE" ]; then
-        echo "Error: Only one increment flag can be specified." >&2
+        echo "Error: Only one increment argument or flag can be specified." >&2
         usage
       fi
       INCREMENT_TYPE="patch"
