@@ -2152,4 +2152,75 @@ void main() {
       expect(find.text('Urgent'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'TaskWidget does not fall back to schedule labelIds when instance labelIds is empty',
+    (tester) async {
+      final label1 = TaskLabel(
+        id: 'lbl-1',
+        name: 'Cleaning',
+        colorKey: 'emerald',
+        iconKey: 'cleaning',
+        scope: TaskLabelScope.personal,
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      );
+
+      final scheduleWithLabels = TaskSchedule(
+        id: 'S-sched-labeled',
+        title: 'Task Title',
+        description: 'Test description',
+        labelIds: const ['lbl-1'],
+        schedules: [
+          OneOffSchedule(
+            id: 'R-sched-1',
+            scheduleId: 'S-sched-labeled',
+            date: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+          ),
+        ],
+      );
+
+      final instanceWithoutLabels = TaskInstance(
+        id: 'I-1',
+        scheduleId: 'S-sched-labeled',
+        ruleId: 'R-sched-1',
+        title: 'Task Title',
+        description: 'Test description',
+        scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        labelIds: const [],
+      );
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: Scaffold(
+            body: ProviderScope(
+              overrides: [
+                taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+                allLabelsMapProvider.overrideWithValue({'lbl-1': label1}),
+              ],
+              child: TaskWidget(
+                instance: instanceWithoutLabels,
+                schedule: scheduleWithLabels,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cleaning'), findsNothing);
+    },
+  );
 }

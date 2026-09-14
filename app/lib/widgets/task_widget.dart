@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../logic/user_profile_provider.dart';
 import '../logic/task_integration.dart';
 import '../logic/task_schedule.dart';
@@ -21,6 +22,7 @@ import '../logic/undo_notifier.dart';
 import '../logic/app_clock.dart';
 import 'undo_snackbar.dart';
 import 'app_snackbar.dart';
+
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -326,6 +328,27 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
         ),
       ),
     );
+  }
+
+  List<Widget> _buildLabelBadges(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> labelIds,
+  ) {
+    if (labelIds.isEmpty) return const <Widget>[];
+    final allLabels = ref.watch(allLabelsMapProvider);
+    return labelIds
+        .map((id) => allLabels[id])
+        .whereType<TaskLabel>()
+        .map(
+          (label) => _buildBadge(
+            context,
+            icon: LabelIcons.getIcon(label.iconKey),
+            label: label.name,
+            color: LabelPalette.getColor(label.colorKey, context),
+          ),
+        )
+        .toList();
   }
 
   Widget _buildDueDateBadge(BuildContext context) {
@@ -727,24 +750,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 // Labels
-                ...() {
-                  final effectiveLabelIds = widget.instance.labelIds.isNotEmpty
-                      ? widget.instance.labelIds
-                      : (widget.schedule?.labelIds ?? const <String>[]);
-                  if (effectiveLabelIds.isEmpty) return const <Widget>[];
-                  final allLabels = ref.watch(allLabelsMapProvider);
-                  return effectiveLabelIds
-                      .map((id) => allLabels[id])
-                      .whereType<TaskLabel>()
-                      .map(
-                        (label) => _buildBadge(
-                          context,
-                          icon: LabelIcons.getIcon(label.iconKey),
-                          label: label.name,
-                          color: LabelPalette.getColor(label.colorKey, context),
-                        ),
-                      );
-                }(),
+                ..._buildLabelBadges(context, ref, widget.instance.labelIds),
               ],
             ),
           ],

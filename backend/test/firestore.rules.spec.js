@@ -524,7 +524,30 @@ describe('Firestore Security Rules', () => {
         labelIds: ['label-chore', 'label-urgent']
       }));
     });
+
+    it('denies unauthenticated users from updating labelIds on family tasks', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' }
+          }
+        });
+        await db.collection('families').doc('fam-1').collection('tasks').doc('task-1').set({
+          title: 'Clean garage',
+          description: 'Sweep and organize',
+          isFamily: true,
+          labelIds: ['label-chore']
+        });
+      });
+
+      const unauthenticatedContext = testEnv.unauthenticatedContext();
+      const unauthenticatedDb = unauthenticatedContext.firestore();
+
+      await assertFails(unauthenticatedDb.collection('families').doc('fam-1').collection('tasks').doc('task-1').update({
+        labelIds: ['label-chore', 'label-urgent']
+      }));
+    });
   });
 });
-
-
