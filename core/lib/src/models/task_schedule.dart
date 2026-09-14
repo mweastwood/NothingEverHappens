@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:uuid/uuid.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
@@ -109,6 +110,9 @@ class TaskSchedule {
   /// Timestamp of the last update for sync conflict resolution.
   final DateTime updatedAt;
 
+  /// Optional label IDs associated with this task.
+  final List<String> labelIds;
+
   int get futureInstancesCount {
     if (schedules.isEmpty) {
       return 1;
@@ -160,6 +164,7 @@ class TaskSchedule {
     this.hasPendingWrites = false,
     this.isFromCache = false,
     DateTime? updatedAt,
+    this.labelIds = const [],
   })  : id = id.startsWith('S-') ? id : 'S-$id',
         title = title.trim(),
         description = description.trim(),
@@ -260,6 +265,9 @@ class TaskSchedule {
           )
         : null;
 
+    final labelIdsRaw = data['labelIds'] as List<dynamic>? ?? [];
+    final labelIds = labelIdsRaw.map((e) => e.toString()).toList();
+
     return TaskSchedule(
       id: resolvedId,
       title: data['title'] as String? ?? 'Untitled',
@@ -285,6 +293,7 @@ class TaskSchedule {
       hasPendingWrites: hasPendingWrites,
       isFromCache: isFromCache,
       updatedAt: updatedAt,
+      labelIds: labelIds,
     );
   }
 
@@ -327,6 +336,7 @@ class TaskSchedule {
       'futureInstancesCount': futureInstancesCount,
       'skipIfNoCapacity': skipIfNoCapacity,
       'updatedAt': updatedAt,
+      'labelIds': labelIds,
     };
   }
 
@@ -352,6 +362,7 @@ class TaskSchedule {
     SchedulingPolicy? newSchedulingPolicy,
     MissedOccurrencePolicy? newMissedOccurrencePolicy,
     bool? newSkipIfNoCapacity,
+    List<String>? newLabelIds,
   }) {
     final resolvedSkip = newSkipIfNoCapacity ?? skipIfNoCapacity;
     final resolvedFamilyCompletionMode =
@@ -411,6 +422,7 @@ class TaskSchedule {
       mealWorkflowConfig: newMealWorkflowConfig,
       clearMealWorkflowConfig: newMealWorkflowConfig == null,
       skipIfNoCapacity: resolvedSkip,
+      labelIds: newLabelIds,
     );
 
     final changes = <String, dynamic>{};
@@ -493,6 +505,11 @@ class TaskSchedule {
 
     if (resolvedSkip != skipIfNoCapacity) {
       changes['skipIfNoCapacity'] = resolvedSkip;
+    }
+
+    if (newLabelIds != null &&
+        !const ListEquality<String>().equals(newLabelIds, labelIds)) {
+      changes['labelIds'] = newLabelIds;
     }
 
     return (newTask: newTask, changes: changes);
@@ -628,6 +645,8 @@ class TaskSchedule {
     bool? hasPendingWrites,
     bool? isFromCache,
     DateTime? updatedAt,
+    List<String>? labelIds,
+    bool clearLabelIds = false,
   }) {
     return _copyWith(
       title: title,
@@ -661,6 +680,8 @@ class TaskSchedule {
       hasPendingWrites: hasPendingWrites,
       isFromCache: isFromCache,
       updatedAt: updatedAt,
+      labelIds: labelIds,
+      clearLabelIds: clearLabelIds,
     );
   }
 
@@ -696,6 +717,8 @@ class TaskSchedule {
     bool? hasPendingWrites,
     bool? isFromCache,
     DateTime? updatedAt,
+    List<String>? labelIds,
+    bool clearLabelIds = false,
   }) {
     final baseSchedules = schedules ?? this.schedules;
     final resolvedSchedules = baseSchedules.map((s) {
@@ -749,6 +772,7 @@ class TaskSchedule {
       hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
       isFromCache: isFromCache ?? this.isFromCache,
       updatedAt: updatedAt ?? this.updatedAt,
+      labelIds: clearLabelIds ? const [] : (labelIds ?? this.labelIds),
     );
   }
 

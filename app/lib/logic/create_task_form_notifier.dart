@@ -24,6 +24,7 @@ class CreateTaskFormState {
   final TimeOfDay shopTime;
   final TimeOfDay prepTime;
   final bool isSaving;
+  final List<String> labelIds;
 
   const CreateTaskFormState({
     required this.taskScheduleId,
@@ -42,6 +43,7 @@ class CreateTaskFormState {
     this.shopTime = const TimeOfDay(hour: 16, minute: 0),
     this.prepTime = const TimeOfDay(hour: 18, minute: 30),
     this.isSaving = false,
+    this.labelIds = const [],
   });
 
   factory CreateTaskFormState.initial({
@@ -76,6 +78,7 @@ class CreateTaskFormState {
         selectTime: selectTime,
         shopTime: shopTime,
         prepTime: prepTime,
+        labelIds: List<String>.from(task.labelIds),
       );
     } else if (taskToDuplicate != null) {
       final task = taskToDuplicate;
@@ -112,6 +115,7 @@ class CreateTaskFormState {
         selectTime: selectTime,
         shopTime: shopTime,
         prepTime: prepTime,
+        labelIds: List<String>.from(task.labelIds),
       );
     } else {
       final taskScheduleId = TaskSchedule.generateId();
@@ -144,6 +148,7 @@ class CreateTaskFormState {
         taskScheduleId: taskScheduleId,
         schedules: schedules,
         expandedScheduleIndex: 0,
+        labelIds: const [],
       );
     }
   }
@@ -191,6 +196,7 @@ class CreateTaskFormState {
     TimeOfDay? shopTime,
     TimeOfDay? prepTime,
     bool? isSaving,
+    List<String>? labelIds,
   }) {
     return CreateTaskFormState(
       taskScheduleId: taskScheduleId ?? this.taskScheduleId,
@@ -214,6 +220,7 @@ class CreateTaskFormState {
       shopTime: shopTime ?? this.shopTime,
       prepTime: prepTime ?? this.prepTime,
       isSaving: isSaving ?? this.isSaving,
+      labelIds: labelIds ?? this.labelIds,
     );
   }
 }
@@ -303,7 +310,22 @@ class CreateTaskFormNotifier extends StateNotifier<CreateTaskFormState> {
     state = state.copyWith(
       isFamily: isFamily,
       assignedUserId: isFamily ? state.assignedUserId : null,
+      labelIds: const [],
     );
+  }
+
+  void toggleLabel(String labelId) {
+    final current = List<String>.from(state.labelIds);
+    if (current.contains(labelId)) {
+      current.remove(labelId);
+    } else {
+      current.add(labelId);
+    }
+    state = state.copyWith(labelIds: current);
+  }
+
+  void setLabelIds(List<String> labelIds) {
+    state = state.copyWith(labelIds: List<String>.from(labelIds));
   }
 
   void setFamilyCompletionMode(FamilyCompletionMode mode) {

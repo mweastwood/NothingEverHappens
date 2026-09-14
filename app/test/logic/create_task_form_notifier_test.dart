@@ -29,6 +29,7 @@ void main() {
       expect(state.priority, TaskPriority.medium);
       expect(state.isMealWorkflow, false);
       expect(state.isSaving, false);
+      expect(state.labelIds, isEmpty);
     });
 
     test('initial state for default repeating task', () {
@@ -75,6 +76,7 @@ void main() {
           shopTime: RelativeTime(dayOffset: 0, hour: 15, minute: 0),
           prepTime: RelativeTime(dayOffset: 0, hour: 17, minute: 30),
         ),
+        labelIds: const ['label-1', 'label-2'],
       );
 
       final notifier = CreateTaskFormNotifier(taskToEdit: existingTask);
@@ -91,6 +93,7 @@ void main() {
       expect(state.selectTime, const TimeOfDay(hour: 9, minute: 0));
       expect(state.shopTime, const TimeOfDay(hour: 15, minute: 0));
       expect(state.prepTime, const TimeOfDay(hour: 17, minute: 30));
+      expect(state.labelIds, const ['label-1', 'label-2']);
     });
 
     test('initial state when duplicating an existing task', () {
@@ -123,6 +126,7 @@ void main() {
           shopTime: RelativeTime(dayOffset: 0, hour: 14, minute: 0),
           prepTime: RelativeTime(dayOffset: 0, hour: 18, minute: 0),
         ),
+        labelIds: const ['label-xyz'],
       );
 
       final notifier = CreateTaskFormNotifier(taskToDuplicate: existingTask);
@@ -138,6 +142,7 @@ void main() {
       expect(state.selectTime, const TimeOfDay(hour: 9, minute: 30));
       expect(state.shopTime, const TimeOfDay(hour: 14, minute: 0));
       expect(state.prepTime, const TimeOfDay(hour: 18, minute: 0));
+      expect(state.labelIds, const ['label-xyz']);
     });
   });
 
@@ -186,12 +191,40 @@ void main() {
           FamilyCompletionMode.individual,
         );
 
-        // Disabling family should clear assignedUserId
+        // Disabling family should clear assignedUserId and labelIds
+        notifier.toggleLabel('label-family-1');
+        expect(notifier.state.labelIds, ['label-family-1']);
         notifier.setFamilyToggled(false);
         expect(notifier.state.isFamily, false);
         expect(notifier.state.assignedUserId, isNull);
+        expect(notifier.state.labelIds, isEmpty);
+
+        // Enabling family should clear personal labelIds
+        notifier.toggleLabel('label-personal-1');
+        expect(notifier.state.labelIds, ['label-personal-1']);
+        notifier.setFamilyToggled(true);
+        expect(notifier.state.isFamily, true);
+        expect(notifier.state.labelIds, isEmpty);
       },
     );
+
+    test('updating and toggling labelIds', () {
+      final notifier = CreateTaskFormNotifier();
+      expect(notifier.state.labelIds, isEmpty);
+
+      notifier.toggleLabel('label-1');
+      expect(notifier.state.labelIds, ['label-1']);
+
+      notifier.toggleLabel('label-2');
+      expect(notifier.state.labelIds, ['label-1', 'label-2']);
+
+      // Toggling again removes the label
+      notifier.toggleLabel('label-1');
+      expect(notifier.state.labelIds, ['label-2']);
+
+      notifier.setLabelIds(['label-3', 'label-4']);
+      expect(notifier.state.labelIds, ['label-3', 'label-4']);
+    });
 
     test('updating priority and skipIfNoCapacity', () {
       final notifier = CreateTaskFormNotifier();

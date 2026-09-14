@@ -19,6 +19,7 @@ import '../widgets/create_task/task_basic_info_section.dart';
 import '../widgets/create_task/task_effort_and_priority_section.dart';
 import '../widgets/create_task/task_experimental_workflow_section.dart';
 import '../widgets/create_task/task_family_assignment_section.dart';
+import '../widgets/create_task/task_labels_section.dart';
 import '../widgets/create_task/task_schedule_list_section.dart';
 import '../widgets/spawned_instances_list.dart';
 import '../widgets/undo_snackbar.dart';
@@ -204,6 +205,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
           skipIfNoCapacity: formState.skipIfNoCapacity,
           workflowType: formState.isMealWorkflow ? 'mealWorkflow' : null,
           mealWorkflowConfig: mealWorkflowConfig,
+          labelIds: formState.labelIds,
         );
 
         final repository = ref.read(taskRepositoryProvider);
@@ -238,6 +240,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               newWorkflowType: formState.isMealWorkflow ? 'mealWorkflow' : null,
               newMealWorkflowConfig: mealWorkflowConfig,
               newSkipIfNoCapacity: formState.skipIfNoCapacity,
+              newLabelIds: formState.labelIds,
             );
             await repository
                 .updateTaskSchedule(modification)
@@ -484,6 +487,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                     onFamilyCompletionModeChanged:
                         formNotifier.setFamilyCompletionMode,
                   );
+                  final labelsSection = TaskLabelsSection(
+                    isFamily: formState.isFamily,
+                    selectedLabelIds: formState.labelIds,
+                    onToggleLabel: formNotifier.toggleLabel,
+                    readOnly: readOnly,
+                  );
 
                   return Column(
                     children: [
@@ -520,6 +529,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       detailsCard,
+                                      const SizedBox(height: 16),
+                                      labelsSection,
                                       const SizedBox(height: 16),
                                       Row(
                                         crossAxisAlignment:
@@ -560,6 +571,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                             cycleId: formState.cycleId,
                                             assignedUserId:
                                                 formState.assignedUserId,
+                                            labelIds: formState.labelIds,
                                           ),
                                           dbInstances: dbInstances,
                                           now: AppClock.now,
@@ -572,6 +584,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       detailsCard,
+                                      const SizedBox(height: 16),
+                                      labelsSection,
                                       const SizedBox(height: 16),
                                       scheduleSection,
                                       const SizedBox(height: 16),
@@ -598,6 +612,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                             cycleId: formState.cycleId,
                                             assignedUserId:
                                                 formState.assignedUserId,
+                                            labelIds: formState.labelIds,
                                           ),
                                           dbInstances: dbInstances,
                                           now: AppClock.now,
