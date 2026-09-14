@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('TaskLabel model tests', () {
-    test('create generates unique id and default scope', () {
+    test('create generates unique id, default scope, and default order', () {
       final label = TaskLabel.create(
         name: 'Groceries',
         colorKey: 'tangerine',
@@ -15,8 +15,22 @@ void main() {
       expect(label.colorKey, equals('tangerine'));
       expect(label.iconKey, equals('shopping'));
       expect(label.scope, equals(TaskLabelScope.personal));
+      expect(label.order, equals(0));
       expect(label.createdAt, isNotNull);
       expect(label.updatedAt, isNull);
+    });
+
+    test('create accepts custom order and scope', () {
+      final label = TaskLabel.create(
+        name: 'Groceries',
+        colorKey: 'tangerine',
+        iconKey: 'shopping',
+        scope: TaskLabelScope.family,
+        order: 5,
+      );
+
+      expect(label.scope, equals(TaskLabelScope.family));
+      expect(label.order, equals(5));
     });
 
     test('serialization round-trip (toJson / fromJson)', () {
@@ -27,6 +41,7 @@ void main() {
         colorKey: 'teal',
         iconKey: 'cleaning',
         scope: TaskLabelScope.family,
+        order: 3,
         createdAt: now,
         updatedAt: now.add(const Duration(hours: 1)),
       );
@@ -40,48 +55,104 @@ void main() {
       expect(restored.colorKey, equals('teal'));
       expect(restored.iconKey, equals('cleaning'));
       expect(restored.scope, equals(TaskLabelScope.family));
+      expect(restored.order, equals(3));
       expect(restored.createdAt, equals(now));
       expect(restored.updatedAt, equals(now.add(const Duration(hours: 1))));
     });
 
-    test('fromFirestore handles map data and doc id', () {
+    test('fromFirestore handles map data with and without order', () {
       final now = DateTime.utc(2026, 9, 12, 12, 0, 0);
-      final fakeSnapshot = _FakeDocumentSnapshot(
+      final fakeSnapshotWithOrder = _FakeDocumentSnapshot(
         id: 'L-doc-567',
         dataMap: {
           'name': 'Yard Work',
           'colorKey': 'emerald',
           'iconKey': 'yard',
           'scope': 'family',
+          'order': 7,
           'createdAt': now.toIso8601String(),
         },
       );
 
-      final label = TaskLabel.fromFirestore(fakeSnapshot);
-      expect(label.id, equals('L-doc-567'));
-      expect(label.name, equals('Yard Work'));
-      expect(label.colorKey, equals('emerald'));
-      expect(label.iconKey, equals('yard'));
-      expect(label.scope, equals(TaskLabelScope.family));
+      final labelWithOrder = TaskLabel.fromFirestore(fakeSnapshotWithOrder);
+      expect(labelWithOrder.id, equals('L-doc-567'));
+      expect(labelWithOrder.name, equals('Yard Work'));
+      expect(labelWithOrder.colorKey, equals('emerald'));
+      expect(labelWithOrder.iconKey, equals('yard'));
+      expect(labelWithOrder.scope, equals(TaskLabelScope.family));
+      expect(labelWithOrder.order, equals(7));
+
+      // Backwards compatibility: order missing defaults to 0
+      final fakeSnapshotWithoutOrder = _FakeDocumentSnapshot(
+        id: 'L-doc-568',
+        dataMap: {
+          'name': 'Legacy Label',
+          'colorKey': 'coral',
+          'iconKey': 'tag',
+          'createdAt': now.toIso8601String(),
+        },
+      );
+
+      final labelWithoutOrder =
+          TaskLabel.fromFirestore(fakeSnapshotWithoutOrder);
+      expect(labelWithoutOrder.order, equals(0));
     });
 
-    test('copyWith updates fields correctly', () {
+    test('copyWith updates fields correctly including order', () {
       final label = TaskLabel.create(
         id: 'L-1',
         name: 'Old Name',
         colorKey: 'coral',
         iconKey: 'tag',
+        order: 1,
       );
 
       final updated = label.copyWith(
         name: 'New Name',
         colorKey: 'grape',
+        order: 4,
       );
 
       expect(updated.id, equals('L-1'));
       expect(updated.name, equals('New Name'));
       expect(updated.colorKey, equals('grape'));
       expect(updated.iconKey, equals('tag'));
+      expect(updated.order, equals(4));
+
+      final preservedOrder = label.copyWith(name: 'Another Name');
+      expect(preservedOrder.order, equals(1));
+    });
+
+    test('equality and hashCode take order into account', () {
+      final now = DateTime.utc(2026, 9, 12, 12, 0, 0);
+      final label1 = TaskLabel(
+        id: 'L-1',
+        name: 'Label',
+        colorKey: 'coral',
+        iconKey: 'tag',
+        order: 1,
+        createdAt: now,
+      );
+      final label2 = TaskLabel(
+        id: 'L-1',
+        name: 'Label',
+        colorKey: 'coral',
+        iconKey: 'tag',
+        order: 2,
+        createdAt: now,
+      );
+      final label1Duplicate = TaskLabel(
+        id: 'L-1',
+        name: 'Label',
+        colorKey: 'coral',
+        iconKey: 'tag',
+        order: 1,
+        createdAt: now,
+      );
+
+      expect(label1, equals(label1Duplicate));
+      expect(label1.hashCode, equals(label1Duplicate.hashCode));
+      expect(label1, isNot(equals(label2)));
     });
 
     test('TaskLabelScope.fromString fallbacks gracefully', () {
