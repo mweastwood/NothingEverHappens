@@ -1949,9 +1949,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get labelPreview => 'Vista previa';
 
   @override
-  String get saveLabelButton => 'Guardar Etiqueta';
-
-  @override
   String get noPersonalLabels =>
       'No hay etiquetas personales aún. Toca \'+ Agregar Etiqueta\' para crear una.';
 

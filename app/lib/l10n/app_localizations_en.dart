@@ -1931,9 +1931,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labelPreview => 'Preview';
 
   @override
-  String get saveLabelButton => 'Save Label';
-
-  @override
   String get noPersonalLabels =>
       'No personal labels yet. Tap \'+ Add Label\' to create one.';
 

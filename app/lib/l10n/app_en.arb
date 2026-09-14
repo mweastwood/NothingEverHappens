@@ -1149,7 +1149,6 @@
   "labelColorPickerLabel": "Color",
   "labelIconPickerLabel": "Icon",
   "labelPreview": "Preview",
-  "saveLabelButton": "Save Label",
   "noPersonalLabels": "No personal labels yet. Tap '+ Add Label' to create one.",
   "noFamilyLabels": "No family labels yet. Tap '+ Add Label' to create one.",
   "noFamilyLabelsNonParent": "No family labels yet.",
