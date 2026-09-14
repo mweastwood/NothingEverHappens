@@ -1175,5 +1175,14 @@
         "type": "String"
       }
     }
+  },
+  "manageLabelsTooltip": "Manage labels",
+  "errorLoadingLabels": "Error loading labels: {error}",
+  "@errorLoadingLabels": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   }
 }

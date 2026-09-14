@@ -43,6 +43,7 @@ void main() {
     required List<String> selectedLabelIds,
     required ValueChanged<String> onToggleLabel,
     bool readOnly = false,
+    bool canEditFamily = true,
     List<TaskLabel> personalLabels = const [],
     List<TaskLabel> familyLabels = const [],
   }) {
@@ -54,6 +55,7 @@ void main() {
         familyLabelsStreamProvider.overrideWith(
           (ref) => Stream.value(familyLabels),
         ),
+        canEditFamilyLabelsProvider.overrideWithValue(canEditFamily),
       ],
       child: buildTestableWidget(
         child: Scaffold(
@@ -168,5 +170,74 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('empty_manage_labels_button')), findsOneWidget);
+    expect(find.text('Add Label'), findsOneWidget);
+    expect(find.byKey(const Key('manage_labels_button')), findsOneWidget);
+  });
+
+  testWidgets(
+    'shows parent empty state and manage button for family labels when user is parent',
+    (tester) async {
+      await tester.pumpWidget(
+        buildSection(
+          isFamily: true,
+          selectedLabelIds: const [],
+          onToggleLabel: (_) {},
+          canEditFamily: true,
+          familyLabels: const [],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text("No family labels yet. Tap '+ Add Label' to create one."),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('empty_manage_labels_button')),
+        findsOneWidget,
+      );
+      expect(find.text('Add Label'), findsOneWidget);
+      expect(find.byKey(const Key('manage_labels_button')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'shows non-parent empty state and hides manage buttons for family labels when user is non-parent',
+    (tester) async {
+      await tester.pumpWidget(
+        buildSection(
+          isFamily: true,
+          selectedLabelIds: const [],
+          onToggleLabel: (_) {},
+          canEditFamily: false,
+          familyLabels: const [],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('No family labels yet.'), findsOneWidget);
+      expect(find.byKey(const Key('empty_manage_labels_button')), findsNothing);
+      expect(find.byKey(const Key('manage_labels_button')), findsNothing);
+    },
+  );
+
+  testWidgets('hides manage labels buttons when readOnly is true', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildSection(
+        isFamily: true,
+        selectedLabelIds: const [],
+        onToggleLabel: (_) {},
+        readOnly: true,
+        canEditFamily: true,
+        familyLabels: const [],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No family labels yet.'), findsOneWidget);
+    expect(find.byKey(const Key('empty_manage_labels_button')), findsNothing);
+    expect(find.byKey(const Key('manage_labels_button')), findsNothing);
   });
 }
