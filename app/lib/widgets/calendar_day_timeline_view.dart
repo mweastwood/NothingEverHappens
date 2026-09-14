@@ -34,7 +34,10 @@ class CalendarDayTimelineView extends ConsumerStatefulWidget {
     required this.schedules,
     this.currentUserId,
     required this.today,
+    this.monthTaskCache,
   });
+
+  final CalendarMonthTaskCache? monthTaskCache;
 
   @override
   ConsumerState<CalendarDayTimelineView> createState() =>
@@ -55,9 +58,6 @@ class CalendarDayTimelineViewState
   int _visibleDays = 1;
   double _viewportFraction = 0.85;
   bool _hasScrolledInitially = false;
-
-  final Map<DateTime, Map<CivilDay, List<CalendarDayTask>>> _monthTaskMapCache =
-      {};
 
   static int dayToIndex(CivilDay day) {
     return day.toUtcDateTime().difference(_anchorDate).inDays;
@@ -95,17 +95,6 @@ class CalendarDayTimelineViewState
     super.didChangeDependencies();
     final screenWidth = MediaQuery.sizeOf(context).width;
     _updateControllers(screenWidth);
-  }
-
-  @override
-  void didUpdateWidget(covariant CalendarDayTimelineView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(widget.instances, oldWidget.instances) ||
-        !identical(widget.schedules, oldWidget.schedules) ||
-        widget.currentUserId != oldWidget.currentUserId ||
-        widget.today != oldWidget.today) {
-      _monthTaskMapCache.clear();
-    }
   }
 
   @override
@@ -174,16 +163,14 @@ class CalendarDayTimelineViewState
   }
 
   List<CalendarDayTask> _getTasksForDay(CivilDay day) {
+    final cache = widget.monthTaskCache ?? sharedCalendarMonthTaskCache;
     final monthDate = DateTime(day.year, day.month, 1);
-    final monthMap = _monthTaskMapCache.putIfAbsent(
-      monthDate,
-      () => computeMonthTaskMap(
-        monthDate: monthDate,
-        instances: widget.instances,
-        schedules: widget.schedules,
-        currentUserId: widget.currentUserId,
-        today: widget.today,
-      ),
+    final monthMap = cache.getMonthTaskMap(
+      monthDate: monthDate,
+      instances: widget.instances,
+      schedules: widget.schedules,
+      currentUserId: widget.currentUserId,
+      today: widget.today,
     );
     return monthMap[day] ?? const [];
   }

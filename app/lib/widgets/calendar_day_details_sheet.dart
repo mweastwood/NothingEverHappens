@@ -46,8 +46,9 @@ class CalendarDayDetailsSheet extends ConsumerWidget {
     final instances = ref.watch(taskInstancesProvider).value ?? [];
     final schedules = ref.watch(taskSchedulesProvider).value ?? [];
     final currentUserId = ref.watch(authStateProvider).value?.uid;
+    final cache = ref.watch(calendarMonthTaskCacheProvider);
     final monthDate = DateTime(day.year, day.month, 1);
-    final monthTasks = computeMonthTaskMap(
+    final monthTasks = cache.getMonthTaskMap(
       monthDate: monthDate,
       instances: instances,
       schedules: schedules,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_clock.dart';
 import 'civil_day.dart';
@@ -70,14 +71,14 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
   final effectiveToday = today ?? CivilDay.fromDateTime(AppClock.now);
 
   // 1. Concrete instances
-  final Set<String> instanceScheduleDateKeys = {};
+  final Set<(String, CivilDay)> instanceScheduleDateKeys = {};
   for (final inst in instances) {
     final scheduledDate = inst.scheduledDate;
     if (scheduledDate.year != monthDate.year ||
         scheduledDate.month != monthDate.month) {
       continue;
     }
-    instanceScheduleDateKeys.add('${inst.scheduleId}_$scheduledDate');
+    instanceScheduleDateKeys.add((inst.scheduleId, scheduledDate));
 
     if (inst.status == TaskStatus.skipped || inst.status == TaskStatus.failed) {
       continue;
@@ -101,7 +102,20 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
     map.putIfAbsent(scheduledDate, () => []).add(task);
   }
 
-  // 2. Projected recurring schedules that do not have an instance for that day
+  // 2. Pre-filter schedules that have recurring rules once per month calculation
+  final recurringSchedules =
+      <({TaskSchedule schedule, List<TaskScheduleRule> rules})>[];
+  for (final sched in schedules) {
+    final recurringRules = [
+      for (final rule in sched.schedules)
+        if (rule is! OneOffSchedule) rule,
+    ];
+    if (recurringRules.isNotEmpty) {
+      recurringSchedules.add((schedule: sched, rules: recurringRules));
+    }
+  }
+
+  // 3. Projected recurring schedules that do not have an instance for that day
   for (int dayNum = 1; dayNum <= daysInMonth; dayNum++) {
     final civilDay = CivilDay(
       year: monthDate.year,
@@ -113,21 +127,19 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
       continue;
     }
 
-    for (final sched in schedules) {
-      final key = '${sched.id}_$civilDay';
-      if (instanceScheduleDateKeys.contains(key)) {
+    for (final item in recurringSchedules) {
+      final sched = item.schedule;
+      if (instanceScheduleDateKeys.contains((sched.id, civilDay))) {
         continue; // Already has concrete instance
       }
 
-      final isRecurring = sched.schedules.any((s) => s is! OneOffSchedule);
-      if (!isRecurring) {
-        continue;
+      TaskScheduleRule? matchingRule;
+      for (final rule in item.rules) {
+        if (rule.occursOn(civilDay)) {
+          matchingRule = rule;
+          break;
+        }
       }
-
-      final matchingRule = sched.schedules.cast<TaskScheduleRule?>().firstWhere(
-        (r) => r != null && r is! OneOffSchedule && r.occursOn(civilDay),
-        orElse: () => null,
-      );
 
       if (matchingRule != null) {
         final task = CalendarDayTask(
@@ -158,3 +170,60 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
 
   return map;
 }
+
+/// In-memory cache for computed calendar month task mappings across the app.
+class CalendarMonthTaskCache {
+  final Map<DateTime, Map<CivilDay, List<CalendarDayTask>>> _cache = {};
+  List<TaskInstance>? _cachedInstances;
+  List<TaskSchedule>? _cachedSchedules;
+  String? _cachedUserId;
+  CivilDay? _cachedToday;
+
+  Map<CivilDay, List<CalendarDayTask>> getMonthTaskMap({
+    required DateTime monthDate,
+    required List<TaskInstance> instances,
+    required List<TaskSchedule> schedules,
+    String? currentUserId,
+    CivilDay? today,
+  }) {
+    final effectiveToday = today ?? CivilDay.fromDateTime(AppClock.now);
+    if (!identical(instances, _cachedInstances) ||
+        !identical(schedules, _cachedSchedules) ||
+        currentUserId != _cachedUserId ||
+        effectiveToday != _cachedToday) {
+      _cache.clear();
+      _cachedInstances = instances;
+      _cachedSchedules = schedules;
+      _cachedUserId = currentUserId;
+      _cachedToday = effectiveToday;
+    }
+
+    final monthKey = DateTime(monthDate.year, monthDate.month, 1);
+    return _cache.putIfAbsent(
+      monthKey,
+      () => computeMonthTaskMap(
+        monthDate: monthDate,
+        instances: instances,
+        schedules: schedules,
+        currentUserId: currentUserId,
+        today: effectiveToday,
+      ),
+    );
+  }
+
+  void clear() {
+    _cache.clear();
+    _cachedInstances = null;
+    _cachedSchedules = null;
+    _cachedUserId = null;
+    _cachedToday = null;
+  }
+}
+
+/// Global shared cache instance for calendar month task projections.
+final sharedCalendarMonthTaskCache = CalendarMonthTaskCache();
+
+/// Riverpod provider exposing the shared [CalendarMonthTaskCache].
+final calendarMonthTaskCacheProvider = Provider<CalendarMonthTaskCache>((ref) {
+  return sharedCalendarMonthTaskCache;
+});

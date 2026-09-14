@@ -20,26 +20,50 @@ Color getPriorityColor(ColorScheme colorScheme, TaskPriority priority) {
   }
 }
 
+final Map<String, DateFormat> _monthDateFormatCache = {};
+final Map<(String, FirstDayOfWeek), List<String>> _weekdayHeadersCache = {};
+
+/// Clears cached formatters and weekday headers (for testing).
+@visibleForTesting
+void clearCalendarMonthCardCaches() {
+  _monthDateFormatCache.clear();
+  _weekdayHeadersCache.clear();
+}
+
+DateFormat _getMonthFormatter(String locale) {
+  return _monthDateFormatCache.putIfAbsent(
+    locale,
+    () => DateFormat.yMMMM(locale),
+  );
+}
+
 /// Computes localized weekday header initials based on [firstDayOfWeek].
 List<String> getWeekdayHeaders(
   String locale, {
   FirstDayOfWeek firstDayOfWeek = FirstDayOfWeek.sunday,
 }) {
+  final key = (locale, firstDayOfWeek);
+  final cached = _weekdayHeadersCache[key];
+  if (cached != null) return cached;
+
+  List<String> result;
   try {
     final symbols = DateFormat(null, locale).dateSymbols;
     final narrow = symbols.STANDALONENARROWWEEKDAYS.isNotEmpty
         ? symbols.STANDALONENARROWWEEKDAYS
         : symbols.NARROWWEEKDAYS;
     if (firstDayOfWeek == FirstDayOfWeek.sunday) {
-      return [for (int i = 0; i < 7; i++) narrow[i]];
+      result = [for (int i = 0; i < 7; i++) narrow[i]];
     } else {
-      return [for (int i = 1; i <= 6; i++) narrow[i], narrow[0]];
+      result = [for (int i = 1; i <= 6; i++) narrow[i], narrow[0]];
     }
   } catch (_) {
-    return firstDayOfWeek == FirstDayOfWeek.sunday
+    result = firstDayOfWeek == FirstDayOfWeek.sunday
         ? const ['S', 'M', 'T', 'W', 'T', 'F', 'S']
         : const ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   }
+  _weekdayHeadersCache[key] = result;
+  return result;
 }
 
 /// Renders a single month card with weekday headers and interactive day cells.
@@ -65,7 +89,7 @@ class CalendarMonthCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final locale = Localizations.localeOf(context).toString();
-    final monthTitle = DateFormat.yMMMM(locale).format(monthDate);
+    final monthTitle = _getMonthFormatter(locale).format(monthDate);
     final weekdayHeaders = getWeekdayHeaders(
       locale,
       firstDayOfWeek: firstDayOfWeek,

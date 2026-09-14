@@ -319,6 +319,27 @@ void main() {
   });
 
   testWidgets(
+    'calendar screen list has PageStorageKey and directly renders current month',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pump();
+
+      // Verify ListView has PageStorageKey('calendar_month_list')
+      final listViewFinder = find.byKey(
+        const PageStorageKey('calendar_month_list'),
+      );
+      expect(listViewFinder, findsOneWidget);
+
+      // Verify current month (March 2026) is already rendered on first frame
+      expect(find.byKey(const Key('month_card_2026_3')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'tapping "+ Add Task" in daily view navigates to CreateTaskScreen',
     (tester) async {
       tester.view.physicalSize = const Size(800, 1200);
