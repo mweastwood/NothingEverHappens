@@ -6,13 +6,14 @@ set -e
 # Print usage instructions
 usage() {
   echo "Usage: $0 [--major | --minor | --patch] [--dry-run]"
+  echo "       $0 [major | minor | patch] [--dry-run | dry-run]"
   echo "Increments the version tag on git main and pushes it."
   echo ""
   echo "Options:"
-  echo "  --major     Increments the major version (e.g. v1.0.9 -> v2.0.0)"
-  echo "  --minor     Increments the minor version (e.g. v1.0.9 -> v1.1.0)"
-  echo "  --patch     Increments the patch version (e.g. v1.0.9 -> v1.0.10)"
-  echo "  --dry-run   Preview the new version tag and target commit without creating/pushing it"
+  echo "  --major, major     Increments the major version (e.g. v1.0.9 -> v2.0.0)"
+  echo "  --minor, minor     Increments the minor version (e.g. v1.0.9 -> v1.1.0)"
+  echo "  --patch, patch     Increments the patch version (e.g. v1.0.9 -> v1.0.10)"
+  echo "  --dry-run, dry-run Preview the new version tag and target commit without creating/pushing it"
   exit 1
 }
 
@@ -22,35 +23,35 @@ DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --major)
+    --major|major)
       if [ -n "$INCREMENT_TYPE" ]; then
-        echo "Error: Only one increment flag can be specified." >&2
+        echo "Error: Only one increment argument or flag can be specified." >&2
         usage
       fi
       INCREMENT_TYPE="major"
       shift
       ;;
-    --minor)
+    --minor|minor)
       if [ -n "$INCREMENT_TYPE" ]; then
-        echo "Error: Only one increment flag can be specified." >&2
+        echo "Error: Only one increment argument or flag can be specified." >&2
         usage
       fi
       INCREMENT_TYPE="minor"
       shift
       ;;
-    --patch)
+    --patch|patch)
       if [ -n "$INCREMENT_TYPE" ]; then
-        echo "Error: Only one increment flag can be specified." >&2
+        echo "Error: Only one increment argument or flag can be specified." >&2
         usage
       fi
       INCREMENT_TYPE="patch"
       shift
       ;;
-    --dry-run)
+    --dry-run|dry-run)
       DRY_RUN=true
       shift
       ;;
-    -h|--help)
+    -h|--help|help)
       usage
       ;;
     *)
@@ -61,7 +62,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$INCREMENT_TYPE" ]; then
-  echo "Error: Increment type is required (--major, --minor, or --patch)." >&2
+  echo "Error: Increment type is required (--major, --minor, --patch, or major, minor, patch)." >&2
   usage
 fi
 

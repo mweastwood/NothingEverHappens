@@ -1,0 +1,17 @@
+{
+  "release": {
+    "issue_pattern": "(?i)^🚀?\\s*release(?:\\s+(?:controller|tracker))?\\s*$",
+    "branch": "main",
+    "allowed_users": [
+      "mweastwood"
+    ],
+    "commands": {
+      "patch": "bin/tag.sh patch",
+      "minor": "bin/tag.sh minor",
+      "major": "bin/tag.sh major"
+    },
+    "pre_flight": [
+      "git diff --quiet"
+    ]
+  }
+}
