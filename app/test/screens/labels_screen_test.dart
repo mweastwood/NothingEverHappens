@@ -578,6 +578,119 @@ void main() {
         expect(labels.first.colorKey, 'lavender');
       },
     );
+
+    testWidgets(
+      'personal labels can be reordered via drag handle and persisted',
+      (tester) async {
+        final label1 = TaskLabel.create(
+          id: 'L-drag-1',
+          name: 'First Label',
+          colorKey: 'coral',
+          iconKey: 'tag',
+          order: 0,
+        );
+        final label2 = TaskLabel.create(
+          id: 'L-drag-2',
+          name: 'Second Label',
+          colorKey: 'teal',
+          iconKey: 'star',
+          order: 1,
+        );
+        await labelRepo.savePersonalLabel(currentUserId, label1);
+        await labelRepo.savePersonalLabel(currentUserId, label2);
+
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('drag_handle_L-drag-1')), findsOneWidget);
+        expect(find.byKey(const Key('drag_handle_L-drag-2')), findsOneWidget);
+
+        // Drag first label downwards past second label
+        final handleCenter = tester.getCenter(
+          find.byKey(const Key('drag_handle_L-drag-1')),
+        );
+        final gesture = await tester.startGesture(handleCenter);
+        await tester.pump();
+        await gesture.moveBy(const Offset(0, 150));
+        await tester.pump();
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        final labels = await labelRepo.watchPersonalLabels(currentUserId).first;
+        expect(labels.map((l) => l.name).toList(), [
+          'Second Label',
+          'First Label',
+        ]);
+      },
+    );
+
+    testWidgets('family labels can be reordered by parent via drag handle', (
+      tester,
+    ) async {
+      final fam1 = TaskLabel.create(
+        id: 'L-fam-drag-1',
+        name: 'First Family',
+        colorKey: 'emerald',
+        iconKey: 'yard',
+        scope: TaskLabelScope.family,
+        order: 0,
+      );
+      final fam2 = TaskLabel.create(
+        id: 'L-fam-drag-2',
+        name: 'Second Family',
+        colorKey: 'cobalt',
+        iconKey: 'cleaning',
+        scope: TaskLabelScope.family,
+        order: 1,
+      );
+      await labelRepo.saveFamilyLabel(familyId, fam1);
+      await labelRepo.saveFamilyLabel(familyId, fam2);
+
+      await tester.pumpWidget(buildScreen(familyRole: 'parent'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('drag_handle_L-fam-drag-1')), findsOneWidget);
+      expect(find.byKey(const Key('drag_handle_L-fam-drag-2')), findsOneWidget);
+
+      final handleCenter = tester.getCenter(
+        find.byKey(const Key('drag_handle_L-fam-drag-1')),
+      );
+      final gesture = await tester.startGesture(handleCenter);
+      await tester.pump();
+      await gesture.moveBy(const Offset(0, 150));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      final labels = await labelRepo.watchFamilyLabels(familyId).first;
+      expect(labels.map((l) => l.name).toList(), [
+        'Second Family',
+        'First Family',
+      ]);
+    });
+
+    testWidgets(
+      'non-parent family member does not see drag handles on family labels',
+      (tester) async {
+        final famLabel = TaskLabel.create(
+          id: 'L-fam-nonparent',
+          name: 'Family Tasks',
+          colorKey: 'teal',
+          iconKey: 'cleaning',
+          scope: TaskLabelScope.family,
+        );
+        await labelRepo.saveFamilyLabel(familyId, famLabel);
+
+        await tester.pumpWidget(buildScreen(familyRole: 'non-parent'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Family Tasks'), findsOneWidget);
+        expect(
+          find.byKey(const Key('drag_handle_L-fam-nonparent')),
+          findsNothing,
+        );
+      },
+    );
   });
 
   group('LabelsScreen Golden tests', () {
@@ -763,5 +876,69 @@ void main() {
         await screenMatchesGolden(tester, 'labels_screen_color_picker_dialog');
       },
     );
+
+    testGoldens('LabelsScreen renders not in family state (Narrow Screen)', (
+      tester,
+    ) async {
+      await labelRepo.savePersonalLabel(
+        currentUserId,
+        TaskLabel.create(
+          id: 'L-pers-1',
+          name: 'Errands',
+          colorKey: 'coral',
+          iconKey: 'tag',
+        ),
+      );
+      await labelRepo.savePersonalLabel(
+        currentUserId,
+        TaskLabel.create(
+          id: 'L-pers-2',
+          name: 'Garden Routine',
+          colorKey: 'mint',
+          iconKey: 'yard',
+        ),
+      );
+
+      await tester.pumpWidgetBuilder(
+        buildTestWidget(hasFamily: false),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(400, 800),
+      );
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'labels_screen_not_in_family');
+    });
+
+    testGoldens('LabelsScreen renders not in family state (Wide Screen)', (
+      tester,
+    ) async {
+      await labelRepo.savePersonalLabel(
+        currentUserId,
+        TaskLabel.create(
+          id: 'L-pers-1',
+          name: 'Errands',
+          colorKey: 'coral',
+          iconKey: 'tag',
+        ),
+      );
+      await labelRepo.savePersonalLabel(
+        currentUserId,
+        TaskLabel.create(
+          id: 'L-pers-2',
+          name: 'Garden Routine',
+          colorKey: 'mint',
+          iconKey: 'yard',
+        ),
+      );
+
+      await tester.pumpWidgetBuilder(
+        buildTestWidget(hasFamily: false),
+        wrapper: l10nMaterialAppWrapper(),
+        surfaceSize: const Size(1200, 800),
+      );
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'labels_screen_not_in_family_wide');
+    });
   });
 }

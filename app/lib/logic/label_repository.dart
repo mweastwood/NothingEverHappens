@@ -44,8 +44,12 @@ class LabelRepository {
   Stream<List<TaskLabel>> watchPersonalLabels(String userId) {
     if (userId.isEmpty) return Stream.value(const []);
     return FirestoreCollections.userLabels(_firestore, userId).snapshots().map(
-      (snapshot) => snapshot.docs.map((doc) => doc.data()).toList()
-        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())),
+      (snapshot) =>
+          snapshot.docs.map((doc) => doc.data()).toList()..sort((a, b) {
+            final orderComparison = a.order.compareTo(b.order);
+            if (orderComparison != 0) return orderComparison;
+            return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          }),
     );
   }
 
@@ -55,9 +59,51 @@ class LabelRepository {
       _firestore,
       familyId,
     ).snapshots().map(
-      (snapshot) => snapshot.docs.map((doc) => doc.data()).toList()
-        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())),
+      (snapshot) =>
+          snapshot.docs.map((doc) => doc.data()).toList()..sort((a, b) {
+            final orderComparison = a.order.compareTo(b.order);
+            if (orderComparison != 0) return orderComparison;
+            return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          }),
     );
+  }
+
+  Future<void> reorderPersonalLabels(
+    String userId,
+    List<TaskLabel> reorderedLabels,
+  ) async {
+    final batch = _firestore.batch();
+    final collection = FirestoreCollections.userLabels(_firestore, userId);
+    for (var i = 0; i < reorderedLabels.length; i++) {
+      final label = reorderedLabels[i];
+      if (label.order != i) {
+        batch.set(
+          collection.doc(label.id),
+          label.copyWith(order: i, updatedAt: DateTime.now().toUtc()),
+          SetOptions(merge: true),
+        );
+      }
+    }
+    await batch.commit();
+  }
+
+  Future<void> reorderFamilyLabels(
+    String familyId,
+    List<TaskLabel> reorderedLabels,
+  ) async {
+    final batch = _firestore.batch();
+    final collection = FirestoreCollections.familyLabels(_firestore, familyId);
+    for (var i = 0; i < reorderedLabels.length; i++) {
+      final label = reorderedLabels[i];
+      if (label.order != i) {
+        batch.set(
+          collection.doc(label.id),
+          label.copyWith(order: i, updatedAt: DateTime.now().toUtc()),
+          SetOptions(merge: true),
+        );
+      }
+    }
+    await batch.commit();
   }
 
   Future<void> savePersonalLabel(String userId, TaskLabel label) async {

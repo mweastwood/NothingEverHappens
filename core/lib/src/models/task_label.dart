@@ -22,6 +22,7 @@ class TaskLabel {
   final String colorKey;
   final String iconKey;
   final TaskLabelScope scope;
+  final int order;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -31,6 +32,7 @@ class TaskLabel {
     required this.colorKey,
     required this.iconKey,
     this.scope = TaskLabelScope.personal,
+    this.order = 0,
     required this.createdAt,
     this.updatedAt,
   });
@@ -41,6 +43,7 @@ class TaskLabel {
     required String colorKey,
     required String iconKey,
     TaskLabelScope scope = TaskLabelScope.personal,
+    int order = 0,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -50,6 +53,7 @@ class TaskLabel {
       colorKey: colorKey,
       iconKey: iconKey,
       scope: scope,
+      order: order,
       createdAt: createdAt ?? DateTime.now().toUtc(),
       updatedAt: updatedAt,
     );
@@ -83,6 +87,7 @@ class TaskLabel {
       colorKey: data['colorKey'] as String? ?? 'coral',
       iconKey: data['iconKey'] as String? ?? 'tag',
       scope: TaskLabelScope.fromString(data['scope'] as String?),
+      order: (data['order'] as num?)?.toInt() ?? 0,
       createdAt: parseDate(data['createdAt']),
       updatedAt:
           data['updatedAt'] != null ? parseDate(data['updatedAt']) : null,
@@ -98,6 +103,7 @@ class TaskLabel {
       'colorKey': colorKey,
       'iconKey': iconKey,
       'scope': scope.name,
+      'order': order,
       'createdAt': createdAt.toUtc().toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt!.toUtc().toIso8601String(),
     };
@@ -118,6 +124,7 @@ class TaskLabel {
     String? colorKey,
     String? iconKey,
     TaskLabelScope? scope,
+    int? order,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -127,6 +134,7 @@ class TaskLabel {
       colorKey: colorKey ?? this.colorKey,
       iconKey: iconKey ?? this.iconKey,
       scope: scope ?? this.scope,
+      order: order ?? this.order,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -141,6 +149,7 @@ class TaskLabel {
         other.colorKey == colorKey &&
         other.iconKey == iconKey &&
         other.scope == scope &&
+        other.order == order &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt;
   }
@@ -152,6 +161,7 @@ class TaskLabel {
         colorKey,
         iconKey,
         scope,
+        order,
         createdAt,
         updatedAt,
       );

@@ -91,6 +91,125 @@ void main() {
       },
     );
 
+    test('watchPersonalLabels sorts by order then alphabetically', () async {
+      final label1 = TaskLabel.create(
+        id: 'L-1',
+        name: 'Zeta',
+        colorKey: 'coral',
+        iconKey: 'tag',
+        order: 0,
+      );
+      final label2 = TaskLabel.create(
+        id: 'L-2',
+        name: 'Alpha',
+        colorKey: 'teal',
+        iconKey: 'star',
+        order: 0,
+      );
+      final label3 = TaskLabel.create(
+        id: 'L-3',
+        name: 'Beta',
+        colorKey: 'rose',
+        iconKey: 'tag',
+        order: 1,
+      );
+
+      await repo.savePersonalLabel('user-1', label1);
+      await repo.savePersonalLabel('user-1', label2);
+      await repo.savePersonalLabel('user-1', label3);
+
+      final list = await repo.watchPersonalLabels('user-1').first;
+      expect(list.length, 3);
+      expect(list[0].name, 'Alpha');
+      expect(list[1].name, 'Zeta');
+      expect(list[2].name, 'Beta');
+    });
+
+    test(
+      'reorderPersonalLabels updates order via batch and stream reflects new order',
+      () async {
+        final labelA = TaskLabel.create(
+          id: 'L-a',
+          name: 'Alpha',
+          colorKey: 'coral',
+          iconKey: 'tag',
+          order: 0,
+        );
+        final labelB = TaskLabel.create(
+          id: 'L-b',
+          name: 'Beta',
+          colorKey: 'rose',
+          iconKey: 'star',
+          order: 1,
+        );
+        final labelC = TaskLabel.create(
+          id: 'L-c',
+          name: 'Gamma',
+          colorKey: 'mint',
+          iconKey: 'yard',
+          order: 2,
+        );
+
+        await repo.savePersonalLabel('user-1', labelA);
+        await repo.savePersonalLabel('user-1', labelB);
+        await repo.savePersonalLabel('user-1', labelC);
+
+        // Reorder to: Gamma (0), Alpha (1), Beta (2)
+        await repo.reorderPersonalLabels('user-1', [labelC, labelA, labelB]);
+
+        final updatedList = await repo.watchPersonalLabels('user-1').first;
+        expect(updatedList.map((l) => l.name).toList(), [
+          'Gamma',
+          'Alpha',
+          'Beta',
+        ]);
+        expect(updatedList[0].order, 0);
+        expect(updatedList[1].order, 1);
+        expect(updatedList[2].order, 2);
+      },
+    );
+
+    test(
+      'reorderFamilyLabels updates order via batch and stream reflects new order',
+      () async {
+        final label1 = TaskLabel.create(
+          id: 'L-f1',
+          name: 'Chores',
+          colorKey: 'teal',
+          iconKey: 'cleaning',
+          scope: TaskLabelScope.family,
+          order: 0,
+        );
+        final label2 = TaskLabel.create(
+          id: 'L-f2',
+          name: 'Groceries',
+          colorKey: 'emerald',
+          iconKey: 'shopping',
+          scope: TaskLabelScope.family,
+          order: 1,
+        );
+
+        await repo.saveFamilyLabel('family-1', label1);
+        await repo.saveFamilyLabel('family-1', label2);
+
+        // Reorder to: Groceries (0), Chores (1)
+        await repo.reorderFamilyLabels('family-1', [label2, label1]);
+
+        final updatedList = await repo.watchFamilyLabels('family-1').first;
+        expect(updatedList.map((l) => l.name).toList(), [
+          'Groceries',
+          'Chores',
+        ]);
+        expect(updatedList[0].order, 0);
+        expect(updatedList[1].order, 1);
+      },
+    );
+
+    test('watchPersonalLabels and watchFamilyLabels handle empty id', () async {
+      expect(await repo.watchPersonalLabels('').first, isEmpty);
+      expect(await repo.watchFamilyLabels('').first, isEmpty);
+    });
+
     test('LabelPalette and LabelIcons return fallback items gracefully', () {
       final fallbackColor = LabelPalette.getItem('nonexistent');
       expect(fallbackColor.key, equals('coral'));

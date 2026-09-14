@@ -22,12 +22,69 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
     BuildContext context, {
     TaskLabel? existingLabel,
     required TaskLabelScope scope,
+    int nextOrder = 0,
   }) async {
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) =>
-          _LabelEditDialog(existingLabel: existingLabel, scope: scope),
+      builder: (dialogContext) => _LabelEditDialog(
+        existingLabel: existingLabel,
+        scope: scope,
+        nextOrder: nextOrder,
+      ),
     );
+  }
+
+  Future<void> _onReorderPersonal(
+    List<TaskLabel> currentLabels,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    final reordered = List<TaskLabel>.from(currentLabels);
+    final item = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, item);
+
+    try {
+      final userId = ref.read(authStateProvider).value?.uid ?? '';
+      if (userId.isEmpty) {
+        throw StateError('User is not authenticated');
+      }
+      await ref
+          .read(labelRepositoryProvider)
+          .reorderPersonalLabels(userId, reordered);
+    } catch (e, stackTrace) {
+      if (mounted) {
+        final errorHandler = ref.read(errorHandlerProvider);
+        final report = errorHandler.report(e, stackTrace: stackTrace);
+        errorHandler.showErrorDialog(context, report);
+      }
+    }
+  }
+
+  Future<void> _onReorderFamily(
+    List<TaskLabel> currentLabels,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    final reordered = List<TaskLabel>.from(currentLabels);
+    final item = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, item);
+
+    try {
+      final familyProfile = ref.read(familyProfileStreamProvider).value;
+      final familyId = familyProfile?.familyId ?? '';
+      if (familyId.isEmpty) {
+        throw StateError('Family ID cannot be resolved');
+      }
+      await ref
+          .read(labelRepositoryProvider)
+          .reorderFamilyLabels(familyId, reordered);
+    } catch (e, stackTrace) {
+      if (mounted) {
+        final errorHandler = ref.read(errorHandlerProvider);
+        final report = errorHandler.report(e, stackTrace: stackTrace);
+        errorHandler.showErrorDialog(context, report);
+      }
+    }
   }
 
   Future<void> _confirmDelete(TaskLabel label) async {
@@ -174,8 +231,11 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
           ),
           FilledButton.tonalIcon(
             key: const Key('add_personal_label_button'),
-            onPressed: () =>
-                _openEditDialog(context, scope: TaskLabelScope.personal),
+            onPressed: () => _openEditDialog(
+              context,
+              scope: TaskLabelScope.personal,
+              nextOrder: personalLabelsAsync.value?.length ?? 0,
+            ),
             icon: const Icon(Icons.add, size: 18),
             label: Text(context.l10n.addLabelButton),
           ),
@@ -229,14 +289,22 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
               : emptyCard;
         }
 
-        return ListView.builder(
+        return ReorderableListView.builder(
+          buildDefaultDragHandles: false,
           shrinkWrap: !isScrollable,
           physics: isScrollable ? null : const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           itemCount: labels.length,
+          onReorderItem: (oldIndex, newIndex) =>
+              _onReorderPersonal(labels, oldIndex, newIndex),
           itemBuilder: (context, index) {
             final label = labels[index];
-            return _buildLabelCard(context, label: label, canEdit: true);
+            return _buildLabelCard(
+              context,
+              label: label,
+              index: index,
+              canEdit: true,
+            );
           },
         );
       },
@@ -310,8 +378,11 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
           if (inFamily && isParent)
             FilledButton.tonalIcon(
               key: const Key('add_family_label_button'),
-              onPressed: () =>
-                  _openEditDialog(context, scope: TaskLabelScope.family),
+              onPressed: () => _openEditDialog(
+                context,
+                scope: TaskLabelScope.family,
+                nextOrder: familyLabelsAsync.value?.length ?? 0,
+              ),
               icon: const Icon(Icons.add, size: 18),
               label: Text(context.l10n.addLabelButton),
             ),
@@ -466,19 +537,49 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
                 : emptyContent;
           }
 
-          final listView = ListView.builder(
-            shrinkWrap: !isScrollable,
-            physics: isScrollable ? null : const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
-            itemCount: labels.length,
-            itemBuilder: (context, index) {
-              final label = labels[index];
-              return _buildLabelCard(context, label: label, canEdit: isParent);
-            },
-          );
+          final listView = isParent
+              ? ReorderableListView.builder(
+                  buildDefaultDragHandles: false,
+                  shrinkWrap: !isScrollable,
+                  physics: isScrollable
+                      ? null
+                      : const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                  itemCount: labels.length,
+                  onReorderItem: (oldIndex, newIndex) =>
+                      _onReorderFamily(labels, oldIndex, newIndex),
+                  itemBuilder: (context, index) {
+                    final label = labels[index];
+                    return _buildLabelCard(
+                      context,
+                      label: label,
+                      index: index,
+                      canEdit: true,
+                    );
+                  },
+                )
+              : ListView.builder(
+                  shrinkWrap: !isScrollable,
+                  physics: isScrollable
+                      ? null
+                      : const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                  itemCount: labels.length,
+                  itemBuilder: (context, index) {
+                    final label = labels[index];
+                    return _buildLabelCard(
+                      context,
+                      label: label,
+                      canEdit: false,
+                    );
+                  },
+                );
 
           if (isScrollable) {
             return Column(
@@ -530,6 +631,7 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
   Widget _buildLabelCard(
     BuildContext context, {
     required TaskLabel label,
+    int? index,
     required bool canEdit,
   }) {
     final color = LabelPalette.getColor(label.colorKey, context);
@@ -584,6 +686,15 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
                     tooltip: context.l10n.deleteButton,
                     onPressed: () => _confirmDelete(label),
                   ),
+                  if (index != null)
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: IconButton(
+                        key: Key('drag_handle_${label.id}'),
+                        icon: const Icon(Icons.drag_handle),
+                        onPressed: null,
+                      ),
+                    ),
                 ],
               )
             : null,
@@ -595,8 +706,13 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
 class _LabelEditDialog extends ConsumerStatefulWidget {
   final TaskLabel? existingLabel;
   final TaskLabelScope scope;
+  final int nextOrder;
 
-  const _LabelEditDialog({this.existingLabel, required this.scope});
+  const _LabelEditDialog({
+    this.existingLabel,
+    required this.scope,
+    this.nextOrder = 0,
+  });
 
   @override
   ConsumerState<_LabelEditDialog> createState() => _LabelEditDialogState();
@@ -670,6 +786,7 @@ class _LabelEditDialogState extends ConsumerState<_LabelEditDialog> {
           colorKey: _selectedColorKey,
           iconKey: _selectedIconKey,
           scope: widget.scope,
+          order: widget.nextOrder,
         );
 
         if (widget.scope == TaskLabelScope.personal) {
