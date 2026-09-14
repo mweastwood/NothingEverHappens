@@ -64,8 +64,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   CivilDay? _cachedToday;
 
   CivilDay? _zoomedDay;
-  final GlobalKey<CalendarDayTimelineViewState> _timelineKey =
-      GlobalKey<CalendarDayTimelineViewState>();
 
   void _zoomToDay(CivilDay day) {
     setState(() {
@@ -269,7 +267,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           ),
           if (_zoomedDay != null)
             CalendarDayTimelineView(
-              key: _timelineKey,
               initialDay: _zoomedDay!,
               onBackToMonth: _zoomOutToMonth,
               instances: instances,

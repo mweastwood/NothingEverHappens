@@ -43,7 +43,7 @@ class CalendarDayTimelineView extends ConsumerStatefulWidget {
 
 class CalendarDayTimelineViewState
     extends ConsumerState<CalendarDayTimelineView> {
-  static final DateTime _anchorDate = DateTime(2000, 1, 1);
+  static final DateTime _anchorDate = DateTime.utc(2000, 1, 1);
   static const double _hourHeight = 60.0;
   static const double _hourGutterWidth = 52.0;
 
@@ -60,19 +60,11 @@ class CalendarDayTimelineViewState
       {};
 
   static int dayToIndex(CivilDay day) {
-    return DateTime(
-      day.year,
-      day.month,
-      day.day,
-    ).difference(_anchorDate).inDays;
+    return day.toUtcDateTime().difference(_anchorDate).inDays;
   }
 
   static CivilDay indexToDay(int index) {
-    final dt = DateTime(
-      _anchorDate.year,
-      _anchorDate.month,
-      _anchorDate.day + index,
-    );
+    final dt = _anchorDate.add(Duration(days: index));
     return CivilDay.fromDateTime(dt);
   }
 
@@ -112,6 +104,7 @@ class CalendarDayTimelineViewState
 
   @override
   void dispose() {
+    _pageController?.removeListener(_onPageScroll);
     _verticalScrollController.dispose();
     _pageController?.dispose();
     _headerController?.dispose();
@@ -143,6 +136,7 @@ class CalendarDayTimelineViewState
 
       final oldPageController = _pageController;
       final oldHeaderController = _headerController;
+      oldPageController?.removeListener(_onPageScroll);
 
       _pageController = PageController(
         initialPage: _currentPageIndex,
@@ -214,7 +208,10 @@ class CalendarDayTimelineViewState
     }
 
     // Scroll ~60 minutes before the earliest time
-    final targetOffset = (earliestMinute - 60).clamp(0, 1440 - 300).toDouble();
+    final maxScroll = _verticalScrollController.hasClients
+        ? _verticalScrollController.position.maxScrollExtent
+        : (24 * _hourHeight);
+    final targetOffset = (earliestMinute - 60.0).clamp(0.0, maxScroll);
     _verticalScrollController.jumpTo(targetOffset);
   }
 
@@ -225,7 +222,8 @@ class CalendarDayTimelineViewState
     if (_verticalScrollController.hasClients) {
       final now = AppClock.now;
       final curMinute = now.hour * 60 + now.minute;
-      final targetOffset = (curMinute - 60).clamp(0, 1440 - 300).toDouble();
+      final maxScroll = _verticalScrollController.position.maxScrollExtent;
+      final targetOffset = (curMinute - 60.0).clamp(0.0, maxScroll);
       _verticalScrollController.animateTo(
         targetOffset,
         duration: const Duration(milliseconds: 300),
@@ -568,10 +566,8 @@ class CalendarDayTimelineViewState
   }
 
   String _formatHour(int hour, String locale) {
-    final h = hour % 24;
-    final period = (h < 12) ? 'AM' : 'PM';
-    final displayHour = (h == 0) ? 12 : (h > 12 ? h - 12 : h);
-    return '$displayHour $period';
+    final dt = DateTime(2000, 1, 1, hour % 24);
+    return DateFormat.j(locale).format(dt);
   }
 
   Widget _buildDayColumn(
@@ -608,7 +604,7 @@ class CalendarDayTimelineViewState
             final columnWidth = constraints.maxWidth;
 
             return Stack(
-              clipBehavior: Clip.none,
+              clipBehavior: Clip.hardEdge,
               children: [
                 // Hour Grid Lines
                 for (int h = 0; h <= 24; h++) ...[
@@ -759,9 +755,11 @@ class CalendarDayTimelineViewState
         final left = 2.0 + colIndex * colWidth;
         final width = max(30.0, colWidth - 2.0);
 
-        final top = b.startMinute * 1.0;
         final rawHeight = (b.dueMinute - b.startMinute) * 1.0;
         final height = max(36.0, rawHeight);
+        final top = (b.startMinute * 1.0)
+            .clamp(0.0, max(0.0, 1440.0 - height))
+            .toDouble();
 
         widgets.add(
           Positioned(
@@ -810,59 +808,68 @@ class CalendarDayTimelineViewState
             const SizedBox(width: 4),
 
             // Checkbox / Repeat Icon
-            Center(
-              child: task.isInstance
-                  ? IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 24,
-                        minHeight: 24,
-                      ),
-                      icon: Icon(
-                        task.isCompleted
-                            ? Icons.check_circle
-                            : Icons.radio_button_unchecked,
-                        size: 16,
-                        color: task.isCompleted
-                            ? theme.colorScheme.primary
-                            : priorityColor,
-                      ),
-                      onPressed: () async {
-                        final repo = ref.read(taskRepositoryProvider);
-                        if (repo != null && task.instance != null) {
-                          try {
-                            if (task.isCompleted) {
-                              await repo.uncompleteTaskInstance(
-                                task.instance!.id,
-                              );
-                            } else {
-                              await repo.completeTaskInstance(
-                                task.instance!.id,
-                              );
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              AppSnackBar.show(
-                                context,
-                                content: Text(
-                                  '${context.l10n.somethingWentWrong} $e',
-                                ),
-                              );
+            if (cardWidth >= 50) ...[
+              Center(
+                child: task.isInstance
+                    ? IconButton(
+                        padding: EdgeInsets.zero,
+                        style: IconButton.styleFrom(
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          minimumSize: const Size(20, 20),
+                          padding: EdgeInsets.zero,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          maxWidth: 24,
+                          minHeight: 20,
+                          maxHeight: 24,
+                        ),
+                        icon: Icon(
+                          task.isCompleted
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          size: 16,
+                          color: task.isCompleted
+                              ? theme.colorScheme.primary
+                              : priorityColor,
+                        ),
+                        onPressed: () async {
+                          final repo = ref.read(taskRepositoryProvider);
+                          if (repo != null && task.instance != null) {
+                            try {
+                              if (task.isCompleted) {
+                                await repo.uncompleteTaskInstance(
+                                  task.instance!.id,
+                                );
+                              } else {
+                                await repo.completeTaskInstance(
+                                  task.instance!.id,
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                AppSnackBar.show(
+                                  context,
+                                  content: Text(
+                                    '${context.l10n.somethingWentWrong} $e',
+                                  ),
+                                );
+                              }
                             }
                           }
-                        }
-                      },
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: Icon(
-                        Icons.event_repeat,
-                        size: 14,
-                        color: priorityColor,
+                        },
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: Icon(
+                          Icons.event_repeat,
+                          size: 14,
+                          color: priorityColor,
+                        ),
                       ),
-                    ),
-            ),
-            const SizedBox(width: 2),
+              ),
+              const SizedBox(width: 2),
+            ],
 
             // Title and Time info
             Expanded(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
@@ -122,10 +123,22 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check hour labels exist in timeline
-      expect(find.text('12 AM'), findsWidgets);
-      expect(find.text('7 AM'), findsWidgets);
-      expect(find.text('8 AM'), findsWidgets);
-      expect(find.text('12 PM'), findsWidgets);
+      expect(
+        find.text(DateFormat.j('en').format(DateTime(2026, 1, 1, 0))),
+        findsWidgets,
+      );
+      expect(
+        find.text(DateFormat.j('en').format(DateTime(2026, 1, 1, 7))),
+        findsWidgets,
+      );
+      expect(
+        find.text(DateFormat.j('en').format(DateTime(2026, 1, 1, 8))),
+        findsWidgets,
+      );
+      expect(
+        find.text(DateFormat.j('en').format(DateTime(2026, 1, 1, 12))),
+        findsWidgets,
+      );
 
       // Check tasks are rendered
       expect(
@@ -233,6 +246,123 @@ void main() {
       expect(todayButton, findsOneWidget);
       await tester.tap(todayButton);
       await tester.pumpAndSettle();
+    },
+  );
+
+  test(
+    'dayToIndex and indexToDay round-trip accurately across DST transitions',
+    () {
+      // DST transition test dates:
+      // US Spring forward (e.g. March 8, 2026) and Fall back (November 1, 2026)
+      // EU Spring forward (March 29, 2026) and Fall back (October 25, 2026)
+      final dstBoundaries = [
+        const CivilDay(year: 2026, month: 3, day: 7),
+        const CivilDay(year: 2026, month: 3, day: 8),
+        const CivilDay(year: 2026, month: 3, day: 9),
+        const CivilDay(year: 2026, month: 3, day: 14),
+        const CivilDay(year: 2026, month: 3, day: 15),
+        const CivilDay(year: 2026, month: 3, day: 28),
+        const CivilDay(year: 2026, month: 3, day: 29),
+        const CivilDay(year: 2026, month: 3, day: 30),
+        const CivilDay(year: 2026, month: 10, day: 24),
+        const CivilDay(year: 2026, month: 10, day: 25),
+        const CivilDay(year: 2026, month: 10, day: 26),
+        const CivilDay(year: 2026, month: 10, day: 31),
+        const CivilDay(year: 2026, month: 11, day: 1),
+        const CivilDay(year: 2026, month: 11, day: 2),
+      ];
+
+      for (final day in dstBoundaries) {
+        final index = CalendarDayTimelineViewState.dayToIndex(day);
+        final roundTrippedDay = CalendarDayTimelineViewState.indexToDay(index);
+        expect(roundTrippedDay, equals(day));
+        expect(
+          CalendarDayTimelineViewState.dayToIndex(roundTrippedDay),
+          equals(index),
+        );
+      }
+
+      // Sequential walk across entire DST period
+      CivilDay current = const CivilDay(year: 2026, month: 3, day: 1);
+      for (int i = 0; i < 260; i++) {
+        final idx = CalendarDayTimelineViewState.dayToIndex(current);
+        final roundTripped = CalendarDayTimelineViewState.indexToDay(idx);
+        expect(roundTripped, equals(current));
+        current = current.addDays(1);
+      }
+    },
+  );
+
+  testWidgets(
+    'renders dense overlapping tasks (4+ tasks) without layout overflow assertions',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final denseTasks = List<TaskInstance>.generate(
+        5,
+        (i) => TaskInstance(
+          id: 'I-dense-$i',
+          scheduleId: 'S-dense-$i',
+          ruleId: 'R-dense-$i',
+          title: 'Dense Task $i',
+          description: 'Description $i',
+          priority: TaskPriority.medium,
+          scheduledDate: today,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 11,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+        ),
+      );
+
+      await tester.pumpWidget(buildTimelineWidget(instances: denseTasks));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      for (int i = 0; i < 5; i++) {
+        expect(find.byKey(Key('timeline_task_I-dense-$i')), findsOneWidget);
+      }
+    },
+  );
+
+  testWidgets(
+    'renders task ending near 24:00 without overflowing timeline bottom',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final lateTask = TaskInstance(
+        id: 'I-late-1',
+        scheduleId: 'S-late-1',
+        ruleId: 'R-late-1',
+        title: 'Late Night Task',
+        description: 'Late night task description',
+        priority: TaskPriority.high,
+        scheduledDate: today,
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          hour: 23,
+          minute: 45,
+        ),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 23, minute: 55),
+        status: TaskStatus.pending,
+      );
+
+      await tester.pumpWidget(buildTimelineWidget(instances: [lateTask]));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('timeline_task_I-late-1')), findsOneWidget);
     },
   );
 }

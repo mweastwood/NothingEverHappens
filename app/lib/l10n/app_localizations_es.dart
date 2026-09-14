@@ -58,16 +58,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get calendarBackToMonth => 'Volver a la vista mensual';
 
   @override
-  String get calendarDayTimeline => 'Cronología diaria';
-
-  @override
   String get calendarPreviousDay => 'Día anterior';
 
   @override
   String get calendarNextDay => 'Día siguiente';
-
-  @override
-  String get calendarAllDay => 'Todo el día';
 
   @override
   String tasksForDate(String date) {
