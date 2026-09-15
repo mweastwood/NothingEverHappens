@@ -716,5 +716,17 @@
       }
     }
   },
-  "goToFamilyButton": "Ir a Familia"
+  "goToFamilyButton": "Ir a Familia",
+  "markAsCompleted": "Marcar como completada",
+  "markAsIncomplete": "Marcar como incompleta",
+  "projectedOccurrence": "Ocurrencia proyectada",
+  "completedBadge": "Completada",
+  "estimatedDurationLabel": "Duración estimada: {duration}",
+  "@estimatedDurationLabel": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  }
 }

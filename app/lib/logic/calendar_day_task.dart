@@ -32,6 +32,8 @@ class CalendarDayTask {
     bool? isCompleted,
   }) : isCompleted = isCompleted ?? (status == TaskStatus.completed);
 
+  Duration? get estimatedDuration => schedule?.estimatedDuration;
+
   String? getTimeWindow(BuildContext context) {
     if (instance != null) {
       final startTod = TimeOfDay(
@@ -71,6 +73,9 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
   final effectiveToday = today ?? CivilDay.fromDateTime(AppClock.now);
 
   // 1. Concrete instances
+  final Map<String, TaskSchedule> scheduleMap = {
+    for (final s in schedules) s.id: s,
+  };
   final Set<(String, CivilDay)> instanceScheduleDateKeys = {};
   for (final inst in instances) {
     final scheduledDate = inst.scheduledDate;
@@ -96,6 +101,7 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
       status: inst.status,
       isInstance: true,
       instance: inst,
+      schedule: scheduleMap[inst.scheduleId],
       isCompleted: isCompleted,
     );
 

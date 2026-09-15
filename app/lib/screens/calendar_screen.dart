@@ -20,6 +20,7 @@ export '../logic/calendar_day_task.dart';
 export '../widgets/calendar_day_details_sheet.dart';
 export '../widgets/calendar_day_timeline_view.dart';
 export '../widgets/calendar_month_card.dart';
+export '../widgets/calendar_task_details_sheet.dart';
 
 /// Screen displaying a scrollable calendar view of past and future months.
 class CalendarScreen extends ConsumerStatefulWidget {
