@@ -14,6 +14,7 @@ import '../screens/create_task_screen.dart';
 import 'app_snackbar.dart';
 import 'calendar_day_details_sheet.dart';
 import 'calendar_month_card.dart';
+import 'calendar_task_details_sheet.dart';
 
 /// Interactive daily timeline view displaying tasks from midnight to midnight (00:00 - 24:00).
 /// Supports horizontal swiping between days with peeking on mobile and multi-day (up to 7 days)
@@ -279,6 +280,20 @@ class CalendarDayTimelineViewState
     return 10 * 60;
   }
 
+  int _getEstimatedDurationMinutes(CalendarDayTask task) {
+    final est = task.estimatedDuration ?? task.schedule?.estimatedDuration;
+    if (est != null && est.inMinutes > 0) {
+      return est.inMinutes;
+    }
+    final startMin = _getStartMinute(task);
+    final dueMin = _getDueMinute(task);
+    final window = dueMin - startMin;
+    if (window > 0) {
+      return min(window, 30);
+    }
+    return 30;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -424,7 +439,6 @@ class CalendarDayTimelineViewState
               itemBuilder: (context, dayIndex) {
                 final day = indexToDay(dayIndex);
                 final isToday = day == widget.today;
-                final tasks = _getTasksForDay(day);
 
                 final weekdayStr = DateFormat.E(
                   locale,
@@ -491,29 +505,6 @@ class CalendarDayTimelineViewState
                                       : theme.colorScheme.onSurface,
                                 ),
                               ),
-                              if (tasks.isNotEmpty) ...[
-                                const SizedBox(width: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 5,
-                                    vertical: 1,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.secondaryContainer,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '${tasks.length}',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      color: theme
-                                          .colorScheme
-                                          .onSecondaryContainer,
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ],
@@ -668,6 +659,107 @@ class CalendarDayTimelineViewState
     );
   }
 
+  /// Computes optimal start and end minutes for each task on the timeline:
+  /// - Each task initially appears at its scheduled start time and extends for its estimated duration.
+  /// - To prevent/minimize overlaps, tasks are pushed further down as long as they do not extend past their due dates.
+  /// - Tasks with tighter deadlines are prioritized to stay earlier.
+  @visibleForTesting
+  static List<TaskTimePlacement> computeTaskPlacements(
+    List<CalendarDayTask> tasks, {
+    required int Function(CalendarDayTask) getStartMinute,
+    required int Function(CalendarDayTask) getDueMinute,
+    required int Function(CalendarDayTask) getDurationMinutes,
+  }) {
+    if (tasks.isEmpty) return const [];
+
+    final List<({CalendarDayTask task, int startMin, int dueMin, int duration})>
+    rawItems = [];
+    for (final task in tasks) {
+      final startMin = getStartMinute(task);
+      int dueMin = getDueMinute(task);
+      if (dueMin <= startMin) {
+        dueMin = (startMin + 30).clamp(0, 1440);
+      }
+      final duration = getDurationMinutes(task).clamp(1, 1440);
+      rawItems.add((
+        task: task,
+        startMin: startMin,
+        dueMin: dueMin,
+        duration: duration,
+      ));
+    }
+
+    // Sort: earlier start first, earlier due date first (less wiggle room), higher priority first
+    rawItems.sort((a, b) {
+      final startCmp = a.startMin.compareTo(b.startMin);
+      if (startCmp != 0) return startCmp;
+      final dueCmp = a.dueMin.compareTo(b.dueMin);
+      if (dueCmp != 0) return dueCmp;
+      return b.task.priority.index.compareTo(a.task.priority.index);
+    });
+
+    final List<TaskTimePlacement> placed = [];
+
+    int countOverlaps(int start, int end) {
+      int count = 0;
+      for (final p in placed) {
+        if (max(p.placedStart, start) < min(p.placedEnd, end)) {
+          count++;
+        }
+      }
+      return count;
+    }
+
+    for (final item in rawItems) {
+      final startMin = item.startMin;
+      final dueMin = item.dueMin;
+      final duration = item.duration;
+
+      int bestTime = startMin;
+      int minOverlaps = countOverlaps(startMin, startMin + duration);
+
+      // If placing at startMin causes overlap, try to push further down
+      // as long as it doesn't extend past its due date (t + duration <= dueMin).
+      if (minOverlaps > 0) {
+        final candidateTimes =
+            placed
+                .map((p) => p.placedEnd)
+                .where((end) => end >= startMin && end + duration <= dueMin)
+                .toSet()
+                .toList()
+              ..sort();
+
+        for (final t in candidateTimes) {
+          final overlaps = countOverlaps(t, t + duration);
+          if (overlaps == 0) {
+            bestTime = t;
+            minOverlaps = 0;
+            break;
+          } else if (overlaps < minOverlaps) {
+            minOverlaps = overlaps;
+            bestTime = t;
+          }
+        }
+      }
+
+      final placedStart = bestTime.clamp(0, 1440);
+      final placedEnd = (placedStart + duration).clamp(placedStart, 1440);
+
+      placed.add(
+        TaskTimePlacement(
+          task: item.task,
+          startMinute: startMin,
+          dueMinute: dueMin,
+          duration: duration,
+          placedStart: placedStart,
+          placedEnd: placedEnd,
+        ),
+      );
+    }
+
+    return placed;
+  }
+
   List<Widget> _layoutTimelineTasks(
     ThemeData theme,
     CivilDay day,
@@ -676,41 +768,36 @@ class CalendarDayTimelineViewState
   ) {
     if (tasks.isEmpty) return const [];
 
-    // Calculate start, due and effective duration for each task
-    final List<_TaskTimeBounds> bounds = [];
-    for (final task in tasks) {
-      final startMin = _getStartMinute(task);
-      int dueMin = _getDueMinute(task);
-      if (dueMin <= startMin) {
-        dueMin = (startMin + 30).clamp(0, 1440);
-      }
-      bounds.add(
-        _TaskTimeBounds(task: task, startMinute: startMin, dueMinute: dueMin),
-      );
-    }
+    final placements = computeTaskPlacements(
+      tasks,
+      getStartMinute: _getStartMinute,
+      getDueMinute: _getDueMinute,
+      getDurationMinutes: _getEstimatedDurationMinutes,
+    );
 
-    // Sort by start minute, then duration descending
-    bounds.sort((a, b) {
-      final cmp = a.startMinute.compareTo(b.startMinute);
-      if (cmp != 0) return cmp;
-      return (b.dueMinute - b.startMinute).compareTo(
-        a.dueMinute - a.startMinute,
-      );
-    });
+    // Sort by placed start minute, then placed duration descending
+    final sortedPlacements = List<TaskTimePlacement>.from(placements)
+      ..sort((a, b) {
+        final cmp = a.placedStart.compareTo(b.placedStart);
+        if (cmp != 0) return cmp;
+        return (b.placedEnd - b.placedStart).compareTo(
+          a.placedEnd - a.placedStart,
+        );
+      });
 
     // Group into clusters of overlapping tasks
-    final List<List<_TaskTimeBounds>> clusters = [];
-    List<_TaskTimeBounds> currentCluster = [];
+    final List<List<TaskTimePlacement>> clusters = [];
+    List<TaskTimePlacement> currentCluster = [];
     int clusterEnd = -1;
 
-    for (final b in bounds) {
-      if (currentCluster.isEmpty || b.startMinute < clusterEnd) {
+    for (final b in sortedPlacements) {
+      if (currentCluster.isEmpty || b.placedStart < clusterEnd) {
         currentCluster.add(b);
-        clusterEnd = max(clusterEnd, b.dueMinute);
+        clusterEnd = max(clusterEnd, b.placedEnd);
       } else {
         clusters.add(currentCluster);
         currentCluster = [b];
-        clusterEnd = b.dueMinute;
+        clusterEnd = b.placedEnd;
       }
     }
     if (currentCluster.isNotEmpty) {
@@ -722,20 +809,20 @@ class CalendarDayTimelineViewState
     for (final cluster in clusters) {
       // Allocate columns within cluster
       final List<int> columnEndTimes = [];
-      final Map<_TaskTimeBounds, int> columnAssignments = {};
+      final Map<TaskTimePlacement, int> columnAssignments = {};
 
       for (final b in cluster) {
         int assignedCol = -1;
         for (int c = 0; c < columnEndTimes.length; c++) {
-          if (columnEndTimes[c] <= b.startMinute) {
+          if (columnEndTimes[c] <= b.placedStart) {
             assignedCol = c;
-            columnEndTimes[c] = b.dueMinute;
+            columnEndTimes[c] = b.placedEnd;
             break;
           }
         }
         if (assignedCol == -1) {
           assignedCol = columnEndTimes.length;
-          columnEndTimes.add(b.dueMinute);
+          columnEndTimes.add(b.placedEnd);
         }
         columnAssignments[b] = assignedCol;
       }
@@ -748,9 +835,9 @@ class CalendarDayTimelineViewState
         final left = 2.0 + colIndex * colWidth;
         final width = max(30.0, colWidth - 2.0);
 
-        final rawHeight = (b.dueMinute - b.startMinute) * 1.0;
-        final height = max(36.0, rawHeight);
-        final top = (b.startMinute * 1.0)
+        final rawHeight = (b.placedEnd - b.placedStart) * 1.0;
+        final height = max(24.0, rawHeight);
+        final top = (b.placedStart * 1.0)
             .clamp(0.0, max(0.0, 1440.0 - height))
             .toDouble();
 
@@ -792,7 +879,8 @@ class CalendarDayTimelineViewState
           : priorityColor.withValues(alpha: 0.12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => CalendarDayDetailsSheet.show(context, day: day),
+        onTap: () =>
+            CalendarTaskDetailsSheet.show(context, task: task, day: day),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -808,20 +896,20 @@ class CalendarDayTimelineViewState
                         padding: EdgeInsets.zero,
                         style: IconButton.styleFrom(
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          minimumSize: const Size(20, 20),
+                          minimumSize: const Size(18, 18),
                           padding: EdgeInsets.zero,
                         ),
                         constraints: const BoxConstraints(
-                          minWidth: 20,
+                          minWidth: 18,
                           maxWidth: 24,
-                          minHeight: 20,
+                          minHeight: 18,
                           maxHeight: 24,
                         ),
                         icon: Icon(
                           task.isCompleted
                               ? Icons.check_circle
                               : Icons.radio_button_unchecked,
-                          size: 16,
+                          size: 15,
                           color: task.isCompleted
                               ? theme.colorScheme.primary
                               : priorityColor,
@@ -877,7 +965,9 @@ class CalendarDayTimelineViewState
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: cardWidth < 80 ? 10 : 11,
+                        fontSize: cardHeight < 30
+                            ? 9.5
+                            : (cardWidth < 80 ? 10 : 11),
                         fontWeight: FontWeight.bold,
                         decoration: task.isCompleted
                             ? TextDecoration.lineThrough
@@ -912,14 +1002,20 @@ class CalendarDayTimelineViewState
   }
 }
 
-class _TaskTimeBounds {
+class TaskTimePlacement {
   final CalendarDayTask task;
   final int startMinute;
   final int dueMinute;
+  final int duration;
+  final int placedStart;
+  final int placedEnd;
 
-  _TaskTimeBounds({
+  const TaskTimePlacement({
     required this.task,
     required this.startMinute,
     required this.dueMinute,
+    required this.duration,
+    required this.placedStart,
+    required this.placedEnd,
   });
 }

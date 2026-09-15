@@ -10,6 +10,7 @@ import '../logic/task_repository.dart';
 import '../screens/create_task_screen.dart';
 import 'app_snackbar.dart';
 import 'calendar_month_card.dart';
+import 'calendar_task_details_sheet.dart';
 
 /// Modal bottom sheet displaying tasks and actions for a specific day.
 class CalendarDayDetailsSheet extends ConsumerWidget {
@@ -158,6 +159,11 @@ class CalendarDayDetailsSheet extends ConsumerWidget {
                           ),
                         ),
                         child: ListTile(
+                          onTap: () => CalendarTaskDetailsSheet.show(
+                            context,
+                            task: task,
+                            day: day,
+                          ),
                           leading: task.isInstance
                               ? IconButton(
                                   icon: Icon(
