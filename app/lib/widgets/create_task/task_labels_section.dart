@@ -44,33 +44,11 @@ class TaskLabelsSection extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    context.l10n.labelsTitle,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (canManage)
-                    IconButton(
-                      key: const Key('manage_labels_button'),
-                      icon: const Icon(Icons.settings_outlined, size: 18),
-                      tooltip: context.l10n.manageLabelsTooltip,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LabelsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                ],
+              Text(
+                context.l10n.labelsTitle,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               labelsAsync.when(
