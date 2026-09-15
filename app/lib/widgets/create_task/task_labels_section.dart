@@ -58,6 +58,9 @@ class TaskLabelsSection extends ConsumerWidget {
                       key: const Key('manage_labels_button'),
                       icon: const Icon(Icons.settings_outlined, size: 18),
                       tooltip: context.l10n.manageLabelsTooltip,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      visualDensity: VisualDensity.compact,
                       onPressed: () {
                         Navigator.push(
                           context,
