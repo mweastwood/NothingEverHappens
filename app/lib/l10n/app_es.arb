@@ -716,5 +716,14 @@
       }
     }
   },
-  "goToFamilyButton": "Ir a Familia"
+  "goToFamilyButton": "Ir a Familia",
+  "manageLabelsTooltip": "Administrar etiquetas",
+  "errorLoadingLabels": "Error al cargar las etiquetas: {error}",
+  "@errorLoadingLabels": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

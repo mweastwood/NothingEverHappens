@@ -1,4 +1,5 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/label_repository.dart';
 import 'package:nothing_ever_happens/logic/task_label.dart';
@@ -261,6 +262,103 @@ void main() {
         final uppercaseItem = LabelPalette.getItem('  ${key.toUpperCase()}  ');
         expect(uppercaseItem.key, equals(key));
       }
+    });
+
+    test('allLabelsMapProvider merges personal and family labels', () async {
+      final container = ProviderContainer(
+        overrides: [
+          personalLabelsStreamProvider.overrideWith(
+            (ref) => Stream.value([
+              TaskLabel.create(
+                id: 'lbl-p1',
+                name: 'Personal Label',
+                colorKey: 'coral',
+                iconKey: 'tag',
+              ),
+            ]),
+          ),
+          familyLabelsStreamProvider.overrideWith(
+            (ref) => Stream.value([
+              TaskLabel.create(
+                id: 'lbl-f1',
+                name: 'Family Label',
+                colorKey: 'emerald',
+                iconKey: 'star',
+                scope: TaskLabelScope.family,
+              ),
+            ]),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final subscription = container.listen(allLabelsMapProvider, (_, _) {});
+      addTearDown(subscription.close);
+
+      while (container.read(allLabelsMapProvider).length < 2) {
+        await container.pump();
+      }
+
+      final map = container.read(allLabelsMapProvider);
+      expect(map.length, equals(2));
+      expect(map['lbl-p1']?.name, equals('Personal Label'));
+      expect(map['lbl-f1']?.name, equals('Family Label'));
+    });
+
+    test('allLabelsMapProvider asserts on ID collision in debug mode', () async {
+      final container = ProviderContainer(
+        overrides: [
+          personalLabelsStreamProvider.overrideWith(
+            (ref) => Stream.value([
+              TaskLabel.create(
+                id: 'colliding-id',
+                name: 'Personal Label',
+                colorKey: 'coral',
+                iconKey: 'tag',
+              ),
+            ]),
+          ),
+          familyLabelsStreamProvider.overrideWith(
+            (ref) => Stream.value([
+              TaskLabel.create(
+                id: 'colliding-id',
+                name: 'Family Label',
+                colorKey: 'emerald',
+                iconKey: 'star',
+                scope: TaskLabelScope.family,
+              ),
+            ]),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final subscription = container.listen(
+        personalLabelsStreamProvider,
+        (_, _) {},
+      );
+      final subscriptionFam = container.listen(
+        familyLabelsStreamProvider,
+        (_, _) {},
+      );
+      addTearDown(subscription.close);
+      addTearDown(subscriptionFam.close);
+
+      while (container.read(personalLabelsStreamProvider).value == null ||
+          container.read(familyLabelsStreamProvider).value == null) {
+        await container.pump();
+      }
+
+      expect(
+        () => container.read(allLabelsMapProvider),
+        throwsA(
+          predicate(
+            (e) => e.toString().contains(
+              'Duplicate label ID found across personal and family label sets',
+            ),
+          ),
+        ),
+      );
     });
   });
 }

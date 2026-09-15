@@ -14,6 +14,8 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
+import 'package:nothing_ever_happens/logic/label_repository.dart';
+import 'package:nothing_ever_happens/logic/task_label.dart';
 import 'package:nothing_ever_happens/widgets/task_schedule_card.dart';
 
 import '../screens/task_list_screen_test.mocks.dart';
@@ -556,6 +558,65 @@ void main() {
 
       expect(find.byType(AlertDialog), findsNothing);
       verifyNever(mockTaskRepository.deleteTaskSchedule(any));
+    });
+
+    testWidgets('displays label badges when task has labelIds', (tester) async {
+      final label1 = TaskLabel(
+        id: 'lbl-clean',
+        name: 'Cleaning',
+        colorKey: 'emerald',
+        iconKey: 'cleaning',
+        scope: TaskLabelScope.personal,
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      );
+
+      final labeledSchedule = TaskSchedule(
+        id: 'S-clean',
+        title: 'Clean the kitchen',
+        description: 'Chore',
+        labelIds: const ['lbl-clean'],
+        schedules: [
+          DailySchedule(
+            id: 'rule-clean',
+            scheduleId: 'S-clean',
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            allLabelsMapProvider.overrideWithValue({'lbl-clean': label1}),
+          ],
+          child: buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: TaskScheduleCard(
+                  task: labeledSchedule,
+                  repository: mockTaskRepository,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cleaning'), findsOneWidget);
     });
   });
 }

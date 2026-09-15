@@ -7,6 +7,7 @@ import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/subscription_service.dart';
+import 'package:nothing_ever_happens/logic/label_repository.dart';
 
 class FakeSubscriptionService extends SubscriptionService {
   FakeSubscriptionService(super.ref, SubscriptionTier tier) {
@@ -20,6 +21,9 @@ final List<Override> defaultTestOverrides = [
   ),
   taskSchedulesProvider.overrideWith((ref) => const Stream.empty()),
   taskInstancesProvider.overrideWith((ref) => const Stream.empty()),
+  personalLabelsStreamProvider.overrideWith((ref) => Stream.value(const [])),
+  familyLabelsStreamProvider.overrideWith((ref) => Stream.value(const [])),
+  canEditFamilyLabelsProvider.overrideWithValue(false),
 ];
 
 /// Wraps the widget under test in MaterialApp with all localization delegates.

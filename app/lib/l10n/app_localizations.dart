@@ -3391,6 +3391,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Go to Family'**
   String get goToFamilyButton;
+
+  /// No description provided for @manageLabelsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage labels'**
+  String get manageLabelsTooltip;
+
+  /// No description provided for @errorLoadingLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading labels: {error}'**
+  String errorLoadingLabels(String error);
 }
 
 class _AppLocalizationsDelegate

@@ -4,6 +4,8 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../logic/family_repository.dart';
+import '../logic/label_repository.dart';
+import '../logic/task_label.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
@@ -88,6 +90,27 @@ class TaskScheduleCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildLabelBadges(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> labelIds,
+  ) {
+    if (labelIds.isEmpty) return const <Widget>[];
+    final allLabels = ref.watch(allLabelsMapProvider);
+    return labelIds
+        .map((id) => allLabels[id])
+        .whereType<TaskLabel>()
+        .map(
+          (label) => _buildBadge(
+            context,
+            icon: LabelIcons.getIcon(label.iconKey),
+            label: label.name,
+            color: LabelPalette.getColor(label.colorKey, context),
+          ),
+        )
+        .toList();
   }
 
   String _getRecurrenceRuleTypeName(
@@ -422,7 +445,7 @@ class TaskScheduleCard extends ConsumerWidget {
                 ],
               ),
             ),
-            if (task.isFamily)
+            if (task.isFamily || task.labelIds.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(
                   left: 12.0,
@@ -433,21 +456,23 @@ class TaskScheduleCard extends ConsumerWidget {
                   spacing: 6.0,
                   runSpacing: 6.0,
                   children: [
-                    _buildBadge(
-                      context,
-                      icon: Icons.people_alt,
-                      label: context.l10n.familyTab,
-                      color: theme.colorScheme.primary,
-                    ),
-                    if (task.familyCompletionMode ==
-                        FamilyCompletionMode.individual)
+                    if (task.isFamily)
+                      _buildBadge(
+                        context,
+                        icon: Icons.people_alt,
+                        label: context.l10n.familyTab,
+                        color: theme.colorScheme.primary,
+                      ),
+                    if (task.isFamily &&
+                        task.familyCompletionMode ==
+                            FamilyCompletionMode.individual)
                       _buildBadge(
                         context,
                         icon: Icons.checklist,
                         label: context.l10n.completionModeIndividualLabel,
                         color: theme.colorScheme.primary,
                       ),
-                    if (task.assignedUserId != null)
+                    if (task.isFamily && task.assignedUserId != null)
                       _buildBadge(
                         context,
                         icon: Icons.assignment_ind,
@@ -460,6 +485,7 @@ class TaskScheduleCard extends ConsumerWidget {
                             ),
                         color: theme.colorScheme.primary,
                       ),
+                    ..._buildLabelBadges(context, ref, task.labelIds),
                   ],
                 ),
               ),
