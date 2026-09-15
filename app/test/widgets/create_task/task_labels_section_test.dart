@@ -171,11 +171,10 @@ void main() {
     );
     expect(find.byKey(const Key('empty_manage_labels_button')), findsOneWidget);
     expect(find.text('Add Label'), findsOneWidget);
-    expect(find.byKey(const Key('manage_labels_button')), findsOneWidget);
   });
 
   testWidgets(
-    'shows parent empty state and manage button for family labels when user is parent',
+    'shows parent empty state and add label button for family labels when user is parent',
     (tester) async {
       await tester.pumpWidget(
         buildSection(
@@ -197,12 +196,11 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Add Label'), findsOneWidget);
-      expect(find.byKey(const Key('manage_labels_button')), findsOneWidget);
     },
   );
 
   testWidgets(
-    'shows non-parent empty state and hides manage buttons for family labels when user is non-parent',
+    'shows non-parent empty state and hides add label button for family labels when user is non-parent',
     (tester) async {
       await tester.pumpWidget(
         buildSection(
@@ -217,13 +215,10 @@ void main() {
 
       expect(find.text('No family labels yet.'), findsOneWidget);
       expect(find.byKey(const Key('empty_manage_labels_button')), findsNothing);
-      expect(find.byKey(const Key('manage_labels_button')), findsNothing);
     },
   );
 
-  testWidgets('hides manage labels buttons when readOnly is true', (
-    tester,
-  ) async {
+  testWidgets('hides add label button when readOnly is true', (tester) async {
     await tester.pumpWidget(
       buildSection(
         isFamily: true,
@@ -238,6 +233,5 @@ void main() {
 
     expect(find.text('No family labels yet.'), findsOneWidget);
     expect(find.byKey(const Key('empty_manage_labels_button')), findsNothing);
-    expect(find.byKey(const Key('manage_labels_button')), findsNothing);
   });
 }
