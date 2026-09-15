@@ -81,6 +81,7 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
     ).format(day.toDateTime());
 
     final instances = ref.watch(taskInstancesProvider).value ?? [];
+    final schedules = ref.watch(taskSchedulesProvider).value ?? [];
     final currentUserId = ref.watch(authStateProvider).value?.uid;
 
     final updatedInstance = task.instance != null
@@ -90,22 +91,39 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
           )
         : null;
 
+    final scheduleId =
+        updatedInstance?.scheduleId ??
+        task.instance?.scheduleId ??
+        task.schedule?.id;
+
+    final resolvedSchedule = scheduleId != null
+        ? schedules.cast<TaskSchedule?>().firstWhere(
+            (s) => s?.id == scheduleId,
+            orElse: () => task.schedule,
+          )
+        : task.schedule;
+
     final bool isCompleted = updatedInstance != null
         ? ((updatedInstance.isFamily && currentUserId != null)
               ? updatedInstance.isCompletedForUser(currentUserId)
               : updatedInstance.status == TaskStatus.completed)
         : task.isCompleted;
 
-    final priorityColor = getPriorityColor(theme.colorScheme, task.priority);
-    final priorityLabel = _getPriorityLabel(context, task.priority);
+    final title = updatedInstance?.title ?? task.title;
+    final description = updatedInstance?.description ?? task.description;
+    final priority = updatedInstance?.priority ?? task.priority;
+
+    final priorityColor = getPriorityColor(theme.colorScheme, priority);
+    final priorityLabel = _getPriorityLabel(context, priority);
     final timeWindow = task.getTimeWindow(context);
 
-    final duration = task.estimatedDuration ?? task.schedule?.estimatedDuration;
+    final duration =
+        resolvedSchedule?.estimatedDuration ?? task.estimatedDuration;
     final durationStr = duration != null ? _formatDuration(duration) : null;
 
     final isFamily =
-        (task.instance?.isFamily ?? false) ||
-        (task.schedule?.isFamily ?? false);
+        (updatedInstance?.isFamily ?? task.instance?.isFamily ?? false) ||
+        (resolvedSchedule?.isFamily ?? false);
 
     return SafeArea(
       child: Padding(
@@ -124,7 +142,7 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      task.title,
+                      title,
                       key: const Key('calendar_task_details_title'),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
@@ -201,7 +219,9 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            isCompleted ? 'Completed' : 'Pending',
+                            isCompleted
+                                ? context.l10n.completedBadge
+                                : context.l10n.pendingBadge,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -235,7 +255,7 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Projected occurrence',
+                            context.l10n.projectedOccurrence,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -268,7 +288,7 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Family',
+                            context.l10n.familyTab,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -338,7 +358,7 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Estimated duration: $durationStr',
+                        context.l10n.estimatedDurationLabel(durationStr),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface,
                           fontWeight: FontWeight.w500,
@@ -350,7 +370,7 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
               ],
 
               // Description section
-              if (task.description.isNotEmpty) ...[
+              if (description.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
@@ -362,7 +382,7 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(task.description, style: theme.textTheme.bodyMedium),
+                Text(description, style: theme.textTheme.bodyMedium),
               ],
 
               const SizedBox(height: 20),
@@ -379,7 +399,9 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
                     isCompleted ? Icons.replay : Icons.check_circle_outline,
                   ),
                   label: Text(
-                    isCompleted ? 'Mark as Incomplete' : 'Mark as Completed',
+                    isCompleted
+                        ? context.l10n.markAsIncomplete
+                        : context.l10n.markAsCompleted,
                   ),
                   onPressed: () async {
                     final repo = ref.read(taskRepositoryProvider);
@@ -407,7 +429,7 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
               ],
 
               // Edit Task button (if schedule is available)
-              if (task.schedule != null) ...[
+              if (resolvedSchedule != null) ...[
                 OutlinedButton.icon(
                   key: const Key('calendar_task_details_edit_button'),
                   icon: const Icon(Icons.edit, size: 18),
@@ -418,7 +440,7 @@ class CalendarTaskDetailsSheet extends ConsumerWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            CreateTaskScreen(taskToEdit: task.schedule!),
+                            CreateTaskScreen(taskToEdit: resolvedSchedule),
                       ),
                     );
                   },

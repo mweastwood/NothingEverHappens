@@ -3391,6 +3391,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Go to Family'**
   String get goToFamilyButton;
+
+  /// No description provided for @markAsCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as Completed'**
+  String get markAsCompleted;
+
+  /// No description provided for @markAsIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as Incomplete'**
+  String get markAsIncomplete;
+
+  /// No description provided for @projectedOccurrence.
+  ///
+  /// In en, this message translates to:
+  /// **'Projected occurrence'**
+  String get projectedOccurrence;
+
+  /// No description provided for @completedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completedBadge;
+
+  /// No description provided for @estimatedDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated duration: {duration}'**
+  String estimatedDurationLabel(String duration);
 }
 
 class _AppLocalizationsDelegate

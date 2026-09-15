@@ -1959,4 +1959,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get goToFamilyButton => 'Go to Family';
+
+  @override
+  String get markAsCompleted => 'Mark as Completed';
+
+  @override
+  String get markAsIncomplete => 'Mark as Incomplete';
+
+  @override
+  String get projectedOccurrence => 'Projected occurrence';
+
+  @override
+  String get completedBadge => 'Completed';
+
+  @override
+  String estimatedDurationLabel(String duration) {
+    return 'Estimated duration: $duration';
+  }
 }

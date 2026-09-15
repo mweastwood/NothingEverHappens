@@ -101,7 +101,10 @@ void main() {
     settingsSubject.close();
   });
 
-  Widget buildDetailsSheetWidget({required CalendarDayTask task}) {
+  Widget buildDetailsSheetWidget({
+    required CalendarDayTask task,
+    Locale? locale,
+  }) {
     final firestore = FakeFirebaseFirestore();
     final familyRepo = FamilyRepository(
       firestore: firestore,
@@ -124,6 +127,7 @@ void main() {
         ),
       ],
       child: buildTestableWidget(
+        locale: locale,
         child: Scaffold(
           body: CalendarTaskDetailsSheet(task: task, day: testDay),
         ),
@@ -206,4 +210,65 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'resolves schedule reactively from taskSchedulesProvider when task.schedule is null',
+    (tester) async {
+      // Create a task where schedule is null on the CalendarDayTask
+      final taskWithoutSchedule = CalendarDayTask(
+        id: sampleInstance.id,
+        title: sampleInstance.title,
+        description: sampleInstance.description,
+        priority: sampleInstance.priority,
+        status: sampleInstance.status,
+        isInstance: true,
+        instance: sampleInstance,
+        schedule: null,
+      );
+
+      await tester.pumpWidget(
+        buildDetailsSheetWidget(task: taskWithoutSchedule),
+      );
+      await tester.pumpAndSettle();
+
+      // Edit button should be visible because schedule was resolved via taskSchedulesProvider
+      expect(
+        find.byKey(const Key('calendar_task_details_edit_button')),
+        findsOneWidget,
+      );
+      expect(find.text('Estimated duration: 45 min'), findsOneWidget);
+
+      // Now emit updated schedule in tasksSubject with new duration
+      final updatedSchedule = sampleSchedule.copyWith(
+        estimatedDuration: const Duration(minutes: 90),
+      );
+      tasksSubject.add([updatedSchedule]);
+      await tester.pumpAndSettle();
+
+      // Duration reflects the updated schedule reactively
+      expect(find.text('Estimated duration: 1 hr 30 min'), findsOneWidget);
+    },
+  );
+
+  testWidgets('renders localized strings in Spanish locale', (tester) async {
+    final dayTask = CalendarDayTask(
+      id: sampleInstance.id,
+      title: sampleInstance.title,
+      description: sampleInstance.description,
+      priority: sampleInstance.priority,
+      status: sampleInstance.status,
+      isInstance: true,
+      instance: sampleInstance,
+      schedule: sampleSchedule,
+    );
+
+    await tester.pumpWidget(
+      buildDetailsSheetWidget(task: dayTask, locale: const Locale('es')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Marcar como completada'), findsOneWidget);
+    expect(find.text('Duración estimada: 45 min'), findsOneWidget);
+    expect(find.text('Pendiente'), findsOneWidget);
+  });
 }
