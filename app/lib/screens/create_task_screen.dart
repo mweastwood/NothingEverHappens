@@ -530,8 +530,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                     children: [
                                       detailsCard,
                                       const SizedBox(height: 16),
-                                      labelsSection,
-                                      const SizedBox(height: 16),
                                       Row(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
@@ -544,6 +542,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 effortAndPriorityCard,
+                                                const SizedBox(height: 16),
+                                                labelsSection,
                                                 if (inFamily) ...[
                                                   const SizedBox(height: 16),
                                                   familyCard,
@@ -585,11 +585,11 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                                     children: [
                                       detailsCard,
                                       const SizedBox(height: 16),
-                                      labelsSection,
-                                      const SizedBox(height: 16),
                                       scheduleSection,
                                       const SizedBox(height: 16),
                                       effortAndPriorityCard,
+                                      const SizedBox(height: 16),
+                                      labelsSection,
                                       if (inFamily) ...[
                                         const SizedBox(height: 16),
                                         familyCard,
