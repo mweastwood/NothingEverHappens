@@ -50,18 +50,10 @@ class CalendarScreen extends ConsumerStatefulWidget {
 }
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
-  late final ScrollController _scrollController;
+  ScrollController? _scrollController;
   late final DateTime _initialNow;
   late final List<DateTime> _months;
   late final int _currentMonthIndex;
-  bool _hasScrolledToCurrentMonth = false;
-
-  final Map<DateTime, Map<CivilDay, List<calendar_logic.CalendarDayTask>>>
-  _monthTaskMapCache = {};
-  List<TaskInstance>? _cachedInstances;
-  List<TaskSchedule>? _cachedSchedules;
-  String? _cachedUserId;
-  CivilDay? _cachedToday;
 
   CivilDay? _zoomedDay;
 
@@ -80,7 +72,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
     _initialNow = AppClock.now;
 
     // Generate 12 months in the past to 24 months in the future
@@ -95,8 +86,24 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_scrollController == null) {
+      final isWide = isWideScreen(context);
+      final firstDayOfWeek =
+          ref.read(userSettingsProvider).value?.firstDayOfWeek ??
+          FirstDayOfWeek.sunday;
+      final targetOffset = _calculateTargetOffset(
+        isWide: isWide,
+        firstDayOfWeek: firstDayOfWeek,
+      );
+      _scrollController = ScrollController(initialScrollOffset: targetOffset);
+    }
+  }
+
+  @override
   void dispose() {
-    _scrollController.dispose();
+    _scrollController?.dispose();
     super.dispose();
   }
 
@@ -145,7 +152,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     required FirstDayOfWeek firstDayOfWeek,
   }) {
     if (!mounted) return;
-    if (!_scrollController.hasClients) return;
+    final controller = _scrollController;
+    if (controller == null || !controller.hasClients) return;
     final isWide = isWideScreen(context);
     final targetOffset = _calculateTargetOffset(
       isWide: isWide,
@@ -153,13 +161,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
 
     if (animate) {
-      _scrollController.animateTo(
+      controller.animateTo(
         targetOffset,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
       );
     } else {
-      _scrollController.jumpTo(targetOffset);
+      controller.jumpTo(targetOffset);
     }
   }
 
@@ -170,27 +178,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     required CivilDay today,
     String? currentUserId,
   }) {
-    if (!identical(instances, _cachedInstances) ||
-        !identical(schedules, _cachedSchedules) ||
-        currentUserId != _cachedUserId ||
-        today != _cachedToday) {
-      _monthTaskMapCache.clear();
-      _cachedInstances = instances;
-      _cachedSchedules = schedules;
-      _cachedUserId = currentUserId;
-      _cachedToday = today;
-    }
-
-    final monthKey = DateTime(monthDate.year, monthDate.month, 1);
-    return _monthTaskMapCache.putIfAbsent(
-      monthKey,
-      () => calendar_logic.computeMonthTaskMap(
-        monthDate: monthDate,
-        instances: instances,
-        schedules: schedules,
-        currentUserId: currentUserId,
-        today: today,
-      ),
+    final cache = ref.read(calendar_logic.calendarMonthTaskCacheProvider);
+    return cache.getMonthTaskMap(
+      monthDate: monthDate,
+      instances: instances,
+      schedules: schedules,
+      currentUserId: currentUserId,
+      today: today,
     );
   }
 
@@ -212,13 +206,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     final isWide = isWideScreen(context);
     final today = CivilDay.fromDateTime(AppClock.now);
-
-    if (!_hasScrolledToCurrentMonth) {
-      _hasScrolledToCurrentMonth = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToCurrentMonth(firstDayOfWeek: firstDayOfWeek);
-      });
-    }
 
     return PopScope(
       canPop: _zoomedDay == null,
@@ -273,6 +260,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               schedules: schedules,
               currentUserId: currentUserId,
               today: today,
+              monthTaskCache: ref.read(
+                calendar_logic.calendarMonthTaskCacheProvider,
+              ),
             ),
         ],
       ),
@@ -289,6 +279,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final rowCount = (_months.length / 2).ceil();
 
     return ListView.builder(
+      key: const PageStorageKey<String>('calendar_month_list'),
       controller: _scrollController,
       scrollCacheExtent: const ScrollCacheExtent.viewport(1.0),
       padding: const EdgeInsets.all(16),
@@ -352,6 +343,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     required FirstDayOfWeek firstDayOfWeek,
   }) {
     return ListView.builder(
+      key: const PageStorageKey<String>('calendar_month_list'),
       controller: _scrollController,
       scrollCacheExtent: const ScrollCacheExtent.viewport(1.0),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),

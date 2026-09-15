@@ -235,4 +235,30 @@ void main() {
 
     expect(tappedDay, equals(todayDay8));
   });
+
+  test('getWeekdayHeaders caches results and can be cleared', () {
+    clearCalendarMonthCardCaches();
+    final headers1 = getWeekdayHeaders(
+      'en_US',
+      firstDayOfWeek: FirstDayOfWeek.sunday,
+    );
+    final headers2 = getWeekdayHeaders(
+      'en_US',
+      firstDayOfWeek: FirstDayOfWeek.sunday,
+    );
+    expect(identical(headers1, headers2), isTrue);
+
+    final headersMonday = getWeekdayHeaders(
+      'en_US',
+      firstDayOfWeek: FirstDayOfWeek.monday,
+    );
+    expect(identical(headers1, headersMonday), isFalse);
+
+    clearCalendarMonthCardCaches();
+    final headers3 = getWeekdayHeaders(
+      'en_US',
+      firstDayOfWeek: FirstDayOfWeek.sunday,
+    );
+    expect(headers3, equals(headers1));
+  });
 }
