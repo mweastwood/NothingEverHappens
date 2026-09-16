@@ -1997,9 +1997,6 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get manageLabelsTooltip => 'Administrar etiquetas';
-
-  @override
   String errorLoadingLabels(String error) {
     return 'Error al cargar las etiquetas: $error';
   }

@@ -1176,7 +1176,6 @@
       }
     }
   },
-  "manageLabelsTooltip": "Manage labels",
   "errorLoadingLabels": "Error loading labels: {error}",
   "@errorLoadingLabels": {
     "placeholders": {

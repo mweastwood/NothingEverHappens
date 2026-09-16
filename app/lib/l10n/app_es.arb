@@ -729,7 +729,6 @@
       }
     }
   },
-  "manageLabelsTooltip": "Administrar etiquetas",
   "errorLoadingLabels": "Error al cargar las etiquetas: {error}",
   "@errorLoadingLabels": {
     "placeholders": {

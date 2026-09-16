@@ -1979,9 +1979,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get manageLabelsTooltip => 'Manage labels';
-
-  @override
   String errorLoadingLabels(String error) {
     return 'Error loading labels: $error';
   }
