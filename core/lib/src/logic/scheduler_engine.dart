@@ -309,6 +309,7 @@ class SchedulerEngine {
             cycleId: task.cycleId,
             assignedUserId: task.assignedUserId,
             status: TaskStatus.pending,
+            labelIds: task.labelIds,
           ),
         );
       }
@@ -499,6 +500,7 @@ class SchedulerEngine {
             assignedUserId: task.assignedUserId,
             workflowPayload: workflowPayload,
             status: TaskStatus.pending,
+            labelIds: task.labelIds,
           );
         }
       }
@@ -1084,6 +1086,7 @@ class SchedulerEngine {
               cycleId: task.cycleId,
               assignedUserId: task.assignedUserId,
               status: TaskStatus.pending,
+              labelIds: task.labelIds,
             ),
           );
         }
@@ -1205,6 +1208,7 @@ class SchedulerEngine {
         cycleId: task.cycleId,
         assignedUserId: task.assignedUserId,
         status: TaskStatus.pending,
+        labelIds: task.labelIds,
       );
     } else {
       // Find the latest uncompleted instance of this rule (excluding the completedInstance)
@@ -1241,6 +1245,7 @@ class SchedulerEngine {
           cycleId: task.cycleId,
           assignedUserId: task.assignedUserId,
           status: TaskStatus.pending,
+          labelIds: task.labelIds,
         );
       }
     }

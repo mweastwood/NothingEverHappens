@@ -771,6 +771,10 @@ class HiveLocalDataSource {
   TaskSchedule taskScheduleFromJson(Map<String, dynamic> data) =>
       _taskScheduleFromJson(data);
 
+  @visibleForTesting
+  TaskInstance taskInstanceFromJson(Map<String, dynamic> data) =>
+      _taskInstanceFromJson(data);
+
   TaskSchedule _taskScheduleFromJson(Map<String, dynamic> data) {
     final schedulesRaw = data['schedules'] as List<dynamic>? ?? [];
     final schedules = schedulesRaw
@@ -814,6 +818,8 @@ class HiveLocalDataSource {
           )
         : null;
     final appLaunchUrl = data['appLaunchUrl'] as String?;
+    final labelIdsRaw = data['labelIds'] as List<dynamic>? ?? [];
+    final labelIds = labelIdsRaw.map((e) => e.toString()).toList();
 
     return TaskSchedule(
       id: data['id'] as String,
@@ -832,6 +838,7 @@ class HiveLocalDataSource {
         data['familyCompletionMode'] as String?,
       ),
       priority: priority,
+      labelIds: labelIds,
       cycleId: data['cycleId'] as String?,
       preferredBy: preferredBy,
       assignedUserId: data['assignedUserId'] as String?,
@@ -917,6 +924,9 @@ class HiveLocalDataSource {
           )
         : null;
 
+    final labelIdsRaw = data['labelIds'] as List<dynamic>? ?? [];
+    final labelIds = labelIdsRaw.map((e) => e.toString()).toList();
+
     return TaskInstance(
       id: data['id'] as String,
       scheduleId: data['scheduleId'] as String? ?? '',
@@ -932,6 +942,7 @@ class HiveLocalDataSource {
         data['familyCompletionMode'] as String?,
       ),
       priority: priority,
+      labelIds: labelIds,
       cycleId: data['cycleId'] as String?,
       assignedUserId: data['assignedUserId'] as String?,
       completedByUserId: data['completedByUserId'] as String?,

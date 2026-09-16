@@ -489,5 +489,65 @@ describe('Firestore Security Rules', () => {
       }));
     });
   });
-});
 
+  describe('Tasks collection', () => {
+    it('allows family parents to update labelIds on family tasks, but denies non-parents', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' },
+            'bob': { role: 'non-parent', displayName: 'Bob' }
+          }
+        });
+        await db.collection('families').doc('fam-1').collection('tasks').doc('task-1').set({
+          title: 'Clean garage',
+          description: 'Sweep and organize',
+          isFamily: true,
+          labelIds: ['label-chore']
+        });
+      });
+
+      const aliceContext = testEnv.authenticatedContext('alice');
+      const aliceDb = aliceContext.firestore();
+      const bobContext = testEnv.authenticatedContext('bob');
+      const bobDb = bobContext.firestore();
+
+      // Bob (non-parent) tries to update labelIds (denied)
+      await assertFails(bobDb.collection('families').doc('fam-1').collection('tasks').doc('task-1').update({
+        labelIds: ['label-chore', 'label-urgent']
+      }));
+
+      // Alice (parent) updates labelIds (allowed)
+      await assertSucceeds(aliceDb.collection('families').doc('fam-1').collection('tasks').doc('task-1').update({
+        labelIds: ['label-chore', 'label-urgent']
+      }));
+    });
+
+    it('denies unauthenticated users from updating labelIds on family tasks', async () => {
+      await seedData(async (context) => {
+        const db = context.firestore();
+        await db.collection('families').doc('fam-1').set({
+          name: 'The Simpsons',
+          members: {
+            'alice': { role: 'parent', displayName: 'Alice' }
+          }
+        });
+        await db.collection('families').doc('fam-1').collection('tasks').doc('task-1').set({
+          title: 'Clean garage',
+          description: 'Sweep and organize',
+          isFamily: true,
+          labelIds: ['label-chore']
+        });
+      });
+
+      const unauthenticatedContext = testEnv.unauthenticatedContext();
+      const unauthenticatedDb = unauthenticatedContext.firestore();
+
+      await assertFails(unauthenticatedDb.collection('families').doc('fam-1').collection('tasks').doc('task-1').update({
+        labelIds: ['label-chore', 'label-urgent']
+      }));
+    });
+  });
+});

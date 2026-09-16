@@ -3421,6 +3421,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Estimated duration: {duration}'**
   String estimatedDurationLabel(String duration);
+
+  /// No description provided for @errorLoadingLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading labels: {error}'**
+  String errorLoadingLabels(String error);
 }
 
 class _AppLocalizationsDelegate

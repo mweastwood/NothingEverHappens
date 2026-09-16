@@ -728,5 +728,13 @@
         "type": "String"
       }
     }
+  },
+  "errorLoadingLabels": "Error al cargar las etiquetas: {error}",
+  "@errorLoadingLabels": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   }
 }

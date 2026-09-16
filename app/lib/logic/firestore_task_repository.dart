@@ -575,6 +575,7 @@ class FirestoreTaskRepository implements TaskRepository {
                   ruleId: rId,
                   title: task.title,
                   description: task.description,
+                  labelIds: task.labelIds,
                   scheduledDate: date,
                   startRelativeTime: RelativeTime(
                     dayOffset: 0,
@@ -994,6 +995,7 @@ class FirestoreTaskRepository implements TaskRepository {
           clearCycleId: newTask.cycleId == null,
           assignedUserId: newTask.assignedUserId,
           clearAssignedUserId: newTask.assignedUserId == null,
+          labelIds: newTask.labelIds,
         );
 
         if (isFamilyChanged) {

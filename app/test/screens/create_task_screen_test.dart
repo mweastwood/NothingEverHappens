@@ -21,6 +21,8 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 
 import 'package:nothing_ever_happens/widgets/missed_occurrence_policy_selector.dart';
 import 'package:nothing_ever_happens/widgets/create_task/task_basic_info_section.dart';
+import 'package:nothing_ever_happens/logic/label_repository.dart';
+import 'package:nothing_ever_happens/logic/task_label.dart';
 import 'create_task_screen_test.mocks.dart';
 import '../test_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -2064,5 +2066,66 @@ void main() {
         expect(savedSchedule!.mealWorkflowConfig, isNotNull);
       },
     );
+
+    testWidgets('Selecting labels in CreateTaskScreen persists them on save', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final label1 = TaskLabel(
+        id: 'lbl-work',
+        name: 'Work',
+        colorKey: 'cobalt',
+        iconKey: 'work',
+        scope: TaskLabelScope.personal,
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      );
+
+      TaskSchedule? savedSchedule;
+      when(mockRepository.addTaskSchedule(any)).thenAnswer((invocation) async {
+        savedSchedule = invocation.positionalArguments[0] as TaskSchedule;
+      });
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: buildTestProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockRepository),
+              personalLabelsStreamProvider.overrideWith(
+                (ref) => Stream.value([label1]),
+              ),
+            ],
+            child: const CreateTaskScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Enter title
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Title'),
+        'Project Meeting',
+      );
+
+      // Tap the label chip
+      final labelChip = find.text('Work');
+      await tester.ensureVisible(labelChip);
+      await tester.tap(labelChip, warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      // Tap Save
+      final saveButton = find.byKey(const Key('save_task_button'));
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+
+      verify(mockRepository.addTaskSchedule(any)).called(1);
+      expect(savedSchedule, isNotNull);
+      expect(savedSchedule!.labelIds, contains('lbl-work'));
+    });
   });
 }

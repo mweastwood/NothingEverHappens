@@ -46,6 +46,9 @@ class TaskInstance {
   /// Timestamp of the last update for sync conflict resolution.
   final DateTime updatedAt;
 
+  /// Optional label IDs associated with this task instance.
+  final List<String> labelIds;
+
   TaskInstance({
     String? id,
     required this.scheduleId,
@@ -73,6 +76,7 @@ class TaskInstance {
     this.hasPendingWrites = false,
     this.isFromCache = false,
     DateTime? updatedAt,
+    this.labelIds = const [],
   })  : id = id ?? TaskInstance.generateId(),
         title = title.trim(),
         description = description.trim(),
@@ -203,6 +207,9 @@ class TaskInstance {
     final lastModifiedByPlatform = data['lastModifiedByPlatform'] as String?;
     final statusReason = data['statusReason'] as String?;
 
+    final labelIdsRaw = data['labelIds'] as List<dynamic>? ?? [];
+    final labelIds = labelIdsRaw.map((e) => e.toString()).toList();
+
     return TaskInstance(
       id: id ?? data['id'] as String?,
       scheduleId: scheduleId,
@@ -230,6 +237,7 @@ class TaskInstance {
       hasPendingWrites: hasPendingWrites,
       isFromCache: isFromCache,
       updatedAt: updatedAt,
+      labelIds: labelIds,
     );
   }
 
@@ -280,6 +288,7 @@ class TaskInstance {
       if (statusReason != null) 'statusReason': statusReason,
       'status': status.toJson(),
       'updatedAt': updatedAt,
+      'labelIds': labelIds,
     };
   }
 
@@ -320,6 +329,8 @@ class TaskInstance {
     bool? hasPendingWrites,
     bool? isFromCache,
     DateTime? updatedAt,
+    List<String>? labelIds,
+    bool clearLabelIds = false,
   }) {
     return TaskInstance(
       id: id,
@@ -364,6 +375,7 @@ class TaskInstance {
       hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
       isFromCache: isFromCache ?? this.isFromCache,
       updatedAt: updatedAt ?? this.updatedAt,
+      labelIds: clearLabelIds ? const [] : (labelIds ?? this.labelIds),
     );
   }
 }
