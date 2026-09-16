@@ -130,6 +130,54 @@ void main() {
   });
 
   test(
+    'updateTaskSchedule propagates updated labelIds to pending instances',
+    () async {
+      final task = TaskSchedule(
+        id: 'S-labels-sync',
+        title: 'Labels Sync Task',
+        description: 'Desc',
+        labelIds: const ['L-initial'],
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      final instance = TaskInstance(
+        id: 'I-labels-sync',
+        scheduleId: 'S-labels-sync',
+        ruleId: 'R-1',
+        title: 'Labels Sync Task',
+        description: 'Desc',
+        labelIds: const ['L-initial'],
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        status: TaskStatus.pending,
+        updatedAt: DateTime.now(),
+      );
+
+      await repository.addTaskSchedule(task);
+      await localDataSource.saveInstance(instance);
+
+      final mod = task.edit(
+        newTitle: task.title,
+        newDescription: task.description,
+        newSchedules: task.schedules,
+        newEstimatedDuration: task.estimatedDuration,
+        newMissedPolicy: task.missedPolicy,
+        newIsMaster: task.isMaster,
+        newLastSpawnedDate: task.lastSpawnedDate,
+        newIsFamily: task.isFamily,
+        newPriority: task.priority,
+        newLabelIds: ['L-updated-1', 'L-updated-2'],
+      );
+      await repository.updateTaskSchedule(mod);
+
+      final instances = localDataSource.getInstances();
+      final updatedInst = instances.firstWhere((i) => i.id == 'I-labels-sync');
+      expect(updatedInst.labelIds, equals(['L-updated-1', 'L-updated-2']));
+    },
+  );
+
+  test(
     'restoreTaskSchedule restores task and pending instances to localDataSource and marks dirty',
     () async {
       final task = TaskSchedule(

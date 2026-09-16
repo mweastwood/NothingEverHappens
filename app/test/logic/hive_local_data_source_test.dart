@@ -119,6 +119,78 @@ void main() {
     expect(afterDelete.isEmpty, true);
   });
 
+  test(
+    'persists and deserializes TaskSchedule and TaskInstance labelIds properly',
+    () async {
+      final rawTaskMap = {
+        'id': 'S-task-labels',
+        'title': 'Task with Labels',
+        'description': 'Description',
+        'labelIds': ['L-work', 'L-urgent'],
+        'schedules': <dynamic>[],
+        'updatedAt': DateTime.now().toIso8601String(),
+      };
+      final deserializedTask = dataSource.taskScheduleFromJson(rawTaskMap);
+      expect(deserializedTask.id, 'S-task-labels');
+      expect(deserializedTask.labelIds, equals(['L-work', 'L-urgent']));
+
+      final rawInstanceMap = {
+        'id': 'I-inst-labels',
+        'scheduleId': 'S-task-labels',
+        'ruleId': 'R-1',
+        'title': 'Instance with Labels',
+        'labelIds': ['L-work', 'L-urgent'],
+        'scheduledDate': {'year': 2026, 'month': 9, 'day': 16},
+        'updatedAt': DateTime.now().toIso8601String(),
+      };
+      final deserializedInstance = dataSource.taskInstanceFromJson(
+        rawInstanceMap,
+      );
+      expect(deserializedInstance.id, 'I-inst-labels');
+      expect(deserializedInstance.labelIds, equals(['L-work', 'L-urgent']));
+
+      final task = TaskSchedule(
+        id: 'S-task-labels',
+        title: 'Task with Labels',
+        description: 'Description',
+        labelIds: const ['L-work', 'L-urgent'],
+        schedules: [],
+        updatedAt: DateTime.now(),
+      );
+      final instance = TaskInstance(
+        id: 'I-inst-labels',
+        scheduleId: 'S-task-labels',
+        ruleId: 'R-1',
+        title: 'Instance with Labels',
+        description: 'Instance description',
+        labelIds: const ['L-work', 'L-urgent'],
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        updatedAt: DateTime.now(),
+      );
+
+      await dataSource.saveTask(task);
+      await dataSource.saveInstance(instance);
+
+      // Reinitialize a secondary dataSource instance to load from persisted box storage
+      final secondDataSource = HiveLocalDataSource();
+      await secondDataSource.init();
+
+      final reloadedTask = secondDataSource.getTasks().firstWhere(
+        (t) => t.id == 'S-task-labels',
+      );
+      expect(reloadedTask.labelIds, equals(['L-work', 'L-urgent']));
+
+      final reloadedInstance = secondDataSource.getInstances().firstWhere(
+        (i) => i.id == 'I-inst-labels',
+      );
+      expect(reloadedInstance.labelIds, equals(['L-work', 'L-urgent']));
+
+      await secondDataSource.dispose();
+    },
+  );
+
   test('Test stream emissions from watchTasks() and watchInstances()', () async {
     final task = TaskSchedule(
       id: 'S-task2',

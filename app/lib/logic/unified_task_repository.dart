@@ -196,6 +196,7 @@ class UnifiedTaskRepository implements TaskRepository {
           description: t.description,
           priority: t.priority,
           isFamily: t.isFamily,
+          labelIds: t.labelIds,
           cycleId: t.cycleId,
           clearCycleId: t.cycleId == null,
           assignedUserId: t.assignedUserId,
