@@ -164,6 +164,57 @@ void main() {
           equals(TaskLabelScope.personal));
       expect(TaskLabelScope.fromString(null), equals(TaskLabelScope.personal));
     });
+
+    test('TaskInstance preserves labelIds in serialization and copyWith', () {
+      final inst = TaskInstance(
+        id: 'I-100',
+        scheduleId: 'S-1',
+        ruleId: 'R-1',
+        title: 'Clean Garage',
+        description: 'Sweep and organize',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
+        labelIds: ['L-1', 'L-2', 'L-3'],
+      );
+
+      expect(inst.labelIds, equals(['L-1', 'L-2', 'L-3']));
+
+      final map = inst.toMap();
+      expect(map['labelIds'], equals(['L-1', 'L-2', 'L-3']));
+
+      final restored = TaskInstance.fromMap(map, id: 'I-100');
+      expect(restored.labelIds, equals(['L-1', 'L-2', 'L-3']));
+
+      final updated = inst.copyWith(labelIds: ['L-4']);
+      expect(updated.labelIds, equals(['L-4']));
+
+      final cleared = inst.copyWith(clearLabelIds: true);
+      expect(cleared.labelIds, isEmpty);
+    });
+
+    test('TaskSchedule preserves labelIds in serialization and copyWith', () {
+      final schedule = TaskSchedule(
+        id: 'S-100',
+        title: 'Weekly Chores',
+        description: 'Chores for the home',
+        labelIds: ['L-10', 'L-20'],
+      );
+
+      expect(schedule.labelIds, equals(['L-10', 'L-20']));
+
+      final map = schedule.toMap();
+      expect(map['labelIds'], equals(['L-10', 'L-20']));
+
+      final restored = TaskSchedule.fromMap(map, id: 'S-100');
+      expect(restored.labelIds, equals(['L-10', 'L-20']));
+
+      final updated = schedule.copyWith(labelIds: ['L-30']);
+      expect(updated.labelIds, equals(['L-30']));
+
+      final cleared = schedule.copyWith(clearLabelIds: true);
+      expect(cleared.labelIds, isEmpty);
+    });
   });
 }
 

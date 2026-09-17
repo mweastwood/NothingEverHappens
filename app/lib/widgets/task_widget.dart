@@ -32,17 +32,20 @@ import '../logic/utils/layout_breakpoints.dart';
 import '../screens/workflows/meal_selection_dialog.dart';
 import '../screens/workflows/shopping_checklist_screen.dart';
 import '../screens/recipes/cooking_mode_screen.dart';
+import 'task_hero_stripe.dart';
 
 class TaskWidget extends ConsumerStatefulWidget {
   final TaskInstance instance;
   final TaskSchedule? schedule;
   final bool showEditOption;
+  final List<TaskLabel>? labels;
 
   const TaskWidget({
     super.key,
     required this.instance,
     this.schedule,
     this.showEditOption = true,
+    this.labels,
   });
 
   @override
@@ -330,16 +333,9 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     );
   }
 
-  List<Widget> _buildLabelBadges(
-    BuildContext context,
-    WidgetRef ref,
-    List<String> labelIds,
-  ) {
-    if (labelIds.isEmpty) return const <Widget>[];
-    final allLabels = ref.watch(allLabelsMapProvider);
-    return labelIds
-        .map((id) => allLabels[id])
-        .whereType<TaskLabel>()
+  List<Widget> _buildLabelBadges(BuildContext context, List<TaskLabel> labels) {
+    if (labels.isEmpty) return const <Widget>[];
+    return labels
         .map(
           (label) => _buildBadge(
             context,
@@ -436,12 +432,28 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     }
   }
 
+  List<TaskLabel> _resolveLabels() {
+    if (widget.labels != null) {
+      return widget.labels!;
+    }
+    final labelIds = widget.instance.labelIds.isNotEmpty
+        ? widget.instance.labelIds
+        : (widget.schedule?.labelIds ?? const <String>[]);
+    if (labelIds.isEmpty) return const [];
+    final labelsMap = ref.watch(allLabelsMapProvider);
+    return labelIds.map((id) => labelsMap[id]).whereType<TaskLabel>().toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final startDateTime = widget.instance.startRelativeTime.referenceTo(
       widget.instance.scheduledDate,
     );
     final isFuturePending = AppClock.now.isBefore(startDateTime);
+    final labels = _resolveLabels();
+    final labelColors = labels
+        .map((l) => LabelPalette.getColor(l.colorKey, context))
+        .toList();
 
     if (_isDismissed) {
       return const SizedBox.shrink();
@@ -463,7 +475,20 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
             clipBehavior: Clip.antiAlias,
             child: Opacity(
               opacity: _contentOpacityAnimation.value,
-              child: child,
+              child: Stack(
+                children: [
+                  child!,
+                  if (labelColors.isNotEmpty)
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: IgnorePointer(
+                        child: TaskHeroStripe(colors: labelColors),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );
@@ -679,6 +704,8 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                     label: context.l10n.pendingBadge,
                     color: Colors.blue,
                   ),
+                // Label Badges
+                ..._buildLabelBadges(context, labels),
                 // Scope (Family only)
                 if (widget.instance.isFamily)
                   _buildBadge(
@@ -749,8 +776,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                         ),
                     color: Theme.of(context).colorScheme.primary,
                   ),
-                // Labels
-                ..._buildLabelBadges(context, ref, widget.instance.labelIds),
               ],
             ),
           ],

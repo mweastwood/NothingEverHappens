@@ -2154,7 +2154,7 @@ void main() {
   );
 
   testWidgets(
-    'TaskWidget does not fall back to schedule labelIds when instance labelIds is empty',
+    'TaskWidget falls back to schedule labelIds when instance labelIds is empty',
     (tester) async {
       final label1 = TaskLabel(
         id: 'lbl-1',
@@ -2220,7 +2220,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Cleaning'), findsNothing);
+      expect(find.text('Cleaning'), findsOneWidget);
     },
   );
 }

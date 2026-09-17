@@ -24,6 +24,8 @@ import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 import 'package:nothing_ever_happens/widgets/smooth_shuffle_item.dart';
+import 'package:nothing_ever_happens/logic/label_repository.dart';
+import 'package:nothing_ever_happens/logic/task_label.dart';
 import '../widgets/task_widget_robot.dart';
 
 @GenerateNiceMocks([MockSpec<AuthRepository>(), MockSpec<TaskRepository>()])
@@ -1163,6 +1165,127 @@ void main() {
     expect(find.text('Water the Houseplants'), findsOneWidget);
     expect(find.text('Buy Groceries'), findsOneWidget);
   });
+
+  testWidgets(
+    'TaskListScreen search filters by label name including schedule fallback',
+    (WidgetTester tester) async {
+      AppClock.setMockTime(DateTime(2026, 6, 19, 9, 0));
+      addTearDown(AppClock.reset);
+
+      final mockAuthRepository = MockAuthRepository();
+      final mockTaskRepository = MockTaskRepository();
+
+      final label1 = TaskLabel(
+        id: 'lbl-1',
+        name: 'Errands',
+        colorKey: 'emerald',
+        iconKey: 'cart',
+        scope: TaskLabelScope.personal,
+        createdAt: DateTime(2026, 1, 1),
+      );
+
+      final task1 = TaskSchedule(
+        id: '1',
+        title: 'Task Alpha',
+        description: 'First task',
+        labelIds: const ['lbl-1'],
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 19),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+          ),
+        ],
+      );
+
+      final task2 = TaskSchedule(
+        id: '2',
+        title: 'Task Beta',
+        description: 'Second task',
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 6, day: 19),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+          ),
+        ],
+      );
+
+      // inst1 has empty labelIds, so it relies on fallback to task1.labelIds
+      final inst1 = TaskInstance(
+        id: 'I-1',
+        scheduleId: task1.id,
+        ruleId: task1.schedules.first.id,
+        title: 'Task Alpha',
+        description: 'First task',
+        scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        status: TaskStatus.pending,
+        labelIds: const [],
+      );
+
+      final inst2 = TaskInstance(
+        id: 'I-2',
+        scheduleId: task2.id,
+        ruleId: task2.schedules.first.id,
+        title: 'Task Beta',
+        description: 'Second task',
+        scheduledDate: const CivilDay(year: 2026, month: 6, day: 19),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        status: TaskStatus.pending,
+      );
+
+      when(mockAuthRepository.signOut()).thenAnswer((_) async {});
+      when(
+        mockTaskRepository.getTasks(),
+      ).thenAnswer((_) => Stream.value([task1, task2]));
+      when(
+        mockTaskRepository.getInstances(),
+      ).thenAnswer((_) => Stream.value([inst1, inst2]));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            allLabelsMapProvider.overrideWithValue({'lbl-1': label1}),
+          ],
+          child: buildTestableWidget(child: const HomeScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Task Alpha'), findsOneWidget);
+      expect(find.text('Task Beta'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.search));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Errands');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Task Alpha'), findsOneWidget);
+      expect(find.text('Task Beta'), findsNothing);
+    },
+  );
 
   testWidgets('pressing slash key focuses the search input', (
     WidgetTester tester,
