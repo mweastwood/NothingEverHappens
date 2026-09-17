@@ -67,6 +67,10 @@ double estimateTaskInstanceHeight(
   if (instance.priority != TaskPriority.medium) badgeCount++;
   if (schedule?.estimatedDuration != null) badgeCount++;
   if (instance.isFamily && instance.assignedUserId != null) badgeCount++;
+  final labelCount = instance.labelIds.isNotEmpty
+      ? instance.labelIds.length
+      : (schedule?.labelIds.length ?? 0);
+  badgeCount += labelCount;
 
   // Wrap rows: ~3 badges per row in wide column
   height += _kSectionSpacing; // Spacing before badges

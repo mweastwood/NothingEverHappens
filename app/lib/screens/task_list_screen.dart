@@ -20,6 +20,7 @@ import '../logic/system_tasks/system_task_providers.dart';
 
 import '../logic/utils/layout_breakpoints.dart';
 import '../logic/utils/masonry_layout_helper.dart';
+import '../logic/label_repository.dart';
 
 final taskSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -107,6 +108,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         final instancesVal = ref.watch(taskInstancesProvider);
         final settingsVal = ref.watch(userSettingsProvider);
         final settingsRepository = ref.watch(userSettingsRepositoryProvider);
+        final labelsMap = ref.watch(allLabelsMapProvider);
         final searchQuery = ref
             .watch(taskSearchQueryProvider)
             .trim()
@@ -156,6 +158,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         } else {
           final schedules = schedulesVal.value ?? [];
           final instances = instancesVal.value ?? [];
+          final scheduleMap = {for (final s in schedules) s.id: s};
 
           final filteredInstances = instances.where((inst) {
             final startDateTime = inst.startRelativeTime.referenceTo(
@@ -179,10 +182,18 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 .where((word) => word.isNotEmpty);
             if (queryWords.isEmpty) return true;
 
+            final effectiveLabelIds = inst.labelIds.isNotEmpty
+                ? inst.labelIds
+                : (scheduleMap[inst.scheduleId]?.labelIds ?? const <String>[]);
+
             return queryWords.every((word) {
               final matchesTitle = inst.title.toLowerCase().contains(word);
               final matchesDesc = inst.description.toLowerCase().contains(word);
-              return matchesTitle || matchesDesc;
+              final matchesLabel = effectiveLabelIds.any((id) {
+                final label = labelsMap[id];
+                return label != null && label.name.toLowerCase().contains(word);
+              });
+              return matchesTitle || matchesDesc || matchesLabel;
             });
           }).toList();
 
@@ -244,12 +255,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             }
           } else {
             Widget buildTaskItem(TaskInstance inst) {
-              final matchingSchedules = schedules.where(
-                (s) => s.id == inst.scheduleId,
-              );
-              final sched = matchingSchedules.isEmpty
-                  ? null
-                  : matchingSchedules.first;
+              final sched = scheduleMap[inst.scheduleId];
               return TaskWidget(
                 key: ValueKey(inst.id),
                 instance: inst,
@@ -265,7 +271,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               final currentIds = filteredInstances.map((e) => e.id).toSet();
               _columnAffinity.removeWhere((id, _) => !currentIds.contains(id));
 
-              final scheduleMap = {for (final s in schedules) s.id: s};
               final now = AppClock.now;
               double leftHeight = 0.0;
               double rightHeight = 0.0;
