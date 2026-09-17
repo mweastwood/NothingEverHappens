@@ -1183,5 +1183,17 @@
         "type": "String"
       }
     }
-  }
+  },
+  "filterButtonLabel": "Filter",
+  "filtersTitle": "Filter Tasks",
+  "filterLabelsSection": "Labels",
+  "filterUrgencySection": "Urgency",
+  "filterPrioritySection": "Priority",
+  "filterOverdue": "Overdue",
+  "filterDueToday": "Due Today",
+  "filterUpcoming": "Upcoming",
+  "filterReset": "Reset",
+  "filterApply": "Apply",
+  "clearFilters": "Clear filters",
+  "noTasksMatchingFilters": "No tasks match the active filters."
 }

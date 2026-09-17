@@ -2000,4 +2000,41 @@ class AppLocalizationsEs extends AppLocalizations {
   String errorLoadingLabels(String error) {
     return 'Error al cargar las etiquetas: $error';
   }
+
+  @override
+  String get filterButtonLabel => 'Filtro';
+
+  @override
+  String get filtersTitle => 'Filtrar tareas';
+
+  @override
+  String get filterLabelsSection => 'Etiquetas';
+
+  @override
+  String get filterUrgencySection => 'Urgencia';
+
+  @override
+  String get filterPrioritySection => 'Prioridad';
+
+  @override
+  String get filterOverdue => 'Atrasado';
+
+  @override
+  String get filterDueToday => 'Para hoy';
+
+  @override
+  String get filterUpcoming => 'Próximo';
+
+  @override
+  String get filterReset => 'Restablecer';
+
+  @override
+  String get filterApply => 'Aplicar';
+
+  @override
+  String get clearFilters => 'Borrar filtros';
+
+  @override
+  String get noTasksMatchingFilters =>
+      'Ninguna tarea coincide con los filtros activos.';
 }
