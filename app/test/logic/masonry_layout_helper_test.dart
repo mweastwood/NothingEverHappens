@@ -84,7 +84,7 @@ void main() {
         isFamily: true,
         familyCompletionMode: FamilyCompletionMode.individual,
         assignedUserId: 'user-1',
-        priority: TaskPriority.high,
+        labelIds: const ['L-1'],
       );
 
       final baseHeight = estimateTaskInstanceHeight(baseTask);
@@ -114,8 +114,7 @@ void main() {
             minute: 0,
           ),
           status: TaskStatus.pending,
-          priority: TaskPriority.high,
-          isFamily: true,
+          labelIds: const ['L-1', 'L-2'],
         );
 
         final beforeStart = DateTime(2024, 1, 1, 10, 0);
