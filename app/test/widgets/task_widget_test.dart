@@ -2023,6 +2023,41 @@ void main() {
   );
 
   testWidgets(
+    'TaskWidget does not display time estimate badge when estimatedDuration is configured',
+    (tester) async {
+      final taskWithDuration = TaskSchedule(
+        id: 'S-duration',
+        title: 'Task with Duration',
+        description: 'Task with estimated duration',
+        estimatedDuration: const Duration(hours: 1, minutes: 30),
+        schedules: [
+          OneOffSchedule(
+            id: 'R-duration-1',
+            scheduleId: 'S-duration',
+            date: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(createWidget(taskWithDuration));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1h 30m'), findsNothing);
+      expect(find.byIcon(Icons.timer_outlined), findsNothing);
+    },
+  );
+
+  testWidgets(
     'TaskWidget does not display recurrence schedule badges for recurring tasks',
     (tester) async {
       final dailyTask = TaskSchedule(
