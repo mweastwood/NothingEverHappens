@@ -738,7 +738,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Individual Task Chore'), findsOneWidget);
-      expect(find.text('Family'), findsOneWidget);
+      expect(find.text('Family'), findsNothing);
       expect(find.text('1 of 2 completed'), findsOneWidget);
       expect(find.byIcon(Icons.checklist), findsOneWidget);
     },
@@ -1958,7 +1958,7 @@ void main() {
   );
 
   testWidgets(
-    'TaskWidget displays priority badge when priority is high or low',
+    'TaskWidget does not display priority badge when priority is high or low',
     (tester) async {
       final highTask = TaskSchedule(
         id: 'S-high',
@@ -1987,8 +1987,8 @@ void main() {
       await tester.pumpWidget(createWidget(highTask));
       await tester.pumpAndSettle();
 
-      expect(find.text('High'), findsOneWidget);
-      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+      expect(find.text('High'), findsNothing);
+      expect(find.byIcon(Icons.warning_amber_rounded), findsNothing);
 
       final lowTask = TaskSchedule(
         id: 'S-low',
@@ -2017,8 +2017,43 @@ void main() {
       await tester.pumpWidget(createWidget(lowTask));
       await tester.pumpAndSettle();
 
-      expect(find.text('Low'), findsOneWidget);
-      expect(find.byIcon(Icons.arrow_downward), findsOneWidget);
+      expect(find.text('Low'), findsNothing);
+      expect(find.byIcon(Icons.arrow_downward), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'TaskWidget does not display time estimate badge when estimatedDuration is configured',
+    (tester) async {
+      final taskWithDuration = TaskSchedule(
+        id: 'S-duration',
+        title: 'Task with Duration',
+        description: 'Task with estimated duration',
+        estimatedDuration: const Duration(hours: 1, minutes: 30),
+        schedules: [
+          OneOffSchedule(
+            id: 'R-duration-1',
+            scheduleId: 'S-duration',
+            date: const CivilDay(year: 2024, month: 1, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(createWidget(taskWithDuration));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1h 30m'), findsNothing);
+      expect(find.byIcon(Icons.timer_outlined), findsNothing);
     },
   );
 

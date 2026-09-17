@@ -249,49 +249,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     return null;
   }
 
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes % 60;
-    if (hours > 0) {
-      return '${hours}h${minutes > 0 ? ' ${minutes}m' : ''}';
-    }
-    return '${minutes}m';
-  }
-
-  String _getPriorityLabel(BuildContext context, TaskPriority priority) {
-    final l10n = context.l10n;
-    switch (priority) {
-      case TaskPriority.high:
-        return l10n.priorityHigh;
-      case TaskPriority.medium:
-        return l10n.priorityMedium;
-      case TaskPriority.low:
-        return l10n.priorityLow;
-    }
-  }
-
-  Color _getPriorityColor(BuildContext context, TaskPriority priority) {
-    final colorScheme = Theme.of(context).colorScheme;
-    switch (priority) {
-      case TaskPriority.high:
-        return colorScheme.error;
-      case TaskPriority.medium:
-      case TaskPriority.low:
-        return colorScheme.primary;
-    }
-  }
-
-  IconData _getPriorityIcon(TaskPriority priority) {
-    switch (priority) {
-      case TaskPriority.high:
-        return Icons.warning_amber_rounded;
-      case TaskPriority.medium:
-        return Icons.info_outline;
-      case TaskPriority.low:
-        return Icons.arrow_downward;
-    }
-  }
-
   Widget _buildBadge(
     BuildContext context, {
     required IconData icon,
@@ -706,14 +663,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                   ),
                 // Label Badges
                 ..._buildLabelBadges(context, labels),
-                // Scope (Family only)
-                if (widget.instance.isFamily)
-                  _buildBadge(
-                    context,
-                    icon: Icons.people_alt,
-                    label: context.l10n.familyTab,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
                 // Individual completion mode badge (Family only)
                 if (widget.instance.isFamily &&
                     widget.instance.familyCompletionMode ==
@@ -743,22 +692,6 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                     );
                   }(),
                 ],
-                // Priority
-                if (widget.instance.priority != TaskPriority.medium)
-                  _buildBadge(
-                    context,
-                    icon: _getPriorityIcon(widget.instance.priority),
-                    label: _getPriorityLabel(context, widget.instance.priority),
-                    color: _getPriorityColor(context, widget.instance.priority),
-                  ),
-                // Effort/Duration (if any)
-                if (widget.schedule?.estimatedDuration != null)
-                  _buildBadge(
-                    context,
-                    icon: Icons.timer_outlined,
-                    label: _formatDuration(widget.schedule!.estimatedDuration!),
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
                 // Assignee (if family & assigned)
                 if (widget.instance.isFamily &&
                     widget.instance.assignedUserId != null)

@@ -59,13 +59,10 @@ double estimateTaskInstanceHeight(
     );
     if (now.isBefore(startDateTime)) badgeCount++;
   }
-  if (instance.isFamily) badgeCount++;
   if (instance.isFamily &&
       instance.familyCompletionMode == FamilyCompletionMode.individual) {
     badgeCount++;
   }
-  if (instance.priority != TaskPriority.medium) badgeCount++;
-  if (schedule?.estimatedDuration != null) badgeCount++;
   if (instance.isFamily && instance.assignedUserId != null) badgeCount++;
   final labelCount = instance.labelIds.isNotEmpty
       ? instance.labelIds.length
