@@ -127,9 +127,9 @@ class TaskFilterState {
 
   @override
   int get hashCode => Object.hash(
-    Object.hashAll(selectedLabelIds),
-    Object.hashAll(selectedPriorities),
-    Object.hashAll(selectedUrgencies),
+    Object.hashAllUnordered(selectedLabelIds),
+    Object.hashAllUnordered(selectedPriorities),
+    Object.hashAllUnordered(selectedUrgencies),
   );
 
   static bool _setEquals<T>(Set<T> a, Set<T> b) {

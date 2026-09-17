@@ -379,5 +379,32 @@ void main() {
         expect(state.matches(instance: medPriorityInst, now: now), isFalse);
       });
     });
+
+    group('Equality and hashCode contract', () {
+      test(
+        'Instances with sets of same elements in different orders are equal and share hashCode',
+        () {
+          final stateA = TaskFilterState(
+            selectedLabelIds: {'label-1', 'label-2'},
+            selectedPriorities: {TaskPriority.high, TaskPriority.low},
+            selectedUrgencies: {
+              TaskUrgencyFilter.overdue,
+              TaskUrgencyFilter.upcoming,
+            },
+          );
+          final stateB = TaskFilterState(
+            selectedLabelIds: {'label-2', 'label-1'},
+            selectedPriorities: {TaskPriority.low, TaskPriority.high},
+            selectedUrgencies: {
+              TaskUrgencyFilter.upcoming,
+              TaskUrgencyFilter.overdue,
+            },
+          );
+
+          expect(stateA, equals(stateB));
+          expect(stateA.hashCode, equals(stateB.hashCode));
+        },
+      );
+    });
   });
 }
