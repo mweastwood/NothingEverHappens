@@ -104,6 +104,7 @@ class TaskLabelsSection extends ConsumerWidget {
                             );
                             return FilterChip(
                               key: Key('label_chip_${label.id}'),
+                              showCheckmark: false,
                               avatar: Icon(
                                 LabelIcons.getIcon(label.iconKey),
                                 size: 18,
@@ -114,7 +115,6 @@ class TaskLabelsSection extends ConsumerWidget {
                               label: Text(label.name),
                               selected: isSelected,
                               selectedColor: color.withValues(alpha: 0.2),
-                              checkmarkColor: color,
                               side: BorderSide(
                                 color: isSelected
                                     ? color

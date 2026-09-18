@@ -122,12 +122,18 @@ void main() {
       find.byKey(const Key('label_chip_p-1')),
     );
     expect(chip1.selected, isTrue);
+    expect(chip1.showCheckmark, isFalse);
 
     // p-2 should not be selected
     final chip2 = tester.widget<FilterChip>(
       find.byKey(const Key('label_chip_p-2')),
     );
     expect(chip2.selected, isFalse);
+    expect(chip2.showCheckmark, isFalse);
+
+    // Selected chip maintains custom icon and omits checkmark
+    expect(find.byIcon(Icons.cleaning_services_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.check), findsNothing);
 
     // Tap p-2
     await tester.tap(find.byKey(const Key('label_chip_p-2')));
@@ -135,6 +141,36 @@ void main() {
 
     expect(toggledLabelId, 'p-2');
   });
+
+  testWidgets(
+    'disables checkmark overlay and keeps label icon visible when selected',
+    (tester) async {
+      await tester.pumpWidget(
+        buildSection(
+          isFamily: false,
+          selectedLabelIds: const ['p-1'],
+          onToggleLabel: (_) {},
+          personalLabels: [personalLabel1, personalLabel2],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final chip1 = tester.widget<FilterChip>(
+        find.byKey(const Key('label_chip_p-1')),
+      );
+      final chip2 = tester.widget<FilterChip>(
+        find.byKey(const Key('label_chip_p-2')),
+      );
+
+      expect(chip1.showCheckmark, isFalse);
+      expect(chip2.showCheckmark, isFalse);
+
+      // Icon for p-1 and p-2 remain visible and no check icon is rendered
+      expect(find.byIcon(Icons.cleaning_services_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.fitness_center_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.check), findsNothing);
+    },
+  );
 
   testWidgets('disables toggling when read-only', (tester) async {
     await tester.pumpWidget(
