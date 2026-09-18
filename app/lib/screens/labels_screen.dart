@@ -982,35 +982,42 @@ class _LabelEditDialogState extends ConsumerState<_LabelEditDialog> {
                   runSpacing: 6.0,
                   children: LabelIcons.all.map((iconItem) {
                     final isSelected = iconItem.key == _selectedIconKey;
-                    return InkWell(
-                      key: Key('icon_picker_${iconItem.key}'),
-                      onTap: () {
-                        setState(() {
-                          _selectedIconKey = iconItem.key;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.primaryContainer
-                              : null,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
+                    return Tooltip(
+                      message: iconItem.name,
+                      child: InkWell(
+                        key: Key('icon_picker_${iconItem.key}'),
+                        onTap: () {
+                          setState(() {
+                            _selectedIconKey = iconItem.key;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
                             color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.outlineVariant
-                                      .withValues(alpha: 0.5),
+                                ? Theme.of(context).colorScheme.primaryContainer
+                                : null,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.outlineVariant
+                                        .withValues(alpha: 0.5),
+                            ),
                           ),
-                        ),
-                        child: Icon(
-                          iconItem.icon,
-                          size: 22,
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.onPrimaryContainer
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                          child: Icon(
+                            iconItem.icon,
+                            size: 22,
+                            color: isSelected
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimaryContainer
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     );

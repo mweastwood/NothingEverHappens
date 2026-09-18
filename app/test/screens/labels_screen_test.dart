@@ -579,6 +579,94 @@ void main() {
       },
     );
 
+    testWidgets('renders all 36 icon options in dialog with tooltips', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('add_personal_label_button')));
+      await tester.pumpAndSettle();
+
+      // Verify all 36 icons are present
+      for (final item in LabelIcons.all) {
+        final iconPickerFinder = find.byKey(Key('icon_picker_${item.key}'));
+        expect(iconPickerFinder, findsOneWidget);
+
+        // Verify Tooltip message
+        final tooltipFinder = find.ancestor(
+          of: iconPickerFinder,
+          matching: find.byType(Tooltip),
+        );
+        expect(tooltipFinder, findsOneWidget);
+        final tooltip = tester.widget<Tooltip>(tooltipFinder);
+        expect(tooltip.message, equals(item.name));
+      }
+    });
+
+    testWidgets('creates label with new icon (church) and persists iconKey', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('add_personal_label_button')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('label_name_field')),
+        'Sunday Service',
+      );
+      await tester.ensureVisible(find.byKey(const Key('icon_picker_church')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('icon_picker_church')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('save_label_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sunday Service'), findsOneWidget);
+
+      final labels = await labelRepo.watchPersonalLabels(currentUserId).first;
+      expect(labels.length, 1);
+      expect(labels.first.name, 'Sunday Service');
+      expect(labels.first.iconKey, 'church');
+    });
+
+    testWidgets(
+      'edits existing label to medical cross icon (hospital) and updates repository',
+      (tester) async {
+        final label = TaskLabel.create(
+          id: 'L-seed-icon',
+          name: 'Clinic Visit',
+          colorKey: 'coral',
+          iconKey: 'tag',
+        );
+        await labelRepo.savePersonalLabel(currentUserId, label);
+
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        expect(find.text('Clinic Visit'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('edit_label_L-seed-icon')));
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(const Key('icon_picker_hospital')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('icon_picker_hospital')));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('save_label_button')));
+        await tester.pumpAndSettle();
+
+        final labels = await labelRepo.watchPersonalLabels(currentUserId).first;
+        expect(labels.first.iconKey, 'hospital');
+      },
+    );
+
     testWidgets(
       'personal labels can be reordered via drag handle and persisted',
       (tester) async {

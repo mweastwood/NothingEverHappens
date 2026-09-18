@@ -1,4 +1,5 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/label_repository.dart';
@@ -263,6 +264,69 @@ void main() {
         expect(uppercaseItem.key, equals(key));
       }
     });
+
+    test(
+      'LabelIcons.all contains 36 unique icons with valid names and icon data',
+      () {
+        expect(LabelIcons.all.length, equals(36));
+
+        final keys = LabelIcons.all.map((i) => i.key).toSet();
+        expect(keys.length, equals(36));
+
+        for (final iconItem in LabelIcons.all) {
+          expect(iconItem.key, isNotEmpty);
+          expect(iconItem.name, isNotEmpty);
+          expect(iconItem.icon, isNotNull);
+        }
+      },
+    );
+
+    test(
+      'LabelIcons resolves all 18 new icon additions correctly and falls back to tag',
+      () {
+        const expectedNewIcons = {
+          'church': ('Church', Icons.church_outlined),
+          'hospital': ('Medical', Icons.local_hospital_outlined),
+          'close': ('Cross Mark', Icons.close_outlined),
+          'flight': ('Travel', Icons.flight_outlined),
+          'event': ('Event', Icons.event_outlined),
+          'favorite': ('Heart', Icons.favorite_outline),
+          'book': ('Reading', Icons.menu_book_outlined),
+          'music': ('Music', Icons.music_note_outlined),
+          'computer': ('Tech', Icons.computer_outlined),
+          'phone': ('Calls', Icons.phone_outlined),
+          'celebration': ('Celebration', Icons.celebration_outlined),
+          'sports': ('Sports', Icons.sports_soccer_outlined),
+          'park': ('Outdoors', Icons.park_outlined),
+          'lightbulb': ('Ideas', Icons.lightbulb_outline),
+          'beach': ('Vacation', Icons.beach_access_outlined),
+          'mail': ('Mail', Icons.mail_outlined),
+          'cut': ('Grooming', Icons.content_cut_outlined),
+          'walk': ('Walk', Icons.directions_walk_outlined),
+        };
+
+        for (final entry in expectedNewIcons.entries) {
+          final key = entry.key;
+          final (name, expectedIcon) = entry.value;
+
+          final item = LabelIcons.getItem(key);
+          expect(item.key, equals(key));
+          expect(item.name, equals(name));
+          expect(item.icon, equals(expectedIcon));
+          expect(LabelIcons.getIcon(key), equals(expectedIcon));
+
+          // Test case insensitivity and whitespace trimming
+          final uppercaseItem = LabelIcons.getItem('  ${key.toUpperCase()}  ');
+          expect(uppercaseItem.key, equals(key));
+        }
+
+        // Test fallback behavior
+        expect(LabelIcons.getItem('unknown_key').key, equals('tag'));
+        expect(LabelIcons.getItem(null).key, equals('tag'));
+        expect(LabelIcons.getIcon('unknown_key'), equals(Icons.label_outlined));
+        expect(LabelIcons.getIcon(null), equals(Icons.label_outlined));
+      },
+    );
 
     test('allLabelsMapProvider merges personal and family labels', () async {
       final container = ProviderContainer(
