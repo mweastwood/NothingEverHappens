@@ -1896,6 +1896,8 @@ void main() {
           .set(remoteSlotBot.toFirestore());
 
       await pumpEventQueue();
+      await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
 
       final instances = localDataSource.getInstances();
       // Local user action should win: local kept, remote duplicate not saved
