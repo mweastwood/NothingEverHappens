@@ -650,8 +650,12 @@ class TaskSyncService {
   }
 
   bool _doesLocalWin(TaskInstance local, TaskInstance remote) {
-    final localIsUser = local.statusReason?.startsWith('user_') ?? false;
-    final remoteIsUser = remote.statusReason?.startsWith('user_') ?? false;
+    final localIsUser =
+        (local.status != TaskStatus.pending) &&
+        (local.statusReason?.startsWith('user_') ?? false);
+    final remoteIsUser =
+        (remote.status != TaskStatus.pending) &&
+        (remote.statusReason?.startsWith('user_') ?? false);
     final localIsScheduler =
         local.statusReason?.startsWith('scheduler_') ?? false;
     final remoteIsScheduler =

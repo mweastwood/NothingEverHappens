@@ -1846,6 +1846,69 @@ void main() {
       },
     );
 
+    test(
+      'remote pending instance with statusReason user_dismissed does not overwrite newer local scheduler skip',
+      () async {
+        final service = TaskSyncService(
+          firestore: firestore,
+          localDataSource: localDataSource,
+          userId: 'user1',
+          isActivePremium: true,
+        );
+        addTearDown(() => service.dispose());
+
+        final olderRemoteTime = DateTime(2026, 9, 6, 12, 0);
+        final newerLocalTime = DateTime(2026, 9, 7, 10, 0);
+
+        // Local instance is skipped by scheduler
+        final localSchedulerSkip = TaskInstance(
+          id: 'I-zombie-task',
+          scheduleId: 'S-zombie',
+          ruleId: 'R-zombie',
+          title: 'Zombie Task',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 9, day: 6),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.skipped,
+          statusReason: 'scheduler_auto_dismiss',
+          updatedAt: newerLocalTime,
+        );
+        await localDataSource.saveInstance(localSchedulerSkip);
+
+        // Remote instance has corrupted pending status with old user_dismissed reason
+        final remoteCorruptedPending = localSchedulerSkip.copyWith(
+          status: TaskStatus.pending,
+          statusReason: 'user_dismissed',
+          updatedAt: olderRemoteTime,
+        );
+
+        await firestore
+            .collection('users')
+            .doc('user1')
+            .collection('instances')
+            .doc(localSchedulerSkip.id)
+            .set(remoteCorruptedPending.toFirestore());
+
+        await pumpEventQueue();
+
+        final localInst = localDataSource.getInstances().firstWhere(
+          (i) => i.id == 'I-zombie-task',
+        );
+        // Local scheduler skip must be preserved because remote is pending
+        expect(localInst.status, TaskStatus.skipped);
+        expect(localInst.statusReason, 'scheduler_auto_dismiss');
+      },
+    );
+
     test('slot-level conflict resolution adheres to semantic precedence', () async {
       final service = TaskSyncService(
         firestore: firestore,
