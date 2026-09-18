@@ -178,7 +178,7 @@ class LabelIconItem {
   });
 }
 
-/// The curated set of 18 high-utility icons for task labels.
+/// The curated set of 36 high-utility icons for task labels.
 abstract final class LabelIcons {
   static const List<LabelIconItem> all = [
     LabelIconItem(key: 'tag', name: 'Label', icon: Icons.label_outlined),
@@ -227,6 +227,52 @@ abstract final class LabelIcons {
     LabelIconItem(key: 'bolt', name: 'Urgent', icon: Icons.bolt_outlined),
     LabelIconItem(key: 'star', name: 'Special', icon: Icons.star_outline),
     LabelIconItem(key: 'palette', name: 'Hobby', icon: Icons.palette_outlined),
+    LabelIconItem(key: 'church', name: 'Church', icon: Icons.church_outlined),
+    LabelIconItem(
+      key: 'hospital',
+      name: 'Medical',
+      icon: Icons.local_hospital_outlined,
+    ),
+    LabelIconItem(key: 'close', name: 'Cross Mark', icon: Icons.close_outlined),
+    LabelIconItem(key: 'flight', name: 'Travel', icon: Icons.flight_outlined),
+    LabelIconItem(key: 'event', name: 'Event', icon: Icons.event_outlined),
+    LabelIconItem(key: 'favorite', name: 'Heart', icon: Icons.favorite_outline),
+    LabelIconItem(key: 'book', name: 'Reading', icon: Icons.menu_book_outlined),
+    LabelIconItem(key: 'music', name: 'Music', icon: Icons.music_note_outlined),
+    LabelIconItem(key: 'computer', name: 'Tech', icon: Icons.computer_outlined),
+    LabelIconItem(key: 'phone', name: 'Calls', icon: Icons.phone_outlined),
+    LabelIconItem(
+      key: 'celebration',
+      name: 'Celebration',
+      icon: Icons.celebration_outlined,
+    ),
+    LabelIconItem(
+      key: 'sports',
+      name: 'Sports',
+      icon: Icons.sports_soccer_outlined,
+    ),
+    LabelIconItem(key: 'park', name: 'Outdoors', icon: Icons.park_outlined),
+    LabelIconItem(
+      key: 'lightbulb',
+      name: 'Ideas',
+      icon: Icons.lightbulb_outline,
+    ),
+    LabelIconItem(
+      key: 'beach',
+      name: 'Vacation',
+      icon: Icons.beach_access_outlined,
+    ),
+    LabelIconItem(key: 'mail', name: 'Mail', icon: Icons.mail_outlined),
+    LabelIconItem(
+      key: 'cut',
+      name: 'Grooming',
+      icon: Icons.content_cut_outlined,
+    ),
+    LabelIconItem(
+      key: 'walk',
+      name: 'Walk',
+      icon: Icons.directions_walk_outlined,
+    ),
   ];
 
   static LabelIconItem getItem(String? key) {
