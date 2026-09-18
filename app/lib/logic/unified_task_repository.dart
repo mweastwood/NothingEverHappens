@@ -101,7 +101,6 @@ class UnifiedTaskRepository implements TaskRepository {
           .then((_) async {
             if (_localDataSource.isMigrationCompleted()) {
               _syncService.startListeningToRemote();
-              await _sanitizeCorruptedInstances();
               await triggerMissedPolicyProcessing();
             }
           })
@@ -116,53 +115,9 @@ class UnifiedTaskRepository implements TaskRepository {
           });
     } else if (_localDataSource.isMigrationCompleted()) {
       _syncService.startListeningToRemote();
-      unawaited(_sanitizeCorruptedInstances());
       _initializationFuture = Future.value();
     } else {
       _initializationFuture = Future.value();
-    }
-  }
-
-  Future<void> _sanitizeCorruptedInstances() async {
-    final allInstances = _localDataSource.getInstances();
-    final toSave = <TaskInstance>[];
-    final dirtyIds = <String>[];
-
-    for (final inst in allInstances) {
-      if (inst.status == TaskStatus.pending) {
-        if (inst.statusReason == 'user_dismissed') {
-          final healed = inst.copyWith(
-            status: TaskStatus.skipped,
-            hasPendingWrites: true,
-            updatedAt: DateTime.now(),
-          );
-          toSave.add(healed);
-          dirtyIds.add(healed.id);
-        } else if (inst.statusReason == 'user_completed' ||
-            (inst.completedAt != null && inst.completedByUserId != null)) {
-          final healed = inst.copyWith(
-            status: TaskStatus.completed,
-            statusReason: 'user_completed',
-            hasPendingWrites: true,
-            updatedAt: DateTime.now(),
-          );
-          toSave.add(healed);
-          dirtyIds.add(healed.id);
-        }
-      }
-    }
-
-    if (toSave.isNotEmpty) {
-      logger?.info(
-        'task',
-        'Sanitized ${toSave.length} corrupted pending task instance(s)',
-        data: {'count': toSave.length, 'instanceIds': dirtyIds},
-      );
-      await _localDataSource.saveInstances(toSave);
-      for (final id in dirtyIds) {
-        await _localDataSource.markDirty(id);
-      }
-      _syncService.sync();
     }
   }
 
@@ -177,7 +132,6 @@ class UnifiedTaskRepository implements TaskRepository {
     await migrationService.migrateIfNeeded(force: true);
     if (_localDataSource.isMigrationCompleted()) {
       _syncService.startListeningToRemote();
-      await _sanitizeCorruptedInstances();
       await triggerMissedPolicyProcessing();
     }
   }
