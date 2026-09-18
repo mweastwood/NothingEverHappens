@@ -1359,6 +1359,7 @@ class FirestoreTaskRepository implements TaskRepository {
         status: TaskStatus.pending,
         clearCompletedByUserId: true,
         clearCompletedAt: true,
+        clearStatusReason: true,
         completedByUserIds: updatedUserIds,
       );
       batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
@@ -1381,6 +1382,7 @@ class FirestoreTaskRepository implements TaskRepository {
       status: TaskStatus.pending,
       clearCompletedByUserId: true,
       clearCompletedAt: true,
+      clearStatusReason: true,
     );
     batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
     _spawnedInstancesCache['${resolvedInstance.scheduleId}:${resolvedInstance.ruleId}:${resolvedInstance.scheduledDate}'] =

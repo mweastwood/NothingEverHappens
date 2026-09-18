@@ -919,6 +919,58 @@ void main() {
   );
 
   test(
+    'undoResolveTaskInstance clears statusReason on both dismissed and completed tasks',
+    () async {
+      final task = TaskSchedule(
+        id: 'S-test-undo-reason',
+        title: 'Undo Reason Test',
+        description: '',
+        schedules: [],
+      );
+      await repository.addTaskSchedule(task);
+
+      final instance = TaskInstance(
+        id: 'I-undo-reason',
+        scheduleId: task.id,
+        ruleId: 'R-undo',
+        title: task.title,
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        status: TaskStatus.pending,
+      );
+      await localDataSource.saveInstance(instance);
+
+      // 1. Dismiss task -> statusReason is user_dismissed
+      final dismissed = await repository.dismissTaskInstance(instance.id);
+      expect(dismissed?.status, TaskStatus.skipped);
+      expect(dismissed?.statusReason, 'user_dismissed');
+
+      // Undo dismissal -> statusReason must be null and status pending
+      await repository.undoResolveTaskInstance(dismissed!);
+      var restored = localDataSource.getInstances().firstWhere(
+        (i) => i.id == instance.id,
+      );
+      expect(restored.status, TaskStatus.pending);
+      expect(restored.statusReason, isNull);
+
+      // 2. Complete task -> statusReason is user_completed
+      final completed = await repository.completeTaskInstance(instance.id);
+      expect(completed?.status, TaskStatus.completed);
+      expect(completed?.statusReason, 'user_completed');
+
+      // Undo completion -> statusReason must be null and status pending
+      await repository.undoResolveTaskInstance(completed!);
+      restored = localDataSource.getInstances().firstWhere(
+        (i) => i.id == instance.id,
+      );
+      expect(restored.status, TaskStatus.pending);
+      expect(restored.statusReason, isNull);
+    },
+  );
+
+  test(
     'missed policy processing batches instance persistence and dirty marking',
     () async {
       final trackingDataSource = _TrackingHiveLocalDataSource();

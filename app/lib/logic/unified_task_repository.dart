@@ -499,6 +499,7 @@ class UnifiedTaskRepository implements TaskRepository {
         status: TaskStatus.pending,
         clearCompletedByUserId: true,
         clearCompletedAt: true,
+        clearStatusReason: true,
         completedByUserIds: updatedUserIds,
         hasPendingWrites: true,
         updatedAt: DateTime.now(),
@@ -529,6 +530,7 @@ class UnifiedTaskRepository implements TaskRepository {
       status: TaskStatus.pending,
       clearCompletedByUserId: true,
       clearCompletedAt: true,
+      clearStatusReason: true,
       hasPendingWrites: true,
       updatedAt: DateTime.now(),
     );
