@@ -9,16 +9,40 @@
  *    are updated to `status: completed` and `statusReason: user_completed`.
  *
  * Usage:
- *   node backend/functions/tool/sanitize_corrupted_tasks.js [--dry-run] [--userId=<userId>]
+ *   node backend/functions/tool/sanitize_corrupted_tasks.js [--dry-run] [--userId=<userId>] [--projectId=<projectId>]
  */
 
-const admin = require('firebase-admin');
+const { execSync } = require('child_process');
 
-if (!admin.apps.length) {
-  admin.initializeApp();
+function getAccessToken() {
+  if (process.env.ACCESS_TOKEN) return process.env.ACCESS_TOKEN;
+  try {
+    return execSync('gcloud auth print-access-token', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch (e) {
+    throw new Error('Unable to obtain access token from gcloud. Set ACCESS_TOKEN or run gcloud auth login.');
+  }
 }
 
-const db = admin.firestore();
+function parseFirestoreValue(val) {
+  if (!val) return null;
+  if ('stringValue' in val) return val.stringValue;
+  if ('integerValue' in val) return parseInt(val.integerValue, 10);
+  if ('timestampValue' in val) return val.timestampValue;
+  if ('booleanValue' in val) return val.booleanValue;
+  if ('mapValue' in val) {
+    const res = {};
+    for (const [k, v] of Object.entries(val.mapValue.fields || {})) {
+      res[k] = parseFirestoreValue(v);
+    }
+    return res;
+  }
+  if ('arrayValue' in val) {
+    return (val.arrayValue.values || []).map(parseFirestoreValue);
+  }
+  return null;
+}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -27,82 +51,151 @@ async function main() {
   const targetUserId = userArg
     ? userArg.split('=')[1]
     : 'z1NuzlWEHVY27tUgXGNFZMaSPlw1';
+  const projArg = args.find((a) => a.startsWith('--projectId='));
+  const projectId = projArg ? projArg.split('=')[1] : 'nothing-ever-happens-prod';
+
+  const token = getAccessToken();
 
   console.log(`--- Firestore Instance Sanitizer ---`);
+  console.log(`Project: ${projectId}`);
   console.log(`Mode: ${isDryRun ? 'DRY RUN (no writes)' : 'LIVE UPDATE'}`);
-  console.log(`Target User ID: ${targetUserId}`);
+  console.log(`Target User ID: ${targetUserId}\n`);
 
-  const instancesRef = db
-    .collection('users')
-    .doc(targetUserId)
-    .collection('instances');
+  const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${targetUserId}:runQuery`;
+  const queryBody = {
+    structuredQuery: {
+      from: [{ collectionId: 'instances' }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: 'status' },
+          op: 'EQUAL',
+          value: { stringValue: 'pending' },
+        },
+      },
+    },
+  };
 
-  const snapshot = await instancesRef.where('status', '==', 'pending').get();
-  console.log(`Found ${snapshot.docs.length} pending instances for user ${targetUserId}`);
+  const resp = await fetch(queryUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(queryBody),
+  });
 
-  let dismissedToHeal = 0;
-  let completedToHeal = 0;
-  let batch = db.batch();
-  let opsInBatch = 0;
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`Firestore query failed (${resp.status}): ${errText}`);
+  }
 
-  for (const doc of snapshot.docs) {
-    const data = doc.data();
-    const statusReason = data.statusReason;
-    const completedAt = data.completedAt;
-    const completedByUserId = data.completedByUserId;
-    const scheduledDate = data.scheduledDate;
+  const results = await resp.json();
+  const docs = results.filter((r) => r.document).map((r) => r.document);
+  console.log(`Found ${docs.length} pending instance(s) in Firestore for user ${targetUserId}.\n`);
 
-    let updates = null;
+  let dismissedToHeal = [];
+  let completedToHeal = [];
+
+  for (const doc of docs) {
+    const fields = doc.fields || {};
+    const title = parseFirestoreValue(fields.title) || 'Untitled';
+    const scheduledDate = parseFirestoreValue(fields.scheduledDate);
+    const statusReason = parseFirestoreValue(fields.statusReason);
+    const completedAt = parseFirestoreValue(fields.completedAt);
+    const completedByUserId = parseFirestoreValue(fields.completedByUserId);
+    const docPath = doc.name;
+    const docId = docPath.split('/').pop();
+
+    const dateStr = scheduledDate ? `${scheduledDate.year}-${String(scheduledDate.month).padStart(2, '0')}-${String(scheduledDate.day).padStart(2, '0')}` : 'unknown';
 
     if (statusReason === 'user_dismissed') {
-      updates = {
-        status: 'skipped',
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
-      dismissedToHeal++;
-      console.log(
-        `[HEAL -> SKIPPED] "${data.title}" (id: ${doc.id}, date: ${JSON.stringify(scheduledDate)})`,
-      );
-    } else if (
-      statusReason === 'user_completed' ||
-      (completedAt && completedByUserId)
-    ) {
-      updates = {
-        status: 'completed',
-        statusReason: 'user_completed',
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
-      completedToHeal++;
-      console.log(
-        `[HEAL -> COMPLETED] "${data.title}" (id: ${doc.id}, date: ${JSON.stringify(scheduledDate)})`,
-      );
-    }
-
-    if (updates && !isDryRun) {
-      batch.update(doc.ref, updates);
-      opsInBatch++;
-
-      if (opsInBatch >= 450) {
-        await batch.commit();
-        batch = db.batch();
-        opsInBatch = 0;
-      }
+      dismissedToHeal.push({ docPath, docId, title, dateStr, statusReason, completedAt });
+    } else if (statusReason === 'user_completed' || (completedAt && completedByUserId)) {
+      completedToHeal.push({ docPath, docId, title, dateStr, statusReason, completedAt });
     }
   }
 
-  if (!isDryRun && opsInBatch > 0) {
-    await batch.commit();
+  console.log(`=== Instances to Heal to SKIPPED (user_dismissed) [${dismissedToHeal.length}] ===`);
+  for (const item of dismissedToHeal) {
+    console.log(`  - [${item.dateStr}] "${item.title}" (id: ${item.docId}, completedAt: ${item.completedAt})`);
   }
 
+  console.log(`\n=== Instances to Heal to COMPLETED (user_completed) [${completedToHeal.length}] ===`);
+  for (const item of completedToHeal) {
+    console.log(`  - [${item.dateStr}] "${item.title}" (id: ${item.docId}, completedAt: ${item.completedAt})`);
+  }
+
+  const totalToHeal = dismissedToHeal.length + completedToHeal.length;
   console.log(`\nSummary:`);
-  console.log(`- Dismissed instances healed to skipped: ${dismissedToHeal}`);
-  console.log(`- Completed instances healed to completed: ${completedToHeal}`);
-  console.log(`- Total healed: ${dismissedToHeal + completedToHeal}`);
-  if (isDryRun) {
-    console.log(`\nRun without --dry-run to commit these changes to Firestore.`);
-  } else {
-    console.log(`\nChanges committed to Firestore.`);
+  console.log(`- Pending instances with user_dismissed: ${dismissedToHeal.length} -> will be marked SKIPPED`);
+  console.log(`- Pending instances with completedAt:    ${completedToHeal.length} -> will be marked COMPLETED`);
+  console.log(`- Total corrupted instances to heal:     ${totalToHeal}`);
+
+  if (totalToHeal === 0) {
+    console.log('\nNo corrupted instances found! Database is already clean.');
+    return;
   }
+
+  if (isDryRun) {
+    console.log('\nDRY RUN complete. Run without --dry-run to commit these updates to Firestore.');
+    return;
+  }
+
+  console.log('\nCommitting updates to Firestore...');
+  const writes = [];
+
+  for (const item of dismissedToHeal) {
+    writes.push({
+      update: {
+        name: item.docPath,
+        fields: {
+          status: { stringValue: 'skipped' },
+          statusReason: { stringValue: 'user_dismissed' },
+          updatedAt: { timestampValue: new Date().toISOString() },
+        },
+      },
+      updateMask: {
+        fieldPaths: ['status', 'statusReason', 'updatedAt'],
+      },
+    });
+  }
+
+  for (const item of completedToHeal) {
+    writes.push({
+      update: {
+        name: item.docPath,
+        fields: {
+          status: { stringValue: 'completed' },
+          statusReason: { stringValue: 'user_completed' },
+          updatedAt: { timestampValue: new Date().toISOString() },
+        },
+      },
+      updateMask: {
+        fieldPaths: ['status', 'statusReason', 'updatedAt'],
+      },
+    });
+  }
+
+  // Batch commit in chunks of up to 450 writes
+  const commitUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:commit`;
+  for (let i = 0; i < writes.length; i += 450) {
+    const chunk = writes.slice(i, i + 450);
+    const commitResp = await fetch(commitUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ writes: chunk }),
+    });
+
+    if (!commitResp.ok) {
+      const errText = await commitResp.text();
+      throw new Error(`Commit failed (${commitResp.status}): ${errText}`);
+    }
+  }
+
+  console.log(`Successfully committed ${writes.length} updates to Firestore!`);
 }
 
 main().catch((err) => {
