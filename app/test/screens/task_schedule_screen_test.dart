@@ -23,6 +23,7 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
 import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
+import 'package:nothing_ever_happens/widgets/sort_bar.dart';
 
 import 'task_list_screen_test.mocks.dart';
 
@@ -1621,6 +1622,137 @@ void main() {
 
       await tasksSubject.close();
       await settingsSubject.close();
+    });
+
+    group('Sort bar show/hide scroll behavior', () {
+      final manyTasks = List.generate(
+        15,
+        (i) => TaskSchedule(
+          id: 'task_$i',
+          title: 'Schedule Item $i',
+          description: 'Description $i',
+          schedules: [
+            DailySchedule(
+              id: 'rule_$i',
+              scheduleId: 'task_$i',
+              startDate: const CivilDay(year: 2026, month: 6, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 9,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 17,
+                minute: 0,
+              ),
+            ),
+          ],
+        ),
+      );
+
+      testWidgets('smoothly slides down content when scrolled to top', (
+        tester,
+      ) async {
+        tasksSubject.add(manyTasks);
+        final container = ProviderContainer(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            scheduleListSortBarOverrideProvider.overrideWith((ref) => false),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: buildTestableWidget(
+              child: const Scaffold(body: TaskScheduleScreen()),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final initialCardY = tester.getTopLeft(find.text('Schedule Item 0')).dy;
+
+        // Toggle sort bar on
+        container.read(scheduleListSortBarOverrideProvider.notifier).state =
+            true;
+        await tester.pump(); // Frame 0: animation starts
+
+        // Halfway through animation (125ms of 250ms)
+        await tester.pump(const Duration(milliseconds: 125));
+        final midCardY = tester.getTopLeft(find.text('Schedule Item 0')).dy;
+        expect(midCardY, greaterThan(initialCardY));
+        expect(midCardY, lessThan(initialCardY + 56.0));
+
+        // Settle
+        await tester.pumpAndSettle();
+        final finalCardY = tester.getTopLeft(find.text('Schedule Item 0')).dy;
+        expect(finalCardY, equals(initialCardY + 56.0));
+      });
+
+      testWidgets(
+        'stays put when scrolled down and sort bar is shown and hidden',
+        (tester) async {
+          tasksSubject.add(manyTasks);
+          final container = ProviderContainer(
+            overrides: [
+              authRepositoryProvider.overrideWithValue(mockAuthRepository),
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              scheduleListSortBarOverrideProvider.overrideWith((ref) => false),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          await tester.pumpWidget(
+            UncontrolledProviderScope(
+              container: container,
+              child: buildTestableWidget(
+                child: const Scaffold(body: TaskScheduleScreen()),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          // Scroll down by 200px
+          await tester.drag(
+            find.text('Schedule Item 0'),
+            const Offset(0, -200),
+          );
+          await tester.pumpAndSettle();
+
+          // Schedule Item 3 should be visible
+          expect(find.text('Schedule Item 3'), findsOneWidget);
+          final item3YBeforeShow = tester
+              .getTopLeft(find.text('Schedule Item 3'))
+              .dy;
+
+          // Show sort bar while scrolled down
+          container.read(scheduleListSortBarOverrideProvider.notifier).state =
+              true;
+          await tester.pumpAndSettle();
+
+          final item3YAfterShow = tester
+              .getTopLeft(find.text('Schedule Item 3'))
+              .dy;
+          // Item should stay at the exact same screen position
+          expect(item3YAfterShow, equals(item3YBeforeShow));
+
+          // Hide sort bar while scrolled down
+          container.read(scheduleListSortBarOverrideProvider.notifier).state =
+              false;
+          await tester.pumpAndSettle();
+
+          final item3YAfterHide = tester
+              .getTopLeft(find.text('Schedule Item 3'))
+              .dy;
+          // Item should still stay at the exact same screen position
+          expect(item3YAfterHide, equals(item3YBeforeShow));
+        },
+      );
     });
   });
 }
