@@ -11,7 +11,6 @@ import '../logic/user_settings_repository.dart';
 import '../logic/user_settings.dart';
 import '../logic/sort_helper.dart';
 import '../widgets/sort_bar.dart';
-import '../widgets/unsynced_banner.dart';
 import '../logic/family_repository.dart';
 import '../widgets/task_schedule_card.dart';
 import '../logic/utils/layout_breakpoints.dart';
@@ -207,18 +206,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<bool>(showScheduleListSortBarProvider, (previous, next) {
-      if (previous != next && _scrollController.hasClients) {
-        final offset = _scrollController.offset;
-        const barHeight = 64.0;
-        if (next && offset > 5.0) {
-          _scrollController.jumpTo(offset + barHeight);
-        } else if (!next && offset > barHeight + 5.0) {
-          _scrollController.jumpTo(offset - barHeight);
-        }
-      }
-    });
-
     final taskRepository = ref.watch(taskRepositoryProvider);
     final schedulesVal = ref.watch(taskSchedulesProvider);
     final settingsVal = ref.watch(userSettingsProvider);
@@ -301,10 +288,6 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                           return _buildNoMatchesState(context);
                         }
 
-                        final isSortBarVisible = ref.watch(
-                          showScheduleListSortBarProvider,
-                        );
-
                         final isWide = isWideScreen(context);
                         late final List<TaskSchedule> leftTasks;
                         late final List<TaskSchedule> rightTasks;
@@ -339,117 +322,97 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                           }
                         }
 
-                        return Stack(
-                          children: [
-                            if (isWide)
-                              ListView(
-                                controller: _scrollController,
-                                padding: EdgeInsets.only(
-                                  top: isSortBarVisible ? 64.0 : 8.0,
-                                  bottom: 80.0,
-                                  left: 8.0,
-                                  right: 8.0,
+                        final bodySliver = isWide
+                            ? SliverToBoxAdapter(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          for (final task in leftTasks)
+                                            TaskScheduleCard(
+                                              task: task,
+                                              isParent: isParent,
+                                              showLastSpawnedDate:
+                                                  showLastSpawnedDate,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8.0),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          for (final task in rightTasks)
+                                            TaskScheduleCard(
+                                              task: task,
+                                              isParent: isParent,
+                                              showLastSpawnedDate:
+                                                  showLastSpawnedDate,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                children: [
-                                  const UnsyncedBanner(),
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            for (final task in leftTasks)
-                                              TaskScheduleCard(
-                                                task: task,
-                                                isParent: isParent,
-                                                showLastSpawnedDate:
-                                                    showLastSpawnedDate,
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8.0),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            for (final task in rightTasks)
-                                              TaskScheduleCard(
-                                                task: task,
-                                                isParent: isParent,
-                                                showLastSpawnedDate:
-                                                    showLastSpawnedDate,
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
                               )
-                            else
-                              ListView.builder(
-                                controller: _scrollController,
-                                padding: EdgeInsets.only(
-                                  top: isSortBarVisible ? 64.0 : 8.0,
-                                  bottom: 80.0,
-                                  left: 8.0,
-                                  right: 8.0,
-                                ),
-                                itemCount: filteredTasks.length + 1,
-                                itemBuilder: (context, index) {
-                                  if (index == 0) {
-                                    return const UnsyncedBanner();
-                                  }
-                                  final task = filteredTasks[index - 1];
+                            : SliverList(
+                                delegate: SliverChildBuilderDelegate((
+                                  context,
+                                  index,
+                                ) {
+                                  final task = filteredTasks[index];
                                   return TaskScheduleCard(
                                     task: task,
                                     isParent: isParent,
                                     showLastSpawnedDate: showLastSpawnedDate,
                                   );
-                                },
+                                }, childCount: filteredTasks.length),
+                              );
+
+                        return SortBarScrollView(
+                          controller: _scrollController,
+                          scrollKey: const PageStorageKey('schedulesView'),
+                          isSortBarVisibleProvider:
+                              showScheduleListSortBarProvider,
+                          sortBar: SortBar(
+                            title: context.l10n.scheduleSortByLabel,
+                            sortColumn: sortColumn,
+                            sortAscending: sortAscending,
+                            options: [
+                              SortOption(
+                                key: 'title',
+                                label: context.l10n.titleFieldLabel,
                               ),
-                            Positioned(
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              child: AnimatedFloatingSortBar(
-                                visible: isSortBarVisible,
-                                child: FloatingSortCard(
-                                  child: SortBar(
-                                    title: context.l10n.scheduleSortByLabel,
-                                    sortColumn: sortColumn,
-                                    sortAscending: sortAscending,
-                                    options: [
-                                      SortOption(
-                                        key: 'title',
-                                        label: context.l10n.titleFieldLabel,
-                                      ),
-                                      SortOption(
-                                        key: 'next_start',
-                                        label: context
-                                            .l10n
-                                            .scheduleSortNextStartLabel,
-                                      ),
-                                      SortOption(
-                                        key: 'next_due',
-                                        label: context
-                                            .l10n
-                                            .scheduleSortNextDueLabel,
-                                      ),
-                                      SortOption(
-                                        key: 'priority',
-                                        label: context.l10n.taskPriorityLabel,
-                                      ),
-                                    ],
-                                    onSort: onSort,
-                                  ),
-                                ),
+                              SortOption(
+                                key: 'next_start',
+                                label: context.l10n.scheduleSortNextStartLabel,
                               ),
+                              SortOption(
+                                key: 'next_due',
+                                label: context.l10n.scheduleSortNextDueLabel,
+                              ),
+                              SortOption(
+                                key: 'priority',
+                                label: context.l10n.taskPriorityLabel,
+                              ),
+                            ],
+                            onSort: onSort,
+                          ),
+                          slivers: [
+                            SliverPadding(
+                              padding: const EdgeInsets.only(
+                                top: 8.0,
+                                bottom: 80.0,
+                                left: 8.0,
+                                right: 8.0,
+                              ),
+                              sliver: bodySliver,
                             ),
                           ],
                         );

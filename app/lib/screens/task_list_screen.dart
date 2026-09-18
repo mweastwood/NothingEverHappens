@@ -13,7 +13,6 @@ import '../logic/user_settings_repository.dart';
 import '../logic/task_instance.dart';
 import '../logic/sort_helper.dart';
 import '../widgets/sort_bar.dart';
-import '../widgets/unsynced_banner.dart';
 import '../widgets/system_task_widget.dart';
 import '../logic/system_tasks/system_task.dart';
 import '../logic/system_tasks/system_task_providers.dart';
@@ -87,18 +86,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<bool>(showTaskListSortBarProvider, (previous, next) {
-      if (previous != next && _scrollController.hasClients) {
-        final offset = _scrollController.offset;
-        const barHeight = 64.0;
-        if (next && offset > 5.0) {
-          _scrollController.jumpTo(offset + barHeight);
-        } else if (!next && offset > barHeight + 5.0) {
-          _scrollController.jumpTo(offset - barHeight);
-        }
-      }
-    });
-
     return ValueListenableBuilder<DateTime?>(
       valueListenable: AppClock.timeNotifier,
       builder: (context, mockTime, _) {
@@ -338,134 +325,89 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         final showSortBar =
             instancesVal.hasValue && (instancesVal.value ?? []).isNotEmpty;
 
-        final isSortBarVisible = ref.watch(showTaskListSortBarProvider);
+        String getWeekIdentifier(DateTime date) {
+          final monday = date.subtract(Duration(days: date.weekday - 1));
+          return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+        }
+
+        final today = AppClock.now;
+        final currentWeekId = getWeekIdentifier(today);
+        final isConfirmed = settings.lastCapacityConfirmedWeek == currentWeekId;
+        final showCapacityPrompt =
+            !settingsVal.isLoading && !settingsVal.hasError && !isConfirmed;
 
         return Padding(
           padding: EdgeInsets.only(
             bottom: isMocked ? 60.0 : 0.0,
           ), // Avoid overlap with dev clock banner
-          child: Stack(
-            children: [
-              Builder(
-                builder: (context) {
-                  String getWeekIdentifier(DateTime date) {
-                    final monday = date.subtract(
-                      Duration(days: date.weekday - 1),
-                    );
-                    return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
-                  }
-
-                  final today = AppClock.now;
-                  final currentWeekId = getWeekIdentifier(today);
-                  final isConfirmed =
-                      settings.lastCapacityConfirmedWeek == currentWeekId;
-                  final showCapacityPrompt =
-                      !settingsVal.isLoading &&
-                      !settingsVal.hasError &&
-                      !isConfirmed;
-                  return CustomScrollView(
-                    key: const PageStorageKey('tasksView'),
-                    controller: _scrollController,
-                    slivers: [
-                      const SliverToBoxAdapter(child: UnsyncedBanner()),
-                      SliverToBoxAdapter(
-                        child: AnimatedContainer(
-                          duration:
-                              (_scrollController.hasClients &&
-                                  _scrollController.offset > 5.0)
-                              ? Duration.zero
-                              : const Duration(milliseconds: 250),
-                          curve: Curves.fastOutSlowIn,
-                          height: (showSortBar && isSortBarVisible)
-                              ? ((showCapacityPrompt && searchQuery.isEmpty)
-                                    ? 64.0
-                                    : 60.0)
-                              : 0.0,
-                        ),
+          child: SortBarScrollView(
+            controller: _scrollController,
+            scrollKey: const PageStorageKey('tasksView'),
+            isSortBarVisibleProvider: showTaskListSortBarProvider,
+            showSortBar: showSortBar,
+            barHeight: (showCapacityPrompt && searchQuery.isEmpty)
+                ? 64.0
+                : 60.0,
+            sortBar: SortBar(
+              title: context.l10n.scheduleSortByLabel,
+              sortColumn: sortColumn,
+              sortAscending: sortAscending,
+              options: [
+                SortOption(key: 'title', label: context.l10n.titleFieldLabel),
+                SortOption(
+                  key: 'next_due',
+                  label: context.l10n.scheduleSortNextDueLabel,
+                ),
+                SortOption(
+                  key: 'priority',
+                  label: context.l10n.taskPriorityLabel,
+                ),
+              ],
+              onSort: onSort,
+            ),
+            slivers: [
+              if (showCapacityPrompt && searchQuery.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                    child: SystemTaskWidget(
+                      key: const Key('capacity_prompt_card'),
+                      task: SystemTask(
+                        id: 'verify_weekly_capacity',
+                        title: context.l10n.capacityPromptTitle,
+                        description: context.l10n.capacityPromptSubtitle,
+                        icon: Icons.assignment_late,
+                        priority: SystemTaskPriority.high,
+                        category: SystemTaskCategory.capacity,
+                        onTap: () {
+                          ref.read(homeTabIndexProvider.notifier).state =
+                              2; // Switch to Dashboard Tab
+                        },
                       ),
-                      if (showCapacityPrompt && searchQuery.isEmpty)
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                            child: SystemTaskWidget(
-                              key: const Key('capacity_prompt_card'),
-                              task: SystemTask(
-                                id: 'verify_weekly_capacity',
-                                title: context.l10n.capacityPromptTitle,
-                                description:
-                                    context.l10n.capacityPromptSubtitle,
-                                icon: Icons.assignment_late,
-                                priority: SystemTaskPriority.high,
-                                category: SystemTaskCategory.capacity,
-                                onTap: () {
-                                  ref
-                                          .read(homeTabIndexProvider.notifier)
-                                          .state =
-                                      2; // Switch to Dashboard Tab
-                                },
-                              ),
-                              variant: SystemTaskWidgetVariant.banner,
-                            ),
-                          ),
-                        ),
-                      if (searchQuery.isEmpty)
-                        for (final familyTask
-                            in ref
-                                .watch(activeSystemTasksProvider)
-                                .where(
-                                  (t) =>
-                                      t.category == SystemTaskCategory.family,
-                                ))
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                              child: SystemTaskWidget(
-                                key: Key('system_task_${familyTask.id}'),
-                                task: familyTask,
-                                variant: SystemTaskWidgetVariant.card,
-                              ),
-                            ),
-                          ),
-                      SliverPadding(
-                        key: _taskListKey,
-                        padding: const EdgeInsets.only(bottom: 80.0),
-                        sliver: bodySliver,
-                      ),
-                    ],
-                  );
-                },
-              ),
-              if (showSortBar)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: AnimatedFloatingSortBar(
-                    visible: isSortBarVisible,
-                    child: FloatingSortCard(
-                      child: SortBar(
-                        title: context.l10n.scheduleSortByLabel,
-                        sortColumn: sortColumn,
-                        sortAscending: sortAscending,
-                        options: [
-                          SortOption(
-                            key: 'title',
-                            label: context.l10n.titleFieldLabel,
-                          ),
-                          SortOption(
-                            key: 'next_due',
-                            label: context.l10n.scheduleSortNextDueLabel,
-                          ),
-                          SortOption(
-                            key: 'priority',
-                            label: context.l10n.taskPriorityLabel,
-                          ),
-                        ],
-                        onSort: onSort,
-                      ),
+                      variant: SystemTaskWidgetVariant.banner,
                     ),
                   ),
                 ),
+              if (searchQuery.isEmpty)
+                for (final familyTask
+                    in ref
+                        .watch(activeSystemTasksProvider)
+                        .where((t) => t.category == SystemTaskCategory.family))
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      child: SystemTaskWidget(
+                        key: Key('system_task_${familyTask.id}'),
+                        task: familyTask,
+                        variant: SystemTaskWidgetVariant.card,
+                      ),
+                    ),
+                  ),
+              SliverPadding(
+                key: _taskListKey,
+                padding: const EdgeInsets.only(bottom: 80.0),
+                sliver: bodySliver,
+              ),
             ],
           ),
         );

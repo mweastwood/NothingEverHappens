@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_riverpod/misc.dart';
 import '../logic/user_settings_repository.dart';
 import '../screens/home_screen.dart';
+import 'unsynced_banner.dart';
 
 final taskListSortBarOverrideProvider = StateProvider<bool?>((ref) => null);
 final scheduleListSortBarOverrideProvider = StateProvider<bool?>((ref) => null);
@@ -188,6 +190,89 @@ class _AnimatedFloatingSortBarState extends State<AnimatedFloatingSortBar>
       sizeFactor: _animation,
       alignment: Alignment.topCenter,
       child: FadeTransition(opacity: _animation, child: widget.child),
+    );
+  }
+}
+
+/// A reusable scroll view layout for screens that feature an [AnimatedFloatingSortBar]
+/// over a [CustomScrollView].
+///
+/// Ensures consistent behavior between screens:
+/// - When scrolled to top (offset <= 5.0), toggling sort bar visibility smoothly
+///   slides content down/up via an [AnimatedContainer] top spacer.
+/// - When scrolled down (offset > 5.0), toggling sort bar visibility updates the
+///   top spacer instantly (duration 0) and jumps the [ScrollController] by
+///   [barHeight], keeping on-screen content stationary.
+class SortBarScrollView extends ConsumerWidget {
+  final ScrollController controller;
+  final Key? scrollKey;
+  final ProviderListenable<bool> isSortBarVisibleProvider;
+  final bool showSortBar;
+  final double barHeight;
+  final Widget sortBar;
+  final List<Widget> slivers;
+  final List<Widget>? leadingSlivers;
+
+  const SortBarScrollView({
+    super.key,
+    required this.controller,
+    this.scrollKey,
+    required this.isSortBarVisibleProvider,
+    this.showSortBar = true,
+    this.barHeight = 56.0,
+    required this.sortBar,
+    required this.slivers,
+    this.leadingSlivers,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isSortBarVisible = ref.watch(isSortBarVisibleProvider);
+
+    ref.listen<bool>(isSortBarVisibleProvider, (previous, next) {
+      if (previous != next && showSortBar && controller.hasClients) {
+        final offset = controller.offset;
+        if (next && offset > 5.0) {
+          controller.jumpTo(offset + barHeight);
+        } else if (!next && offset > barHeight + 5.0) {
+          controller.jumpTo(offset - barHeight);
+        }
+      }
+    });
+
+    final actualLeadingSlivers =
+        leadingSlivers ?? const [SliverToBoxAdapter(child: UnsyncedBanner())];
+
+    return Stack(
+      children: [
+        CustomScrollView(
+          key: scrollKey,
+          controller: controller,
+          slivers: [
+            ...actualLeadingSlivers,
+            SliverToBoxAdapter(
+              child: AnimatedContainer(
+                duration: (controller.hasClients && controller.offset > 5.0)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 250),
+                curve: Curves.fastOutSlowIn,
+                height: (showSortBar && isSortBarVisible) ? barHeight : 0.0,
+              ),
+            ),
+            ...slivers,
+          ],
+        ),
+        if (showSortBar)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: AnimatedFloatingSortBar(
+              visible: isSortBarVisible,
+              child: FloatingSortCard(child: sortBar),
+            ),
+          ),
+      ],
     );
   }
 }
