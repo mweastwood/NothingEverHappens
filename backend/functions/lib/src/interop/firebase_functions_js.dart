@@ -1,7 +1,6 @@
 export 'firebase_functions_stub.dart';
 import 'dart:convert';
 import 'dart:js' as js;
-import 'dart:js_interop';
 import 'firebase_functions_stub.dart';
 
 class JsHttpRequest implements HttpRequest {
@@ -81,6 +80,32 @@ class JsHttpResponse implements HttpResponse {
   }
 }
 
+dynamic futureToJsPromise(Future<dynamic> future) {
+  final promiseConstructor = js.context['Promise'];
+  return js.JsObject(promiseConstructor, [
+    js.allowInterop((resolve, reject) {
+      future.then(
+        (val) {
+          final jsVal =
+              val is Map || val is Iterable ? js.JsObject.jsify(val) : val;
+          final caller =
+              js.context.callMethod('eval', ['(function(r, v) { r(v); })']);
+          caller.callMethod('call', [null, resolve, jsVal]);
+        },
+        onError: (err, stack) {
+          dynamic jsErr = err;
+          if (err is! js.JsObject) {
+            jsErr = js.JsObject(js.context['Error'], [err.toString()]);
+          }
+          final caller =
+              js.context.callMethod('eval', ['(function(r, e) { r(e); })']);
+          caller.callMethod('call', [null, reject, jsErr]);
+        },
+      );
+    })
+  ]);
+}
+
 dynamic onRequest(
   Map<String, dynamic> options,
   Future<void> Function(HttpRequest, HttpResponse) handler,
@@ -90,12 +115,11 @@ dynamic onRequest(
   final jsOptions = js.JsObject.jsify(options);
 
   final jsCallback = js.allowInterop((req, res) {
-    return (() async {
+    return futureToJsPromise((() async {
       final httpReq = JsHttpRequest(req as js.JsObject);
       final httpRes = JsHttpResponse(res as js.JsObject);
       await handler(httpReq, httpRes);
-    })()
-        .toJS;
+    })());
   });
 
   return https.callMethod('onRequest', [jsOptions, jsCallback]);
@@ -111,10 +135,9 @@ dynamic onSchedule(
   final jsOptions = js.JsObject.jsify(options);
 
   final jsCallback = js.allowInterop((event) {
-    return (() async {
+    return futureToJsPromise((() async {
       await handler(event);
-    })()
-        .toJS;
+    })());
   });
 
   return scheduler.callMethod('onSchedule', [jsOptions, jsCallback]);

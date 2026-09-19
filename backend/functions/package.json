@@ -4,7 +4,8 @@
     "postinstall": "node tool/setup-bin.js",
     "build": "dart pub get && dart compile js -O2 -o lib/bundle.js bin/index.dart && npx node-preamble lib/bundle.js > lib/index.js && rm -f lib/bundle.js lib/bundle.js.map lib/bundle.js.deps",
     "watch": "dart compile js -O1 -o lib/bundle.js bin/index.dart && npx node-preamble lib/bundle.js > lib/index.js && rm -f lib/bundle.js lib/bundle.js.map lib/bundle.js.deps",
-    "test": "dart test",
+    "test": "dart test && node test/bundle_interop_test.js",
+    "test:interop": "node test/bundle_interop_test.js",
     "serve": "npm run build && firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions"
   },
