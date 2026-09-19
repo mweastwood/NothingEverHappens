@@ -376,7 +376,11 @@ class SchedulerEngine {
           // The schedule rule is finished and has no future occurrences.
           return maxSpawned;
         }
+        // For preferOlder, never jump initialBaseDate to today: the oldest
+        // unresolved occurrence must stay active regardless of date rollover.
+        // Only preferNewer and autoDismiss benefit from fast-forwarding to today.
         if (s.missedOccurrencePolicy.policy != MissedPolicy.stack &&
+            s.missedOccurrencePolicy.policy != MissedPolicy.preferOlder &&
             nextOcc.isBefore(today)) {
           if (s.scheduledDate.compareTo(today) > 0) {
             initialBaseDate = s.scheduledDate;
