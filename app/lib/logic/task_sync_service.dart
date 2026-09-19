@@ -467,9 +467,35 @@ class TaskSyncService {
         }
       } else if (change.type == DocumentChangeType.added ||
           change.type == DocumentChangeType.modified) {
-        if (change.doc.data() != null) {
-          final remoteTask = TaskSchedule.fromFirestore(change.doc);
+        final docData = change.doc.data();
+        if (docData != null) {
+          var remoteTask = TaskSchedule.fromFirestore(change.doc);
           final localTask = localMap[remoteTask.id];
+
+          // Schema hardening: if remote doc lacks 'labelIds' (e.g. written by
+          // an older client version <=v1.8.36), preserve existing labels from
+          // local task or existing instances to prevent schema stripping.
+          if (!docData.containsKey('labelIds') || docData['labelIds'] == null) {
+            List<String>? fallbackLabels;
+            if (localTask != null && localTask.labelIds.isNotEmpty) {
+              fallbackLabels = localTask.labelIds;
+            } else {
+              final instWithLabels = _localDataSource
+                  .getInstances()
+                  .where(
+                    (i) =>
+                        i.scheduleId == remoteTask.id && i.labelIds.isNotEmpty,
+                  )
+                  .firstOrNull;
+              if (instWithLabels != null) {
+                fallbackLabels = instWithLabels.labelIds;
+              }
+            }
+            if (fallbackLabels != null && fallbackLabels.isNotEmpty) {
+              remoteTask = remoteTask.copyWith(labelIds: fallbackLabels);
+              toPush.add(remoteTask);
+            }
+          }
 
           if (localTask != null) {
             if (localTask.updatedAt.isAfter(remoteTask.updatedAt)) {
@@ -545,9 +571,30 @@ class TaskSyncService {
         }
       } else if (change.type == DocumentChangeType.added ||
           change.type == DocumentChangeType.modified) {
-        if (change.doc.data() != null) {
-          final remoteInst = TaskInstance.fromFirestore(change.doc);
+        final docData = change.doc.data();
+        if (docData != null) {
+          var remoteInst = TaskInstance.fromFirestore(change.doc);
           final localInst = localMap[remoteInst.id];
+
+          // Schema hardening: if remote doc lacks 'labelIds' (e.g. written by
+          // an older client version <=v1.8.36), preserve existing labels from
+          // local instance or parent task to prevent schema stripping.
+          if (!docData.containsKey('labelIds') || docData['labelIds'] == null) {
+            if (localInst != null && localInst.labelIds.isNotEmpty) {
+              remoteInst = remoteInst.copyWith(labelIds: localInst.labelIds);
+            } else {
+              final parentTask = _localDataSource
+                  .getTasks()
+                  .where(
+                    (t) =>
+                        t.id == remoteInst.scheduleId && t.labelIds.isNotEmpty,
+                  )
+                  .firstOrNull;
+              if (parentTask != null) {
+                remoteInst = remoteInst.copyWith(labelIds: parentTask.labelIds);
+              }
+            }
+          }
 
           final oldStatus = localInst?.status.name;
           final newStatus = remoteInst.status.name;
@@ -843,7 +890,7 @@ class TaskSyncService {
           .doc(familyId)
           .collection(FirestorePaths.tasks)
           .doc(task.id)
-          .set(task.toFirestore());
+          .set(task.toFirestore(), SetOptions(merge: true));
       await _firestore
           .collection(FirestorePaths.users)
           .doc(_userId)
@@ -856,7 +903,7 @@ class TaskSyncService {
           .doc(_userId)
           .collection(FirestorePaths.tasks)
           .doc(task.id)
-          .set(task.toFirestore());
+          .set(task.toFirestore(), SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
         await _firestore
             .collection(FirestorePaths.families)
@@ -887,7 +934,7 @@ class TaskSyncService {
           .doc(familyId)
           .collection(FirestorePaths.instances)
           .doc(inst.id)
-          .set(inst.toFirestore());
+          .set(inst.toFirestore(), SetOptions(merge: true));
       await _firestore
           .collection(FirestorePaths.users)
           .doc(_userId)
@@ -900,7 +947,7 @@ class TaskSyncService {
           .doc(_userId)
           .collection(FirestorePaths.instances)
           .doc(inst.id)
-          .set(inst.toFirestore());
+          .set(inst.toFirestore(), SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
         await _firestore
             .collection(FirestorePaths.families)
