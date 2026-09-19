@@ -118,4 +118,57 @@ void main() {
       expect(preserved.labelIds, equals(['L-99']));
     });
   });
+
+  group('TaskInstance scheduledDate deserialization tests', () {
+    test('deserializes scheduledDate when represented as Map', () {
+      final inst = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Test Instance',
+        'scheduledDate': {'year': 2026, 'month': 8, 'day': 30},
+      });
+      expect(inst.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 8, day: 30)));
+    });
+
+    test('deserializes scheduledDate when represented as ISO-8601 String', () {
+      final inst = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Test Instance',
+        'scheduledDate': '2026-08-30',
+      });
+      expect(inst.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 8, day: 30)));
+    });
+
+    test('defaults scheduledDate to today when missing or null', () {
+      final nowCivilDay = CivilDay.fromDateTime(DateTime.now());
+      final instNull = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Test Instance',
+        'scheduledDate': null,
+      });
+      expect(instNull.scheduledDate, equals(nowCivilDay));
+
+      final instMissing = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Test Instance',
+      });
+      expect(instMissing.scheduledDate, equals(nowCivilDay));
+    });
+
+    test('falls back gracefully to today when string is malformed', () {
+      final nowCivilDay = CivilDay.fromDateTime(DateTime.now());
+      final inst = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Test Instance',
+        'scheduledDate': 'invalid-date',
+      });
+      expect(inst.scheduledDate, equals(nowCivilDay));
+    });
+  });
 }

@@ -1,6 +1,8 @@
 import 'package:functions/src/handlers/task_events.dart';
 import 'package:functions/src/interop/firebase_admin.dart';
 import 'package:functions/src/interop/firebase_functions.dart';
+import 'package:core/core.dart' show TaskInstance;
+import 'package:functions/src/models/civil_day.dart';
 import 'package:functions/src/models/task_event.dart';
 import 'package:test/test.dart';
 import 'test_helpers.dart';
@@ -185,7 +187,7 @@ void main() {
           mockDb.collection('users').doc('user_123').collection('instances');
       final existingDoc = instancesCol.doc('inst_existing_123');
       existingDoc.docData = {
-        'scheduledDate': '2026-08-30',
+        'scheduledDate': const CivilDay(year: 2026, month: 8, day: 30).toJson(),
         'status': 'pending',
         'completedByUserIds': ['other_user'],
       };
@@ -224,7 +226,7 @@ void main() {
           mockDb.collection('users').doc('user_123').collection('instances');
       final existingDoc = instancesCol.doc('inst_existing_123');
       existingDoc.docData = {
-        'scheduledDate': '2026-08-30',
+        'scheduledDate': const CivilDay(year: 2026, month: 8, day: 30).toJson(),
         'status': 'completed',
         'completedByUserId': 'user_123',
         'completedByUserIds': ['user_123', 'family_member_2'],
@@ -262,7 +264,7 @@ void main() {
           mockDb.collection('users').doc('user_123').collection('instances');
       final existingDoc = instancesCol.doc('inst_existing_123');
       existingDoc.docData = {
-        'scheduledDate': '2026-08-30',
+        'scheduledDate': const CivilDay(year: 2026, month: 8, day: 30).toJson(),
         'status': 'pending',
       };
 
@@ -313,12 +315,41 @@ void main() {
       expect(newDoc, isNotNull);
       expect(newDoc!.setCalls.length, equals(1));
       final setData = newDoc.setCalls.first;
-      expect(setData['scheduledDate'], equals('2026-08-30'));
+      expect(setData['scheduledDate'],
+          equals(const CivilDay(year: 2026, month: 8, day: 30).toJson()));
       expect(setData['status'], equals('completed'));
       expect(setData['completedByUserIds'], equals(['user_123']));
       expect(
           setData['integrationBinding']['providerId'], equals('twelve_stars'));
       expect(setData['integrationBinding']['externalId'], equals('rosary'));
+    });
+
+    test(
+        'created JIT instance can be deserialized by TaskInstance.fromMap without TypeError',
+        () async {
+      final mockDb = MockFirestoreDatabase();
+      final instancesCol =
+          mockDb.collection('users').doc('user_123').collection('instances');
+      instancesCol.cannedDocs = [];
+
+      const event = ExternalTaskEvent(
+        userId: 'user_123',
+        providerId: 'twelve_stars',
+        entityType: 'prayer',
+        externalId: 'rosary',
+        date: '2026-08-30',
+        action: 'completed',
+      );
+
+      final result = await processExternalTaskEvent(mockDb, event);
+      final newDoc = instancesCol.documents[result.instanceId];
+      final setData = newDoc!.setCalls.first;
+
+      final taskInstance = TaskInstance.fromMap(setData);
+      expect(taskInstance.id, equals(result.instanceId));
+      expect(taskInstance.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 8, day: 30)));
+      expect(taskInstance.title, equals('twelve_stars: rosary'));
     });
   });
 

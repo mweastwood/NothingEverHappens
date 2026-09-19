@@ -130,10 +130,17 @@ class TaskInstance {
     final title = data['title'] as String? ?? 'Untitled';
     final description = data['description'] as String? ?? '';
 
-    final scheduledDateRaw = data['scheduledDate'] as Map?;
-    final scheduledDate = scheduledDateRaw != null
-        ? CivilDay.fromJson(Map<String, dynamic>.from(scheduledDateRaw))
-        : CivilDay.fromDateTime(DateTime.now());
+    final scheduledDateRaw = data['scheduledDate'];
+    final CivilDay scheduledDate;
+    if (scheduledDateRaw is Map) {
+      scheduledDate =
+          CivilDay.fromJson(Map<String, dynamic>.from(scheduledDateRaw));
+    } else if (scheduledDateRaw is String) {
+      scheduledDate = CivilDay.tryParse(scheduledDateRaw) ??
+          CivilDay.fromDateTime(DateTime.now());
+    } else {
+      scheduledDate = CivilDay.fromDateTime(DateTime.now());
+    }
 
     final startRelativeTimeRaw = data['startRelativeTime'] as Map?;
     final startRelativeTime = startRelativeTimeRaw != null

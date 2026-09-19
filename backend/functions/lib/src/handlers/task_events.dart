@@ -141,9 +141,11 @@ Future<TaskEventResult> processExternalTaskEvent(
   final instancesRef =
       db.collection('users').doc(event.userId).collection('instances');
 
+  final civilDay = CivilDay.parse(event.date);
+
   // Query instances matching the date and provider/external ID binding
   final querySnap = await instancesRef
-      .where('scheduledDate', '==', event.date)
+      .where('scheduledDate', '==', civilDay.toJson())
       .where('integrationBinding.providerId', '==', event.providerId)
       .where('integrationBinding.externalId', '==', event.externalId)
       .limit(1)
@@ -231,7 +233,7 @@ Future<TaskEventResult> processExternalTaskEvent(
     'ruleId': 'RULE-EXT-SYNC',
     'title': title,
     'description': description,
-    'scheduledDate': event.date,
+    'scheduledDate': civilDay.toJson(),
     'startRelativeTime': {'minutes': 0},
     'dueRelativeTime': {'minutes': 1439},
     'isFamily': false,
