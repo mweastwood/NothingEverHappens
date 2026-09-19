@@ -405,8 +405,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               ],
               onSort: onSort,
               activeFilterCount: filterState.activeFilterCount,
-              onOpenFilterSheet: () =>
-                  TaskFilterBottomSheet.show(context),
+              onOpenFilterSheet: () => TaskFilterBottomSheet.show(context),
               onClearFilters: () {
                 ref.read(taskFilterProvider.notifier).state =
                     const TaskFilterState();
@@ -432,8 +431,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                             : context.l10n.filterUpcoming,
                       ),
                       selected: true,
-                      materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.compact,
                       onSelected: (_) {
                         ref.read(taskFilterProvider.notifier).state =
@@ -466,8 +464,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                             : context.l10n.priorityLow,
                       ),
                       selected: true,
-                      materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.compact,
                       onSelected: (_) {
                         ref.read(taskFilterProvider.notifier).state =
@@ -483,19 +480,13 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                         width: 10,
                         height: 10,
                         decoration: BoxDecoration(
-                          color: LabelPalette.getColor(
-                            label.colorKey,
-                            context,
-                          ),
+                          color: LabelPalette.getColor(label.colorKey, context),
                           shape: BoxShape.circle,
                         ),
                       ),
                       label: Text(label.name),
-                      selected: filterState.selectedLabelIds.contains(
-                        label.id,
-                      ),
-                      materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
+                      selected: filterState.selectedLabelIds.contains(label.id),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.compact,
                       onSelected: (_) {
                         ref.read(taskFilterProvider.notifier).state =
