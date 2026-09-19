@@ -95,17 +95,44 @@ class CloudFamilySchedulerClient {
         'familyId': familyId,
         if (now != null) 'now': now.toUtc().toIso8601String(),
       };
+      final requestBody = jsonEncode(bodyMap);
 
-      final response = await _httpClient
+      var response = await _httpClient
           .post(
             Uri.parse(url),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $idToken',
             },
-            body: jsonEncode(bodyMap),
+            body: requestBody,
           )
           .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 401) {
+        _logger?.info(
+          'cloud_scheduler',
+          'Cloud family scheduler returned 401 Unauthorized; attempting token refresh and retry...',
+        );
+        final refreshedToken = await user.getIdToken(true);
+        if (refreshedToken == null || refreshedToken.isEmpty) {
+          _logger?.warning(
+            'cloud_scheduler',
+            'Failed to refresh ID token after 401 Unauthorized for user ${user.uid}',
+          );
+          return false;
+        }
+
+        response = await _httpClient
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $refreshedToken',
+              },
+              body: requestBody,
+            )
+            .timeout(const Duration(seconds: 15));
+      }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         _logger?.info(
