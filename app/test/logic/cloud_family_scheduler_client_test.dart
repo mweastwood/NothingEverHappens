@@ -26,10 +26,14 @@ class _MockErrorHandler extends Fake implements ErrorHandler {
 
 class _MockUser extends Mock implements User {
   final String _token;
-  _MockUser({String token = 'test-token'}) : _token = token;
+  final String? _refreshedToken;
+  _MockUser({String token = 'test-token', String? refreshedToken})
+    : _token = token,
+      _refreshedToken = refreshedToken;
 
   @override
-  Future<String> getIdToken([bool forceRefresh = false]) async => _token;
+  Future<String> getIdToken([bool forceRefresh = false]) async =>
+      forceRefresh ? (_refreshedToken ?? _token) : _token;
 
   @override
   String get uid => 'user-123';
@@ -241,6 +245,83 @@ void main() {
           familyId: 'family-err',
         );
         expect(success, isFalse);
+        expect(errorHandler.errors, isEmpty);
+      },
+    );
+
+    test(
+      'triggerFamilyScheduleProcessing automatically retries with force-refreshed token on 401',
+      () async {
+        int requestCount = 0;
+        final httpClient = _TestHttpClient((req) async {
+          requestCount++;
+          if (requestCount == 1) {
+            expect(req.headers['Authorization'], 'Bearer expired-token');
+            return http.Response(
+              '{"success":false,"error":"Unauthorized: Invalid or expired authentication token."}',
+              401,
+            );
+          } else {
+            expect(req.headers['Authorization'], 'Bearer fresh-token');
+            return http.Response('{"success":true}', 200);
+          }
+        });
+
+        final client = CloudFamilySchedulerClient(
+          baseUrl: 'http://localhost:5001',
+          httpClient: httpClient,
+          auth: _MockFirebaseAuth(
+            _MockUser(token: 'expired-token', refreshedToken: 'fresh-token'),
+          ),
+          errorHandler: errorHandler,
+        );
+
+        final success = await client.triggerFamilyScheduleProcessing(
+          familyId: 'family-retry',
+        );
+
+        expect(success, isTrue);
+        expect(requestCount, 2);
+        expect(httpClient.requests.length, 2);
+        expect(
+          httpClient.requests[0].headers['Authorization'],
+          'Bearer expired-token',
+        );
+        expect(
+          httpClient.requests[1].headers['Authorization'],
+          'Bearer fresh-token',
+        );
+        expect(errorHandler.errors, isEmpty);
+      },
+    );
+
+    test(
+      'triggerFamilyScheduleProcessing returns false when retry after 401 still fails',
+      () async {
+        int requestCount = 0;
+        final httpClient = _TestHttpClient((req) async {
+          requestCount++;
+          return http.Response(
+            '{"success":false,"error":"Unauthorized: Still invalid."}',
+            401,
+          );
+        });
+
+        final client = CloudFamilySchedulerClient(
+          baseUrl: 'http://localhost:5001',
+          httpClient: httpClient,
+          auth: _MockFirebaseAuth(
+            _MockUser(token: 'expired-token', refreshedToken: 'fresh-token'),
+          ),
+          errorHandler: errorHandler,
+        );
+
+        final success = await client.triggerFamilyScheduleProcessing(
+          familyId: 'family-retry-fail',
+        );
+
+        expect(success, isFalse);
+        expect(requestCount, 2);
         expect(errorHandler.errors, isEmpty);
       },
     );
