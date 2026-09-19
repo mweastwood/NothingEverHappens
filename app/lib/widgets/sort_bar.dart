@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/misc.dart';
+import '../logic/l10n_extension.dart';
 import '../logic/user_settings_repository.dart';
 import '../screens/home_screen.dart';
 import 'unsynced_banner.dart';
@@ -44,6 +45,10 @@ class SortBar extends StatelessWidget {
   final bool sortAscending;
   final List<SortOption> options;
   final ValueChanged<String> onSort;
+  final List<Widget>? filterChips;
+  final VoidCallback? onOpenFilterSheet;
+  final int activeFilterCount;
+  final VoidCallback? onClearFilters;
 
   const SortBar({
     super.key,
@@ -52,11 +57,26 @@ class SortBar extends StatelessWidget {
     required this.sortAscending,
     required this.options,
     required this.onSort,
+    this.filterChips,
+    this.onOpenFilterSheet,
+    this.activeFilterCount = 0,
+    this.onClearFilters,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasFilters =
+        onOpenFilterSheet != null ||
+        (filterChips != null && filterChips!.isNotEmpty);
+
+    final filterBtnLabel = hasFilters
+        ? (activeFilterCount > 0
+              ? '${context.l10n.filterButtonLabel} ($activeFilterCount)'
+              : context.l10n.filterButtonLabel)
+        : '';
+    final clearBtnLabel = hasFilters ? context.l10n.presetClear : '';
+
     return SizedBox(
       height: 48.0,
       width: double.infinity,
@@ -95,6 +115,50 @@ class SortBar extends StatelessWidget {
                 ),
               );
             }),
+            if (hasFilters) ...[
+              const SizedBox(width: 4),
+              SizedBox(
+                height: 24,
+                child: VerticalDivider(
+                  width: 16,
+                  thickness: 1,
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.6,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              if (onOpenFilterSheet != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: FilterChip(
+                    avatar: Icon(
+                      activeFilterCount > 0
+                          ? Icons.filter_alt
+                          : Icons.filter_alt_outlined,
+                      size: 14,
+                    ),
+                    label: Text(filterBtnLabel),
+                    selected: activeFilterCount > 0,
+                    showCheckmark: false,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    onSelected: (_) => onOpenFilterSheet!(),
+                  ),
+                ),
+              ...?filterChips,
+              if (activeFilterCount > 0 && onClearFilters != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ActionChip(
+                    avatar: const Icon(Icons.close, size: 14),
+                    label: Text(clearBtnLabel),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onClearFilters,
+                  ),
+                ),
+            ],
           ],
         ),
       ),

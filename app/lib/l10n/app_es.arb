@@ -736,5 +736,17 @@
         "type": "String"
       }
     }
-  }
+  },
+  "filterButtonLabel": "Filtro",
+  "filtersTitle": "Filtrar tareas",
+  "filterLabelsSection": "Etiquetas",
+  "filterUrgencySection": "Urgencia",
+  "filterPrioritySection": "Prioridad",
+  "filterOverdue": "Atrasado",
+  "filterDueToday": "Para hoy",
+  "filterUpcoming": "Próximo",
+  "filterReset": "Restablecer",
+  "filterApply": "Aplicar",
+  "clearFilters": "Borrar filtros",
+  "noTasksMatchingFilters": "Ninguna tarea coincide con los filtros activos."
 }

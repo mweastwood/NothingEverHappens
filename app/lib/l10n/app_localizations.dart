@@ -3427,6 +3427,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error loading labels: {error}'**
   String errorLoadingLabels(String error);
+
+  /// No description provided for @filterButtonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filterButtonLabel;
+
+  /// No description provided for @filtersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Tasks'**
+  String get filtersTitle;
+
+  /// No description provided for @filterLabelsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get filterLabelsSection;
+
+  /// No description provided for @filterUrgencySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Urgency'**
+  String get filterUrgencySection;
+
+  /// No description provided for @filterPrioritySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get filterPrioritySection;
+
+  /// No description provided for @filterOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get filterOverdue;
+
+  /// No description provided for @filterDueToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Due Today'**
+  String get filterDueToday;
+
+  /// No description provided for @filterUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get filterUpcoming;
+
+  /// No description provided for @filterReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get filterReset;
+
+  /// No description provided for @filterApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get filterApply;
+
+  /// No description provided for @clearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get clearFilters;
+
+  /// No description provided for @noTasksMatchingFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks match the active filters.'**
+  String get noTasksMatchingFilters;
 }
 
 class _AppLocalizationsDelegate

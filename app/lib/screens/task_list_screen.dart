@@ -20,6 +20,9 @@ import '../logic/system_tasks/system_task_providers.dart';
 import '../logic/utils/layout_breakpoints.dart';
 import '../logic/utils/masonry_layout_helper.dart';
 import '../logic/label_repository.dart';
+import '../logic/task_label.dart';
+import '../logic/task_filter.dart';
+import '../widgets/task_filter_bottom_sheet.dart';
 
 final taskSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -96,6 +99,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         final settingsVal = ref.watch(userSettingsProvider);
         final settingsRepository = ref.watch(userSettingsRepositoryProvider);
         final labelsMap = ref.watch(allLabelsMapProvider);
+        final filterState = ref.watch(taskFilterProvider);
         final searchQuery = ref
             .watch(taskSearchQueryProvider)
             .trim()
@@ -147,11 +151,12 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           final instances = instancesVal.value ?? [];
           final scheduleMap = {for (final s in schedules) s.id: s};
 
+          final now = AppClock.now;
           final filteredInstances = instances.where((inst) {
             final startDateTime = inst.startRelativeTime.referenceTo(
               inst.scheduledDate,
             );
-            final isFuture = AppClock.now.isBefore(startDateTime);
+            final isFuture = now.isBefore(startDateTime);
             final isPending = inst.status == TaskStatus.pending && !isFuture;
             if (!isPending) return false;
             if (currentUserId != null &&
@@ -162,6 +167,16 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 inst.assignedUserId != currentUserId) {
               return false;
             }
+
+            final sched = scheduleMap[inst.scheduleId];
+            if (!filterState.matches(
+              instance: inst,
+              schedule: sched,
+              now: now,
+            )) {
+              return false;
+            }
+
             if (searchQuery.isEmpty) return true;
 
             final queryWords = searchQuery
@@ -226,6 +241,31 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                                 '';
                           },
                           child: Text(context.l10n.clearSearchButton),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            } else if (filterState.isNotEmpty) {
+              bodySliver = SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 200,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          context.l10n.noTasksMatchingFilters,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () {
+                            ref.read(taskFilterProvider.notifier).state =
+                                const TaskFilterState();
+                          },
+                          child: Text(context.l10n.clearFilters),
                         ),
                       ],
                     ),
@@ -364,6 +404,97 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 ),
               ],
               onSort: onSort,
+              activeFilterCount: filterState.activeFilterCount,
+              onOpenFilterSheet: () => TaskFilterBottomSheet.show(context),
+              onClearFilters: () {
+                ref.read(taskFilterProvider.notifier).state =
+                    const TaskFilterState();
+              },
+              filterChips: [
+                for (final urgency in filterState.selectedUrgencies)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: FilterChip(
+                      avatar: Icon(
+                        urgency == TaskUrgencyFilter.overdue
+                            ? Icons.alarm_off
+                            : urgency == TaskUrgencyFilter.dueToday
+                            ? Icons.today
+                            : Icons.event,
+                        size: 14,
+                      ),
+                      label: Text(
+                        urgency == TaskUrgencyFilter.overdue
+                            ? context.l10n.filterOverdue
+                            : urgency == TaskUrgencyFilter.dueToday
+                            ? context.l10n.filterDueToday
+                            : context.l10n.filterUpcoming,
+                      ),
+                      selected: true,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (_) {
+                        ref.read(taskFilterProvider.notifier).state =
+                            filterState.toggleUrgency(urgency);
+                      },
+                    ),
+                  ),
+                for (final priority in filterState.selectedPriorities)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: FilterChip(
+                      avatar: Icon(
+                        priority == TaskPriority.high
+                            ? Icons.priority_high
+                            : priority == TaskPriority.medium
+                            ? Icons.remove
+                            : Icons.keyboard_arrow_down,
+                        size: 14,
+                        color: priority == TaskPriority.high
+                            ? Colors.red
+                            : priority == TaskPriority.medium
+                            ? Colors.orange
+                            : Colors.blue,
+                      ),
+                      label: Text(
+                        priority == TaskPriority.high
+                            ? context.l10n.priorityHigh
+                            : priority == TaskPriority.medium
+                            ? context.l10n.priorityMedium
+                            : context.l10n.priorityLow,
+                      ),
+                      selected: true,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (_) {
+                        ref.read(taskFilterProvider.notifier).state =
+                            filterState.togglePriority(priority);
+                      },
+                    ),
+                  ),
+                for (final label in labelsMap.values)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: FilterChip(
+                      avatar: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: LabelPalette.getColor(label.colorKey, context),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      label: Text(label.name),
+                      selected: filterState.selectedLabelIds.contains(label.id),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (_) {
+                        ref.read(taskFilterProvider.notifier).state =
+                            filterState.toggleLabel(label.id);
+                      },
+                    ),
+                  ),
+              ],
             ),
             slivers: [
               if (showCapacityPrompt && searchQuery.isEmpty)

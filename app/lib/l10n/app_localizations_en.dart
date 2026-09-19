@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1982,4 +1981,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String errorLoadingLabels(String error) {
     return 'Error loading labels: $error';
   }
+
+  @override
+  String get filterButtonLabel => 'Filter';
+
+  @override
+  String get filtersTitle => 'Filter Tasks';
+
+  @override
+  String get filterLabelsSection => 'Labels';
+
+  @override
+  String get filterUrgencySection => 'Urgency';
+
+  @override
+  String get filterPrioritySection => 'Priority';
+
+  @override
+  String get filterOverdue => 'Overdue';
+
+  @override
+  String get filterDueToday => 'Due Today';
+
+  @override
+  String get filterUpcoming => 'Upcoming';
+
+  @override
+  String get filterReset => 'Reset';
+
+  @override
+  String get filterApply => 'Apply';
+
+  @override
+  String get clearFilters => 'Clear filters';
+
+  @override
+  String get noTasksMatchingFilters => 'No tasks match the active filters.';
 }

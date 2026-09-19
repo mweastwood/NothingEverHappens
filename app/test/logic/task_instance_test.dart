@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
-import 'package:nothing_ever_happens/logic/task_priority.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 
 void main() {
