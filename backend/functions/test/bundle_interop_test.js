@@ -214,6 +214,39 @@ async function runTests() {
   assert(typeof funcs.cleanupExpiredHistory === 'function', 'cleanupExpiredHistory must be a function');
   console.log('✔ Scheduled functions are properly configured');
 
+  // 6. Verify subcollection query execution on native JS document references
+  const subcollectionDb = {
+    collection: () => ({
+      doc: () => ({
+        id: 'fam_sub',
+        get: () => Promise.resolve({
+          id: 'fam_sub',
+          exists: true,
+          data: () => ({ name: 'Sub Test' }),
+          ref: {
+            id: 'fam_sub',
+            collection: () => createMockQuery([mockTaskDoc])
+          }
+        }),
+        collection: () => createMockQuery([mockTaskDoc])
+      })
+    }),
+    batch: () => ({
+      set: () => {},
+      update: () => {},
+      delete: () => {},
+      commit: () => Promise.resolve()
+    })
+  };
+
+  const subResult = await funcs.processFamilyScheduleDirect(
+    subcollectionDb,
+    'fam_sub',
+    '2026-09-19T00:00:00.000Z'
+  );
+  assert(subResult && subResult.familyId === 'fam_sub', 'Subcollection DB query should succeed without type cast error');
+  console.log('✔ Subcollection resolution on native JS document references succeeded cleanly');
+
   console.log('\nAll Node.js Bundle Interop Integration Tests passed successfully!');
 }
 

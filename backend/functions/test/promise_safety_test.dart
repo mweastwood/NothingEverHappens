@@ -10,6 +10,12 @@ void main() {
       expect(result, equals('success'));
     });
 
+    test('resolves dynamic future casting to requested type', () async {
+      final Future<dynamic> future = Future.value(42);
+      final result = await safePromiseToFuture<int>(future);
+      expect(result, equals(42));
+    });
+
     test('propagates error when future/promise rejects', () async {
       final future = Future<String>.error(Exception('Promise rejected'));
       expect(

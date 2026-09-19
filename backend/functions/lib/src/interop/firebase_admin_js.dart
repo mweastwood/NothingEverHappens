@@ -31,7 +31,7 @@ void initializeFirebaseAdmin() {
 FirestoreDatabase getFirebaseAdminDb([dynamic jsDb]) {
   initializeFirebaseAdmin();
   if (jsDb != null) {
-    return JsFirestoreDatabase(jsDb as js.JsObject, _admin);
+    return JsFirestoreDatabase(jsDb, _admin);
   }
   _dbInstance ??= _admin.callMethod('firestore') as js.JsObject;
   return JsFirestoreDatabase(_dbInstance!, _admin);
@@ -86,6 +86,9 @@ bool _isThenable(dynamic obj) {
 }
 
 Future<T> _safePromiseToFuture<T>(dynamic jsPromiseOrObject) {
+  if (jsPromiseOrObject is Future<T>) return jsPromiseOrObject;
+  if (jsPromiseOrObject is Future) return jsPromiseOrObject.then((v) => v as T);
+
   final unwrapped = _unwrapJsObject(jsPromiseOrObject);
 
   if (unwrapped == null || !_isThenable(unwrapped)) {
@@ -101,26 +104,32 @@ Future<T> safePromiseToFuture<T>(dynamic jsPromiseOrObject) =>
     _safePromiseToFuture<T>(jsPromiseOrObject);
 
 class JsFirestoreDatabase implements FirestoreDatabase {
-  final js.JsObject _db;
+  final dynamic _db;
   final js.JsObject _adminRef;
 
   JsFirestoreDatabase(this._db, this._adminRef);
 
   @override
   CollectionReference collection(String path) {
-    final col = _db.callMethod('collection', [path]) as js.JsObject;
+    final col = _db is js.JsObject
+        ? _db.callMethod('collection', [path])
+        : js_util.callMethod(_db, 'collection', [path]);
     return JsCollectionReference(col, _adminRef);
   }
 
   @override
   Query collectionGroup(String collectionId) {
-    final q = _db.callMethod('collectionGroup', [collectionId]) as js.JsObject;
+    final q = _db is js.JsObject
+        ? _db.callMethod('collectionGroup', [collectionId])
+        : js_util.callMethod(_db, 'collectionGroup', [collectionId]);
     return JsQuery(q, _adminRef);
   }
 
   @override
   WriteBatch batch() {
-    final b = _db.callMethod('batch') as js.JsObject;
+    final b = _db is js.JsObject
+        ? _db.callMethod('batch')
+        : js_util.callMethod(_db, 'batch', []);
     return JsWriteBatch(b, _adminRef);
   }
 
@@ -128,7 +137,9 @@ class JsFirestoreDatabase implements FirestoreDatabase {
   Future<void> recursiveDelete(DocumentReference ref) async {
     final jsRef = (ref as JsDocumentReference).rawJsRef;
     if (js_util.hasProperty(_db, 'recursiveDelete')) {
-      final promise = _db.callMethod('recursiveDelete', [jsRef]);
+      final promise = _db is js.JsObject
+          ? _db.callMethod('recursiveDelete', [jsRef])
+          : js_util.callMethod(_db, 'recursiveDelete', [jsRef]);
       await _safePromiseToFuture(promise);
     } else {
       await ref.delete();
@@ -141,15 +152,19 @@ class JsCollectionReference extends JsQuery implements CollectionReference {
 
   @override
   DocumentReference doc([String? id]) {
-    final docRef = (id != null
-        ? rawQuery.callMethod('doc', [id])
-        : rawQuery.callMethod('doc')) as js.JsObject;
+    final docRef = id != null
+        ? (rawQuery is js.JsObject
+            ? rawQuery.callMethod('doc', [id])
+            : js_util.callMethod(rawQuery, 'doc', [id]))
+        : (rawQuery is js.JsObject
+            ? rawQuery.callMethod('doc')
+            : js_util.callMethod(rawQuery, 'doc', []));
     return JsDocumentReference(docRef, adminRef);
   }
 }
 
 class JsQuery implements Query {
-  final js.JsObject rawQuery;
+  final dynamic rawQuery;
   final js.JsObject adminRef;
 
   JsQuery(this.rawQuery, this.adminRef);
@@ -164,20 +179,25 @@ class JsQuery implements Query {
           js.JsObject(js.context['Date'], [value.toUtc().toIso8601String()]);
       jsVal = timestampClass.callMethod('fromDate', [dateObj]);
     }
-    final nextQ =
-        rawQuery.callMethod('where', [field, op, jsVal]) as js.JsObject;
+    final nextQ = rawQuery is js.JsObject
+        ? rawQuery.callMethod('where', [field, op, jsVal])
+        : js_util.callMethod(rawQuery, 'where', [field, op, jsVal]);
     return JsQuery(nextQ, adminRef);
   }
 
   @override
   Query limit(int count) {
-    final nextQ = rawQuery.callMethod('limit', [count]) as js.JsObject;
+    final nextQ = rawQuery is js.JsObject
+        ? rawQuery.callMethod('limit', [count])
+        : js_util.callMethod(rawQuery, 'limit', [count]);
     return JsQuery(nextQ, adminRef);
   }
 
   @override
   Future<QuerySnapshot> get() async {
-    final promise = rawQuery.callMethod('get');
+    final promise = rawQuery is js.JsObject
+        ? rawQuery.callMethod('get')
+        : js_util.callMethod(rawQuery, 'get', []);
     final snap = await _safePromiseToFuture(promise);
     return JsQuerySnapshot(snap, adminRef);
   }
@@ -226,9 +246,9 @@ class JsDocumentReference implements DocumentReference {
 
   @override
   CollectionReference collection(String path) {
-    final col = (rawJsRef is js.JsObject
+    final col = rawJsRef is js.JsObject
         ? rawJsRef.callMethod('collection', [path])
-        : js_util.callMethod(rawJsRef, 'collection', [path])) as js.JsObject;
+        : js_util.callMethod(rawJsRef, 'collection', [path]);
     return JsCollectionReference(col, adminRef);
   }
 
@@ -307,7 +327,7 @@ class JsDocumentSnapshot implements DocumentSnapshot {
 }
 
 class JsWriteBatch implements WriteBatch {
-  final js.JsObject _batch;
+  final dynamic _batch;
   final js.JsObject _adminRef;
 
   JsWriteBatch(this._batch, this._adminRef);
@@ -316,37 +336,53 @@ class JsWriteBatch implements WriteBatch {
   void set(DocumentReference ref, Map<String, dynamic> data) {
     final jsRef = (ref as JsDocumentReference).rawJsRef;
     final converted = _convertMapForJs(data, _adminRef);
-    _batch.callMethod('set', [jsRef, converted]);
+    if (_batch is js.JsObject) {
+      _batch.callMethod('set', [jsRef, converted]);
+    } else {
+      js_util.callMethod(_batch, 'set', [jsRef, converted]);
+    }
   }
 
   @override
   void update(DocumentReference ref, Map<String, dynamic> data) {
     final jsRef = (ref as JsDocumentReference).rawJsRef;
     final converted = _convertMapForJs(data, _adminRef);
-    _batch.callMethod('update', [jsRef, converted]);
+    if (_batch is js.JsObject) {
+      _batch.callMethod('update', [jsRef, converted]);
+    } else {
+      js_util.callMethod(_batch, 'update', [jsRef, converted]);
+    }
   }
 
   @override
   void delete(DocumentReference ref) {
     final jsRef = (ref as JsDocumentReference).rawJsRef;
-    _batch.callMethod('delete', [jsRef]);
+    if (_batch is js.JsObject) {
+      _batch.callMethod('delete', [jsRef]);
+    } else {
+      js_util.callMethod(_batch, 'delete', [jsRef]);
+    }
   }
 
   @override
   Future<void> commit() async {
-    final promise = _batch.callMethod('commit');
+    final promise = _batch is js.JsObject
+        ? _batch.callMethod('commit')
+        : js_util.callMethod(_batch, 'commit', []);
     await _safePromiseToFuture(promise);
   }
 }
 
 class JsAuthService implements AuthService {
-  final js.JsObject _auth;
+  final dynamic _auth;
 
   JsAuthService(this._auth);
 
   @override
   Future<DecodedIdToken> verifyIdToken(String idToken) async {
-    final promise = _auth.callMethod('verifyIdToken', [idToken]);
+    final promise = _auth is js.JsObject
+        ? _auth.callMethod('verifyIdToken', [idToken])
+        : js_util.callMethod(_auth, 'verifyIdToken', [idToken]);
     final decoded = await _safePromiseToFuture(promise);
     final uid = decoded is js.JsObject
         ? (decoded['uid'] as String?) ?? ''
@@ -367,7 +403,9 @@ class JsAuthService implements AuthService {
   @override
   Future<void> deleteUser(String uid) async {
     try {
-      final promise = _auth.callMethod('deleteUser', [uid]);
+      final promise = _auth is js.JsObject
+          ? _auth.callMethod('deleteUser', [uid])
+          : js_util.callMethod(_auth, 'deleteUser', [uid]);
       await _safePromiseToFuture(promise);
     } catch (e) {
       final code = js_util.getProperty(e, 'code');

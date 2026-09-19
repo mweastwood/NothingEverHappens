@@ -80,6 +80,15 @@ class JsHttpResponse implements HttpResponse {
   }
 }
 
+js.JsObject? _resolveCaller;
+js.JsObject? _rejectCaller;
+
+js.JsObject get _callResolver => _resolveCaller ??= js.context
+    .callMethod('eval', ['(function(r, v) { r(v); })']) as js.JsObject;
+
+js.JsObject get _callRejecter => _rejectCaller ??= js.context
+    .callMethod('eval', ['(function(r, e) { r(e); })']) as js.JsObject;
+
 dynamic futureToJsPromise(Future<dynamic> future) {
   final promiseConstructor = js.context['Promise'];
   return js.JsObject(promiseConstructor, [
@@ -88,18 +97,14 @@ dynamic futureToJsPromise(Future<dynamic> future) {
         (val) {
           final jsVal =
               val is Map || val is Iterable ? js.JsObject.jsify(val) : val;
-          final caller =
-              js.context.callMethod('eval', ['(function(r, v) { r(v); })']);
-          caller.callMethod('call', [null, resolve, jsVal]);
+          _callResolver.callMethod('call', [null, resolve, jsVal]);
         },
         onError: (err, stack) {
           dynamic jsErr = err;
           if (err is! js.JsObject) {
             jsErr = js.JsObject(js.context['Error'], [err.toString()]);
           }
-          final caller =
-              js.context.callMethod('eval', ['(function(r, e) { r(e); })']);
-          caller.callMethod('call', [null, reject, jsErr]);
+          _callRejecter.callMethod('call', [null, reject, jsErr]);
         },
       );
     })

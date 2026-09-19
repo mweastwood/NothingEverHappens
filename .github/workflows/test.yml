@@ -130,6 +130,9 @@ jobs:
       - name: Build Dart to JS bundle
         run: npm run build
 
+      - name: Run bundle interop integration tests
+        run: node test/bundle_interop_test.js
+
   test-scripts:
     name: Script Tests (Python)
     runs-on: ubuntu-latest
