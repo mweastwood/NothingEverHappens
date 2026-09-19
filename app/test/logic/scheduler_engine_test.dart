@@ -3488,6 +3488,250 @@ void main() {
           expect(spawnedDay3.status, TaskStatus.pending);
         },
       );
+
+      test(
+        // Regression: Issue #794 – preferOlder must not silently skip the next occurrence at civil date rollover.
+        // Setup: Daily 9 AM–5 PM task with preferOlder. Sept 17 completed early morning Sept 18.
+        // Evaluate with now = Sept 19 10:00 AM.
+        // Expectation: Sept 18 (oldest unresolved) is spawned as pending, NOT jumped over to Sept 19.
+        'preferOlder spawns oldest unresolved occurrence across civil date rollover (issue #794)',
+        () {
+          final sept17 = const CivilDay(year: 2026, month: 9, day: 17);
+          final sept18 = const CivilDay(year: 2026, month: 9, day: 18);
+          final evalSept19 = DateTime(2026, 9, 19, 10, 0);
+
+          final task = TestTaskFactory.createDaily(
+            id: 'issue-794-rollover-spawn',
+            title: 'Daily Chore',
+            description: 'Regression test for issue #794',
+            startDate: sept17,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
+          );
+
+          // Sept 17 completed early morning of Sept 18 (UTC rollover / late completion)
+          final completedSept17 = TaskInstance(
+            id: 'inst-794-sept17',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: sept17,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 9, 18, 2, 0),
+          );
+
+          final action = const SchedulerEngine().evaluate(
+            task,
+            [completedSept17],
+            evalSept19,
+            futureInstancesCount: 1,
+          );
+
+          // Sept 18 MUST be spawned as pending – it is the oldest unresolved occurrence.
+          // Before the fix, initialBaseDate was jumped to today (Sept 19), silently skipping Sept 18.
+          final spawnedDates = action.instancesToSpawn
+              .map((x) => x.scheduledDate)
+              .toList();
+          expect(
+            spawnedDates.contains(sept18),
+            isTrue,
+            reason:
+                'Sept 18 must be spawned as pending (oldest unresolved), not silently skipped at date rollover',
+          );
+          final sept18Inst = action.instancesToSpawn.firstWhere(
+            (x) => x.scheduledDate == sept18,
+          );
+          expect(
+            sept18Inst.status,
+            TaskStatus.pending,
+            reason: 'Sept 18 instance must be pending, not skipped',
+          );
+        },
+      );
+
+      test(
+        // Regression: Issue #794 – preferOlder evaluates at task start time, not at midnight.
+        // Evaluate at Day 2 at 12:01 AM (after midnight, before 9:00 AM start time).
+        // Expectation: Day 2 occurrence is preserved as pending, not dropped at midnight rollover.
+        'preferOlder evaluates at task start time, not at midnight date rollover (issue #794)',
+        () {
+          final day1 = const CivilDay(year: 2026, month: 9, day: 17);
+          final day2 = const CivilDay(year: 2026, month: 9, day: 18);
+          // Evaluate at Day 2 at 12:01 AM – well before 9:00 AM start
+          final evalAtMidnight = DateTime(2026, 9, 18, 0, 1);
+
+          final task = TestTaskFactory.createDaily(
+            id: 'issue-794-start-time',
+            title: 'Daily Chore',
+            description: 'preferOlder start-time evaluation regression test',
+            startDate: day1,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0, // 9:00 AM start
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
+          );
+
+          // Day 1 completed at midnight (before Day 2's 9 AM start)
+          final completedDay1 = TaskInstance(
+            id: 'inst-794-day1',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: day1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 9, 18, 0, 0),
+          );
+
+          final action = const SchedulerEngine().evaluate(
+            task,
+            [completedDay1],
+            evalAtMidnight,
+            futureInstancesCount: 1,
+          );
+
+          // Day 2 occurrence must be spawned as pending. Its 9:00 AM start has NOT arrived at 12:01 AM,
+          // so it must NOT be evaluated as "started" and must NOT be skipped.
+          final spawnedDates = action.instancesToSpawn
+              .map((x) => x.scheduledDate)
+              .toList();
+          expect(
+            spawnedDates.contains(day2),
+            isTrue,
+            reason:
+                'Day 2 must be spawned since its 9:00 AM start time has not arrived (evaluating at 12:01 AM)',
+          );
+          final day2Inst = action.instancesToSpawn.firstWhere(
+            (x) => x.scheduledDate == day2,
+          );
+          expect(
+            day2Inst.status,
+            TaskStatus.pending,
+            reason:
+                'Day 2 must be pending – start time not yet reached at midnight',
+          );
+        },
+      );
+
+      test(
+        // Regression: Issue #794 – multi-day backlog with preferOlder.
+        // Several days elapse without task completion. Only the oldest uncompleted occurrence must be active.
+        'preferOlder multi-day backlog keeps only oldest unresolved occurrence active (issue #794)',
+        () {
+          final day1 = const CivilDay(year: 2026, month: 9, day: 15);
+          final day2 = const CivilDay(year: 2026, month: 9, day: 16);
+          final day3 = const CivilDay(year: 2026, month: 9, day: 17);
+          final day4 = const CivilDay(year: 2026, month: 9, day: 18);
+          // Evaluate on Day 4 at 10 AM – all days 1–4 have their 9 AM start in the past
+          final evalDay4 = DateTime(2026, 9, 18, 10, 0);
+
+          final task = TestTaskFactory.createDaily(
+            id: 'issue-794-multiday-backlog',
+            title: 'Daily Chore',
+            description: 'Multi-day backlog regression test',
+            startDate: day1,
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
+          );
+
+          // No instances exist – task was never completed across 4 days.
+          final action = const SchedulerEngine().evaluate(
+            task,
+            [],
+            evalDay4,
+            futureInstancesCount: 1,
+          );
+
+          // Day 1 (oldest unresolved, started) must be spawned as the single pending active instance.
+          final spawnedPendingDates = action.instancesToSpawn
+              .where((x) => x.status == TaskStatus.pending)
+              .map((x) => x.scheduledDate)
+              .toList();
+          expect(
+            spawnedPendingDates.contains(day1),
+            isTrue,
+            reason:
+                'Day 1 (oldest unresolved) must be the pending active instance',
+          );
+
+          // Days 2, 3 have all started but are not oldest – they must NOT be spawned as pending.
+          final spawnedDay2Pending = action.instancesToSpawn.where(
+            (x) => x.scheduledDate == day2 && x.status == TaskStatus.pending,
+          );
+          expect(
+            spawnedDay2Pending,
+            isEmpty,
+            reason: 'Day 2 must not be active while Day 1 is unresolved',
+          );
+          final spawnedDay3Pending = action.instancesToSpawn.where(
+            (x) => x.scheduledDate == day3 && x.status == TaskStatus.pending,
+          );
+          expect(
+            spawnedDay3Pending,
+            isEmpty,
+            reason: 'Day 3 must not be active while Day 1 is unresolved',
+          );
+          // Day 4 (today) has started too and is also not the oldest.
+          final spawnedDay4Pending = action.instancesToSpawn.where(
+            (x) => x.scheduledDate == day4 && x.status == TaskStatus.pending,
+          );
+          expect(
+            spawnedDay4Pending,
+            isEmpty,
+            reason:
+                'Day 4 (today) must not be active while Day 1 is unresolved',
+          );
+        },
+      );
     });
 
     group('Safe element lookup tests', () {
