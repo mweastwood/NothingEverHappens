@@ -472,6 +472,7 @@ class TaskSyncService {
           var remoteTask = TaskSchedule.fromFirestore(change.doc);
           final localTask = localMap[remoteTask.id];
 
+          var labelsRestored = false;
           // Schema hardening: if remote doc lacks 'labelIds' (e.g. written by
           // an older client version <=v1.8.36), preserve existing labels from
           // local task or existing instances to prevent schema stripping.
@@ -493,7 +494,7 @@ class TaskSyncService {
             }
             if (fallbackLabels != null && fallbackLabels.isNotEmpty) {
               remoteTask = remoteTask.copyWith(labelIds: fallbackLabels);
-              toPush.add(remoteTask);
+              labelsRestored = true;
             }
           }
 
@@ -503,10 +504,16 @@ class TaskSyncService {
             } else {
               toSave.add(remoteTask);
               localMap[remoteTask.id] = remoteTask;
+              if (labelsRestored) {
+                toPush.add(remoteTask);
+              }
             }
           } else {
             toSave.add(remoteTask);
             localMap[remoteTask.id] = remoteTask;
+            if (labelsRestored) {
+              toPush.add(remoteTask);
+            }
           }
         }
       }
@@ -530,7 +537,9 @@ class TaskSyncService {
       await _localDataSource.saveTasks(toSave);
     }
 
+    final pushedTaskIds = <String>{};
     for (final task in toPush) {
+      if (!pushedTaskIds.add(task.id)) continue;
       await _localDataSource.markDirty(task.id);
       await _pushTaskToRemote(task);
     }
@@ -576,12 +585,14 @@ class TaskSyncService {
           var remoteInst = TaskInstance.fromFirestore(change.doc);
           final localInst = localMap[remoteInst.id];
 
+          var labelsRestored = false;
           // Schema hardening: if remote doc lacks 'labelIds' (e.g. written by
           // an older client version <=v1.8.36), preserve existing labels from
           // local instance or parent task to prevent schema stripping.
           if (!docData.containsKey('labelIds') || docData['labelIds'] == null) {
             if (localInst != null && localInst.labelIds.isNotEmpty) {
               remoteInst = remoteInst.copyWith(labelIds: localInst.labelIds);
+              labelsRestored = true;
             } else {
               final parentTask = _localDataSource
                   .getTasks()
@@ -592,6 +603,7 @@ class TaskSyncService {
                   .firstOrNull;
               if (parentTask != null) {
                 remoteInst = remoteInst.copyWith(labelIds: parentTask.labelIds);
+                labelsRestored = true;
               }
             }
           }
@@ -629,6 +641,9 @@ class TaskSyncService {
               localMap[remoteInst.id] = remoteInst;
               localSlotMap['${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}'] =
                   remoteInst;
+              if (labelsRestored) {
+                toPush.add(remoteInst);
+              }
             }
           } else {
             final slotKey =
@@ -644,11 +659,17 @@ class TaskSyncService {
                 toSave.add(remoteInst);
                 localMap[remoteInst.id] = remoteInst;
                 localSlotMap[slotKey] = remoteInst;
+                if (labelsRestored) {
+                  toPush.add(remoteInst);
+                }
               }
             } else {
               toSave.add(remoteInst);
               localMap[remoteInst.id] = remoteInst;
               localSlotMap[slotKey] = remoteInst;
+              if (labelsRestored) {
+                toPush.add(remoteInst);
+              }
             }
           }
         }
@@ -673,7 +694,9 @@ class TaskSyncService {
       await _localDataSource.saveInstances(toSave);
     }
 
+    final pushedInstIds = <String>{};
     for (final inst in toPush) {
+      if (!pushedInstIds.add(inst.id)) continue;
       await _localDataSource.markDirty(inst.id);
       await _pushInstanceToRemote(inst);
     }

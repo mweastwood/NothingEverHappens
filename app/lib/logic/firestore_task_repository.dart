@@ -1399,6 +1399,10 @@ class FirestoreTaskRepository implements TaskRepository {
         clearStatusReason: true,
         completedByUserIds: updatedUserIds,
       );
+      // NOTE: Deliberately omits SetOptions(merge: true) because toMap() omits
+      // null cleared fields such as completedByUserId, completedAt, and statusReason,
+      // which would prevent them from being cleared in Firestore if merge: true
+      // were used without FieldValue.delete().
       batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
       _spawnedInstancesCache['${resolvedInstance.scheduleId}:${resolvedInstance.ruleId}:${resolvedInstance.scheduledDate}'] =
           now;
@@ -1421,6 +1425,10 @@ class FirestoreTaskRepository implements TaskRepository {
       clearCompletedAt: true,
       clearStatusReason: true,
     );
+    // NOTE: Deliberately omits SetOptions(merge: true) because toMap() omits
+    // null cleared fields such as completedByUserId, completedAt, and statusReason,
+    // which would prevent them from being cleared in Firestore if merge: true
+    // were used without FieldValue.delete().
     batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
     _spawnedInstancesCache['${resolvedInstance.scheduleId}:${resolvedInstance.ruleId}:${resolvedInstance.scheduledDate}'] =
         now;
