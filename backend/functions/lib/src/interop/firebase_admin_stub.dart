@@ -14,3 +14,20 @@ AuthService getFirebaseAdminAuth() {
 void initializeFirebaseAdmin() {
   // No-op on VM stub
 }
+
+Future<T> safePromiseToFuture<T>(dynamic jsPromiseOrObject) {
+  if (jsPromiseOrObject == null) {
+    throw StateError(
+      'Expected a JavaScript Promise/thenable but received object without a "then" method: null',
+    );
+  }
+  if (jsPromiseOrObject is Future<T>) {
+    return jsPromiseOrObject;
+  }
+  if (jsPromiseOrObject is Future) {
+    return jsPromiseOrObject.then((v) => v as T);
+  }
+  throw StateError(
+    'Expected a JavaScript Promise/thenable but received object without a "then" method: $jsPromiseOrObject',
+  );
+}

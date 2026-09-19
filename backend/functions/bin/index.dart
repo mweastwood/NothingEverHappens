@@ -1,5 +1,4 @@
 import 'dart:js' as js;
-import 'dart:js_interop';
 import 'package:functions/src/handlers/account_deletion.dart';
 import 'package:functions/src/handlers/cleanup_history.dart';
 import 'package:functions/src/handlers/family_scheduler.dart';
@@ -53,8 +52,11 @@ void main() {
         logInfo(
           'Scheduled task history cleanup finished successfully. Total deleted: ${result.totalDeleted}, Batches: ${result.batchesProcessed}, Duration: ${result.durationMs}ms',
         );
-      } catch (error) {
-        logError('Scheduled task history cleanup failed:', error);
+      } catch (error, stackTrace) {
+        logError(
+          'Scheduled task history cleanup failed: $error\n$stackTrace',
+          error,
+        );
         rethrow;
       }
     },
@@ -90,8 +92,11 @@ void main() {
         logInfo(
           'Scheduled family tasks evaluation finished successfully. Families: ${result.familiesProcessed}, Spawned: ${result.totalInstancesSpawned}, Updated: ${result.totalInstancesUpdated}, Deleted: ${result.totalInstancesDeleted}, Schedules: ${result.totalSchedulesUpdated}, Duration: ${result.durationMs}ms',
         );
-      } catch (error) {
-        logError('Scheduled family tasks evaluation failed:', error);
+      } catch (error, stackTrace) {
+        logError(
+          'Scheduled family tasks evaluation failed: $error\n$stackTrace',
+          error,
+        );
         rethrow;
       }
     },
@@ -117,12 +122,12 @@ void main() {
     js.allowInterop((
         [dynamic jsDb, dynamic now, int? batchLimit, int? maxBatches]) {
       final db = getFirebaseAdminDb(jsDb);
-      return processHistoryCleanup(
+      return futureToJsPromise(processHistoryCleanup(
         db,
         now,
         batchLimit ?? 500,
         maxBatches ?? 20,
-      ).then((res) => js.JsObject.jsify(res.toJson())).toJS;
+      ).then((res) => res.toJson()));
     }),
   );
 
@@ -131,16 +136,15 @@ void main() {
     'processFamilyScheduleDirect',
     js.allowInterop(([dynamic jsDb, String? familyId, dynamic now]) {
       final db = getFirebaseAdminDb(jsDb);
-      return processFamilyScheduleDirect(
+      return futureToJsPromise(processFamilyScheduleDirect(
         db,
         familyId: familyId,
         now: now,
       ).then((res) {
-        final json = res is FamilyScheduleSummary
+        return res is FamilyScheduleSummary
             ? res.toJson()
             : (res as FamilySchedulerResult).toJson();
-        return js.JsObject.jsify(json);
-      }).toJS;
+      }));
     }),
   );
 }

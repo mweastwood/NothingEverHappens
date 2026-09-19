@@ -60,3 +60,5 @@ dynamic onSchedule(
 ) {
   throw UnsupportedError('onSchedule is only available when compiled to JS.');
 }
+
+dynamic futureToJsPromise(Future<dynamic> future) => future;
