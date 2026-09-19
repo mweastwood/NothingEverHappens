@@ -467,36 +467,9 @@ class TaskSyncService {
         }
       } else if (change.type == DocumentChangeType.added ||
           change.type == DocumentChangeType.modified) {
-        final docData = change.doc.data();
-        if (docData != null) {
-          var remoteTask = TaskSchedule.fromFirestore(change.doc);
+        if (change.doc.data() != null) {
+          final remoteTask = TaskSchedule.fromFirestore(change.doc);
           final localTask = localMap[remoteTask.id];
-
-          var labelsRestored = false;
-          // Schema hardening: if remote doc lacks 'labelIds' (e.g. written by
-          // an older client version <=v1.8.36), preserve existing labels from
-          // local task or existing instances to prevent schema stripping.
-          if (!docData.containsKey('labelIds') || docData['labelIds'] == null) {
-            List<String>? fallbackLabels;
-            if (localTask != null && localTask.labelIds.isNotEmpty) {
-              fallbackLabels = localTask.labelIds;
-            } else {
-              final instWithLabels = _localDataSource
-                  .getInstances()
-                  .where(
-                    (i) =>
-                        i.scheduleId == remoteTask.id && i.labelIds.isNotEmpty,
-                  )
-                  .firstOrNull;
-              if (instWithLabels != null) {
-                fallbackLabels = instWithLabels.labelIds;
-              }
-            }
-            if (fallbackLabels != null && fallbackLabels.isNotEmpty) {
-              remoteTask = remoteTask.copyWith(labelIds: fallbackLabels);
-              labelsRestored = true;
-            }
-          }
 
           if (localTask != null) {
             if (localTask.updatedAt.isAfter(remoteTask.updatedAt)) {
@@ -504,16 +477,10 @@ class TaskSyncService {
             } else {
               toSave.add(remoteTask);
               localMap[remoteTask.id] = remoteTask;
-              if (labelsRestored) {
-                toPush.add(remoteTask);
-              }
             }
           } else {
             toSave.add(remoteTask);
             localMap[remoteTask.id] = remoteTask;
-            if (labelsRestored) {
-              toPush.add(remoteTask);
-            }
           }
         }
       }
@@ -580,33 +547,9 @@ class TaskSyncService {
         }
       } else if (change.type == DocumentChangeType.added ||
           change.type == DocumentChangeType.modified) {
-        final docData = change.doc.data();
-        if (docData != null) {
-          var remoteInst = TaskInstance.fromFirestore(change.doc);
+        if (change.doc.data() != null) {
+          final remoteInst = TaskInstance.fromFirestore(change.doc);
           final localInst = localMap[remoteInst.id];
-
-          var labelsRestored = false;
-          // Schema hardening: if remote doc lacks 'labelIds' (e.g. written by
-          // an older client version <=v1.8.36), preserve existing labels from
-          // local instance or parent task to prevent schema stripping.
-          if (!docData.containsKey('labelIds') || docData['labelIds'] == null) {
-            if (localInst != null && localInst.labelIds.isNotEmpty) {
-              remoteInst = remoteInst.copyWith(labelIds: localInst.labelIds);
-              labelsRestored = true;
-            } else {
-              final parentTask = _localDataSource
-                  .getTasks()
-                  .where(
-                    (t) =>
-                        t.id == remoteInst.scheduleId && t.labelIds.isNotEmpty,
-                  )
-                  .firstOrNull;
-              if (parentTask != null) {
-                remoteInst = remoteInst.copyWith(labelIds: parentTask.labelIds);
-                labelsRestored = true;
-              }
-            }
-          }
 
           final oldStatus = localInst?.status.name;
           final newStatus = remoteInst.status.name;
@@ -641,9 +584,6 @@ class TaskSyncService {
               localMap[remoteInst.id] = remoteInst;
               localSlotMap['${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}'] =
                   remoteInst;
-              if (labelsRestored) {
-                toPush.add(remoteInst);
-              }
             }
           } else {
             final slotKey =
@@ -659,17 +599,11 @@ class TaskSyncService {
                 toSave.add(remoteInst);
                 localMap[remoteInst.id] = remoteInst;
                 localSlotMap[slotKey] = remoteInst;
-                if (labelsRestored) {
-                  toPush.add(remoteInst);
-                }
               }
             } else {
               toSave.add(remoteInst);
               localMap[remoteInst.id] = remoteInst;
               localSlotMap[slotKey] = remoteInst;
-              if (labelsRestored) {
-                toPush.add(remoteInst);
-              }
             }
           }
         }

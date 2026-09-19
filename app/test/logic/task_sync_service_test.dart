@@ -2067,9 +2067,9 @@ void main() {
       expect(resolved, isTrue);
     });
 
-    group('Schema Hardening & Label Preservation Tests', () {
+    group('Firestore Write Hardening Tests', () {
       test(
-        'remote task snapshot missing labelIds restores labelIds from existing local task and heals remote',
+        'remote task snapshot missing labelIds does not trigger writeback or self-healing',
         () async {
           final service = TaskSyncService(
             firestore: firestore,
@@ -2090,7 +2090,7 @@ void main() {
           );
           await localDataSource.saveTask(localTask);
 
-          // 2. Simulate older client (<=v1.8.36) writing remote task without 'labelIds'
+          // 2. Newer remote doc without 'labelIds' arrives
           final remoteTime = DateTime(2026, 9, 11, 12, 0);
           await firestore
               .collection('users')
@@ -2103,118 +2103,30 @@ void main() {
                 'description': 'Desc',
                 'schedules': [],
                 'updatedAt': remoteTime.toIso8601String(),
-                // 'labelIds' key is omitted by older clients
               });
 
           await pumpEventQueue();
 
-          // 3. Verify local task accepted newer remote title but preserved local labelIds
+          // 3. Remote won; local task receives remote data with empty labelIds (no self-healing)
           final updatedLocal = localDataSource.getTasks().firstWhere(
             (t) => t.id == 'S-labels-1',
           );
           expect(updatedLocal.title, 'Remote Title from v1.8.36');
-          expect(updatedLocal.labelIds, ['label-clean', 'label-urgent']);
+          expect(updatedLocal.labelIds, isEmpty);
 
-          // 4. Verify healed task was queued and pushed back to remote
-          await pumpEventQueue();
+          // 4. Remote doc in Firestore is not written back to
           final remoteDoc = await firestore
               .collection('users')
               .doc('user1')
               .collection('tasks')
               .doc('S-labels-1')
               .get();
-          expect(remoteDoc.data()?['labelIds'], [
-            'label-clean',
-            'label-urgent',
-          ]);
+          expect(remoteDoc.data()?['labelIds'], isNull);
         },
       );
 
       test(
-        'remote task snapshot missing labelIds restores labelIds from child instance when local task had empty labelIds',
-        () async {
-          final service = TaskSyncService(
-            firestore: firestore,
-            localDataSource: localDataSource,
-            userId: 'user1',
-            isActivePremium: true,
-          );
-          addTearDown(() => service.dispose());
-
-          // Local task has empty labelIds
-          final localTask = TaskSchedule(
-            id: 'S-labels-2',
-            title: 'Local Task',
-            description: 'Desc',
-            schedules: [],
-            labelIds: [],
-            updatedAt: DateTime(2026, 9, 10, 12, 0),
-          );
-          await localDataSource.saveTask(localTask);
-
-          // Child instance has labelIds intact
-          final childInstance = TaskInstance(
-            id: 'I-labels-2',
-            scheduleId: 'S-labels-2',
-            ruleId: 'R-1',
-            title: 'Local Instance',
-            description: 'Desc',
-            scheduledDate: const CivilDay(year: 2026, month: 9, day: 12),
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 9,
-              minute: 0,
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 10,
-              minute: 0,
-            ),
-            labelIds: ['label-kitchen', 'label-chores'],
-            updatedAt: DateTime(2026, 9, 10, 12, 0),
-          );
-          await localDataSource.saveInstance(childInstance);
-
-          // Simulate older client writing remote task without 'labelIds'
-          final remoteTime = DateTime(2026, 9, 11, 12, 0);
-          await firestore
-              .collection('users')
-              .doc('user1')
-              .collection('tasks')
-              .doc('S-labels-2')
-              .set({
-                'id': 'S-labels-2',
-                'title': 'Remote Title',
-                'description': 'Desc',
-                'schedules': [],
-                'updatedAt': remoteTime.toIso8601String(),
-              });
-
-          await pumpEventQueue();
-
-          // Verify local task was healed with child instance's labelIds
-          final updatedLocal = localDataSource.getTasks().firstWhere(
-            (t) => t.id == 'S-labels-2',
-          );
-          expect(updatedLocal.labelIds, ['label-kitchen', 'label-chores']);
-
-          // Verify remote doc in Firestore was healed
-          await pumpEventQueue();
-          final remoteDoc = await firestore
-              .collection('users')
-              .doc('user1')
-              .collection('tasks')
-              .doc('S-labels-2')
-              .get();
-          expect(remoteDoc.data()?['labelIds'], [
-            'label-kitchen',
-            'label-chores',
-          ]);
-        },
-      );
-
-      test(
-        'remote instance snapshot missing labelIds preserves labelIds from local instance',
+        'remote instance snapshot missing labelIds does not trigger writeback or self-healing',
         () async {
           final service = TaskSyncService(
             firestore: firestore,
@@ -2246,7 +2158,6 @@ void main() {
           );
           await localDataSource.saveInstance(localInst);
 
-          // Remote instance from older client without labelIds
           final remoteTime = DateTime(2026, 9, 11, 12, 0);
           await firestore
               .collection('users')
@@ -2272,77 +2183,15 @@ void main() {
             (i) => i.id == 'I-inst-1',
           );
           expect(updatedInst.title, 'Updated Remote Inst');
-          expect(updatedInst.labelIds, ['label-morning']);
+          expect(updatedInst.labelIds, isEmpty);
 
-          // Verify remote doc in Firestore was healed
-          await pumpEventQueue();
           final remoteDoc = await firestore
               .collection('users')
               .doc('user1')
               .collection('instances')
               .doc('I-inst-1')
               .get();
-          expect(remoteDoc.data()?['labelIds'], ['label-morning']);
-        },
-      );
-
-      test(
-        'remote instance snapshot missing labelIds preserves labelIds from local parent task',
-        () async {
-          final service = TaskSyncService(
-            firestore: firestore,
-            localDataSource: localDataSource,
-            userId: 'user1',
-            isActivePremium: true,
-          );
-          addTearDown(() => service.dispose());
-
-          final parentTask = TaskSchedule(
-            id: 'S-parent-1',
-            title: 'Parent Task',
-            description: 'Desc',
-            schedules: [],
-            labelIds: ['label-from-parent'],
-            updatedAt: DateTime(2026, 9, 10, 12, 0),
-          );
-          await localDataSource.saveTask(parentTask);
-
-          // Remote instance from older client without labelIds
-          final remoteTime = DateTime(2026, 9, 11, 12, 0);
-          await firestore
-              .collection('users')
-              .doc('user1')
-              .collection('instances')
-              .doc('I-from-parent-1')
-              .set({
-                'id': 'I-from-parent-1',
-                'scheduleId': 'S-parent-1',
-                'ruleId': 'R-1',
-                'title': 'New Remote Inst',
-                'description': 'Desc',
-                'scheduledDate': {'year': 2026, 'month': 9, 'day': 12},
-                'startRelativeTime': {'hour': 9, 'minute': 0},
-                'dueRelativeTime': {'hour': 10, 'minute': 0},
-                'status': 'pending',
-                'updatedAt': remoteTime.toIso8601String(),
-              });
-
-          await pumpEventQueue();
-
-          final updatedInst = localDataSource.getInstances().firstWhere(
-            (i) => i.id == 'I-from-parent-1',
-          );
-          expect(updatedInst.labelIds, ['label-from-parent']);
-
-          // Verify remote doc in Firestore was healed
-          await pumpEventQueue();
-          final remoteDoc = await firestore
-              .collection('users')
-              .doc('user1')
-              .collection('instances')
-              .doc('I-from-parent-1')
-              .get();
-          expect(remoteDoc.data()?['labelIds'], ['label-from-parent']);
+          expect(remoteDoc.data()?['labelIds'], isNull);
         },
       );
 
@@ -2406,71 +2255,6 @@ void main() {
             remoteDoc.data()?['updatedAt'],
             Timestamp.fromDate(DateTime(2026, 9, 12, 12, 0)),
           );
-        },
-      );
-
-      test(
-        'healed instances with restored labels are written back to Firestore',
-        () async {
-          final service = TaskSyncService(
-            firestore: firestore,
-            localDataSource: localDataSource,
-            userId: 'user1',
-            isActivePremium: true,
-          );
-          addTearDown(() => service.dispose());
-
-          // 1. Parent task has labels intact
-          final parentTask = TaskSchedule(
-            id: 'S-healed-inst',
-            title: 'Parent Task',
-            description: 'Desc',
-            schedules: [],
-            labelIds: ['label-restored-1', 'label-restored-2'],
-            updatedAt: DateTime(2026, 9, 10, 12, 0),
-          );
-          await localDataSource.saveTask(parentTask);
-
-          // 2. Remote instance without labelIds arrives from older client (remote wins)
-          final remoteTime = DateTime(2026, 9, 11, 12, 0);
-          await firestore
-              .collection('users')
-              .doc('user1')
-              .collection('instances')
-              .doc('I-healed-inst')
-              .set({
-                'id': 'I-healed-inst',
-                'scheduleId': 'S-healed-inst',
-                'ruleId': 'R-1',
-                'title': 'Remote Instance Missing Labels',
-                'description': 'Desc',
-                'scheduledDate': {'year': 2026, 'month': 9, 'day': 12},
-                'startRelativeTime': {'hour': 9, 'minute': 0},
-                'dueRelativeTime': {'hour': 10, 'minute': 0},
-                'status': 'pending',
-                'updatedAt': remoteTime.toIso8601String(),
-              });
-
-          await pumpEventQueue();
-
-          // 3. Verify local instance accepted remote instance and healed labelIds
-          final localInst = localDataSource.getInstances().firstWhere(
-            (i) => i.id == 'I-healed-inst',
-          );
-          expect(localInst.labelIds, ['label-restored-1', 'label-restored-2']);
-
-          // 4. Verify healed instance is written back to Firestore
-          await pumpEventQueue();
-          final remoteDoc = await firestore
-              .collection('users')
-              .doc('user1')
-              .collection('instances')
-              .doc('I-healed-inst')
-              .get();
-          expect(remoteDoc.data()?['labelIds'], [
-            'label-restored-1',
-            'label-restored-2',
-          ]);
         },
       );
 
