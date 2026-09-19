@@ -504,7 +504,9 @@ class TaskSyncService {
       await _localDataSource.saveTasks(toSave);
     }
 
+    final pushedTaskIds = <String>{};
     for (final task in toPush) {
+      if (!pushedTaskIds.add(task.id)) continue;
       await _localDataSource.markDirty(task.id);
       await _pushTaskToRemote(task);
     }
@@ -626,7 +628,9 @@ class TaskSyncService {
       await _localDataSource.saveInstances(toSave);
     }
 
+    final pushedInstIds = <String>{};
     for (final inst in toPush) {
+      if (!pushedInstIds.add(inst.id)) continue;
       await _localDataSource.markDirty(inst.id);
       await _pushInstanceToRemote(inst);
     }
@@ -843,7 +847,7 @@ class TaskSyncService {
           .doc(familyId)
           .collection(FirestorePaths.tasks)
           .doc(task.id)
-          .set(task.toFirestore());
+          .set(task.toFirestore(), SetOptions(merge: true));
       await _firestore
           .collection(FirestorePaths.users)
           .doc(_userId)
@@ -856,7 +860,7 @@ class TaskSyncService {
           .doc(_userId)
           .collection(FirestorePaths.tasks)
           .doc(task.id)
-          .set(task.toFirestore());
+          .set(task.toFirestore(), SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
         await _firestore
             .collection(FirestorePaths.families)
@@ -887,7 +891,7 @@ class TaskSyncService {
           .doc(familyId)
           .collection(FirestorePaths.instances)
           .doc(inst.id)
-          .set(inst.toFirestore());
+          .set(inst.toFirestore(), SetOptions(merge: true));
       await _firestore
           .collection(FirestorePaths.users)
           .doc(_userId)
@@ -900,7 +904,7 @@ class TaskSyncService {
           .doc(_userId)
           .collection(FirestorePaths.instances)
           .doc(inst.id)
-          .set(inst.toFirestore());
+          .set(inst.toFirestore(), SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
         await _firestore
             .collection(FirestorePaths.families)

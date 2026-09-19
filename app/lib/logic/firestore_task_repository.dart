@@ -615,7 +615,11 @@ class FirestoreTaskRepository implements TaskRepository {
   }) {
     for (final inst in action.instancesToUpdate) {
       final updatedInst = inst.copyWith(updatedAt: now);
-      batch.set(_instanceRefFor(updatedInst, familyId), updatedInst);
+      batch.set(
+        _instanceRefFor(updatedInst, familyId),
+        updatedInst,
+        SetOptions(merge: true),
+      );
       markChanged();
       instancesById[inst.id] = updatedInst;
       final sList = instancesByScheduleId[inst.scheduleId];
@@ -633,7 +637,11 @@ class FirestoreTaskRepository implements TaskRepository {
 
     for (final inst in action.instancesToSpawn) {
       final newInst = inst.copyWith(updatedAt: now);
-      batch.set(_instanceRefFor(newInst, familyId), newInst);
+      batch.set(
+        _instanceRefFor(newInst, familyId),
+        newInst,
+        SetOptions(merge: true),
+      );
       _spawnedInstancesCache['${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}'] =
           now;
       markChanged();
@@ -677,6 +685,7 @@ class FirestoreTaskRepository implements TaskRepository {
       batch.set(
         _taskRefFor(action.updatedSchedule!, familyId),
         action.updatedSchedule!,
+        SetOptions(merge: true),
       );
       markChanged();
     }
@@ -891,7 +900,7 @@ class FirestoreTaskRepository implements TaskRepository {
   Future<void> addTaskSchedule(TaskSchedule task) async {
     final familyId = await getFamilyId();
     final batch = _firestore.batch();
-    batch.set(_taskRefFor(task, familyId), task);
+    batch.set(_taskRefFor(task, familyId), task, SetOptions(merge: true));
     await batch.commit();
     await _notificationService?.scheduleNotifications(task);
 
@@ -926,7 +935,11 @@ class FirestoreTaskRepository implements TaskRepository {
       if (newTask.isFamily) {
         // Personal -> Family
         batch.delete(_tasksRef.doc(newTask.id));
-        batch.set(_taskRefFor(newTask, familyId), newTask);
+        batch.set(
+          _taskRefFor(newTask, familyId),
+          newTask,
+          SetOptions(merge: true),
+        );
       } else {
         // Family -> Personal
         final familyDocRef = (familyId != null && familyId.isNotEmpty)
@@ -939,10 +952,14 @@ class FirestoreTaskRepository implements TaskRepository {
         if (familyDocRef != null) {
           batch.delete(familyDocRef);
         }
-        batch.set(_tasksRef.doc(newTask.id), newTask);
+        batch.set(_tasksRef.doc(newTask.id), newTask, SetOptions(merge: true));
       }
     } else {
-      batch.set(_taskRefFor(newTask, familyId), newTask);
+      batch.set(
+        _taskRefFor(newTask, familyId),
+        newTask,
+        SetOptions(merge: true),
+      );
     }
 
     final List<DocumentSnapshot<TaskInstance>> personalPending = [];
@@ -1001,12 +1018,20 @@ class FirestoreTaskRepository implements TaskRepository {
         if (isFamilyChanged) {
           batch.delete(doc.reference);
           if (newTask.isFamily) {
-            batch.set(_instanceRefFor(updatedInst, familyId), updatedInst);
+            batch.set(
+              _instanceRefFor(updatedInst, familyId),
+              updatedInst,
+              SetOptions(merge: true),
+            );
           } else {
-            batch.set(_instancesRef.doc(updatedInst.id), updatedInst);
+            batch.set(
+              _instancesRef.doc(updatedInst.id),
+              updatedInst,
+              SetOptions(merge: true),
+            );
           }
         } else {
-          batch.set(doc.reference, updatedInst);
+          batch.set(doc.reference, updatedInst, SetOptions(merge: true));
         }
       }
     }
@@ -1090,10 +1115,10 @@ class FirestoreTaskRepository implements TaskRepository {
     final familyId = await getFamilyId();
     final batch = _firestore.batch();
 
-    batch.set(_taskRefFor(task, familyId), task);
+    batch.set(_taskRefFor(task, familyId), task, SetOptions(merge: true));
 
     for (final inst in pendingInstances) {
-      batch.set(_instanceRefFor(inst, familyId), inst);
+      batch.set(_instanceRefFor(inst, familyId), inst, SetOptions(merge: true));
     }
 
     await batch.commit();
@@ -1179,6 +1204,7 @@ class FirestoreTaskRepository implements TaskRepository {
         batch.set(
           _instanceRefFor(completedInstance, familyId),
           completedInstance,
+          SetOptions(merge: true),
         );
         _spawnedInstancesCache.remove(
           '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
@@ -1232,7 +1258,11 @@ class FirestoreTaskRepository implements TaskRepository {
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
     );
-    batch.set(_instanceRefFor(completedInstance, familyId), completedInstance);
+    batch.set(
+      _instanceRefFor(completedInstance, familyId),
+      completedInstance,
+      SetOptions(merge: true),
+    );
     _spawnedInstancesCache.remove(
       '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
     );
@@ -1279,7 +1309,10 @@ class FirestoreTaskRepository implements TaskRepository {
   @override
   Future<void> saveTaskInstance(TaskInstance instance) async {
     final familyId = await getFamilyId();
-    await _instanceRefFor(instance, familyId).set(instance);
+    await _instanceRefFor(
+      instance,
+      familyId,
+    ).set(instance, SetOptions(merge: true));
   }
 
   @override
@@ -1303,7 +1336,11 @@ class FirestoreTaskRepository implements TaskRepository {
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
     );
-    batch.set(_instanceRefFor(dismissedInstance, familyId), dismissedInstance);
+    batch.set(
+      _instanceRefFor(dismissedInstance, familyId),
+      dismissedInstance,
+      SetOptions(merge: true),
+    );
     _spawnedInstancesCache.remove(
       '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
     );
@@ -1362,6 +1399,10 @@ class FirestoreTaskRepository implements TaskRepository {
         clearStatusReason: true,
         completedByUserIds: updatedUserIds,
       );
+      // NOTE: Deliberately omits SetOptions(merge: true) because toMap() omits
+      // null cleared fields such as completedByUserId, completedAt, and statusReason,
+      // which would prevent them from being cleared in Firestore if merge: true
+      // were used without FieldValue.delete().
       batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
       _spawnedInstancesCache['${resolvedInstance.scheduleId}:${resolvedInstance.ruleId}:${resolvedInstance.scheduledDate}'] =
           now;
@@ -1384,6 +1425,10 @@ class FirestoreTaskRepository implements TaskRepository {
       clearCompletedAt: true,
       clearStatusReason: true,
     );
+    // NOTE: Deliberately omits SetOptions(merge: true) because toMap() omits
+    // null cleared fields such as completedByUserId, completedAt, and statusReason,
+    // which would prevent them from being cleared in Firestore if merge: true
+    // were used without FieldValue.delete().
     batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
     _spawnedInstancesCache['${resolvedInstance.scheduleId}:${resolvedInstance.ruleId}:${resolvedInstance.scheduledDate}'] =
         now;
@@ -1460,7 +1505,11 @@ class FirestoreTaskRepository implements TaskRepository {
       existingInstances: taskInstances,
     );
     if (nextInst != null) {
-      batch.set(_instanceRefFor(nextInst, familyId), nextInst);
+      batch.set(
+        _instanceRefFor(nextInst, familyId),
+        nextInst,
+        SetOptions(merge: true),
+      );
       _spawnedInstancesCache['${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}'] =
           now;
     }
