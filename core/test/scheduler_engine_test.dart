@@ -74,6 +74,117 @@ void main() {
       );
     });
 
+    test('evaluates completion relative scheduling when occurrence is skipped',
+        () {
+      final today = CivilDay(year: 2026, month: 9, day: 8);
+      final skippedAt = DateTime(2026, 9, 8, 10, 0);
+      final now = DateTime(2026, 9, 10, 12, 0); // 2 days later
+
+      final task = TaskSchedule(
+        id: 'task-cr',
+        title: 'Completion Relative Task',
+        description: 'Test task',
+        schedules: [
+          DailySchedule(
+            startDate: today,
+            interval: 2,
+            startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 2),
+              targetHour: 9,
+              targetMinute: 0,
+            ),
+          ),
+        ],
+      );
+
+      final skippedInst = TaskInstance(
+        id: 'inst-skipped',
+        scheduleId: task.id,
+        ruleId: task.schedules.first.id,
+        title: task.title,
+        description: task.description,
+        scheduledDate: today,
+        startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+        status: TaskStatus.skipped,
+        completedAt: null,
+        updatedAt: skippedAt,
+      );
+
+      final action = const SchedulerEngine().evaluate(task, [skippedInst], now);
+      expect(action.instancesToSpawn, hasLength(1));
+      expect(
+        action.instancesToSpawn.first.scheduledDate,
+        equals(CivilDay(year: 2026, month: 9, day: 10)),
+      );
+    });
+
+    test(
+        'evaluates completion relative scheduling ordering when older completed instance exists before skipped instance',
+        () {
+      final startDate = CivilDay(year: 2026, month: 9, day: 1);
+      final completedAt = DateTime(2026, 9, 1, 10, 0);
+      final skippedAt = DateTime(2026, 9, 8, 10, 0);
+      final now = DateTime(2026, 9, 10, 12, 0);
+
+      final task = TaskSchedule(
+        id: 'task-cr',
+        title: 'Completion Relative Task',
+        description: 'Test task',
+        schedules: [
+          DailySchedule(
+            startDate: startDate,
+            interval: 2,
+            startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 2),
+              targetHour: 9,
+              targetMinute: 0,
+            ),
+          ),
+        ],
+      );
+
+      final olderCompletedInst = TaskInstance(
+        id: 'inst-1',
+        scheduleId: task.id,
+        ruleId: task.schedules.first.id,
+        title: task.title,
+        description: task.description,
+        scheduledDate: startDate,
+        startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+        status: TaskStatus.completed,
+        completedAt: completedAt,
+        updatedAt: completedAt,
+      );
+
+      final newerSkippedInst = TaskInstance(
+        id: 'inst-2',
+        scheduleId: task.id,
+        ruleId: task.schedules.first.id,
+        title: task.title,
+        description: task.description,
+        scheduledDate: CivilDay(year: 2026, month: 9, day: 8),
+        startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+        status: TaskStatus.skipped,
+        completedAt: null,
+        updatedAt: skippedAt,
+      );
+
+      final action = const SchedulerEngine()
+          .evaluate(task, [olderCompletedInst, newerSkippedInst], now);
+      expect(action.instancesToSpawn, hasLength(1));
+      expect(
+        action.instancesToSpawn.first.scheduledDate,
+        equals(CivilDay(year: 2026, month: 9, day: 10)),
+      );
+    });
+
     test('spawned instances inherit labelIds from parent schedule', () {
       final today = CivilDay(year: 2026, month: 9, day: 8);
       final now = DateTime(2026, 9, 8, 8, 0);

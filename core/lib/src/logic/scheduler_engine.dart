@@ -263,14 +263,13 @@ class SchedulerEngine {
             .where((inst) => inst.status != TaskStatus.pending)
             .toList()
           ..sort(
-            (a, b) => (b.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
-                .compareTo(
-              a.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+            (a, b) => (b.completedAt ?? b.updatedAt).compareTo(
+              a.completedAt ?? a.updatedAt,
             ),
           );
         if (resolved.isNotEmpty) {
           final latest = resolved.first;
-          final completedAtTime = latest.completedAt ?? now;
+          final completedAtTime = latest.completedAt ?? latest.updatedAt;
           final nextSpawnTime = completedAtTime.add(policy.interval);
           if (!now.isBefore(nextSpawnTime)) {
             dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);

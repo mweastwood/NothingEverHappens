@@ -1209,6 +1209,133 @@ void main() {
           expect(nextInst.status, TaskStatus.pending);
         },
       );
+
+      test(
+        'spawns next instance when previous completion-relative occurrence was skipped',
+        () {
+          final evalNow = DateTime(2026, 6, 22, 10, 0);
+          final task = TestTaskFactory.createDaily(
+            id: 'relative-skipped',
+            title: 'Completion Relative Task',
+            description: 'Relative task',
+            startDate: today.addDays(-3),
+            interval: 2,
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 2),
+              targetHour: 9,
+              targetMinute: 0,
+            ),
+          );
+
+          final skippedInstance = TaskInstance(
+            id: 'relative-skipped_2026-06-16',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(-3),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.skipped,
+            completedAt: null,
+            updatedAt: DateTime(2026, 6, 16, 10, 0),
+          );
+
+          final action = const SchedulerEngine().evaluate(task, [
+            skippedInstance,
+          ], evalNow);
+          expect(action.instancesToSpawn, hasLength(1));
+          expect(
+            action.instancesToSpawn.first.scheduledDate,
+            equals(CivilDay(year: 2026, month: 6, day: 18)),
+          );
+          expect(
+            action.instancesToSpawn.first.status,
+            equals(TaskStatus.pending),
+          );
+        },
+      );
+
+      test(
+        'prioritizes newer skipped instance over older completed instance in completion-relative schedule',
+        () {
+          final evalNow = DateTime(2026, 6, 25, 10, 0);
+          final task = TestTaskFactory.createDaily(
+            id: 'relative-order',
+            title: 'Completion Relative Task',
+            description: 'Relative task',
+            startDate: today.addDays(-10),
+            interval: 2,
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 2),
+              targetHour: 9,
+              targetMinute: 0,
+            ),
+          );
+
+          final olderCompletedInstance = TaskInstance(
+            id: 'relative-order-1',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(-10),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 6, 10, 10, 0),
+            updatedAt: DateTime(2026, 6, 10, 10, 0),
+          );
+
+          final newerSkippedInstance = TaskInstance(
+            id: 'relative-order-2',
+            scheduleId: task.id,
+            ruleId: task.schedules.first.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: today.addDays(-5),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.skipped,
+            completedAt: null,
+            updatedAt: DateTime(2026, 6, 20, 10, 0),
+          );
+
+          final action = const SchedulerEngine().evaluate(task, [
+            olderCompletedInstance,
+            newerSkippedInstance,
+          ], evalNow);
+          expect(action.instancesToSpawn, hasLength(1));
+          expect(
+            action.instancesToSpawn.first.scheduledDate,
+            equals(CivilDay(year: 2026, month: 6, day: 22)),
+          );
+        },
+      );
     });
 
     group('30-Day Window Progress / Sticking Bugs', () {
