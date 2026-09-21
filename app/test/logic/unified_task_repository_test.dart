@@ -470,19 +470,22 @@ void main() {
     'triggerMissedPolicyProcessing executes all postProcess callbacks under concurrent invocation',
     () async {
       final executedCallbacks = <int>[];
+      final completer1 = Completer<void>();
+      final completer2 = Completer<void>();
+      final completer3 = Completer<void>();
 
       Future<void> postProcess1() async {
-        await Future.delayed(const Duration(milliseconds: 10));
+        await completer1.future;
         executedCallbacks.add(1);
       }
 
       Future<void> postProcess2() async {
-        await Future.delayed(const Duration(milliseconds: 10));
+        await completer2.future;
         executedCallbacks.add(2);
       }
 
       Future<void> postProcess3() async {
-        await Future.delayed(const Duration(milliseconds: 10));
+        await completer3.future;
         executedCallbacks.add(3);
       }
 
@@ -495,6 +498,10 @@ void main() {
       final f3 = repository.triggerMissedPolicyProcessing(
         postProcess: postProcess3,
       );
+
+      completer1.complete();
+      completer2.complete();
+      completer3.complete();
 
       await Future.wait([f1, f2, f3]);
 
