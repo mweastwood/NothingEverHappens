@@ -15,7 +15,7 @@ class DelayedDocRef<T> extends Fake implements DocumentReference<T> {
   bool isStreamListened = false;
 
   DelayedDocRef({
-    this.delay = const Duration(milliseconds: 50),
+    this.delay = Duration.zero,
     this.result,
     this.error,
   });
@@ -76,7 +76,7 @@ class DelayedQuery<T> extends Fake implements Query<T> {
   bool isStreamListened = false;
 
   DelayedQuery({
-    this.delay = const Duration(milliseconds: 50),
+    this.delay = Duration.zero,
     this.result,
     this.error,
   });
@@ -182,15 +182,19 @@ void main() {
         expect(fakeDocRef.capturedOptions?.source, Source.server);
       });
 
-      test('throws TimeoutException when operation exceeds timeout', () async {
-        final fakeDocRef = DelayedDocRef<Map<String, dynamic>>(
-          delay: const Duration(milliseconds: 200),
-        );
+      test('throws TimeoutException when operation exceeds timeout', () {
+        fakeAsync((async) {
+          final fakeDocRef = DelayedDocRef<Map<String, dynamic>>(
+            delay: const Duration(milliseconds: 200),
+          );
 
-        expect(
-          () => fakeDocRef.safeGet(timeout: const Duration(milliseconds: 20)),
-          throwsA(isA<TimeoutException>()),
-        );
+          expect(
+            fakeDocRef.safeGet(timeout: const Duration(milliseconds: 20)),
+            throwsA(isA<TimeoutException>()),
+          );
+
+          async.elapse(const Duration(milliseconds: 20));
+        });
       });
 
       test('propagates error when underlying get throws', () async {
@@ -270,18 +274,22 @@ void main() {
 
       test(
         'throws TimeoutException and cancels stream subscription when snapshot stream exceeds timeout',
-        () async {
-          final fakeDocRef = DelayedDocRef<Map<String, dynamic>>(
-            delay: const Duration(milliseconds: 200),
-          );
+        () {
+          fakeAsync((async) {
+            final fakeDocRef = DelayedDocRef<Map<String, dynamic>>(
+              delay: const Duration(milliseconds: 200),
+            );
 
-          await expectLater(
-            () => fakeDocRef.safeGet(timeout: const Duration(milliseconds: 20)),
-            throwsA(isA<TimeoutException>()),
-          );
+            expect(
+              fakeDocRef.safeGet(timeout: const Duration(milliseconds: 20)),
+              throwsA(isA<TimeoutException>()),
+            );
 
-          expect(fakeDocRef.isStreamListened, isTrue);
-          expect(fakeDocRef.isStreamCancelled, isTrue);
+            async.elapse(const Duration(milliseconds: 20));
+
+            expect(fakeDocRef.isStreamListened, isTrue);
+            expect(fakeDocRef.isStreamCancelled, isTrue);
+          });
         },
       );
 
@@ -353,15 +361,19 @@ void main() {
 
       test(
         'throws TimeoutException when query operation exceeds timeout',
-        () async {
-          final fakeQuery = DelayedQuery<Map<String, dynamic>>(
-            delay: const Duration(milliseconds: 200),
-          );
+        () {
+          fakeAsync((async) {
+            final fakeQuery = DelayedQuery<Map<String, dynamic>>(
+              delay: const Duration(milliseconds: 200),
+            );
 
-          expect(
-            () => fakeQuery.safeGet(timeout: const Duration(milliseconds: 20)),
-            throwsA(isA<TimeoutException>()),
-          );
+            expect(
+              fakeQuery.safeGet(timeout: const Duration(milliseconds: 20)),
+              throwsA(isA<TimeoutException>()),
+            );
+
+            async.elapse(const Duration(milliseconds: 20));
+          });
         },
       );
 
@@ -443,18 +455,22 @@ void main() {
 
       test(
         'throws TimeoutException and cancels stream subscription when snapshot stream exceeds timeout',
-        () async {
-          final fakeQuery = DelayedQuery<Map<String, dynamic>>(
-            delay: const Duration(milliseconds: 200),
-          );
+        () {
+          fakeAsync((async) {
+            final fakeQuery = DelayedQuery<Map<String, dynamic>>(
+              delay: const Duration(milliseconds: 200),
+            );
 
-          await expectLater(
-            () => fakeQuery.safeGet(timeout: const Duration(milliseconds: 20)),
-            throwsA(isA<TimeoutException>()),
-          );
+            expect(
+              fakeQuery.safeGet(timeout: const Duration(milliseconds: 20)),
+              throwsA(isA<TimeoutException>()),
+            );
 
-          expect(fakeQuery.isStreamListened, isTrue);
-          expect(fakeQuery.isStreamCancelled, isTrue);
+            async.elapse(const Duration(milliseconds: 20));
+
+            expect(fakeQuery.isStreamListened, isTrue);
+            expect(fakeQuery.isStreamCancelled, isTrue);
+          });
         },
       );
 
