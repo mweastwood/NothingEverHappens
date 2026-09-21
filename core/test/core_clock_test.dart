@@ -42,7 +42,8 @@ void main() {
       expect(CoreClock.now, equals(customTime.add(const Duration(minutes: 2))));
     });
 
-    test('consecutive setNow calls cleanly replace previous provider closures', () {
+    test('consecutive setNow calls cleanly replace previous provider closures',
+        () {
       final time1 = DateTime(2025, 1, 1, 12, 0, 0);
       final time2 = DateTime(2026, 6, 15, 15, 30, 0);
       final time3 = DateTime(2027, 12, 31, 23, 59, 59);
