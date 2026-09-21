@@ -3,6 +3,10 @@ import 'package:test/test.dart';
 
 void main() {
   group('CoreClock Tests', () {
+    setUp(() {
+      CoreClock.reset();
+    });
+
     tearDown(() {
       CoreClock.reset();
     });
@@ -36,6 +40,21 @@ void main() {
       expect(CoreClock.now, equals(customTime));
       expect(CoreClock.now, equals(customTime.add(const Duration(minutes: 1))));
       expect(CoreClock.now, equals(customTime.add(const Duration(minutes: 2))));
+    });
+
+    test('consecutive setNow calls cleanly replace previous provider closures', () {
+      final time1 = DateTime(2025, 1, 1, 12, 0, 0);
+      final time2 = DateTime(2026, 6, 15, 15, 30, 0);
+      final time3 = DateTime(2027, 12, 31, 23, 59, 59);
+
+      CoreClock.setNow(() => time1);
+      expect(CoreClock.now, equals(time1));
+
+      CoreClock.setNow(() => time2);
+      expect(CoreClock.now, equals(time2));
+
+      CoreClock.setNow(() => time3);
+      expect(CoreClock.now, equals(time3));
     });
 
     test('reset restores default system DateTime.now behavior', () {
