@@ -112,17 +112,13 @@ Future<T> _safePromiseToFuture<T>(dynamic jsPromiseOrObject) {
 
   final unwrapped = _unwrapJsObject(jsPromiseOrObject);
 
-  if (!_isThenable(unwrapped) && !_isThenable(jsPromiseOrObject)) {
+  if (!_isThenable(unwrapped)) {
     throw StateError(
       'Expected a JavaScript Promise/thenable but received object without a "then" method: $unwrapped',
     );
   }
 
-  final target = _isThenable(unwrapped)
-      ? (unwrapped is! js.JsObject ? unwrapped : jsPromiseOrObject)
-      : jsPromiseOrObject;
-
-  return js_util.promiseToFuture<T>(target);
+  return js_util.promiseToFuture<T>(unwrapped);
 }
 
 Future<T> safePromiseToFuture<T>(dynamic jsPromiseOrObject) =>

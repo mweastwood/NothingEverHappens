@@ -186,5 +186,16 @@ void main() {
       expect(inst.completedAt, isNotNull);
       expect(inst.completedAt!.millisecondsSinceEpoch, equals(1725000000500));
     });
+
+    test('parses numeric string timestamp without throwing', () {
+      final inst = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'String Timestamp Instance',
+        'completedAt': '1725000000',
+      });
+      expect(inst.completedAt, isNotNull);
+      expect(inst.completedAt!.millisecondsSinceEpoch, equals(1725000000000));
+    });
   });
 }

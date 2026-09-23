@@ -110,7 +110,16 @@ class TaskInstance {
   static DateTime? _parseDateTime(dynamic raw) {
     if (raw == null) return null;
     if (raw is DateTime) return raw;
-    if (raw is String) return DateTime.tryParse(raw);
+    if (raw is String) {
+      final parsed = DateTime.tryParse(raw);
+      if (parsed != null) return parsed;
+      final numVal = num.tryParse(raw);
+      if (numVal != null) {
+        final ms = numVal > 100000000000 ? numVal.toInt() : (numVal * 1000).toInt();
+        return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: false);
+      }
+      return null;
+    }
     if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
     if (raw is Map) {
       final secondsRaw = raw['_seconds'] ?? raw['seconds'];
