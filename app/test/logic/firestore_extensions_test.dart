@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/firestore_extensions.dart';
@@ -14,11 +15,7 @@ class DelayedDocRef<T> extends Fake implements DocumentReference<T> {
   bool isStreamCancelled = false;
   bool isStreamListened = false;
 
-  DelayedDocRef({
-    this.delay = Duration.zero,
-    this.result,
-    this.error,
-  });
+  DelayedDocRef({this.delay = Duration.zero, this.result, this.error});
 
   @override
   Future<DocumentSnapshot<T>> get([GetOptions? options]) async {
@@ -38,11 +35,12 @@ class DelayedDocRef<T> extends Fake implements DocumentReference<T> {
     ListenSource source = ListenSource.defaultSource,
   }) {
     late StreamController<DocumentSnapshot<T>> controller;
+    Timer? timer;
     controller = StreamController<DocumentSnapshot<T>>(
       onListen: () {
         isStreamListened = true;
         if (delay > Duration.zero) {
-          Timer(delay, () {
+          timer = Timer(delay, () {
             if (!controller.isClosed) {
               if (error != null) {
                 controller.addError(error!);
@@ -61,6 +59,7 @@ class DelayedDocRef<T> extends Fake implements DocumentReference<T> {
       },
       onCancel: () {
         isStreamCancelled = true;
+        timer?.cancel();
       },
     );
     return controller.stream;
@@ -75,11 +74,7 @@ class DelayedQuery<T> extends Fake implements Query<T> {
   bool isStreamCancelled = false;
   bool isStreamListened = false;
 
-  DelayedQuery({
-    this.delay = Duration.zero,
-    this.result,
-    this.error,
-  });
+  DelayedQuery({this.delay = Duration.zero, this.result, this.error});
 
   @override
   Future<QuerySnapshot<T>> get([GetOptions? options]) async {
@@ -99,11 +94,12 @@ class DelayedQuery<T> extends Fake implements Query<T> {
     ListenSource source = ListenSource.defaultSource,
   }) {
     late StreamController<QuerySnapshot<T>> controller;
+    Timer? timer;
     controller = StreamController<QuerySnapshot<T>>(
       onListen: () {
         isStreamListened = true;
         if (delay > Duration.zero) {
-          Timer(delay, () {
+          timer = Timer(delay, () {
             if (!controller.isClosed) {
               if (error != null) {
                 controller.addError(error!);
@@ -122,6 +118,7 @@ class DelayedQuery<T> extends Fake implements Query<T> {
       },
       onCancel: () {
         isStreamCancelled = true;
+        timer?.cancel();
       },
     );
     return controller.stream;
@@ -182,10 +179,15 @@ void main() {
         expect(fakeDocRef.capturedOptions?.source, Source.server);
       });
 
-      test('throws TimeoutException when operation exceeds timeout', () {
+      test('throws TimeoutException when operation exceeds timeout', () async {
+        final docRef = fakeFirestore.collection('users').doc('user1');
+        await docRef.set({'name': 'Alice'});
+        final realSnap = await docRef.get();
+
         fakeAsync((async) {
           final fakeDocRef = DelayedDocRef<Map<String, dynamic>>(
             delay: const Duration(milliseconds: 200),
+            result: realSnap,
           );
 
           expect(
@@ -193,7 +195,7 @@ void main() {
             throwsA(isA<TimeoutException>()),
           );
 
-          async.elapse(const Duration(milliseconds: 20));
+          async.elapse(const Duration(milliseconds: 200));
         });
       });
 
@@ -274,10 +276,15 @@ void main() {
 
       test(
         'throws TimeoutException and cancels stream subscription when snapshot stream exceeds timeout',
-        () {
+        () async {
+          final docRef = fakeFirestore.collection('users').doc('user1');
+          await docRef.set({'name': 'Alice'});
+          final realSnap = await docRef.get();
+
           fakeAsync((async) {
             final fakeDocRef = DelayedDocRef<Map<String, dynamic>>(
               delay: const Duration(milliseconds: 200),
+              result: realSnap,
             );
 
             expect(
@@ -285,7 +292,7 @@ void main() {
               throwsA(isA<TimeoutException>()),
             );
 
-            async.elapse(const Duration(milliseconds: 20));
+            async.elapse(const Duration(milliseconds: 200));
 
             expect(fakeDocRef.isStreamListened, isTrue);
             expect(fakeDocRef.isStreamCancelled, isTrue);
@@ -361,10 +368,15 @@ void main() {
 
       test(
         'throws TimeoutException when query operation exceeds timeout',
-        () {
+        () async {
+          final collection = fakeFirestore.collection('tasks');
+          await collection.doc('task1').set({'title': 'Task 1'});
+          final realQuerySnap = await collection.get();
+
           fakeAsync((async) {
             final fakeQuery = DelayedQuery<Map<String, dynamic>>(
               delay: const Duration(milliseconds: 200),
+              result: realQuerySnap,
             );
 
             expect(
@@ -372,7 +384,7 @@ void main() {
               throwsA(isA<TimeoutException>()),
             );
 
-            async.elapse(const Duration(milliseconds: 20));
+            async.elapse(const Duration(milliseconds: 200));
           });
         },
       );
@@ -455,10 +467,15 @@ void main() {
 
       test(
         'throws TimeoutException and cancels stream subscription when snapshot stream exceeds timeout',
-        () {
+        () async {
+          final collection = fakeFirestore.collection('tasks');
+          await collection.doc('task1').set({'title': 'Task 1'});
+          final realQuerySnap = await collection.get();
+
           fakeAsync((async) {
             final fakeQuery = DelayedQuery<Map<String, dynamic>>(
               delay: const Duration(milliseconds: 200),
+              result: realQuerySnap,
             );
 
             expect(
@@ -466,7 +483,7 @@ void main() {
               throwsA(isA<TimeoutException>()),
             );
 
-            async.elapse(const Duration(milliseconds: 20));
+            async.elapse(const Duration(milliseconds: 200));
 
             expect(fakeQuery.isStreamListened, isTrue);
             expect(fakeQuery.isStreamCancelled, isTrue);
