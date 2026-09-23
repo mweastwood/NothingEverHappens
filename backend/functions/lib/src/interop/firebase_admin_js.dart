@@ -356,12 +356,19 @@ class JsDocumentSnapshot implements DocumentSnapshot {
                 as String?);
     if (jsonStr == null) return null;
     final decoded = jsonDecode(jsonStr);
+    Map<String, dynamic>? resultMap;
     if (decoded is Map<String, dynamic>) {
-      return decoded;
+      resultMap = decoded;
     } else if (decoded is Map) {
-      return Map<String, dynamic>.from(decoded);
+      resultMap = Map<String, dynamic>.from(decoded);
     }
-    return null;
+    if (resultMap != null &&
+        resultMap.length == 1 &&
+        resultMap.containsKey('o') &&
+        resultMap['o'] is Map) {
+      return Map<String, dynamic>.from(resultMap['o'] as Map);
+    }
+    return resultMap;
   }
 }
 

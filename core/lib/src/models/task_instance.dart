@@ -115,7 +115,8 @@ class TaskInstance {
       if (parsed != null) return parsed;
       final numVal = num.tryParse(raw);
       if (numVal != null) {
-        final ms = numVal > 100000000000 ? numVal.toInt() : (numVal * 1000).toInt();
+        final ms =
+            numVal > 100000000000 ? numVal.toInt() : (numVal * 1000).toInt();
         return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: false);
       }
       return null;
