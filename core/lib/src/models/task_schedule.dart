@@ -215,7 +215,7 @@ class TaskSchedule {
       if (seconds is num) {
         return DateTime.fromMillisecondsSinceEpoch(
           seconds.toInt() * 1000 + ((nanos as num).toInt() ~/ 1000000),
-          isUtc: true,
+          isUtc: false,
         );
       }
     }
