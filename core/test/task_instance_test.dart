@@ -170,5 +170,21 @@ void main() {
       });
       expect(inst.scheduledDate, equals(nowCivilDay));
     });
+
+    test(
+        'parses map timestamp with string seconds and nanoseconds without throwing',
+        () {
+      final inst = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Map Timestamp Instance',
+        'completedAt': {
+          '_seconds': '1725000000',
+          '_nanoseconds': '500000000',
+        },
+      });
+      expect(inst.completedAt, isNotNull);
+      expect(inst.completedAt!.millisecondsSinceEpoch, equals(1725000000500));
+    });
   });
 }

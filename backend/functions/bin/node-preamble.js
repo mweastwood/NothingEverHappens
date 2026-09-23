@@ -16,6 +16,7 @@ if (typeof module !== "undefined") self.module = module;
 if (typeof process !== "undefined") self.process = process;
 if (typeof __dirname !== "undefined") self.__dirname = __dirname;
 if (typeof __filename !== "undefined") self.__filename = __filename;
+if (typeof Buffer !== "undefined") self.Buffer = Buffer;
 if (dartNodeIsActuallyNode) {
   if (typeof globalThis.crypto !== "undefined") {
     Object.defineProperty(self, "crypto", {

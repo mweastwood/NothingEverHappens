@@ -118,9 +118,9 @@ Future<T> _safePromiseToFuture<T>(dynamic jsPromiseOrObject) {
     );
   }
 
-  final target = _isThenable(unwrapped) && unwrapped is! js.JsObject
-      ? unwrapped
-      : _unwrapJsObject(jsPromiseOrObject);
+  final target = _isThenable(unwrapped)
+      ? (unwrapped is! js.JsObject ? unwrapped : jsPromiseOrObject)
+      : jsPromiseOrObject;
 
   return js_util.promiseToFuture<T>(target);
 }
@@ -361,18 +361,9 @@ class JsDocumentSnapshot implements DocumentSnapshot {
     if (jsonStr == null) return null;
     final decoded = jsonDecode(jsonStr);
     if (decoded is Map<String, dynamic>) {
-      if (decoded.length == 1 &&
-          decoded.containsKey('o') &&
-          decoded['o'] is Map) {
-        return Map<String, dynamic>.from(decoded['o'] as Map);
-      }
       return decoded;
     } else if (decoded is Map) {
-      final map = Map<String, dynamic>.from(decoded);
-      if (map.length == 1 && map.containsKey('o') && map['o'] is Map) {
-        return Map<String, dynamic>.from(map['o'] as Map);
-      }
-      return map;
+      return Map<String, dynamic>.from(decoded);
     }
     return null;
   }

@@ -210,11 +210,17 @@ class TaskSchedule {
     if (raw is String) return DateTime.tryParse(raw);
     if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
     if (raw is Map) {
-      final seconds = raw['_seconds'] ?? raw['seconds'];
-      final nanos = raw['_nanoseconds'] ?? raw['nanoseconds'] ?? 0;
-      if (seconds is num) {
+      final secondsRaw = raw['_seconds'] ?? raw['seconds'];
+      final nanosRaw = raw['_nanoseconds'] ?? raw['nanoseconds'] ?? 0;
+      final seconds = secondsRaw is num
+          ? secondsRaw
+          : (secondsRaw != null ? num.tryParse(secondsRaw.toString()) : null);
+      if (seconds != null) {
+        final nanos = nanosRaw is num
+            ? nanosRaw
+            : (num.tryParse(nanosRaw.toString()) ?? 0);
         return DateTime.fromMillisecondsSinceEpoch(
-          seconds.toInt() * 1000 + ((nanos as num).toInt() ~/ 1000000),
+          seconds.toInt() * 1000 + (nanos.toInt() ~/ 1000000),
           isUtc: false,
         );
       }
