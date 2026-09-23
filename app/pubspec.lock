@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: _fe_analyzer_shared
-      sha256: cd6add6f846f35fb79f3c315296703c1a24f3cfd7f4739d91a74961c1c7e9f1b
+      sha256: fdcd9f70f9eb80df3bc5ed0fa67280df2595fd481948df8a9ab082e6a40ad04b
       url: "https://pub.dev"
     source: hosted
-    version: "100.0.0"
+    version: "108.0.0"
   _flutterfire_internals:
     dependency: transitive
     description:
@@ -21,10 +21,10 @@ packages:
     dependency: "direct overridden"
     description:
       name: analyzer
-      sha256: "6ba98576948803398b69e3a444df24eacdbe12ed699c7014e120ea38552debbf"
+      sha256: a51c769bff3b6dfbe9d60199b8606d808290702a296bef0c26a4ca391d414e46
       url: "https://pub.dev"
     source: hosted
-    version: "13.0.0"
+    version: "14.4.0"
   antlr4:
     dependency: transitive
     description:
@@ -356,18 +356,18 @@ packages:
     dependency: "direct main"
     description:
       name: firebase_auth
-      sha256: "89bf082422d09cb19d32450c6693c135ebadb2fef4852b2ad0daaa9820136893"
+      sha256: "144fa22926b629e797ecc757db5d31b145aeedf6018160296dae945d98a98fb5"
       url: "https://pub.dev"
     source: hosted
-    version: "6.6.1"
+    version: "6.7.0"
   firebase_auth_platform_interface:
     dependency: transitive
     description:
       name: firebase_auth_platform_interface
-      sha256: f693f59a1f11f2769cc9c2362e6032b5a95bc63d0b4a8a25ccd5190ea5899693
+      sha256: "9959a6e7338df4f725707a71fd9f727d8dfafd7c46cbaf59fcf7c8e94fb92d11"
       url: "https://pub.dev"
     source: hosted
-    version: "9.0.7"
+    version: "9.1.0"
   firebase_auth_web:
     dependency: transitive
     description:
