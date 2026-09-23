@@ -163,8 +163,7 @@ void main() {
         },
       });
       expect(schedule.updatedAt, isNotNull);
-      expect(
-          schedule.updatedAt!.millisecondsSinceEpoch, equals(1725000000500));
+      expect(schedule.updatedAt.millisecondsSinceEpoch, equals(1725000000500));
     });
 
     test('parses numeric string timestamp without throwing', () {
@@ -173,7 +172,7 @@ void main() {
         'updatedAt': '1725000000',
       });
       expect(schedule.updatedAt, isNotNull);
-      expect(schedule.updatedAt!.millisecondsSinceEpoch, equals(1725000000000));
+      expect(schedule.updatedAt.millisecondsSinceEpoch, equals(1725000000000));
     });
   });
 }

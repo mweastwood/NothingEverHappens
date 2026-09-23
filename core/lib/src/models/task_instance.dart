@@ -111,14 +111,14 @@ class TaskInstance {
     if (raw == null) return null;
     if (raw is DateTime) return raw;
     if (raw is String) {
-      final parsed = DateTime.tryParse(raw);
-      if (parsed != null) return parsed;
       final numVal = num.tryParse(raw);
       if (numVal != null) {
         final ms =
             numVal > 100000000000 ? numVal.toInt() : (numVal * 1000).toInt();
         return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: false);
       }
+      final parsed = DateTime.tryParse(raw);
+      if (parsed != null) return parsed;
       return null;
     }
     if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
