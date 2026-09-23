@@ -16,9 +16,28 @@ if (typeof module !== "undefined") self.module = module;
 if (typeof process !== "undefined") self.process = process;
 if (typeof __dirname !== "undefined") self.__dirname = __dirname;
 if (typeof __filename !== "undefined") self.__filename = __filename;
-if (typeof Buffer !== "undefined") self.Buffer = Buffer;
-
 if (dartNodeIsActuallyNode) {
+  if (typeof globalThis.crypto !== "undefined") {
+    Object.defineProperty(self, "crypto", {
+      value: globalThis.crypto,
+      configurable: true,
+      writable: true,
+    });
+  }
+  self.__antigravity_unwrapped = null;
+  globalThis.__antigravity_unwrapped = null;
+  var storeUnwrapped = function(target) {
+    self.__antigravity_unwrapped = target;
+    globalThis.__antigravity_unwrapped = target;
+  };
+  self.__antigravity_store_unwrapped = storeUnwrapped;
+  globalThis.__antigravity_store_unwrapped = storeUnwrapped;
+
+  var jsonStringify = function(target) {
+    return JSON.stringify(target);
+  };
+  self.__antigravity_json_stringify = jsonStringify;
+  globalThis.__antigravity_json_stringify = jsonStringify;
   var url = ("undefined" !== typeof __webpack_require__ ? __non_webpack_require__ : require)("url");
   Object.defineProperty(self, "location", {
     value: {

@@ -112,6 +112,16 @@ class TaskInstance {
     if (raw is DateTime) return raw;
     if (raw is String) return DateTime.tryParse(raw);
     if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
+    if (raw is Map) {
+      final seconds = raw['_seconds'] ?? raw['seconds'];
+      final nanos = raw['_nanoseconds'] ?? raw['nanoseconds'] ?? 0;
+      if (seconds is num) {
+        return DateTime.fromMillisecondsSinceEpoch(
+          seconds.toInt() * 1000 + ((nanos as num).toInt() ~/ 1000000),
+          isUtc: true,
+        );
+      }
+    }
     try {
       return (raw as dynamic).toDate() as DateTime?;
     } catch (_) {

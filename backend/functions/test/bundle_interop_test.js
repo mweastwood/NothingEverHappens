@@ -37,8 +37,19 @@ async function runTests() {
   console.log('✔ All expected functions and scheduled handlers exported');
 
   // Helper to create chained queries
+  const batchSets = [];
   const createMockQuery = (docs = []) => {
     const q = {
+      doc: (id) => ({
+        id: id || 'doc_test',
+        get: () => Promise.resolve({
+          id: id || 'doc_test',
+          exists: false,
+          data: () => null,
+          ref: { id: id || 'doc_test' }
+        }),
+        collection: (sub) => createMockQuery([])
+      }),
       where: () => createMockQuery(docs),
       limit: (n) => createMockQuery(docs.slice(0, n)),
       get: () => Promise.resolve({
@@ -47,7 +58,10 @@ async function runTests() {
         docs: docs.map(d => ({
           id: d.id || 'doc_test',
           exists: true,
-          ref: { id: d.id || 'doc_test' },
+          ref: {
+            id: d.id || 'doc_test',
+            collection: (sub) => createMockQuery([])
+          },
           data: () => d
         }))
       })
@@ -57,12 +71,36 @@ async function runTests() {
 
   // 2. Test processFamilyScheduleDirect with mock Firestore DB
   const mockTaskDoc = {
-    id: 'task_1',
-    name: 'Clean bedroom',
-    familyId: 'fam_test',
-    frequency: 'daily',
-    active: true,
-    deleted: false
+    id: 'S-47f3989d-3f6d-4830-aa5f-f3e3eb12e1df',
+    title: 'Clean Kitchen',
+    description: '',
+    familyCompletionMode: 'anyone',
+    preferredBy: {},
+    isMaster: false,
+    futureInstancesCount: 5,
+    lastSpawnedDate: { year: 2026, month: 9, day: 12 },
+    priority: 'medium',
+    schedules: [
+      {
+        id: 'R-e1da46fa-9236-4141-80ad-eb1119481ff9',
+        scheduleId: 'S-47f3989d-3f6d-4830-aa5f-f3e3eb12e1df',
+        type: 'weekly',
+        interval: 1,
+        startDate: { year: 2026, month: 8, day: 16 },
+        schedulingPolicy: { type: 'fixedCalendar' },
+        missedOccurrencePolicy: { type: 'keepAround', policy: 'preferOlder' },
+        dueRelativeTime: { hour: 17, minute: 0, dayOffset: 0 },
+        startRelativeTime: { hour: 9, minute: 0, dayOffset: 0 },
+        daysOfWeek: [1, 2, 3, 4, 5, 6, 7]
+      }
+    ],
+    assignedUserId: 'z1NuzlWEHVY27tUgXGNFZMaSPlw1',
+    activeOccurrenceIndex: 0,
+    updatedAt: new Date(),
+    skipIfNoCapacity: false,
+    estimatedDuration: 15,
+    labelIds: ['L-1e2a7255-64af-4ad1-bd93-ee70825fc41c'],
+    isFamily: true
   };
 
   const mockDb = {
@@ -82,7 +120,7 @@ async function runTests() {
       get: () => createMockQuery([mockTaskDoc]).get()
     }),
     batch: () => ({
-      set: () => {},
+      set: (ref, data) => batchSets.push({ ref, data }),
       update: () => {},
       delete: () => {},
       commit: () => Promise.resolve()
@@ -103,7 +141,11 @@ async function runTests() {
   const directResult = await directResultPromise;
   assert(directResult, 'Result must be returned');
   assert.strictEqual(directResult.familyId, 'fam_test');
-  console.log('✔ processFamilyScheduleDirect executes and resolves native Promises cleanly');
+  assert.strictEqual(directResult.tasksEvaluated, 1, 'Should evaluate 1 family task');
+  assert(directResult.instancesSpawned > 0, 'Should spawn instances for family task');
+  assert(!directResult.error, 'Should have no errors during scheduling');
+  assert(batchSets.length > 0, 'Should write spawned instances to batch');
+  console.log('✔ processFamilyScheduleDirect executes, evaluates isFamily tasks, and spawns instances cleanly');
 
   // 3. Test processHistoryCleanup with mock Firestore DB
   let historyDocs = [
