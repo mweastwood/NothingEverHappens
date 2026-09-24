@@ -42,7 +42,7 @@ dependencies:
   material_ui: ^1.2.0
   flutter_markdown: ^0.7.7+1
   firebase_core: ^4.15.0
-  firebase_analytics: ^12.5.0
+  firebase_analytics: ^12.6.0
   firebase_crashlytics: ^5.4.0
   firebase_remote_config: ^6.6.0
   firebase_auth: ^6.7.0
