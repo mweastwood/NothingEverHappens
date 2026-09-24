@@ -197,5 +197,25 @@ void main() {
       expect(inst.completedAt, isNotNull);
       expect(inst.completedAt!.millisecondsSinceEpoch, equals(1725000000000));
     });
+
+    test('parses digit-only ISO strings like 2026 and 20260923 correctly', () {
+      final instYear = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Year Only Instance',
+        'completedAt': '2026',
+      });
+      expect(instYear.completedAt!.year, equals(2026));
+
+      final instCompact = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Compact ISO Date Instance',
+        'completedAt': '20260923',
+      });
+      expect(instCompact.completedAt!.year, equals(2026));
+      expect(instCompact.completedAt!.month, equals(9));
+      expect(instCompact.completedAt!.day, equals(23));
+    });
   });
 }

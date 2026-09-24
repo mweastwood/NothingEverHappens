@@ -174,5 +174,21 @@ void main() {
       expect(schedule.updatedAt, isNotNull);
       expect(schedule.updatedAt.millisecondsSinceEpoch, equals(1725000000000));
     });
+
+    test('parses digit-only ISO strings like 2026 and 20260923 correctly', () {
+      final scheduleYear = TaskSchedule.fromMap({
+        'title': 'Year Only',
+        'updatedAt': '2026',
+      });
+      expect(scheduleYear.updatedAt.year, equals(2026));
+
+      final scheduleCompact = TaskSchedule.fromMap({
+        'title': 'Compact ISO Date',
+        'updatedAt': '20260923',
+      });
+      expect(scheduleCompact.updatedAt.year, equals(2026));
+      expect(scheduleCompact.updatedAt.month, equals(9));
+      expect(scheduleCompact.updatedAt.day, equals(23));
+    });
   });
 }

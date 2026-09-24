@@ -289,6 +289,69 @@ async function runTests() {
   assert(subResult && subResult.familyId === 'fam_sub', 'Subcollection DB query should succeed without type cast error');
   console.log('✔ Subcollection resolution on native JS document references succeeded cleanly');
 
+  // 7. Verify documents with single field 'o' and numeric string dates in tasks
+  const fieldODoc = {
+    id: 'S-field-o-test',
+    title: 'Field O Task',
+    description: '',
+    familyCompletionMode: 'anyone',
+    preferredBy: {},
+    isMaster: false,
+    futureInstancesCount: 5,
+    lastSpawnedDate: { year: 2026, month: 9, day: 12 },
+    priority: 'medium',
+    schedules: [
+      {
+        id: 'R-field-o-rule',
+        scheduleId: 'S-field-o-test',
+        type: 'weekly',
+        interval: 1,
+        startDate: { year: 2026, month: 8, day: 16 },
+        schedulingPolicy: { type: 'fixedCalendar' },
+        missedOccurrencePolicy: { type: 'keepAround', policy: 'preferOlder' },
+        dueRelativeTime: { hour: 17, minute: 0, dayOffset: 0 },
+        startRelativeTime: { hour: 9, minute: 0, dayOffset: 0 },
+        daysOfWeek: [1, 2, 3, 4, 5, 6, 7]
+      }
+    ],
+    updatedAt: '2026',
+    o: { nestedData: 'value' },
+    isFamily: true
+  };
+
+  const fieldODB = {
+    collection: () => ({
+      doc: () => ({
+        id: 'fam_field_o',
+        get: () => Promise.resolve({
+          id: 'fam_field_o',
+          exists: true,
+          data: () => ({ name: 'Field O Family', o: { nestedData: 'value' } }),
+          ref: {
+            id: 'fam_field_o',
+            collection: () => createMockQuery([fieldODoc])
+          }
+        }),
+        collection: () => createMockQuery([fieldODoc])
+      })
+    }),
+    batch: () => ({
+      set: () => {},
+      update: () => {},
+      delete: () => {},
+      commit: () => Promise.resolve()
+    })
+  };
+
+  const fieldOResult = await funcs.processFamilyScheduleDirect(
+    fieldODB,
+    'fam_field_o',
+    '2026-09-19T00:00:00.000Z'
+  );
+  assert(fieldOResult && fieldOResult.familyId === 'fam_field_o', 'Field O DB query should succeed');
+  assert.strictEqual(fieldOResult.tasksEvaluated, 1, 'Should evaluate task with field o and year 2026 updatedAt date');
+  console.log('✔ Documents with single field o and string ISO dates evaluated cleanly');
+
   console.log('\nAll Node.js Bundle Interop Integration Tests passed successfully!');
 }
 
