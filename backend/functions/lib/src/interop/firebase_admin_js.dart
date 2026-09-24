@@ -44,19 +44,25 @@ AuthService getFirebaseAdminAuth() {
 }
 
 void _ensureJsBridge() {
-  if (!js.context.hasProperty('__antigravity_store_unwrapped')) {
-    js.context.callMethod('eval', [
-      '''
-      (function() {
-        var g = typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : global);
-        g.__antigravity_unwrapped = null;
-        g.__antigravity_store_unwrapped = function(target) {
-          g.__antigravity_unwrapped = target;
-        };
-      })();
-      '''
-    ]);
+  if (js_util.hasProperty(
+          js_util.globalThis, '__antigravity_store_unwrapped') ||
+      js.context.hasProperty('__antigravity_store_unwrapped')) {
+    return;
   }
+  js.context.callMethod('eval', [
+    '''
+    (function() {
+      var g = typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : global);
+      g.__antigravity_unwrapped = null;
+      g.__antigravity_store_unwrapped = function(target) {
+        g.__antigravity_unwrapped = target;
+      };
+      g.__antigravity_json_stringify = function(target) {
+        return JSON.stringify(target);
+      };
+    })();
+    '''
+  ]);
 }
 
 dynamic _unwrapJsObject(dynamic obj) {
@@ -68,10 +74,22 @@ dynamic _unwrapJsObject(dynamic obj) {
   }
 
   _ensureJsBridge();
-  js.context.callMethod('__antigravity_store_unwrapped', [obj]);
+  if (js.context.hasProperty('__antigravity_store_unwrapped')) {
+    js.context.callMethod('__antigravity_store_unwrapped', [obj]);
+  } else if (js_util.hasProperty(
+      js_util.globalThis, '__antigravity_store_unwrapped')) {
+    js_util
+        .callMethod(js_util.globalThis, '__antigravity_store_unwrapped', [obj]);
+  }
   final unwrapped =
-      js_util.getProperty(js_util.globalThis, '__antigravity_unwrapped');
+      js_util.getProperty(js_util.globalThis, '__antigravity_unwrapped') ??
+          (js.context.hasProperty('__antigravity_unwrapped')
+              ? js.context['__antigravity_unwrapped']
+              : null);
   js_util.setProperty(js_util.globalThis, '__antigravity_unwrapped', null);
+  if (js.context.hasProperty('__antigravity_unwrapped')) {
+    js.context['__antigravity_unwrapped'] = null;
+  }
   return unwrapped ?? obj;
 }
 
@@ -79,6 +97,9 @@ bool _isThenable(dynamic obj) {
   if (obj == null) return false;
   if (obj is String || obj is num || obj is bool) return false;
   try {
+    if (obj is js.JsObject) {
+      return obj.hasProperty('then');
+    }
     return js_util.hasProperty(obj, 'then');
   } catch (_) {
     return false;
@@ -91,7 +112,7 @@ Future<T> _safePromiseToFuture<T>(dynamic jsPromiseOrObject) {
 
   final unwrapped = _unwrapJsObject(jsPromiseOrObject);
 
-  if (unwrapped == null || !_isThenable(unwrapped)) {
+  if (!_isThenable(unwrapped)) {
     throw StateError(
       'Expected a JavaScript Promise/thenable but received object without a "then" method: $unwrapped',
     );
@@ -319,10 +340,29 @@ class JsDocumentSnapshot implements DocumentSnapshot {
         ? _snap.callMethod('data')
         : js_util.callMethod(_snap, 'data', []);
     if (rawData == null) return null;
-    final jsonStr =
-        js.context['JSON'].callMethod('stringify', [rawData]) as String?;
+    final unwrapped = _unwrapJsObject(rawData);
+    _ensureJsBridge();
+    final jsonStr = js_util.hasProperty(
+            js_util.globalThis, '__antigravity_json_stringify')
+        ? js_util.callMethod(
+            js_util.globalThis,
+            '__antigravity_json_stringify',
+            [unwrapped],
+          ) as String?
+        : (js.context.hasProperty('__antigravity_json_stringify')
+            ? js.context.callMethod('__antigravity_json_stringify', [unwrapped])
+                as String?
+            : js.context['JSON'].callMethod('stringify', [unwrapped])
+                as String?);
     if (jsonStr == null) return null;
-    return jsonDecode(jsonStr) as Map<String, dynamic>?;
+    final decoded = jsonDecode(jsonStr);
+    Map<String, dynamic>? resultMap;
+    if (decoded is Map<String, dynamic>) {
+      resultMap = decoded;
+    } else if (decoded is Map) {
+      resultMap = Map<String, dynamic>.from(decoded);
+    }
+    return resultMap;
   }
 }
 
@@ -426,7 +466,11 @@ dynamic _convertValueForJs(
   js.JsObject fieldValueClass,
   js.JsObject timestampClass,
 ) {
-  if (value == FieldValue.deleteToken) {
+  if (value == null) {
+    return null;
+  } else if (value is String || value is num || value is bool) {
+    return value;
+  } else if (value == FieldValue.deleteToken) {
     return fieldValueClass.callMethod('delete');
   } else if (value is DateTime) {
     return timestampClass
