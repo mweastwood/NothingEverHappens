@@ -212,6 +212,69 @@ void main() {
         );
       },
     );
+
+    test(
+      'isFamilyParent returns true for parent and false for non-parent',
+      () async {
+        await fakeFirestore.collection('users').doc('parent_user').set({
+          'familyId': 'fam_123',
+          'familyRole': 'parent',
+        });
+        await fakeFirestore.collection('users').doc('non_parent_user').set({
+          'familyId': 'fam_123',
+          'familyRole': 'non-parent',
+        });
+
+        final parentFetcher = FamilyIdFetcher(
+          firestore: fakeFirestore,
+          userId: 'parent_user',
+        );
+        final nonParentFetcher = FamilyIdFetcher(
+          firestore: fakeFirestore,
+          userId: 'non_parent_user',
+        );
+
+        expect(await parentFetcher.isFamilyParent(), isTrue);
+        expect(parentFetcher.cachedFamilyRole, 'parent');
+
+        expect(await nonParentFetcher.isFamilyParent(), isFalse);
+        expect(nonParentFetcher.cachedFamilyRole, 'non-parent');
+      },
+    );
+
+    test(
+      'isFamilyParent resolves from family members when userDoc lacks role',
+      () async {
+        await fakeFirestore.collection('users').doc('user_without_role').set({
+          'familyId': 'fam_doc_check',
+        });
+        await fakeFirestore.collection('families').doc('fam_doc_check').set({
+          'name': 'Test Family',
+          'members': {
+            'user_without_role': {
+              'userId': 'user_without_role',
+              'displayName': 'Parent User',
+              'email': 'parent@example.com',
+              'role': 'parent',
+            },
+            'other_member': {
+              'userId': 'other_member',
+              'displayName': 'Kid User',
+              'email': 'kid@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+
+        final fetcher = FamilyIdFetcher(
+          firestore: fakeFirestore,
+          userId: 'user_without_role',
+        );
+
+        expect(await fetcher.isFamilyParent(), isTrue);
+        expect(await fetcher.isFamilyParent('other_member'), isFalse);
+      },
+    );
   });
 }
 
