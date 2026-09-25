@@ -991,5 +991,47 @@ void main() {
         expect(task.status, TaskStatus.pending);
       },
     );
+
+    test(
+      'completion-relative recurring schedule suppresses phantom projected occurrences',
+      () {
+        final completionRelativeSchedule = TaskSchedule(
+          id: 'S-completion-rel',
+          title: 'Completion Relative Task',
+          description: 'Every 3 days after completion',
+          priority: TaskPriority.medium,
+          schedules: [
+            DailySchedule(
+              id: 'R-completion-rel',
+              scheduleId: 'S-completion-rel',
+              startDate: const CivilDay(year: 2026, month: 3, day: 1),
+              interval: 3,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 9,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 17,
+                minute: 0,
+              ),
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 3),
+                targetHour: 9,
+                targetMinute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final map = CalendarScreen.computeMonthTaskMap(march2026, [], [
+          completionRelativeSchedule,
+        ], today: today);
+
+        // Should have zero projected occurrences across the entire month
+        expect(map.isEmpty, isTrue);
+      },
+    );
   });
 }

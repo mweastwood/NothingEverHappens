@@ -114,7 +114,9 @@ Map<CivilDay, List<CalendarDayTask>> computeMonthTaskMap({
   for (final sched in schedules) {
     final recurringRules = [
       for (final rule in sched.schedules)
-        if (rule is! OneOffSchedule) rule,
+        if (rule is! OneOffSchedule &&
+            rule.schedulingPolicy is! CompletionRelativePolicy)
+          rule,
     ];
     if (recurringRules.isNotEmpty) {
       recurringSchedules.add((schedule: sched, rules: recurringRules));
