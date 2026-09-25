@@ -2660,12 +2660,96 @@ void main() {
           expect(instances.any((i) => i.id == 'I-fam-local-win'), isTrue);
         },
       );
+
+      test(
+        'User doc role change without familyId change invalidates fetcher cache',
+        () async {
+          await firestore.collection('users').doc('user_role_change').set({
+            'familyId': 'fam_role_test',
+            'familyRole': 'non-parent',
+          });
+
+          final fetcher = _TrackingFamilyIdFetcher(
+            firestore: firestore,
+            userId: 'user_role_change',
+          );
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user_role_change',
+            isActivePremium: true,
+            familyIdFetcher: fetcher,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final initialClearCalls = fetcher.clearCacheCalls;
+
+          // Update user doc with role change while familyId remains unchanged
+          await firestore.collection('users').doc('user_role_change').set({
+            'familyId': 'fam_role_test',
+            'familyRole': 'parent',
+          });
+          await pumpEventQueue();
+
+          // Verify clearCache() was called when role changed
+          expect(fetcher.clearCacheCalls, greaterThan(initialClearCalls));
+        },
+      );
+
+      test(
+        'Duplicate family instance resolution does not delete from user collection when familyId is null or empty',
+        () async {
+          await firestore.collection('users').doc('user_no_fam').set({
+            'name': 'No Family User',
+          });
+
+          // Seed personal instance with same ID in user collection
+          await firestore
+              .collection('users')
+              .doc('user_no_fam')
+              .collection('instances')
+              .doc('I-slot-duplicate')
+              .set({
+                'id': 'I-slot-duplicate',
+                'scheduleId': 'S-pers-1',
+                'ruleId': 'R-1',
+                'title': 'User Personal Instance',
+                'scheduledDate': '2026-09-25',
+                'startRelativeTime': {'dayOffset': 0, 'hour': 9, 'minute': 0},
+                'dueRelativeTime': {'dayOffset': 0, 'hour': 10, 'minute': 0},
+                'isFamily': false,
+                'status': 'pending',
+                'statusReason': 'scheduler_generated',
+                'updatedAt': DateTime(2026, 9, 25, 9, 0).toIso8601String(),
+              });
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user_no_fam',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final userInst = await firestore
+              .collection('users')
+              .doc('user_no_fam')
+              .collection('instances')
+              .doc('I-slot-duplicate')
+              .get();
+          expect(userInst.exists, isTrue);
+        },
+      );
     });
   });
 }
 
 class _TrackingFamilyIdFetcher extends FamilyIdFetcher {
   int getFamilyIdCalls = 0;
+  int clearCacheCalls = 0;
   final String? stubbedId;
 
   _TrackingFamilyIdFetcher({
@@ -2673,6 +2757,12 @@ class _TrackingFamilyIdFetcher extends FamilyIdFetcher {
     required super.userId,
     this.stubbedId,
   });
+
+  @override
+  void clearCache() {
+    clearCacheCalls++;
+    super.clearCache();
+  }
 
   @override
   Future<String?> getFamilyId() async {

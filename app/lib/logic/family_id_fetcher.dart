@@ -134,14 +134,18 @@ class FamilyIdFetcher {
 
   Future<bool> isFamilyParent([String? targetUserId]) async {
     final uid = targetUserId ?? _userId;
-    if (uid == _userId && _cachedFamilyRole != null) {
-      return _cachedFamilyRole == FamilyRole.parent.value;
+    if (uid == _userId) {
+      await getFamilyId();
+      if (_cachedFamilyRole != null) {
+        return _cachedFamilyRole == FamilyRole.parent.value;
+      }
     }
     final family = await getFamily();
-    if (uid == _userId && _cachedFamilyRole != null) {
-      return _cachedFamilyRole == FamilyRole.parent.value;
-    }
     if (family == null) return false;
-    return family.members[uid]?.role == FamilyRole.parent;
+    final isParent = family.members[uid]?.role == FamilyRole.parent;
+    if (uid == _userId && family.members[uid] != null) {
+      _cachedFamilyRole = family.members[uid]!.role.value;
+    }
+    return isParent;
   }
 }

@@ -275,6 +275,116 @@ void main() {
         expect(await fetcher.isFamilyParent('other_member'), isFalse);
       },
     );
+
+    test(
+      'isFamilyParent reflects role changes after TTL expiration using AppClock.advanceTime()',
+      () async {
+        await fakeFirestore.collection('users').doc('user1').set({
+          'familyId': 'fam_123',
+          'familyRole': 'parent',
+        });
+
+        final fetcher = FamilyIdFetcher(
+          firestore: fakeFirestore,
+          userId: 'user1',
+        );
+
+        expect(await fetcher.isFamilyParent(), isTrue);
+        expect(fetcher.cachedFamilyRole, 'parent');
+
+        // Update user doc in Firestore to non-parent
+        await fakeFirestore.collection('users').doc('user1').set({
+          'familyId': 'fam_123',
+          'familyRole': 'non-parent',
+        });
+
+        // Within cache duration, isFamilyParent returns cached parent
+        AppClock.advanceTime(const Duration(seconds: 5));
+        expect(await fetcher.isFamilyParent(), isTrue);
+
+        // Advance time beyond cache duration (16s)
+        AppClock.advanceTime(const Duration(seconds: 11));
+        expect(await fetcher.isFamilyParent(), isFalse);
+        expect(fetcher.cachedFamilyRole, 'non-parent');
+      },
+    );
+
+    test(
+      'isFamilyParent reflects role changes immediately after clearCache()',
+      () async {
+        await fakeFirestore.collection('users').doc('user1').set({
+          'familyId': 'fam_123',
+          'familyRole': 'non-parent',
+        });
+
+        final fetcher = FamilyIdFetcher(
+          firestore: fakeFirestore,
+          userId: 'user1',
+        );
+
+        expect(await fetcher.isFamilyParent(), isFalse);
+        expect(fetcher.cachedFamilyRole, 'non-parent');
+
+        // Update user doc in Firestore to parent
+        await fakeFirestore.collection('users').doc('user1').set({
+          'familyId': 'fam_123',
+          'familyRole': 'parent',
+        });
+
+        // Clear cache invalidates cached role immediately
+        fetcher.clearCache();
+        expect(fetcher.cachedFamilyRole, isNull);
+
+        expect(await fetcher.isFamilyParent(), isTrue);
+        expect(fetcher.cachedFamilyRole, 'parent');
+      },
+    );
+
+    test(
+      'isFamilyParent caches role from family members and updates when refreshed',
+      () async {
+        await fakeFirestore.collection('users').doc('user_without_role').set({
+          'familyId': 'fam_doc_check',
+        });
+        await fakeFirestore.collection('families').doc('fam_doc_check').set({
+          'name': 'Test Family',
+          'members': {
+            'user_without_role': {
+              'userId': 'user_without_role',
+              'displayName': 'Parent User',
+              'email': 'parent@example.com',
+              'role': 'parent',
+            },
+          },
+        });
+
+        final fetcher = FamilyIdFetcher(
+          firestore: fakeFirestore,
+          userId: 'user_without_role',
+        );
+
+        expect(await fetcher.isFamilyParent(), isTrue);
+        expect(fetcher.cachedFamilyRole, 'parent');
+
+        // Update family document
+        await fakeFirestore.collection('families').doc('fam_doc_check').set({
+          'name': 'Test Family',
+          'members': {
+            'user_without_role': {
+              'userId': 'user_without_role',
+              'displayName': 'Parent User',
+              'email': 'parent@example.com',
+              'role': 'non-parent',
+            },
+          },
+        });
+
+        // Clear cache and verify updated
+        fetcher.clearCache();
+        expect(await fetcher.isFamilyParent(), isFalse);
+        expect(fetcher.cachedFamilyRole, 'non-parent');
+      },
+    );
   });
 }
 

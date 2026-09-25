@@ -236,6 +236,7 @@ class TaskSyncService {
             _receivedUserDoc = true;
             final newFamilyId = snapshot.data()?['familyId'] as String?;
             final newFamilyRole = snapshot.data()?['familyRole'] as String?;
+            final roleChanged = newFamilyRole != _familyRole;
             _familyRole = newFamilyRole;
             if (newFamilyId != _familyId ||
                 (newFamilyId != null &&
@@ -252,6 +253,8 @@ class TaskSyncService {
                 _startListeningToFamilyRemote(_familyId!);
                 _updateClientMetadata();
               }
+            } else if (roleChanged) {
+              _familyIdFetcher.clearCache();
             }
             _checkInitialSyncComplete();
           },
@@ -646,21 +649,23 @@ class TaskSyncService {
       await _pushInstanceToRemote(inst);
     }
     for (final remId in remoteIdsToDelete) {
-      if (isFamily && familyId != null && familyId.isNotEmpty) {
-        final isParent = await _isFamilyParent();
-        if (isParent) {
-          try {
-            await _firestore
-                .collection(FirestorePaths.families)
-                .doc(familyId)
-                .collection(FirestorePaths.instances)
-                .doc(remId)
-                .delete();
-          } catch (e) {
-            logger?.warning(
-              'sync',
-              'Failed to delete remote family duplicate $remId: $e',
-            );
+      if (isFamily) {
+        if (familyId != null && familyId.isNotEmpty) {
+          final isParent = await _isFamilyParent();
+          if (isParent) {
+            try {
+              await _firestore
+                  .collection(FirestorePaths.families)
+                  .doc(familyId)
+                  .collection(FirestorePaths.instances)
+                  .doc(remId)
+                  .delete();
+            } catch (e) {
+              logger?.warning(
+                'sync',
+                'Failed to delete remote family duplicate $remId: $e',
+              );
+            }
           }
         }
       } else {
