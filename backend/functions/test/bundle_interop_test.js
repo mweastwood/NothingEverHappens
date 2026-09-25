@@ -25,7 +25,8 @@ async function runTests() {
     'scheduleFamilyTasks',
     'processFamilySchedule',
     'processHistoryCleanup',
-    'processFamilyScheduleDirect'
+    'processFamilyScheduleDirect',
+    'processExternalTaskEventDirect'
   ];
 
   for (const name of expectedExports) {
@@ -246,6 +247,95 @@ async function runTests() {
   );
   assert(subResult && subResult.familyId === 'fam_sub', 'Subcollection DB query should succeed without type cast error');
   console.log('✔ Subcollection resolution on native JS document references succeeded cleanly');
+
+  // 7. Verify where query parameter conversion for Map/structured fields (Issue #820)
+  const capturedWhereArgs = [];
+  const existingInstanceDoc = {
+    id: 'inst_existing_123',
+    scheduledDate: { year: 2026, month: 9, day: 25 },
+    status: 'pending',
+    completedByUserIds: []
+  };
+
+  const mockTaskEventsDb = {
+    collection: (name) => ({
+      doc: (id) => ({
+        id: id,
+        collection: (subName) => ({
+          where: (field, op, value) => {
+            capturedWhereArgs.push({ field, op, value });
+            return {
+              where: (f2, op2, v2) => {
+                capturedWhereArgs.push({ field: f2, op: op2, value: v2 });
+                return {
+                  where: (f3, op3, v3) => {
+                    capturedWhereArgs.push({ field: f3, op: op3, value: v3 });
+                    return {
+                      limit: (n) => ({
+                        get: () => Promise.resolve({
+                          empty: false,
+                          size: 1,
+                          docs: [{
+                            id: existingInstanceDoc.id,
+                            exists: true,
+                            ref: {
+                              id: existingInstanceDoc.id,
+                              update: (data) => Promise.resolve()
+                            },
+                            data: () => existingInstanceDoc
+                          }]
+                        })
+                      })
+                    };
+                  },
+                  limit: (n) => createMockQuery()
+                };
+              },
+              limit: (n) => createMockQuery()
+            };
+          },
+          doc: (id) => ({
+            id: id || 'inst_gen_1',
+            set: () => Promise.resolve()
+          })
+        })
+      })
+    })
+  };
+
+  const taskEventPayload = {
+    userId: 'user_123',
+    providerId: 'petal_count',
+    entityType: 'supplement',
+    externalId: 'preset_prenatal_morning',
+    date: '2026-09-25',
+    action: 'completed'
+  };
+
+  const eventResult = await funcs.processExternalTaskEventDirect(
+    mockTaskEventsDb,
+    taskEventPayload,
+    '2026-09-25T12:00:00.000Z'
+  );
+
+  assert(eventResult && eventResult.success, 'processExternalTaskEventDirect must succeed');
+  assert.strictEqual(eventResult.createdNewInstance, false, 'Should update existing instance without creating duplicate');
+  assert.strictEqual(eventResult.instanceId, 'inst_existing_123');
+
+  // Verify scheduledDate map conversion in where query clause
+  const dateWhereClause = capturedWhereArgs.find(w => w.field === 'scheduledDate');
+  assert(dateWhereClause, 'Expected where clause on scheduledDate');
+  assert.strictEqual(dateWhereClause.op, '==');
+  assert.strictEqual(typeof dateWhereClause.value, 'object', 'Query value must be an object');
+  assert.strictEqual(dateWhereClause.value.year, 2026, 'year must match 2026');
+  assert.strictEqual(dateWhereClause.value.month, 9, 'month must match 9');
+  assert.strictEqual(dateWhereClause.value.day, 25, 'day must match 25');
+  assert.strictEqual(Object.prototype.toString.call(dateWhereClause.value), '[object Object]', 'Query value must be a native JavaScript Object');
+  assert.strictEqual(Array.isArray(dateWhereClause.value), false, 'Query value must not be an array');
+  assert(Object.keys(dateWhereClause.value).includes('year'), 'Object.keys must enumerate properties');
+  assert(Object.keys(dateWhereClause.value).includes('month'), 'Object.keys must enumerate properties');
+  assert(Object.keys(dateWhereClause.value).includes('day'), 'Object.keys must enumerate properties');
+  console.log('✔ JsQuery.where converts Dart Map values to native JavaScript Objects for structured query matching');
 
   console.log('\nAll Node.js Bundle Interop Integration Tests passed successfully!');
 }

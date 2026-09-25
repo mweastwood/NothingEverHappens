@@ -171,14 +171,19 @@ class JsQuery implements Query {
 
   @override
   Query where(String field, String op, dynamic value) {
-    dynamic jsVal = value;
-    if (value is DateTime) {
-      final firestoreClass = adminRef['firestore'] as js.JsObject;
-      final timestampClass = firestoreClass['Timestamp'] as js.JsObject;
-      final dateObj =
-          js.JsObject(js.context['Date'], [value.toUtc().toIso8601String()]);
-      jsVal = timestampClass.callMethod('fromDate', [dateObj]);
-    }
+    final firestoreClass = adminRef['firestore'] as js.JsObject?;
+    final fieldValueClass = firestoreClass != null
+        ? firestoreClass['FieldValue'] as js.JsObject?
+        : null;
+    final timestampClass = firestoreClass != null
+        ? firestoreClass['Timestamp'] as js.JsObject?
+        : null;
+    final jsVal = _convertValueForJs(
+      value,
+      adminRef,
+      fieldValueClass,
+      timestampClass,
+    );
     final nextQ = rawQuery is js.JsObject
         ? rawQuery.callMethod('where', [field, op, jsVal])
         : js_util.callMethod(rawQuery, 'where', [field, op, jsVal]);
@@ -423,14 +428,25 @@ class JsAuthService implements AuthService {
 dynamic _convertValueForJs(
   dynamic value,
   js.JsObject adminRef,
-  js.JsObject fieldValueClass,
-  js.JsObject timestampClass,
+  js.JsObject? fieldValueClass,
+  js.JsObject? timestampClass,
 ) {
   if (value == FieldValue.deleteToken) {
-    return fieldValueClass.callMethod('delete');
+    return fieldValueClass != null
+        ? fieldValueClass.callMethod('delete')
+        : null;
   } else if (value is DateTime) {
-    return timestampClass
-        .callMethod('fromMillis', [value.millisecondsSinceEpoch]);
+    if (timestampClass != null) {
+      return timestampClass
+          .callMethod('fromMillis', [value.millisecondsSinceEpoch]);
+    }
+    final dateObj =
+        js.JsObject(js.context['Date'], [value.toUtc().toIso8601String()]);
+    return dateObj;
+  } else if (value is JsDocumentReference) {
+    return value.rawJsRef;
+  } else if (value is js.JsObject) {
+    return value;
   } else if (value is Map<String, dynamic>) {
     return _convertMapForJs(value, adminRef);
   } else if (value is Map) {
@@ -441,14 +457,18 @@ dynamic _convertValueForJs(
           _convertValueForJs(item, adminRef, fieldValueClass, timestampClass),
     ));
   } else {
-    return js.JsObject.jsify(value);
+    return value;
   }
 }
 
 dynamic _convertMapForJs(Map<String, dynamic> map, js.JsObject adminRef) {
-  final firestoreClass = adminRef['firestore'] as js.JsObject;
-  final fieldValueClass = firestoreClass['FieldValue'] as js.JsObject;
-  final timestampClass = firestoreClass['Timestamp'] as js.JsObject;
+  final firestoreClass = adminRef['firestore'] as js.JsObject?;
+  final fieldValueClass = firestoreClass != null
+      ? firestoreClass['FieldValue'] as js.JsObject?
+      : null;
+  final timestampClass = firestoreClass != null
+      ? firestoreClass['Timestamp'] as js.JsObject?
+      : null;
   final jsObj = js.JsObject(js.context['Object']);
 
   for (final entry in map.entries) {

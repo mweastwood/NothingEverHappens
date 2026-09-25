@@ -351,6 +351,40 @@ void main() {
           equals(const CivilDay(year: 2026, month: 8, day: 30)));
       expect(taskInstance.title, equals('twelve_stars: rosary'));
     });
+
+    test(
+        'queries existing instance using scheduledDate Map condition matching CivilDay',
+        () async {
+      final mockDb = MockFirestoreDatabase();
+      final instancesCol =
+          mockDb.collection('users').doc('user_123').collection('instances');
+      final capturedQueries = <Map<String, dynamic>>[];
+      instancesCol.onWhere = (field, op, value) {
+        capturedQueries.add({'field': field, 'op': op, 'value': value});
+      };
+
+      const event = ExternalTaskEvent(
+        userId: 'user_123',
+        providerId: 'petal_count',
+        entityType: 'supplement',
+        externalId: 'preset_prenatal_morning',
+        date: '2026-09-25',
+        action: 'completed',
+      );
+
+      await processExternalTaskEvent(mockDb, event);
+
+      expect(
+        capturedQueries.any((q) =>
+            q['field'] == 'scheduledDate' &&
+            q['op'] == '==' &&
+            q['value'] is Map &&
+            (q['value'] as Map)['year'] == 2026 &&
+            (q['value'] as Map)['month'] == 9 &&
+            (q['value'] as Map)['day'] == 25),
+        isTrue,
+      );
+    });
   });
 
   group('handleReportExternalTaskEvent', () {
