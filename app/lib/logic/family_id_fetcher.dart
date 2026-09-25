@@ -20,6 +20,7 @@ class FamilyIdFetcher {
   final ErrorHandler? _errorHandler;
 
   String? _cachedFamilyId;
+  String? _cachedFamilyRole;
   DateTime? _lastFamilyIdCheck;
   Family? _cachedFamily;
   DateTime? _lastFamilyCheck;
@@ -33,6 +34,7 @@ class FamilyIdFetcher {
        _errorHandler = errorHandler;
 
   String? get cachedFamilyId => _cachedFamilyId;
+  String? get cachedFamilyRole => _cachedFamilyRole;
   DateTime? get lastFamilyIdCheck => _lastFamilyIdCheck;
   Family? get cachedFamily => _cachedFamily;
   DateTime? get lastFamilyCheck => _lastFamilyCheck;
@@ -42,6 +44,7 @@ class FamilyIdFetcher {
     _lastFamilyIdCheck = null;
     _cachedFamily = null;
     _lastFamilyCheck = null;
+    _cachedFamilyRole = null;
   }
 
   Future<String?> getFamilyId() async {
@@ -59,6 +62,7 @@ class FamilyIdFetcher {
           .get(const GetOptions(source: Source.serverAndCache))
           .timeout(familyIdFetchTimeout);
       _cachedFamilyId = userDoc.data()?['familyId'] as String?;
+      _cachedFamilyRole = userDoc.data()?['familyRole'] as String?;
       _lastFamilyIdCheck = AppClock.now;
       return _cachedFamilyId;
     } catch (e, st) {
@@ -70,6 +74,7 @@ class FamilyIdFetcher {
             .doc(_userId)
             .get(const GetOptions(source: Source.cache));
         _cachedFamilyId = cacheDoc.data()?['familyId'] as String?;
+        _cachedFamilyRole = cacheDoc.data()?['familyRole'] as String?;
         _lastFamilyIdCheck = AppClock.now;
         return _cachedFamilyId;
       } catch (e2, st2) {
@@ -125,5 +130,22 @@ class FamilyIdFetcher {
     final family = await getFamily();
     if (family == null) return false;
     return family.isFamilyLeader(uid);
+  }
+
+  Future<bool> isFamilyParent([String? targetUserId]) async {
+    final uid = targetUserId ?? _userId;
+    if (uid == _userId) {
+      await getFamilyId();
+      if (_cachedFamilyRole != null) {
+        return _cachedFamilyRole == FamilyRole.parent.value;
+      }
+    }
+    final family = await getFamily();
+    if (family == null) return false;
+    final isParent = family.members[uid]?.role == FamilyRole.parent;
+    if (uid == _userId && family.members[uid] != null) {
+      _cachedFamilyRole = family.members[uid]!.role.value;
+    }
+    return isParent;
   }
 }

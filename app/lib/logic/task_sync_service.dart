@@ -15,6 +15,7 @@ import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
+import 'package:nothing_ever_happens/logic/family.dart';
 
 final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
   final firestore = ref.watch(firestoreProvider) ?? FirebaseFirestore.instance;
@@ -60,6 +61,7 @@ class TaskSyncService {
   StreamSubscription? _familyInstancesSub;
   StreamSubscription? _familyRecipesSub;
   String? _familyId;
+  String? _familyRole;
 
   bool _isDisposed = false;
   bool get isDisposed => _isDisposed;
@@ -233,6 +235,9 @@ class TaskSyncService {
           (snapshot) {
             _receivedUserDoc = true;
             final newFamilyId = snapshot.data()?['familyId'] as String?;
+            final newFamilyRole = snapshot.data()?['familyRole'] as String?;
+            final roleChanged = newFamilyRole != _familyRole;
+            _familyRole = newFamilyRole;
             if (newFamilyId != _familyId ||
                 (newFamilyId != null &&
                     newFamilyId.isNotEmpty &&
@@ -248,6 +253,8 @@ class TaskSyncService {
                 _startListeningToFamilyRemote(_familyId!);
                 _updateClientMetadata();
               }
+            } else if (roleChanged) {
+              _familyIdFetcher.clearCache();
             }
             _checkInitialSyncComplete();
           },
@@ -444,6 +451,13 @@ class TaskSyncService {
     return _familyId ?? fetched;
   }
 
+  Future<bool> _isFamilyParent() async {
+    if (_familyRole != null) {
+      return _familyRole == FamilyRole.parent.value;
+    }
+    return await _familyIdFetcher.isFamilyParent();
+  }
+
   Future<void> _handleRemoteTasksSnapshot(
     QuerySnapshot<Map<String, dynamic>> snapshot, {
     required bool isFamily,
@@ -635,13 +649,25 @@ class TaskSyncService {
       await _pushInstanceToRemote(inst);
     }
     for (final remId in remoteIdsToDelete) {
-      if (isFamily && familyId != null && familyId.isNotEmpty) {
-        await _firestore
-            .collection(FirestorePaths.families)
-            .doc(familyId)
-            .collection(FirestorePaths.instances)
-            .doc(remId)
-            .delete();
+      if (isFamily) {
+        if (familyId != null && familyId.isNotEmpty) {
+          final isParent = await _isFamilyParent();
+          if (isParent) {
+            try {
+              await _firestore
+                  .collection(FirestorePaths.families)
+                  .doc(familyId)
+                  .collection(FirestorePaths.instances)
+                  .doc(remId)
+                  .delete();
+            } catch (e) {
+              logger?.warning(
+                'sync',
+                'Failed to delete remote family duplicate $remId: $e',
+              );
+            }
+          }
+        }
       } else {
         await _firestore
             .collection(FirestorePaths.users)
@@ -772,41 +798,63 @@ class TaskSyncService {
             if (task != null) {
               await _pushTaskToRemote(task);
             } else {
-              // Deleted locally, remove from remote
-              if (familyId != null && familyId.isNotEmpty) {
-                await _firestore
-                    .collection(FirestorePaths.families)
-                    .doc(familyId)
-                    .collection(FirestorePaths.tasks)
-                    .doc(taskId)
-                    .delete();
-              }
+              // Deleted locally, remove from remote:
+              // 1. Delete from personal user collection first
               await _firestore
                   .collection(FirestorePaths.users)
                   .doc(_userId)
                   .collection(FirestorePaths.tasks)
                   .doc(taskId)
                   .delete();
+              // 2. Attempt family collection delete if familyId exists, swallowing permission-denied
+              if (familyId != null && familyId.isNotEmpty) {
+                try {
+                  await _firestore
+                      .collection(FirestorePaths.families)
+                      .doc(familyId)
+                      .collection(FirestorePaths.tasks)
+                      .doc(taskId)
+                      .delete();
+                } catch (e) {
+                  if (e is! FirebaseException ||
+                      e.code != 'permission-denied') {
+                    rethrow;
+                  }
+                }
+              }
             }
           } else if (taskId.startsWith('I-')) {
             final inst = instancesMap[taskId];
             if (inst != null) {
               await _pushInstanceToRemote(inst);
             } else {
-              if (familyId != null && familyId.isNotEmpty) {
-                await _firestore
-                    .collection(FirestorePaths.families)
-                    .doc(familyId)
-                    .collection(FirestorePaths.instances)
-                    .doc(taskId)
-                    .delete();
-              }
+              // Deleted locally, remove from remote:
+              // 1. Delete from personal user collection first
               await _firestore
                   .collection(FirestorePaths.users)
                   .doc(_userId)
                   .collection(FirestorePaths.instances)
                   .doc(taskId)
                   .delete();
+              // 2. Only parents can delete from family instances
+              if (familyId != null && familyId.isNotEmpty) {
+                final isParent = await _isFamilyParent();
+                if (isParent) {
+                  try {
+                    await _firestore
+                        .collection(FirestorePaths.families)
+                        .doc(familyId)
+                        .collection(FirestorePaths.instances)
+                        .doc(taskId)
+                        .delete();
+                  } catch (e) {
+                    if (e is! FirebaseException ||
+                        e.code != 'permission-denied') {
+                      rethrow;
+                    }
+                  }
+                }
+              }
             }
           }
           if (_isDisposed) break;
@@ -862,12 +910,19 @@ class TaskSyncService {
           .doc(task.id)
           .set(task.toFirestore(), SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
-        await _firestore
-            .collection(FirestorePaths.families)
-            .doc(familyId)
-            .collection(FirestorePaths.tasks)
-            .doc(task.id)
-            .delete();
+        final isParent = await _isFamilyParent();
+        if (isParent) {
+          try {
+            await _firestore
+                .collection(FirestorePaths.families)
+                .doc(familyId)
+                .collection(FirestorePaths.tasks)
+                .doc(task.id)
+                .delete();
+          } catch (e) {
+            logger?.debug('sync', 'Silent error deleting task from family: $e');
+          }
+        }
       }
     }
 
@@ -906,12 +961,22 @@ class TaskSyncService {
           .doc(inst.id)
           .set(inst.toFirestore(), SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
-        await _firestore
-            .collection(FirestorePaths.families)
-            .doc(familyId)
-            .collection(FirestorePaths.instances)
-            .doc(inst.id)
-            .delete();
+        final isParent = await _isFamilyParent();
+        if (isParent) {
+          try {
+            await _firestore
+                .collection(FirestorePaths.families)
+                .doc(familyId)
+                .collection(FirestorePaths.instances)
+                .doc(inst.id)
+                .delete();
+          } catch (e) {
+            logger?.debug(
+              'sync',
+              'Silent error deleting instance from family: $e',
+            );
+          }
+        }
       }
     }
 
