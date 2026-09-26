@@ -215,4 +215,34 @@ void main() {
       expect(p.placedEnd, 620);
     });
   });
+
+  group('TaskTimePlacement', () {
+    test('supports value equality and toString', () {
+      final task = CalendarDayTask(
+        id: 'T1',
+        title: 'Task 1',
+        priority: TaskPriority.high,
+        isInstance: true,
+      );
+      final p1 = TaskTimePlacement(
+        task: task,
+        startMinute: 60,
+        dueMinute: 120,
+        duration: 30,
+        placedStart: 60,
+        placedEnd: 90,
+      );
+      final p2 = TaskTimePlacement(
+        task: task,
+        startMinute: 60,
+        dueMinute: 120,
+        duration: 30,
+        placedStart: 60,
+        placedEnd: 90,
+      );
+      expect(p1, equals(p2));
+      expect(p1.hashCode, equals(p2.hashCode));
+      expect(p1.toString(), contains('T1'));
+    });
+  });
 }

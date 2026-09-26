@@ -57,7 +57,6 @@ class TimelineTaskCard extends ConsumerWidget {
               Center(
                 child: task.isInstance
                     ? IconButton(
-                        padding: EdgeInsets.zero,
                         style: IconButton.styleFrom(
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           minimumSize: const Size(18, 18),

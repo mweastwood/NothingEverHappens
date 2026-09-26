@@ -290,4 +290,102 @@ void main() {
       expect(titleText.style?.decoration, equals(TextDecoration.lineThrough));
     },
   );
+
+  testWidgets(
+    'tapping checkbox displays error SnackBar when repository throws',
+    (tester) async {
+      when(
+        mockTaskRepository.completeTaskInstance(any),
+      ).thenThrow(Exception('Database error'));
+
+      final task = CalendarDayTask(
+        id: sampleInstance.id,
+        title: sampleInstance.title,
+        priority: sampleInstance.priority,
+        isInstance: true,
+        instance: sampleInstance,
+        isCompleted: false,
+      );
+
+      await tester.pumpWidget(buildCardWidget(task: task));
+      await tester.pumpAndSettle();
+
+      final checkboxFinder = find.byIcon(Icons.radio_button_unchecked);
+      await tester.tap(checkboxFinder);
+      await tester.pump();
+
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.textContaining('Database error'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'tapping checkbox displays error SnackBar when uncompleteTaskInstance throws',
+    (tester) async {
+      when(
+        mockTaskRepository.uncompleteTaskInstance(any),
+      ).thenThrow(Exception('Uncomplete error'));
+
+      final task = CalendarDayTask(
+        id: completedInstance.id,
+        title: completedInstance.title,
+        priority: completedInstance.priority,
+        isInstance: true,
+        instance: completedInstance,
+        isCompleted: true,
+      );
+
+      await tester.pumpWidget(buildCardWidget(task: task));
+      await tester.pumpAndSettle();
+
+      final checkboxFinder = find.byIcon(Icons.check_circle);
+      await tester.tap(checkboxFinder);
+      await tester.pump();
+
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.textContaining('Uncomplete error'), findsOneWidget);
+    },
+  );
+
+  testWidgets('hides checkbox and repeat icon when cardWidth is less than 50', (
+    tester,
+  ) async {
+    final task = CalendarDayTask(
+      id: sampleInstance.id,
+      title: sampleInstance.title,
+      priority: sampleInstance.priority,
+      isInstance: true,
+      instance: sampleInstance,
+    );
+
+    await tester.pumpWidget(buildCardWidget(task: task, cardWidth: 40.0));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.radio_button_unchecked), findsNothing);
+    expect(find.byIcon(Icons.check_circle), findsNothing);
+    expect(find.byIcon(Icons.event_repeat), findsNothing);
+  });
+
+  testWidgets(
+    'displays time window subtitle when cardHeight >= 42 and omits it when < 42',
+    (tester) async {
+      final task = CalendarDayTask(
+        id: sampleInstance.id,
+        title: sampleInstance.title,
+        priority: sampleInstance.priority,
+        isInstance: true,
+        instance: sampleInstance,
+      );
+
+      // Height 45: time window is visible
+      await tester.pumpWidget(buildCardWidget(task: task, cardHeight: 45.0));
+      await tester.pumpAndSettle();
+      expect(find.text('10:00 AM – 11:00 AM'), findsOneWidget);
+
+      // Height 35: time window is omitted
+      await tester.pumpWidget(buildCardWidget(task: task, cardHeight: 35.0));
+      await tester.pumpAndSettle();
+      expect(find.text('10:00 AM – 11:00 AM'), findsNothing);
+    },
+  );
 }

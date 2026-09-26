@@ -19,10 +19,38 @@ class TaskTimePlacement {
     required this.placedStart,
     required this.placedEnd,
   });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskTimePlacement &&
+          runtimeType == other.runtimeType &&
+          task == other.task &&
+          startMinute == other.startMinute &&
+          dueMinute == other.dueMinute &&
+          duration == other.duration &&
+          placedStart == other.placedStart &&
+          placedEnd == other.placedEnd;
+
+  @override
+  int get hashCode => Object.hash(
+    task,
+    startMinute,
+    dueMinute,
+    duration,
+    placedStart,
+    placedEnd,
+  );
+
+  @override
+  String toString() =>
+      'TaskTimePlacement(task: ${task.id}, startMinute: $startMinute, '
+      'dueMinute: $dueMinute, duration: $duration, placedStart: $placedStart, '
+      'placedEnd: $placedEnd)';
 }
 
 /// Computational engine for task placement and interval collision avoidance on the daily timeline.
-class TimelinePlacementCalculator {
+abstract final class TimelinePlacementCalculator {
   /// Computes optimal start and end minutes for each task on the timeline:
   /// - Each task initially appears at its scheduled start time and extends for its estimated duration.
   /// - To prevent/minimize overlaps, tasks are pushed further down as long as they do not extend past their due dates.
