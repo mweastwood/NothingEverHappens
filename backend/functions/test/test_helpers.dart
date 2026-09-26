@@ -88,6 +88,7 @@ class MockCollectionReference extends MockQuery implements CollectionReference {
   @override
   MockQuery limit(int count) {
     final q = MockQuery();
+    q.onWhere = onWhere;
     q.whereConditions.addAll(whereConditions);
     q.limitCount = count;
     q.onGet = onGet ??

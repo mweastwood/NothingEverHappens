@@ -450,7 +450,10 @@ dynamic _convertValueForJs(
   } else if (value is Map<String, dynamic>) {
     return _convertMapForJs(value, adminRef);
   } else if (value is Map) {
-    return _convertMapForJs(Map<String, dynamic>.from(value), adminRef);
+    return _convertMapForJs(
+      value.map((k, v) => MapEntry(k.toString(), v)),
+      adminRef,
+    );
   } else if (value is Iterable) {
     return js.JsArray.from(value.map(
       (item) =>

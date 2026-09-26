@@ -26,7 +26,8 @@ async function runTests() {
     'processFamilySchedule',
     'processHistoryCleanup',
     'processFamilyScheduleDirect',
-    'processExternalTaskEventDirect'
+    'processExternalTaskEventDirect',
+    'queryWhereDirect'
   ];
 
   for (const name of expectedExports) {
@@ -112,10 +113,12 @@ async function runTests() {
     { id: 'hist_2', expiresAt: 1725500000000 }
   ];
 
+  const capturedCleanupWhereArgs = [];
   const mockCleanupDb = {
     collectionGroup: (name) => ({
-      where: () => ({
-        where: () => ({
+      where: (field, op, value) => {
+        capturedCleanupWhereArgs.push({ field, op, value });
+        return {
           limit: () => ({
             get: () => {
               const current = [...historyDocs];
@@ -132,24 +135,8 @@ async function runTests() {
               });
             }
           })
-        }),
-        limit: () => ({
-          get: () => {
-            const current = [...historyDocs];
-            historyDocs = [];
-            return Promise.resolve({
-              empty: current.length === 0,
-              size: current.length,
-              docs: current.map(d => ({
-                id: d.id,
-                exists: true,
-                ref: { id: d.id },
-                data: () => d
-              }))
-            });
-          }
-        })
-      })
+        };
+      }
     }),
     batch: () => {
       const deleted = [];
@@ -175,6 +162,7 @@ async function runTests() {
   const cleanupResult = await cleanupPromise;
   assert(cleanupResult, 'Cleanup result must be returned');
   assert.strictEqual(cleanupResult.success, true);
+
   console.log('✔ processHistoryCleanup executes and resolves native Promises cleanly');
 
   // 4. Test error handling when underlying Firestore query rejects
@@ -336,6 +324,118 @@ async function runTests() {
   assert(Object.keys(dateWhereClause.value).includes('month'), 'Object.keys must enumerate properties');
   assert(Object.keys(dateWhereClause.value).includes('day'), 'Object.keys must enumerate properties');
   console.log('✔ JsQuery.where converts Dart Map values to native JavaScript Objects for structured query matching');
+
+
+  // 8. Verify processExternalTaskEventDirect rejecting cleanly with an error (as rejected Promise)
+  let rejectedError = null;
+  try {
+    await funcs.processExternalTaskEventDirect(
+      mockTaskEventsDb,
+      { userId: 'user_123' }, // Missing providerId, entityType, externalId, date, action
+      '2026-09-25T12:00:00.000Z'
+    );
+  } catch (err) {
+    rejectedError = err;
+  }
+  assert(rejectedError !== null, 'processExternalTaskEventDirect must reject Promise on invalid payload');
+  assert(
+    rejectedError.message && rejectedError.message.includes('Missing or invalid required string field'),
+    `Expected validation error message but got: ${rejectedError.message}`
+  );
+
+  let nullPayloadError = null;
+  try {
+    await funcs.processExternalTaskEventDirect(mockTaskEventsDb, null);
+  } catch (err) {
+    nullPayloadError = err;
+  }
+  assert(nullPayloadError !== null, 'processExternalTaskEventDirect must reject Promise on null payload');
+  console.log('✔ processExternalTaskEventDirect cleanly rejects invalid payloads as a rejected Promise');
+
+  // 9. Verify processExternalTaskEventDirect resilient timestamp parsing for now
+  for (const nowVal of [
+    new Date('2026-09-25T12:00:00.000Z'),
+    '1727265600000',
+    1727265600000,
+    '2026-09-25T12:00:00.000Z'
+  ]) {
+    const res = await funcs.processExternalTaskEventDirect(
+      mockTaskEventsDb,
+      taskEventPayload,
+      nowVal
+    );
+    assert(res && res.success, `processExternalTaskEventDirect should succeed with now=${nowVal}`);
+  }
+  console.log('✔ processExternalTaskEventDirect parses DateTime, Date, numeric string, and epoch now values cleanly');
+
+  // 10. Verify JsQuery.where conversion with DateTime, Iterable/List (in / array-contains-any), and non-String map keys
+  const capturedDirectQueries = [];
+  const createChainableQuery = () => ({
+    where: (f, op, val) => {
+      capturedDirectQueries.push({ field: f, op, value: val });
+      return createChainableQuery();
+    },
+    limit: () => createChainableQuery(),
+    get: () => Promise.resolve({ empty: true, size: 0, docs: [] })
+  });
+  const mockQueryDb = {
+    collection: () => createChainableQuery()
+  };
+
+  await funcs.queryWhereDirect(mockQueryDb, [
+    {
+      field: 'status',
+      op: 'in',
+      value: ['pending', 'in_progress', 'completed']
+    },
+    {
+      field: 'tags',
+      op: 'array-contains-any',
+      value: ['chore', 'home', 'daily']
+    },
+    {
+      field: 'updatedAt',
+      op: '<=',
+      value: 1727280000000,
+      isDateTime: true
+    },
+    {
+      field: 'metadata',
+      op: '==',
+      isNonStringKeys: true
+    }
+  ]);
+
+  const inClause = capturedDirectQueries.find(w => w.field === 'status');
+  assert(inClause, 'Expected where clause on status');
+  assert.strictEqual(inClause.op, 'in');
+  assert(Array.isArray(inClause.value), 'Query value for "in" operator must be a native JavaScript Array');
+  assert.deepStrictEqual(inClause.value, ['pending', 'in_progress', 'completed']);
+
+  const arrayContainsClause = capturedDirectQueries.find(w => w.field === 'tags');
+  assert(arrayContainsClause, 'Expected where clause on tags');
+  assert.strictEqual(arrayContainsClause.op, 'array-contains-any');
+  assert(Array.isArray(arrayContainsClause.value), 'Query value for "array-contains-any" must be a native JavaScript Array');
+  assert.deepStrictEqual(arrayContainsClause.value, ['chore', 'home', 'daily']);
+
+  const dateClause = capturedDirectQueries.find(w => w.field === 'updatedAt');
+  assert(dateClause, 'Expected where clause on updatedAt');
+  assert.strictEqual(dateClause.op, '<=');
+  const isDirectDateOrTimestamp =
+    dateClause.value instanceof Date ||
+    (typeof dateClause.value.toMillis === 'function' && dateClause.value.toMillis() === 1727280000000) ||
+    (typeof dateClause.value.toDate === 'function' && dateClause.value.toDate().getTime() === 1727280000000);
+  assert(
+    isDirectDateOrTimestamp,
+    'Query value for DateTime must be converted to native JavaScript Date or Firestore Timestamp'
+  );
+
+  const nonStringKeyClause = capturedDirectQueries.find(w => w.field === 'metadata');
+  assert(nonStringKeyClause, 'Expected where clause on metadata');
+  assert.strictEqual(typeof nonStringKeyClause.value, 'object');
+  assert.strictEqual(nonStringKeyClause.value['1'], 'first');
+  assert.strictEqual(nonStringKeyClause.value['2'], 'second');
+  console.log('✔ JsQuery.where converts Iterable/List, DateTime, and non-String Map keys cleanly');
 
   console.log('\nAll Node.js Bundle Interop Integration Tests passed successfully!');
 }

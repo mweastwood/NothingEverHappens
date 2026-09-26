@@ -385,6 +385,21 @@ void main() {
         isTrue,
       );
     });
+
+    test('MockCollectionReference.limit propagates onWhere listener hook', () {
+      final mockDb = MockFirestoreDatabase();
+      final col = mockDb.collection('test_col');
+      final captured = <Map<String, dynamic>>[];
+      col.onWhere = (field, op, value) {
+        captured.add({'field': field, 'op': op, 'value': value});
+      };
+
+      col.limit(5).where('status', '==', 'active');
+      expect(captured, hasLength(1));
+      expect(captured.first['field'], equals('status'));
+      expect(captured.first['op'], equals('=='));
+      expect(captured.first['value'], equals('active'));
+    });
   });
 
   group('handleReportExternalTaskEvent', () {
