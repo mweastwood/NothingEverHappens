@@ -213,208 +213,6 @@ class _DailyStatsAccumulator {
   }
 }
 
-final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
-  final instances = ref.watch(taskInstancesProvider).value ?? [];
-  final schedules = ref.watch(taskSchedulesProvider).value ?? [];
-  final currentUserId = ref.watch(authStateProvider).value?.uid;
-
-  final profileVal = ref.watch(familyProfileStreamProvider);
-  final familyProfile = profileVal.value;
-  Family? family;
-  if (familyProfile != null && familyProfile.familyId.isNotEmpty) {
-    family = ref.watch(familyStreamProvider(familyProfile.familyId)).value;
-  }
-  final int familyMemberCount = (family?.members.isNotEmpty ?? false)
-      ? family!.members.length
-      : 1;
-
-  final today = CivilDay.fromDateTime(AppClock.now);
-  final startDay = today.addDays(-6);
-  final endDay = today;
-
-  final durationMap = <String, double>{
-    for (final s in schedules)
-      if (s.estimatedDuration != null)
-        s.id: s.estimatedDuration!.inMinutes / 60.0,
-  };
-
-  final scheduleMap = <String, TaskSchedule>{
-    for (final s in schedules) s.id: s,
-  };
-
-  final days = List.generate(7, (index) => startDay.addDays(index));
-  final accByDay = <CivilDay, _DailyStatsAccumulator>{
-    for (final d in days) d: _DailyStatsAccumulator(d),
-  };
-
-  int totalCompleted = 0;
-  double totalHours = 0.0;
-  int totalSkipped = 0;
-  int totalMissed = 0;
-
-  for (final inst in instances) {
-    final schedule = scheduleMap[inst.scheduleId];
-    final rule = schedule?.schedules
-        .where((r) => r.id == inst.ruleId)
-        .firstOrNull;
-    final bool isOneOff =
-        rule is OneOffSchedule ||
-        (rule == null &&
-            schedule != null &&
-            schedule.schedules.isNotEmpty &&
-            schedule.schedules.every((r) => r is OneOffSchedule));
-
-    final CivilDay accountedDay =
-        (isOneOff &&
-            inst.status == TaskStatus.completed &&
-            inst.completedAt != null)
-        ? CivilDay.fromDateTime(inst.completedAt!)
-        : inst.scheduledDate;
-
-    final acc = accByDay[accountedDay];
-    if (acc == null) {
-      continue;
-    }
-
-    final double baseDuration = durationMap[inst.scheduleId] ?? 0.0;
-    final bool isUserTask;
-    final TaskStatus effectiveStatus;
-    final double effectiveDuration;
-
-    if (inst.isFamily) {
-      if (inst.assignedUserId != null && inst.assignedUserId!.isNotEmpty) {
-        if (inst.status == TaskStatus.completed ||
-            inst.status == TaskStatus.skipped) {
-          isUserTask = inst.completedByUserId == currentUserId;
-          effectiveStatus = inst.status;
-          effectiveDuration = baseDuration;
-        } else {
-          isUserTask = inst.assignedUserId == currentUserId;
-          effectiveStatus = inst.status;
-          effectiveDuration = baseDuration;
-        }
-      } else if (inst.familyCompletionMode == FamilyCompletionMode.individual) {
-        final userCompleted = inst.completedByUserIds.contains(currentUserId);
-        if (userCompleted) {
-          isUserTask = true;
-          effectiveStatus = TaskStatus.completed;
-          effectiveDuration = baseDuration;
-        } else if (inst.status == TaskStatus.skipped) {
-          isUserTask = inst.completedByUserId == currentUserId;
-          effectiveStatus = TaskStatus.skipped;
-          effectiveDuration = baseDuration;
-        } else if (inst.status == TaskStatus.failed ||
-            (inst.status == TaskStatus.pending &&
-                inst.scheduledDate.isBefore(today))) {
-          isUserTask = true;
-          effectiveStatus = TaskStatus.failed;
-          effectiveDuration = baseDuration;
-        } else {
-          isUserTask = true;
-          effectiveStatus = TaskStatus.pending;
-          effectiveDuration = baseDuration;
-        }
-      } else {
-        // Unassigned and anybody can complete
-        if (inst.status == TaskStatus.completed ||
-            inst.status == TaskStatus.skipped) {
-          isUserTask = inst.completedByUserId == currentUserId;
-          effectiveStatus = inst.status;
-          effectiveDuration = baseDuration;
-        } else if (inst.status == TaskStatus.pending) {
-          if (inst.scheduledDate.isBefore(today)) {
-            isUserTask = false;
-            effectiveStatus = TaskStatus.pending;
-            effectiveDuration = 0.0;
-          } else {
-            isUserTask = true;
-            effectiveStatus = TaskStatus.pending;
-            effectiveDuration = baseDuration / familyMemberCount;
-          }
-        } else {
-          isUserTask = false;
-          effectiveStatus = inst.status;
-          effectiveDuration = 0.0;
-        }
-      }
-    } else {
-      if (inst.status == TaskStatus.completed ||
-          inst.status == TaskStatus.skipped) {
-        isUserTask =
-            inst.completedByUserId == currentUserId ||
-            (inst.completedByUserId == null &&
-                (inst.assignedUserId == null ||
-                    inst.assignedUserId == currentUserId));
-        effectiveStatus = inst.status;
-        effectiveDuration = baseDuration;
-      } else {
-        isUserTask =
-            inst.assignedUserId == null || inst.assignedUserId == currentUserId;
-        effectiveStatus = inst.status;
-        effectiveDuration = baseDuration;
-      }
-    }
-
-    if (!isUserTask) continue;
-
-    if (effectiveStatus == TaskStatus.completed) {
-      totalCompleted++;
-      totalHours += effectiveDuration;
-      acc.completedCount++;
-      acc.completedHours += effectiveDuration;
-      acc.completedTasks.add(inst);
-
-      if (inst.isCompletedOverdue) {
-        acc.completedOverdueHours += effectiveDuration;
-        if (inst.isCompletedOverdueByMoreThan24Hours) {
-          acc.completedSeriouslyOverdueHours += effectiveDuration;
-        }
-      } else {
-        acc.completedOnTimeHours += effectiveDuration;
-      }
-    } else if (effectiveStatus == TaskStatus.skipped) {
-      totalSkipped++;
-      acc.skippedCount++;
-      acc.skippedHours += effectiveDuration;
-      acc.skippedTasks.add(inst);
-    } else if (effectiveStatus == TaskStatus.failed) {
-      totalMissed++;
-      acc.missedCount++;
-      acc.missedHours += effectiveDuration;
-      acc.missedTasks.add(inst);
-    } else if (effectiveStatus == TaskStatus.pending) {
-      if (inst.scheduledDate.isBefore(today)) {
-        totalMissed++;
-        acc.missedCount++;
-        acc.missedHours += effectiveDuration;
-        acc.missedTasks.add(inst);
-      } else {
-        acc.plannedCount++;
-        acc.plannedHours += effectiveDuration;
-        acc.plannedTasks.add(inst);
-      }
-    }
-  }
-
-  final totalActionable = totalCompleted + totalSkipped + totalMissed;
-  final completionRate = totalActionable > 0
-      ? (totalCompleted / totalActionable)
-      : 0.0;
-
-  final dailyStats = days.map((d) => accByDay[d]!.toDailyStatsData()).toList();
-
-  return PersonalLastWeekStats(
-    completedCount: totalCompleted,
-    completedHours: totalHours,
-    skippedCount: totalSkipped,
-    missedCount: totalMissed,
-    completionRate: completionRate,
-    dailyStats: dailyStats,
-    startDay: startDay,
-    endDay: endDay,
-  );
-});
-
 final personalTimelineStatsProvider = Provider<Map<CivilDay, DailyStatsData>>((
   ref,
 ) {
@@ -590,6 +388,46 @@ final personalTimelineStatsProvider = Provider<Map<CivilDay, DailyStatsData>>((
   }
 
   return {for (final d in days) d: accByDay[d]!.toDailyStatsData()};
+});
+
+final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
+  final timelineStats = ref.watch(personalTimelineStatsProvider);
+  final today = CivilDay.fromDateTime(AppClock.now);
+  final startDay = today.addDays(-6);
+  final endDay = today;
+
+  final days = List.generate(7, (index) => startDay.addDays(index));
+  final dailyStats = days
+      .map((d) => timelineStats[d] ?? DailyStatsData(day: d))
+      .toList();
+
+  int totalCompleted = 0;
+  double totalHours = 0.0;
+  int totalSkipped = 0;
+  int totalMissed = 0;
+
+  for (final d in dailyStats) {
+    totalCompleted += d.completedCount;
+    totalHours += d.completedHours;
+    totalSkipped += d.skippedCount;
+    totalMissed += d.missedCount;
+  }
+
+  final totalActionable = totalCompleted + totalSkipped + totalMissed;
+  final completionRate = totalActionable > 0
+      ? (totalCompleted / totalActionable)
+      : 0.0;
+
+  return PersonalLastWeekStats(
+    completedCount: totalCompleted,
+    completedHours: totalHours,
+    skippedCount: totalSkipped,
+    missedCount: totalMissed,
+    completionRate: completionRate,
+    dailyStats: dailyStats,
+    startDay: startDay,
+    endDay: endDay,
+  );
 });
 
 final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
