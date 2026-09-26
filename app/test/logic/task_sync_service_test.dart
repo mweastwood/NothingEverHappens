@@ -599,6 +599,7 @@ void main() {
     () async {
       await firestore.collection('users').doc('user1').set({
         'familyId': 'fam1',
+        'familyRole': 'parent',
       });
 
       final service = TaskSyncService(
@@ -667,6 +668,7 @@ void main() {
     () async {
       await firestore.collection('users').doc('user1').set({
         'familyId': 'fam1',
+        'familyRole': 'parent',
       });
 
       final service = TaskSyncService(
@@ -899,6 +901,7 @@ void main() {
     () async {
       await firestore.collection('users').doc('user1').set({
         'familyId': 'fam1',
+        'familyRole': 'parent',
       });
 
       final service = TaskSyncService(
@@ -2367,11 +2370,386 @@ void main() {
         },
       );
     });
+
+    group('Non-Parent Personal Task & Instance Sync (Issue #818)', () {
+      test(
+        'Personal Task Sync for Non-Parent does not attempt family deletion and clears hasPendingWrites',
+        () async {
+          await firestore.collection('users').doc('non_parent_user').set({
+            'familyId': 'fam_123',
+            'familyRole': 'non-parent',
+          });
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'non_parent_user',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          final task = TaskSchedule(
+            id: 'S-pers-nonparent',
+            title: 'Personal Non-Parent Task',
+            description: 'Desc',
+            schedules: [],
+            isFamily: false,
+            hasPendingWrites: true,
+            updatedAt: DateTime(2026, 9, 25, 10, 0),
+          );
+          await localDataSource.saveTask(task);
+          await localDataSource.markDirty('S-pers-nonparent');
+
+          await service.sync();
+          await pumpEventQueue();
+
+          // 1. Task is saved in users/non_parent_user/tasks
+          final userTaskDoc = await firestore
+              .collection('users')
+              .doc('non_parent_user')
+              .collection('tasks')
+              .doc('S-pers-nonparent')
+              .get();
+          expect(userTaskDoc.exists, isTrue);
+          expect(userTaskDoc.data()?['title'], 'Personal Non-Parent Task');
+          expect(userTaskDoc.data()?['isFamily'], isFalse);
+
+          // 2. hasPendingWrites is cleared to false locally
+          final localTask = localDataSource.getTasks().firstWhere(
+            (t) => t.id == 'S-pers-nonparent',
+          );
+          expect(localTask.hasPendingWrites, isFalse);
+
+          // 3. No document in families/fam_123/tasks
+          final famTaskDoc = await firestore
+              .collection('families')
+              .doc('fam_123')
+              .collection('tasks')
+              .doc('S-pers-nonparent')
+              .get();
+          expect(famTaskDoc.exists, isFalse);
+        },
+      );
+
+      test(
+        'Personal Instance Sync for Non-Parent does not attempt family deletion and clears hasPendingWrites',
+        () async {
+          await firestore.collection('users').doc('non_parent_user').set({
+            'familyId': 'fam_123',
+            'familyRole': 'non-parent',
+          });
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'non_parent_user',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          final inst = TaskInstance(
+            id: 'I-pers-nonparent',
+            scheduleId: 'S-pers-nonparent',
+            ruleId: 'R-1',
+            title: 'Personal Non-Parent Instance',
+            description: 'Desc',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 25),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 10,
+              minute: 0,
+            ),
+            isFamily: false,
+            hasPendingWrites: true,
+            status: TaskStatus.pending,
+            updatedAt: DateTime(2026, 9, 25, 10, 0),
+          );
+          await localDataSource.saveInstance(inst);
+          await localDataSource.markDirty('I-pers-nonparent');
+
+          await service.sync();
+          await pumpEventQueue();
+
+          // 1. Instance is saved in users/non_parent_user/instances
+          final userInstDoc = await firestore
+              .collection('users')
+              .doc('non_parent_user')
+              .collection('instances')
+              .doc('I-pers-nonparent')
+              .get();
+          expect(userInstDoc.exists, isTrue);
+          expect(userInstDoc.data()?['title'], 'Personal Non-Parent Instance');
+          expect(userInstDoc.data()?['isFamily'], isFalse);
+
+          // 2. hasPendingWrites is cleared to false locally
+          final localInst = localDataSource.getInstances().firstWhere(
+            (i) => i.id == 'I-pers-nonparent',
+          );
+          expect(localInst.hasPendingWrites, isFalse);
+
+          // 3. No document in families/fam_123/instances
+          final famInstDoc = await firestore
+              .collection('families')
+              .doc('fam_123')
+              .collection('instances')
+              .doc('I-pers-nonparent')
+              .get();
+          expect(famInstDoc.exists, isFalse);
+        },
+      );
+
+      test(
+        'Local Deletion of Personal Task & Instance for Non-Parent deletes from users and prevents resurrection',
+        () async {
+          await firestore.collection('users').doc('non_parent_user').set({
+            'familyId': 'fam_123',
+            'familyRole': 'non-parent',
+          });
+
+          // Seed personal task and instance remotely and locally
+          await firestore
+              .collection('users')
+              .doc('non_parent_user')
+              .collection('tasks')
+              .doc('S-del-test')
+              .set({
+                'id': 'S-del-test',
+                'title': 'Task To Delete',
+                'isFamily': false,
+              });
+          await firestore
+              .collection('users')
+              .doc('non_parent_user')
+              .collection('instances')
+              .doc('I-del-test')
+              .set({
+                'id': 'I-del-test',
+                'scheduleId': 'S-del-test',
+                'title': 'Instance To Delete',
+                'isFamily': false,
+              });
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'non_parent_user',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          // Verify items were loaded locally
+          expect(
+            localDataSource.getTasks().any((t) => t.id == 'S-del-test'),
+            isTrue,
+          );
+          expect(
+            localDataSource.getInstances().any((i) => i.id == 'I-del-test'),
+            isTrue,
+          );
+
+          // Delete locally in Hive and mark dirty
+          await localDataSource.deleteTask('S-del-test');
+          await localDataSource.deleteInstance('I-del-test');
+          await localDataSource.markDirty('S-del-test');
+          await localDataSource.markDirty('I-del-test');
+
+          await service.sync();
+          await pumpEventQueue();
+
+          // Verify document is removed from users/{userId}/tasks and users/{userId}/instances
+          final userTaskDoc = await firestore
+              .collection('users')
+              .doc('non_parent_user')
+              .collection('tasks')
+              .doc('S-del-test')
+              .get();
+          expect(userTaskDoc.exists, isFalse);
+
+          final userInstDoc = await firestore
+              .collection('users')
+              .doc('non_parent_user')
+              .collection('instances')
+              .doc('I-del-test')
+              .get();
+          expect(userInstDoc.exists, isFalse);
+
+          // Verify not resurrected in local storage
+          expect(
+            localDataSource.getTasks().any((t) => t.id == 'S-del-test'),
+            isFalse,
+          );
+          expect(
+            localDataSource.getInstances().any((i) => i.id == 'I-del-test'),
+            isFalse,
+          );
+        },
+      );
+
+      test(
+        'Duplicate Instance Resolution for Non-Parent avoids unauthorized family deletion',
+        () async {
+          await firestore.collection('users').doc('non_parent_user').set({
+            'familyId': 'fam_123',
+            'familyRole': 'non-parent',
+          });
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'non_parent_user',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          // Local instance wins
+          final localInst = TaskInstance(
+            id: 'I-fam-local-win',
+            scheduleId: 'S-fam-1',
+            ruleId: 'R-1',
+            title: 'Winning Local Family Instance',
+            description: 'Desc',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 25),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 10,
+              minute: 0,
+            ),
+            isFamily: true,
+            status: TaskStatus.completed,
+            statusReason: 'user_completed',
+            updatedAt: DateTime(2026, 9, 25, 12, 0),
+          );
+          await localDataSource.saveInstance(localInst);
+
+          // Remote instance with different ID for same slot (loser)
+          await firestore
+              .collection('families')
+              .doc('fam_123')
+              .collection('instances')
+              .doc('I-fam-remote-loser')
+              .set({
+                'id': 'I-fam-remote-loser',
+                'scheduleId': 'S-fam-1',
+                'ruleId': 'R-1',
+                'title': 'Losing Remote Family Instance',
+                'scheduledDate': '2026-09-25',
+                'startRelativeTime': {'dayOffset': 0, 'hour': 9, 'minute': 0},
+                'dueRelativeTime': {'dayOffset': 0, 'hour': 10, 'minute': 0},
+                'isFamily': true,
+                'status': 'pending',
+                'statusReason': 'scheduler_generated',
+                'updatedAt': DateTime(2026, 9, 25, 11, 0).toIso8601String(),
+              });
+
+          // Trigger snapshot and ensure no uncaught permission exceptions
+          await pumpEventQueue();
+
+          // Local instance should be retained
+          final instances = localDataSource.getInstances();
+          expect(instances.any((i) => i.id == 'I-fam-local-win'), isTrue);
+        },
+      );
+
+      test(
+        'User doc role change without familyId change invalidates fetcher cache',
+        () async {
+          await firestore.collection('users').doc('user_role_change').set({
+            'familyId': 'fam_role_test',
+            'familyRole': 'non-parent',
+          });
+
+          final fetcher = _TrackingFamilyIdFetcher(
+            firestore: firestore,
+            userId: 'user_role_change',
+          );
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user_role_change',
+            isActivePremium: true,
+            familyIdFetcher: fetcher,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final initialClearCalls = fetcher.clearCacheCalls;
+
+          // Update user doc with role change while familyId remains unchanged
+          await firestore.collection('users').doc('user_role_change').set({
+            'familyId': 'fam_role_test',
+            'familyRole': 'parent',
+          });
+          await pumpEventQueue();
+
+          // Verify clearCache() was called when role changed
+          expect(fetcher.clearCacheCalls, greaterThan(initialClearCalls));
+        },
+      );
+
+      test(
+        'Duplicate family instance resolution does not delete from user collection when familyId is null or empty',
+        () async {
+          await firestore.collection('users').doc('user_no_fam').set({
+            'name': 'No Family User',
+          });
+
+          // Seed personal instance with same ID in user collection
+          await firestore
+              .collection('users')
+              .doc('user_no_fam')
+              .collection('instances')
+              .doc('I-slot-duplicate')
+              .set({
+                'id': 'I-slot-duplicate',
+                'scheduleId': 'S-pers-1',
+                'ruleId': 'R-1',
+                'title': 'User Personal Instance',
+                'scheduledDate': '2026-09-25',
+                'startRelativeTime': {'dayOffset': 0, 'hour': 9, 'minute': 0},
+                'dueRelativeTime': {'dayOffset': 0, 'hour': 10, 'minute': 0},
+                'isFamily': false,
+                'status': 'pending',
+                'statusReason': 'scheduler_generated',
+                'updatedAt': DateTime(2026, 9, 25, 9, 0).toIso8601String(),
+              });
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user_no_fam',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final userInst = await firestore
+              .collection('users')
+              .doc('user_no_fam')
+              .collection('instances')
+              .doc('I-slot-duplicate')
+              .get();
+          expect(userInst.exists, isTrue);
+        },
+      );
+    });
   });
 }
 
 class _TrackingFamilyIdFetcher extends FamilyIdFetcher {
   int getFamilyIdCalls = 0;
+  int clearCacheCalls = 0;
   final String? stubbedId;
 
   _TrackingFamilyIdFetcher({
@@ -2379,6 +2757,12 @@ class _TrackingFamilyIdFetcher extends FamilyIdFetcher {
     required super.userId,
     this.stubbedId,
   });
+
+  @override
+  void clearCache() {
+    clearCacheCalls++;
+    super.clearCache();
+  }
 
   @override
   Future<String?> getFamilyId() async {
