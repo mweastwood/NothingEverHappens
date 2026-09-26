@@ -10,6 +10,9 @@ import '../widgets/family_member_tile.dart';
 import '../widgets/subscription_paywall_widget.dart';
 import '../widgets/app_snackbar.dart';
 import '../logic/subscription_service.dart';
+import '../widgets/family/create_family_dialog.dart';
+import '../widgets/family/invite_member_dialog.dart';
+import '../widgets/family/change_family_role_dialog.dart';
 import 'subscription_screen.dart';
 
 class FamilyScreen extends ConsumerStatefulWidget {
@@ -30,10 +33,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   }
 
   Future<void> _createFamily(FamilyRepository repository) async {
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => const _CreateFamilyDialog(),
-    );
+    final name = await CreateFamilyDialog.show(context);
 
     if (name != null && mounted) {
       setState(() {
@@ -58,10 +58,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
   }
 
   Future<void> _inviteMember(FamilyRepository repository, Family family) async {
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => const _InviteMemberDialog(),
-    );
+    final result = await InviteMemberDialog.show(context);
 
     if (result != null && mounted) {
       setState(() {
@@ -71,8 +68,8 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
         await repository.inviteMember(
           familyId: family.id,
           familyName: family.name,
-          toEmail: result['email']!,
-          role: result['role'] as FamilyRole,
+          toEmail: result.email,
+          role: result.role,
         );
         if (mounted) {
           AppSnackBar.show(
@@ -239,10 +236,10 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
         .length;
     final isOnlyParent = member.role == FamilyRole.parent && parentCount <= 1;
 
-    final newRole = await showDialog<FamilyRole>(
-      context: context,
-      builder: (context) =>
-          _ChangeRoleDialog(member: member, isOnlyParent: isOnlyParent),
+    final newRole = await ChangeRoleDialog.show(
+      context,
+      member: member,
+      isOnlyParent: isOnlyParent,
     );
 
     if (newRole != null && newRole != member.role && mounted) {
@@ -721,259 +718,6 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
             ),
           ),
         ],
-      ],
-    );
-  }
-}
-
-class _CreateFamilyDialog extends StatefulWidget {
-  const _CreateFamilyDialog();
-
-  @override
-  State<_CreateFamilyDialog> createState() => _CreateFamilyDialogState();
-}
-
-class _CreateFamilyDialogState extends State<_CreateFamilyDialog> {
-  late final TextEditingController _controller;
-  final _formKey = GlobalKey<FormState>();
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(context.l10n.createFamilyTitle),
-      content: Form(
-        key: _formKey,
-        child: TextFormField(
-          key: const Key('family_name_field'),
-          controller: _controller,
-          decoration: InputDecoration(
-            labelText: context.l10n.familyUnitNameLabel,
-            border: const OutlineInputBorder(),
-          ),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return context.l10n.familyNameRequiredError;
-            }
-            return null;
-          },
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(context.l10n.cancelButton),
-        ),
-        ElevatedButton(
-          key: const Key('confirm_create_family_button'),
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              Navigator.pop(context, _controller.text.trim());
-            }
-          },
-          child: Text(context.l10n.saveButton),
-        ),
-      ],
-    );
-  }
-}
-
-class _InviteMemberDialog extends StatefulWidget {
-  const _InviteMemberDialog();
-
-  @override
-  State<_InviteMemberDialog> createState() => _InviteMemberDialogState();
-}
-
-class _InviteMemberDialogState extends State<_InviteMemberDialog> {
-  late final TextEditingController _emailController;
-  final _formKey = GlobalKey<FormState>();
-  FamilyRole _selectedRole = FamilyRole.nonParent;
-
-  @override
-  void initState() {
-    super.initState();
-    _emailController = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(context.l10n.inviteMemberTitle),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              key: const Key('invite_email_field'),
-              controller: _emailController,
-              decoration: InputDecoration(
-                labelText: context.l10n.inviteMemberEmailLabel,
-                border: const OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return context.l10n.emailRequiredError;
-                }
-                final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-                if (!emailRegex.hasMatch(value.trim())) {
-                  return context.l10n.emailInvalidError;
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<FamilyRole>(
-              key: const Key('invite_role_dropdown'),
-              initialValue: _selectedRole,
-              decoration: InputDecoration(
-                labelText: context.l10n.inviteMemberRoleLabel,
-                border: const OutlineInputBorder(),
-              ),
-              items: [
-                DropdownMenuItem(
-                  value: FamilyRole.parent,
-                  child: Text(context.l10n.parentRole),
-                ),
-                DropdownMenuItem(
-                  value: FamilyRole.nonParent,
-                  child: Text(context.l10n.nonParentRole),
-                ),
-              ],
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() {
-                    _selectedRole = val;
-                  });
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(context.l10n.cancelButton),
-        ),
-        ElevatedButton(
-          key: const Key('confirm_invite_button'),
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              Navigator.pop(context, {
-                'email': _emailController.text.trim(),
-                'role': _selectedRole,
-              });
-            }
-          },
-          child: Text(context.l10n.saveButton),
-        ),
-      ],
-    );
-  }
-}
-
-class _ChangeRoleDialog extends StatefulWidget {
-  final FamilyMember member;
-  final bool isOnlyParent;
-
-  const _ChangeRoleDialog({required this.member, required this.isOnlyParent});
-
-  @override
-  State<_ChangeRoleDialog> createState() => _ChangeRoleDialogState();
-}
-
-class _ChangeRoleDialogState extends State<_ChangeRoleDialog> {
-  late FamilyRole _selectedRole;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedRole = widget.member.role;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isOnlyParent = widget.isOnlyParent;
-
-    return AlertDialog(
-      title: Text(context.l10n.changeRoleDialogTitle),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(context.l10n.changeRoleDescription(widget.member.displayName)),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<FamilyRole>(
-            key: const Key('change_role_dropdown'),
-            isExpanded: true,
-            initialValue: _selectedRole,
-            decoration: InputDecoration(
-              labelText: context.l10n.inviteMemberRoleLabel,
-              border: const OutlineInputBorder(),
-            ),
-            items: [
-              DropdownMenuItem(
-                value: FamilyRole.parent,
-                child: Text(context.l10n.parentRole),
-              ),
-              DropdownMenuItem(
-                value: FamilyRole.nonParent,
-                enabled: !isOnlyParent,
-                child: Text(context.l10n.nonParentRole),
-              ),
-            ],
-            onChanged: (val) {
-              if (val != null) {
-                setState(() {
-                  _selectedRole = val;
-                });
-              }
-            },
-          ),
-          if (isOnlyParent) ...[
-            const SizedBox(height: 8),
-            Text(
-              context.l10n.cannotDemoteOnlyParent,
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
-          ],
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(context.l10n.cancelButton),
-        ),
-        ElevatedButton(
-          key: const Key('confirm_change_role_button'),
-          onPressed: () {
-            Navigator.pop(context, _selectedRole);
-          },
-          child: Text(context.l10n.saveButton),
-        ),
       ],
     );
   }
