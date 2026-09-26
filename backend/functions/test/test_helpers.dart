@@ -88,6 +88,7 @@ class MockCollectionReference extends MockQuery implements CollectionReference {
   @override
   MockQuery limit(int count) {
     final q = MockQuery();
+    q.onWhere = onWhere;
     q.whereConditions.addAll(whereConditions);
     q.limitCount = count;
     q.onGet = onGet ??
@@ -122,11 +123,14 @@ class MockQuery implements Query {
   final List<Map<String, dynamic>> whereConditions = [];
   int? limitCount;
   Future<QuerySnapshot> Function()? onGet;
+  void Function(String field, String op, dynamic value)? onWhere;
   List<MockDocumentSnapshot> cannedDocs = [];
 
   @override
   MockQuery where(String field, String op, dynamic value) {
+    onWhere?.call(field, op, value);
     final q = MockQuery();
+    q.onWhere = onWhere;
     q.whereConditions.addAll(whereConditions);
     q.whereConditions.add({'field': field, 'op': op, 'value': value});
     q.limitCount = limitCount;
@@ -138,6 +142,7 @@ class MockQuery implements Query {
   @override
   MockQuery limit(int count) {
     final q = MockQuery();
+    q.onWhere = onWhere;
     q.whereConditions.addAll(whereConditions);
     q.limitCount = count;
     q.onGet = onGet;

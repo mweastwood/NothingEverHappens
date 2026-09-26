@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:js' as js;
 import 'package:functions/src/handlers/account_deletion.dart';
 import 'package:functions/src/handlers/cleanup_history.dart';
@@ -145,6 +146,104 @@ void main() {
             ? res.toJson()
             : (res as FamilySchedulerResult).toJson();
       }));
+    }),
+  );
+
+  // 9. export processExternalTaskEventDirect for testing & direct invocation parity
+  exportFunction(
+    'processExternalTaskEventDirect',
+    js.allowInterop(([dynamic jsDb, dynamic rawEvent, dynamic now]) {
+      return futureToJsPromise((() async {
+        final db = getFirebaseAdminDb(jsDb);
+        Map<String, dynamic> eventMap;
+        if (rawEvent is String) {
+          eventMap = jsonDecode(rawEvent) as Map<String, dynamic>;
+        } else if (rawEvent is Map) {
+          eventMap = Map<String, dynamic>.from(rawEvent);
+        } else if (rawEvent != null) {
+          final jsonStr =
+              js.context['JSON'].callMethod('stringify', [rawEvent]) as String?;
+          eventMap = jsonStr != null
+              ? jsonDecode(jsonStr) as Map<String, dynamic>
+              : <String, dynamic>{};
+        } else {
+          eventMap = <String, dynamic>{};
+        }
+        final validation = validateTaskEvent(eventMap);
+        if (!validation.valid || validation.event == null) {
+          throw ArgumentError(validation.error ?? 'Invalid task event');
+        }
+        DateTime? nowDate;
+        if (now is DateTime) {
+          nowDate = now.toUtc();
+        } else if (now is String) {
+          final asNum = num.tryParse(now);
+          nowDate = asNum != null
+              ? DateTime.fromMillisecondsSinceEpoch(asNum.toInt(), isUtc: true)
+              : DateTime.tryParse(now)?.toUtc();
+        } else if (now is num) {
+          nowDate =
+              DateTime.fromMillisecondsSinceEpoch(now.toInt(), isUtc: true);
+        } else if (now != null) {
+          try {
+            final jsonStr =
+                js.context['JSON'].callMethod('stringify', [now]) as String?;
+            if (jsonStr != null &&
+                jsonStr.length >= 2 &&
+                jsonStr.startsWith('"') &&
+                jsonStr.endsWith('"')) {
+              nowDate =
+                  DateTime.tryParse(jsonStr.substring(1, jsonStr.length - 1))
+                      ?.toUtc();
+            }
+          } catch (_) {}
+        }
+        final result = await processExternalTaskEvent(
+          db,
+          validation.event!,
+          now: nowDate,
+        );
+        return result.toJson();
+      })());
+    }),
+  );
+
+  // 10. export queryWhereDirect for testing & query conversion verification parity
+  exportFunction(
+    'queryWhereDirect',
+    js.allowInterop(([dynamic jsDb, dynamic whereArgs]) {
+      return futureToJsPromise((() async {
+        final db = getFirebaseAdminDb(jsDb);
+        Query query = db.collection('test_col');
+        List<dynamic> clauses = [];
+        final jsonStr = whereArgs is String
+            ? whereArgs
+            : js.context['JSON'].callMethod('stringify', [whereArgs])
+                as String?;
+        if (jsonStr != null) {
+          final decoded = jsonDecode(jsonStr);
+          if (decoded is List) {
+            clauses = decoded;
+          }
+        }
+        for (final clause in clauses) {
+          if (clause is Map) {
+            final field = clause['field']?.toString() ?? 'field';
+            final op = clause['op']?.toString() ?? '==';
+            dynamic val = clause['value'];
+            if (clause['isDateTime'] == true && val != null) {
+              val = val is num
+                  ? DateTime.fromMillisecondsSinceEpoch(val.toInt(),
+                      isUtc: true)
+                  : DateTime.tryParse(val.toString())?.toUtc();
+            } else if (clause['isNonStringKeys'] == true) {
+              val = {1: 'first', 2: 'second'};
+            }
+            query = query.where(field, op, val);
+          }
+        }
+        return true;
+      })());
     }),
   );
 }
