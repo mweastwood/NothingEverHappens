@@ -25,7 +25,9 @@ async function runTests() {
     'scheduleFamilyTasks',
     'processFamilySchedule',
     'processHistoryCleanup',
-    'processFamilyScheduleDirect'
+    'processFamilyScheduleDirect',
+    'processExternalTaskEventDirect',
+    'queryWhereDirect'
   ];
 
   for (const name of expectedExports) {
@@ -111,10 +113,12 @@ async function runTests() {
     { id: 'hist_2', expiresAt: 1725500000000 }
   ];
 
+  const capturedCleanupWhereArgs = [];
   const mockCleanupDb = {
     collectionGroup: (name) => ({
-      where: () => ({
-        where: () => ({
+      where: (field, op, value) => {
+        capturedCleanupWhereArgs.push({ field, op, value });
+        return {
           limit: () => ({
             get: () => {
               const current = [...historyDocs];
@@ -131,24 +135,8 @@ async function runTests() {
               });
             }
           })
-        }),
-        limit: () => ({
-          get: () => {
-            const current = [...historyDocs];
-            historyDocs = [];
-            return Promise.resolve({
-              empty: current.length === 0,
-              size: current.length,
-              docs: current.map(d => ({
-                id: d.id,
-                exists: true,
-                ref: { id: d.id },
-                data: () => d
-              }))
-            });
-          }
-        })
-      })
+        };
+      }
     }),
     batch: () => {
       const deleted = [];
@@ -174,6 +162,7 @@ async function runTests() {
   const cleanupResult = await cleanupPromise;
   assert(cleanupResult, 'Cleanup result must be returned');
   assert.strictEqual(cleanupResult.success, true);
+
   console.log('✔ processHistoryCleanup executes and resolves native Promises cleanly');
 
   // 4. Test error handling when underlying Firestore query rejects
@@ -246,6 +235,207 @@ async function runTests() {
   );
   assert(subResult && subResult.familyId === 'fam_sub', 'Subcollection DB query should succeed without type cast error');
   console.log('✔ Subcollection resolution on native JS document references succeeded cleanly');
+
+  // 7. Verify where query parameter conversion for Map/structured fields (Issue #820)
+  const capturedWhereArgs = [];
+  const existingInstanceDoc = {
+    id: 'inst_existing_123',
+    scheduledDate: { year: 2026, month: 9, day: 25 },
+    status: 'pending',
+    completedByUserIds: []
+  };
+
+  const mockTaskEventsDb = {
+    collection: (name) => ({
+      doc: (id) => ({
+        id: id,
+        collection: (subName) => ({
+          where: (field, op, value) => {
+            capturedWhereArgs.push({ field, op, value });
+            return {
+              where: (f2, op2, v2) => {
+                capturedWhereArgs.push({ field: f2, op: op2, value: v2 });
+                return {
+                  where: (f3, op3, v3) => {
+                    capturedWhereArgs.push({ field: f3, op: op3, value: v3 });
+                    return {
+                      limit: (n) => ({
+                        get: () => Promise.resolve({
+                          empty: false,
+                          size: 1,
+                          docs: [{
+                            id: existingInstanceDoc.id,
+                            exists: true,
+                            ref: {
+                              id: existingInstanceDoc.id,
+                              update: (data) => Promise.resolve()
+                            },
+                            data: () => existingInstanceDoc
+                          }]
+                        })
+                      })
+                    };
+                  },
+                  limit: (n) => createMockQuery()
+                };
+              },
+              limit: (n) => createMockQuery()
+            };
+          },
+          doc: (id) => ({
+            id: id || 'inst_gen_1',
+            set: () => Promise.resolve()
+          })
+        })
+      })
+    })
+  };
+
+  const taskEventPayload = {
+    userId: 'user_123',
+    providerId: 'petal_count',
+    entityType: 'supplement',
+    externalId: 'preset_prenatal_morning',
+    date: '2026-09-25',
+    action: 'completed'
+  };
+
+  const eventResult = await funcs.processExternalTaskEventDirect(
+    mockTaskEventsDb,
+    taskEventPayload,
+    '2026-09-25T12:00:00.000Z'
+  );
+
+  assert(eventResult && eventResult.success, 'processExternalTaskEventDirect must succeed');
+  assert.strictEqual(eventResult.createdNewInstance, false, 'Should update existing instance without creating duplicate');
+  assert.strictEqual(eventResult.instanceId, 'inst_existing_123');
+
+  // Verify scheduledDate map conversion in where query clause
+  const dateWhereClause = capturedWhereArgs.find(w => w.field === 'scheduledDate');
+  assert(dateWhereClause, 'Expected where clause on scheduledDate');
+  assert.strictEqual(dateWhereClause.op, '==');
+  assert.strictEqual(typeof dateWhereClause.value, 'object', 'Query value must be an object');
+  assert.strictEqual(dateWhereClause.value.year, 2026, 'year must match 2026');
+  assert.strictEqual(dateWhereClause.value.month, 9, 'month must match 9');
+  assert.strictEqual(dateWhereClause.value.day, 25, 'day must match 25');
+  assert.strictEqual(Object.prototype.toString.call(dateWhereClause.value), '[object Object]', 'Query value must be a native JavaScript Object');
+  assert.strictEqual(Array.isArray(dateWhereClause.value), false, 'Query value must not be an array');
+  assert(Object.keys(dateWhereClause.value).includes('year'), 'Object.keys must enumerate properties');
+  assert(Object.keys(dateWhereClause.value).includes('month'), 'Object.keys must enumerate properties');
+  assert(Object.keys(dateWhereClause.value).includes('day'), 'Object.keys must enumerate properties');
+  console.log('✔ JsQuery.where converts Dart Map values to native JavaScript Objects for structured query matching');
+
+
+  // 8. Verify processExternalTaskEventDirect rejecting cleanly with an error (as rejected Promise)
+  let rejectedError = null;
+  try {
+    await funcs.processExternalTaskEventDirect(
+      mockTaskEventsDb,
+      { userId: 'user_123' }, // Missing providerId, entityType, externalId, date, action
+      '2026-09-25T12:00:00.000Z'
+    );
+  } catch (err) {
+    rejectedError = err;
+  }
+  assert(rejectedError !== null, 'processExternalTaskEventDirect must reject Promise on invalid payload');
+  assert(
+    rejectedError.message && rejectedError.message.includes('Missing or invalid required string field'),
+    `Expected validation error message but got: ${rejectedError.message}`
+  );
+
+  let nullPayloadError = null;
+  try {
+    await funcs.processExternalTaskEventDirect(mockTaskEventsDb, null);
+  } catch (err) {
+    nullPayloadError = err;
+  }
+  assert(nullPayloadError !== null, 'processExternalTaskEventDirect must reject Promise on null payload');
+  console.log('✔ processExternalTaskEventDirect cleanly rejects invalid payloads as a rejected Promise');
+
+  // 9. Verify processExternalTaskEventDirect resilient timestamp parsing for now
+  for (const nowVal of [
+    new Date('2026-09-25T12:00:00.000Z'),
+    '1727265600000',
+    1727265600000,
+    '2026-09-25T12:00:00.000Z'
+  ]) {
+    const res = await funcs.processExternalTaskEventDirect(
+      mockTaskEventsDb,
+      taskEventPayload,
+      nowVal
+    );
+    assert(res && res.success, `processExternalTaskEventDirect should succeed with now=${nowVal}`);
+  }
+  console.log('✔ processExternalTaskEventDirect parses DateTime, Date, numeric string, and epoch now values cleanly');
+
+  // 10. Verify JsQuery.where conversion with DateTime, Iterable/List (in / array-contains-any), and non-String map keys
+  const capturedDirectQueries = [];
+  const createChainableQuery = () => ({
+    where: (f, op, val) => {
+      capturedDirectQueries.push({ field: f, op, value: val });
+      return createChainableQuery();
+    },
+    limit: () => createChainableQuery(),
+    get: () => Promise.resolve({ empty: true, size: 0, docs: [] })
+  });
+  const mockQueryDb = {
+    collection: () => createChainableQuery()
+  };
+
+  await funcs.queryWhereDirect(mockQueryDb, [
+    {
+      field: 'status',
+      op: 'in',
+      value: ['pending', 'in_progress', 'completed']
+    },
+    {
+      field: 'tags',
+      op: 'array-contains-any',
+      value: ['chore', 'home', 'daily']
+    },
+    {
+      field: 'updatedAt',
+      op: '<=',
+      value: 1727280000000,
+      isDateTime: true
+    },
+    {
+      field: 'metadata',
+      op: '==',
+      isNonStringKeys: true
+    }
+  ]);
+
+  const inClause = capturedDirectQueries.find(w => w.field === 'status');
+  assert(inClause, 'Expected where clause on status');
+  assert.strictEqual(inClause.op, 'in');
+  assert(Array.isArray(inClause.value), 'Query value for "in" operator must be a native JavaScript Array');
+  assert.deepStrictEqual(inClause.value, ['pending', 'in_progress', 'completed']);
+
+  const arrayContainsClause = capturedDirectQueries.find(w => w.field === 'tags');
+  assert(arrayContainsClause, 'Expected where clause on tags');
+  assert.strictEqual(arrayContainsClause.op, 'array-contains-any');
+  assert(Array.isArray(arrayContainsClause.value), 'Query value for "array-contains-any" must be a native JavaScript Array');
+  assert.deepStrictEqual(arrayContainsClause.value, ['chore', 'home', 'daily']);
+
+  const dateClause = capturedDirectQueries.find(w => w.field === 'updatedAt');
+  assert(dateClause, 'Expected where clause on updatedAt');
+  assert.strictEqual(dateClause.op, '<=');
+  const isDirectDateOrTimestamp =
+    dateClause.value instanceof Date ||
+    (typeof dateClause.value.toMillis === 'function' && dateClause.value.toMillis() === 1727280000000) ||
+    (typeof dateClause.value.toDate === 'function' && dateClause.value.toDate().getTime() === 1727280000000);
+  assert(
+    isDirectDateOrTimestamp,
+    'Query value for DateTime must be converted to native JavaScript Date or Firestore Timestamp'
+  );
+
+  const nonStringKeyClause = capturedDirectQueries.find(w => w.field === 'metadata');
+  assert(nonStringKeyClause, 'Expected where clause on metadata');
+  assert.strictEqual(typeof nonStringKeyClause.value, 'object');
+  assert.strictEqual(nonStringKeyClause.value['1'], 'first');
+  assert.strictEqual(nonStringKeyClause.value['2'], 'second');
+  console.log('✔ JsQuery.where converts Iterable/List, DateTime, and non-String Map keys cleanly');
 
   console.log('\nAll Node.js Bundle Interop Integration Tests passed successfully!');
 }
