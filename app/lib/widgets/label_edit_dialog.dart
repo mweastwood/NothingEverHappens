@@ -9,11 +9,21 @@ import '../logic/label_repository.dart';
 import '../logic/task_label.dart';
 import 'save_discard_bar.dart';
 
+/// A dialog widget for creating or editing a [TaskLabel].
+///
+/// Supports personal and family scoped labels, configuring label name,
+/// color palette selection, and icon choice.
 class LabelEditDialog extends ConsumerStatefulWidget {
+  /// The existing label being edited, or `null` if creating a new label.
   final TaskLabel? existingLabel;
+
+  /// The scope of the label, either [TaskLabelScope.personal] or [TaskLabelScope.family].
   final TaskLabelScope scope;
+
+  /// The default ordering index to assign when creating a new label.
   final int nextOrder;
 
+  /// Creates a [LabelEditDialog].
   const LabelEditDialog({
     super.key,
     this.existingLabel,
@@ -21,14 +31,26 @@ class LabelEditDialog extends ConsumerStatefulWidget {
     this.nextOrder = 0,
   });
 
+  /// Displays a [LabelEditDialog] in a modal dialog.
+  ///
+  /// [context] is the build context from which the dialog is launched.
+  /// [existingLabel] is the label to edit, or `null` to create a new one.
+  /// [scope] determines whether this label is personal or family-scoped.
+  /// [nextOrder] specifies the display order position for a newly created label.
+  /// [barrierDismissible] indicates whether tapping outside the dialog closes it.
+  /// [useRootNavigator] indicates whether to push the dialog to the root navigator.
   static Future<void> show(
     BuildContext context, {
     TaskLabel? existingLabel,
     required TaskLabelScope scope,
     int nextOrder = 0,
+    bool barrierDismissible = true,
+    bool useRootNavigator = true,
   }) {
     return showDialog<void>(
       context: context,
+      barrierDismissible: barrierDismissible,
+      useRootNavigator: useRootNavigator,
       builder: (dialogContext) => LabelEditDialog(
         existingLabel: existingLabel,
         scope: scope,
@@ -51,6 +73,11 @@ class _LabelEditDialogState extends ConsumerState<LabelEditDialog> {
   @override
   void initState() {
     super.initState();
+    assert(
+      widget.existingLabel == null ||
+          widget.existingLabel!.scope == widget.scope,
+      'existingLabel.scope must match dialog scope',
+    );
     _nameController = TextEditingController(
       text: widget.existingLabel?.name ?? '',
     );

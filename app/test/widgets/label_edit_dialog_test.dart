@@ -225,6 +225,60 @@ void main() {
         expect(tooltip.message, icon.name);
       }
     });
+
+    testWidgets(
+      'respects barrierDismissible parameter when tapping modal barrier',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              labelRepositoryProvider.overrideWithValue(labelRepo),
+              familyRepositoryProvider.overrideWithValue(familyRepo),
+              authStateProvider.overrideWith(
+                (ref) => Stream.value(
+                  _FakeUser(
+                    uid: currentUserId,
+                    email: 'test@example.com',
+                    displayName: 'Tester',
+                  ),
+                ),
+              ),
+              familyProfileStreamProvider.overrideWith(
+                (ref) => Stream.value(
+                  FamilyProfile(familyId: familyId, familyRole: 'parent'),
+                ),
+              ),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: Builder(
+                  builder: (context) => ElevatedButton(
+                    onPressed: () => LabelEditDialog.show(
+                      context,
+                      scope: TaskLabelScope.personal,
+                      barrierDismissible: false,
+                    ),
+                    child: const Text('Open Non-Dismissible'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Open Non-Dismissible'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(LabelEditDialog), findsOneWidget);
+
+        // Tap outside dialog bounds
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+
+        // Dialog remains open because barrierDismissible is false
+        expect(find.byType(LabelEditDialog), findsOneWidget);
+      },
+    );
   });
 
   group('LabelEditDialog Edit Mode', () {
@@ -274,6 +328,34 @@ void main() {
 
       expect(find.text('Edit Family Label'), findsOneWidget);
     });
+
+    testWidgets('asserts when existingLabel scope mismatches widget scope', (
+      tester,
+    ) async {
+      final mismatchedLabel = TaskLabel.create(
+        name: 'Mismatch',
+        colorKey: 'coral',
+        iconKey: 'tag',
+        scope: TaskLabelScope.personal,
+      );
+
+      await tester.pumpWidget(
+        buildDialogLauncher(
+          existingLabel: mismatchedLabel,
+          scope: TaskLabelScope.family,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open Dialog'));
+      await tester.pump();
+
+      final dynamic exception = tester.takeException();
+      expect(exception, isA<AssertionError>());
+      expect(
+        (exception as AssertionError).message,
+        'existingLabel.scope must match dialog scope',
+      );
+    });
   });
 
   group('LabelEditDialog Form Validation', () {
@@ -298,6 +380,28 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Please enter a label name'), findsOneWidget);
+        expect(find.byType(LabelEditDialog), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'blocks save and displays error text when existing name exceeds 24 characters',
+      (tester) async {
+        final longLabel = TaskLabel.create(
+          name: 'This label name exceeds twenty four chars',
+          colorKey: 'coral',
+          iconKey: 'tag',
+          scope: TaskLabelScope.personal,
+        );
+        await openDialog(tester, existingLabel: longLabel);
+
+        await tester.tap(find.byKey(const Key('save_label_button')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Label name must be at most 24 characters'),
+          findsOneWidget,
+        );
         expect(find.byType(LabelEditDialog), findsOneWidget);
       },
     );
