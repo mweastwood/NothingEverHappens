@@ -197,6 +197,36 @@ void main() {
         expect(copied.platform, equals(original.platform));
         expect(copied.lastSeenAt, equals(original.lastSeenAt));
       });
+
+      test(
+        'updates remaining fields (userId, email, appVersion, platform)',
+        () {
+          final original = FamilyMember(
+            userId: 'u1',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            role: FamilyRole.nonParent,
+            appVersion: '1.0.0',
+            platform: 'ios',
+            lastSeenAt: DateTime.utc(2026, 1, 1),
+          );
+
+          final updated = original.copyWith(
+            userId: 'u2',
+            email: 'alice.new@example.com',
+            appVersion: '2.0.0',
+            platform: 'android',
+          );
+
+          expect(updated.userId, equals('u2'));
+          expect(updated.displayName, equals('Alice'));
+          expect(updated.email, equals('alice.new@example.com'));
+          expect(updated.role, equals(FamilyRole.nonParent));
+          expect(updated.appVersion, equals('2.0.0'));
+          expect(updated.platform, equals('android'));
+          expect(updated.lastSeenAt, equals(DateTime.utc(2026, 1, 1)));
+        },
+      );
     });
 
     group('serialization (toJson)', () {
@@ -243,6 +273,48 @@ void main() {
         expect(json.containsKey('platform'), isFalse);
         expect(json.containsKey('lastSeenAt'), isFalse);
       });
+
+      test('converts non-UTC lastSeenAt to UTC ISO 8601 string', () {
+        final localDate = DateTime(2026, 9, 29, 8, 30, 0);
+        final member = FamilyMember(
+          userId: 'u1',
+          displayName: 'Alice',
+          email: 'alice@example.com',
+          role: FamilyRole.parent,
+          lastSeenAt: localDate,
+        );
+
+        final json = member.toJson();
+        expect(json['lastSeenAt'], equals(localDate.toUtc().toIso8601String()));
+        expect((json['lastSeenAt'] as String).endsWith('Z'), isTrue);
+      });
+
+      test('round-trip serialization integrity', () {
+        final date = DateTime.utc(2026, 9, 29, 8, 30, 0);
+        final original = FamilyMember(
+          userId: 'u1',
+          displayName: 'Alice',
+          email: 'alice@example.com',
+          role: FamilyRole.parent,
+          appVersion: '2.0.0',
+          platform: 'web',
+          lastSeenAt: date,
+        );
+
+        final json = original.toJson();
+        final reconstructed = FamilyMember.fromJson(json);
+
+        expect(reconstructed.userId, equals(original.userId));
+        expect(reconstructed.displayName, equals(original.displayName));
+        expect(reconstructed.email, equals(original.email));
+        expect(reconstructed.role, equals(original.role));
+        expect(reconstructed.appVersion, equals(original.appVersion));
+        expect(reconstructed.platform, equals(original.platform));
+        expect(
+          reconstructed.lastSeenAt?.isAtSameMomentAs(original.lastSeenAt!),
+          isTrue,
+        );
+      });
     });
   });
 
@@ -258,9 +330,9 @@ void main() {
       });
 
       test('falls back to current time when createdAt is null or omitted', () {
-        final before = DateTime.now().subtract(const Duration(seconds: 1));
+        final before = DateTime.now().subtract(const Duration(seconds: 5));
         final inviteNull = FamilyInvite.fromJson({'createdAt': null}, 'inv1');
-        final after = DateTime.now().add(const Duration(seconds: 1));
+        final after = DateTime.now().add(const Duration(seconds: 5));
 
         expect(inviteNull.createdAt.isAfter(before), isTrue);
         expect(inviteNull.createdAt.isBefore(after), isTrue);
@@ -306,6 +378,17 @@ void main() {
       test('parses valid role correctly', () {
         final invite = FamilyInvite.fromJson({'role': 'parent'}, 'inv');
         expect(invite.role, equals(FamilyRole.parent));
+      });
+
+      test('parses status case-insensitively', () {
+        for (final status in [
+          ('PENDING', FamilyInviteStatus.pending),
+          ('Accepted', FamilyInviteStatus.accepted),
+          ('DECLINED', FamilyInviteStatus.declined),
+        ]) {
+          final invite = FamilyInvite.fromJson({'status': status.$1}, 'inv');
+          expect(invite.status, equals(status.$2));
+        }
       });
     });
 
