@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 
 void main() {
@@ -274,6 +275,10 @@ void main() {
     });
 
     test('constructor applies correct default values', () {
+      final mockNow = DateTime.utc(2026, 4, 1, 12, 0, 0);
+      AppClock.setMockTime(mockNow);
+      addTearDown(AppClock.reset);
+
       final recipe = Recipe(title: 'Pancakes');
 
       expect(recipe.id.startsWith('R-'), isTrue);
@@ -286,8 +291,8 @@ void main() {
       expect(recipe.isFamily, isFalse);
       expect(recipe.hasPendingWrites, isFalse);
       expect(recipe.isFromCache, isFalse);
-      expect(recipe.createdAt, isNotNull);
-      expect(recipe.updatedAt, isNotNull);
+      expect(recipe.createdAt, mockNow);
+      expect(recipe.updatedAt, mockNow);
     });
 
     test('constructor accepts all explicit values', () {
@@ -552,7 +557,10 @@ void main() {
     });
 
     test('fromJson handles diverse parseDate variations and fallbacks', () {
-      final now = DateTime.now();
+      final mockNow = DateTime.utc(2026, 4, 1, 12, 0, 0);
+      AppClock.setMockTime(mockNow);
+      addTearDown(AppClock.reset);
+
       final timestamp = Timestamp.fromDate(DateTime(2026, 5, 10, 15, 30));
       final dateTime = DateTime(2026, 6, 12, 8, 45);
 
@@ -566,12 +574,7 @@ void main() {
         recipeFromString.createdAt,
         DateTime.parse('2026-04-01T08:00:00.000Z'),
       );
-      expect(
-        recipeFromString.updatedAt.isAfter(
-          now.subtract(const Duration(seconds: 5)),
-        ),
-        isTrue,
-      );
+      expect(recipeFromString.updatedAt, mockNow);
 
       final jsonFromTimestamp = {
         'title': 'Test 2',
@@ -588,18 +591,8 @@ void main() {
         'updatedAt': null,
       };
       final recipeFromUnsupported = Recipe.fromJson(jsonFromUnsupported);
-      expect(
-        recipeFromUnsupported.createdAt.isAfter(
-          now.subtract(const Duration(seconds: 5)),
-        ),
-        isTrue,
-      );
-      expect(
-        recipeFromUnsupported.updatedAt.isAfter(
-          now.subtract(const Duration(seconds: 5)),
-        ),
-        isTrue,
-      );
+      expect(recipeFromUnsupported.createdAt, mockNow);
+      expect(recipeFromUnsupported.updatedAt, mockNow);
     });
 
     test('fromJson applies fallback defaults when json payload is empty', () {
@@ -730,6 +723,10 @@ void main() {
     test(
       'fromFirestore handles String, DateTime, and fallback dates in Firestore data',
       () async {
+        final mockNow = DateTime.utc(2026, 4, 1, 12, 0, 0);
+        AppClock.setMockTime(mockNow);
+        addTearDown(AppClock.reset);
+
         final firestore = FakeFirebaseFirestore();
         final docRef = firestore.collection('recipes').doc('R-dates');
         await docRef.set({
@@ -752,16 +749,9 @@ void main() {
         });
 
         final snapshot2 = await docRef2.get();
-        final now = DateTime.now();
         final recipe2 = Recipe.fromFirestore(snapshot2);
-        expect(
-          recipe2.createdAt.isAfter(now.subtract(const Duration(seconds: 5))),
-          isTrue,
-        );
-        expect(
-          recipe2.updatedAt.isAfter(now.subtract(const Duration(seconds: 5))),
-          isTrue,
-        );
+        expect(recipe2.createdAt, mockNow);
+        expect(recipe2.updatedAt, mockNow);
       },
     );
 

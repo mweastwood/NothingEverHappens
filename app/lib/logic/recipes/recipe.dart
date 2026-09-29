@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
+import '../app_clock.dart';
+
 class RecipeIngredient {
   final String id;
   final String name;
@@ -129,8 +131,8 @@ class Recipe {
     this.hasPendingWrites = false,
     this.isFromCache = false,
   }) : id = id ?? Recipe.generateId(),
-       createdAt = createdAt ?? DateTime.now(),
-       updatedAt = updatedAt ?? DateTime.now();
+       createdAt = createdAt ?? AppClock.now,
+       updatedAt = updatedAt ?? AppClock.now;
 
   int get totalPrepMinutes =>
       prepSteps.fold(0, (total, s) => total + s.estimatedMinutes);
@@ -187,10 +189,10 @@ class Recipe {
 
   factory Recipe.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic value) {
-      if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+      if (value is String) return DateTime.tryParse(value) ?? AppClock.now;
       if (value is Timestamp) return value.toDate();
       if (value is DateTime) return value;
-      return DateTime.now();
+      return AppClock.now;
     }
 
     return Recipe(
@@ -254,9 +256,9 @@ class Recipe {
 
     DateTime parseDate(dynamic value) {
       if (value is Timestamp) return value.toDate();
-      if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+      if (value is String) return DateTime.tryParse(value) ?? AppClock.now;
       if (value is DateTime) return value;
-      return DateTime.now();
+      return AppClock.now;
     }
 
     return Recipe(
