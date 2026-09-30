@@ -879,9 +879,13 @@ void main() {
     );
 
     test('schedules with only OneOffSchedule rules are never projected', () {
-      final map = CalendarScreen.computeMonthTaskMap(march2026, [], [
-        oneOffSchedule,
-      ], today: today);
+      final map = CalendarScreen.computeMonthTaskMap(
+          march2026,
+          [],
+          [
+            oneOffSchedule,
+          ],
+          today: today);
 
       // March 15 has no instance, but oneOffSchedule is non-recurring, so it must not be projected
       const day15 = CivilDay(year: 2026, month: 3, day: 15);
@@ -889,10 +893,15 @@ void main() {
       expect(map.isEmpty, isTrue);
     });
 
-    test('recurring tasks are not projected onto past dates prior to today', () {
-      final map = CalendarScreen.computeMonthTaskMap(march2026, [], [
-        dailySchedule,
-      ], today: today);
+    test('recurring tasks are not projected onto past dates prior to today',
+        () {
+      final map = CalendarScreen.computeMonthTaskMap(
+          march2026,
+          [],
+          [
+            dailySchedule,
+          ],
+          today: today);
 
       // Days 1 through 7 are prior to today (March 8). No tasks should be projected there.
       for (int d = 1; d < 8; d++) {
@@ -989,6 +998,52 @@ void main() {
         expect(task.id, 'I-pending-future');
         expect(task.isInstance, isTrue);
         expect(task.status, TaskStatus.pending);
+      },
+    );
+
+    test(
+      'completion-relative recurring schedule suppresses phantom projected occurrences',
+      () {
+        final completionRelativeSchedule = TaskSchedule(
+          id: 'S-completion-rel',
+          title: 'Completion Relative Task',
+          description: 'Every 3 days after completion',
+          priority: TaskPriority.medium,
+          schedules: [
+            DailySchedule(
+              id: 'R-completion-rel',
+              scheduleId: 'S-completion-rel',
+              startDate: const CivilDay(year: 2026, month: 3, day: 1),
+              interval: 3,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 9,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 17,
+                minute: 0,
+              ),
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 3),
+                targetHour: 9,
+                targetMinute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final map = CalendarScreen.computeMonthTaskMap(
+            march2026,
+            [],
+            [
+              completionRelativeSchedule,
+            ],
+            today: today);
+
+        // Should have zero projected occurrences across the entire month
+        expect(map.isEmpty, isTrue);
       },
     );
   });

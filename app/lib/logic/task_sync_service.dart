@@ -15,6 +15,7 @@ import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
+import 'package:nothing_ever_happens/logic/family.dart';
 
 final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
   final firestore = ref.watch(firestoreProvider) ?? FirebaseFirestore.instance;
@@ -60,6 +61,7 @@ class TaskSyncService {
   StreamSubscription? _familyInstancesSub;
   StreamSubscription? _familyRecipesSub;
   String? _familyId;
+  String? _familyRole;
 
   bool _isDisposed = false;
   bool get isDisposed => _isDisposed;
@@ -128,17 +130,16 @@ class TaskSyncService {
     this.errorHandler,
     this.logger,
     FamilyIdFetcher? familyIdFetcher,
-  }) : _firestore = firestore,
-       _localDataSource = localDataSource,
-       _userId = userId,
-       _isActivePremium = isActivePremium,
-       _familyIdFetcher =
-           familyIdFetcher ??
-           FamilyIdFetcher(
-             firestore: firestore,
-             userId: userId,
-             errorHandler: errorHandler,
-           ) {
+  })  : _firestore = firestore,
+        _localDataSource = localDataSource,
+        _userId = userId,
+        _isActivePremium = isActivePremium,
+        _familyIdFetcher = familyIdFetcher ??
+            FamilyIdFetcher(
+              firestore: firestore,
+              userId: userId,
+              errorHandler: errorHandler,
+            ) {
     if (_isActivePremium &&
         _userId.isNotEmpty &&
         _localDataSource.isMigrationCompleted()) {
@@ -230,39 +231,44 @@ class TaskSyncService {
         .doc(_userId)
         .snapshots()
         .listen(
-          (snapshot) {
-            _receivedUserDoc = true;
-            final newFamilyId = snapshot.data()?['familyId'] as String?;
-            if (newFamilyId != _familyId ||
-                (newFamilyId != null &&
-                    newFamilyId.isNotEmpty &&
-                    _familyTasksSub == null)) {
-              _familyId = newFamilyId;
-              _familyIdFetcher.clearCache();
-              _familyTasksSub?.cancel();
-              _familyInstancesSub?.cancel();
-              _familyRecipesSub?.cancel();
-              _receivedFamilyTasks = false;
-              _receivedFamilyInstances = false;
-              if (_familyId != null && _familyId!.isNotEmpty) {
-                _startListeningToFamilyRemote(_familyId!);
-                _updateClientMetadata();
-              }
-            }
-            _checkInitialSyncComplete();
-          },
-          onError: (e, st) {
-            logger?.error(
-              'sync',
-              'User doc stream error',
-              error: e,
-              stackTrace: st,
-            );
-            errorHandler?.report(e, stackTrace: st);
-            _receivedUserDoc = true;
-            _checkInitialSyncComplete();
-          },
+      (snapshot) {
+        _receivedUserDoc = true;
+        final newFamilyId = snapshot.data()?['familyId'] as String?;
+        final newFamilyRole = snapshot.data()?['familyRole'] as String?;
+        final roleChanged = newFamilyRole != _familyRole;
+        _familyRole = newFamilyRole;
+        if (newFamilyId != _familyId ||
+            (newFamilyId != null &&
+                newFamilyId.isNotEmpty &&
+                _familyTasksSub == null)) {
+          _familyId = newFamilyId;
+          _familyIdFetcher.clearCache();
+          _familyTasksSub?.cancel();
+          _familyInstancesSub?.cancel();
+          _familyRecipesSub?.cancel();
+          _receivedFamilyTasks = false;
+          _receivedFamilyInstances = false;
+          if (_familyId != null && _familyId!.isNotEmpty) {
+            _startListeningToFamilyRemote(_familyId!);
+            _updateClientMetadata();
+          }
+        } else if (roleChanged) {
+          _familyIdFetcher.clearCache();
+        }
+        _checkInitialSyncComplete();
+      },
+      onError: (e, st) {
+        logger?.error(
+          'sync',
+          'User doc stream error',
+          error: e,
+          stackTrace: st,
         );
+        errorHandler?.report(e, stackTrace: st);
+        _receivedUserDoc = true;
+        _checkInitialSyncComplete();
+      },
+    );
 
     _tasksSub = _firestore
         .collection(FirestorePaths.users)
@@ -270,31 +276,31 @@ class TaskSyncService {
         .collection(FirestorePaths.tasks)
         .snapshots(includeMetadataChanges: true)
         .listen(
-          (snapshot) async {
-            logger?.debug(
-              'sync',
-              'Received remote tasks snapshot',
-              data: {
-                'docsCount': snapshot.docs.length,
-                'changesCount': snapshot.docChanges.length,
-              },
-            );
-            await _handleRemoteTasksSnapshot(snapshot, isFamily: false);
-            _receivedPersonalTasks = true;
-            _checkInitialSyncComplete();
-          },
-          onError: (e, st) {
-            logger?.error(
-              'sync',
-              'Remote tasks stream error',
-              error: e,
-              stackTrace: st,
-            );
-            errorHandler?.report(e, stackTrace: st);
-            _receivedPersonalTasks = true;
-            _checkInitialSyncComplete();
+      (snapshot) async {
+        logger?.debug(
+          'sync',
+          'Received remote tasks snapshot',
+          data: {
+            'docsCount': snapshot.docs.length,
+            'changesCount': snapshot.docChanges.length,
           },
         );
+        await _handleRemoteTasksSnapshot(snapshot, isFamily: false);
+        _receivedPersonalTasks = true;
+        _checkInitialSyncComplete();
+      },
+      onError: (e, st) {
+        logger?.error(
+          'sync',
+          'Remote tasks stream error',
+          error: e,
+          stackTrace: st,
+        );
+        errorHandler?.report(e, stackTrace: st);
+        _receivedPersonalTasks = true;
+        _checkInitialSyncComplete();
+      },
+    );
 
     _instancesSub = _firestore
         .collection(FirestorePaths.users)
@@ -302,31 +308,31 @@ class TaskSyncService {
         .collection(FirestorePaths.instances)
         .snapshots(includeMetadataChanges: true)
         .listen(
-          (snapshot) async {
-            logger?.debug(
-              'sync',
-              'Received remote instances snapshot',
-              data: {
-                'docsCount': snapshot.docs.length,
-                'changesCount': snapshot.docChanges.length,
-              },
-            );
-            await _handleRemoteInstancesSnapshot(snapshot, isFamily: false);
-            _receivedPersonalInstances = true;
-            _checkInitialSyncComplete();
-          },
-          onError: (e, st) {
-            logger?.error(
-              'sync',
-              'Remote instances stream error',
-              error: e,
-              stackTrace: st,
-            );
-            errorHandler?.report(e, stackTrace: st);
-            _receivedPersonalInstances = true;
-            _checkInitialSyncComplete();
+      (snapshot) async {
+        logger?.debug(
+          'sync',
+          'Received remote instances snapshot',
+          data: {
+            'docsCount': snapshot.docs.length,
+            'changesCount': snapshot.docChanges.length,
           },
         );
+        await _handleRemoteInstancesSnapshot(snapshot, isFamily: false);
+        _receivedPersonalInstances = true;
+        _checkInitialSyncComplete();
+      },
+      onError: (e, st) {
+        logger?.error(
+          'sync',
+          'Remote instances stream error',
+          error: e,
+          stackTrace: st,
+        );
+        errorHandler?.report(e, stackTrace: st);
+        _receivedPersonalInstances = true;
+        _checkInitialSyncComplete();
+      },
+    );
 
     _recipesSub = _firestore
         .collection(FirestorePaths.users)
@@ -334,19 +340,19 @@ class TaskSyncService {
         .collection(FirestorePaths.recipes)
         .snapshots()
         .listen(
-          (snapshot) async {
-            await _handleRemoteRecipesSnapshot(snapshot, isFamily: false);
-          },
-          onError: (e, st) {
-            logger?.error(
-              'sync',
-              'Remote recipes stream error',
-              error: e,
-              stackTrace: st,
-            );
-            errorHandler?.report(e, stackTrace: st);
-          },
+      (snapshot) async {
+        await _handleRemoteRecipesSnapshot(snapshot, isFamily: false);
+      },
+      onError: (e, st) {
+        logger?.error(
+          'sync',
+          'Remote recipes stream error',
+          error: e,
+          stackTrace: st,
         );
+        errorHandler?.report(e, stackTrace: st);
+      },
+    );
   }
 
   void _startListeningToFamilyRemote(String familyId) {
@@ -356,31 +362,31 @@ class TaskSyncService {
         .collection(FirestorePaths.tasks)
         .snapshots(includeMetadataChanges: true)
         .listen(
-          (snapshot) async {
-            logger?.debug(
-              'sync',
-              'Received remote family tasks snapshot',
-              data: {
-                'docsCount': snapshot.docs.length,
-                'changesCount': snapshot.docChanges.length,
-              },
-            );
-            await _handleRemoteTasksSnapshot(snapshot, isFamily: true);
-            _receivedFamilyTasks = true;
-            _checkInitialSyncComplete();
-          },
-          onError: (e, st) {
-            logger?.error(
-              'sync',
-              'Remote family tasks stream error',
-              error: e,
-              stackTrace: st,
-            );
-            errorHandler?.report(e, stackTrace: st);
-            _receivedFamilyTasks = true;
-            _checkInitialSyncComplete();
+      (snapshot) async {
+        logger?.debug(
+          'sync',
+          'Received remote family tasks snapshot',
+          data: {
+            'docsCount': snapshot.docs.length,
+            'changesCount': snapshot.docChanges.length,
           },
         );
+        await _handleRemoteTasksSnapshot(snapshot, isFamily: true);
+        _receivedFamilyTasks = true;
+        _checkInitialSyncComplete();
+      },
+      onError: (e, st) {
+        logger?.error(
+          'sync',
+          'Remote family tasks stream error',
+          error: e,
+          stackTrace: st,
+        );
+        errorHandler?.report(e, stackTrace: st);
+        _receivedFamilyTasks = true;
+        _checkInitialSyncComplete();
+      },
+    );
 
     _familyInstancesSub = _firestore
         .collection(FirestorePaths.families)
@@ -388,31 +394,31 @@ class TaskSyncService {
         .collection(FirestorePaths.instances)
         .snapshots(includeMetadataChanges: true)
         .listen(
-          (snapshot) async {
-            logger?.debug(
-              'sync',
-              'Received remote family instances snapshot',
-              data: {
-                'docsCount': snapshot.docs.length,
-                'changesCount': snapshot.docChanges.length,
-              },
-            );
-            await _handleRemoteInstancesSnapshot(snapshot, isFamily: true);
-            _receivedFamilyInstances = true;
-            _checkInitialSyncComplete();
-          },
-          onError: (e, st) {
-            logger?.error(
-              'sync',
-              'Remote family instances stream error',
-              error: e,
-              stackTrace: st,
-            );
-            errorHandler?.report(e, stackTrace: st);
-            _receivedFamilyInstances = true;
-            _checkInitialSyncComplete();
+      (snapshot) async {
+        logger?.debug(
+          'sync',
+          'Received remote family instances snapshot',
+          data: {
+            'docsCount': snapshot.docs.length,
+            'changesCount': snapshot.docChanges.length,
           },
         );
+        await _handleRemoteInstancesSnapshot(snapshot, isFamily: true);
+        _receivedFamilyInstances = true;
+        _checkInitialSyncComplete();
+      },
+      onError: (e, st) {
+        logger?.error(
+          'sync',
+          'Remote family instances stream error',
+          error: e,
+          stackTrace: st,
+        );
+        errorHandler?.report(e, stackTrace: st);
+        _receivedFamilyInstances = true;
+        _checkInitialSyncComplete();
+      },
+    );
 
     _familyRecipesSub = _firestore
         .collection(FirestorePaths.families)
@@ -420,19 +426,19 @@ class TaskSyncService {
         .collection(FirestorePaths.recipes)
         .snapshots()
         .listen(
-          (snapshot) async {
-            await _handleRemoteRecipesSnapshot(snapshot, isFamily: true);
-          },
-          onError: (e, st) {
-            logger?.error(
-              'sync',
-              'Remote family recipes stream error',
-              error: e,
-              stackTrace: st,
-            );
-            errorHandler?.report(e, stackTrace: st);
-          },
+      (snapshot) async {
+        await _handleRemoteRecipesSnapshot(snapshot, isFamily: true);
+      },
+      onError: (e, st) {
+        logger?.error(
+          'sync',
+          'Remote family recipes stream error',
+          error: e,
+          stackTrace: st,
         );
+        errorHandler?.report(e, stackTrace: st);
+      },
+    );
   }
 
   Future<String?> _getFamilyId() async {
@@ -442,6 +448,13 @@ class TaskSyncService {
       _familyId = fetched;
     }
     return _familyId ?? fetched;
+  }
+
+  Future<bool> _isFamilyParent() async {
+    if (_familyRole != null) {
+      return _familyRole == FamilyRole.parent.value;
+    }
+    return await _familyIdFetcher.isFamilyParent();
   }
 
   Future<void> _handleRemoteTasksSnapshot(
@@ -582,7 +595,8 @@ class TaskSyncService {
             } else {
               toSave.add(remoteInst);
               localMap[remoteInst.id] = remoteInst;
-              localSlotMap['${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}'] =
+              localSlotMap[
+                      '${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}'] =
                   remoteInst;
             }
           } else {
@@ -635,13 +649,25 @@ class TaskSyncService {
       await _pushInstanceToRemote(inst);
     }
     for (final remId in remoteIdsToDelete) {
-      if (isFamily && familyId != null && familyId.isNotEmpty) {
-        await _firestore
-            .collection(FirestorePaths.families)
-            .doc(familyId)
-            .collection(FirestorePaths.instances)
-            .doc(remId)
-            .delete();
+      if (isFamily) {
+        if (familyId != null && familyId.isNotEmpty) {
+          final isParent = await _isFamilyParent();
+          if (isParent) {
+            try {
+              await _firestore
+                  .collection(FirestorePaths.families)
+                  .doc(familyId)
+                  .collection(FirestorePaths.instances)
+                  .doc(remId)
+                  .delete();
+            } catch (e) {
+              logger?.warning(
+                'sync',
+                'Failed to delete remote family duplicate $remId: $e',
+              );
+            }
+          }
+        }
       } else {
         await _firestore
             .collection(FirestorePaths.users)
@@ -654,11 +680,9 @@ class TaskSyncService {
   }
 
   bool _doesLocalWin(TaskInstance local, TaskInstance remote) {
-    final localIsUser =
-        (local.status != TaskStatus.pending) &&
+    final localIsUser = (local.status != TaskStatus.pending) &&
         (local.statusReason?.startsWith('user_') ?? false);
-    final remoteIsUser =
-        (remote.status != TaskStatus.pending) &&
+    final remoteIsUser = (remote.status != TaskStatus.pending) &&
         (remote.statusReason?.startsWith('user_') ?? false);
     final localIsScheduler =
         local.statusReason?.startsWith('scheduler_') ?? false;
@@ -772,41 +796,63 @@ class TaskSyncService {
             if (task != null) {
               await _pushTaskToRemote(task);
             } else {
-              // Deleted locally, remove from remote
-              if (familyId != null && familyId.isNotEmpty) {
-                await _firestore
-                    .collection(FirestorePaths.families)
-                    .doc(familyId)
-                    .collection(FirestorePaths.tasks)
-                    .doc(taskId)
-                    .delete();
-              }
+              // Deleted locally, remove from remote:
+              // 1. Delete from personal user collection first
               await _firestore
                   .collection(FirestorePaths.users)
                   .doc(_userId)
                   .collection(FirestorePaths.tasks)
                   .doc(taskId)
                   .delete();
+              // 2. Attempt family collection delete if familyId exists, swallowing permission-denied
+              if (familyId != null && familyId.isNotEmpty) {
+                try {
+                  await _firestore
+                      .collection(FirestorePaths.families)
+                      .doc(familyId)
+                      .collection(FirestorePaths.tasks)
+                      .doc(taskId)
+                      .delete();
+                } catch (e) {
+                  if (e is! FirebaseException ||
+                      e.code != 'permission-denied') {
+                    rethrow;
+                  }
+                }
+              }
             }
           } else if (taskId.startsWith('I-')) {
             final inst = instancesMap[taskId];
             if (inst != null) {
               await _pushInstanceToRemote(inst);
             } else {
-              if (familyId != null && familyId.isNotEmpty) {
-                await _firestore
-                    .collection(FirestorePaths.families)
-                    .doc(familyId)
-                    .collection(FirestorePaths.instances)
-                    .doc(taskId)
-                    .delete();
-              }
+              // Deleted locally, remove from remote:
+              // 1. Delete from personal user collection first
               await _firestore
                   .collection(FirestorePaths.users)
                   .doc(_userId)
                   .collection(FirestorePaths.instances)
                   .doc(taskId)
                   .delete();
+              // 2. Only parents can delete from family instances
+              if (familyId != null && familyId.isNotEmpty) {
+                final isParent = await _isFamilyParent();
+                if (isParent) {
+                  try {
+                    await _firestore
+                        .collection(FirestorePaths.families)
+                        .doc(familyId)
+                        .collection(FirestorePaths.instances)
+                        .doc(taskId)
+                        .delete();
+                  } catch (e) {
+                    if (e is! FirebaseException ||
+                        e.code != 'permission-denied') {
+                      rethrow;
+                    }
+                  }
+                }
+              }
             }
           }
           if (_isDisposed) break;
@@ -862,19 +908,24 @@ class TaskSyncService {
           .doc(task.id)
           .set(task.toFirestore(), SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
-        await _firestore
-            .collection(FirestorePaths.families)
-            .doc(familyId)
-            .collection(FirestorePaths.tasks)
-            .doc(task.id)
-            .delete();
+        final isParent = await _isFamilyParent();
+        if (isParent) {
+          try {
+            await _firestore
+                .collection(FirestorePaths.families)
+                .doc(familyId)
+                .collection(FirestorePaths.tasks)
+                .doc(task.id)
+                .delete();
+          } catch (e) {
+            logger?.debug('sync', 'Silent error deleting task from family: $e');
+          }
+        }
       }
     }
 
-    final localCurrent = _localDataSource
-        .getTasks()
-        .where((t) => t.id == task.id)
-        .firstOrNull;
+    final localCurrent =
+        _localDataSource.getTasks().where((t) => t.id == task.id).firstOrNull;
     if (localCurrent != null &&
         (localCurrent.hasPendingWrites || localCurrent.isFromCache)) {
       await _localDataSource.saveTask(
@@ -906,12 +957,22 @@ class TaskSyncService {
           .doc(inst.id)
           .set(inst.toFirestore(), SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
-        await _firestore
-            .collection(FirestorePaths.families)
-            .doc(familyId)
-            .collection(FirestorePaths.instances)
-            .doc(inst.id)
-            .delete();
+        final isParent = await _isFamilyParent();
+        if (isParent) {
+          try {
+            await _firestore
+                .collection(FirestorePaths.families)
+                .doc(familyId)
+                .collection(FirestorePaths.instances)
+                .doc(inst.id)
+                .delete();
+          } catch (e) {
+            logger?.debug(
+              'sync',
+              'Silent error deleting instance from family: $e',
+            );
+          }
+        }
       }
     }
 
@@ -931,11 +992,14 @@ class TaskSyncService {
     try {
       final now = DateTime.now().toUtc();
       final batch = _firestore.batch();
-      batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
-        'appVersion': AppVersion.display,
-        'platform': AppVersion.platform,
-        'lastSeenAt': now.toIso8601String(),
-      }, SetOptions(merge: true));
+      batch.set(
+          _firestore.collection(FirestorePaths.users).doc(_userId),
+          {
+            'appVersion': AppVersion.display,
+            'platform': AppVersion.platform,
+            'lastSeenAt': now.toIso8601String(),
+          },
+          SetOptions(merge: true));
 
       if (_familyId != null && _familyId!.isNotEmpty) {
         batch.update(

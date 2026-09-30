@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
+import '../app_clock.dart';
+
 class RecipeIngredient {
   final String id;
   final String name;
@@ -128,9 +130,9 @@ class Recipe {
     DateTime? updatedAt,
     this.hasPendingWrites = false,
     this.isFromCache = false,
-  }) : id = id ?? Recipe.generateId(),
-       createdAt = createdAt ?? DateTime.now(),
-       updatedAt = updatedAt ?? DateTime.now();
+  })  : id = id ?? Recipe.generateId(),
+        createdAt = createdAt ?? AppClock.now,
+        updatedAt = updatedAt ?? AppClock.now;
 
   int get totalPrepMinutes =>
       prepSteps.fold(0, (total, s) => total + s.estimatedMinutes);
@@ -187,10 +189,10 @@ class Recipe {
 
   factory Recipe.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic value) {
-      if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+      if (value is String) return DateTime.tryParse(value) ?? AppClock.now;
       if (value is Timestamp) return value.toDate();
       if (value is DateTime) return value;
-      return DateTime.now();
+      return AppClock.now;
     }
 
     return Recipe(
@@ -198,8 +200,7 @@ class Recipe {
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
       servings: (json['servings'] as num?)?.toInt() ?? 4,
-      ingredients:
-          (json['ingredients'] as List<dynamic>?)
+      ingredients: (json['ingredients'] as List<dynamic>?)
               ?.map(
                 (item) => RecipeIngredient.fromJson(
                   Map<String, dynamic>.from(item as Map),
@@ -207,16 +208,14 @@ class Recipe {
               )
               .toList() ??
           const [],
-      prepSteps:
-          (json['prepSteps'] as List<dynamic>?)
+      prepSteps: (json['prepSteps'] as List<dynamic>?)
               ?.map(
                 (item) =>
                     RecipeStep.fromJson(Map<String, dynamic>.from(item as Map)),
               )
               .toList() ??
           const [],
-      cookSteps:
-          (json['cookSteps'] as List<dynamic>?)
+      cookSteps: (json['cookSteps'] as List<dynamic>?)
               ?.map(
                 (item) =>
                     RecipeStep.fromJson(Map<String, dynamic>.from(item as Map)),
@@ -254,9 +253,9 @@ class Recipe {
 
     DateTime parseDate(dynamic value) {
       if (value is Timestamp) return value.toDate();
-      if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+      if (value is String) return DateTime.tryParse(value) ?? AppClock.now;
       if (value is DateTime) return value;
-      return DateTime.now();
+      return AppClock.now;
     }
 
     return Recipe(
@@ -264,8 +263,7 @@ class Recipe {
       title: data['title'] as String? ?? '',
       description: data['description'] as String? ?? '',
       servings: (data['servings'] as num?)?.toInt() ?? 4,
-      ingredients:
-          (data['ingredients'] as List<dynamic>?)
+      ingredients: (data['ingredients'] as List<dynamic>?)
               ?.map(
                 (item) => RecipeIngredient.fromJson(
                   Map<String, dynamic>.from(item as Map),
@@ -273,16 +271,14 @@ class Recipe {
               )
               .toList() ??
           const [],
-      prepSteps:
-          (data['prepSteps'] as List<dynamic>?)
+      prepSteps: (data['prepSteps'] as List<dynamic>?)
               ?.map(
                 (item) =>
                     RecipeStep.fromJson(Map<String, dynamic>.from(item as Map)),
               )
               .toList() ??
           const [],
-      cookSteps:
-          (data['cookSteps'] as List<dynamic>?)
+      cookSteps: (data['cookSteps'] as List<dynamic>?)
               ?.map(
                 (item) =>
                     RecipeStep.fromJson(Map<String, dynamic>.from(item as Map)),
