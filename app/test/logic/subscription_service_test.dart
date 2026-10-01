@@ -78,6 +78,7 @@ void main() {
       );
 
       final service = TestSubscriptionService(ref, firestore: fakeFirestore);
+      addTearDown(service.dispose);
 
       // Initially free
       expect(service.state.tier, SubscriptionTier.free);
@@ -108,6 +109,8 @@ void main() {
       await fakeFirestore.collection('users').doc('test-user-123').delete();
       await pumpEventQueue();
       expect(service.state.tier, SubscriptionTier.free);
+      expect(service.state.isActivePremium, isFalse);
+      expect(service.state.isFamilyPlan, isFalse);
     });
 
     test(
@@ -130,6 +133,7 @@ void main() {
         );
 
         final service = TestSubscriptionService(ref, firestore: fakeFirestore);
+        addTearDown(service.dispose);
 
         service.triggerListenToFirestore('test-user-123');
         await pumpEventQueue();
@@ -164,6 +168,7 @@ void main() {
         );
 
         final service = TestSubscriptionService(ref, firestore: fakeFirestore);
+        addTearDown(service.dispose);
 
         service.triggerListenToFirestore('test-user-123');
         await pumpEventQueue();
@@ -173,6 +178,8 @@ void main() {
           'familyRole': 'non-parent',
         });
         await pumpEventQueue();
+        expect(service.state.tier, SubscriptionTier.family);
+        expect(service.state.isActivePremium, isTrue);
         expect(service.state.isFamilyPlan, isTrue);
 
         // Simulate RevenueCat update with no active entitlements (free)
@@ -194,6 +201,7 @@ void main() {
 
         service.updateEntitlements(emptyInfo);
         expect(service.state.tier, SubscriptionTier.family);
+        expect(service.state.isActivePremium, isTrue);
         expect(service.state.isFamilyPlan, isTrue);
       },
     );
