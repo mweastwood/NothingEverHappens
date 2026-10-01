@@ -29,9 +29,9 @@ class FamilyIdFetcher {
     required FirebaseFirestore? firestore,
     required String userId,
     ErrorHandler? errorHandler,
-  })  : _firestore = firestore,
-        _userId = userId,
-        _errorHandler = errorHandler;
+  }) : _firestore = firestore,
+       _userId = userId,
+       _errorHandler = errorHandler;
 
   String? get cachedFamilyId => _cachedFamilyId;
   String? get cachedFamilyRole => _cachedFamilyRole;

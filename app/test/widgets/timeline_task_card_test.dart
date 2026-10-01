@@ -278,8 +278,8 @@ void main() {
         find.byType(TimelineTaskCard),
       );
       final theme = Theme.of(context);
-      final expectedCardColor =
-          theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4);
+      final expectedCardColor = theme.colorScheme.surfaceContainerHighest
+          .withValues(alpha: 0.4);
 
       final cardWidget = tester.widget<Card>(
         find.byKey(Key('timeline_task_${completedTask.id}')),

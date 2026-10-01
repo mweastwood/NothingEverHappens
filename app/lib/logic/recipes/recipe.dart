@@ -130,9 +130,9 @@ class Recipe {
     DateTime? updatedAt,
     this.hasPendingWrites = false,
     this.isFromCache = false,
-  })  : id = id ?? Recipe.generateId(),
-        createdAt = createdAt ?? AppClock.now,
-        updatedAt = updatedAt ?? AppClock.now;
+  }) : id = id ?? Recipe.generateId(),
+       createdAt = createdAt ?? AppClock.now,
+       updatedAt = updatedAt ?? AppClock.now;
 
   int get totalPrepMinutes =>
       prepSteps.fold(0, (total, s) => total + s.estimatedMinutes);
@@ -200,7 +200,8 @@ class Recipe {
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
       servings: (json['servings'] as num?)?.toInt() ?? 4,
-      ingredients: (json['ingredients'] as List<dynamic>?)
+      ingredients:
+          (json['ingredients'] as List<dynamic>?)
               ?.map(
                 (item) => RecipeIngredient.fromJson(
                   Map<String, dynamic>.from(item as Map),
@@ -208,14 +209,16 @@ class Recipe {
               )
               .toList() ??
           const [],
-      prepSteps: (json['prepSteps'] as List<dynamic>?)
+      prepSteps:
+          (json['prepSteps'] as List<dynamic>?)
               ?.map(
                 (item) =>
                     RecipeStep.fromJson(Map<String, dynamic>.from(item as Map)),
               )
               .toList() ??
           const [],
-      cookSteps: (json['cookSteps'] as List<dynamic>?)
+      cookSteps:
+          (json['cookSteps'] as List<dynamic>?)
               ?.map(
                 (item) =>
                     RecipeStep.fromJson(Map<String, dynamic>.from(item as Map)),
@@ -263,7 +266,8 @@ class Recipe {
       title: data['title'] as String? ?? '',
       description: data['description'] as String? ?? '',
       servings: (data['servings'] as num?)?.toInt() ?? 4,
-      ingredients: (data['ingredients'] as List<dynamic>?)
+      ingredients:
+          (data['ingredients'] as List<dynamic>?)
               ?.map(
                 (item) => RecipeIngredient.fromJson(
                   Map<String, dynamic>.from(item as Map),
@@ -271,14 +275,16 @@ class Recipe {
               )
               .toList() ??
           const [],
-      prepSteps: (data['prepSteps'] as List<dynamic>?)
+      prepSteps:
+          (data['prepSteps'] as List<dynamic>?)
               ?.map(
                 (item) =>
                     RecipeStep.fromJson(Map<String, dynamic>.from(item as Map)),
               )
               .toList() ??
           const [],
-      cookSteps: (data['cookSteps'] as List<dynamic>?)
+      cookSteps:
+          (data['cookSteps'] as List<dynamic>?)
               ?.map(
                 (item) =>
                     RecipeStep.fromJson(Map<String, dynamic>.from(item as Map)),

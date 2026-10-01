@@ -669,13 +669,12 @@ class CalendarDayTimelineViewState
     required int Function(CalendarDayTask) getStartMinute,
     required int Function(CalendarDayTask) getDueMinute,
     required int Function(CalendarDayTask) getDurationMinutes,
-  }) =>
-      TimelinePlacementCalculator.computePlacements(
-        tasks,
-        getStartMinute: getStartMinute,
-        getDueMinute: getDueMinute,
-        getDurationMinutes: getDurationMinutes,
-      );
+  }) => TimelinePlacementCalculator.computePlacements(
+    tasks,
+    getStartMinute: getStartMinute,
+    getDueMinute: getDueMinute,
+    getDurationMinutes: getDurationMinutes,
+  );
 
   List<Widget> _layoutTimelineTasks(
     CivilDay day,

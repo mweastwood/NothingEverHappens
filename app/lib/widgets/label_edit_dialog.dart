@@ -179,11 +179,11 @@ class _LabelEditDialogState extends ConsumerState<LabelEditDialog> {
     final isPersonal = widget.scope == TaskLabelScope.personal;
     final title = isNew
         ? (isPersonal
-            ? context.l10n.newPersonalLabel
-            : context.l10n.newFamilyLabel)
+              ? context.l10n.newPersonalLabel
+              : context.l10n.newFamilyLabel)
         : (isPersonal
-            ? context.l10n.editPersonalLabel
-            : context.l10n.editFamilyLabel);
+              ? context.l10n.editPersonalLabel
+              : context.l10n.editFamilyLabel);
 
     final activeColor = LabelPalette.getColor(_selectedColorKey, context);
     final activeIcon = LabelIcons.getIcon(_selectedIconKey);
@@ -301,7 +301,8 @@ class _LabelEditDialogState extends ConsumerState<LabelEditDialog> {
                           child: isSelected
                               ? Icon(
                                   Icons.check,
-                                  color: ThemeData.estimateBrightnessForColor(
+                                  color:
+                                      ThemeData.estimateBrightnessForColor(
                                             color,
                                           ) ==
                                           Brightness.light
@@ -351,10 +352,8 @@ class _LabelEditDialogState extends ConsumerState<LabelEditDialog> {
                             border: Border.all(
                               color: isSelected
                                   ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .outlineVariant
-                                      .withValues(alpha: 0.5),
+                                  : Theme.of(context).colorScheme.outlineVariant
+                                        .withValues(alpha: 0.5),
                             ),
                           ),
                           child: Icon(

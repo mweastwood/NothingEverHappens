@@ -30,30 +30,38 @@ import 'package:nothing_ever_happens/logic/auth_repository.dart' as _i2;
 /// See the documentation for Mockito's code generation for more information.
 class MockAuthRepository extends _i1.Mock implements _i2.AuthRepository {
   @override
-  _i3.Stream<_i4.User?> get authStateChanges => (super.noSuchMethod(
-        Invocation.getter(#authStateChanges),
-        returnValue: _i3.Stream<_i4.User?>.empty(),
-        returnValueForMissingStub: _i3.Stream<_i4.User?>.empty(),
-      ) as _i3.Stream<_i4.User?>);
+  _i3.Stream<_i4.User?> get authStateChanges =>
+      (super.noSuchMethod(
+            Invocation.getter(#authStateChanges),
+            returnValue: _i3.Stream<_i4.User?>.empty(),
+            returnValueForMissingStub: _i3.Stream<_i4.User?>.empty(),
+          )
+          as _i3.Stream<_i4.User?>);
 
   @override
-  _i3.Future<_i4.User?> signInWithGoogle() => (super.noSuchMethod(
-        Invocation.method(#signInWithGoogle, []),
-        returnValue: _i3.Future<_i4.User?>.value(),
-        returnValueForMissingStub: _i3.Future<_i4.User?>.value(),
-      ) as _i3.Future<_i4.User?>);
+  _i3.Future<_i4.User?> signInWithGoogle() =>
+      (super.noSuchMethod(
+            Invocation.method(#signInWithGoogle, []),
+            returnValue: _i3.Future<_i4.User?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.User?>.value(),
+          )
+          as _i3.Future<_i4.User?>);
 
   @override
-  _i3.Future<_i4.User?> signInAnonymously() => (super.noSuchMethod(
-        Invocation.method(#signInAnonymously, []),
-        returnValue: _i3.Future<_i4.User?>.value(),
-        returnValueForMissingStub: _i3.Future<_i4.User?>.value(),
-      ) as _i3.Future<_i4.User?>);
+  _i3.Future<_i4.User?> signInAnonymously() =>
+      (super.noSuchMethod(
+            Invocation.method(#signInAnonymously, []),
+            returnValue: _i3.Future<_i4.User?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.User?>.value(),
+          )
+          as _i3.Future<_i4.User?>);
 
   @override
-  _i3.Future<void> signOut() => (super.noSuchMethod(
-        Invocation.method(#signOut, []),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+  _i3.Future<void> signOut() =>
+      (super.noSuchMethod(
+            Invocation.method(#signOut, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 }

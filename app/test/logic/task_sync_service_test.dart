@@ -26,14 +26,14 @@ void main() {
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      (MethodCall methodCall) async {
-        if (methodCall.method == 'getApplicationDocumentsDirectory') {
-          return tempDir.path;
-        }
-        return null;
-      },
-    );
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'getApplicationDocumentsDirectory') {
+              return tempDir.path;
+            }
+            return null;
+          },
+        );
 
     localDataSource = HiveLocalDataSource();
     await localDataSource.init();
@@ -191,11 +191,11 @@ void main() {
         .collection('tasks')
         .doc('S-2')
         .set({
-      'id': 'S-2',
-      'title': 'Remote Task',
-      'description': 'Desc 2',
-      'updatedAt': remoteTime.toIso8601String(),
-    });
+          'id': 'S-2',
+          'title': 'Remote Task',
+          'description': 'Desc 2',
+          'updatedAt': remoteTime.toIso8601String(),
+        });
 
     await pumpEventQueue();
 
@@ -232,11 +232,11 @@ void main() {
         .collection('tasks')
         .doc('S-1')
         .set({
-      'id': 'S-1',
-      'title': 'Remote Title',
-      'description': 'Desc 1',
-      'updatedAt': remoteTime.toIso8601String(),
-    });
+          'id': 'S-1',
+          'title': 'Remote Title',
+          'description': 'Desc 1',
+          'updatedAt': remoteTime.toIso8601String(),
+        });
 
     await pumpEventQueue();
 
@@ -277,17 +277,17 @@ void main() {
         .collection('tasks')
         .doc('S-1')
         .set({
-      'id': 'S-1',
-      'title': 'Remote Title',
-      'description': 'Desc 1',
-      'updatedAt': remoteTime.toIso8601String(),
-    });
+          'id': 'S-1',
+          'title': 'Remote Title',
+          'description': 'Desc 1',
+          'updatedAt': remoteTime.toIso8601String(),
+        });
 
     await pumpEventQueue();
 
     final localTask = localDataSource.getTasks().firstWhere(
-          (t) => t.id == 'S-1',
-        );
+      (t) => t.id == 'S-1',
+    );
     expect(localTask.title, 'Remote Title');
   });
 
@@ -564,11 +564,11 @@ void main() {
           .collection('tasks')
           .doc('S-fam-remote')
           .set({
-        'id': 'S-fam-remote',
-        'title': 'Remote Family Task',
-        'isFamily': true,
-        'updatedAt': DateTime.now().toIso8601String(),
-      });
+            'id': 'S-fam-remote',
+            'title': 'Remote Family Task',
+            'isFamily': true,
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
 
       // Push remote family instance
       await firestore
@@ -577,12 +577,12 @@ void main() {
           .collection('instances')
           .doc('I-fam-remote')
           .set({
-        'id': 'I-fam-remote',
-        'scheduleId': 'S-fam-remote',
-        'title': 'Remote Family Instance',
-        'isFamily': true,
-        'updatedAt': DateTime.now().toIso8601String(),
-      });
+            'id': 'I-fam-remote',
+            'scheduleId': 'S-fam-remote',
+            'title': 'Remote Family Instance',
+            'isFamily': true,
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
 
       await pumpEventQueue();
 
@@ -617,10 +617,10 @@ void main() {
           .collection('tasks')
           .doc('S-to-delete')
           .set({
-        'id': 'S-to-delete',
-        'title': 'Task To Delete',
-        'isFamily': true,
-      });
+            'id': 'S-to-delete',
+            'title': 'Task To Delete',
+            'isFamily': true,
+          });
 
       await firestore
           .collection('families')
@@ -628,11 +628,11 @@ void main() {
           .collection('instances')
           .doc('I-to-delete')
           .set({
-        'id': 'I-to-delete',
-        'scheduleId': 'S-to-delete',
-        'title': 'Instance To Delete',
-        'isFamily': true,
-      });
+            'id': 'I-to-delete',
+            'scheduleId': 'S-to-delete',
+            'title': 'Instance To Delete',
+            'isFamily': true,
+          });
 
       // Wait for remote listener to receive and save
       await pumpEventQueue();
@@ -686,23 +686,23 @@ void main() {
           .collection('tasks')
           .doc('S-fam-to-pers')
           .set({
-        'id': 'S-fam-to-pers',
-        'title': 'Family Task',
-        'isFamily': true,
-        'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
-      });
+            'id': 'S-fam-to-pers',
+            'title': 'Family Task',
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
       await firestore
           .collection('families')
           .doc('fam1')
           .collection('instances')
           .doc('I-fam-to-pers')
           .set({
-        'id': 'I-fam-to-pers',
-        'scheduleId': 'S-fam-to-pers',
-        'title': 'Family Task Instance',
-        'isFamily': true,
-        'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
-      });
+            'id': 'I-fam-to-pers',
+            'scheduleId': 'S-fam-to-pers',
+            'title': 'Family Task Instance',
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
 
       // Allow listeners to catch up
       await pumpEventQueue();
@@ -802,23 +802,23 @@ void main() {
           .collection('tasks')
           .doc('S-pers-to-fam')
           .set({
-        'id': 'S-pers-to-fam',
-        'title': 'Personal Task',
-        'isFamily': false,
-        'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
-      });
+            'id': 'S-pers-to-fam',
+            'title': 'Personal Task',
+            'isFamily': false,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
       await firestore
           .collection('users')
           .doc('user1')
           .collection('instances')
           .doc('I-pers-to-fam')
           .set({
-        'id': 'I-pers-to-fam',
-        'scheduleId': 'S-pers-to-fam',
-        'title': 'Personal Task Instance',
-        'isFamily': false,
-        'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
-      });
+            'id': 'I-pers-to-fam',
+            'scheduleId': 'S-pers-to-fam',
+            'title': 'Personal Task Instance',
+            'isFamily': false,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
 
       // Allow listeners to catch up
       await pumpEventQueue();
@@ -919,11 +919,11 @@ void main() {
           .collection('tasks')
           .doc('S-kitchen')
           .set({
-        'id': 'S-kitchen',
-        'title': 'Clean the Kitchen',
-        'isFamily': true,
-        'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
-      });
+            'id': 'S-kitchen',
+            'title': 'Clean the Kitchen',
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
 
       await pumpEventQueue();
       expect(
@@ -987,11 +987,11 @@ void main() {
           .collection('tasks')
           .doc('S-kitchen-fam')
           .set({
-        'id': 'S-kitchen-fam',
-        'title': 'Clean the Kitchen',
-        'isFamily': true,
-        'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
-      });
+            'id': 'S-kitchen-fam',
+            'title': 'Clean the Kitchen',
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 1, 10, 0).toIso8601String(),
+          });
 
       await pumpEventQueue();
       expect(
@@ -1049,12 +1049,12 @@ void main() {
           .collection('recipes')
           .doc('R-1')
           .set({
-        'title': 'Recipe 1',
-        'description': 'Family Recipe 1',
-        'servings': 4,
-        'isFamily': true,
-        'updatedAt': DateTime.now().toIso8601String(),
-      });
+            'title': 'Recipe 1',
+            'description': 'Family Recipe 1',
+            'servings': 4,
+            'isFamily': true,
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
 
       await pumpEventQueue();
       expect(localDataSource.getRecipes().any((r) => r.id == 'R-1'), isTrue);
@@ -1071,12 +1071,12 @@ void main() {
           .collection('recipes')
           .doc('R-2')
           .set({
-        'title': 'Recipe 2',
-        'description': 'Family Recipe 2',
-        'servings': 4,
-        'isFamily': true,
-        'updatedAt': DateTime.now().toIso8601String(),
-      });
+            'title': 'Recipe 2',
+            'description': 'Family Recipe 2',
+            'servings': 4,
+            'isFamily': true,
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
 
       await pumpEventQueue();
 
@@ -1204,14 +1204,14 @@ void main() {
 
       // Local tasks, instances, and recipes should now have isFromCache == false
       final updatedTask = localDataSource.getTasks().firstWhere(
-            (t) => t.id == 'S-cached-1',
-          );
+        (t) => t.id == 'S-cached-1',
+      );
       final updatedInstance = localDataSource.getInstances().firstWhere(
-            (i) => i.id == 'I-cached-1',
-          );
+        (i) => i.id == 'I-cached-1',
+      );
       final updatedRecipe = localDataSource.getRecipes().firstWhere(
-            (r) => r.id == 'R-cached-1',
-          );
+        (r) => r.id == 'R-cached-1',
+      );
 
       expect(updatedTask.isFromCache, isFalse);
       expect(updatedInstance.isFromCache, isFalse);
@@ -1243,8 +1243,10 @@ void main() {
 
       await pumpEventQueue();
 
-      final familyDoc =
-          await firestore.collection('families').doc('fam-123').get();
+      final familyDoc = await firestore
+          .collection('families')
+          .doc('fam-123')
+          .get();
       final memberData =
           familyDoc.data()?['members']?['user1'] as Map<String, dynamic>?;
 
@@ -1336,13 +1338,13 @@ void main() {
           .collection('tasks')
           .doc('S-alpha-1')
           .set({
-        'id': 'S-alpha-1',
-        'title': 'Alpha Task',
-        'description': '',
-        'schedules': [],
-        'isFamily': true,
-        'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
-      });
+            'id': 'S-alpha-1',
+            'title': 'Alpha Task',
+            'description': '',
+            'schedules': [],
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
+          });
       await pumpEventQueue();
 
       expect(
@@ -1363,13 +1365,13 @@ void main() {
           .collection('tasks')
           .doc('S-alpha-2')
           .set({
-        'id': 'S-alpha-2',
-        'title': 'Alpha Task 2',
-        'description': '',
-        'schedules': [],
-        'isFamily': true,
-        'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
-      });
+            'id': 'S-alpha-2',
+            'title': 'Alpha Task 2',
+            'description': '',
+            'schedules': [],
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
+          });
       await pumpEventQueue();
 
       expect(
@@ -1384,13 +1386,13 @@ void main() {
           .collection('tasks')
           .doc('S-beta-1')
           .set({
-        'id': 'S-beta-1',
-        'title': 'Beta Task 1',
-        'description': '',
-        'schedules': [],
-        'isFamily': true,
-        'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
-      });
+            'id': 'S-beta-1',
+            'title': 'Beta Task 1',
+            'description': '',
+            'schedules': [],
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
+          });
       await pumpEventQueue();
 
       expect(localDataSource.getTasks().any((t) => t.id == 'S-beta-1'), isTrue);
@@ -1406,13 +1408,13 @@ void main() {
           .collection('tasks')
           .doc('S-beta-2')
           .set({
-        'id': 'S-beta-2',
-        'title': 'Beta Task 2',
-        'description': '',
-        'schedules': [],
-        'isFamily': true,
-        'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
-      });
+            'id': 'S-beta-2',
+            'title': 'Beta Task 2',
+            'description': '',
+            'schedules': [],
+            'isFamily': true,
+            'updatedAt': DateTime(2026, 8, 4, 10, 0).toIso8601String(),
+          });
       await pumpEventQueue();
 
       expect(
@@ -1730,8 +1732,8 @@ void main() {
         await pumpEventQueue();
 
         var localInst = localDataSource.getInstances().firstWhere(
-              (i) => i.id == 'I-kitchen-dismissed',
-            );
+          (i) => i.id == 'I-kitchen-dismissed',
+        );
         expect(localInst.statusReason, 'user_dismissed');
 
         // 2. Test local user_completed preserved
@@ -1774,8 +1776,8 @@ void main() {
         await pumpEventQueue();
 
         localInst = localDataSource.getInstances().firstWhere(
-              (i) => i.id == 'I-kitchen-completed',
-            );
+          (i) => i.id == 'I-kitchen-completed',
+        );
         expect(localInst.status, TaskStatus.completed);
         expect(localInst.statusReason, 'user_completed');
       },
@@ -1840,8 +1842,8 @@ void main() {
         await pumpEventQueue();
 
         final localInst = localDataSource.getInstances().firstWhere(
-              (i) => i.id == 'I-kitchen-sweep',
-            );
+          (i) => i.id == 'I-kitchen-sweep',
+        );
         expect(localInst.status, TaskStatus.completed);
         expect(localInst.statusReason, 'user_completed');
       },
@@ -1902,16 +1904,15 @@ void main() {
         await pumpEventQueue();
 
         final localInst = localDataSource.getInstances().firstWhere(
-              (i) => i.id == 'I-zombie-task',
-            );
+          (i) => i.id == 'I-zombie-task',
+        );
         // Local scheduler skip must be preserved because remote is pending
         expect(localInst.status, TaskStatus.skipped);
         expect(localInst.statusReason, 'scheduler_auto_dismiss');
       },
     );
 
-    test('slot-level conflict resolution adheres to semantic precedence',
-        () async {
+    test('slot-level conflict resolution adheres to semantic precedence', () async {
       final service = TaskSyncService(
         firestore: firestore,
         localDataSource: localDataSource,
@@ -2100,19 +2101,19 @@ void main() {
               .collection('tasks')
               .doc('S-labels-1')
               .set({
-            'id': 'S-labels-1',
-            'title': 'Remote Title from v1.8.36',
-            'description': 'Desc',
-            'schedules': [],
-            'updatedAt': remoteTime.toIso8601String(),
-          });
+                'id': 'S-labels-1',
+                'title': 'Remote Title from v1.8.36',
+                'description': 'Desc',
+                'schedules': [],
+                'updatedAt': remoteTime.toIso8601String(),
+              });
 
           await pumpEventQueue();
 
           // 3. Remote won; local task receives remote data with empty labelIds (no self-healing)
           final updatedLocal = localDataSource.getTasks().firstWhere(
-                (t) => t.id == 'S-labels-1',
-              );
+            (t) => t.id == 'S-labels-1',
+          );
           expect(updatedLocal.title, 'Remote Title from v1.8.36');
           expect(updatedLocal.labelIds, isEmpty);
 
@@ -2167,23 +2168,23 @@ void main() {
               .collection('instances')
               .doc('I-inst-1')
               .set({
-            'id': 'I-inst-1',
-            'scheduleId': 'S-inst-1',
-            'ruleId': 'R-1',
-            'title': 'Updated Remote Inst',
-            'description': 'Desc',
-            'scheduledDate': {'year': 2026, 'month': 9, 'day': 12},
-            'startRelativeTime': {'hour': 9, 'minute': 0},
-            'dueRelativeTime': {'hour': 10, 'minute': 0},
-            'status': 'pending',
-            'updatedAt': remoteTime.toIso8601String(),
-          });
+                'id': 'I-inst-1',
+                'scheduleId': 'S-inst-1',
+                'ruleId': 'R-1',
+                'title': 'Updated Remote Inst',
+                'description': 'Desc',
+                'scheduledDate': {'year': 2026, 'month': 9, 'day': 12},
+                'startRelativeTime': {'hour': 9, 'minute': 0},
+                'dueRelativeTime': {'hour': 10, 'minute': 0},
+                'status': 'pending',
+                'updatedAt': remoteTime.toIso8601String(),
+              });
 
           await pumpEventQueue();
 
           final updatedInst = localDataSource.getInstances().firstWhere(
-                (i) => i.id == 'I-inst-1',
-              );
+            (i) => i.id == 'I-inst-1',
+          );
           expect(updatedInst.title, 'Updated Remote Inst');
           expect(updatedInst.labelIds, isEmpty);
 
@@ -2227,19 +2228,19 @@ void main() {
               .collection('tasks')
               .doc('S-newer-local')
               .set({
-            'id': 'S-newer-local',
-            'title': 'Older Remote Title',
-            'description': 'Remote Desc',
-            'schedules': [],
-            'updatedAt': remoteTime.toIso8601String(),
-          });
+                'id': 'S-newer-local',
+                'title': 'Older Remote Title',
+                'description': 'Remote Desc',
+                'schedules': [],
+                'updatedAt': remoteTime.toIso8601String(),
+              });
 
           await pumpEventQueue();
 
           // 3. Local task should win and remain unchanged
           final preservedLocal = localDataSource.getTasks().firstWhere(
-                (t) => t.id == 'S-newer-local',
-              );
+            (t) => t.id == 'S-newer-local',
+          );
           expect(preservedLocal.title, 'Newer Local Title');
           expect(preservedLocal.labelIds, ['label-local-1']);
 
@@ -2278,12 +2279,12 @@ void main() {
               .collection('tasks')
               .doc('S-merge-test')
               .set({
-            'id': 'S-merge-test',
-            'title': 'Initial Title',
-            'description': 'Initial Desc',
-            'customServerField': 'preserve_me',
-            'updatedAt': DateTime(2026, 9, 1, 12, 0).toIso8601String(),
-          });
+                'id': 'S-merge-test',
+                'title': 'Initial Title',
+                'description': 'Initial Desc',
+                'customServerField': 'preserve_me',
+                'updatedAt': DateTime(2026, 9, 1, 12, 0).toIso8601String(),
+              });
           await pumpEventQueue();
 
           // Save local task and push
@@ -2319,13 +2320,13 @@ void main() {
               .collection('instances')
               .doc('I-merge-test')
               .set({
-            'id': 'I-merge-test',
-            'scheduleId': 'S-merge-test',
-            'ruleId': 'R-1',
-            'title': 'Initial Instance',
-            'customInstanceField': 'preserve_instance_field',
-            'updatedAt': DateTime(2026, 9, 1, 12, 0).toIso8601String(),
-          });
+                'id': 'I-merge-test',
+                'scheduleId': 'S-merge-test',
+                'ruleId': 'R-1',
+                'title': 'Initial Instance',
+                'customInstanceField': 'preserve_instance_field',
+                'updatedAt': DateTime(2026, 9, 1, 12, 0).toIso8601String(),
+              });
           await pumpEventQueue();
 
           final localInst = TaskInstance(
@@ -2415,8 +2416,8 @@ void main() {
 
           // 2. hasPendingWrites is cleared to false locally
           final localTask = localDataSource.getTasks().firstWhere(
-                (t) => t.id == 'S-pers-nonparent',
-              );
+            (t) => t.id == 'S-pers-nonparent',
+          );
           expect(localTask.hasPendingWrites, isFalse);
 
           // 3. No document in families/fam_123/tasks
@@ -2487,8 +2488,8 @@ void main() {
 
           // 2. hasPendingWrites is cleared to false locally
           final localInst = localDataSource.getInstances().firstWhere(
-                (i) => i.id == 'I-pers-nonparent',
-              );
+            (i) => i.id == 'I-pers-nonparent',
+          );
           expect(localInst.hasPendingWrites, isFalse);
 
           // 3. No document in families/fam_123/instances
@@ -2517,21 +2518,21 @@ void main() {
               .collection('tasks')
               .doc('S-del-test')
               .set({
-            'id': 'S-del-test',
-            'title': 'Task To Delete',
-            'isFamily': false,
-          });
+                'id': 'S-del-test',
+                'title': 'Task To Delete',
+                'isFamily': false,
+              });
           await firestore
               .collection('users')
               .doc('non_parent_user')
               .collection('instances')
               .doc('I-del-test')
               .set({
-            'id': 'I-del-test',
-            'scheduleId': 'S-del-test',
-            'title': 'Instance To Delete',
-            'isFamily': false,
-          });
+                'id': 'I-del-test',
+                'scheduleId': 'S-del-test',
+                'title': 'Instance To Delete',
+                'isFamily': false,
+              });
 
           final service = TaskSyncService(
             firestore: firestore,
@@ -2638,18 +2639,18 @@ void main() {
               .collection('instances')
               .doc('I-fam-remote-loser')
               .set({
-            'id': 'I-fam-remote-loser',
-            'scheduleId': 'S-fam-1',
-            'ruleId': 'R-1',
-            'title': 'Losing Remote Family Instance',
-            'scheduledDate': '2026-09-25',
-            'startRelativeTime': {'dayOffset': 0, 'hour': 9, 'minute': 0},
-            'dueRelativeTime': {'dayOffset': 0, 'hour': 10, 'minute': 0},
-            'isFamily': true,
-            'status': 'pending',
-            'statusReason': 'scheduler_generated',
-            'updatedAt': DateTime(2026, 9, 25, 11, 0).toIso8601String(),
-          });
+                'id': 'I-fam-remote-loser',
+                'scheduleId': 'S-fam-1',
+                'ruleId': 'R-1',
+                'title': 'Losing Remote Family Instance',
+                'scheduledDate': '2026-09-25',
+                'startRelativeTime': {'dayOffset': 0, 'hour': 9, 'minute': 0},
+                'dueRelativeTime': {'dayOffset': 0, 'hour': 10, 'minute': 0},
+                'isFamily': true,
+                'status': 'pending',
+                'statusReason': 'scheduler_generated',
+                'updatedAt': DateTime(2026, 9, 25, 11, 0).toIso8601String(),
+              });
 
           // Trigger snapshot and ensure no uncaught permission exceptions
           await pumpEventQueue();
@@ -2711,18 +2712,18 @@ void main() {
               .collection('instances')
               .doc('I-slot-duplicate')
               .set({
-            'id': 'I-slot-duplicate',
-            'scheduleId': 'S-pers-1',
-            'ruleId': 'R-1',
-            'title': 'User Personal Instance',
-            'scheduledDate': '2026-09-25',
-            'startRelativeTime': {'dayOffset': 0, 'hour': 9, 'minute': 0},
-            'dueRelativeTime': {'dayOffset': 0, 'hour': 10, 'minute': 0},
-            'isFamily': false,
-            'status': 'pending',
-            'statusReason': 'scheduler_generated',
-            'updatedAt': DateTime(2026, 9, 25, 9, 0).toIso8601String(),
-          });
+                'id': 'I-slot-duplicate',
+                'scheduleId': 'S-pers-1',
+                'ruleId': 'R-1',
+                'title': 'User Personal Instance',
+                'scheduledDate': '2026-09-25',
+                'startRelativeTime': {'dayOffset': 0, 'hour': 9, 'minute': 0},
+                'dueRelativeTime': {'dayOffset': 0, 'hour': 10, 'minute': 0},
+                'isFamily': false,
+                'status': 'pending',
+                'statusReason': 'scheduler_generated',
+                'updatedAt': DateTime(2026, 9, 25, 9, 0).toIso8601String(),
+              });
 
           final service = TaskSyncService(
             firestore: firestore,

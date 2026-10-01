@@ -231,8 +231,9 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     Family family,
     FamilyMember member,
   ) async {
-    final parentCount =
-        family.members.values.where((m) => m.role == FamilyRole.parent).length;
+    final parentCount = family.members.values
+        .where((m) => m.role == FamilyRole.parent)
+        .length;
     final isOnlyParent = member.role == FamilyRole.parent && parentCount <= 1;
 
     final newRole = await ChangeRoleDialog.show(
@@ -379,8 +380,8 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
                   Text(
                     context.l10n.familyScreenTitle,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
@@ -430,8 +431,8 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
                   child: Text(
                     context.l10n.noPendingInvites,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).disabledColor,
-                        ),
+                      color: Theme.of(context).disabledColor,
+                    ),
                   ),
                 ),
               );
@@ -527,9 +528,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
                     children: [
                       Text(
                         family.name,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
+                        style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
                               color: Theme.of(context).colorScheme.onPrimary,
                               fontWeight: FontWeight.bold,
@@ -538,9 +537,7 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
                       const SizedBox(height: 8),
                       Text(
                         context.l10n.familyMembersCount(family.members.length),
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
+                        style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
                               color: Theme.of(
                                 context,
@@ -560,8 +557,8 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
                   child: Text(
                     context.l10n.membersHeader,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 if (isParent)
@@ -642,8 +639,8 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
               child: Text(
                 context.l10n.noOutstandingInvites,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).disabledColor,
-                    ),
+                  color: Theme.of(context).disabledColor,
+                ),
               ),
             ),
           );

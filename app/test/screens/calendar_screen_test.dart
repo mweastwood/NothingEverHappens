@@ -879,13 +879,9 @@ void main() {
     );
 
     test('schedules with only OneOffSchedule rules are never projected', () {
-      final map = CalendarScreen.computeMonthTaskMap(
-          march2026,
-          [],
-          [
-            oneOffSchedule,
-          ],
-          today: today);
+      final map = CalendarScreen.computeMonthTaskMap(march2026, [], [
+        oneOffSchedule,
+      ], today: today);
 
       // March 15 has no instance, but oneOffSchedule is non-recurring, so it must not be projected
       const day15 = CivilDay(year: 2026, month: 3, day: 15);
@@ -893,15 +889,10 @@ void main() {
       expect(map.isEmpty, isTrue);
     });
 
-    test('recurring tasks are not projected onto past dates prior to today',
-        () {
-      final map = CalendarScreen.computeMonthTaskMap(
-          march2026,
-          [],
-          [
-            dailySchedule,
-          ],
-          today: today);
+    test('recurring tasks are not projected onto past dates prior to today', () {
+      final map = CalendarScreen.computeMonthTaskMap(march2026, [], [
+        dailySchedule,
+      ], today: today);
 
       // Days 1 through 7 are prior to today (March 8). No tasks should be projected there.
       for (int d = 1; d < 8; d++) {
@@ -1034,13 +1025,9 @@ void main() {
           ],
         );
 
-        final map = CalendarScreen.computeMonthTaskMap(
-            march2026,
-            [],
-            [
-              completionRelativeSchedule,
-            ],
-            today: today);
+        final map = CalendarScreen.computeMonthTaskMap(march2026, [], [
+          completionRelativeSchedule,
+        ], today: today);
 
         // Should have zero projected occurrences across the entire month
         expect(map.isEmpty, isTrue);

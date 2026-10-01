@@ -34,13 +34,13 @@ class TaskTimePlacement {
 
   @override
   int get hashCode => Object.hash(
-        task,
-        startMinute,
-        dueMinute,
-        duration,
-        placedStart,
-        placedEnd,
-      );
+    task,
+    startMinute,
+    dueMinute,
+    duration,
+    placedStart,
+    placedEnd,
+  );
 
   @override
   String toString() =>
@@ -64,7 +64,7 @@ abstract final class TimelinePlacementCalculator {
     if (tasks.isEmpty) return const [];
 
     final List<({CalendarDayTask task, int startMin, int dueMin, int duration})>
-        rawItems = [];
+    rawItems = [];
     for (final task in tasks) {
       final startMin = getStartMinute(task);
       int dueMin = getDueMinute(task);
@@ -112,12 +112,13 @@ abstract final class TimelinePlacementCalculator {
       // If placing at startMin causes overlap, try to push further down
       // as long as it doesn't extend past its due date (t + duration <= dueMin).
       if (minOverlaps > 0) {
-        final candidateTimes = placed
-            .map((p) => p.placedEnd)
-            .where((end) => end >= startMin && end + duration <= dueMin)
-            .toSet()
-            .toList()
-          ..sort();
+        final candidateTimes =
+            placed
+                .map((p) => p.placedEnd)
+                .where((end) => end >= startMin && end + duration <= dueMin)
+                .toSet()
+                .toList()
+              ..sort();
 
         for (final t in candidateTimes) {
           final overlaps = countOverlaps(t, t + duration);

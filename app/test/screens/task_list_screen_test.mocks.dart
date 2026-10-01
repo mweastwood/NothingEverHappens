@@ -34,32 +34,40 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart' as _i7;
 /// See the documentation for Mockito's code generation for more information.
 class MockAuthRepository extends _i1.Mock implements _i2.AuthRepository {
   @override
-  _i3.Stream<_i4.User?> get authStateChanges => (super.noSuchMethod(
-        Invocation.getter(#authStateChanges),
-        returnValue: _i3.Stream<_i4.User?>.empty(),
-        returnValueForMissingStub: _i3.Stream<_i4.User?>.empty(),
-      ) as _i3.Stream<_i4.User?>);
+  _i3.Stream<_i4.User?> get authStateChanges =>
+      (super.noSuchMethod(
+            Invocation.getter(#authStateChanges),
+            returnValue: _i3.Stream<_i4.User?>.empty(),
+            returnValueForMissingStub: _i3.Stream<_i4.User?>.empty(),
+          )
+          as _i3.Stream<_i4.User?>);
 
   @override
-  _i3.Future<_i4.User?> signInWithGoogle() => (super.noSuchMethod(
-        Invocation.method(#signInWithGoogle, []),
-        returnValue: _i3.Future<_i4.User?>.value(),
-        returnValueForMissingStub: _i3.Future<_i4.User?>.value(),
-      ) as _i3.Future<_i4.User?>);
+  _i3.Future<_i4.User?> signInWithGoogle() =>
+      (super.noSuchMethod(
+            Invocation.method(#signInWithGoogle, []),
+            returnValue: _i3.Future<_i4.User?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.User?>.value(),
+          )
+          as _i3.Future<_i4.User?>);
 
   @override
-  _i3.Future<_i4.User?> signInAnonymously() => (super.noSuchMethod(
-        Invocation.method(#signInAnonymously, []),
-        returnValue: _i3.Future<_i4.User?>.value(),
-        returnValueForMissingStub: _i3.Future<_i4.User?>.value(),
-      ) as _i3.Future<_i4.User?>);
+  _i3.Future<_i4.User?> signInAnonymously() =>
+      (super.noSuchMethod(
+            Invocation.method(#signInAnonymously, []),
+            returnValue: _i3.Future<_i4.User?>.value(),
+            returnValueForMissingStub: _i3.Future<_i4.User?>.value(),
+          )
+          as _i3.Future<_i4.User?>);
 
   @override
-  _i3.Future<void> signOut() => (super.noSuchMethod(
-        Invocation.method(#signOut, []),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+  _i3.Future<void> signOut() =>
+      (super.noSuchMethod(
+            Invocation.method(#signOut, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 }
 
 /// A class which mocks [TaskRepository].
@@ -67,70 +75,85 @@ class MockAuthRepository extends _i1.Mock implements _i2.AuthRepository {
 /// See the documentation for Mockito's code generation for more information.
 class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
   @override
-  String get userId => (super.noSuchMethod(
-        Invocation.getter(#userId),
-        returnValue: _i6.dummyValue<String>(
-          this,
-          Invocation.getter(#userId),
-        ),
-        returnValueForMissingStub: _i6.dummyValue<String>(
-          this,
-          Invocation.getter(#userId),
-        ),
-      ) as String);
+  String get userId =>
+      (super.noSuchMethod(
+            Invocation.getter(#userId),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#userId),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#userId),
+            ),
+          )
+          as String);
 
   @override
-  _i3.Stream<List<_i7.TaskSchedule>> getTasks() => (super.noSuchMethod(
-        Invocation.method(#getTasks, []),
-        returnValue: _i3.Stream<List<_i7.TaskSchedule>>.empty(),
-        returnValueForMissingStub: _i3.Stream<List<_i7.TaskSchedule>>.empty(),
-      ) as _i3.Stream<List<_i7.TaskSchedule>>);
+  _i3.Stream<List<_i7.TaskSchedule>> getTasks() =>
+      (super.noSuchMethod(
+            Invocation.method(#getTasks, []),
+            returnValue: _i3.Stream<List<_i7.TaskSchedule>>.empty(),
+            returnValueForMissingStub:
+                _i3.Stream<List<_i7.TaskSchedule>>.empty(),
+          )
+          as _i3.Stream<List<_i7.TaskSchedule>>);
 
   @override
-  _i3.Stream<List<_i8.TaskInstance>> getInstances() => (super.noSuchMethod(
-        Invocation.method(#getInstances, []),
-        returnValue: _i3.Stream<List<_i8.TaskInstance>>.empty(),
-        returnValueForMissingStub: _i3.Stream<List<_i8.TaskInstance>>.empty(),
-      ) as _i3.Stream<List<_i8.TaskInstance>>);
+  _i3.Stream<List<_i8.TaskInstance>> getInstances() =>
+      (super.noSuchMethod(
+            Invocation.method(#getInstances, []),
+            returnValue: _i3.Stream<List<_i8.TaskInstance>>.empty(),
+            returnValueForMissingStub:
+                _i3.Stream<List<_i8.TaskInstance>>.empty(),
+          )
+          as _i3.Stream<List<_i8.TaskInstance>>);
 
   @override
   _i3.Future<void> addTaskSchedule(_i7.TaskSchedule? task) =>
       (super.noSuchMethod(
-        Invocation.method(#addTaskSchedule, [task]),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+            Invocation.method(#addTaskSchedule, [task]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 
   @override
   _i3.Future<void> updateTaskSchedule(
     ({Map<String, dynamic> changes, _i7.TaskSchedule newTask})? modification,
   ) =>
       (super.noSuchMethod(
-        Invocation.method(#updateTaskSchedule, [modification]),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+            Invocation.method(#updateTaskSchedule, [modification]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 
   @override
   _i3.Future<
-          ({List<_i8.TaskInstance> pendingInstances, _i7.TaskSchedule task})?>
-      deleteTaskSchedule(String? id) => (super.noSuchMethod(
+    ({List<_i8.TaskInstance> pendingInstances, _i7.TaskSchedule task})?
+  >
+  deleteTaskSchedule(String? id) =>
+      (super.noSuchMethod(
             Invocation.method(#deleteTaskSchedule, [id]),
-            returnValue: _i3.Future<
-                ({
-                  List<_i8.TaskInstance> pendingInstances,
-                  _i7.TaskSchedule task,
-                })?>.value(),
-            returnValueForMissingStub: _i3.Future<
-                ({
-                  List<_i8.TaskInstance> pendingInstances,
-                  _i7.TaskSchedule task,
-                })?>.value(),
-          ) as _i3.Future<
-              ({
-                List<_i8.TaskInstance> pendingInstances,
-                _i7.TaskSchedule task
-              })?>);
+            returnValue:
+                _i3.Future<
+                  ({
+                    List<_i8.TaskInstance> pendingInstances,
+                    _i7.TaskSchedule task,
+                  })?
+                >.value(),
+            returnValueForMissingStub:
+                _i3.Future<
+                  ({
+                    List<_i8.TaskInstance> pendingInstances,
+                    _i7.TaskSchedule task,
+                  })?
+                >.value(),
+          )
+          as _i3.Future<
+            ({List<_i8.TaskInstance> pendingInstances, _i7.TaskSchedule task})?
+          >);
 
   @override
   _i3.Future<void> restoreTaskSchedule(
@@ -138,52 +161,58 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
     List<_i8.TaskInstance>? pendingInstances,
   ) =>
       (super.noSuchMethod(
-        Invocation.method(#restoreTaskSchedule, [task, pendingInstances]),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+            Invocation.method(#restoreTaskSchedule, [task, pendingInstances]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 
   @override
   _i3.Future<_i8.TaskInstance?> completeTaskInstance(String? id) =>
       (super.noSuchMethod(
-        Invocation.method(#completeTaskInstance, [id]),
-        returnValue: _i3.Future<_i8.TaskInstance?>.value(),
-        returnValueForMissingStub: _i3.Future<_i8.TaskInstance?>.value(),
-      ) as _i3.Future<_i8.TaskInstance?>);
+            Invocation.method(#completeTaskInstance, [id]),
+            returnValue: _i3.Future<_i8.TaskInstance?>.value(),
+            returnValueForMissingStub: _i3.Future<_i8.TaskInstance?>.value(),
+          )
+          as _i3.Future<_i8.TaskInstance?>);
 
   @override
   _i3.Future<_i8.TaskInstance?> uncompleteTaskInstance(String? id) =>
       (super.noSuchMethod(
-        Invocation.method(#uncompleteTaskInstance, [id]),
-        returnValue: _i3.Future<_i8.TaskInstance?>.value(),
-        returnValueForMissingStub: _i3.Future<_i8.TaskInstance?>.value(),
-      ) as _i3.Future<_i8.TaskInstance?>);
+            Invocation.method(#uncompleteTaskInstance, [id]),
+            returnValue: _i3.Future<_i8.TaskInstance?>.value(),
+            returnValueForMissingStub: _i3.Future<_i8.TaskInstance?>.value(),
+          )
+          as _i3.Future<_i8.TaskInstance?>);
 
   @override
   _i3.Future<_i8.TaskInstance?> dismissTaskInstance(String? id) =>
       (super.noSuchMethod(
-        Invocation.method(#dismissTaskInstance, [id]),
-        returnValue: _i3.Future<_i8.TaskInstance?>.value(),
-        returnValueForMissingStub: _i3.Future<_i8.TaskInstance?>.value(),
-      ) as _i3.Future<_i8.TaskInstance?>);
+            Invocation.method(#dismissTaskInstance, [id]),
+            returnValue: _i3.Future<_i8.TaskInstance?>.value(),
+            returnValueForMissingStub: _i3.Future<_i8.TaskInstance?>.value(),
+          )
+          as _i3.Future<_i8.TaskInstance?>);
 
   @override
   _i3.Future<void> saveTaskInstance(_i8.TaskInstance? instance) =>
       (super.noSuchMethod(
-        Invocation.method(#saveTaskInstance, [instance]),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+            Invocation.method(#saveTaskInstance, [instance]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 
   @override
   _i3.Future<void> undoResolveTaskInstance(
     _i8.TaskInstance? resolvedInstance,
   ) =>
       (super.noSuchMethod(
-        Invocation.method(#undoResolveTaskInstance, [resolvedInstance]),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+            Invocation.method(#undoResolveTaskInstance, [resolvedInstance]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 
   @override
   _i3.Future<void> triggerMissedPolicyProcessing({
@@ -191,31 +220,36 @@ class MockTaskRepository extends _i1.Mock implements _i5.TaskRepository {
     _i3.Future<void> Function()? postProcess,
   }) =>
       (super.noSuchMethod(
-        Invocation.method(#triggerMissedPolicyProcessing, [], {
-          #evaluateFamilyTasks: evaluateFamilyTasks,
-          #postProcess: postProcess,
-        }),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+            Invocation.method(#triggerMissedPolicyProcessing, [], {
+              #evaluateFamilyTasks: evaluateFamilyTasks,
+              #postProcess: postProcess,
+            }),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 
   @override
-  _i3.Future<void> resetLocalDataAndResync() => (super.noSuchMethod(
-        Invocation.method(#resetLocalDataAndResync, []),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+  _i3.Future<void> resetLocalDataAndResync() =>
+      (super.noSuchMethod(
+            Invocation.method(#resetLocalDataAndResync, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 
   @override
-  _i3.Future<String?> getFamilyId() => (super.noSuchMethod(
-        Invocation.method(#getFamilyId, []),
-        returnValue: _i3.Future<String?>.value(),
-        returnValueForMissingStub: _i3.Future<String?>.value(),
-      ) as _i3.Future<String?>);
+  _i3.Future<String?> getFamilyId() =>
+      (super.noSuchMethod(
+            Invocation.method(#getFamilyId, []),
+            returnValue: _i3.Future<String?>.value(),
+            returnValueForMissingStub: _i3.Future<String?>.value(),
+          )
+          as _i3.Future<String?>);
 
   @override
   void dispose() => super.noSuchMethod(
-        Invocation.method(#dispose, []),
-        returnValueForMissingStub: null,
-      );
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
 }

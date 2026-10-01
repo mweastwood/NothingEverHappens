@@ -49,21 +49,24 @@ class DailyStatsData {
     List<TaskInstance>? completedOnTimeTasks,
     List<TaskInstance>? completedOverdueTasks,
     List<TaskInstance>? completedSeriouslyOverdueTasks,
-  })  : plannedCount = plannedCount ?? plannedTasks.length,
-        completedOnTimeTasks = completedOnTimeTasks ??
-            completedTasks.where((t) => !t.isCompletedOverdue).toList(),
-        completedOverdueTasks = completedOverdueTasks ??
-            completedTasks
-                .where(
-                  (t) =>
-                      t.isCompletedOverdue &&
-                      !t.isCompletedOverdueByMoreThan24Hours,
-                )
-                .toList(),
-        completedSeriouslyOverdueTasks = completedSeriouslyOverdueTasks ??
-            completedTasks
-                .where((t) => t.isCompletedOverdueByMoreThan24Hours)
-                .toList();
+  }) : plannedCount = plannedCount ?? plannedTasks.length,
+       completedOnTimeTasks =
+           completedOnTimeTasks ??
+           completedTasks.where((t) => !t.isCompletedOverdue).toList(),
+       completedOverdueTasks =
+           completedOverdueTasks ??
+           completedTasks
+               .where(
+                 (t) =>
+                     t.isCompletedOverdue &&
+                     !t.isCompletedOverdueByMoreThan24Hours,
+               )
+               .toList(),
+       completedSeriouslyOverdueTasks =
+           completedSeriouslyOverdueTasks ??
+           completedTasks
+               .where((t) => t.isCompletedOverdueByMoreThan24Hours)
+               .toList();
 
   int get completedOnTimeCount => completedOnTimeTasks.length;
   int get completedOverdueCount => completedOverdueTasks.length;
@@ -223,8 +226,9 @@ final personalTimelineStatsProvider = Provider<Map<CivilDay, DailyStatsData>>((
   if (familyProfile != null && familyProfile.familyId.isNotEmpty) {
     family = ref.watch(familyStreamProvider(familyProfile.familyId)).value;
   }
-  final int familyMemberCount =
-      (family?.members.isNotEmpty ?? false) ? family!.members.length : 1;
+  final int familyMemberCount = (family?.members.isNotEmpty ?? false)
+      ? family!.members.length
+      : 1;
 
   final today = CivilDay.fromDateTime(AppClock.now);
   final startDay = today.addDays(-6);
@@ -246,15 +250,18 @@ final personalTimelineStatsProvider = Provider<Map<CivilDay, DailyStatsData>>((
 
   for (final inst in instances) {
     final schedule = scheduleMap[inst.scheduleId];
-    final rule =
-        schedule?.schedules.where((r) => r.id == inst.ruleId).firstOrNull;
-    final bool isOneOff = rule is OneOffSchedule ||
+    final rule = schedule?.schedules
+        .where((r) => r.id == inst.ruleId)
+        .firstOrNull;
+    final bool isOneOff =
+        rule is OneOffSchedule ||
         (rule == null &&
             schedule != null &&
             schedule.schedules.isNotEmpty &&
             schedule.schedules.every((r) => r is OneOffSchedule));
 
-    final CivilDay accountedDay = (isOneOff &&
+    final CivilDay accountedDay =
+        (isOneOff &&
             inst.status == TaskStatus.completed &&
             inst.completedAt != null)
         ? CivilDay.fromDateTime(inst.completedAt!)
@@ -329,7 +336,8 @@ final personalTimelineStatsProvider = Provider<Map<CivilDay, DailyStatsData>>((
     } else {
       if (inst.status == TaskStatus.completed ||
           inst.status == TaskStatus.skipped) {
-        isUserTask = inst.completedByUserId == currentUserId ||
+        isUserTask =
+            inst.completedByUserId == currentUserId ||
             (inst.completedByUserId == null &&
                 (inst.assignedUserId == null ||
                     inst.assignedUserId == currentUserId));
@@ -389,8 +397,9 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
   final endDay = today;
 
   final days = List.generate(7, (index) => startDay.addDays(index));
-  final dailyStats =
-      days.map((d) => timelineStats[d] ?? DailyStatsData(day: d)).toList();
+  final dailyStats = days
+      .map((d) => timelineStats[d] ?? DailyStatsData(day: d))
+      .toList();
 
   int totalCompleted = 0;
   double totalHours = 0.0;
@@ -405,8 +414,9 @@ final personalLastWeekStatsProvider = Provider<PersonalLastWeekStats>((ref) {
   }
 
   final totalActionable = totalCompleted + totalSkipped + totalMissed;
-  final completionRate =
-      totalActionable > 0 ? (totalCompleted / totalActionable) : 0.0;
+  final completionRate = totalActionable > 0
+      ? (totalCompleted / totalActionable)
+      : 0.0;
 
   return PersonalLastWeekStats(
     completedCount: totalCompleted,
@@ -476,23 +486,27 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
   int totalPlanned = 0;
   double totalPlannedHrs = 0.0;
 
-  final int totalFamilyMembers =
-      family.members.isNotEmpty ? family.members.length : 1;
+  final int totalFamilyMembers = family.members.isNotEmpty
+      ? family.members.length
+      : 1;
 
   for (final inst in instances) {
     // Only strictly family tasks are included in the family breakdown
     if (!inst.isFamily) continue;
 
     final schedule = scheduleMap[inst.scheduleId];
-    final rule =
-        schedule?.schedules.where((r) => r.id == inst.ruleId).firstOrNull;
-    final bool isOneOff = rule is OneOffSchedule ||
+    final rule = schedule?.schedules
+        .where((r) => r.id == inst.ruleId)
+        .firstOrNull;
+    final bool isOneOff =
+        rule is OneOffSchedule ||
         (rule == null &&
             schedule != null &&
             schedule.schedules.isNotEmpty &&
             schedule.schedules.every((r) => r is OneOffSchedule));
 
-    final CivilDay accountedDay = (isOneOff &&
+    final CivilDay accountedDay =
+        (isOneOff &&
             inst.status == TaskStatus.completed &&
             inst.completedAt != null)
         ? CivilDay.fromDateTime(inst.completedAt!)
@@ -559,7 +573,8 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
       } else if (inst.status == TaskStatus.pending) {
         if (inst.scheduledDate.isBefore(today)) {
           totalMissed++;
-          final missedHours = baseDuration *
+          final missedHours =
+              baseDuration *
               (inst.completedByUserIds.isEmpty
                   ? totalFamilyMembers
                   : remainingCount);
@@ -649,8 +664,9 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
   }
 
   final totalActionable = totalCompleted + totalSkipped + totalMissed;
-  final completionRate =
-      totalActionable > 0 ? (totalCompleted / totalActionable) : 0.0;
+  final completionRate = totalActionable > 0
+      ? (totalCompleted / totalActionable)
+      : 0.0;
 
   final sumMemberHours = memberCompletedHours.values.fold(0.0, (a, b) => a + b);
   final sumMemberCompleted = memberCompletedCount.values.fold(

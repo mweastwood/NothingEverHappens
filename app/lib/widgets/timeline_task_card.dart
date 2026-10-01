@@ -128,8 +128,9 @@ class TimelineTaskCard extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize:
-                            cardHeight < 30 ? 9.5 : (cardWidth < 80 ? 10 : 11),
+                        fontSize: cardHeight < 30
+                            ? 9.5
+                            : (cardWidth < 80 ? 10 : 11),
                         fontWeight: FontWeight.bold,
                         decoration: task.isCompleted
                             ? TextDecoration.lineThrough

@@ -33,22 +33,25 @@ class MockUserSettingsRepository extends _i1.Mock
     implements _i2.UserSettingsRepository {
   @override
   void dispose() => super.noSuchMethod(
-        Invocation.method(#dispose, []),
-        returnValueForMissingStub: null,
-      );
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
 
   @override
-  _i3.Stream<_i4.UserSettings> getSettings() => (super.noSuchMethod(
-        Invocation.method(#getSettings, []),
-        returnValue: _i3.Stream<_i4.UserSettings>.empty(),
-        returnValueForMissingStub: _i3.Stream<_i4.UserSettings>.empty(),
-      ) as _i3.Stream<_i4.UserSettings>);
+  _i3.Stream<_i4.UserSettings> getSettings() =>
+      (super.noSuchMethod(
+            Invocation.method(#getSettings, []),
+            returnValue: _i3.Stream<_i4.UserSettings>.empty(),
+            returnValueForMissingStub: _i3.Stream<_i4.UserSettings>.empty(),
+          )
+          as _i3.Stream<_i4.UserSettings>);
 
   @override
   _i3.Future<void> updateSettings(_i4.UserSettings? settings) =>
       (super.noSuchMethod(
-        Invocation.method(#updateSettings, [settings]),
-        returnValue: _i3.Future<void>.value(),
-        returnValueForMissingStub: _i3.Future<void>.value(),
-      ) as _i3.Future<void>);
+            Invocation.method(#updateSettings, [settings]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 }

@@ -778,8 +778,10 @@ void main() {
 
     test('fromFirestore throws Exception when snapshot data is null', () async {
       final firestore = FakeFirebaseFirestore();
-      final nonExistentSnapshot =
-          await firestore.collection('recipes').doc('R-non-existent').get();
+      final nonExistentSnapshot = await firestore
+          .collection('recipes')
+          .doc('R-non-existent')
+          .get();
 
       expect(
         () => Recipe.fromFirestore(nonExistentSnapshot),
