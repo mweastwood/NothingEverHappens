@@ -21,6 +21,18 @@ void main() {
           );
         },
       );
+
+      test('enforces minimum positive capacity of 1 at boundary', () {
+        final logger = AppLogger(capacity: 1);
+        expect(logger.capacity, equals(1));
+        logger.info('cat', 'msg 1');
+        expect(logger.getEvents().length, equals(1));
+        expect(logger.getEvents().first.message, equals('msg 1'));
+
+        logger.info('cat', 'msg 2');
+        expect(logger.getEvents().length, equals(1));
+        expect(logger.getEvents().first.message, equals('msg 2'));
+      });
     });
 
     group('Ring Buffer FIFO Eviction', () {
@@ -182,6 +194,36 @@ void main() {
         expect(event.data, equals({'user': 'alice', 'count': 1}));
         expect(event.data?.containsKey('injected'), isFalse);
       });
+
+      test('omitted optional parameters default to null on recorded event', () {
+        logger.info('audit', 'Clean event');
+        final event = logger.getEvents().first;
+        expect(event.data, isNull);
+        expect(event.error, isNull);
+        expect(event.stackTrace, isNull);
+      });
+
+      test('forwards optional parameters properly across helper methods', () {
+        final stack = StackTrace.current;
+        final error = FormatException('Invalid payload');
+        final meta = {'source': 'webhook'};
+
+        logger.warning(
+          'ingress',
+          'Malformed packet',
+          data: meta,
+          error: error,
+          stackTrace: stack,
+        );
+
+        final event = logger.getEvents().first;
+        expect(event.level, equals(LogLevel.warning));
+        expect(event.category, equals('ingress'));
+        expect(event.message, equals('Malformed packet'));
+        expect(event.data, equals({'source': 'webhook'}));
+        expect(event.error, equals(error));
+        expect(event.stackTrace, equals(stack.toString()));
+      });
     });
 
     group('JSON Serialization (AppLogEvent.toJson)', () {
@@ -256,6 +298,21 @@ void main() {
           expect(event.toJson()['level'], equals(level.name));
         }
       });
+
+      test('converts non-UTC DateTime to UTC ISO-8601 string representation',
+          () {
+        final localTime = DateTime(2026, 10, 1, 14, 25, 30);
+        final event = AppLogEvent(
+          timestamp: localTime,
+          level: LogLevel.info,
+          category: 'time',
+          message: 'Local timestamp conversion',
+        );
+
+        final json = event.toJson();
+        expect(json['timestamp'], equals(localTime.toUtc().toIso8601String()));
+        expect(json['timestamp'].toString().endsWith('Z'), isTrue);
+      });
     });
 
     group('Buffer Management & Snapshot Immutability', () {
@@ -303,6 +360,20 @@ void main() {
           () => snapshot.removeAt(0),
           throwsUnsupportedError,
         );
+      });
+
+      test('snapshot is isolated from subsequent buffer append and clear', () {
+        final logger = AppLogger(capacity: 5);
+        logger.info('cat', 'first');
+        final snapshot = logger.getEvents();
+        expect(snapshot.length, equals(1));
+
+        logger.info('cat', 'second');
+        logger.clear();
+
+        expect(snapshot.length, equals(1));
+        expect(snapshot.first.message, equals('first'));
+        expect(logger.getEvents(), isEmpty);
       });
     });
   });
