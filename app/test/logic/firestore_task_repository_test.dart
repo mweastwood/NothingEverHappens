@@ -87,7 +87,8 @@ void main() {
 
   group('1. Firestore Stream Subscriptions', () {
     test(
-      'Personal-Only Streams: getTasks and getInstances emit matching documents when familyId is null or empty',
+      'Personal-Only Streams: getTasks and getInstances emit matching '
+      'documents when familyId is null or empty',
       () async {
         // Set user document without familyId
         await firestore.collection(FirestorePaths.users).doc(userId).set({
@@ -127,7 +128,8 @@ void main() {
     );
 
     test(
-      'Family-Scoped Streams: getTasks and getInstances combine streams from personal and family collections',
+      'Family-Scoped Streams: getTasks and getInstances combine streams '
+      'from personal and family collections',
       () async {
         // Configure user doc with familyId
         await firestore.collection(FirestorePaths.users).doc(userId).set({
@@ -188,7 +190,8 @@ void main() {
     );
 
     test(
-      'Dynamic Stream Re-subscription: stream updates automatically when user familyId transitions',
+      'Dynamic Stream Re-subscription: stream updates automatically '
+      'when user familyId transitions',
       () async {
         // Initially personal only
         await firestore.collection(FirestorePaths.users).doc(userId).set({
@@ -248,7 +251,8 @@ void main() {
 
   group('2. Missed Policy Queue Processing', () {
     test(
-      'Single Invocation: processes tasks, updates task caches, and executes pending missed policy logic',
+      'Single Invocation: processes tasks, updates task caches, and '
+      'executes pending missed policy logic',
       () async {
         final task = createTestTask(
           id: 'S-task-single',
@@ -283,7 +287,8 @@ void main() {
         expect(repository.cachedTasksMap.containsKey(task.id), isTrue);
         expect(repository.cachedTasksMap[task.id]?.title, 'Overdue Task');
 
-        // Verify instances were spawned in Firestore by SchedulerEngine evaluation
+        // Verify instances were spawned in Firestore by SchedulerEngine
+        // evaluation
         final instancesSnap = await FirestoreCollections.userInstances(
           firestore,
           userId,
@@ -297,7 +302,8 @@ void main() {
     );
 
     test(
-      'Deduplication & Concurrency: concurrent or rapid successive calls deduplicate task IDs in _queuedTasksMap without race conditions',
+      'Deduplication & Concurrency: concurrent or rapid successive calls '
+      'deduplicate task IDs in _queuedTasksMap without race conditions',
       () async {
         final task = createTestTask(
           id: 'S-task-dedup',
@@ -348,7 +354,8 @@ void main() {
     );
 
     test(
-      'Post-Processing Callbacks: executes postProcess callbacks sequentially following queue completion',
+      'Post-Processing Callbacks: executes postProcess callbacks '
+      'sequentially following queue completion',
       () async {
         final task = createTestTask(id: 'S-task-callback');
         await FirestoreCollections.userTasks(
@@ -388,7 +395,8 @@ void main() {
 
   group('3. Orphaned Instance Cleanup', () {
     test(
-      'Orphan Detection & Deletion: deletes pending instances whose scheduleId does not match any active task in taskMap',
+      'Orphan Detection & Deletion: deletes pending instances whose '
+      'scheduleId does not match any active task in taskMap',
       () async {
         final orphanInst = createTestInstance(
           id: 'I-orphan-1',
@@ -439,7 +447,8 @@ void main() {
     );
 
     test(
-      'Non-Orphan Preservation: preserves instances attached to active tasks, completed/skipped instances, and family-scoped instances',
+      'Non-Orphan Preservation: preserves instances attached to active tasks, '
+      'completed/skipped instances, and family-scoped instances',
       () async {
         final activeTask = createTestTask(id: 'S-active-task');
         final taskMap = <String, TaskSchedule>{activeTask.id: activeTask};
@@ -524,7 +533,8 @@ void main() {
 
   group('4. Virtual Instance Expiration', () {
     test(
-      'Virtual Instance Injection: caches recently spawned instance and injects virtual TaskInstance within 2 seconds',
+      'Virtual Instance Injection: caches recently spawned instance and '
+      'injects virtual TaskInstance within 2 seconds',
       () {
         final task = createTestTask(id: 'S-virtual-task');
         const ruleId = 'rule-1';
@@ -556,7 +566,8 @@ void main() {
     );
 
     test(
-      'Cache Expiration: purges expired entries after 2 seconds and does not inject virtual instances',
+      'Cache Expiration: purges expired entries after 2 seconds and does not '
+      'inject virtual instances',
       () {
         final task = createTestTask(id: 'S-expired-task');
         const ruleId = 'rule-1';
@@ -580,7 +591,8 @@ void main() {
     );
 
     test(
-      'Does not inject virtual instance if instance with matching ruleId and date already exists',
+      'Does not inject virtual instance if instance with matching ruleId '
+      'and date already exists',
       () {
         final task = createTestTask(id: 'S-existing-task');
         const ruleId = 'rule-1';
