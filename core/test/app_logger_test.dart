@@ -35,11 +35,13 @@ void main() {
 
           final events = logger.getEvents();
           expect(events.length, equals(3));
-          expect(events.map((e) => e.message).toList(), equals([
-            'msg 1',
-            'msg 2',
-            'msg 3',
-          ]));
+          expect(
+              events.map((e) => e.message).toList(),
+              equals([
+                'msg 1',
+                'msg 2',
+                'msg 3',
+              ]));
         },
       );
 
@@ -55,11 +57,13 @@ void main() {
 
           final events = logger.getEvents();
           expect(events.length, equals(3));
-          expect(events.map((e) => e.message).toList(), equals([
-            'msg 2',
-            'msg 3',
-            'msg 4',
-          ]));
+          expect(
+              events.map((e) => e.message).toList(),
+              equals([
+                'msg 2',
+                'msg 3',
+                'msg 4',
+              ]));
         },
       );
 
@@ -74,11 +78,13 @@ void main() {
 
           final events = logger.getEvents();
           expect(events.length, equals(3));
-          expect(events.map((e) => e.message).toList(), equals([
-            'msg 4',
-            'msg 5',
-            'msg 6',
-          ]));
+          expect(
+              events.map((e) => e.message).toList(),
+              equals([
+                'msg 4',
+                'msg 5',
+                'msg 6',
+              ]));
         },
       );
     });
@@ -90,7 +96,8 @@ void main() {
         logger = AppLogger(capacity: 10);
       });
 
-      test('dispatches events with matching LogLevel across all helper methods', () {
+      test('dispatches events with matching LogLevel across all helper methods',
+          () {
         logger.debug('cat_debug', 'debug event');
         logger.info('cat_info', 'info event');
         logger.warning('cat_warning', 'warning event');
@@ -156,7 +163,9 @@ void main() {
         expect(event.stackTrace, isA<String>());
       });
 
-      test('performs defensive map copying on data parameter to prevent mutation', () {
+      test(
+          'performs defensive map copying on data parameter to prevent mutation',
+          () {
         final mutableData = <String, dynamic>{
           'user': 'alice',
           'count': 1,
@@ -199,7 +208,8 @@ void main() {
         expect(json['stackTrace'], equals('custom_stack_trace_string'));
       });
 
-      test('omits null optional fields (data, error, stackTrace) from JSON map', () {
+      test('omits null optional fields (data, error, stackTrace) from JSON map',
+          () {
         final now = DateTime.utc(2026, 10, 1, 12, 0, 0);
         final event = AppLogEvent(
           timestamp: now,
@@ -265,7 +275,8 @@ void main() {
         expect(events.first.message, equals('msg 3'));
       });
 
-      test('getEvents returns unmodifiable list snapshot preventing mutation', () {
+      test('getEvents returns unmodifiable list snapshot preventing mutation',
+          () {
         final logger = AppLogger(capacity: 5);
         logger.info('cat', 'original event');
 
