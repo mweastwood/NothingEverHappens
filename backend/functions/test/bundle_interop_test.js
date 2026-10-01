@@ -39,8 +39,19 @@ async function runTests() {
   console.log('✔ All expected functions and scheduled handlers exported');
 
   // Helper to create chained queries
+  const batchSets = [];
   const createMockQuery = (docs = []) => {
     const q = {
+      doc: (id) => ({
+        id: id || 'doc_test',
+        get: () => Promise.resolve({
+          id: id || 'doc_test',
+          exists: false,
+          data: () => null,
+          ref: { id: id || 'doc_test' }
+        }),
+        collection: (sub) => createMockQuery([])
+      }),
       where: () => createMockQuery(docs),
       limit: (n) => createMockQuery(docs.slice(0, n)),
       get: () => Promise.resolve({
@@ -49,7 +60,10 @@ async function runTests() {
         docs: docs.map(d => ({
           id: d.id || 'doc_test',
           exists: true,
-          ref: { id: d.id || 'doc_test' },
+          ref: {
+            id: d.id || 'doc_test',
+            collection: (sub) => createMockQuery([])
+          },
           data: () => d
         }))
       })
@@ -59,12 +73,36 @@ async function runTests() {
 
   // 2. Test processFamilyScheduleDirect with mock Firestore DB
   const mockTaskDoc = {
-    id: 'task_1',
-    name: 'Clean bedroom',
-    familyId: 'fam_test',
-    frequency: 'daily',
-    active: true,
-    deleted: false
+    id: 'S-47f3989d-3f6d-4830-aa5f-f3e3eb12e1df',
+    title: 'Clean Kitchen',
+    description: '',
+    familyCompletionMode: 'anyone',
+    preferredBy: {},
+    isMaster: false,
+    futureInstancesCount: 5,
+    lastSpawnedDate: { year: 2026, month: 9, day: 12 },
+    priority: 'medium',
+    schedules: [
+      {
+        id: 'R-e1da46fa-9236-4141-80ad-eb1119481ff9',
+        scheduleId: 'S-47f3989d-3f6d-4830-aa5f-f3e3eb12e1df',
+        type: 'weekly',
+        interval: 1,
+        startDate: { year: 2026, month: 8, day: 16 },
+        schedulingPolicy: { type: 'fixedCalendar' },
+        missedOccurrencePolicy: { type: 'keepAround', policy: 'preferOlder' },
+        dueRelativeTime: { hour: 17, minute: 0, dayOffset: 0 },
+        startRelativeTime: { hour: 9, minute: 0, dayOffset: 0 },
+        daysOfWeek: [1, 2, 3, 4, 5, 6, 7]
+      }
+    ],
+    assignedUserId: 'z1NuzlWEHVY27tUgXGNFZMaSPlw1',
+    activeOccurrenceIndex: 0,
+    updatedAt: new Date(),
+    skipIfNoCapacity: false,
+    estimatedDuration: 15,
+    labelIds: ['L-1e2a7255-64af-4ad1-bd93-ee70825fc41c'],
+    isFamily: true
   };
 
   const mockDb = {
@@ -84,7 +122,7 @@ async function runTests() {
       get: () => createMockQuery([mockTaskDoc]).get()
     }),
     batch: () => ({
-      set: () => {},
+      set: (ref, data) => batchSets.push({ ref, data }),
       update: () => {},
       delete: () => {},
       commit: () => Promise.resolve()
@@ -105,7 +143,11 @@ async function runTests() {
   const directResult = await directResultPromise;
   assert(directResult, 'Result must be returned');
   assert.strictEqual(directResult.familyId, 'fam_test');
-  console.log('✔ processFamilyScheduleDirect executes and resolves native Promises cleanly');
+  assert.strictEqual(directResult.tasksEvaluated, 1, 'Should evaluate 1 family task');
+  assert(directResult.instancesSpawned > 0, 'Should spawn instances for family task');
+  assert(!directResult.error, 'Should have no errors during scheduling');
+  assert(batchSets.length > 0, 'Should write spawned instances to batch');
+  console.log('✔ processFamilyScheduleDirect executes, evaluates isFamily tasks, and spawns instances cleanly');
 
   // 3. Test processHistoryCleanup with mock Firestore DB
   let historyDocs = [
@@ -236,7 +278,70 @@ async function runTests() {
   assert(subResult && subResult.familyId === 'fam_sub', 'Subcollection DB query should succeed without type cast error');
   console.log('✔ Subcollection resolution on native JS document references succeeded cleanly');
 
-  // 7. Verify where query parameter conversion for Map/structured fields (Issue #820)
+  // 7. Verify documents with single field 'o' and numeric string dates in tasks
+  const fieldODoc = {
+    id: 'S-field-o-test',
+    title: 'Field O Task',
+    description: '',
+    familyCompletionMode: 'anyone',
+    preferredBy: {},
+    isMaster: false,
+    futureInstancesCount: 5,
+    lastSpawnedDate: { year: 2026, month: 9, day: 12 },
+    priority: 'medium',
+    schedules: [
+      {
+        id: 'R-field-o-rule',
+        scheduleId: 'S-field-o-test',
+        type: 'weekly',
+        interval: 1,
+        startDate: { year: 2026, month: 8, day: 16 },
+        schedulingPolicy: { type: 'fixedCalendar' },
+        missedOccurrencePolicy: { type: 'keepAround', policy: 'preferOlder' },
+        dueRelativeTime: { hour: 17, minute: 0, dayOffset: 0 },
+        startRelativeTime: { hour: 9, minute: 0, dayOffset: 0 },
+        daysOfWeek: [1, 2, 3, 4, 5, 6, 7]
+      }
+    ],
+    updatedAt: '2026',
+    o: { nestedData: 'value' },
+    isFamily: true
+  };
+
+  const fieldODB = {
+    collection: () => ({
+      doc: () => ({
+        id: 'fam_field_o',
+        get: () => Promise.resolve({
+          id: 'fam_field_o',
+          exists: true,
+          data: () => ({ name: 'Field O Family', o: { nestedData: 'value' } }),
+          ref: {
+            id: 'fam_field_o',
+            collection: () => createMockQuery([fieldODoc])
+          }
+        }),
+        collection: () => createMockQuery([fieldODoc])
+      })
+    }),
+    batch: () => ({
+      set: () => {},
+      update: () => {},
+      delete: () => {},
+      commit: () => Promise.resolve()
+    })
+  };
+
+  const fieldOResult = await funcs.processFamilyScheduleDirect(
+    fieldODB,
+    'fam_field_o',
+    '2026-09-19T00:00:00.000Z'
+  );
+  assert(fieldOResult && fieldOResult.familyId === 'fam_field_o', 'Field O DB query should succeed');
+  assert.strictEqual(fieldOResult.tasksEvaluated, 1, 'Should evaluate task with field o and year 2026 updatedAt date');
+  console.log('✔ Documents with single field o and string ISO dates evaluated cleanly');
+
+  // 8. Verify where query parameter conversion for Map/structured fields (Issue #820)
   const capturedWhereArgs = [];
   const existingInstanceDoc = {
     id: 'inst_existing_123',
@@ -326,7 +431,7 @@ async function runTests() {
   console.log('✔ JsQuery.where converts Dart Map values to native JavaScript Objects for structured query matching');
 
 
-  // 8. Verify processExternalTaskEventDirect rejecting cleanly with an error (as rejected Promise)
+  // 9. Verify processExternalTaskEventDirect rejecting cleanly with an error (as rejected Promise)
   let rejectedError = null;
   try {
     await funcs.processExternalTaskEventDirect(
@@ -352,7 +457,7 @@ async function runTests() {
   assert(nullPayloadError !== null, 'processExternalTaskEventDirect must reject Promise on null payload');
   console.log('✔ processExternalTaskEventDirect cleanly rejects invalid payloads as a rejected Promise');
 
-  // 9. Verify processExternalTaskEventDirect resilient timestamp parsing for now
+  // 10. Verify processExternalTaskEventDirect resilient timestamp parsing for now
   for (const nowVal of [
     new Date('2026-09-25T12:00:00.000Z'),
     '1727265600000',
@@ -368,7 +473,7 @@ async function runTests() {
   }
   console.log('✔ processExternalTaskEventDirect parses DateTime, Date, numeric string, and epoch now values cleanly');
 
-  // 10. Verify JsQuery.where conversion with DateTime, Iterable/List (in / array-contains-any), and non-String map keys
+  // 11. Verify JsQuery.where conversion with DateTime, Iterable/List (in / array-contains-any), and non-String map keys
   const capturedDirectQueries = [];
   const createChainableQuery = () => ({
     where: (f, op, val) => {

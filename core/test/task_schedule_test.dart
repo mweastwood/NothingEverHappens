@@ -151,5 +151,44 @@ void main() {
       expect(mod3.newTask.labelIds, equals(['L-1', 'L-2']));
       expect(mod3.changes.containsKey('labelIds'), isFalse);
     });
+
+    test(
+        'parses map timestamp with string seconds and nanoseconds without throwing',
+        () {
+      final schedule = TaskSchedule.fromMap({
+        'title': 'Map Timestamp Schedule',
+        'updatedAt': {
+          '_seconds': '1725000000',
+          '_nanoseconds': '500000000',
+        },
+      });
+      expect(schedule.updatedAt, isNotNull);
+      expect(schedule.updatedAt.millisecondsSinceEpoch, equals(1725000000500));
+    });
+
+    test('parses numeric string timestamp without throwing', () {
+      final schedule = TaskSchedule.fromMap({
+        'title': 'String Timestamp Schedule',
+        'updatedAt': '1725000000',
+      });
+      expect(schedule.updatedAt, isNotNull);
+      expect(schedule.updatedAt.millisecondsSinceEpoch, equals(1725000000000));
+    });
+
+    test('parses digit-only ISO strings like 2026 and 20260923 correctly', () {
+      final scheduleYear = TaskSchedule.fromMap({
+        'title': 'Year Only',
+        'updatedAt': '2026',
+      });
+      expect(scheduleYear.updatedAt.year, equals(2026));
+
+      final scheduleCompact = TaskSchedule.fromMap({
+        'title': 'Compact ISO Date',
+        'updatedAt': '20260923',
+      });
+      expect(scheduleCompact.updatedAt.year, equals(2026));
+      expect(scheduleCompact.updatedAt.month, equals(9));
+      expect(scheduleCompact.updatedAt.day, equals(23));
+    });
   });
 }
