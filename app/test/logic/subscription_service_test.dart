@@ -144,6 +144,7 @@ void main() {
         });
         await pumpEventQueue();
         expect(service.state.tier, SubscriptionTier.family);
+        expect(service.state.isActivePremium, isTrue);
         expect(service.state.isFamilyPlan, isTrue);
       },
     );
