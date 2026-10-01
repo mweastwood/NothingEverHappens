@@ -78,19 +78,20 @@ void main() {
       );
 
       final service = TestSubscriptionService(ref, firestore: fakeFirestore);
+      addTearDown(service.dispose);
 
       // Initially free
       expect(service.state.tier, SubscriptionTier.free);
 
       // Start listening to the mock user doc
       service.triggerListenToFirestore('test-user-123');
-      await Future.delayed(Duration.zero);
+      await pumpEventQueue();
 
       // Write 'family' tier to user doc
       await fakeFirestore.collection('users').doc('test-user-123').set({
         'subscriptionTier': 'family',
       });
-      await Future.delayed(Duration.zero);
+      await pumpEventQueue();
       expect(service.state.tier, SubscriptionTier.family);
       expect(service.state.isActivePremium, isTrue);
       expect(service.state.isFamilyPlan, isTrue);
@@ -99,15 +100,17 @@ void main() {
       await fakeFirestore.collection('users').doc('test-user-123').set({
         'subscriptionTier': 'standard',
       });
-      await Future.delayed(Duration.zero);
+      await pumpEventQueue();
       expect(service.state.tier, SubscriptionTier.standard);
       expect(service.state.isActivePremium, isTrue);
       expect(service.state.isFamilyPlan, isFalse);
 
       // Delete the document - should fallback to free
       await fakeFirestore.collection('users').doc('test-user-123').delete();
-      await Future.delayed(Duration.zero);
+      await pumpEventQueue();
       expect(service.state.tier, SubscriptionTier.free);
+      expect(service.state.isActivePremium, isFalse);
+      expect(service.state.isFamilyPlan, isFalse);
     });
 
     test(
@@ -130,16 +133,18 @@ void main() {
         );
 
         final service = TestSubscriptionService(ref, firestore: fakeFirestore);
+        addTearDown(service.dispose);
 
         service.triggerListenToFirestore('test-user-123');
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         await fakeFirestore.collection('users').doc('test-user-123').set({
           'familyId': 'fam-abc-123',
           'familyRole': 'non-parent',
         });
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
         expect(service.state.tier, SubscriptionTier.family);
+        expect(service.state.isActivePremium, isTrue);
         expect(service.state.isFamilyPlan, isTrue);
       },
     );
@@ -164,15 +169,18 @@ void main() {
         );
 
         final service = TestSubscriptionService(ref, firestore: fakeFirestore);
+        addTearDown(service.dispose);
 
         service.triggerListenToFirestore('test-user-123');
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         await fakeFirestore.collection('users').doc('test-user-123').set({
           'familyId': 'fam-abc-123',
           'familyRole': 'non-parent',
         });
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
+        expect(service.state.tier, SubscriptionTier.family);
+        expect(service.state.isActivePremium, isTrue);
         expect(service.state.isFamilyPlan, isTrue);
 
         // Simulate RevenueCat update with no active entitlements (free)
@@ -194,6 +202,7 @@ void main() {
 
         service.updateEntitlements(emptyInfo);
         expect(service.state.tier, SubscriptionTier.family);
+        expect(service.state.isActivePremium, isTrue);
         expect(service.state.isFamilyPlan, isTrue);
       },
     );
