@@ -542,6 +542,18 @@ async function runTests() {
   assert.strictEqual(nonStringKeyClause.value['2'], 'second');
   console.log('✔ JsQuery.where converts Iterable/List, DateTime, and non-String Map keys cleanly');
 
+  // 11. Verify modular firebase-admin/firestore and auth dependencies
+  const admin = require('firebase-admin');
+  const firestoreModule = require('firebase-admin/firestore');
+  const authModule = require('firebase-admin/auth');
+
+  assert(typeof admin.initializeApp === 'function', 'admin.initializeApp must be a function');
+  assert(typeof firestoreModule.getFirestore === 'function', 'firebase-admin/firestore getFirestore must be a function');
+  assert(typeof firestoreModule.FieldValue === 'function', 'firebase-admin/firestore FieldValue must be available');
+  assert(typeof firestoreModule.Timestamp === 'function', 'firebase-admin/firestore Timestamp must be available');
+  assert(typeof authModule.getAuth === 'function', 'firebase-admin/auth getAuth must be a function');
+  console.log('✔ Modular firebase-admin/firestore and firebase-admin/auth modules are verified');
+
   console.log('\nAll Node.js Bundle Interop Integration Tests passed successfully!');
 }
 
