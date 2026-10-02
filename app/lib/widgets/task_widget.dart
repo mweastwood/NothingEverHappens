@@ -255,11 +255,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     required String label,
     required Color color,
   }) {
-    return TaskBadge(
-      icon: icon,
-      label: label,
-      color: color,
-    );
+    return TaskBadge(icon: icon, label: label, color: color);
   }
 
   List<Widget> _buildLabelBadges(BuildContext context, List<TaskLabel> labels) {
@@ -813,11 +809,14 @@ class TaskAssigneeBadge extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final nameAsync = ref.watch(userNameProvider(userId));
-    final label = nameAsync.when(
-      data: (name) => context.l10n.assignedTo(name),
-      loading: () => context.l10n.loadingBadge,
-      error: (_, _) => context.l10n.assignedBadge,
-    );
+    final String label;
+    if (nameAsync.hasError) {
+      label = context.l10n.assignedBadge;
+    } else if (nameAsync.hasValue) {
+      label = context.l10n.assignedTo(nameAsync.value as String);
+    } else {
+      label = context.l10n.loadingBadge;
+    }
 
     return TaskBadge(
       icon: Icons.assignment_ind,
@@ -826,4 +825,3 @@ class TaskAssigneeBadge extends ConsumerWidget {
     );
   }
 }
-

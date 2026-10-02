@@ -2285,9 +2285,18 @@ void main() {
           scheduleId: 'S-no-members',
           ruleId: 'R-1',
           title: 'Chore',
+          description: 'Chore description',
           scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
-          startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
-          dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
           isFamily: true,
           familyCompletionMode: FamilyCompletionMode.individual,
           completedByUserIds: const [],
@@ -2310,7 +2319,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Individual'), findsOneWidget);
+        expect(find.text('Everyone individually'), findsOneWidget);
         expect(find.byIcon(Icons.checklist), findsOneWidget);
       },
     );
@@ -2351,12 +2360,10 @@ void main() {
           overrides: [
             userNameProvider(
               'user-err',
-            ).overrideWith((ref) => Future.error('Not found')),
+            ).overrideWith((ref) async => throw Exception('Not found')),
           ],
           child: buildTestableWidget(
-            child: const Scaffold(
-              body: TaskAssigneeBadge(userId: 'user-err'),
-            ),
+            child: const Scaffold(body: TaskAssigneeBadge(userId: 'user-err')),
           ),
         ),
       );
@@ -2376,9 +2383,18 @@ void main() {
           scheduleId: 'S-isolate-test',
           ruleId: 'R-1',
           title: 'Isolation Test Task',
+          description: 'Isolation Test Description',
           scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
-          startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
-          dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
           isFamily: true,
           familyCompletionMode: FamilyCompletionMode.individual,
           completedByUserIds: const ['u1'],
@@ -2411,7 +2427,10 @@ void main() {
               taskRepositoryProvider.overrideWithValue(mockTaskRepository),
               familyProfileStreamProvider.overrideWith(
                 (ref) => Stream.value(
-                  const FamilyProfile(familyId: 'fam-iso', familyRole: 'parent'),
+                  const FamilyProfile(
+                    familyId: 'fam-iso',
+                    familyRole: 'parent',
+                  ),
                 ),
               ),
               familyStreamProvider(
@@ -2422,12 +2441,12 @@ void main() {
               ).overrideWith((ref) => nameStreamController.stream.first),
             ],
             child: buildTestableWidget(
-              child: Scaffold(
-                body: TaskWidget(instance: instance),
-              ),
+              child: Scaffold(body: TaskWidget(instance: instance)),
             ),
           ),
         );
+
+        await tester.pump();
 
         // Initial emit
         familyStreamController.add(initialFamily);
@@ -2467,7 +2486,7 @@ void main() {
         );
 
         familyStreamController.add(updatedFamily);
-        await tester.pump();
+        await tester.pumpAndSettle();
 
         // The badge updated to 1 of 3 completed
         expect(find.text('1 of 3 completed'), findsOneWidget);
