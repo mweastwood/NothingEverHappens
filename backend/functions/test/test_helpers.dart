@@ -27,6 +27,9 @@ class MockAuthService implements AuthService {
 }
 
 class MockFirestoreDatabase implements FirestoreDatabase {
+  @override
+  dynamic get rawDb => null;
+
   final Map<String, MockCollectionReference> collections = {};
   final List<DocumentReference> recursiveDeletedRefs = [];
   MockQuery Function(String collectionId)? onCollectionGroup;

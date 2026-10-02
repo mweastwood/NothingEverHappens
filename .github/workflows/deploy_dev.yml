@@ -30,7 +30,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Deploy Firestore Rules
         working-directory: ./backend
@@ -39,7 +39,7 @@ jobs:
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT_DEV" > service-account.json
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/service-account.json
-          npx --yes firebase-tools@15.22.3 deploy --only firestore:rules --project nothing-ever-happens-dev
+          npx --yes firebase-tools@15.31.0 deploy --only firestore:rules --project nothing-ever-happens-dev
           rm -f service-account.json
 
   deploy_dev_firebase_web:

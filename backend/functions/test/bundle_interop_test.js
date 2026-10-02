@@ -27,7 +27,8 @@ async function runTests() {
     'processHistoryCleanup',
     'processFamilyScheduleDirect',
     'processExternalTaskEventDirect',
-    'queryWhereDirect'
+    'queryWhereDirect',
+    'getFirebaseAdminDb'
   ];
 
   for (const name of expectedExports) {
@@ -542,7 +543,7 @@ async function runTests() {
   assert.strictEqual(nonStringKeyClause.value['2'], 'second');
   console.log('✔ JsQuery.where converts Iterable/List, DateTime, and non-String Map keys cleanly');
 
-  // 11. Verify modular firebase-admin/app, firestore, and auth dependencies
+  // 12. Verify modular firebase-admin/app, firestore, and auth dependencies
   const admin = require('firebase-admin');
   const appModule = require('firebase-admin/app');
   const firestoreModule = require('firebase-admin/firestore');
@@ -556,6 +557,25 @@ async function runTests() {
   assert(typeof firestoreModule.Timestamp === 'function', 'firebase-admin/firestore Timestamp must be available');
   assert(typeof authModule.getAuth === 'function', 'firebase-admin/auth getAuth must be a function');
   console.log('✔ Modular firebase-admin/app, firebase-admin/firestore, and firebase-admin/auth modules are verified');
+
+  // 13. Verify default modular DB initialization via getFirebaseAdminDb without arguments
+  const defaultDb = funcs.getFirebaseAdminDb();
+  assert(defaultDb, 'getFirebaseAdminDb() without arguments should return an initialized Firestore instance');
+  assert(
+    typeof defaultDb.collection === 'function',
+    'getFirebaseAdminDb() initialized Firestore instance must have a "collection" method'
+  );
+  assert(
+    typeof defaultDb.batch === 'function',
+    'getFirebaseAdminDb() initialized Firestore instance must have a "batch" method'
+  );
+  const mockDbPassthrough = funcs.getFirebaseAdminDb(mockDb);
+  assert.strictEqual(
+    mockDbPassthrough,
+    mockDb,
+    'getFirebaseAdminDb(mockDb) must pass through the provided mock jsDb instance'
+  );
+  console.log('✔ Default getFirebaseAdminDb() cold start initializes modular Firestore cleanly');
 
   console.log('\nAll Node.js Bundle Interop Integration Tests passed successfully!');
 }

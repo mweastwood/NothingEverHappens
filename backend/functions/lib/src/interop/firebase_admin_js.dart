@@ -8,8 +8,8 @@ js.JsObject? _adminInstance;
 js.JsObject? _appModuleInstance;
 js.JsObject? _firestoreModuleInstance;
 js.JsObject? _authModuleInstance;
-js.JsObject? _dbInstance;
-js.JsObject? _authInstance;
+dynamic _dbInstance;
+dynamic _authInstance;
 
 js.JsObject _requireModule(String moduleName) {
   final require = js.context['require'];
@@ -89,9 +89,9 @@ FirestoreDatabase getFirebaseAdminDb([dynamic jsDb]) {
   }
   if (_dbInstance == null) {
     if (_firestoreModule.hasProperty('getFirestore')) {
-      _dbInstance = _firestoreModule.callMethod('getFirestore') as js.JsObject;
+      _dbInstance = _firestoreModule.callMethod('getFirestore');
     } else if (_admin.hasProperty('firestore')) {
-      _dbInstance = _admin.callMethod('firestore') as js.JsObject;
+      _dbInstance = _admin.callMethod('firestore');
     } else {
       throw StateError(
           'Neither getFirestore nor admin.firestore found in firebase-admin');
@@ -104,9 +104,9 @@ AuthService getFirebaseAdminAuth() {
   initializeFirebaseAdmin();
   if (_authInstance == null) {
     if (_authModule.hasProperty('getAuth')) {
-      _authInstance = _authModule.callMethod('getAuth') as js.JsObject;
+      _authInstance = _authModule.callMethod('getAuth');
     } else if (_admin.hasProperty('auth')) {
-      _authInstance = _admin.callMethod('auth') as js.JsObject;
+      _authInstance = _admin.callMethod('auth');
     } else {
       throw StateError(
           'Neither getAuth nor admin.auth found in firebase-admin');
@@ -201,6 +201,9 @@ class JsFirestoreDatabase implements FirestoreDatabase {
   final js.JsObject _adminRef;
 
   JsFirestoreDatabase(this._db, this._adminRef);
+
+  @override
+  dynamic get rawDb => _db;
 
   @override
   CollectionReference collection(String path) {
