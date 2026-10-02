@@ -42,6 +42,7 @@ abstract class FirestoreDatabase {
   Query collectionGroup(String collectionId);
   WriteBatch batch();
   Future<void> recursiveDelete(DocumentReference ref);
+  dynamic get rawDb => null;
 }
 
 /// Abstract Firestore Collection Reference.

@@ -238,7 +238,7 @@ void main() {
           'updatedAt': remoteTime.toIso8601String(),
         });
 
-    await pumpEventQueue();
+    await pumpEventQueue(times: 20);
 
     final docSnap = await firestore
         .collection('users')

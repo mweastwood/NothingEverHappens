@@ -246,4 +246,13 @@ void main() {
       })());
     }),
   );
+
+  // 11. export getFirebaseAdminDb for testing & default modular DB initialization parity
+  exportFunction(
+    'getFirebaseAdminDb',
+    js.allowInterop(([dynamic jsDb]) {
+      final db = getFirebaseAdminDb(jsDb);
+      return db.rawDb;
+    }),
+  );
 }

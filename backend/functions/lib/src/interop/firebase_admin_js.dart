@@ -5,41 +5,113 @@ import 'dart:js_util' as js_util;
 import 'abstract_admin.dart';
 
 js.JsObject? _adminInstance;
-js.JsObject? _dbInstance;
-js.JsObject? _authInstance;
+js.JsObject? _appModuleInstance;
+js.JsObject? _firestoreModuleInstance;
+js.JsObject? _authModuleInstance;
+dynamic _dbInstance;
+dynamic _authInstance;
 
-js.JsObject get _admin {
-  if (_adminInstance == null) {
-    final require = js.context['require'];
-    if (require == null) {
-      throw StateError(
-          "Node 'require' is not available in current environment");
-    }
-    _adminInstance =
-        js.context.callMethod('require', ['firebase-admin']) as js.JsObject;
+js.JsObject _requireModule(String moduleName) {
+  final require = js.context['require'];
+  if (require == null) {
+    throw StateError("Node 'require' is not available in current environment");
   }
-  return _adminInstance!;
+  return js.context.callMethod('require', [moduleName]) as js.JsObject;
+}
+
+js.JsObject get _admin => _adminInstance ??= _requireModule('firebase-admin');
+
+js.JsObject get _appModule {
+  if (_appModuleInstance == null) {
+    try {
+      _appModuleInstance = _requireModule('firebase-admin/app');
+    } catch (_) {
+      _appModuleInstance = _admin;
+    }
+  }
+  return _appModuleInstance!;
+}
+
+js.JsObject get _firestoreModule {
+  if (_firestoreModuleInstance == null) {
+    try {
+      _firestoreModuleInstance = _requireModule('firebase-admin/firestore');
+    } catch (_) {
+      final fs = _admin['firestore'];
+      if (fs is js.JsObject) {
+        _firestoreModuleInstance = fs;
+      } else {
+        _firestoreModuleInstance = _admin;
+      }
+    }
+  }
+  return _firestoreModuleInstance!;
+}
+
+js.JsObject get _authModule {
+  if (_authModuleInstance == null) {
+    try {
+      _authModuleInstance = _requireModule('firebase-admin/auth');
+    } catch (_) {
+      final auth = _admin['auth'];
+      if (auth is js.JsObject) {
+        _authModuleInstance = auth;
+      } else {
+        _authModuleInstance = _admin;
+      }
+    }
+  }
+  return _authModuleInstance!;
 }
 
 void initializeFirebaseAdmin() {
-  final apps = _admin['apps'] as List?;
+  final apps = (_appModule.hasProperty('getApps')
+          ? _appModule.callMethod('getApps') as List?
+          : null) ??
+      _appModule['apps'] as List? ??
+      (_admin.hasProperty('getApps')
+          ? _admin.callMethod('getApps') as List?
+          : null) ??
+      _admin['apps'] as List?;
   if (apps == null || apps.isEmpty) {
-    _admin.callMethod('initializeApp');
+    if (_appModule.hasProperty('initializeApp')) {
+      _appModule.callMethod('initializeApp');
+    } else if (_admin.hasProperty('initializeApp')) {
+      _admin.callMethod('initializeApp');
+    }
   }
 }
 
 FirestoreDatabase getFirebaseAdminDb([dynamic jsDb]) {
   initializeFirebaseAdmin();
   if (jsDb != null) {
-    return JsFirestoreDatabase(jsDb, _admin);
+    return JsFirestoreDatabase(jsDb, _firestoreModule);
   }
-  _dbInstance ??= _admin.callMethod('firestore') as js.JsObject;
-  return JsFirestoreDatabase(_dbInstance!, _admin);
+  if (_dbInstance == null) {
+    if (_firestoreModule.hasProperty('getFirestore')) {
+      _dbInstance = _firestoreModule.callMethod('getFirestore');
+    } else if (_admin.hasProperty('firestore')) {
+      _dbInstance = _admin.callMethod('firestore');
+    } else {
+      throw StateError(
+          'Neither getFirestore nor admin.firestore found in firebase-admin');
+    }
+  }
+  return JsFirestoreDatabase(_dbInstance!, _firestoreModule);
 }
 
 AuthService getFirebaseAdminAuth() {
   initializeFirebaseAdmin();
-  _authInstance ??= _admin.callMethod('auth') as js.JsObject;
+  if (_authInstance == null) {
+    if (_authModule.hasProperty('getAuth')) {
+      _authInstance = _authModule.callMethod('getAuth');
+    } else if (_admin.hasProperty('auth')) {
+      _authInstance = _admin.callMethod('auth');
+    } else {
+      throw StateError(
+          'Neither getAuth nor admin.auth found in firebase-admin');
+    }
+  }
   return JsAuthService(_authInstance!);
 }
 
@@ -131,6 +203,9 @@ class JsFirestoreDatabase implements FirestoreDatabase {
   JsFirestoreDatabase(this._db, this._adminRef);
 
   @override
+  dynamic get rawDb => _db;
+
+  @override
   CollectionReference collection(String path) {
     final col = _db is js.JsObject
         ? _db.callMethod('collection', [path])
@@ -192,19 +267,7 @@ class JsQuery implements Query {
 
   @override
   Query where(String field, String op, dynamic value) {
-    final firestoreClass = adminRef['firestore'] as js.JsObject?;
-    final fieldValueClass = firestoreClass != null
-        ? firestoreClass['FieldValue'] as js.JsObject?
-        : null;
-    final timestampClass = firestoreClass != null
-        ? firestoreClass['Timestamp'] as js.JsObject?
-        : null;
-    final jsVal = _convertValueForJs(
-      value,
-      adminRef,
-      fieldValueClass,
-      timestampClass,
-    );
+    final jsVal = _convertValueForJs(value, adminRef);
     final nextQ = rawQuery is js.JsObject
         ? rawQuery.callMethod('where', [field, op, jsVal])
         : js_util.callMethod(rawQuery, 'where', [field, op, jsVal]);
@@ -465,12 +528,63 @@ class JsAuthService implements AuthService {
   }
 }
 
+js.JsObject? _getFieldValueClass(dynamic firestoreRef) {
+  if (firestoreRef is js.JsObject) {
+    if (firestoreRef.hasProperty('FieldValue')) {
+      final fv = firestoreRef['FieldValue'];
+      if (fv is js.JsObject) return fv;
+    }
+    if (firestoreRef.hasProperty('firestore')) {
+      final fs = firestoreRef['firestore'];
+      if (fs is js.JsObject && fs.hasProperty('FieldValue')) {
+        final fv = fs['FieldValue'];
+        if (fv is js.JsObject) return fv;
+      }
+    }
+  }
+  try {
+    final module = _firestoreModule;
+    if (module.hasProperty('FieldValue')) {
+      final fv = module['FieldValue'];
+      if (fv is js.JsObject) return fv;
+    }
+  } catch (_) {}
+  return null;
+}
+
+js.JsObject? _getTimestampClass(dynamic firestoreRef) {
+  if (firestoreRef is js.JsObject) {
+    if (firestoreRef.hasProperty('Timestamp')) {
+      final ts = firestoreRef['Timestamp'];
+      if (ts is js.JsObject) return ts;
+    }
+    if (firestoreRef.hasProperty('firestore')) {
+      final fs = firestoreRef['firestore'];
+      if (fs is js.JsObject && fs.hasProperty('Timestamp')) {
+        final ts = fs['Timestamp'];
+        if (ts is js.JsObject) return ts;
+      }
+    }
+  }
+  try {
+    final module = _firestoreModule;
+    if (module.hasProperty('Timestamp')) {
+      final ts = module['Timestamp'];
+      if (ts is js.JsObject) return ts;
+    }
+  } catch (_) {}
+  return null;
+}
+
 dynamic _convertValueForJs(
   dynamic value,
-  js.JsObject adminRef,
+  dynamic firestoreRef, [
   js.JsObject? fieldValueClass,
   js.JsObject? timestampClass,
-) {
+]) {
+  fieldValueClass ??= _getFieldValueClass(firestoreRef);
+  timestampClass ??= _getTimestampClass(firestoreRef);
+
   if (value == null) {
     return null;
   } else if (value is String || value is num || value is bool) {
@@ -492,36 +606,31 @@ dynamic _convertValueForJs(
   } else if (value is js.JsObject) {
     return value;
   } else if (value is Map<String, dynamic>) {
-    return _convertMapForJs(value, adminRef);
+    return _convertMapForJs(value, firestoreRef);
   } else if (value is Map) {
     return _convertMapForJs(
       value.map((k, v) => MapEntry(k.toString(), v)),
-      adminRef,
+      firestoreRef,
     );
   } else if (value is Iterable) {
     return js.JsArray.from(value.map(
-      (item) =>
-          _convertValueForJs(item, adminRef, fieldValueClass, timestampClass),
+      (item) => _convertValueForJs(
+          item, firestoreRef, fieldValueClass, timestampClass),
     ));
   } else {
     return value;
   }
 }
 
-dynamic _convertMapForJs(Map<String, dynamic> map, js.JsObject adminRef) {
-  final firestoreClass = adminRef['firestore'] as js.JsObject?;
-  final fieldValueClass = firestoreClass != null
-      ? firestoreClass['FieldValue'] as js.JsObject?
-      : null;
-  final timestampClass = firestoreClass != null
-      ? firestoreClass['Timestamp'] as js.JsObject?
-      : null;
+dynamic _convertMapForJs(Map<String, dynamic> map, dynamic firestoreRef) {
+  final fieldValueClass = _getFieldValueClass(firestoreRef);
+  final timestampClass = _getTimestampClass(firestoreRef);
   final jsObj = js.JsObject(js.context['Object']);
 
   for (final entry in map.entries) {
     jsObj[entry.key] = _convertValueForJs(
       entry.value,
-      adminRef,
+      firestoreRef,
       fieldValueClass,
       timestampClass,
     );
