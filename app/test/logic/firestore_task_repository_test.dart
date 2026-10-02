@@ -86,249 +86,225 @@ void main() {
   }
 
   group('1. Firestore Stream Subscriptions', () {
-    test(
-      'Personal-Only Streams: getTasks and getInstances emit matching '
-      'documents when familyId is null or empty',
-      () async {
-        // Set user document without familyId (field omitted / null)
-        await firestore.collection(FirestorePaths.users).doc(userId).set({
-          'displayName': 'Test User',
-        });
+    test('Personal-Only Streams: getTasks and getInstances emit matching '
+        'documents when familyId is null or empty', () async {
+      // Set user document without familyId (field omitted / null)
+      await firestore.collection(FirestorePaths.users).doc(userId).set({
+        'displayName': 'Test User',
+      });
 
-        final personalTask = createTestTask(
-          id: 'S-personal-1',
-          isFamily: false,
-        );
-        final personalInst = createTestInstance(
-          id: 'I-personal-1',
-          scheduleId: 'S-personal-1',
-          isFamily: false,
-        );
+      final personalTask = createTestTask(id: 'S-personal-1', isFamily: false);
+      final personalInst = createTestInstance(
+        id: 'I-personal-1',
+        scheduleId: 'S-personal-1',
+        isFamily: false,
+      );
 
-        await FirestoreCollections.userTasks(
-          firestore,
-          userId,
-        ).doc(personalTask.id).set(personalTask);
-        await FirestoreCollections.userInstances(
-          firestore,
-          userId,
-        ).doc(personalInst.id).set(personalInst);
+      await FirestoreCollections.userTasks(
+        firestore,
+        userId,
+      ).doc(personalTask.id).set(personalTask);
+      await FirestoreCollections.userInstances(
+        firestore,
+        userId,
+      ).doc(personalInst.id).set(personalInst);
 
-        final tasks = await repository.getTasks().first;
-        expect(tasks.length, 1);
-        expect(tasks.first.id, personalTask.id);
-        expect(tasks.first.title, personalTask.title);
+      final tasks = await repository.getTasks().first;
+      expect(tasks.length, 1);
+      expect(tasks.first.id, personalTask.id);
+      expect(tasks.first.title, personalTask.title);
 
-        final instances = await repository.getInstances().first;
-        expect(instances.length, 1);
-        expect(instances.first.id, personalInst.id);
-        expect(instances.first.scheduleId, personalInst.scheduleId);
+      final instances = await repository.getInstances().first;
+      expect(instances.length, 1);
+      expect(instances.first.id, personalInst.id);
+      expect(instances.first.scheduleId, personalInst.scheduleId);
 
-        // Also test explicitly setting familyId to null and empty string
-        await firestore.collection(FirestorePaths.users).doc(userId).set({
-          'displayName': 'Test User',
-          'familyId': null,
-        });
-        expect((await repository.getTasks().first).length, 1);
-        expect((await repository.getInstances().first).length, 1);
+      // Also test explicitly setting familyId to null and empty string
+      await firestore.collection(FirestorePaths.users).doc(userId).set({
+        'displayName': 'Test User',
+        'familyId': null,
+      });
+      expect((await repository.getTasks().first).length, 1);
+      expect((await repository.getInstances().first).length, 1);
 
-        await firestore.collection(FirestorePaths.users).doc(userId).set({
-          'displayName': 'Test User',
-          'familyId': '',
-        });
-        expect((await repository.getTasks().first).length, 1);
-        expect((await repository.getInstances().first).length, 1);
-      },
-    );
+      await firestore.collection(FirestorePaths.users).doc(userId).set({
+        'displayName': 'Test User',
+        'familyId': '',
+      });
+      expect((await repository.getTasks().first).length, 1);
+      expect((await repository.getInstances().first).length, 1);
+    });
 
-    test(
-      'Family-Scoped Streams: getTasks and getInstances combine streams '
-      'from personal and family collections',
-      () async {
-        // Configure user doc with familyId
-        await firestore.collection(FirestorePaths.users).doc(userId).set({
-          'displayName': 'Test User',
-          'familyId': familyId,
-        });
+    test('Family-Scoped Streams: getTasks and getInstances combine streams '
+        'from personal and family collections', () async {
+      // Configure user doc with familyId
+      await firestore.collection(FirestorePaths.users).doc(userId).set({
+        'displayName': 'Test User',
+        'familyId': familyId,
+      });
 
-        final personalTask = createTestTask(
-          id: 'S-personal-1',
-          isFamily: false,
-        );
-        final familyTask = createTestTask(
-          id: 'S-family-1',
-          title: 'Family Task',
-          isFamily: true,
-        );
+      final personalTask = createTestTask(id: 'S-personal-1', isFamily: false);
+      final familyTask = createTestTask(
+        id: 'S-family-1',
+        title: 'Family Task',
+        isFamily: true,
+      );
 
-        final personalInst = createTestInstance(
-          id: 'I-personal-1',
-          scheduleId: 'S-personal-1',
-          isFamily: false,
-        );
-        final familyInst = createTestInstance(
-          id: 'I-family-1',
-          scheduleId: 'S-family-1',
-          title: 'Family Instance',
-          isFamily: true,
-        );
+      final personalInst = createTestInstance(
+        id: 'I-personal-1',
+        scheduleId: 'S-personal-1',
+        isFamily: false,
+      );
+      final familyInst = createTestInstance(
+        id: 'I-family-1',
+        scheduleId: 'S-family-1',
+        title: 'Family Instance',
+        isFamily: true,
+      );
 
-        await FirestoreCollections.userTasks(
-          firestore,
-          userId,
-        ).doc(personalTask.id).set(personalTask);
-        await FirestoreCollections.familyTasks(
-          firestore,
-          familyId,
-        ).doc(familyTask.id).set(familyTask);
+      await FirestoreCollections.userTasks(
+        firestore,
+        userId,
+      ).doc(personalTask.id).set(personalTask);
+      await FirestoreCollections.familyTasks(
+        firestore,
+        familyId,
+      ).doc(familyTask.id).set(familyTask);
 
-        await FirestoreCollections.userInstances(
-          firestore,
-          userId,
-        ).doc(personalInst.id).set(personalInst);
-        await FirestoreCollections.familyInstances(
-          firestore,
-          familyId,
-        ).doc(familyInst.id).set(familyInst);
+      await FirestoreCollections.userInstances(
+        firestore,
+        userId,
+      ).doc(personalInst.id).set(personalInst);
+      await FirestoreCollections.familyInstances(
+        firestore,
+        familyId,
+      ).doc(familyInst.id).set(familyInst);
 
-        final tasks = await repository.getTasks().first;
-        expect(tasks.length, 2);
-        expect(tasks.any((t) => t.id == personalTask.id), isTrue);
-        expect(tasks.any((t) => t.id == familyTask.id), isTrue);
+      final tasks = await repository.getTasks().first;
+      expect(tasks.length, 2);
+      expect(tasks.any((t) => t.id == personalTask.id), isTrue);
+      expect(tasks.any((t) => t.id == familyTask.id), isTrue);
 
-        final instances = await repository.getInstances().first;
-        expect(instances.length, 2);
-        expect(instances.any((i) => i.id == personalInst.id), isTrue);
-        expect(instances.any((i) => i.id == familyInst.id), isTrue);
-      },
-    );
+      final instances = await repository.getInstances().first;
+      expect(instances.length, 2);
+      expect(instances.any((i) => i.id == personalInst.id), isTrue);
+      expect(instances.any((i) => i.id == familyInst.id), isTrue);
+    });
 
-    test(
-      'Dynamic Stream Re-subscription (Tasks): stream updates automatically '
-      'when user familyId transitions',
-      () async {
-        // Initially personal only
-        await firestore.collection(FirestorePaths.users).doc(userId).set({
-          'displayName': 'Test User',
-          'familyId': '',
-        });
+    test('Dynamic Stream Re-subscription (Tasks): stream updates automatically '
+        'when user familyId transitions', () async {
+      // Initially personal only
+      await firestore.collection(FirestorePaths.users).doc(userId).set({
+        'displayName': 'Test User',
+        'familyId': '',
+      });
 
-        final personalTask = createTestTask(
-          id: 'S-personal-1',
-          isFamily: false,
-        );
-        final familyTask = createTestTask(id: 'S-family-1', isFamily: true);
+      final personalTask = createTestTask(id: 'S-personal-1', isFamily: false);
+      final familyTask = createTestTask(id: 'S-family-1', isFamily: true);
 
-        await FirestoreCollections.userTasks(
-          firestore,
-          userId,
-        ).doc(personalTask.id).set(personalTask);
-        await FirestoreCollections.familyTasks(
-          firestore,
-          familyId,
-        ).doc(familyTask.id).set(familyTask);
+      await FirestoreCollections.userTasks(
+        firestore,
+        userId,
+      ).doc(personalTask.id).set(personalTask);
+      await FirestoreCollections.familyTasks(
+        firestore,
+        familyId,
+      ).doc(familyTask.id).set(familyTask);
 
-        final taskStream = repository.getTasks();
-        final taskEmissions = <List<TaskSchedule>>[];
-        final sub = taskStream.listen(taskEmissions.add);
+      final taskStream = repository.getTasks();
+      final taskEmissions = <List<TaskSchedule>>[];
+      final sub = taskStream.listen(taskEmissions.add);
 
-        // Allow initial emission to propagate
-        await pumpEventQueue();
-        expect(taskEmissions.isNotEmpty, isTrue);
-        expect(taskEmissions.last.length, 1);
-        expect(taskEmissions.last.first.id, personalTask.id);
+      // Allow initial emission to propagate
+      await pumpEventQueue();
+      expect(taskEmissions.isNotEmpty, isTrue);
+      expect(taskEmissions.last.length, 1);
+      expect(taskEmissions.last.first.id, personalTask.id);
 
-        // Transition: User joins family
-        await firestore.collection(FirestorePaths.users).doc(userId).set({
-          'displayName': 'Test User',
-          'familyId': familyId,
-        });
+      // Transition: User joins family
+      await firestore.collection(FirestorePaths.users).doc(userId).set({
+        'displayName': 'Test User',
+        'familyId': familyId,
+      });
 
-        await pumpEventQueue();
-        expect(taskEmissions.last.length, 2);
-        expect(taskEmissions.last.any((t) => t.id == familyTask.id), isTrue);
+      await pumpEventQueue();
+      expect(taskEmissions.last.length, 2);
+      expect(taskEmissions.last.any((t) => t.id == familyTask.id), isTrue);
 
-        // Transition: User leaves family
-        await firestore.collection(FirestorePaths.users).doc(userId).set({
-          'displayName': 'Test User',
-          'familyId': '',
-        });
+      // Transition: User leaves family
+      await firestore.collection(FirestorePaths.users).doc(userId).set({
+        'displayName': 'Test User',
+        'familyId': '',
+      });
 
-        await pumpEventQueue();
-        expect(taskEmissions.last.length, 1);
-        expect(taskEmissions.last.first.id, personalTask.id);
+      await pumpEventQueue();
+      expect(taskEmissions.last.length, 1);
+      expect(taskEmissions.last.first.id, personalTask.id);
 
-        await sub.cancel();
-      },
-    );
+      await sub.cancel();
+    });
 
-    test(
-      'Dynamic Stream Re-subscription (Instances): getInstances stream '
-      'updates automatically when user familyId transitions',
-      () async {
-        // Initially personal only
-        await firestore.collection(FirestorePaths.users).doc(userId).set({
-          'displayName': 'Test User',
-          'familyId': '',
-        });
+    test('Dynamic Stream Re-subscription (Instances): getInstances stream '
+        'updates automatically when user familyId transitions', () async {
+      // Initially personal only
+      await firestore.collection(FirestorePaths.users).doc(userId).set({
+        'displayName': 'Test User',
+        'familyId': '',
+      });
 
-        final personalInst = createTestInstance(
-          id: 'I-personal-dyn-1',
-          scheduleId: 'S-personal-dyn-1',
-          isFamily: false,
-        );
-        final familyInst = createTestInstance(
-          id: 'I-family-dyn-1',
-          scheduleId: 'S-family-dyn-1',
-          title: 'Family Instance Dynamic',
-          isFamily: true,
-        );
+      final personalInst = createTestInstance(
+        id: 'I-personal-dyn-1',
+        scheduleId: 'S-personal-dyn-1',
+        isFamily: false,
+      );
+      final familyInst = createTestInstance(
+        id: 'I-family-dyn-1',
+        scheduleId: 'S-family-dyn-1',
+        title: 'Family Instance Dynamic',
+        isFamily: true,
+      );
 
-        await FirestoreCollections.userInstances(
-          firestore,
-          userId,
-        ).doc(personalInst.id).set(personalInst);
-        await FirestoreCollections.familyInstances(
-          firestore,
-          familyId,
-        ).doc(familyInst.id).set(familyInst);
+      await FirestoreCollections.userInstances(
+        firestore,
+        userId,
+      ).doc(personalInst.id).set(personalInst);
+      await FirestoreCollections.familyInstances(
+        firestore,
+        familyId,
+      ).doc(familyInst.id).set(familyInst);
 
-        final instanceStream = repository.getInstances();
-        final instanceEmissions = <List<TaskInstance>>[];
-        final sub = instanceStream.listen(instanceEmissions.add);
+      final instanceStream = repository.getInstances();
+      final instanceEmissions = <List<TaskInstance>>[];
+      final sub = instanceStream.listen(instanceEmissions.add);
 
-        // Allow initial emission to propagate
-        await pumpEventQueue();
-        expect(instanceEmissions.isNotEmpty, isTrue);
-        expect(instanceEmissions.last.length, 1);
-        expect(instanceEmissions.last.first.id, personalInst.id);
+      // Allow initial emission to propagate
+      await pumpEventQueue();
+      expect(instanceEmissions.isNotEmpty, isTrue);
+      expect(instanceEmissions.last.length, 1);
+      expect(instanceEmissions.last.first.id, personalInst.id);
 
-        // Transition: User joins family
-        await firestore.collection(FirestorePaths.users).doc(userId).set({
-          'displayName': 'Test User',
-          'familyId': familyId,
-        });
+      // Transition: User joins family
+      await firestore.collection(FirestorePaths.users).doc(userId).set({
+        'displayName': 'Test User',
+        'familyId': familyId,
+      });
 
-        await pumpEventQueue();
-        expect(instanceEmissions.last.length, 2);
-        expect(
-          instanceEmissions.last.any((i) => i.id == familyInst.id),
-          isTrue,
-        );
+      await pumpEventQueue();
+      expect(instanceEmissions.last.length, 2);
+      expect(instanceEmissions.last.any((i) => i.id == familyInst.id), isTrue);
 
-        // Transition: User leaves family
-        await firestore.collection(FirestorePaths.users).doc(userId).set({
-          'displayName': 'Test User',
-          'familyId': '',
-        });
+      // Transition: User leaves family
+      await firestore.collection(FirestorePaths.users).doc(userId).set({
+        'displayName': 'Test User',
+        'familyId': '',
+      });
 
-        await pumpEventQueue();
-        expect(instanceEmissions.last.length, 1);
-        expect(instanceEmissions.last.first.id, personalInst.id);
+      await pumpEventQueue();
+      expect(instanceEmissions.last.length, 1);
+      expect(instanceEmissions.last.first.id, personalInst.id);
 
-        await sub.cancel();
-      },
-    );
+      await sub.cancel();
+    });
   });
 
   group('2. Missed Policy Queue Processing', () {
@@ -635,38 +611,35 @@ void main() {
   });
 
   group('4. Virtual Instance Expiration', () {
-    test(
-      'Virtual Instance Injection: caches recently spawned instance and '
-      'injects virtual TaskInstance within 2 seconds',
-      () {
-        final task = createTestTask(id: 'S-virtual-task');
-        const ruleId = 'rule-1';
-        final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
+    test('Virtual Instance Injection: caches recently spawned instance and '
+        'injects virtual TaskInstance within 2 seconds', () {
+      final task = createTestTask(id: 'S-virtual-task');
+      const ruleId = 'rule-1';
+      final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
 
-        final cacheKey = '${task.id}:$ruleId:${targetDate.toString()}';
-        repository.spawnedInstancesCache[cacheKey] = fixedClockTime.subtract(
-          const Duration(milliseconds: 500),
-        );
+      final cacheKey = '${task.id}:$ruleId:${targetDate.toString()}';
+      repository.spawnedInstancesCache[cacheKey] = fixedClockTime.subtract(
+        const Duration(milliseconds: 500),
+      );
 
-        final taskInstances = <TaskInstance>[];
-        repository.injectVirtualSpawnedInstances(
-          task,
-          taskInstances,
-          fixedClockTime,
-        );
+      final taskInstances = <TaskInstance>[];
+      repository.injectVirtualSpawnedInstances(
+        task,
+        taskInstances,
+        fixedClockTime,
+      );
 
-        expect(taskInstances.length, 1);
-        final virtualInst = taskInstances.first;
-        expect(virtualInst.id.startsWith('VIRTUAL-'), isTrue);
-        expect(virtualInst.scheduleId, task.id);
-        expect(virtualInst.ruleId, ruleId);
-        expect(virtualInst.scheduledDate, targetDate);
-        expect(virtualInst.status, TaskStatus.pending);
+      expect(taskInstances.length, 1);
+      final virtualInst = taskInstances.first;
+      expect(virtualInst.id.startsWith('VIRTUAL-'), isTrue);
+      expect(virtualInst.scheduleId, task.id);
+      expect(virtualInst.ruleId, ruleId);
+      expect(virtualInst.scheduledDate, targetDate);
+      expect(virtualInst.status, TaskStatus.pending);
 
-        // Cache entry remains valid (within 2 seconds)
-        expect(repository.spawnedInstancesCache.containsKey(cacheKey), isTrue);
-      },
-    );
+      // Cache entry remains valid (within 2 seconds)
+      expect(repository.spawnedInstancesCache.containsKey(cacheKey), isTrue);
+    });
 
     test(
       'Cache Expiration: purges expired entries after 2 seconds and does not '
