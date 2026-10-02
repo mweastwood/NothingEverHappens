@@ -53,17 +53,29 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     TaskInstance a,
     TaskInstance b,
     String column,
-    bool ascending,
-  ) {
+    bool ascending, {
+    Map<String, DateTime>? nextDueMap,
+    Map<String, String>? titleMap,
+  }) {
     if (column == 'next_due') {
-      final aDue = a.dueRelativeTime.referenceTo(a.scheduledDate);
-      final bDue = b.dueRelativeTime.referenceTo(b.scheduledDate);
+      final aDue = nextDueMap != null
+          ? (nextDueMap[a.id] ?? a.dueRelativeTime.referenceTo(a.scheduledDate))
+          : a.dueRelativeTime.referenceTo(a.scheduledDate);
+      final bDue = nextDueMap != null
+          ? (nextDueMap[b.id] ?? b.dueRelativeTime.referenceTo(b.scheduledDate))
+          : b.dueRelativeTime.referenceTo(b.scheduledDate);
       return compareDateTimes(aDue, bDue, ascending);
     }
 
     int result = 0;
     if (column == 'title') {
-      result = a.title.toLowerCase().compareTo(b.title.toLowerCase());
+      final aTitle = titleMap != null
+          ? (titleMap[a.id] ?? a.title.toLowerCase())
+          : a.title.toLowerCase();
+      final bTitle = titleMap != null
+          ? (titleMap[b.id] ?? b.title.toLowerCase())
+          : b.title.toLowerCase();
+      result = aTitle.compareTo(bTitle);
     } else if (column == 'priority') {
       result = a.priority.index.compareTo(b.priority.index);
     }
@@ -204,6 +216,25 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             for (int i = 0; i < filteredInstances.length; i++)
               filteredInstances[i].id: i,
           };
+
+          final hasNextDue = sortHistory.any((s) => s.column == 'next_due');
+          final hasTitle = sortHistory.any((s) => s.column == 'title');
+
+          final nextDueMap = hasNextDue
+              ? <String, DateTime>{
+                  for (final inst in filteredInstances)
+                    inst.id:
+                        inst.dueRelativeTime.referenceTo(inst.scheduledDate),
+                }
+              : null;
+
+          final titleMap = hasTitle
+              ? <String, String>{
+                  for (final inst in filteredInstances)
+                    inst.id: inst.title.toLowerCase(),
+                }
+              : null;
+
           filteredInstances.sort((a, b) {
             for (final sort in sortHistory) {
               final result = _compareInstances(
@@ -211,6 +242,8 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 b,
                 sort.column,
                 sort.ascending,
+                nextDueMap: nextDueMap,
+                titleMap: titleMap,
               );
               if (result != 0) return result;
             }
