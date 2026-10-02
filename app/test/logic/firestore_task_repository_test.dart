@@ -87,12 +87,12 @@ void main() {
 
   group('1. Firestore Stream Subscriptions', () {
     test(
-      'Personal-Only Streams: getTasks and getInstances emit matching documents when familyId is null or empty',
+      'Personal-Only Streams: getTasks and getInstances emit matching '
+      'documents when familyId is null or empty',
       () async {
-        // Set user document without familyId
+        // Set user document without familyId (field omitted / null)
         await firestore.collection(FirestorePaths.users).doc(userId).set({
           'displayName': 'Test User',
-          'familyId': '',
         });
 
         final personalTask = createTestTask(
@@ -123,11 +123,27 @@ void main() {
         expect(instances.length, 1);
         expect(instances.first.id, personalInst.id);
         expect(instances.first.scheduleId, personalInst.scheduleId);
+
+        // Also test explicitly setting familyId to null and empty string
+        await firestore.collection(FirestorePaths.users).doc(userId).set({
+          'displayName': 'Test User',
+          'familyId': null,
+        });
+        expect((await repository.getTasks().first).length, 1);
+        expect((await repository.getInstances().first).length, 1);
+
+        await firestore.collection(FirestorePaths.users).doc(userId).set({
+          'displayName': 'Test User',
+          'familyId': '',
+        });
+        expect((await repository.getTasks().first).length, 1);
+        expect((await repository.getInstances().first).length, 1);
       },
     );
 
     test(
-      'Family-Scoped Streams: getTasks and getInstances combine streams from personal and family collections',
+      'Family-Scoped Streams: getTasks and getInstances combine streams '
+      'from personal and family collections',
       () async {
         // Configure user doc with familyId
         await firestore.collection(FirestorePaths.users).doc(userId).set({
@@ -188,7 +204,8 @@ void main() {
     );
 
     test(
-      'Dynamic Stream Re-subscription: stream updates automatically when user familyId transitions',
+      'Dynamic Stream Re-subscription (Tasks): stream updates automatically '
+      'when user familyId transitions',
       () async {
         // Initially personal only
         await firestore.collection(FirestorePaths.users).doc(userId).set({
@@ -244,11 +261,80 @@ void main() {
         await sub.cancel();
       },
     );
+
+    test(
+      'Dynamic Stream Re-subscription (Instances): getInstances stream '
+      'updates automatically when user familyId transitions',
+      () async {
+        // Initially personal only
+        await firestore.collection(FirestorePaths.users).doc(userId).set({
+          'displayName': 'Test User',
+          'familyId': '',
+        });
+
+        final personalInst = createTestInstance(
+          id: 'I-personal-dyn-1',
+          scheduleId: 'S-personal-dyn-1',
+          isFamily: false,
+        );
+        final familyInst = createTestInstance(
+          id: 'I-family-dyn-1',
+          scheduleId: 'S-family-dyn-1',
+          title: 'Family Instance Dynamic',
+          isFamily: true,
+        );
+
+        await FirestoreCollections.userInstances(
+          firestore,
+          userId,
+        ).doc(personalInst.id).set(personalInst);
+        await FirestoreCollections.familyInstances(
+          firestore,
+          familyId,
+        ).doc(familyInst.id).set(familyInst);
+
+        final instanceStream = repository.getInstances();
+        final instanceEmissions = <List<TaskInstance>>[];
+        final sub = instanceStream.listen(instanceEmissions.add);
+
+        // Allow initial emission to propagate
+        await pumpEventQueue();
+        expect(instanceEmissions.isNotEmpty, isTrue);
+        expect(instanceEmissions.last.length, 1);
+        expect(instanceEmissions.last.first.id, personalInst.id);
+
+        // Transition: User joins family
+        await firestore.collection(FirestorePaths.users).doc(userId).set({
+          'displayName': 'Test User',
+          'familyId': familyId,
+        });
+
+        await pumpEventQueue();
+        expect(instanceEmissions.last.length, 2);
+        expect(
+          instanceEmissions.last.any((i) => i.id == familyInst.id),
+          isTrue,
+        );
+
+        // Transition: User leaves family
+        await firestore.collection(FirestorePaths.users).doc(userId).set({
+          'displayName': 'Test User',
+          'familyId': '',
+        });
+
+        await pumpEventQueue();
+        expect(instanceEmissions.last.length, 1);
+        expect(instanceEmissions.last.first.id, personalInst.id);
+
+        await sub.cancel();
+      },
+    );
   });
 
   group('2. Missed Policy Queue Processing', () {
     test(
-      'Single Invocation: processes tasks, updates task caches, and executes pending missed policy logic',
+      'Single Invocation: processes tasks, updates task caches, and executes '
+      'pending missed policy logic',
       () async {
         final task = createTestTask(
           id: 'S-task-single',
@@ -283,7 +369,8 @@ void main() {
         expect(repository.cachedTasksMap.containsKey(task.id), isTrue);
         expect(repository.cachedTasksMap[task.id]?.title, 'Overdue Task');
 
-        // Verify instances were spawned in Firestore by SchedulerEngine evaluation
+        // Verify instances were spawned in Firestore by SchedulerEngine
+        // evaluation
         final instancesSnap = await FirestoreCollections.userInstances(
           firestore,
           userId,
@@ -297,7 +384,8 @@ void main() {
     );
 
     test(
-      'Deduplication & Concurrency: concurrent or rapid successive calls deduplicate task IDs in _queuedTasksMap without race conditions',
+      'Deduplication & Concurrency: concurrent or rapid successive calls '
+      'deduplicate task IDs in _queuedTasksMap without race conditions',
       () async {
         final task = createTestTask(
           id: 'S-task-dedup',
@@ -332,8 +420,9 @@ void main() {
         );
         await Future.wait(futures);
 
-        // Task map should contain the task exactly once
+        // Verify task map contains the task and queue was completely drained
         expect(repository.cachedTasksMap.containsKey(task.id), isTrue);
+        expect(repository.queuedTasksMap.isEmpty, isTrue);
 
         // Verify no duplicate instances were spawned in Firestore
         final instancesSnap = await FirestoreCollections.userInstances(
@@ -348,7 +437,8 @@ void main() {
     );
 
     test(
-      'Post-Processing Callbacks: executes postProcess callbacks sequentially following queue completion',
+      'Post-Processing Callbacks: executes postProcess callbacks sequentially '
+      'following queue completion',
       () async {
         final task = createTestTask(id: 'S-task-callback');
         await FirestoreCollections.userTasks(
@@ -388,7 +478,8 @@ void main() {
 
   group('3. Orphaned Instance Cleanup', () {
     test(
-      'Orphan Detection & Deletion: deletes pending instances whose scheduleId does not match any active task in taskMap',
+      'Orphan Detection & Deletion: deletes pending instances whose scheduleId '
+      'does not match any active task in taskMap',
       () async {
         final orphanInst = createTestInstance(
           id: 'I-orphan-1',
@@ -402,6 +493,12 @@ void main() {
           firestore,
           userId,
         ).doc(orphanInst.id).set(orphanInst);
+
+        // Pre-populate spawnedInstancesCache with this orphan instance
+        final cacheKey =
+            '${orphanInst.scheduleId}:${orphanInst.ruleId}:'
+            '${orphanInst.scheduledDate}';
+        repository.spawnedInstancesCache[cacheKey] = fixedClockTime;
 
         final batch = firestore.batch();
         final instancesById = <String, TaskInstance>{orphanInst.id: orphanInst};
@@ -423,6 +520,7 @@ void main() {
         await batch.commit();
 
         expect(hasChanges, isTrue);
+        expect(repository.spawnedInstancesCache.containsKey(cacheKey), isFalse);
         expect(deletedInstanceIds.contains(orphanInst.id), isTrue);
         expect(instancesById.containsKey(orphanInst.id), isFalse);
         expect(
@@ -439,7 +537,8 @@ void main() {
     );
 
     test(
-      'Non-Orphan Preservation: preserves instances attached to active tasks, completed/skipped instances, and family-scoped instances',
+      'Non-Orphan Preservation: preserves instances attached to active tasks, '
+      'completed/skipped instances, and family-scoped instances',
       () async {
         final activeTask = createTestTask(id: 'S-active-task');
         final taskMap = <String, TaskSchedule>{activeTask.id: activeTask};
@@ -480,10 +579,17 @@ void main() {
         ];
 
         for (final inst in instancesList) {
-          await FirestoreCollections.userInstances(
-            firestore,
-            userId,
-          ).doc(inst.id).set(inst);
+          if (inst.isFamily) {
+            await FirestoreCollections.familyInstances(
+              firestore,
+              familyId,
+            ).doc(inst.id).set(inst);
+          } else {
+            await FirestoreCollections.userInstances(
+              firestore,
+              userId,
+            ).doc(inst.id).set(inst);
+          }
         }
 
         final batch = firestore.batch();
@@ -502,7 +608,7 @@ void main() {
           instancesByScheduleId,
           deletedInstanceIds,
           taskMap,
-          null,
+          familyId,
         );
 
         await batch.commit();
@@ -512,10 +618,16 @@ void main() {
         expect(instancesById.length, 4);
 
         for (final inst in instancesList) {
-          final docSnap = await FirestoreCollections.userInstances(
-            firestore,
-            userId,
-          ).doc(inst.id).get();
+          final docRef = inst.isFamily
+              ? FirestoreCollections.familyInstances(
+                  firestore,
+                  familyId,
+                ).doc(inst.id)
+              : FirestoreCollections.userInstances(
+                  firestore,
+                  userId,
+                ).doc(inst.id);
+          final docSnap = await docRef.get();
           expect(docSnap.exists, isTrue);
         }
       },
@@ -524,7 +636,8 @@ void main() {
 
   group('4. Virtual Instance Expiration', () {
     test(
-      'Virtual Instance Injection: caches recently spawned instance and injects virtual TaskInstance within 2 seconds',
+      'Virtual Instance Injection: caches recently spawned instance and '
+      'injects virtual TaskInstance within 2 seconds',
       () {
         final task = createTestTask(id: 'S-virtual-task');
         const ruleId = 'rule-1';
@@ -556,7 +669,8 @@ void main() {
     );
 
     test(
-      'Cache Expiration: purges expired entries after 2 seconds and does not inject virtual instances',
+      'Cache Expiration: purges expired entries after 2 seconds and does not '
+      'inject virtual instances',
       () {
         final task = createTestTask(id: 'S-expired-task');
         const ruleId = 'rule-1';
@@ -580,7 +694,8 @@ void main() {
     );
 
     test(
-      'Does not inject virtual instance if instance with matching ruleId and date already exists',
+      'Does not inject virtual instance if instance with matching ruleId and '
+      'date already exists',
       () {
         final task = createTestTask(id: 'S-existing-task');
         const ruleId = 'rule-1';
