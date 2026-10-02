@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
+
 import '../logic/auth_repository.dart';
 import '../widgets/task_widget.dart';
 import 'home_screen.dart';
@@ -223,8 +225,9 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           final nextDueMap = hasNextDue
               ? <String, DateTime>{
                   for (final inst in filteredInstances)
-                    inst.id:
-                        inst.dueRelativeTime.referenceTo(inst.scheduledDate),
+                    inst.id: inst.dueRelativeTime.referenceTo(
+                      inst.scheduledDate,
+                    ),
                 }
               : null;
 
