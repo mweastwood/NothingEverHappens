@@ -5,6 +5,7 @@ import 'dart:js_util' as js_util;
 import 'abstract_admin.dart';
 
 js.JsObject? _adminInstance;
+js.JsObject? _appModuleInstance;
 js.JsObject? _firestoreModuleInstance;
 js.JsObject? _authModuleInstance;
 js.JsObject? _dbInstance;
@@ -19,6 +20,17 @@ js.JsObject _requireModule(String moduleName) {
 }
 
 js.JsObject get _admin => _adminInstance ??= _requireModule('firebase-admin');
+
+js.JsObject get _appModule {
+  if (_appModuleInstance == null) {
+    try {
+      _appModuleInstance = _requireModule('firebase-admin/app');
+    } catch (_) {
+      _appModuleInstance = _admin;
+    }
+  }
+  return _appModuleInstance!;
+}
 
 js.JsObject get _firestoreModule {
   if (_firestoreModuleInstance == null) {
@@ -53,12 +65,18 @@ js.JsObject get _authModule {
 }
 
 void initializeFirebaseAdmin() {
-  final apps = _admin['apps'] as List? ??
+  final apps = (_appModule.hasProperty('getApps')
+          ? _appModule.callMethod('getApps') as List?
+          : null) ??
+      _appModule['apps'] as List? ??
       (_admin.hasProperty('getApps')
           ? _admin.callMethod('getApps') as List?
-          : null);
+          : null) ??
+      _admin['apps'] as List?;
   if (apps == null || apps.isEmpty) {
-    if (_admin.hasProperty('initializeApp')) {
+    if (_appModule.hasProperty('initializeApp')) {
+      _appModule.callMethod('initializeApp');
+    } else if (_admin.hasProperty('initializeApp')) {
       _admin.callMethod('initializeApp');
     }
   }
