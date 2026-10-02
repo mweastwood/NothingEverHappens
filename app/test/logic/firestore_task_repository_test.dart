@@ -41,7 +41,7 @@ void main() {
           schedules ??
           [
             OneOffSchedule(
-              id: 'rule-1',
+              id: 'R-rule-1',
               date: const CivilDay(year: 2026, month: 6, day: 1),
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
@@ -62,7 +62,7 @@ void main() {
   TaskInstance createTestInstance({
     required String id,
     required String scheduleId,
-    String ruleId = 'rule-1',
+    String ruleId = 'R-rule-1',
     String title = 'Test Task Instance',
     TaskStatus status = TaskStatus.pending,
     bool isFamily = false,
@@ -317,7 +317,7 @@ void main() {
           title: 'Overdue Task',
           schedules: [
             OneOffSchedule(
-              id: 'rule-single',
+              id: 'R-rule-single',
               date: const CivilDay(year: 2026, month: 6, day: 1),
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
@@ -368,7 +368,7 @@ void main() {
           title: 'Concurrent Task',
           schedules: [
             OneOffSchedule(
-              id: 'rule-dedup',
+              id: 'R-rule-dedup',
               date: const CivilDay(year: 2026, month: 6, day: 2),
               startRelativeTime: const RelativeTime(
                 dayOffset: 0,
@@ -614,7 +614,7 @@ void main() {
     test('Virtual Instance Injection: caches recently spawned instance and '
         'injects virtual TaskInstance within 2 seconds', () {
       final task = createTestTask(id: 'S-virtual-task');
-      const ruleId = 'rule-1';
+      const ruleId = 'R-rule-1';
       final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
 
       final cacheKey = '${task.id}:$ruleId:${targetDate.toString()}';
@@ -646,7 +646,7 @@ void main() {
       'inject virtual instances',
       () {
         final task = createTestTask(id: 'S-expired-task');
-        const ruleId = 'rule-1';
+        const ruleId = 'R-rule-1';
         final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
 
         final cacheKey = '${task.id}:$ruleId:${targetDate.toString()}';
@@ -671,7 +671,7 @@ void main() {
       'date already exists',
       () {
         final task = createTestTask(id: 'S-existing-task');
-        const ruleId = 'rule-1';
+        const ruleId = 'R-rule-1';
         final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
 
         final cacheKey = '${task.id}:$ruleId:${targetDate.toString()}';
