@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'app_clock.dart';
@@ -75,6 +76,54 @@ class FirestoreTaskRepository implements TaskRepository {
   void dispose() {
     _triggerTimer?.cancel();
   }
+
+  @visibleForTesting
+  Map<String, TaskSchedule> get queuedTasksMap => _queuedTasksMap;
+
+  @visibleForTesting
+  Map<String, TaskSchedule> get cachedTasksMap => _cachedTasksMap;
+
+  @visibleForTesting
+  Map<String, DateTime> get spawnedInstancesCache => _spawnedInstancesCache;
+
+  @visibleForTesting
+  static Duration get spawnedInstanceCacheDuration =>
+      _spawnedInstanceCacheDuration;
+
+  @visibleForTesting
+  Future<void> checkAndProcessMissedPolicies(
+    List<TaskSchedule> tasks, {
+    bool forceRun = false,
+    Future<void> Function()? postProcess,
+  }) => _checkAndProcessMissedPolicies(
+    tasks,
+    forceRun: forceRun,
+    postProcess: postProcess,
+  );
+
+  @visibleForTesting
+  void injectVirtualSpawnedInstances(
+    TaskSchedule task,
+    List<TaskInstance> taskInstances,
+    DateTime now,
+  ) => _injectVirtualSpawnedInstances(task, taskInstances, now);
+
+  @visibleForTesting
+  bool sweepOrphanedPendingInstances(
+    WriteBatch batch,
+    Map<String, TaskInstance> instancesById,
+    Map<String, List<TaskInstance>> instancesByScheduleId,
+    Set<String> deletedInstanceIds,
+    Map<String, TaskSchedule> taskMap,
+    String? familyId,
+  ) => _sweepOrphanedPendingInstances(
+    batch,
+    instancesById,
+    instancesByScheduleId,
+    deletedInstanceIds,
+    taskMap,
+    familyId,
+  );
 
   CollectionReference<TaskSchedule> _tasksRefForUser(String userId) {
     return FirestoreCollections.userTasks(_firestore, userId);
