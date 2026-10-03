@@ -15,6 +15,7 @@ import '../logic/user_profile_provider.dart';
 import '../logic/user_settings_repository.dart';
 import '../screens/create_task_screen.dart';
 import 'markdown_styles.dart';
+import 'task_hero_stripe.dart';
 import 'undo_snackbar.dart';
 
 class TaskScheduleCard extends ConsumerWidget {
@@ -25,6 +26,7 @@ class TaskScheduleCard extends ConsumerWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onCopy;
   final VoidCallback? onDelete;
+  final List<TaskLabel>? labels;
 
   const TaskScheduleCard({
     super.key,
@@ -35,6 +37,7 @@ class TaskScheduleCard extends ConsumerWidget {
     this.onEdit,
     this.onCopy,
     this.onDelete,
+    this.labels,
   });
 
   String _formatDuration(Duration duration) {
@@ -92,16 +95,21 @@ class TaskScheduleCard extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildLabelBadges(
-    BuildContext context,
-    WidgetRef ref,
-    List<String> labelIds,
-  ) {
-    if (labelIds.isEmpty) return const <Widget>[];
-    final allLabels = ref.watch(allLabelsMapProvider);
-    return labelIds
-        .map((id) => allLabels[id])
+  List<TaskLabel> _resolveLabels(WidgetRef ref) {
+    if (labels != null) {
+      return labels!;
+    }
+    if (task.labelIds.isEmpty) return const [];
+    final labelsMap = ref.watch(allLabelsMapProvider);
+    return task.labelIds
+        .map((id) => labelsMap[id])
         .whereType<TaskLabel>()
+        .toList();
+  }
+
+  List<Widget> _buildLabelBadges(BuildContext context, List<TaskLabel> labels) {
+    if (labels.isEmpty) return const <Widget>[];
+    return labels
         .map(
           (label) => _buildBadge(
             context,
@@ -348,6 +356,10 @@ class TaskScheduleCard extends ConsumerWidget {
     final effectiveRepository = repository ?? ref.watch(taskRepositoryProvider);
     final theme = Theme.of(context);
     final canDelete = !task.isFamily || effectiveIsParent;
+    final resolvedLabels = _resolveLabels(ref);
+    final labelColors = resolvedLabels
+        .map((l) => LabelPalette.getColor(l.colorKey, context))
+        .toList();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -357,340 +369,367 @@ class TaskScheduleCard extends ConsumerWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
           children: [
-            // Card Header with Title, priority, actions (high density)
-            Padding(
-              padding: const EdgeInsets.only(
-                left: 12.0,
-                right: 4.0,
-                top: 8.0,
-                bottom: 0.0,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      task.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    key: Key('copy_schedule_button_${task.id}'),
-                    icon: const Icon(Icons.copy_outlined, size: 20),
-                    visualDensity: VisualDensity.compact,
-                    tooltip: context.l10n.copyScheduleTooltip,
-                    onPressed:
-                        onCopy ??
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  CreateTaskScreen(taskToDuplicate: task),
-                            ),
-                          );
-                        },
-                  ),
-                  IconButton(
-                    key: Key('edit_schedule_button_${task.id}'),
-                    icon: const Icon(Icons.edit_calendar_outlined, size: 20),
-                    visualDensity: VisualDensity.compact,
-                    tooltip: context.l10n.editScheduleTooltip,
-                    onPressed:
-                        onEdit ??
-                        () {
-                          SystemNavigator.routeInformationUpdated(
-                            uri: Uri.parse('/edit/${task.id}'),
-                          );
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  CreateTaskScreen(taskToEdit: task),
-                            ),
-                          ).then((_) {
-                            SystemNavigator.routeInformationUpdated(
-                              uri: Uri.parse('/schedules'),
-                            );
-                          });
-                        },
-                  ),
-                  if (canDelete)
-                    IconButton(
-                      key: Key('delete_schedule_button_${task.id}'),
-                      icon: Icon(
-                        Icons.delete_outline,
-                        color: theme.colorScheme.error,
-                        size: 20,
-                      ),
-                      visualDensity: VisualDensity.compact,
-                      tooltip: context.l10n.deleteTaskTooltip,
-                      onPressed:
-                          onDelete ??
-                          () {
-                            if (effectiveRepository != null) {
-                              _confirmDelete(
-                                context,
-                                ref,
-                                effectiveRepository,
-                                task,
-                              );
-                            }
-                          },
-                    ),
-                ],
-              ),
-            ),
-            if (task.isFamily || task.labelIds.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: 12.0,
-                  right: 12.0,
-                  bottom: 8.0,
-                ),
-                child: Wrap(
-                  spacing: 6.0,
-                  runSpacing: 6.0,
-                  children: [
-                    if (task.isFamily)
-                      _buildBadge(
-                        context,
-                        icon: Icons.people_alt,
-                        label: context.l10n.familyTab,
-                        color: theme.colorScheme.primary,
-                      ),
-                    if (task.isFamily &&
-                        task.familyCompletionMode ==
-                            FamilyCompletionMode.individual)
-                      _buildBadge(
-                        context,
-                        icon: Icons.checklist,
-                        label: context.l10n.completionModeIndividualLabel,
-                        color: theme.colorScheme.primary,
-                      ),
-                    if (task.isFamily && task.assignedUserId != null)
-                      _buildBadge(
-                        context,
-                        icon: Icons.assignment_ind,
-                        label: ref
-                            .watch(userNameProvider(task.assignedUserId!))
-                            .when(
-                              data: (name) => context.l10n.assignedTo(name),
-                              loading: () => context.l10n.loadingBadge,
-                              error: (_, _) => context.l10n.assignedBadge,
-                            ),
-                        color: theme.colorScheme.primary,
-                      ),
-                    ..._buildLabelBadges(context, ref, task.labelIds),
-                  ],
-                ),
-              ),
-            if (task.description.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: 12.0,
-                  right: 12.0,
-                  bottom: 8.0,
-                ),
-                child: MarkdownBody(
-                  data: task.description,
-                  selectable: false,
-                  styleSheet: MarkdownStyles.taskDescription(
-                    context,
-                    textStyle: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.8,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-            if (task.estimatedDuration != null)
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: 12.0,
-                  right: 12.0,
-                  bottom: 8.0,
-                ),
-                child: Text(
-                  context.l10n.estimatedEffortLabel(
-                    _formatDuration(task.estimatedDuration!),
-                  ),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.8,
-                    ),
-                  ),
-                ),
-              ),
-            if (effectiveShowLastSpawnedDate)
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: 12.0,
-                  right: 12.0,
-                  bottom: 8.0,
-                ),
-                child: Text(
-                  'lastSpawnedDate: ${task.lastSpawnedDate?.toString() ?? "null"}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 11.0,
-                    height: 1.2,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.6,
-                    ),
-                  ),
-                ),
-              ),
-            const Divider(height: 1, thickness: 0.5),
-            // Rule list inside task card (high density)
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: task.schedules.length,
-              separatorBuilder: (context, _) =>
-                  const Divider(height: 1, indent: 12, endIndent: 12),
-              itemBuilder: (context, idx) {
-                final rule = task.schedules[idx];
-                final parts = _getRecurrenceRuleDetails(context, rule);
-
-                String freqText = _getRecurrenceRuleTypeName(context, rule);
-                int interval = 1;
-                if (rule is DailySchedule) {
-                  interval = rule.interval;
-                } else if (rule is WeeklySchedule) {
-                  interval = rule.interval;
-                } else if (rule is MonthlySchedule) {
-                  interval = rule.interval;
-                } else if (rule is YearlySchedule) {
-                  interval = rule.interval;
-                }
-                if (interval > 1) {
-                  freqText = '$freqText (${parts.interval})';
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12.0,
-                    vertical: 8.0,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Card Header with Title, priority, actions (high density)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: 12.0,
+                    right: 4.0,
+                    top: 8.0,
+                    bottom: 0.0,
                   ),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Column 1
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              freqText,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (parts.days.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                parts.days,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ],
+                        child: Text(
+                          task.title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      // Column 2
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  rule.schedulingPolicy
-                                          is CompletionRelativePolicy
-                                      ? Icons.sync
-                                      : Icons.calendar_today,
-                                  size: 14,
-                                  color: theme.colorScheme.onSurfaceVariant,
+                      IconButton(
+                        key: Key('copy_schedule_button_${task.id}'),
+                        icon: const Icon(Icons.copy_outlined, size: 20),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: context.l10n.copyScheduleTooltip,
+                        onPressed:
+                            onCopy ??
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      CreateTaskScreen(taskToDuplicate: task),
                                 ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    rule.schedulingPolicy
-                                            is CompletionRelativePolicy
-                                        ? context.l10n.completionRelativeLabel
-                                        : context.l10n.fixedCalendarLabel,
+                              );
+                            },
+                      ),
+                      IconButton(
+                        key: Key('edit_schedule_button_${task.id}'),
+                        icon: const Icon(
+                          Icons.edit_calendar_outlined,
+                          size: 20,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: context.l10n.editScheduleTooltip,
+                        onPressed:
+                            onEdit ??
+                            () {
+                              SystemNavigator.routeInformationUpdated(
+                                uri: Uri.parse('/edit/${task.id}'),
+                              );
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      CreateTaskScreen(taskToEdit: task),
+                                ),
+                              ).then((_) {
+                                SystemNavigator.routeInformationUpdated(
+                                  uri: Uri.parse('/schedules'),
+                                );
+                              });
+                            },
+                      ),
+                      if (canDelete)
+                        IconButton(
+                          key: Key('delete_schedule_button_${task.id}'),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: theme.colorScheme.error,
+                            size: 20,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          tooltip: context.l10n.deleteTaskTooltip,
+                          onPressed:
+                              onDelete ??
+                              () {
+                                if (effectiveRepository != null) {
+                                  _confirmDelete(
+                                    context,
+                                    ref,
+                                    effectiveRepository,
+                                    task,
+                                  );
+                                }
+                              },
+                        ),
+                    ],
+                  ),
+                ),
+                if (task.isFamily || resolvedLabels.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 12.0,
+                      right: 12.0,
+                      bottom: 8.0,
+                    ),
+                    child: Wrap(
+                      spacing: 6.0,
+                      runSpacing: 6.0,
+                      children: [
+                        if (task.isFamily)
+                          _buildBadge(
+                            context,
+                            icon: Icons.people_alt,
+                            label: context.l10n.familyTab,
+                            color: theme.colorScheme.primary,
+                          ),
+                        if (task.isFamily &&
+                            task.familyCompletionMode ==
+                                FamilyCompletionMode.individual)
+                          _buildBadge(
+                            context,
+                            icon: Icons.checklist,
+                            label: context.l10n.completionModeIndividualLabel,
+                            color: theme.colorScheme.primary,
+                          ),
+                        if (task.isFamily && task.assignedUserId != null)
+                          _buildBadge(
+                            context,
+                            icon: Icons.assignment_ind,
+                            label: ref
+                                .watch(userNameProvider(task.assignedUserId!))
+                                .when(
+                                  data: (name) => context.l10n.assignedTo(name),
+                                  loading: () => context.l10n.loadingBadge,
+                                  error: (_, _) => context.l10n.assignedBadge,
+                                ),
+                            color: theme.colorScheme.primary,
+                          ),
+                        ..._buildLabelBadges(context, resolvedLabels),
+                      ],
+                    ),
+                  ),
+                if (task.description.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 12.0,
+                      right: 12.0,
+                      bottom: 8.0,
+                    ),
+                    child: MarkdownBody(
+                      data: task.description,
+                      selectable: false,
+                      styleSheet: MarkdownStyles.taskDescription(
+                        context,
+                        textStyle: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.8,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                if (task.estimatedDuration != null)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 12.0,
+                      right: 12.0,
+                      bottom: 8.0,
+                    ),
+                    child: Text(
+                      context.l10n.estimatedEffortLabel(
+                        _formatDuration(task.estimatedDuration!),
+                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.8,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (effectiveShowLastSpawnedDate)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 12.0,
+                      right: 12.0,
+                      bottom: 8.0,
+                    ),
+                    child: Text(
+                      'lastSpawnedDate: ${task.lastSpawnedDate?.toString() ?? "null"}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11.0,
+                        height: 1.2,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
+                    ),
+                  ),
+                const Divider(height: 1, thickness: 0.5),
+                // Rule list inside task card (high density)
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: task.schedules.length,
+                  separatorBuilder: (context, _) =>
+                      const Divider(height: 1, indent: 12, endIndent: 12),
+                  itemBuilder: (context, idx) {
+                    final rule = task.schedules[idx];
+                    final parts = _getRecurrenceRuleDetails(context, rule);
+
+                    String freqText = _getRecurrenceRuleTypeName(context, rule);
+                    int interval = 1;
+                    if (rule is DailySchedule) {
+                      interval = rule.interval;
+                    } else if (rule is WeeklySchedule) {
+                      interval = rule.interval;
+                    } else if (rule is MonthlySchedule) {
+                      interval = rule.interval;
+                    } else if (rule is YearlySchedule) {
+                      interval = rule.interval;
+                    }
+                    if (interval > 1) {
+                      freqText = '$freqText (${parts.interval})';
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12.0,
+                        vertical: 8.0,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Column 1
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  freqText,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (parts.days.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    parts.days,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (rule is! OneOffSchedule &&
-                                rule.schedulingPolicy
-                                    is! CompletionRelativePolicy) ...[
-                              const SizedBox(height: 4),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.assignment_late_outlined,
-                                    size: 14,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      _getMissedPolicyString(context, rule),
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: theme
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
                                     ),
                                   ),
                                 ],
-                              ),
-                            ],
-                            const SizedBox(height: 4),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Column 2
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  Icons.access_time,
-                                  size: 14,
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    '${_formatRelativeTime(context, rule.startRelativeTime)} -- ${_formatRelativeTime(context, rule.dueRelativeTime)}',
-                                    style: theme.textTheme.bodySmall?.copyWith(
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      rule.schedulingPolicy
+                                              is CompletionRelativePolicy
+                                          ? Icons.sync
+                                          : Icons.calendar_today,
+                                      size: 14,
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        rule.schedulingPolicy
+                                                is CompletionRelativePolicy
+                                            ? context
+                                                  .l10n
+                                                  .completionRelativeLabel
+                                            : context.l10n.fixedCalendarLabel,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (rule is! OneOffSchedule &&
+                                    rule.schedulingPolicy
+                                        is! CompletionRelativePolicy) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.assignment_late_outlined,
+                                        size: 14,
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          _getMissedPolicyString(context, rule),
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                ],
+                                const SizedBox(height: 4),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.access_time,
+                                      size: 14,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        '${_formatRelativeTime(context, rule.startRelativeTime)} -- ${_formatRelativeTime(context, rule.dueRelativeTime)}',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              },
+                    );
+                  },
+                ),
+              ],
             ),
+            if (labelColors.isNotEmpty)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  child: TaskHeroStripe(colors: labelColors),
+                ),
+              ),
           ],
         ),
       ),
