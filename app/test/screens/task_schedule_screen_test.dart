@@ -1869,5 +1869,139 @@ void main() {
         expect(find.text('Call Plumber'), findsNothing);
       },
     );
+
+    testWidgets(
+      'TaskScheduleScreen search filters by title/description/label, shows empty state, and clears query',
+      (tester) async {
+        final labelCleaning = TaskLabel(
+          id: 'L-clean',
+          name: 'Housework',
+          colorKey: 'emerald',
+          iconKey: 'cleaning',
+          scope: TaskLabelScope.personal,
+          createdAt: DateTime(2026, 1, 1),
+        );
+        final labelWork = TaskLabel(
+          id: 'L-work',
+          name: 'Work',
+          colorKey: 'cobalt',
+          iconKey: 'work',
+          scope: TaskLabelScope.personal,
+          createdAt: DateTime(2026, 1, 1),
+        );
+
+        final task1 = TaskSchedule(
+          id: 'S-clean',
+          title: 'Mop the Floors',
+          description: 'Kitchen and hallway',
+          labelIds: const ['L-clean'],
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 1, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 10,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 11,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final task2 = TaskSchedule(
+          id: 'S-plain',
+          title: 'Call Plumber',
+          description: 'Fix the leaky sink',
+          labelIds: const [],
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 1, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 12,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 13,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        tasksSubject.add([task1, task2]);
+
+        final container = ProviderContainer(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            allLabelsMapProvider.overrideWithValue({
+              'L-clean': labelCleaning,
+              'L-work': labelWork,
+            }),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: buildTestableWidget(
+              child: const Scaffold(body: TaskScheduleScreen()),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Mop the Floors'), findsOneWidget);
+        expect(find.text('Call Plumber'), findsOneWidget);
+
+        // 1. Filter by title
+        container.read(scheduleSearchQueryProvider.notifier).state = 'plumber';
+        await tester.pumpAndSettle();
+        expect(find.text('Call Plumber'), findsOneWidget);
+        expect(find.text('Mop the Floors'), findsNothing);
+
+        // 2. Filter by description
+        container.read(scheduleSearchQueryProvider.notifier).state = 'hallway';
+        await tester.pumpAndSettle();
+        expect(find.text('Mop the Floors'), findsOneWidget);
+        expect(find.text('Call Plumber'), findsNothing);
+
+        // 3. Filter by label name
+        container.read(scheduleSearchQueryProvider.notifier).state =
+            'housework';
+        await tester.pumpAndSettle();
+        expect(find.text('Mop the Floors'), findsOneWidget);
+        expect(find.text('Call Plumber'), findsNothing);
+
+        // 4. Query with no matches shows empty state
+        container.read(scheduleSearchQueryProvider.notifier).state =
+            'nonexistent';
+        await tester.pumpAndSettle();
+        expect(find.text('Mop the Floors'), findsNothing);
+        expect(find.text('Call Plumber'), findsNothing);
+        expect(
+          find.text('No matching schedules found for "nonexistent"'),
+          findsOneWidget,
+        );
+        expect(find.text('Clear Search'), findsOneWidget);
+
+        // 5. Clear search query button restores full list
+        await tester.tap(find.text('Clear Search'));
+        await tester.pumpAndSettle();
+
+        expect(container.read(scheduleSearchQueryProvider), isEmpty);
+        expect(find.text('Mop the Floors'), findsOneWidget);
+        expect(find.text('Call Plumber'), findsOneWidget);
+      },
+    );
   });
 }
