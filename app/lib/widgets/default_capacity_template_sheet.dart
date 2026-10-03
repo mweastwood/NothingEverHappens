@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/user_settings.dart';
+import '../logic/user_settings_repository.dart';
 import '../logic/utils/format_utils.dart';
 import 'edit_capacity_sheet.dart';
 
 class DefaultCapacityTemplateSheet extends ConsumerWidget {
   final UserSettings settings;
 
-  const DefaultCapacityTemplateSheet({
-    super.key,
-    required this.settings,
-  });
+  const DefaultCapacityTemplateSheet({super.key, required this.settings});
 
   static Future<void> show(
     BuildContext context, {
@@ -100,9 +98,7 @@ class DefaultCapacityTemplateSheet extends ConsumerWidget {
 
                 return ListTile(
                   key: Key('default_capacity_tile_$weekday'),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                   title: Text(dayLabel),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,

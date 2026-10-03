@@ -115,9 +115,7 @@ class _EditCapacitySheetState extends ConsumerState<EditCapacitySheet> {
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: theme.colorScheme.outlineVariant,
-              ),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
             ),
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
@@ -225,9 +223,7 @@ class _EditCapacitySheetState extends ConsumerState<EditCapacitySheet> {
                 onPressed: () {
                   final double newCapacity =
                       (_selectedHours * 60 + _selectedMinutes) / 60.0;
-                  final repository = ref.read(
-                    userSettingsRepositoryProvider,
-                  );
+                  final repository = ref.read(userSettingsRepositoryProvider);
                   if (repository != null) {
                     if (widget.isOverride) {
                       final updatedOverrides = Map<String, double>.from(

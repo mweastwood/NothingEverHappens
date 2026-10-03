@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/widgets/default_capacity_template_sheet.dart';
@@ -14,14 +15,18 @@ void main() {
   late MockUserSettingsRepository mockUserSettingsRepository;
 
   setUp(() {
+    AppClock.setMockTime(DateTime(2026, 7, 1, 9, 0));
     mockUserSettingsRepository = MockUserSettingsRepository();
-    when(mockUserSettingsRepository.updateSettings(any))
-        .thenAnswer((_) async {});
+    when(
+      mockUserSettingsRepository.updateSettings(any),
+    ).thenAnswer((_) async {});
   });
 
-  Widget createTestWidget({
-    required UserSettings settings,
-  }) {
+  tearDown(() {
+    AppClock.reset();
+  });
+
+  Widget createTestWidget({required UserSettings settings}) {
     return ProviderScope(
       overrides: [
         userSettingsRepositoryProvider.overrideWithValue(
@@ -87,37 +92,58 @@ void main() {
         );
 
         // Check Monday (1)
-        expect(find.byKey(const Key('default_capacity_tile_1')), findsOneWidget);
+        expect(
+          find.byKey(const Key('default_capacity_tile_1')),
+          findsOneWidget,
+        );
         expect(find.text('Monday'), findsOneWidget);
         expect(find.text('2h'), findsOneWidget);
 
         // Check Tuesday (2)
-        expect(find.byKey(const Key('default_capacity_tile_2')), findsOneWidget);
+        expect(
+          find.byKey(const Key('default_capacity_tile_2')),
+          findsOneWidget,
+        );
         expect(find.text('Tuesday'), findsOneWidget);
         expect(find.text('3h 30m'), findsOneWidget);
 
         // Check Wednesday (3)
-        expect(find.byKey(const Key('default_capacity_tile_3')), findsOneWidget);
+        expect(
+          find.byKey(const Key('default_capacity_tile_3')),
+          findsOneWidget,
+        );
         expect(find.text('Wednesday'), findsOneWidget);
         expect(find.text('0m'), findsOneWidget);
 
         // Check Thursday (4)
-        expect(find.byKey(const Key('default_capacity_tile_4')), findsOneWidget);
+        expect(
+          find.byKey(const Key('default_capacity_tile_4')),
+          findsOneWidget,
+        );
         expect(find.text('Thursday'), findsOneWidget);
         expect(find.text('1h 15m'), findsOneWidget);
 
         // Check Friday (5)
-        expect(find.byKey(const Key('default_capacity_tile_5')), findsOneWidget);
+        expect(
+          find.byKey(const Key('default_capacity_tile_5')),
+          findsOneWidget,
+        );
         expect(find.text('Friday'), findsOneWidget);
         expect(find.text('4h'), findsOneWidget);
 
         // Check Saturday (6)
-        expect(find.byKey(const Key('default_capacity_tile_6')), findsOneWidget);
+        expect(
+          find.byKey(const Key('default_capacity_tile_6')),
+          findsOneWidget,
+        );
         expect(find.text('Saturday'), findsOneWidget);
         expect(find.text('6h'), findsOneWidget);
 
         // Check Sunday (7)
-        expect(find.byKey(const Key('default_capacity_tile_7')), findsOneWidget);
+        expect(
+          find.byKey(const Key('default_capacity_tile_7')),
+          findsOneWidget,
+        );
         expect(find.text('Sunday'), findsOneWidget);
         expect(find.text('8h'), findsOneWidget);
       },
@@ -152,22 +178,21 @@ void main() {
       },
     );
 
-    testWidgets(
-      'close button dismisses template sheet',
-      (WidgetTester tester) async {
-        const settings = UserSettings(hoursAvailable: 8.0);
+    testWidgets('close button dismisses template sheet', (
+      WidgetTester tester,
+    ) async {
+      const settings = UserSettings(hoursAvailable: 8.0);
 
-        await openSheet(tester, settings: settings);
+      await openSheet(tester, settings: settings);
 
-        expect(find.byType(DefaultCapacityTemplateSheet), findsOneWidget);
+      expect(find.byType(DefaultCapacityTemplateSheet), findsOneWidget);
 
-        final closeBtn = find.byIcon(Icons.close);
-        expect(closeBtn, findsOneWidget);
-        await tester.tap(closeBtn);
-        await tester.pumpAndSettle();
+      final closeBtn = find.byIcon(Icons.close);
+      expect(closeBtn, findsOneWidget);
+      await tester.tap(closeBtn);
+      await tester.pumpAndSettle();
 
-        expect(find.byType(DefaultCapacityTemplateSheet), findsNothing);
-      },
-    );
+      expect(find.byType(DefaultCapacityTemplateSheet), findsNothing);
+    });
   });
 }
