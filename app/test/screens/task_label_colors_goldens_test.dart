@@ -11,6 +11,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/family_repository.dart';
 import 'package:nothing_ever_happens/logic/label_repository.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -20,7 +21,9 @@ import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/user_settings_repository.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
+import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
 import 'package:nothing_ever_happens/widgets/task_hero_stripe.dart';
+import 'package:nothing_ever_happens/widgets/task_schedule_card.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
 
 import '../test_helper.dart';
@@ -197,12 +200,44 @@ void main() {
       title: instanceNoLabels.title,
       description: instanceNoLabels.description,
       labelIds: const [],
+      schedules: [
+        DailySchedule(
+          startDate: civilToday,
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+        ),
+      ],
     ),
     TaskSchedule(
       id: 'S-1',
       title: instanceSingleLabel.title,
       description: instanceSingleLabel.description,
       labelIds: const ['L-cleaning'],
+      schedules: [
+        DailySchedule(
+          startDate: civilToday,
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 14,
+            minute: 0,
+          ),
+        ),
+      ],
     ),
     TaskSchedule(
       id: 'S-2',
@@ -210,6 +245,23 @@ void main() {
       description: instanceTwoLabels.description,
       priority: TaskPriority.high,
       labelIds: const ['L-work', 'L-urgent'],
+      schedules: [
+        WeeklySchedule(
+          startDate: civilToday,
+          interval: 1,
+          daysOfWeek: const {1, 3, 5},
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+        ),
+      ],
     ),
     TaskSchedule(
       id: 'S-3',
@@ -217,6 +269,23 @@ void main() {
       description: instanceThreeLabels.description,
       priority: TaskPriority.low,
       labelIds: const ['L-home', 'L-garden', 'L-special'],
+      schedules: [
+        WeeklySchedule(
+          startDate: civilToday,
+          interval: 2,
+          daysOfWeek: const {6},
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 8,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 0,
+          ),
+        ),
+      ],
     ),
     TaskSchedule(
       id: 'S-4',
@@ -224,6 +293,22 @@ void main() {
       description: instanceFourLabels.description,
       isFamily: true,
       labelIds: const ['L-meals', 'L-home', 'L-health', 'L-urgent'],
+      schedules: [
+        DailySchedule(
+          startDate: civilToday,
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 16,
+            minute: 0,
+          ),
+        ),
+      ],
     ),
   ];
 
@@ -281,6 +366,7 @@ void main() {
         testLabels.where((l) => l.scope == TaskLabelScope.family).toList(),
       ),
     ),
+    familyProfileStreamProvider.overrideWith((ref) => Stream.value(null)),
     allLabelsMapProvider.overrideWithValue(labelsMap),
   ];
 
@@ -543,5 +629,124 @@ void main() {
         'golden_task_list_screen_wide_layout_labels',
       );
     });
+  });
+
+  group('Schedule Card Label Variations Goldens', () {
+    Widget buildScheduleCardMatrix() {
+      return Scaffold(
+        body: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          children: [
+            TaskScheduleCard(task: testSchedules[0]),
+            const SizedBox(height: 12),
+            TaskScheduleCard(task: testSchedules[1]),
+            const SizedBox(height: 12),
+            TaskScheduleCard(task: testSchedules[2]),
+            const SizedBox(height: 12),
+            TaskScheduleCard(task: testSchedules[3]),
+            const SizedBox(height: 12),
+            TaskScheduleCard(task: testSchedules[4]),
+          ],
+        ),
+      );
+    }
+
+    testGoldens(
+      'Schedule Card Label Variations (0 to 4 labels) - Light Theme',
+      (tester) async {
+        await tester.pumpWidgetBuilder(
+          wrapInScope(buildScheduleCardMatrix()),
+          wrapper: l10nMaterialAppWrapper(
+            theme: ThemeData.light(useMaterial3: true),
+          ),
+          surfaceSize: const Size(420, 1150),
+        );
+        await tester.pumpAndSettle();
+        await screenMatchesGolden(
+          tester,
+          'golden_schedule_card_labels_matrix_light',
+        );
+      },
+    );
+
+    testGoldens('Schedule Card Label Variations (0 to 4 labels) - Dark Theme', (
+      tester,
+    ) async {
+      await tester.pumpWidgetBuilder(
+        wrapInScope(buildScheduleCardMatrix()),
+        wrapper: l10nMaterialAppWrapper(
+          theme: ThemeData.dark(useMaterial3: true),
+        ),
+        surfaceSize: const Size(420, 1150),
+      );
+      await tester.pumpAndSettle();
+      await screenMatchesGolden(
+        tester,
+        'golden_schedule_card_labels_matrix_dark',
+      );
+    });
+  });
+
+  group('Task Schedule Screen with Multi-Label Schedules Goldens', () {
+    Widget buildTaskScheduleScreenTest() {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Schedules')),
+        body: const TaskScheduleScreen(),
+      );
+    }
+
+    testGoldens(
+      'Task Schedule Screen with Multi-Label Schedules - Light Theme',
+      (tester) async {
+        await tester.pumpWidgetBuilder(
+          wrapInScope(buildTaskScheduleScreenTest()),
+          wrapper: l10nMaterialAppWrapper(
+            theme: ThemeData.light(useMaterial3: true),
+          ),
+          surfaceSize: const Size(400, 1260),
+        );
+        await tester.pumpAndSettle();
+        await screenMatchesGolden(
+          tester,
+          'golden_task_schedule_screen_with_label_colors_light',
+        );
+      },
+    );
+
+    testGoldens(
+      'Task Schedule Screen with Multi-Label Schedules - Dark Theme',
+      (tester) async {
+        await tester.pumpWidgetBuilder(
+          wrapInScope(buildTaskScheduleScreenTest()),
+          wrapper: l10nMaterialAppWrapper(
+            theme: ThemeData.dark(useMaterial3: true),
+          ),
+          surfaceSize: const Size(400, 1260),
+        );
+        await tester.pumpAndSettle();
+        await screenMatchesGolden(
+          tester,
+          'golden_task_schedule_screen_with_label_colors_dark',
+        );
+      },
+    );
+
+    testGoldens(
+      'Task Schedule Screen Wide Masonry Layout with Multi-Label Schedules',
+      (tester) async {
+        await tester.pumpWidgetBuilder(
+          wrapInScope(buildTaskScheduleScreenTest()),
+          wrapper: l10nMaterialAppWrapper(
+            theme: ThemeData.light(useMaterial3: true),
+          ),
+          surfaceSize: const Size(900, 780),
+        );
+        await tester.pumpAndSettle();
+        await screenMatchesGolden(
+          tester,
+          'golden_task_schedule_screen_wide_layout_labels',
+        );
+      },
+    );
   });
 }
