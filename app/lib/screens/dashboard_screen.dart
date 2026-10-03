@@ -7,7 +7,6 @@ import '../logic/l10n_extension.dart';
 import '../logic/civil_day.dart';
 import '../logic/task_repository.dart';
 import '../logic/task_schedule.dart';
-import '../logic/utils/format_utils.dart';
 import '../logic/dashboard_stats.dart';
 import '../widgets/family_history_stats_card.dart';
 import '../widgets/family_contributions_card.dart';
@@ -15,6 +14,8 @@ import '../widgets/weekly_capacity_chart.dart';
 import '../widgets/daily_activity_breakdown_sheet.dart';
 import '../widgets/system_task_widget.dart';
 import '../widgets/app_snackbar.dart';
+import '../widgets/edit_capacity_sheet.dart';
+import '../widgets/default_capacity_template_sheet.dart';
 import '../logic/system_tasks/system_task_providers.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -147,10 +148,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               return WeeklyCapacityChart(
                 daysData: daysData,
                 stats: personalStats,
-                onDayTap: (date) => _showEditCapacityDialog(
+                onDayTap: (date) => EditCapacitySheet.show(
                   context,
-                  settings,
-                  date,
+                  settings: settings,
+                  date: date,
                   isOverride: true,
                 ),
                 onDayActivityTap: (dayData) => DailyActivityBreakdownSheet.show(
@@ -160,8 +161,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   scheduleMap: scheduleMap,
                   familyMemberCount: familyMemberCount,
                 ),
-                onEditDefaultCapacity: () =>
-                    _showDefaultCapacityTemplateDialog(context, settings),
+                onEditDefaultCapacity: () => DefaultCapacityTemplateSheet.show(
+                  context,
+                  settings: settings,
+                ),
               );
             },
           ),
@@ -210,362 +213,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ],
       ),
-    );
-  }
-
-  void _showEditCapacityDialog(
-    BuildContext context,
-    UserSettings settings,
-    DateTime date, {
-    required bool isOverride,
-  }) {
-    final theme = Theme.of(context);
-    final dateStr =
-        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    final weekdayStr = date.weekday.toString();
-
-    final double currentCapacity = isOverride
-        ? (settings.dailyCapacityOverrides?[dateStr] ??
-              settings.defaultDailyCapacity?[weekdayStr] ??
-              settings.hoursAvailable)
-        : (settings.defaultDailyCapacity?[weekdayStr] ??
-              settings.hoursAvailable);
-
-    final totalMinutes = (currentCapacity * 60).round();
-    int selectedHours = totalMinutes ~/ 60;
-    int selectedMinutes = totalMinutes % 60;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            void updateMinutes(int delta) {
-              setModalState(() {
-                final currentTotal =
-                    selectedHours * 60 + selectedMinutes + delta;
-                if (currentTotal >= 0) {
-                  selectedHours = currentTotal ~/ 60;
-                  selectedMinutes = currentTotal % 60;
-                }
-              });
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(
-                top: 16,
-                left: 16,
-                right: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    isOverride ? 'Adjust Capacity' : 'Edit Default Capacity',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isOverride
-                        ? 'Set chore availability for ${date.day}/${date.month}/${date.year}'
-                        : 'Set default availability baseline for weekday',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Stepper Controls
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: theme.colorScheme.outlineVariant,
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          key: const Key('capacity_decrement_button'),
-                          icon: const Icon(Icons.remove),
-                          onPressed: () => updateMinutes(-15),
-                        ),
-                        Column(
-                          children: [
-                            Text(
-                              'Available Duration',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              selectedHours > 0
-                                  ? '${selectedHours}h ${selectedMinutes}m'
-                                  : '${selectedMinutes}m',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        IconButton(
-                          key: const Key('capacity_increment_button'),
-                          icon: const Icon(Icons.add),
-                          onPressed: () => updateMinutes(15),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Preset Chips
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children:
-                        [
-                          (label: 'Away (0m)', minutes: 0),
-                          (label: '30m', minutes: 30),
-                          (label: '1h', minutes: 60),
-                          (label: '2h', minutes: 120),
-                          (label: '3h', minutes: 180),
-                        ].map((preset) {
-                          final isSelected =
-                              (selectedHours * 60 + selectedMinutes) ==
-                              preset.minutes;
-                          return ChoiceChip(
-                            label: Text(preset.label),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              if (selected) {
-                                setModalState(() {
-                                  selectedHours = preset.minutes ~/ 60;
-                                  selectedMinutes = preset.minutes % 60;
-                                });
-                              }
-                            },
-                          );
-                        }).toList(),
-                  ),
-                  const SizedBox(height: 24),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (isOverride &&
-                          settings.dailyCapacityOverrides?.containsKey(
-                                dateStr,
-                              ) ==
-                              true) ...[
-                        TextButton(
-                          key: const Key('capacity_reset_button'),
-                          onPressed: () {
-                            final updatedOverrides = Map<String, double>.from(
-                              settings.dailyCapacityOverrides ?? {},
-                            );
-                            updatedOverrides.remove(dateStr);
-                            final updatedSettings = settings.copyWith(
-                              dailyCapacityOverrides: updatedOverrides,
-                            );
-                            ref
-                                .read(userSettingsRepositoryProvider)
-                                ?.updateSettings(updatedSettings);
-                            Navigator.pop(context);
-                          },
-                          child: const Text('Reset to Default'),
-                        ),
-                        const Spacer(),
-                      ],
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        key: const Key('capacity_save_button'),
-                        onPressed: () {
-                          final double newCapacity =
-                              (selectedHours * 60 + selectedMinutes) / 60.0;
-                          final repository = ref.read(
-                            userSettingsRepositoryProvider,
-                          );
-                          if (repository != null) {
-                            if (isOverride) {
-                              final updatedOverrides = Map<String, double>.from(
-                                settings.dailyCapacityOverrides ?? {},
-                              );
-                              updatedOverrides[dateStr] = newCapacity;
-                              repository.updateSettings(
-                                settings.copyWith(
-                                  dailyCapacityOverrides: updatedOverrides,
-                                ),
-                              );
-                            } else {
-                              final updatedDefaults = Map<String, double>.from(
-                                settings.defaultDailyCapacity ?? {},
-                              );
-                              updatedDefaults[weekdayStr] = newCapacity;
-                              repository.updateSettings(
-                                settings.copyWith(
-                                  defaultDailyCapacity: updatedDefaults,
-                                ),
-                              );
-                            }
-                          }
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Save'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showDefaultCapacityTemplateDialog(
-    BuildContext context,
-    UserSettings settings,
-  ) {
-    final theme = Theme.of(context);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return Consumer(
-          builder: (context, ref, child) {
-            final settingsVal = ref.watch(userSettingsProvider);
-            final currentSettings = settingsVal.value ?? settings;
-
-            return Padding(
-              padding: EdgeInsets.only(
-                top: 16,
-                left: 16,
-                right: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Default Capacity Template',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Set standard availability baseline per day',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height * 0.5,
-                    ),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: 7,
-                      separatorBuilder: (context, index) =>
-                          const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final weekday = index + 1;
-                        final List<String> weekdays = [
-                          'Monday',
-                          'Tuesday',
-                          'Wednesday',
-                          'Thursday',
-                          'Friday',
-                          'Saturday',
-                          'Sunday',
-                        ];
-                        final dayLabel = weekdays[index];
-                        final weekdayStr = weekday.toString();
-                        final defaultCapacity =
-                            currentSettings.defaultDailyCapacity?[weekdayStr] ??
-                            currentSettings.hoursAvailable;
-
-                        return ListTile(
-                          key: Key('default_capacity_tile_$weekday'),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                          ),
-                          title: Text(dayLabel),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                formatDurationHours(defaultCapacity),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.chevron_right, size: 20),
-                            ],
-                          ),
-                          onTap: () {
-                            // 2026-01-05 is a Monday (weekday = 1).
-                            // Thus, 2026-01-04 + weekday aligns weekdayStr with the correct index (1=Mon, ..., 7=Sun).
-                            final dummyDate = DateTime(
-                              2026,
-                              1,
-                              4 + weekday,
-                            ); // Map to weekday
-                            _showEditCapacityDialog(
-                              context,
-                              currentSettings,
-                              dummyDate,
-                              isOverride: false,
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
     );
   }
 }
