@@ -2258,4 +2258,244 @@ void main() {
       expect(find.text('Cleaning'), findsOneWidget);
     },
   );
+
+  group('Extracted Badges Tests', () {
+    testWidgets('TaskBadge renders icon, label, and color', (tester) async {
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: const Scaffold(
+            body: TaskBadge(
+              icon: Icons.star,
+              label: 'Star Badge',
+              color: Colors.purple,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Star Badge'), findsOneWidget);
+      expect(find.byIcon(Icons.star), findsOneWidget);
+    });
+
+    testWidgets(
+      'FamilyTaskProgressBadge renders fallback label when no members',
+      (tester) async {
+        final instance = TaskInstance(
+          id: 'I-no-members',
+          scheduleId: 'S-no-members',
+          ruleId: 'R-1',
+          title: 'Chore',
+          description: 'Chore description',
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          completedByUserIds: const [],
+          status: TaskStatus.pending,
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              familyProfileStreamProvider.overrideWith(
+                (ref) => Stream.value(null),
+              ),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: FamilyTaskProgressBadge(instance: instance),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Everyone individually'), findsOneWidget);
+        expect(find.byIcon(Icons.checklist), findsOneWidget);
+      },
+    );
+
+    testWidgets('TaskAssigneeBadge handles data, loading, and error states', (
+      tester,
+    ) async {
+      final userCompleter = Completer<String>();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            userNameProvider(
+              'user-async',
+            ).overrideWith((ref) => userCompleter.future),
+          ],
+          child: buildTestableWidget(
+            child: const Scaffold(
+              body: TaskAssigneeBadge(userId: 'user-async'),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Loading state
+      expect(find.text('Loading...'), findsOneWidget);
+
+      // Data state
+      userCompleter.complete('Charlie');
+      await tester.pumpAndSettle();
+      expect(find.text('Assigned to Charlie'), findsOneWidget);
+    });
+
+    testWidgets('TaskAssigneeBadge handles error state', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            userNameProvider(
+              'user-err',
+            ).overrideWith((ref) async => throw Exception('Not found')),
+          ],
+          child: buildTestableWidget(
+            child: const Scaffold(body: TaskAssigneeBadge(userId: 'user-err')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Assigned'), findsOneWidget);
+    });
+
+    testWidgets(
+      'Family stream and assignee updates isolate rebuilds from TaskWidget',
+      (tester) async {
+        final familyStreamController = StreamController<Family>.broadcast();
+        final nameStreamController = StreamController<String>.broadcast();
+
+        final instance = TaskInstance(
+          id: 'I-isolate-test',
+          scheduleId: 'S-isolate-test',
+          ruleId: 'R-1',
+          title: 'Isolation Test Task',
+          description: 'Isolation Test Description',
+          scheduledDate: const CivilDay(year: 2024, month: 1, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          completedByUserIds: const ['u1'],
+          assignedUserId: 'u2',
+          status: TaskStatus.pending,
+        );
+
+        final initialFamily = Family(
+          id: 'fam-iso',
+          name: 'Iso Family',
+          members: const {
+            'u1': FamilyMember(
+              userId: 'u1',
+              displayName: 'User 1',
+              email: 'u1@test.com',
+              role: FamilyRole.parent,
+            ),
+            'u2': FamilyMember(
+              userId: 'u2',
+              displayName: 'User 2',
+              email: 'u2@test.com',
+              role: FamilyRole.nonParent,
+            ),
+          },
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              familyProfileStreamProvider.overrideWith(
+                (ref) => Stream.value(
+                  const FamilyProfile(
+                    familyId: 'fam-iso',
+                    familyRole: 'parent',
+                  ),
+                ),
+              ),
+              familyStreamProvider(
+                'fam-iso',
+              ).overrideWith((ref) => familyStreamController.stream),
+              userNameProvider(
+                'u2',
+              ).overrideWith((ref) => nameStreamController.stream.first),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(body: TaskWidget(instance: instance)),
+            ),
+          ),
+        );
+
+        await tester.pump();
+
+        // Initial emit
+        familyStreamController.add(initialFamily);
+        nameStreamController.add('Initial Name');
+        await tester.pumpAndSettle();
+
+        expect(find.text('1 of 2 completed'), findsOneWidget);
+        expect(find.text('Assigned to Initial Name'), findsOneWidget);
+
+        // Get TaskWidget element
+        final taskWidgetElement = tester.element(find.byType(TaskWidget));
+
+        // Now emit an update on familyStreamController with 3 members
+        final updatedFamily = Family(
+          id: 'fam-iso',
+          name: 'Iso Family',
+          members: const {
+            'u1': FamilyMember(
+              userId: 'u1',
+              displayName: 'User 1',
+              email: 'u1@test.com',
+              role: FamilyRole.parent,
+            ),
+            'u2': FamilyMember(
+              userId: 'u2',
+              displayName: 'User 2',
+              email: 'u2@test.com',
+              role: FamilyRole.nonParent,
+            ),
+            'u3': FamilyMember(
+              userId: 'u3',
+              displayName: 'User 3',
+              email: 'u3@test.com',
+              role: FamilyRole.nonParent,
+            ),
+          },
+        );
+
+        familyStreamController.add(updatedFamily);
+        await tester.pumpAndSettle();
+
+        // The badge updated to 1 of 3 completed
+        expect(find.text('1 of 3 completed'), findsOneWidget);
+        // And TaskWidget element was not dirtied by this stream update
+        expect(taskWidgetElement.dirty, isFalse);
+
+        await familyStreamController.close();
+        await nameStreamController.close();
+      },
+    );
+  });
 }

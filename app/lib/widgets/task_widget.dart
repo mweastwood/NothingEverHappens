@@ -255,39 +255,7 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
     required String label,
     required Color color,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDark ? 0.15 : 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: isDark ? 0.4 : 0.25),
-          width: 1,
-        ),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const NeverScrollableScrollPhysics(),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return TaskBadge(icon: icon, label: label, color: color);
   }
 
   List<Widget> _buildLabelBadges(BuildContext context, List<TaskLabel> labels) {
@@ -666,49 +634,12 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
                 // Individual completion mode badge (Family only)
                 if (widget.instance.isFamily &&
                     widget.instance.familyCompletionMode ==
-                        FamilyCompletionMode.individual) ...[
-                  () {
-                    final familyProfile = ref
-                        .watch(familyProfileStreamProvider)
-                        .value;
-                    final familyId = familyProfile?.familyId ?? '';
-                    final family = familyId.isNotEmpty
-                        ? ref.watch(familyStreamProvider(familyId)).value
-                        : null;
-                    final totalMembers = family?.members.length ?? 0;
-                    final completedCount =
-                        widget.instance.completedByUserIds.length;
-                    final label = totalMembers > 0
-                        ? context.l10n.completionProgressBadge(
-                            completedCount,
-                            totalMembers,
-                          )
-                        : context.l10n.completionModeIndividualLabel;
-                    return _buildBadge(
-                      context,
-                      icon: Icons.checklist,
-                      label: label,
-                      color: Theme.of(context).colorScheme.primary,
-                    );
-                  }(),
-                ],
+                        FamilyCompletionMode.individual)
+                  FamilyTaskProgressBadge(instance: widget.instance),
                 // Assignee (if family & assigned)
                 if (widget.instance.isFamily &&
                     widget.instance.assignedUserId != null)
-                  _buildBadge(
-                    context,
-                    icon: Icons.assignment_ind,
-                    label: ref
-                        .watch(
-                          userNameProvider(widget.instance.assignedUserId!),
-                        )
-                        .when(
-                          data: (name) => context.l10n.assignedTo(name),
-                          loading: () => context.l10n.loadingBadge,
-                          error: (_, _) => context.l10n.assignedBadge,
-                        ),
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                  TaskAssigneeBadge(userId: widget.instance.assignedUserId!),
               ],
             ),
           ],
@@ -785,6 +716,112 @@ class _TaskWidgetState extends ConsumerState<TaskWidget>
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Reusable lightweight badge component for tasks.
+class TaskBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const TaskBadge({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.4 : 0.25),
+          width: 1,
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A dedicated badge that watches family stream providers to isolate rebuilds
+/// from the parent [TaskWidget].
+class FamilyTaskProgressBadge extends ConsumerWidget {
+  final TaskInstance instance;
+
+  const FamilyTaskProgressBadge({super.key, required this.instance});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final familyProfile = ref.watch(familyProfileStreamProvider).value;
+    final familyId = familyProfile?.familyId ?? '';
+    final family = familyId.isNotEmpty
+        ? ref.watch(familyStreamProvider(familyId)).value
+        : null;
+    final totalMembers = family?.members.length ?? 0;
+    final completedCount = instance.completedByUserIds.length;
+    final label = totalMembers > 0
+        ? context.l10n.completionProgressBadge(completedCount, totalMembers)
+        : context.l10n.completionModeIndividualLabel;
+
+    return TaskBadge(
+      icon: Icons.checklist,
+      label: label,
+      color: Theme.of(context).colorScheme.primary,
+    );
+  }
+}
+
+/// A dedicated badge that watches [userNameProvider] to isolate rebuilds
+/// from the parent [TaskWidget].
+class TaskAssigneeBadge extends ConsumerWidget {
+  final String userId;
+
+  const TaskAssigneeBadge({super.key, required this.userId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nameAsync = ref.watch(userNameProvider(userId));
+    final String label;
+    if (nameAsync.hasError) {
+      label = context.l10n.assignedBadge;
+    } else if (nameAsync.hasValue) {
+      label = context.l10n.assignedTo(nameAsync.value as String);
+    } else {
+      label = context.l10n.loadingBadge;
+    }
+
+    return TaskBadge(
+      icon: Icons.assignment_ind,
+      label: label,
+      color: Theme.of(context).colorScheme.primary,
     );
   }
 }
