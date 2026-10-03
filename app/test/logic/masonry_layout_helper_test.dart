@@ -208,5 +208,61 @@ void main() {
 
       expect(simpleHeight, lessThan(complexHeight));
     });
+
+    test('schedules with label badges estimate taller', () {
+      final baseSchedule = TaskSchedule(
+        id: 'S-1',
+        title: 'Water Plants',
+        description: '',
+        schedules: [
+          DailySchedule(
+            id: 'R-1',
+            scheduleId: 'S-1',
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 8,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+          ),
+        ],
+      );
+
+      final labeledSchedule = TaskSchedule(
+        id: 'S-2',
+        title: 'Water Plants',
+        description: '',
+        labelIds: const ['L-1', 'L-2'],
+        schedules: [
+          DailySchedule(
+            id: 'R-2',
+            scheduleId: 'S-2',
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 8,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+          ),
+        ],
+      );
+
+      final baseHeight = estimateTaskScheduleHeight(baseSchedule);
+      final labeledHeight = estimateTaskScheduleHeight(labeledSchedule);
+
+      expect(labeledHeight, greaterThan(baseHeight));
+    });
   });
 }
