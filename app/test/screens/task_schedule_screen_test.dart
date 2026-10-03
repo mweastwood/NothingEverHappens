@@ -23,7 +23,10 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/user_profile_provider.dart';
 import 'package:nothing_ever_happens/logic/family.dart';
 import 'package:nothing_ever_happens/logic/family_repository.dart';
+import 'package:nothing_ever_happens/logic/label_repository.dart';
+import 'package:nothing_ever_happens/logic/task_label.dart';
 import 'package:nothing_ever_happens/widgets/sort_bar.dart';
+import 'package:nothing_ever_happens/widgets/task_hero_stripe.dart';
 
 import 'task_list_screen_test.mocks.dart';
 
@@ -1754,5 +1757,117 @@ void main() {
         },
       );
     });
+
+    testWidgets(
+      'renders TaskHeroStripe for schedules with labels and filters by label search',
+      (tester) async {
+        final labelCleaning = TaskLabel(
+          id: 'L-clean',
+          name: 'Housework',
+          colorKey: 'emerald',
+          iconKey: 'cleaning',
+          scope: TaskLabelScope.personal,
+          createdAt: DateTime(2026, 1, 1),
+        );
+        final labelWork = TaskLabel(
+          id: 'L-work',
+          name: 'Work',
+          colorKey: 'cobalt',
+          iconKey: 'work',
+          scope: TaskLabelScope.personal,
+          createdAt: DateTime(2026, 1, 1),
+        );
+
+        final taskWithLabel = TaskSchedule(
+          id: 'S-clean',
+          title: 'Mop the Floors',
+          description: 'Kitchen and hallway',
+          labelIds: const ['L-clean'],
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 1, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 10,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 11,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final taskWithoutLabel = TaskSchedule(
+          id: 'S-plain',
+          title: 'Call Plumber',
+          description: 'Fix the leaky sink',
+          labelIds: const [],
+          schedules: [
+            DailySchedule(
+              startDate: const CivilDay(year: 2026, month: 1, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 12,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 13,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        tasksSubject.add([taskWithLabel, taskWithoutLabel]);
+
+        final container = ProviderContainer(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(mockAuthRepository),
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            allLabelsMapProvider.overrideWithValue({
+              'L-clean': labelCleaning,
+              'L-work': labelWork,
+            }),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: buildTestableWidget(
+              child: const Scaffold(body: TaskScheduleScreen()),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify both tasks are visible
+        expect(find.text('Mop the Floors'), findsOneWidget);
+        expect(find.text('Call Plumber'), findsOneWidget);
+
+        // Verify TaskHeroStripe is rendered for the labeled task
+        expect(find.byType(TaskHeroStripe), findsOneWidget);
+        final stripe = tester.widget<TaskHeroStripe>(
+          find.byType(TaskHeroStripe),
+        );
+        expect(stripe.colors.length, 1);
+
+        // Search by label name ("Housework")
+        container.read(scheduleSearchQueryProvider.notifier).state =
+            'Housework';
+        await tester.pumpAndSettle();
+
+        // Only the task with the "Housework" label should match
+        expect(find.text('Mop the Floors'), findsOneWidget);
+        expect(find.text('Call Plumber'), findsNothing);
+      },
+    );
   });
 }

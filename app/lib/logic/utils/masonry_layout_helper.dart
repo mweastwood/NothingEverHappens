@@ -93,14 +93,18 @@ double estimateTaskScheduleHeight(
     height += extraLines * _kTitleLineHeight;
   }
 
-  // Family badges
+  // Family & label badges
+  int topBadges = 0;
   if (schedule.isFamily) {
-    int familyBadges = 1;
+    topBadges++;
     if (schedule.familyCompletionMode == FamilyCompletionMode.individual) {
-      familyBadges++;
+      topBadges++;
     }
-    if (schedule.assignedUserId != null) familyBadges++;
-    final rows = (familyBadges / _kBadgesPerRow).ceil();
+    if (schedule.assignedUserId != null) topBadges++;
+  }
+  topBadges += schedule.labelIds.length;
+  if (topBadges > 0) {
+    final rows = (topBadges / _kBadgesPerRow).ceil();
     height += rows * _kScheduleBadgeRowHeight;
   }
 

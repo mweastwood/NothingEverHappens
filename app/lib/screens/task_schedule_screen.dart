@@ -15,6 +15,8 @@ import '../logic/family_repository.dart';
 import '../widgets/task_schedule_card.dart';
 import '../logic/utils/layout_breakpoints.dart';
 import '../logic/utils/masonry_layout_helper.dart';
+import '../logic/label_repository.dart';
+import '../logic/task_label.dart';
 
 final scheduleSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -34,19 +36,22 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
   String? _cachedSearchQuery;
   String? _cachedSortHistoryString;
   DateTime? _cachedMockTime;
+  Map<String, TaskLabel>? _cachedLabelsMap;
   List<TaskSchedule> _cachedSortedTasks = [];
 
   List<TaskSchedule> _getSortedFilteredTasks(
     List<TaskSchedule> allTasks,
     String searchQuery,
     List<({String column, bool ascending})> sortHistory,
-    DateTime? mockTime,
-  ) {
+    DateTime? mockTime, {
+    Map<String, TaskLabel>? labelsMap,
+  }) {
     final sortHistoryString = sortHistory.toString();
     if (_cachedAllTasks == allTasks &&
         _cachedSearchQuery == searchQuery &&
         _cachedSortHistoryString == sortHistoryString &&
-        _cachedMockTime == mockTime) {
+        _cachedMockTime == mockTime &&
+        _cachedLabelsMap == labelsMap) {
       return _cachedSortedTasks;
     }
 
@@ -64,7 +69,13 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
       return queryWords.every((word) {
         final matchesTitle = task.title.toLowerCase().contains(word);
         final matchesDesc = task.description.toLowerCase().contains(word);
-        return matchesTitle || matchesDesc;
+        final matchesLabel =
+            labelsMap != null &&
+            task.labelIds.any((id) {
+              final label = labelsMap[id];
+              return label != null && label.name.toLowerCase().contains(word);
+            });
+        return matchesTitle || matchesDesc || matchesLabel;
       });
     }).toList();
 
@@ -110,6 +121,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     _cachedSearchQuery = searchQuery;
     _cachedSortHistoryString = sortHistoryString;
     _cachedMockTime = mockTime;
+    _cachedLabelsMap = labelsMap;
     _cachedSortedTasks = filteredTasks;
 
     return filteredTasks;
@@ -212,6 +224,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     final settingsRepository = ref.watch(userSettingsRepositoryProvider);
     final familyProfileVal = ref.watch(familyProfileStreamProvider);
     final isParent = familyProfileVal.value?.familyRole == 'parent';
+    final labelsMap = ref.watch(allLabelsMapProvider);
     final searchQuery = ref
         .watch(scheduleSearchQueryProvider)
         .trim()
@@ -282,6 +295,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                           searchQuery,
                           sortHistory,
                           mockTime,
+                          labelsMap: labelsMap,
                         );
 
                         if (filteredTasks.isEmpty && searchQuery.isNotEmpty) {
@@ -338,6 +352,10 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                               isParent: isParent,
                                               showLastSpawnedDate:
                                                   showLastSpawnedDate,
+                                              labels: task.labelIds
+                                                  .map((id) => labelsMap[id])
+                                                  .whereType<TaskLabel>()
+                                                  .toList(),
                                             ),
                                         ],
                                       ),
@@ -354,6 +372,10 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                               isParent: isParent,
                                               showLastSpawnedDate:
                                                   showLastSpawnedDate,
+                                              labels: task.labelIds
+                                                  .map((id) => labelsMap[id])
+                                                  .whereType<TaskLabel>()
+                                                  .toList(),
                                             ),
                                         ],
                                       ),
@@ -371,6 +393,10 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                                     task: task,
                                     isParent: isParent,
                                     showLastSpawnedDate: showLastSpawnedDate,
+                                    labels: task.labelIds
+                                        .map((id) => labelsMap[id])
+                                        .whereType<TaskLabel>()
+                                        .toList(),
                                   );
                                 }, childCount: filteredTasks.length),
                               );
