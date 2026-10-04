@@ -63,6 +63,9 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      - name: Build Web App (smoke test)
+        run: flutter build web --release --target lib/main_prod.dart --dart-define=REVENUECAT_API_KEY=ci --dart-define=APP_VERSION=v0.0.0 --dart-define=GIT_HASH=${{ github.sha }}
+
       - name: Upload golden failure diffs
         if: failure()
         uses: actions/upload-artifact@v4
