@@ -79,7 +79,7 @@ if ! git remote | grep -q "^$REMOTE$"; then
 fi
 
 # Fetch the latest main branch and update local main if a remote exists
-if [ -n "$REMOTE" ]; then
+if [ -n "$REMOTE" ] && [ "${TAG_SH_SKIP_FETCH:-0}" != "1" ]; then
   CURRENT_BRANCH=$(git branch --show-current)
   if [ "$CURRENT_BRANCH" = "main" ]; then
     echo "Fetching and merging latest main from $REMOTE..."
