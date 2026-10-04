@@ -114,6 +114,7 @@ void main() {
     AppClock.setMockTime(fixedDate);
     addTearDown(AppClock.reset);
     AppConfig.environment = AppEnvironment.prod;
+    addTearDown(() => AppConfig.environment = AppEnvironment.dev);
 
     mockAuthRepository = MockAuthRepository();
     mockTaskRepository = MockTaskRepository();
