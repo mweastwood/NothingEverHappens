@@ -852,7 +852,7 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
         addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         // Verify Monday instances spawned
         final instsBefore = await firestore
@@ -936,13 +936,13 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
         addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         // Mock time to Tue June 9. Mon June 8 Weekly is missed, and June 1 Weekly & Monthly are missed.
         AppClock.setMockTime(DateTime(2026, 6, 9, 10, 0));
         addTearDown(AppClock.reset);
         await repository.getTasks().first;
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         final weeklyRule = task.schedules[0];
         final monthlyRule = task.schedules[1];
@@ -1029,13 +1029,13 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
         addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         // Mock time to July 16 (45 days later)
         AppClock.setMockTime(DateTime(2026, 7, 16, 10, 0));
         addTearDown(AppClock.reset);
         await repository.getTasks().first;
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         // Get all instances
         final insts = await firestore
@@ -1092,13 +1092,13 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
         addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         // Mock time to Wed June 3. Daily should have instances for June 1, 2, 3. Weekly should have instance for June 3.
         AppClock.setMockTime(DateTime(2026, 6, 3, 10, 0));
         addTearDown(AppClock.reset);
         await repository.getTasks().first;
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         final insts = await firestore
             .collection('users')
@@ -1206,7 +1206,7 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
         addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         // Mock time to Wed June 3.
         // OneOff occurrences: June 1.
@@ -1215,7 +1215,7 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 3, 10, 0));
         addTearDown(AppClock.reset);
         await repository.getTasks().first;
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         final insts = await firestore
             .collection('users')
@@ -1354,7 +1354,7 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 6, 1, 10, 0));
         addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         final dailyRule = task.schedules[0];
 
@@ -1374,13 +1374,13 @@ void main() {
 
         // Complete Daily instance on June 1
         await repository.completeTaskInstance(dailyJune1.id);
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         // Fast-forward to June 3
         AppClock.setMockTime(DateTime(2026, 6, 3, 10, 0));
         addTearDown(AppClock.reset);
         await repository.triggerMissedPolicyProcessing();
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         final insts = await firestore
             .collection('users')
@@ -1630,7 +1630,7 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
         addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         final insts = await firestore
             .collection('users')
@@ -1682,7 +1682,7 @@ void main() {
           AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
           addTearDown(AppClock.reset);
           await repository.addTaskSchedule(task);
-          await Future.delayed(Duration.zero);
+          await pumpEventQueue();
 
           final insts = await firestore
               .collection('users')
@@ -1699,7 +1699,7 @@ void main() {
           addTearDown(AppClock.reset);
 
           await repository.completeTaskInstance(firstInst.id);
-          await Future.delayed(Duration.zero);
+          await pumpEventQueue();
 
           // Next scheduledDate is completionTime + 3 days = Saturday May 30
           final nextInstsBefore = await firestore
@@ -1716,7 +1716,7 @@ void main() {
           AppClock.setMockTime(DateTime(2026, 5, 30, 14, 0));
           addTearDown(AppClock.reset);
           await repository.triggerMissedPolicyProcessing();
-          await Future.delayed(Duration.zero);
+          await pumpEventQueue();
 
           final nextInstsAfter = await firestore
               .collection('users')
@@ -1778,7 +1778,7 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
         addTearDown(AppClock.reset);
         await repository.addTaskSchedule(task);
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         final insts = await firestore
             .collection('users')
@@ -1791,7 +1791,7 @@ void main() {
         AppClock.setMockTime(DateTime(2026, 5, 25, 19, 0));
         addTearDown(AppClock.reset);
         await repository.getTasks().first; // trigger evaluation
-        await Future.delayed(Duration.zero);
+        await pumpEventQueue();
 
         // Verify task instance is STILL pending (not skipped/dismissed)
         final instSnap = await firestore
@@ -1829,7 +1829,7 @@ void main() {
           AppClock.setMockTime(DateTime(2026, 5, 25, 9, 0));
           addTearDown(AppClock.reset);
           await repository.addTaskSchedule(task);
-          await Future.delayed(Duration.zero);
+          await pumpEventQueue();
 
           final insts = await firestore
               .collection('users')
@@ -1845,13 +1845,13 @@ void main() {
           AppClock.setMockTime(completionTime);
           addTearDown(AppClock.reset);
           await repository.completeTaskInstance(firstInst.id);
-          await Future.delayed(Duration.zero);
+          await pumpEventQueue();
 
           // Fast forward to May 28 at 12:00 PM (noon) when it is due
           AppClock.setMockTime(DateTime(2026, 5, 28, 12, 0));
           addTearDown(AppClock.reset);
           await repository.triggerMissedPolicyProcessing();
-          await Future.delayed(Duration.zero);
+          await pumpEventQueue();
 
           // A new pending instance for May 28 should now be spawned
           final nextInsts = await firestore
@@ -1877,7 +1877,7 @@ void main() {
           AppClock.setMockTime(DateTime(2026, 5, 27, 12, 0));
           addTearDown(AppClock.reset);
           await repository.getTasks().first; // trigger evaluation
-          await Future.delayed(Duration.zero);
+          await pumpEventQueue();
 
           // Verify still no pending instance exists
           final instsAfterDelete1 = await firestore
@@ -1896,7 +1896,7 @@ void main() {
           AppClock.setMockTime(DateTime(2026, 5, 28, 12, 0));
           addTearDown(AppClock.reset);
           await repository.getTasks().first; // trigger evaluation
-          await Future.delayed(Duration.zero);
+          await pumpEventQueue();
 
           // Verify that the background scheduler has spawned the next instance
           final instsAfterDelete2 = await firestore
