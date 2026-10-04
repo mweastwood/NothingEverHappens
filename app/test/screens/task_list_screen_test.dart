@@ -123,6 +123,7 @@ void main() {
   tearDown(() {
     tasksSubject.close();
     instancesSubject.close();
+    AppConfig.environment = AppEnvironment.dev;
   });
 
   Widget createScreen() {
@@ -150,6 +151,7 @@ void main() {
   ) async {
     AppConfig.environment = AppEnvironment
         .prod; // Hide dev clock banner/bottom sheet from blocking hits
+    addTearDown(() => AppConfig.environment = AppEnvironment.dev);
     AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
     addTearDown(AppClock.reset);
 
@@ -181,9 +183,6 @@ void main() {
     // The newly created task defaults to starting today (no snooze).
     // Verify it appears immediately in the task list on March 8!
     expect(find.text('New TaskSchedule Title'), findsOneWidget);
-
-    AppClock.reset();
-    AppConfig.environment = AppEnvironment.dev; // Restore dev env
   });
 
   testWidgets('TaskSchedule list mobile layout (ListView)', (
@@ -791,6 +790,7 @@ void main() {
   ) async {
     // 1. Set environment to prod
     AppConfig.environment = AppEnvironment.prod;
+    addTearDown(() => AppConfig.environment = AppEnvironment.dev);
 
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
@@ -814,9 +814,6 @@ void main() {
     // Verify that the screen matches golden in prod environment without DevClockWidget
 
     await screenMatchesGolden(tester, 'task_list_screen_prod');
-
-    // Reset back to dev environment for other tests
-    AppConfig.environment = AppEnvironment.dev;
   });
 
   testGoldens('TaskListScreen - Shows Undo SnackBar', (tester) async {

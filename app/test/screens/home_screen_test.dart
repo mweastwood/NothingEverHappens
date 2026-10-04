@@ -70,6 +70,7 @@ void main() {
     tasksSubject.close();
     instancesSubject.close();
     settingsSubject.close();
+    AppConfig.environment = AppEnvironment.dev;
   });
 
   Widget createScreen({Uri? mockUri, Size size = const Size(400, 800)}) {
@@ -320,6 +321,7 @@ void main() {
     'HomeScreen FAB on Tasks tab navigates to CreateTaskScreen defaulting to one-off',
     (WidgetTester tester) async {
       AppConfig.environment = AppEnvironment.prod;
+      addTearDown(() => AppConfig.environment = AppEnvironment.dev);
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
       addTearDown(AppClock.reset);
 
@@ -342,6 +344,7 @@ void main() {
     'HomeScreen FAB on Schedule tab navigates to CreateTaskScreen defaulting to repeating',
     (WidgetTester tester) async {
       AppConfig.environment = AppEnvironment.prod;
+      addTearDown(() => AppConfig.environment = AppEnvironment.dev);
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
       addTearDown(AppClock.reset);
 
