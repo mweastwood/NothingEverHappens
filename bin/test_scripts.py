@@ -49,37 +49,74 @@ class TestRepositoryScripts(unittest.TestCase):
         repo_root = str(BIN_DIR.parent)
         # Test help (--help, -h, and positional help)
         for help_arg in ["--help", "-h", "help"]:
-            res = subprocess.run([tag_script, help_arg], capture_output=True, text=True, cwd=repo_root)
+            res = subprocess.run(
+                [tag_script, help_arg],
+                capture_output=True,
+                text=True,
+                cwd=repo_root,
+            )
             self.assertIn("Usage:", res.stdout)
             self.assertNotEqual(res.returncode, 0)
 
         # Test invalid argument
-        res_err = subprocess.run([tag_script, "invalid_arg"], capture_output=True, text=True, cwd=repo_root)
+        res_err = subprocess.run(
+            [tag_script, "invalid_arg"],
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+        )
         self.assertNotEqual(res_err.returncode, 0)
         self.assertIn("Error: Unknown option invalid_arg", res_err.stderr)
 
         # Test missing increment type error when invoking dry-run options
         for dry_arg in ["--dry-run", "dry-run"]:
-            res_dry = subprocess.run([tag_script, dry_arg], capture_output=True, text=True, cwd=repo_root)
+            res_dry = subprocess.run(
+                [tag_script, dry_arg],
+                capture_output=True,
+                text=True,
+                cwd=repo_root,
+            )
             self.assertNotEqual(res_dry.returncode, 0)
             self.assertIn(
-                "Error: Increment type is required (--major, --minor, --patch, or major, minor, patch).",
+                "Error: Increment type is required",
                 res_dry.stderr,
             )
 
-        # Test proper argument parsing for positional and flag-style commands across ordering variations
-        increment_options = ["patch", "minor", "major", "--patch", "--minor", "--major"]
+        # Test proper argument parsing for positional and flag-style commands
+        # across ordering variations
+        increment_options = [
+            "patch", "minor", "major", "--patch", "--minor", "--major",
+        ]
         dry_run_options = ["--dry-run", "dry-run"]
-        env = {**os.environ, "TAG_SH_SKIP_FETCH": "1"}
+
+        # Strip git environment variables (e.g. from pre-commit hooks) so subprocesses
+        # operate strictly within the isolated temp repository.
+        env = {
+            k: v
+            for k, v in os.environ.items()
+            if not k.startswith("GIT_")
+        }
+        env["TAG_SH_SKIP_FETCH"] = "1"
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Initialize an isolated git repository with a main branch and initial commit
-            subprocess.run(["git", "init"], cwd=temp_dir, check=True, capture_output=True)
-            subprocess.run(["git", "checkout", "-b", "main"], cwd=temp_dir, check=True, capture_output=True)
-            subprocess.run(["git", "config", "user.name", "Test User"], cwd=temp_dir, check=True, capture_output=True)
-            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=temp_dir, check=True, capture_output=True)
-            subprocess.run(["git", "commit", "--allow-empty", "-m", "Initial commit"], cwd=temp_dir, check=True, capture_output=True)
-            subprocess.run(["git", "tag", "v1.0.0"], cwd=temp_dir, check=True, capture_output=True)
+            def run_git(*args):
+                return subprocess.run(
+                    ["git", *args],
+                    cwd=temp_dir,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                )
+
+            # Initialize an isolated git repository with main branch and disabled GPG signing
+            run_git("-c", "init.defaultBranch=main", "init", "-b", "main")
+            run_git("config", "user.name", "Test User")
+            run_git("config", "user.email", "test@example.com")
+            run_git("config", "commit.gpgsign", "false")
+            run_git("config", "tag.gpgsign", "false")
+            run_git("commit", "--allow-empty", "-m", "Initial commit")
+            run_git("tag", "v1.0.0")
 
             for inc_opt in increment_options:
                 for dry_opt in dry_run_options:
@@ -100,13 +137,15 @@ class TestRepositoryScripts(unittest.TestCase):
                         self.assertIn("[DRY RUN]", res.stdout)
 
             # Verify TAG_SH_SKIP_FETCH bypasses remote fetch when remote is present
-            subprocess.run(
-                ["git", "remote", "add", "origin", "https://invalid.example.com/repo.git"],
-                cwd=temp_dir,
-                check=True,
-                capture_output=True,
+            run_git(
+                "remote",
+                "add",
+                "origin",
+                "https://invalid.example.com/repo.git",
             )
-            res_remote_bypass = subprocess.run(
+
+            # 1. On main branch with configured remote
+            res_main_bypass = subprocess.run(
                 [tag_script, "--patch", "--dry-run"],
                 capture_output=True,
                 text=True,
@@ -114,12 +153,43 @@ class TestRepositoryScripts(unittest.TestCase):
                 env=env,
             )
             self.assertEqual(
-                res_remote_bypass.returncode,
+                res_main_bypass.returncode,
                 0,
-                f"tag.sh with TAG_SH_SKIP_FETCH failed with configured remote: {res_remote_bypass.stderr}",
+                f"tag.sh bypass on main failed: {res_main_bypass.stderr}",
             )
-            self.assertIn("Incrementing to new tag: v1.0.1", res_remote_bypass.stdout)
-            self.assertIn("[DRY RUN] Would push tag v1.0.1 to origin.", res_remote_bypass.stdout)
+            self.assertNotIn("Fetching", res_main_bypass.stdout)
+            self.assertIn(
+                "Incrementing to new tag: v1.0.1",
+                res_main_bypass.stdout,
+            )
+            self.assertIn(
+                "[DRY RUN] Would push tag v1.0.1 to origin.",
+                res_main_bypass.stdout,
+            )
+
+            # 2. On non-main branch with configured remote
+            run_git("checkout", "-b", "feature")
+            res_branch_bypass = subprocess.run(
+                [tag_script, "--patch", "--dry-run"],
+                capture_output=True,
+                text=True,
+                cwd=temp_dir,
+                env=env,
+            )
+            self.assertEqual(
+                res_branch_bypass.returncode,
+                0,
+                f"tag.sh bypass on feature branch failed: {res_branch_bypass.stderr}",
+            )
+            self.assertNotIn("Fetching", res_branch_bypass.stdout)
+            self.assertIn(
+                "Incrementing to new tag: v1.0.1",
+                res_branch_bypass.stdout,
+            )
+            self.assertIn(
+                "[DRY RUN] Would push tag v1.0.1 to origin.",
+                res_branch_bypass.stdout,
+            )
 
         # Test conflicting increment arguments error handling
         conflict_cases = [
