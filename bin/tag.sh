@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+#
+# Increments the version tag on git main and pushes it.
+#
+# Environment Variables:
+#   TAG_SH_SKIP_FETCH  Set to "1" or "true" to bypass fetching the latest main branch from
+#                      the remote before calculating the new tag. Useful for
+#                      offline usage, dry-runs, or isolated test environments.
 
 # Exit immediately if a command exits with a non-zero status
 set -e
@@ -14,6 +21,9 @@ usage() {
   echo "  --minor, minor     Increments the minor version (e.g. v1.0.9 -> v1.1.0)"
   echo "  --patch, patch     Increments the patch version (e.g. v1.0.9 -> v1.0.10)"
   echo "  --dry-run, dry-run Preview the new version tag and target commit without creating/pushing it"
+  echo ""
+  echo "Environment Variables:"
+  echo "  TAG_SH_SKIP_FETCH  Set to 1 or true to skip fetching latest main from remote"
   exit 1
 }
 
@@ -79,7 +89,12 @@ if ! git remote | grep -q "^$REMOTE$"; then
 fi
 
 # Fetch the latest main branch and update local main if a remote exists
-if [ -n "$REMOTE" ]; then
+SKIP_FETCH=0
+case "${TAG_SH_SKIP_FETCH:-0}" in
+  1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]) SKIP_FETCH=1 ;;
+esac
+
+if [ -n "$REMOTE" ] && [ "$SKIP_FETCH" != "1" ]; then
   CURRENT_BRANCH=$(git branch --show-current)
   if [ "$CURRENT_BRANCH" = "main" ]; then
     echo "Fetching and merging latest main from $REMOTE..."
