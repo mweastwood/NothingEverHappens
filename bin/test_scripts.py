@@ -47,6 +47,15 @@ class TestRepositoryScripts(unittest.TestCase):
     def test_tag_script_help_and_dry_run(self):
         tag_script = str(BIN_DIR / "tag.sh")
         repo_root = str(BIN_DIR.parent)
+        # Strip git environment variables (e.g. from pre-commit hooks) so subprocesses
+        # operate strictly within the isolated temp repository.
+        env = {
+            k: v
+            for k, v in os.environ.items()
+            if not k.startswith("GIT_")
+        }
+        env["TAG_SH_SKIP_FETCH"] = "1"
+
         # Test help (--help, -h, and positional help)
         for help_arg in ["--help", "-h", "help"]:
             res = subprocess.run(
@@ -54,6 +63,7 @@ class TestRepositoryScripts(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 cwd=repo_root,
+                env=env,
             )
             self.assertIn("Usage:", res.stdout)
             self.assertNotEqual(res.returncode, 0)
@@ -64,6 +74,7 @@ class TestRepositoryScripts(unittest.TestCase):
             capture_output=True,
             text=True,
             cwd=repo_root,
+            env=env,
         )
         self.assertNotEqual(res_err.returncode, 0)
         self.assertIn("Error: Unknown option invalid_arg", res_err.stderr)
@@ -75,6 +86,7 @@ class TestRepositoryScripts(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 cwd=repo_root,
+                env=env,
             )
             self.assertNotEqual(res_dry.returncode, 0)
             self.assertIn(
@@ -88,15 +100,7 @@ class TestRepositoryScripts(unittest.TestCase):
             "patch", "minor", "major", "--patch", "--minor", "--major",
         ]
         dry_run_options = ["--dry-run", "dry-run"]
-
-        # Strip git environment variables (e.g. from pre-commit hooks) so subprocesses
-        # operate strictly within the isolated temp repository.
-        env = {
-            k: v
-            for k, v in os.environ.items()
-            if not k.startswith("GIT_")
-        }
-        env["TAG_SH_SKIP_FETCH"] = "1"
+        expected_tags = {"patch": "v1.0.1", "minor": "v1.1.0", "major": "v2.0.0"}
 
         with tempfile.TemporaryDirectory() as temp_dir:
             def run_git(*args):
@@ -120,6 +124,7 @@ class TestRepositoryScripts(unittest.TestCase):
 
             for inc_opt in increment_options:
                 for dry_opt in dry_run_options:
+                    expected_tag = expected_tags[inc_opt.lstrip("-")]
                     for args in [[inc_opt, dry_opt], [dry_opt, inc_opt]]:
                         res = subprocess.run(
                             [tag_script] + args,
@@ -133,7 +138,10 @@ class TestRepositoryScripts(unittest.TestCase):
                             0,
                             f"tag.sh {' '.join(args)} failed: {res.stderr}",
                         )
-                        self.assertIn("Incrementing to new tag:", res.stdout)
+                        self.assertIn(
+                            f"Incrementing to new tag: {expected_tag}",
+                            res.stdout,
+                        )
                         self.assertIn("[DRY RUN]", res.stdout)
 
             # Verify TAG_SH_SKIP_FETCH bypasses remote fetch when remote is present
@@ -204,6 +212,7 @@ class TestRepositoryScripts(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 cwd=repo_root,
+                env=env,
             )
             self.assertNotEqual(
                 res_conflict.returncode,
