@@ -149,7 +149,10 @@ class UnifiedTaskRepository implements TaskRepository {
 
   @override
   Future<void> addTaskSchedule(TaskSchedule task) async {
-    final t = task.copyWith(updatedAt: DateTime.now(), hasPendingWrites: true);
+    final t = task.copyWith(
+      updatedAt: DateTime.now().toUtc(),
+      hasPendingWrites: true,
+    );
     await _localDataSource.saveTask(t);
     await _localDataSource.markDirty(t.id);
     logger?.info(
@@ -164,7 +167,7 @@ class UnifiedTaskRepository implements TaskRepository {
   @override
   Future<void> updateTaskSchedule(TaskModification modification) async {
     final t = modification.newTask.copyWith(
-      updatedAt: DateTime.now(),
+      updatedAt: DateTime.now().toUtc(),
       hasPendingWrites: true,
     );
     await _localDataSource.saveTask(t);
@@ -202,7 +205,7 @@ class UnifiedTaskRepository implements TaskRepository {
           assignedUserId: t.assignedUserId,
           clearAssignedUserId: t.assignedUserId == null,
           hasPendingWrites: true,
-          updatedAt: DateTime.now(),
+          updatedAt: DateTime.now().toUtc(),
         );
         await _localDataSource.saveInstance(updatedInst);
         await _localDataSource.markDirty(updatedInst.id);
@@ -324,7 +327,7 @@ class UnifiedTaskRepository implements TaskRepository {
           completedAt: AppClock.now,
           completedByUserIds: updatedUserIds,
           hasPendingWrites: true,
-          updatedAt: DateTime.now(),
+          updatedAt: DateTime.now().toUtc(),
         );
         await _localDataSource.saveInstance(completedInstance);
         await _localDataSource.markDirty(completedInstance.id);
@@ -357,7 +360,7 @@ class UnifiedTaskRepository implements TaskRepository {
         final partialInstance = instance.copyWith(
           completedByUserIds: updatedUserIds,
           hasPendingWrites: true,
-          updatedAt: DateTime.now(),
+          updatedAt: DateTime.now().toUtc(),
         );
         await _localDataSource.saveInstance(partialInstance);
         await _localDataSource.markDirty(partialInstance.id);
@@ -381,7 +384,7 @@ class UnifiedTaskRepository implements TaskRepository {
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
       hasPendingWrites: true,
-      updatedAt: DateTime.now(),
+      updatedAt: DateTime.now().toUtc(),
     );
     await _localDataSource.saveInstance(completedInstance);
     await _localDataSource.markDirty(completedInstance.id);
@@ -427,7 +430,7 @@ class UnifiedTaskRepository implements TaskRepository {
   Future<void> saveTaskInstance(TaskInstance instance) async {
     final updated = instance.copyWith(
       hasPendingWrites: true,
-      updatedAt: DateTime.now(),
+      updatedAt: DateTime.now().toUtc(),
     );
     await _localDataSource.saveInstance(updated);
     await _localDataSource.markDirty(updated.id);
@@ -457,7 +460,7 @@ class UnifiedTaskRepository implements TaskRepository {
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
       hasPendingWrites: true,
-      updatedAt: DateTime.now(),
+      updatedAt: DateTime.now().toUtc(),
     );
     await _localDataSource.saveInstance(dismissedInstance);
     await _localDataSource.markDirty(dismissedInstance.id);
@@ -502,7 +505,7 @@ class UnifiedTaskRepository implements TaskRepository {
         clearStatusReason: true,
         completedByUserIds: updatedUserIds,
         hasPendingWrites: true,
-        updatedAt: DateTime.now(),
+        updatedAt: DateTime.now().toUtc(),
       );
       await _localDataSource.saveInstance(pendingInstance);
       await _localDataSource.markDirty(pendingInstance.id);
@@ -532,7 +535,7 @@ class UnifiedTaskRepository implements TaskRepository {
       clearCompletedAt: true,
       clearStatusReason: true,
       hasPendingWrites: true,
-      updatedAt: DateTime.now(),
+      updatedAt: DateTime.now().toUtc(),
     );
     await _localDataSource.saveInstance(pendingInstance);
     await _localDataSource.markDirty(pendingInstance.id);
@@ -759,7 +762,7 @@ class UnifiedTaskRepository implements TaskRepository {
 
       for (final inst in action.instancesToUpdate) {
         final updatedInst = inst.copyWith(
-          updatedAt: DateTime.now(),
+          updatedAt: DateTime.now().toUtc(),
           hasPendingWrites: true,
         );
         instancesToSave.add(updatedInst);
@@ -773,7 +776,7 @@ class UnifiedTaskRepository implements TaskRepository {
 
       for (final inst in action.instancesToSpawn) {
         final newInst = inst.copyWith(
-          updatedAt: DateTime.now(),
+          updatedAt: DateTime.now().toUtc(),
           hasPendingWrites: true,
         );
         instancesToSave.add(newInst);
@@ -801,7 +804,7 @@ class UnifiedTaskRepository implements TaskRepository {
 
       if (action.updatedSchedule != null) {
         final updatedTask = action.updatedSchedule!.copyWith(
-          updatedAt: DateTime.now(),
+          updatedAt: DateTime.now().toUtc(),
           hasPendingWrites: true,
         );
         tasksToSave.add(updatedTask);
