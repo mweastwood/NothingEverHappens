@@ -486,7 +486,8 @@ class TaskSyncService {
           final localTask = localMap[remoteTask.id];
 
           if (localTask != null) {
-            final diffMs = localTask.updatedAt.millisecondsSinceEpoch -
+            final diffMs =
+                localTask.updatedAt.millisecondsSinceEpoch -
                 remoteTask.updatedAt.millisecondsSinceEpoch;
             if (diffMs > 0) {
               toPush.add(localTask);
@@ -730,7 +731,8 @@ class TaskSyncService {
     // 3. Homogeneous Resolution:
     // If both records are user_*, both are scheduler_*, or neither, fall back to Last-Write-Wins based on updatedAt.
     // Compare in milliseconds to avoid sub-millisecond precision differences between platforms causing conflict loops.
-    final diffMs = local.updatedAt.millisecondsSinceEpoch -
+    final diffMs =
+        local.updatedAt.millisecondsSinceEpoch -
         remote.updatedAt.millisecondsSinceEpoch;
     return diffMs > 0;
   }

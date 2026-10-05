@@ -808,7 +808,10 @@ class HiveLocalDataSource {
       if (updatedAtRaw is String) {
         updatedAt = DateTime.parse(updatedAtRaw).toUtc();
       } else if (updatedAtRaw is int) {
-        updatedAt = DateTime.fromMillisecondsSinceEpoch(updatedAtRaw, isUtc: true);
+        updatedAt = DateTime.fromMillisecondsSinceEpoch(
+          updatedAtRaw,
+          isUtc: true,
+        );
       } else if (updatedAtRaw is Timestamp) {
         updatedAt = updatedAtRaw.toDate().toUtc();
       }
@@ -902,7 +905,10 @@ class HiveLocalDataSource {
       if (completedAtRaw is String) {
         completedAt = DateTime.parse(completedAtRaw).toUtc();
       } else if (completedAtRaw is int) {
-        completedAt = DateTime.fromMillisecondsSinceEpoch(completedAtRaw, isUtc: true);
+        completedAt = DateTime.fromMillisecondsSinceEpoch(
+          completedAtRaw,
+          isUtc: true,
+        );
       } else if (completedAtRaw is Timestamp) {
         completedAt = completedAtRaw.toDate().toUtc();
       }
@@ -914,7 +920,10 @@ class HiveLocalDataSource {
       if (updatedAtRaw is String) {
         updatedAt = DateTime.parse(updatedAtRaw).toUtc();
       } else if (updatedAtRaw is int) {
-        updatedAt = DateTime.fromMillisecondsSinceEpoch(updatedAtRaw, isUtc: true);
+        updatedAt = DateTime.fromMillisecondsSinceEpoch(
+          updatedAtRaw,
+          isUtc: true,
+        );
       } else if (updatedAtRaw is Timestamp) {
         updatedAt = updatedAtRaw.toDate().toUtc();
       }

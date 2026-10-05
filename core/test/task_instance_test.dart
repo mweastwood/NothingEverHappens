@@ -218,7 +218,9 @@ void main() {
       expect(instCompact.completedAt!.day, equals(23));
     });
 
-    test('preserves microsecond precision and normalizes to UTC from Firestore map', () {
+    test(
+        'preserves microsecond precision and normalizes to UTC from Firestore map',
+        () {
       final inst = TaskInstance.fromMap({
         'scheduleId': 'S-1',
         'ruleId': 'R-1',
@@ -230,7 +232,8 @@ void main() {
       });
       expect(inst.updatedAt.isUtc, isTrue);
       expect(inst.updatedAt.microsecondsSinceEpoch, equals(1789571787529188));
-      expect(inst.updatedAt.toIso8601String(), equals('2026-09-16T15:16:27.529188Z'));
+      expect(inst.updatedAt.toIso8601String(),
+          equals('2026-09-16T15:16:27.529188Z'));
     });
   });
 }

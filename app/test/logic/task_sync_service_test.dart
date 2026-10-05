@@ -2759,8 +2759,16 @@ void main() {
             title: 'Sub-MS Local Instance',
             description: '',
             scheduledDate: const CivilDay(year: 2026, month: 9, day: 20),
-            startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
-            dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
             status: TaskStatus.pending,
             statusReason: 'scheduler_prefer_older',
             updatedAt: tLocal,
@@ -2868,8 +2876,16 @@ void main() {
             title: 'Old Dirty Instance',
             description: '',
             scheduledDate: const CivilDay(year: 2026, month: 9, day: 20),
-            startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
-            dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
             updatedAt: t1,
           );
           await localDataSource.saveInstance(localInst);
@@ -2884,7 +2900,10 @@ void main() {
           await localDataSource.saveTask(localTask);
           await localDataSource.markDirty(localTask.id);
 
-          expect(localDataSource.getDirtyTaskIds(), containsAll(['I-dirty-clear-test', 'S-dirty-clear-test']));
+          expect(
+            localDataSource.getDirtyTaskIds(),
+            containsAll(['I-dirty-clear-test', 'S-dirty-clear-test']),
+          );
 
           final service = TaskSyncService(
             firestore: firestore,
@@ -2900,14 +2919,22 @@ void main() {
               .doc('user1')
               .collection('instances')
               .doc('I-dirty-clear-test')
-              .set(localInst.copyWith(title: 'New Remote Instance', updatedAt: t2).toFirestore());
+              .set(
+                localInst
+                    .copyWith(title: 'New Remote Instance', updatedAt: t2)
+                    .toFirestore(),
+              );
 
           await firestore
               .collection('users')
               .doc('user1')
               .collection('tasks')
               .doc('S-dirty-clear-test')
-              .set(localTask.copyWith(title: 'New Remote Task', updatedAt: t2).toFirestore());
+              .set(
+                localTask
+                    .copyWith(title: 'New Remote Task', updatedAt: t2)
+                    .toFirestore(),
+              );
 
           await pumpEventQueue();
 
