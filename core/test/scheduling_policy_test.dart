@@ -7,12 +7,11 @@ void main() {
       test('contains expected values', () {
         expect(
           SchedulingType.values,
-          containsAll([
+          equals([
             SchedulingType.fixedCalendar,
             SchedulingType.completionRelative,
           ]),
         );
-        expect(SchedulingType.values.length, equals(2));
       });
 
       test('enum name strings match json type values', () {
@@ -38,6 +37,16 @@ void main() {
 
       test('SchedulingPolicy.fromJson reconstructs FixedCalendarPolicy', () {
         final policy = SchedulingPolicy.fromJson({'type': 'fixedCalendar'});
+        expect(policy, isA<FixedCalendarPolicy>());
+        expect(policy.type, equals(SchedulingType.fixedCalendar));
+      });
+
+      test('SchedulingPolicy.fromJson ignores extra keys', () {
+        final policy = SchedulingPolicy.fromJson({
+          'type': 'fixedCalendar',
+          'extraKey': 'extraValue',
+          'intervalMinutes': 60,
+        });
         expect(policy, isA<FixedCalendarPolicy>());
         expect(policy.type, equals(SchedulingType.fixedCalendar));
       });
@@ -128,11 +137,31 @@ void main() {
         expect(crPolicy.type, equals(SchedulingType.completionRelative));
       });
 
+      test('toJson truncates sub-minute intervals', () {
+        const policy = CompletionRelativePolicy(
+          interval: Duration(minutes: 1, seconds: 30),
+          targetHour: 10,
+          targetMinute: 0,
+        );
+        expect(policy.toJson()['intervalMinutes'], equals(1));
+      });
+
       test('round-trip serialization integrity', () {
         const original = CompletionRelativePolicy(
           interval: Duration(hours: 36),
           targetHour: 9,
           targetMinute: 15,
+        );
+        final restored = SchedulingPolicy.fromJson(original.toJson());
+        expect(restored, equals(original));
+        expect(restored.hashCode, equals(original.hashCode));
+      });
+
+      test('round-trip serialization with zero interval', () {
+        const original = CompletionRelativePolicy(
+          interval: Duration.zero,
+          targetHour: 0,
+          targetMinute: 0,
         );
         final restored = SchedulingPolicy.fromJson(original.toJson());
         expect(restored, equals(original));
@@ -193,7 +222,7 @@ void main() {
         expect(
           policy.toString(),
           equals(
-            'CompletionRelativePolicy(interval: 24:00:00.000000, targetHour: 12, targetMinute: 45)',
+            'CompletionRelativePolicy(interval: ${const Duration(days: 1).toString()}, targetHour: 12, targetMinute: 45)',
           ),
         );
       });
@@ -260,6 +289,33 @@ void main() {
             'intervalMinutes': 'invalid',
             'targetHour': 10,
             'targetMinute': 0,
+          }),
+          throwsA(isA<TypeError>()),
+        );
+        expect(
+          () => SchedulingPolicy.fromJson({
+            'type': 'completionRelative',
+            'intervalMinutes': null,
+            'targetHour': 10,
+            'targetMinute': 0,
+          }),
+          throwsA(isA<TypeError>()),
+        );
+        expect(
+          () => SchedulingPolicy.fromJson({
+            'type': 'completionRelative',
+            'intervalMinutes': 60,
+            'targetHour': null,
+            'targetMinute': 0,
+          }),
+          throwsA(isA<TypeError>()),
+        );
+        expect(
+          () => SchedulingPolicy.fromJson({
+            'type': 'completionRelative',
+            'intervalMinutes': 60,
+            'targetHour': 10,
+            'targetMinute': null,
           }),
           throwsA(isA<TypeError>()),
         );
