@@ -80,7 +80,7 @@ class TaskInstance {
   })  : id = id ?? TaskInstance.generateId(),
         title = title.trim(),
         description = description.trim(),
-        updatedAt = updatedAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now().toUtc(),
         completedByUserIds = completedByUserIds ?? const [],
         notificationRelativeTimes = notificationRelativeTimes ?? const [];
 
@@ -156,9 +156,9 @@ class TaskInstance {
         final nanos = nanosRaw is num
             ? nanosRaw
             : (num.tryParse(nanosRaw.toString()) ?? 0);
-        return DateTime.fromMillisecondsSinceEpoch(
-          seconds.toInt() * 1000 + (nanos.toInt() ~/ 1000000),
-          isUtc: false,
+        return DateTime.fromMicrosecondsSinceEpoch(
+          seconds.toInt() * 1000000 + (nanos.toInt() ~/ 1000),
+          isUtc: true,
         );
       }
     }

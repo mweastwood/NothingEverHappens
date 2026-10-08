@@ -217,5 +217,23 @@ void main() {
       expect(instCompact.completedAt!.month, equals(9));
       expect(instCompact.completedAt!.day, equals(23));
     });
+
+    test(
+        'preserves microsecond precision and normalizes to UTC from Firestore map',
+        () {
+      final inst = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Microsecond Map Instance',
+        'updatedAt': {
+          '_seconds': 1789571787,
+          '_nanoseconds': 529188000,
+        },
+      });
+      expect(inst.updatedAt.isUtc, isTrue);
+      expect(inst.updatedAt.microsecondsSinceEpoch, equals(1789571787529188));
+      expect(inst.updatedAt.toIso8601String(),
+          equals('2026-09-16T15:16:27.529188Z'));
+    });
   });
 }

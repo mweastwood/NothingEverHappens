@@ -339,7 +339,7 @@ void main() {
           .doc('I-2')
           .set(remoteInst.toFirestore());
 
-      await pumpEventQueue();
+      await pumpEventQueue(times: 20);
 
       final instances = localDataSource.getInstances();
       expect(instances.any((i) => i.id == 'I-1'), isFalse);
@@ -405,7 +405,7 @@ void main() {
       expect(instances.any((i) => i.id == 'I-2'), isFalse);
 
       final dirtyIds = localDataSource.getDirtyTaskIds();
-      expect(dirtyIds, contains('I-1'));
+      expect(dirtyIds.contains('I-1'), isFalse);
 
       final remoteLoserSnap = await firestore
           .collection('users')
@@ -2741,6 +2741,207 @@ void main() {
               .doc('I-slot-duplicate')
               .get();
           expect(userInst.exists, isTrue);
+        },
+      );
+    });
+
+    group('Sub-millisecond Precision & Echo Churn Hardening', () {
+      test(
+        'remote instance with same millisecond or sub-millisecond precision difference does not trigger conflict push or mark dirty',
+        () async {
+          final tLocal = DateTime.utc(2026, 9, 16, 15, 16, 27, 529, 188);
+          final tRemote = DateTime.utc(2026, 9, 16, 15, 16, 27, 529, 0);
+
+          final localInst = TaskInstance(
+            id: 'I-subms-test',
+            scheduleId: 'S-subms-1',
+            ruleId: 'R-1',
+            title: 'Sub-MS Local Instance',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 20),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            statusReason: 'scheduler_prefer_older',
+            updatedAt: tLocal,
+          );
+          await localDataSource.saveInstance(localInst);
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final remoteInst = localInst.copyWith(
+            title: 'Sub-MS Remote Instance',
+            updatedAt: tRemote,
+          );
+
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-subms-test')
+              .set(remoteInst.toFirestore());
+
+          await pumpEventQueue();
+
+          // Dirty tasks must be empty (local did not falsely win or mark dirty)
+          final dirtyIds = localDataSource.getDirtyTaskIds();
+          expect(dirtyIds, isEmpty);
+
+          // Remote doc was NOT overwritten by local
+          final snap = await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-subms-test')
+              .get();
+          expect(snap.data()?['title'], 'Sub-MS Remote Instance');
+        },
+      );
+
+      test(
+        'remote task schedule with sub-millisecond precision difference does not trigger conflict push or mark dirty',
+        () async {
+          final tLocal = DateTime.utc(2026, 9, 16, 15, 16, 27, 529, 188);
+          final tRemote = DateTime.utc(2026, 9, 16, 15, 16, 27, 529, 0);
+
+          final localTask = TaskSchedule(
+            id: 'S-subms-test',
+            title: 'Sub-MS Local Task',
+            description: '',
+            updatedAt: tLocal,
+          );
+          await localDataSource.saveTask(localTask);
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final remoteTask = localTask.copyWith(
+            title: 'Sub-MS Remote Task',
+            updatedAt: tRemote,
+          );
+
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('tasks')
+              .doc('S-subms-test')
+              .set(remoteTask.toFirestore());
+
+          await pumpEventQueue();
+
+          final dirtyIds = localDataSource.getDirtyTaskIds();
+          expect(dirtyIds, isEmpty);
+
+          final snap = await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('tasks')
+              .doc('S-subms-test')
+              .get();
+          expect(snap.data()?['title'], 'Sub-MS Remote Task');
+        },
+      );
+
+      test(
+        'saving incoming remote changes clears dirty state for those items',
+        () async {
+          final t1 = DateTime.utc(2026, 9, 16, 10, 0);
+          final t2 = DateTime.utc(2026, 9, 16, 12, 0);
+
+          final localInst = TaskInstance(
+            id: 'I-dirty-clear-test',
+            scheduleId: 'S-dirty-1',
+            ruleId: 'R-1',
+            title: 'Old Dirty Instance',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 20),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            updatedAt: t1,
+          );
+          await localDataSource.saveInstance(localInst);
+          await localDataSource.markDirty(localInst.id);
+
+          final localTask = TaskSchedule(
+            id: 'S-dirty-clear-test',
+            title: 'Old Dirty Task',
+            description: '',
+            updatedAt: t1,
+          );
+          await localDataSource.saveTask(localTask);
+          await localDataSource.markDirty(localTask.id);
+
+          expect(
+            localDataSource.getDirtyTaskIds(),
+            containsAll(['I-dirty-clear-test', 'S-dirty-clear-test']),
+          );
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          // Newer remote versions arrive
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-dirty-clear-test')
+              .set(
+                localInst
+                    .copyWith(title: 'New Remote Instance', updatedAt: t2)
+                    .toFirestore(),
+              );
+
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('tasks')
+              .doc('S-dirty-clear-test')
+              .set(
+                localTask
+                    .copyWith(title: 'New Remote Task', updatedAt: t2)
+                    .toFirestore(),
+              );
+
+          await pumpEventQueue();
+
+          // Dirty tasks must be cleared when accepted from remote
+          final dirtyIds = localDataSource.getDirtyTaskIds();
+          expect(dirtyIds.contains('I-dirty-clear-test'), isFalse);
+          expect(dirtyIds.contains('S-dirty-clear-test'), isFalse);
         },
       );
     });
