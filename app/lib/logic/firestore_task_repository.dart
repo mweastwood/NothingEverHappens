@@ -21,12 +21,45 @@ import 'task_spawner_engine.dart';
 import 'user_settings.dart';
 import 'utils/app_version.dart';
 
+/// Typed key identifying a spawned task instance in the recently-spawned
+/// cache: the owning schedule, the schedule rule that produced it, and the
+/// civil day it is scheduled for.
+typedef SpawnedInstanceKey = ({
+  String scheduleId,
+  String ruleId,
+  CivilDay date,
+});
+
+/// Builds the [SpawnedInstanceKey] identifying [instance] in the
+/// recently-spawned cache.
+SpawnedInstanceKey _spawnedKeyFor(TaskInstance instance) => (
+  scheduleId: instance.scheduleId,
+  ruleId: instance.ruleId,
+  date: instance.scheduledDate,
+);
+
 class FirestoreTaskRepository implements TaskRepository {
   /// Expiration duration for recently spawned virtual instances.
   static const Duration _spawnedInstanceCacheDuration = Duration(seconds: 2);
 
   /// Conversion factor for minutes to hours.
   static const double _minutesPerHour = 60.0;
+
+  /// Default start time (09:00 on the scheduled day) assigned to virtual
+  /// instances injected before the real instance is observed in Firestore.
+  static const _defaultVirtualStartRelativeTime = RelativeTime(
+    dayOffset: 0,
+    hour: 9,
+    minute: 0,
+  );
+
+  /// Default due time (17:00 on the scheduled day) assigned to virtual
+  /// instances injected before the real instance is observed in Firestore.
+  static const _defaultVirtualDueRelativeTime = RelativeTime(
+    dayOffset: 0,
+    hour: 17,
+    minute: 0,
+  );
 
   final FirebaseFirestore _firestore;
   final String _userId;
@@ -43,7 +76,7 @@ class FirestoreTaskRepository implements TaskRepository {
   DateTime? _scheduledTriggerTime;
   final Map<String, ({DateTime processedAt, String signature})>
   _lastProcessedTasks = {};
-  final Map<String, DateTime> _spawnedInstancesCache = {};
+  final Map<SpawnedInstanceKey, DateTime> _spawnedInstancesCache = {};
   static const int _instanceQueryCutoffDays = 90;
 
   @override
@@ -84,7 +117,8 @@ class FirestoreTaskRepository implements TaskRepository {
   Map<String, TaskSchedule> get cachedTasksMap => _cachedTasksMap;
 
   @visibleForTesting
-  Map<String, DateTime> get spawnedInstancesCache => _spawnedInstancesCache;
+  Map<SpawnedInstanceKey, DateTime> get spawnedInstancesCache =>
+      _spawnedInstancesCache;
 
   @visibleForTesting
   static Duration get spawnedInstanceCacheDuration =>
@@ -591,7 +625,7 @@ class FirestoreTaskRepository implements TaskRepository {
     List<TaskInstance> taskInstances,
     DateTime now,
   ) {
-    final keysToRemove = <String>[];
+    final keysToRemove = <SpawnedInstanceKey>[];
     for (final entry in _spawnedInstancesCache.entries) {
       final key = entry.key;
       final spawnTime = entry.value;
@@ -601,48 +635,31 @@ class FirestoreTaskRepository implements TaskRepository {
         continue;
       }
 
-      final parts = key.split(':');
-      if (parts.length == 3) {
-        final sId = parts[0];
-        final rId = parts[1];
-        if (sId == task.id) {
-          final dateParts = parts[2].split('-');
-          if (dateParts.length == 3) {
-            final date = CivilDay(
-              year: int.parse(dateParts[0]),
-              month: int.parse(dateParts[1]),
-              day: int.parse(dateParts[2]),
-            );
-            final exists = taskInstances.any(
-              (inst) => inst.ruleId == rId && inst.scheduledDate == date,
-            );
-            if (!exists) {
-              taskInstances.add(
-                TaskInstance(
-                  id: 'VIRTUAL-${TaskInstance.generateId()}',
-                  scheduleId: sId,
-                  ruleId: rId,
-                  title: task.title,
-                  description: task.description,
-                  labelIds: task.labelIds,
-                  scheduledDate: date,
-                  startRelativeTime: RelativeTime(
-                    dayOffset: 0,
-                    hour: 9,
-                    minute: 0,
-                  ),
-                  dueRelativeTime: RelativeTime(
-                    dayOffset: 0,
-                    hour: 17,
-                    minute: 0,
-                  ),
-                  status: TaskStatus.pending,
-                ),
-              );
-            }
-          }
-        }
+      if (key.scheduleId != task.id) {
+        continue;
       }
+
+      final exists = taskInstances.any(
+        (inst) => inst.ruleId == key.ruleId && inst.scheduledDate == key.date,
+      );
+      if (exists) {
+        continue;
+      }
+
+      taskInstances.add(
+        TaskInstance(
+          id: 'VIRTUAL-${TaskInstance.generateId()}',
+          scheduleId: key.scheduleId,
+          ruleId: key.ruleId,
+          title: task.title,
+          description: task.description,
+          labelIds: task.labelIds,
+          scheduledDate: key.date,
+          startRelativeTime: _defaultVirtualStartRelativeTime,
+          dueRelativeTime: _defaultVirtualDueRelativeTime,
+          status: TaskStatus.pending,
+        ),
+      );
     }
     for (final k in keysToRemove) {
       _spawnedInstancesCache.remove(k);
@@ -691,8 +708,7 @@ class FirestoreTaskRepository implements TaskRepository {
         newInst,
         SetOptions(merge: true),
       );
-      _spawnedInstancesCache['${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}'] =
-          now;
+      _spawnedInstancesCache[_spawnedKeyFor(inst)] = now;
       markChanged();
       instancesById[newInst.id] = newInst;
       instancesByScheduleId
@@ -705,9 +721,7 @@ class FirestoreTaskRepository implements TaskRepository {
           instancesById[instId] ??
           taskInstances.firstWhereOrNull((x) => x.id == instId);
       if (inst != null) {
-        _spawnedInstancesCache.remove(
-          '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
-        );
+        _spawnedInstancesCache.remove(_spawnedKeyFor(inst));
       }
       final isFamily = task.isFamily;
       batch.delete(_instanceRefForId(instId, isFamily, familyId));
@@ -759,9 +773,7 @@ class FirestoreTaskRepository implements TaskRepository {
           !taskMap.containsKey(inst.scheduleId)) {
         final isFamily = inst.isFamily;
         batch.delete(_instanceRefForId(inst.id, isFamily, familyId));
-        _spawnedInstancesCache.remove(
-          '${inst.scheduleId}:${inst.ruleId}:${inst.scheduledDate}',
-        );
+        _spawnedInstancesCache.remove(_spawnedKeyFor(inst));
         deletedInstanceIds.add(inst.id);
         instancesById.remove(inst.id);
         instancesByScheduleId[inst.scheduleId]?.removeWhere(
@@ -1142,7 +1154,7 @@ class FirestoreTaskRepository implements TaskRepository {
     await _notificationService?.cancelNotifications(targetId);
     await _notificationService?.cancelNotifications(id);
     _spawnedInstancesCache.removeWhere(
-      (key, value) => key.startsWith('$targetId:') || key.startsWith('$id:'),
+      (key, value) => key.scheduleId == targetId || key.scheduleId == id,
     );
     _lastProcessedTasks.remove(targetId);
     _lastProcessedTasks.remove(id);
@@ -1255,9 +1267,7 @@ class FirestoreTaskRepository implements TaskRepository {
           completedInstance,
           SetOptions(merge: true),
         );
-        _spawnedInstancesCache.remove(
-          '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
-        );
+        _spawnedInstancesCache.remove(_spawnedKeyFor(instance));
 
         if (isFamily) {
           if (familyId != null && familyId.isNotEmpty) {
@@ -1312,9 +1322,7 @@ class FirestoreTaskRepository implements TaskRepository {
       completedInstance,
       SetOptions(merge: true),
     );
-    _spawnedInstancesCache.remove(
-      '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
-    );
+    _spawnedInstancesCache.remove(_spawnedKeyFor(instance));
 
     if (isFamily) {
       if (familyId != null && familyId.isNotEmpty) {
@@ -1390,9 +1398,7 @@ class FirestoreTaskRepository implements TaskRepository {
       dismissedInstance,
       SetOptions(merge: true),
     );
-    _spawnedInstancesCache.remove(
-      '${instance.scheduleId}:${instance.ruleId}:${instance.scheduledDate}',
-    );
+    _spawnedInstancesCache.remove(_spawnedKeyFor(instance));
 
     final isFamily = instance.isFamily || (task?.isFamily ?? false);
     if (isFamily) {
@@ -1453,8 +1459,7 @@ class FirestoreTaskRepository implements TaskRepository {
       // which would prevent them from being cleared in Firestore if merge: true
       // were used without FieldValue.delete().
       batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
-      _spawnedInstancesCache['${resolvedInstance.scheduleId}:${resolvedInstance.ruleId}:${resolvedInstance.scheduledDate}'] =
-          now;
+      _spawnedInstancesCache[_spawnedKeyFor(resolvedInstance)] = now;
 
       if (familyId != null && familyId.isNotEmpty) {
         unawaited(
@@ -1479,8 +1484,7 @@ class FirestoreTaskRepository implements TaskRepository {
     // which would prevent them from being cleared in Firestore if merge: true
     // were used without FieldValue.delete().
     batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
-    _spawnedInstancesCache['${resolvedInstance.scheduleId}:${resolvedInstance.ruleId}:${resolvedInstance.scheduledDate}'] =
-        now;
+    _spawnedInstancesCache[_spawnedKeyFor(resolvedInstance)] = now;
 
     if (isFamily) {
       if (familyId != null && familyId.isNotEmpty) {
@@ -1507,9 +1511,7 @@ class FirestoreTaskRepository implements TaskRepository {
         if (nextId != null) {
           final nextInst = allInstances.firstWhereOrNull((x) => x.id == nextId);
           if (nextInst != null) {
-            _spawnedInstancesCache.remove(
-              '${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}',
-            );
+            _spawnedInstancesCache.remove(_spawnedKeyFor(nextInst));
           }
           batch.delete(
             _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
@@ -1559,8 +1561,7 @@ class FirestoreTaskRepository implements TaskRepository {
         nextInst,
         SetOptions(merge: true),
       );
-      _spawnedInstancesCache['${nextInst.scheduleId}:${nextInst.ruleId}:${nextInst.scheduledDate}'] =
-          now;
+      _spawnedInstancesCache[_spawnedKeyFor(nextInst)] = now;
     }
   }
 
