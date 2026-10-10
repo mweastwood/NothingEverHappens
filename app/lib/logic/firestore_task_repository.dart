@@ -708,8 +708,7 @@ class FirestoreTaskRepository implements TaskRepository {
         newInst,
         SetOptions(merge: true),
       );
-      _spawnedInstancesCache[_spawnedKeyFor(inst)] =
-          now;
+      _spawnedInstancesCache[_spawnedKeyFor(inst)] = now;
       markChanged();
       instancesById[newInst.id] = newInst;
       instancesByScheduleId
@@ -1460,8 +1459,7 @@ class FirestoreTaskRepository implements TaskRepository {
       // which would prevent them from being cleared in Firestore if merge: true
       // were used without FieldValue.delete().
       batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
-      _spawnedInstancesCache[_spawnedKeyFor(resolvedInstance)] =
-          now;
+      _spawnedInstancesCache[_spawnedKeyFor(resolvedInstance)] = now;
 
       if (familyId != null && familyId.isNotEmpty) {
         unawaited(
@@ -1486,8 +1484,7 @@ class FirestoreTaskRepository implements TaskRepository {
     // which would prevent them from being cleared in Firestore if merge: true
     // were used without FieldValue.delete().
     batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
-    _spawnedInstancesCache[_spawnedKeyFor(resolvedInstance)] =
-        now;
+    _spawnedInstancesCache[_spawnedKeyFor(resolvedInstance)] = now;
 
     if (isFamily) {
       if (familyId != null && familyId.isNotEmpty) {
@@ -1564,8 +1561,7 @@ class FirestoreTaskRepository implements TaskRepository {
         nextInst,
         SetOptions(merge: true),
       );
-      _spawnedInstancesCache[_spawnedKeyFor(nextInst)] =
-          now;
+      _spawnedInstancesCache[_spawnedKeyFor(nextInst)] = now;
     }
   }
 
