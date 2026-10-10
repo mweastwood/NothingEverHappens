@@ -712,5 +712,71 @@ void main() {
         expect(taskInstances.first.id, 'I-existing-1');
       },
     );
+
+    test('Skips cache keys belonging to other schedules and keeps them cached',
+        () {
+      final task = createTestTask(id: 'S-mine');
+      final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
+      final recent = fixedClockTime.subtract(const Duration(milliseconds: 500));
+
+      final mineKey = (
+        scheduleId: task.id,
+        ruleId: 'R-rule-1',
+        date: targetDate,
+      );
+      final otherKey = (
+        scheduleId: 'S-other',
+        ruleId: 'R-rule-2',
+        date: targetDate,
+      );
+      repository.spawnedInstancesCache[mineKey] = recent;
+      repository.spawnedInstancesCache[otherKey] = recent;
+
+      final taskInstances = <TaskInstance>[];
+      repository.injectVirtualSpawnedInstances(
+        task,
+        taskInstances,
+        fixedClockTime,
+      );
+
+      expect(taskInstances.length, 1);
+      expect(taskInstances.first.scheduleId, task.id);
+      expect(taskInstances.first.ruleId, 'R-rule-1');
+      expect(repository.spawnedInstancesCache.containsKey(otherKey), isTrue);
+      expect(repository.spawnedInstancesCache.containsKey(mineKey), isTrue);
+    });
+
+    test('deleteTaskSchedule removes cache entries for the deleted schedule '
+        'only', () async {
+      final task = createTestTask(id: 'S-delete-me');
+      await FirestoreCollections.userTasks(
+        firestore,
+        userId,
+      ).doc(task.id).set(task);
+
+      final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
+      final recent = fixedClockTime.subtract(const Duration(milliseconds: 500));
+      final deletedKey = (
+        scheduleId: task.id,
+        ruleId: 'R-rule-1',
+        date: targetDate,
+      );
+      final keptKey = (
+        scheduleId: 'S-keep-me',
+        ruleId: 'R-rule-1',
+        date: targetDate,
+      );
+      repository.spawnedInstancesCache[deletedKey] = recent;
+      repository.spawnedInstancesCache[keptKey] = recent;
+
+      final result = await repository.deleteTaskSchedule(task.id);
+
+      expect(result, isNotNull);
+      expect(
+        repository.spawnedInstancesCache.containsKey(deletedKey),
+        isFalse,
+      );
+      expect(repository.spawnedInstancesCache.containsKey(keptKey), isTrue);
+    });
   });
 }

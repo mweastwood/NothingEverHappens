@@ -21,6 +21,9 @@ import 'task_spawner_engine.dart';
 import 'user_settings.dart';
 import 'utils/app_version.dart';
 
+/// Typed key identifying a spawned task instance in the recently-spawned
+/// cache: the owning schedule, the schedule rule that produced it, and the
+/// civil day it is scheduled for.
 typedef SpawnedInstanceKey = ({
   String scheduleId,
   String ruleId,
@@ -34,11 +37,16 @@ class FirestoreTaskRepository implements TaskRepository {
   /// Conversion factor for minutes to hours.
   static const double _minutesPerHour = 60.0;
 
+  /// Default start time (09:00 on the scheduled day) assigned to virtual
+  /// instances injected before the real instance is observed in Firestore.
   static const _defaultVirtualStartRelativeTime = RelativeTime(
     dayOffset: 0,
     hour: 9,
     minute: 0,
   );
+
+  /// Default due time (17:00 on the scheduled day) assigned to virtual
+  /// instances injected before the real instance is observed in Firestore.
   static const _defaultVirtualDueRelativeTime = RelativeTime(
     dayOffset: 0,
     hour: 17,
