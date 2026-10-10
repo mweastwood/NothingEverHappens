@@ -444,6 +444,123 @@ void main() {
         expect(day6.missedTasks.first.id, 'i-oneoff-pending');
       },
     );
+
+    testWidgets(
+      'accounts completed one-off task with deleted rule ID to completion day when schedule has all one-off rules',
+      (tester) async {
+        final oneOffSchedule = TaskSchedule(
+          id: 's-oneoff-deleted-rule',
+          title: 'One-off Task',
+          description: 'Desc',
+          estimatedDuration: const Duration(minutes: 60),
+          schedules: [
+            OneOffSchedule(
+              id: 'r-existing-oneoff',
+              date: const CivilDay(year: 2026, month: 7, day: 5),
+              startRelativeTime: dummyStart,
+              dueRelativeTime: dummyDue,
+            ),
+          ],
+        );
+
+        final repeatingSchedule = TaskSchedule(
+          id: 's-repeating-deleted-rule',
+          title: 'Repeating Task',
+          description: 'Desc',
+          estimatedDuration: const Duration(minutes: 60),
+          schedules: [
+            DailySchedule(
+              id: 'r-daily',
+              startDate: const CivilDay(year: 2026, month: 7, day: 1),
+              interval: 1,
+              startRelativeTime: dummyStart,
+              dueRelativeTime: dummyDue,
+            ),
+          ],
+        );
+
+        final tasksSubject = BehaviorSubject<List<TaskSchedule>>.seeded([
+          oneOffSchedule,
+          repeatingSchedule,
+        ]);
+
+        final instancesSubject = BehaviorSubject<List<TaskInstance>>.seeded([
+          // 1. One-off instance with deleted/missing ruleId whose schedule has only one-off rules
+          // Scheduled July 5, completed July 9 -> should account to completion day (July 9)
+          TaskInstance(
+            id: 'i-deleted-rule-oneoff',
+            scheduleId: oneOffSchedule.id,
+            ruleId: 'r-deleted-oneoff', // Missing from oneOffSchedule.schedules
+            title: 'One-off Task',
+            description: 'Desc',
+            scheduledDate: const CivilDay(year: 2026, month: 7, day: 5),
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 9, 14, 0),
+            completedByUserId: 'user-alice',
+          ),
+          // 2. Instance with deleted/missing ruleId whose schedule has recurring rules
+          // Scheduled July 5, completed July 9 -> should fallback to false and account to scheduled date (July 5)
+          TaskInstance(
+            id: 'i-deleted-rule-repeating',
+            scheduleId: repeatingSchedule.id,
+            ruleId: 'r-deleted-repeating', // Missing from repeatingSchedule.schedules
+            title: 'Repeating Task',
+            description: 'Desc',
+            scheduledDate: const CivilDay(year: 2026, month: 7, day: 5),
+            startRelativeTime: dummyStart,
+            dueRelativeTime: dummyDue,
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 7, 9, 14, 0),
+            completedByUserId: 'user-alice',
+          ),
+        ]);
+        final authSubject = BehaviorSubject<User?>.seeded(MockUser());
+
+        addTearDown(() {
+          tasksSubject.close();
+          instancesSubject.close();
+          authSubject.close();
+        });
+
+        late PersonalLastWeekStats stats;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authStateProvider.overrideWith((ref) => authSubject.stream),
+              taskSchedulesProvider.overrideWith((ref) => tasksSubject.stream),
+              taskInstancesProvider.overrideWith(
+                (ref) => instancesSubject.stream,
+              ),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                stats = ref.watch(personalLastWeekStatsProvider);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // July 5: Should contain i-deleted-rule-repeating (since schedule has non-one-off rules, fallback is false)
+        // and should NOT contain i-deleted-rule-oneoff.
+        final day5 = stats.dailyStats.firstWhere(
+          (d) => d.day == const CivilDay(year: 2026, month: 7, day: 5),
+        );
+        expect(day5.completedCount, 1);
+        expect(day5.completedTasks.first.id, 'i-deleted-rule-repeating');
+
+        // July 9: Should contain i-deleted-rule-oneoff accounted to completion day via fallback
+        final day9 = stats.dailyStats.firstWhere(
+          (d) => d.day == const CivilDay(year: 2026, month: 7, day: 9),
+        );
+        expect(day9.completedCount, 1);
+        expect(day9.completedTasks.first.id, 'i-deleted-rule-oneoff');
+        expect(day9.completedHours, 1.0);
+      },
+    );
   });
 
   group('familyLastWeekStatsProvider', () {
