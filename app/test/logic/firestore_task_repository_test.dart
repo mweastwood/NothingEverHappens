@@ -619,11 +619,7 @@ void main() {
       const ruleId = 'R-rule-1';
       final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
 
-      final cacheKey = (
-        scheduleId: task.id,
-        ruleId: ruleId,
-        date: targetDate,
-      );
+      final cacheKey = (scheduleId: task.id, ruleId: ruleId, date: targetDate);
       repository.spawnedInstancesCache[cacheKey] = fixedClockTime.subtract(
         const Duration(milliseconds: 500),
       );
@@ -713,38 +709,42 @@ void main() {
       },
     );
 
-    test('Skips cache keys belonging to other schedules and keeps them cached',
-        () {
-      final task = createTestTask(id: 'S-mine');
-      final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
-      final recent = fixedClockTime.subtract(const Duration(milliseconds: 500));
+    test(
+      'Skips cache keys belonging to other schedules and keeps them cached',
+      () {
+        final task = createTestTask(id: 'S-mine');
+        final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
+        final recent = fixedClockTime.subtract(
+          const Duration(milliseconds: 500),
+        );
 
-      final mineKey = (
-        scheduleId: task.id,
-        ruleId: 'R-rule-1',
-        date: targetDate,
-      );
-      final otherKey = (
-        scheduleId: 'S-other',
-        ruleId: 'R-rule-2',
-        date: targetDate,
-      );
-      repository.spawnedInstancesCache[mineKey] = recent;
-      repository.spawnedInstancesCache[otherKey] = recent;
+        final mineKey = (
+          scheduleId: task.id,
+          ruleId: 'R-rule-1',
+          date: targetDate,
+        );
+        final otherKey = (
+          scheduleId: 'S-other',
+          ruleId: 'R-rule-2',
+          date: targetDate,
+        );
+        repository.spawnedInstancesCache[mineKey] = recent;
+        repository.spawnedInstancesCache[otherKey] = recent;
 
-      final taskInstances = <TaskInstance>[];
-      repository.injectVirtualSpawnedInstances(
-        task,
-        taskInstances,
-        fixedClockTime,
-      );
+        final taskInstances = <TaskInstance>[];
+        repository.injectVirtualSpawnedInstances(
+          task,
+          taskInstances,
+          fixedClockTime,
+        );
 
-      expect(taskInstances.length, 1);
-      expect(taskInstances.first.scheduleId, task.id);
-      expect(taskInstances.first.ruleId, 'R-rule-1');
-      expect(repository.spawnedInstancesCache.containsKey(otherKey), isTrue);
-      expect(repository.spawnedInstancesCache.containsKey(mineKey), isTrue);
-    });
+        expect(taskInstances.length, 1);
+        expect(taskInstances.first.scheduleId, task.id);
+        expect(taskInstances.first.ruleId, 'R-rule-1');
+        expect(repository.spawnedInstancesCache.containsKey(otherKey), isTrue);
+        expect(repository.spawnedInstancesCache.containsKey(mineKey), isTrue);
+      },
+    );
 
     test('deleteTaskSchedule removes cache entries for the deleted schedule '
         'only', () async {
@@ -772,10 +772,7 @@ void main() {
       final result = await repository.deleteTaskSchedule(task.id);
 
       expect(result, isNotNull);
-      expect(
-        repository.spawnedInstancesCache.containsKey(deletedKey),
-        isFalse,
-      );
+      expect(repository.spawnedInstancesCache.containsKey(deletedKey), isFalse);
       expect(repository.spawnedInstancesCache.containsKey(keptKey), isTrue);
     });
   });

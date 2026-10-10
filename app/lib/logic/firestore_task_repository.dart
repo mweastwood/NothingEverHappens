@@ -701,10 +701,11 @@ class FirestoreTaskRepository implements TaskRepository {
         SetOptions(merge: true),
       );
       _spawnedInstancesCache[(
-        scheduleId: inst.scheduleId,
-        ruleId: inst.ruleId,
-        date: inst.scheduledDate,
-      )] = now;
+            scheduleId: inst.scheduleId,
+            ruleId: inst.ruleId,
+            date: inst.scheduledDate,
+          )] =
+          now;
       markChanged();
       instancesById[newInst.id] = newInst;
       instancesByScheduleId
@@ -1158,8 +1159,7 @@ class FirestoreTaskRepository implements TaskRepository {
     await _notificationService?.cancelNotifications(targetId);
     await _notificationService?.cancelNotifications(id);
     _spawnedInstancesCache.removeWhere(
-      (key, value) =>
-          key.scheduleId == targetId || key.scheduleId == id,
+      (key, value) => key.scheduleId == targetId || key.scheduleId == id,
     );
     _lastProcessedTasks.remove(targetId);
     _lastProcessedTasks.remove(id);
@@ -1477,10 +1477,11 @@ class FirestoreTaskRepository implements TaskRepository {
       // were used without FieldValue.delete().
       batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
       _spawnedInstancesCache[(
-        scheduleId: resolvedInstance.scheduleId,
-        ruleId: resolvedInstance.ruleId,
-        date: resolvedInstance.scheduledDate,
-      )] = now;
+            scheduleId: resolvedInstance.scheduleId,
+            ruleId: resolvedInstance.ruleId,
+            date: resolvedInstance.scheduledDate,
+          )] =
+          now;
 
       if (familyId != null && familyId.isNotEmpty) {
         unawaited(
@@ -1506,10 +1507,11 @@ class FirestoreTaskRepository implements TaskRepository {
     // were used without FieldValue.delete().
     batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
     _spawnedInstancesCache[(
-      scheduleId: resolvedInstance.scheduleId,
-      ruleId: resolvedInstance.ruleId,
-      date: resolvedInstance.scheduledDate,
-    )] = now;
+          scheduleId: resolvedInstance.scheduleId,
+          ruleId: resolvedInstance.ruleId,
+          date: resolvedInstance.scheduledDate,
+        )] =
+        now;
 
     if (isFamily) {
       if (familyId != null && familyId.isNotEmpty) {
@@ -1591,10 +1593,11 @@ class FirestoreTaskRepository implements TaskRepository {
         SetOptions(merge: true),
       );
       _spawnedInstancesCache[(
-        scheduleId: nextInst.scheduleId,
-        ruleId: nextInst.ruleId,
-        date: nextInst.scheduledDate,
-      )] = now;
+            scheduleId: nextInst.scheduleId,
+            ruleId: nextInst.ruleId,
+            date: nextInst.scheduledDate,
+          )] =
+          now;
     }
   }
 
