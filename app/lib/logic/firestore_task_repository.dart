@@ -30,6 +30,14 @@ typedef SpawnedInstanceKey = ({
   CivilDay date,
 });
 
+/// Builds the [SpawnedInstanceKey] identifying [instance] in the
+/// recently-spawned cache.
+SpawnedInstanceKey _spawnedKeyFor(TaskInstance instance) => (
+  scheduleId: instance.scheduleId,
+  ruleId: instance.ruleId,
+  date: instance.scheduledDate,
+);
+
 class FirestoreTaskRepository implements TaskRepository {
   /// Expiration duration for recently spawned virtual instances.
   static const Duration _spawnedInstanceCacheDuration = Duration(seconds: 2);
@@ -700,11 +708,7 @@ class FirestoreTaskRepository implements TaskRepository {
         newInst,
         SetOptions(merge: true),
       );
-      _spawnedInstancesCache[(
-            scheduleId: inst.scheduleId,
-            ruleId: inst.ruleId,
-            date: inst.scheduledDate,
-          )] =
+      _spawnedInstancesCache[_spawnedKeyFor(inst)] =
           now;
       markChanged();
       instancesById[newInst.id] = newInst;
@@ -718,11 +722,7 @@ class FirestoreTaskRepository implements TaskRepository {
           instancesById[instId] ??
           taskInstances.firstWhereOrNull((x) => x.id == instId);
       if (inst != null) {
-        _spawnedInstancesCache.remove((
-          scheduleId: inst.scheduleId,
-          ruleId: inst.ruleId,
-          date: inst.scheduledDate,
-        ));
+        _spawnedInstancesCache.remove(_spawnedKeyFor(inst));
       }
       final isFamily = task.isFamily;
       batch.delete(_instanceRefForId(instId, isFamily, familyId));
@@ -774,11 +774,7 @@ class FirestoreTaskRepository implements TaskRepository {
           !taskMap.containsKey(inst.scheduleId)) {
         final isFamily = inst.isFamily;
         batch.delete(_instanceRefForId(inst.id, isFamily, familyId));
-        _spawnedInstancesCache.remove((
-          scheduleId: inst.scheduleId,
-          ruleId: inst.ruleId,
-          date: inst.scheduledDate,
-        ));
+        _spawnedInstancesCache.remove(_spawnedKeyFor(inst));
         deletedInstanceIds.add(inst.id);
         instancesById.remove(inst.id);
         instancesByScheduleId[inst.scheduleId]?.removeWhere(
@@ -1272,11 +1268,7 @@ class FirestoreTaskRepository implements TaskRepository {
           completedInstance,
           SetOptions(merge: true),
         );
-        _spawnedInstancesCache.remove((
-          scheduleId: instance.scheduleId,
-          ruleId: instance.ruleId,
-          date: instance.scheduledDate,
-        ));
+        _spawnedInstancesCache.remove(_spawnedKeyFor(instance));
 
         if (isFamily) {
           if (familyId != null && familyId.isNotEmpty) {
@@ -1331,11 +1323,7 @@ class FirestoreTaskRepository implements TaskRepository {
       completedInstance,
       SetOptions(merge: true),
     );
-    _spawnedInstancesCache.remove((
-      scheduleId: instance.scheduleId,
-      ruleId: instance.ruleId,
-      date: instance.scheduledDate,
-    ));
+    _spawnedInstancesCache.remove(_spawnedKeyFor(instance));
 
     if (isFamily) {
       if (familyId != null && familyId.isNotEmpty) {
@@ -1411,11 +1399,7 @@ class FirestoreTaskRepository implements TaskRepository {
       dismissedInstance,
       SetOptions(merge: true),
     );
-    _spawnedInstancesCache.remove((
-      scheduleId: instance.scheduleId,
-      ruleId: instance.ruleId,
-      date: instance.scheduledDate,
-    ));
+    _spawnedInstancesCache.remove(_spawnedKeyFor(instance));
 
     final isFamily = instance.isFamily || (task?.isFamily ?? false);
     if (isFamily) {
@@ -1476,11 +1460,7 @@ class FirestoreTaskRepository implements TaskRepository {
       // which would prevent them from being cleared in Firestore if merge: true
       // were used without FieldValue.delete().
       batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
-      _spawnedInstancesCache[(
-            scheduleId: resolvedInstance.scheduleId,
-            ruleId: resolvedInstance.ruleId,
-            date: resolvedInstance.scheduledDate,
-          )] =
+      _spawnedInstancesCache[_spawnedKeyFor(resolvedInstance)] =
           now;
 
       if (familyId != null && familyId.isNotEmpty) {
@@ -1506,11 +1486,7 @@ class FirestoreTaskRepository implements TaskRepository {
     // which would prevent them from being cleared in Firestore if merge: true
     // were used without FieldValue.delete().
     batch.set(_instanceRefFor(pendingInstance, familyId), pendingInstance);
-    _spawnedInstancesCache[(
-          scheduleId: resolvedInstance.scheduleId,
-          ruleId: resolvedInstance.ruleId,
-          date: resolvedInstance.scheduledDate,
-        )] =
+    _spawnedInstancesCache[_spawnedKeyFor(resolvedInstance)] =
         now;
 
     if (isFamily) {
@@ -1538,11 +1514,7 @@ class FirestoreTaskRepository implements TaskRepository {
         if (nextId != null) {
           final nextInst = allInstances.firstWhereOrNull((x) => x.id == nextId);
           if (nextInst != null) {
-            _spawnedInstancesCache.remove((
-              scheduleId: nextInst.scheduleId,
-              ruleId: nextInst.ruleId,
-              date: nextInst.scheduledDate,
-            ));
+            _spawnedInstancesCache.remove(_spawnedKeyFor(nextInst));
           }
           batch.delete(
             _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
@@ -1592,11 +1564,7 @@ class FirestoreTaskRepository implements TaskRepository {
         nextInst,
         SetOptions(merge: true),
       );
-      _spawnedInstancesCache[(
-            scheduleId: nextInst.scheduleId,
-            ruleId: nextInst.ruleId,
-            date: nextInst.scheduledDate,
-          )] =
+      _spawnedInstancesCache[_spawnedKeyFor(nextInst)] =
           now;
     }
   }
