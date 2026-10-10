@@ -471,9 +471,11 @@ void main() {
         ).doc(orphanInst.id).set(orphanInst);
 
         // Pre-populate spawnedInstancesCache with this orphan instance
-        final cacheKey =
-            '${orphanInst.scheduleId}:${orphanInst.ruleId}:'
-            '${orphanInst.scheduledDate}';
+        final cacheKey = (
+          scheduleId: orphanInst.scheduleId,
+          ruleId: orphanInst.ruleId,
+          date: orphanInst.scheduledDate,
+        );
         repository.spawnedInstancesCache[cacheKey] = fixedClockTime;
 
         final batch = firestore.batch();
@@ -617,7 +619,11 @@ void main() {
       const ruleId = 'R-rule-1';
       final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
 
-      final cacheKey = '${task.id}:$ruleId:${targetDate.toString()}';
+      final cacheKey = (
+        scheduleId: task.id,
+        ruleId: ruleId,
+        date: targetDate,
+      );
       repository.spawnedInstancesCache[cacheKey] = fixedClockTime.subtract(
         const Duration(milliseconds: 500),
       );
@@ -649,7 +655,11 @@ void main() {
         const ruleId = 'R-rule-1';
         final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
 
-        final cacheKey = '${task.id}:$ruleId:${targetDate.toString()}';
+        final cacheKey = (
+          scheduleId: task.id,
+          ruleId: ruleId,
+          date: targetDate,
+        );
         repository.spawnedInstancesCache[cacheKey] = fixedClockTime.subtract(
           const Duration(seconds: 3),
         );
@@ -674,7 +684,11 @@ void main() {
         const ruleId = 'R-rule-1';
         final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
 
-        final cacheKey = '${task.id}:$ruleId:${targetDate.toString()}';
+        final cacheKey = (
+          scheduleId: task.id,
+          ruleId: ruleId,
+          date: targetDate,
+        );
         repository.spawnedInstancesCache[cacheKey] = fixedClockTime.subtract(
           const Duration(milliseconds: 500),
         );
