@@ -112,7 +112,6 @@ void main() {
   setUp(() async {
     await loadAppFonts();
     AppClock.setMockTime(fixedDate);
-    addTearDown(AppClock.reset);
     AppConfig.environment = AppEnvironment.prod;
 
     mockAuthRepository = MockAuthRepository();
@@ -139,7 +138,7 @@ void main() {
 
   tearDown(() {
     AppClock.reset();
-    AppConfig.environment = AppEnvironment.dev;
+    AppConfig.reset();
     tasksSubject.close();
     instancesSubject.close();
     settingsSubject.close();

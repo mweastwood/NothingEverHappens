@@ -43,6 +43,7 @@ void main() {
     late AuthRepository authRepository;
 
     setUp(() {
+      AppConfig.reset();
       mockFirebaseAuth = MockFirebaseAuth();
       mockGoogleSignIn = MockGoogleSignIn();
       fakeLocalDataSource = _FakeHiveLocalDataSource();
@@ -53,9 +54,9 @@ void main() {
         localDataSource: fakeLocalDataSource,
         notificationService: fakeNotificationService,
       );
-      // Reset environment to dev for each test
-      AppConfig.environment = AppEnvironment.dev;
     });
+
+    tearDown(AppConfig.reset);
 
     test('currentUser returns firebaseAuth currentUser', () {
       final mockUser = MockUser();
@@ -173,6 +174,7 @@ void main() {
       'signInWithGoogle initializes GoogleSignIn with prod client ID when AppConfig.environment is prod',
       () async {
         AppConfig.environment = AppEnvironment.prod;
+        addTearDown(AppConfig.reset);
         final mockGoogleUser = MockGoogleSignInAccount();
         final mockGoogleAuth = MockGoogleSignInAuthentication();
         final mockUserCredential = MockUserCredential();
@@ -198,5 +200,9 @@ void main() {
         ).called(1);
       },
     );
+
+    test('environment is dev after signInWithGoogle prod test', () {
+      expect(AppConfig.environment, AppEnvironment.dev);
+    });
   });
 }
