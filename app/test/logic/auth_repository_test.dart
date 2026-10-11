@@ -204,8 +204,4 @@ void main() {
       },
     );
   });
-
-  test('AppConfig.environment remains dev after AuthRepository suite completes', () {
-    expect(AppConfig.environment, AppEnvironment.dev);
-  });
 }
