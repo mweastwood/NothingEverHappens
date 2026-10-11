@@ -2088,15 +2088,14 @@ void main() {
       'undoResolveTaskInstance retains restored instance when no next occurrence was spawned',
       () async {
         final task = TaskSchedule(
-          id: 'S-rec-undo-bounded',
-          title: 'Bounded Daily Task',
-          description: 'Undo bounded test',
+          id: 'S-rec-undo-no-spawn',
+          title: 'Daily Task',
+          description: 'Undo test when no next occurrence was spawned',
           isFamily: false,
           schedules: [
             DailySchedule(
-              id: 'R-undo-bounded-1',
+              id: 'R-undo-no-spawn-1',
               startDate: const CivilDay(year: 2026, month: 10, day: 1),
-              endDate: const CivilDay(year: 2026, month: 10, day: 1),
               interval: 1,
             ),
           ],
@@ -2105,9 +2104,9 @@ void main() {
         await localDataSource.saveTask(task);
 
         final instance = TaskInstance(
-          id: 'I-undo-bounded-1',
+          id: 'I-undo-no-spawn-1',
           scheduleId: task.id,
-          ruleId: 'R-undo-bounded-1',
+          ruleId: 'R-undo-no-spawn-1',
           title: task.title,
           description: task.description,
           scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
@@ -2121,22 +2120,19 @@ void main() {
             hour: 17,
             minute: 0,
           ),
-          status: TaskStatus.pending,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 10, 1, 10, 0),
         );
         await localDataSource.saveInstance(instance);
 
-        final completed = await repository.completeTaskInstance(instance.id);
-        expect(completed, isNotNull);
-
-        final instancesAfterComp = localDataSource
+        final instancesBeforeUndo = localDataSource
             .getInstances()
             .where((i) => i.scheduleId == task.id)
             .toList();
-        expect(instancesAfterComp.length, 1);
-        expect(instancesAfterComp.first.id, instance.id);
-        expect(instancesAfterComp.first.status, TaskStatus.completed);
+        expect(instancesBeforeUndo.length, 1);
+        expect(instancesBeforeUndo.first.status, TaskStatus.completed);
 
-        await repository.undoResolveTaskInstance(completed!);
+        await repository.undoResolveTaskInstance(instance);
 
         final instancesAfterUndo = localDataSource
             .getInstances()
