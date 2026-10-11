@@ -450,9 +450,7 @@ class HiveLocalDataSource {
         if (task.updatedAt.isUtc) {
           return task;
         }
-        return task.copyWith(
-          updatedAt: task.updatedAt.toUtc(),
-        );
+        return task.copyWith(updatedAt: task.updatedAt.toUtc());
       }).toList();
 
       for (final task in normalizedTasks) {
