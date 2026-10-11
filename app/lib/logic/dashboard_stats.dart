@@ -171,6 +171,29 @@ class FamilyLastWeekStats {
       totalPlannedCount > 0;
 }
 
+/// Whether [inst] originates from a one-off rule. If the rule can no longer be
+/// found, falls back to treating the schedule as one-off when all of its
+/// remaining rules are one-off.
+bool _isOneOffInstance(TaskInstance inst, TaskSchedule? schedule) {
+  if (schedule == null) return false;
+  final rules = schedule.schedules;
+  for (final r in rules) {
+    if (r.id == inst.ruleId) return r is OneOffSchedule;
+  }
+  return rules.isNotEmpty && rules.every((r) => r is OneOffSchedule);
+}
+
+/// The day an instance is accounted to: one-off tasks count on the day they
+/// were completed, everything else on their scheduled day.
+CivilDay _accountedDay(TaskInstance inst, TaskSchedule? schedule) {
+  if (inst.status == TaskStatus.completed &&
+      inst.completedAt != null &&
+      _isOneOffInstance(inst, schedule)) {
+    return CivilDay.fromDateTime(inst.completedAt!);
+  }
+  return inst.scheduledDate;
+}
+
 class _DailyStatsAccumulator {
   final CivilDay day;
   int completedCount = 0;
@@ -250,22 +273,7 @@ final personalTimelineStatsProvider = Provider<Map<CivilDay, DailyStatsData>>((
 
   for (final inst in instances) {
     final schedule = scheduleMap[inst.scheduleId];
-    final rule = schedule?.schedules
-        .where((r) => r.id == inst.ruleId)
-        .firstOrNull;
-    final bool isOneOff =
-        rule is OneOffSchedule ||
-        (rule == null &&
-            schedule != null &&
-            schedule.schedules.isNotEmpty &&
-            schedule.schedules.every((r) => r is OneOffSchedule));
-
-    final CivilDay accountedDay =
-        (isOneOff &&
-            inst.status == TaskStatus.completed &&
-            inst.completedAt != null)
-        ? CivilDay.fromDateTime(inst.completedAt!)
-        : inst.scheduledDate;
+    final CivilDay accountedDay = _accountedDay(inst, schedule);
 
     final acc = accByDay[accountedDay];
     if (acc == null) {
@@ -495,22 +503,7 @@ final familyLastWeekStatsProvider = Provider<FamilyLastWeekStats?>((ref) {
     if (!inst.isFamily) continue;
 
     final schedule = scheduleMap[inst.scheduleId];
-    final rule = schedule?.schedules
-        .where((r) => r.id == inst.ruleId)
-        .firstOrNull;
-    final bool isOneOff =
-        rule is OneOffSchedule ||
-        (rule == null &&
-            schedule != null &&
-            schedule.schedules.isNotEmpty &&
-            schedule.schedules.every((r) => r is OneOffSchedule));
-
-    final CivilDay accountedDay =
-        (isOneOff &&
-            inst.status == TaskStatus.completed &&
-            inst.completedAt != null)
-        ? CivilDay.fromDateTime(inst.completedAt!)
-        : inst.scheduledDate;
+    final CivilDay accountedDay = _accountedDay(inst, schedule);
 
     final acc = accByDay[accountedDay];
     if (acc == null) {
