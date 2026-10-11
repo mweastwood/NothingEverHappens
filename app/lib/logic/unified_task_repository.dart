@@ -608,7 +608,7 @@ class UnifiedTaskRepository implements TaskRepository {
         task.schedules.any((s) => s is! OneOffSchedule)) {
       final instances = _localDataSource
           .getInstances()
-          .where((i) => i.scheduleId == task.id)
+          .where((i) => i.scheduleId == task.id && i.id != resolvedInstance.id)
           .toList();
       final nextId = TaskSpawnerEngine.calculateOccurrenceIdToUndo(
         task: task,
@@ -616,7 +616,7 @@ class UnifiedTaskRepository implements TaskRepository {
         completionTime: resolvedInstance.completedAt ?? AppClock.now,
         existingInstances: instances,
       );
-      if (nextId != null) {
+      if (nextId != null && nextId != resolvedInstance.id) {
         await _localDataSource.deleteInstance(nextId);
         await _localDataSource.markDirty(nextId);
       }

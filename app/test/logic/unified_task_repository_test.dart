@@ -2085,6 +2085,70 @@ void main() {
     );
 
     test(
+      'undoResolveTaskInstance retains restored instance when no next occurrence was spawned',
+      () async {
+        final task = TaskSchedule(
+          id: 'S-rec-undo-bounded',
+          title: 'Bounded Daily Task',
+          description: 'Undo bounded test',
+          isFamily: false,
+          schedules: [
+            DailySchedule(
+              id: 'R-undo-bounded-1',
+              startDate: const CivilDay(year: 2026, month: 10, day: 1),
+              endDate: const CivilDay(year: 2026, month: 10, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 10, 1),
+        );
+        await localDataSource.saveTask(task);
+
+        final instance = TaskInstance(
+          id: 'I-undo-bounded-1',
+          scheduleId: task.id,
+          ruleId: 'R-undo-bounded-1',
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveInstance(instance);
+
+        final completed = await repository.completeTaskInstance(instance.id);
+        expect(completed, isNotNull);
+
+        final instancesAfterComp = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instancesAfterComp.length, 1);
+        expect(instancesAfterComp.first.id, instance.id);
+        expect(instancesAfterComp.first.status, TaskStatus.completed);
+
+        await repository.undoResolveTaskInstance(completed!);
+
+        final instancesAfterUndo = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instancesAfterUndo.length, 1);
+        expect(instancesAfterUndo.first.id, instance.id);
+        expect(instancesAfterUndo.first.status, TaskStatus.pending);
+      },
+    );
+
+    test(
       'family tasks do not locally spawn next occurrence on completion or dismissal',
       () async {
         final familyTask = TaskSchedule(
