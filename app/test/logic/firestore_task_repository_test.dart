@@ -655,7 +655,11 @@ void main() {
         const ruleId = 'R-rule-1';
         final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
 
-        final cacheKey = (scheduleId: task.id, ruleId: ruleId, date: targetDate);
+        final cacheKey = (
+          scheduleId: task.id,
+          ruleId: ruleId,
+          date: targetDate,
+        );
         repository.spawnedInstancesCache[cacheKey] = fixedClockTime.subtract(
           const Duration(milliseconds: 500),
         );
@@ -676,7 +680,10 @@ void main() {
         expect(virtualInst.status, TaskStatus.pending);
         expect(virtualInst.isFamily, isTrue);
         expect(virtualInst.priority, TaskPriority.high);
-        expect(virtualInst.familyCompletionMode, FamilyCompletionMode.individual);
+        expect(
+          virtualInst.familyCompletionMode,
+          FamilyCompletionMode.individual,
+        );
         expect(virtualInst.assignedUserId, 'U-assigned-1');
         expect(virtualInst.cycleId, 'C-cycle-1');
         expect(
@@ -687,10 +694,9 @@ void main() {
           virtualInst.dueRelativeTime,
           const RelativeTime(dayOffset: 0, hour: 18, minute: 45),
         );
-        expect(
-          virtualInst.notificationRelativeTimes,
-          const [RelativeTime(dayOffset: 0, hour: 10, minute: 0)],
-        );
+        expect(virtualInst.notificationRelativeTimes, const [
+          RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+        ]);
 
         // Cache entry remains valid (within 2 seconds)
         expect(repository.spawnedInstancesCache.containsKey(cacheKey), isTrue);
