@@ -57,10 +57,6 @@ void main() {
       AppConfig.reset();
     });
 
-    tearDown(() {
-      AppConfig.reset();
-    });
-
     test('currentUser returns firebaseAuth currentUser', () {
       final mockUser = MockUser();
       when(mockFirebaseAuth.currentUser).thenReturn(mockUser);
@@ -177,7 +173,7 @@ void main() {
       'signInWithGoogle initializes GoogleSignIn with prod client ID when AppConfig.environment is prod',
       () async {
         AppConfig.environment = AppEnvironment.prod;
-        addTearDown(() => AppConfig.environment = AppEnvironment.dev);
+        addTearDown(AppConfig.reset);
         final mockGoogleUser = MockGoogleSignInAccount();
         final mockGoogleAuth = MockGoogleSignInAuthentication();
         final mockUserCredential = MockUserCredential();

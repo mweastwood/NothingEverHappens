@@ -124,7 +124,6 @@ void main() {
   tearDown(() {
     tasksSubject.close();
     instancesSubject.close();
-    AppConfig.reset();
   });
 
   Widget createScreen() {
@@ -152,7 +151,7 @@ void main() {
   ) async {
     AppConfig.environment = AppEnvironment
         .prod; // Hide dev clock banner/bottom sheet from blocking hits
-    addTearDown(() => AppConfig.environment = AppEnvironment.dev);
+    addTearDown(AppConfig.reset);
     AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
     addTearDown(AppClock.reset);
 
@@ -791,7 +790,7 @@ void main() {
   ) async {
     // 1. Set environment to prod
     AppConfig.environment = AppEnvironment.prod;
-    addTearDown(() => AppConfig.environment = AppEnvironment.dev);
+    addTearDown(AppConfig.reset);
 
     final mockAuthRepository = MockAuthRepository();
     final mockTaskRepository = MockTaskRepository();
