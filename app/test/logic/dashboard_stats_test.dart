@@ -129,8 +129,7 @@ _DeletedRuleTestData _createDeletedRuleTestData({required bool isFamily}) {
     TaskInstance(
       id: repeatingInstanceId,
       scheduleId: repeatingSchedule.id,
-      ruleId:
-          'r-deleted-repeating', // Missing from repeatingSchedule.schedules
+      ruleId: 'r-deleted-repeating', // Missing from repeatingSchedule.schedules
       title: 'Repeating Task',
       description: 'Desc',
       scheduledDate: const CivilDay(year: 2026, month: 7, day: 5),
