@@ -87,6 +87,9 @@ void main() {
     test(
       'fromJson safely parses raw Map<dynamic, dynamic> nested maps from Hive Web',
       () {
+        AppClock.setMockTime(DateTime(2026, 8, 5));
+        addTearDown(AppClock.reset);
+
         final Map<dynamic, dynamic> rawDynamicMap = <dynamic, dynamic>{
           'hoursAvailable': 10.0,
           'taskListSort': <dynamic>[
@@ -369,6 +372,9 @@ void main() {
     test(
       'remote Firestore settings snapshot updates local Hive storage when subscribed',
       () async {
+        AppClock.setMockTime(DateTime(2026, 7, 10));
+        addTearDown(AppClock.reset);
+
         await firestore
             .collection('users')
             .doc(userId)
