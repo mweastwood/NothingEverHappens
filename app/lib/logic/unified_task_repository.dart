@@ -521,6 +521,11 @@ class UnifiedTaskRepository implements TaskRepository {
       );
       await _localDataSource.saveInstance(nextWithPendingWrites);
       await _localDataSource.markDirty(nextWithPendingWrites.id);
+      logger?.info(
+        'task',
+        'Spawned next occurrence: ${nextWithPendingWrites.id}',
+        data: {'instanceId': nextWithPendingWrites.id, 'scheduleId': task.id},
+      );
     }
   }
 
