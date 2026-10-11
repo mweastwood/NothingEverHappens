@@ -708,7 +708,7 @@ class TaskSyncService {
   /// Compares timestamps at millisecond resolution to determine if [a] is strictly
   /// newer than [b], avoiding conflict loops from sub-millisecond precision differences.
   static bool _isStrictlyNewer(DateTime a, DateTime b) {
-    return (a.millisecondsSinceEpoch - b.millisecondsSinceEpoch) > 0;
+    return a.millisecondsSinceEpoch > b.millisecondsSinceEpoch;
   }
 
   bool _doesLocalWin(TaskInstance local, TaskInstance remote) {

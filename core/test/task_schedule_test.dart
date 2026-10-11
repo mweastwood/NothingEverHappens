@@ -202,8 +202,8 @@ void main() {
         },
       });
       expect(schedule.updatedAt.isUtc, isTrue);
-      expect(schedule.updatedAt.microsecondsSinceEpoch,
-          equals(1789571787529188));
+      expect(
+          schedule.updatedAt.microsecondsSinceEpoch, equals(1789571787529188));
       expect(schedule.updatedAt.toIso8601String(),
           equals('2026-09-16T15:16:27.529188Z'));
     });

@@ -612,8 +612,7 @@ void main() {
         ruleId: 'R-1',
         title: 'UTC Instance',
         scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
-        startRelativeTime:
-            const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
         dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         status: TaskStatus.completed,
         completedAt: completedTime,
@@ -621,53 +620,73 @@ void main() {
       );
       await dataSource.saveInstance(instance);
 
-      final savedTask =
-          dataSource.getTasks().firstWhere((t) => t.id == 'S-utc-test');
+      final savedTask = dataSource.getTasks().firstWhere(
+        (t) => t.id == 'S-utc-test',
+      );
       expect(savedTask.updatedAt.isUtc, isTrue);
-      expect(savedTask.updatedAt.millisecondsSinceEpoch,
-          equals(localNow.millisecondsSinceEpoch));
+      expect(
+        savedTask.updatedAt.millisecondsSinceEpoch,
+        equals(localNow.millisecondsSinceEpoch),
+      );
 
-      final savedInst =
-          dataSource.getInstances().firstWhere((i) => i.id == 'I-utc-test');
+      final savedInst = dataSource.getInstances().firstWhere(
+        (i) => i.id == 'I-utc-test',
+      );
       expect(savedInst.updatedAt.isUtc, isTrue);
-      expect(savedInst.updatedAt.millisecondsSinceEpoch,
-          equals(localNow.millisecondsSinceEpoch));
+      expect(
+        savedInst.updatedAt.millisecondsSinceEpoch,
+        equals(localNow.millisecondsSinceEpoch),
+      );
       expect(savedInst.completedAt!.isUtc, isTrue);
-      expect(savedInst.completedAt!.millisecondsSinceEpoch,
-          equals(completedTime.millisecondsSinceEpoch));
+      expect(
+        savedInst.completedAt!.millisecondsSinceEpoch,
+        equals(completedTime.millisecondsSinceEpoch),
+      );
 
       final rawTaskMap = Hive.box<Map>('tasksBox').get('S-utc-test');
       expect(rawTaskMap!['updatedAt'], endsWith('Z'));
       expect(
-          rawTaskMap['updatedAt'], equals(localNow.toUtc().toIso8601String()));
+        rawTaskMap['updatedAt'],
+        equals(localNow.toUtc().toIso8601String()),
+      );
 
       final rawInstMap = Hive.box<Map>('instancesBox').get('I-utc-test');
       expect(rawInstMap!['updatedAt'], endsWith('Z'));
       expect(
-          rawInstMap['updatedAt'], equals(localNow.toUtc().toIso8601String()));
+        rawInstMap['updatedAt'],
+        equals(localNow.toUtc().toIso8601String()),
+      );
       expect(rawInstMap['completedAt'], endsWith('Z'));
-      expect(rawInstMap['completedAt'],
-          equals(completedTime.toUtc().toIso8601String()));
+      expect(
+        rawInstMap['completedAt'],
+        equals(completedTime.toUtc().toIso8601String()),
+      );
 
       final reloadedDataSource = HiveLocalDataSource();
       await reloadedDataSource.init();
 
-      final reloadedTask = reloadedDataSource
-          .getTasks()
-          .firstWhere((t) => t.id == 'S-utc-test');
+      final reloadedTask = reloadedDataSource.getTasks().firstWhere(
+        (t) => t.id == 'S-utc-test',
+      );
       expect(reloadedTask.updatedAt.isUtc, isTrue);
-      expect(reloadedTask.updatedAt.millisecondsSinceEpoch,
-          equals(localNow.millisecondsSinceEpoch));
+      expect(
+        reloadedTask.updatedAt.millisecondsSinceEpoch,
+        equals(localNow.millisecondsSinceEpoch),
+      );
 
-      final reloadedInst = reloadedDataSource
-          .getInstances()
-          .firstWhere((i) => i.id == 'I-utc-test');
+      final reloadedInst = reloadedDataSource.getInstances().firstWhere(
+        (i) => i.id == 'I-utc-test',
+      );
       expect(reloadedInst.updatedAt.isUtc, isTrue);
-      expect(reloadedInst.updatedAt.millisecondsSinceEpoch,
-          equals(localNow.millisecondsSinceEpoch));
+      expect(
+        reloadedInst.updatedAt.millisecondsSinceEpoch,
+        equals(localNow.millisecondsSinceEpoch),
+      );
       expect(reloadedInst.completedAt!.isUtc, isTrue);
-      expect(reloadedInst.completedAt!.millisecondsSinceEpoch,
-          equals(completedTime.millisecondsSinceEpoch));
+      expect(
+        reloadedInst.completedAt!.millisecondsSinceEpoch,
+        equals(completedTime.millisecondsSinceEpoch),
+      );
 
       await reloadedDataSource.dispose();
     },

@@ -242,6 +242,10 @@ void main() {
         scheduleId: 'S-1',
         ruleId: 'R-1',
         title: 'Local DateTime Instance',
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
         updatedAt: localTime,
       );
       expect(inst.updatedAt.isUtc, isTrue);

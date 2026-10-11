@@ -3146,11 +3146,10 @@ class _PushFailingCollectionReference extends Fake
   Stream<QuerySnapshot<Map<String, dynamic>>> snapshots({
     bool includeMetadataChanges = false,
     ListenSource source = ListenSource.defaultSource,
-  }) =>
-      _delegate.snapshots(
-        includeMetadataChanges: includeMetadataChanges,
-        source: source,
-      );
+  }) => _delegate.snapshots(
+    includeMetadataChanges: includeMetadataChanges,
+    source: source,
+  );
 
   @override
   Future<QuerySnapshot<Map<String, dynamic>>> get([GetOptions? options]) =>
@@ -3198,9 +3197,8 @@ class _PushFailingDocumentReference extends Fake
   Stream<DocumentSnapshot<Map<String, dynamic>>> snapshots({
     bool includeMetadataChanges = false,
     ListenSource source = ListenSource.defaultSource,
-  }) =>
-      _delegate.snapshots(
-        includeMetadataChanges: includeMetadataChanges,
-        source: source,
-      );
+  }) => _delegate.snapshots(
+    includeMetadataChanges: includeMetadataChanges,
+    source: source,
+  );
 }
