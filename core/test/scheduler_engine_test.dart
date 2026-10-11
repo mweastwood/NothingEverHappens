@@ -238,7 +238,7 @@ void main() {
       final now = DateTime(2026, 9, 8, 8, 0);
 
       final weeklyEmpty = WeeklySchedule(
-        id: 'rule-empty-weekly',
+        id: 'R-empty-weekly',
         scheduleId: 'task-exhausted',
         startDate: today,
         interval: 1,
@@ -257,7 +257,7 @@ void main() {
       final completedInst = TaskInstance(
         id: 'inst-completed',
         scheduleId: task.id,
-        ruleId: weeklyEmpty.id,
+        ruleId: task.schedules.first.id,
         title: task.title,
         description: task.description,
         scheduledDate: today,
@@ -277,4 +277,3 @@ void main() {
     });
   });
 }
-

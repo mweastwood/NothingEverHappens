@@ -273,8 +273,9 @@ void main() {
         const start = CivilDay(year: 2026, month: 2, day: 1);
         final schedule = MonthlySchedule(
           startDate: start,
-          interval: 12,
-          dayOfMonth: 31,
+          interval: 1,
+          dayOfWeek: DateTime.monday,
+          occurrence: 6,
           startRelativeTime: defaultStart,
           dueRelativeTime: defaultDue,
         );

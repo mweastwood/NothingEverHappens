@@ -565,7 +565,7 @@ void main() {
     });
 
     test(
-      'WeeklySchedule with empty daysOfWeek throws exception on nextOccurrenceAfter',
+      'WeeklySchedule with empty daysOfWeek returns null on nextOccurrenceAfter',
       () {
         const start = CivilDay(year: 2026, month: 6, day: 1);
         final schedule = WeeklySchedule(
@@ -577,8 +577,8 @@ void main() {
         );
 
         expect(
-          () => schedule.nextOccurrenceAfter(start),
-          throwsA(isA<Exception>()),
+          schedule.nextOccurrenceAfter(start),
+          isNull,
         );
       },
     );
@@ -818,7 +818,7 @@ void main() {
       },
     );
     test(
-      'YearlySchedule nextOccurrenceAfter throws for non-existent dates (e.g. June 31)',
+      'YearlySchedule nextOccurrenceAfter returns null for non-existent dates (e.g. June 31)',
       () {
         // June has only 30 days — day 31 never exists.
         final schedule = YearlySchedule(
@@ -830,12 +830,12 @@ void main() {
           dueRelativeTime: testDue,
         );
 
-        // _occurrenceInYear returns null every year, so nextOccurrenceAfter throws
+        // _occurrenceInYear returns null every year, so nextOccurrenceAfter returns null
         expect(
-          () => schedule.nextOccurrenceAfter(
+          schedule.nextOccurrenceAfter(
             const CivilDay(year: 2024, month: 1, day: 1),
           ),
-          throwsException,
+          isNull,
         );
 
         // occursOn is always false since the date never exists

@@ -238,8 +238,10 @@ class WeeklySchedule extends TaskScheduleRule {
     final firstOccur = occursOn(scheduledDate)
         ? scheduledDate
         : nextOccurrenceAfter(scheduledDate);
-    if (firstOccur != null &&
-        (firstOccur.isBefore(today) || firstOccur == today)) {
+    if (firstOccur == null) {
+      return null;
+    }
+    if (firstOccur.isBefore(today) || firstOccur == today) {
       final refDate = today.isBefore(scheduledDate) ? firstOccur : today;
       final nextOccur = nextOccurrenceAfter(refDate);
       if (nextOccur != null) {

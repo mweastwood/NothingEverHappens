@@ -20,39 +20,47 @@ void main() {
       expect(schedule.advanceAfterCompletion(monday), isNull);
     });
 
-    test('MonthlySchedule returns null when no occurrence found within 10 years', () {
-      // Day 31 with interval of 12 months starting in February will never occur
-      const start = CivilDay(year: 2026, month: 2, day: 1);
-      final schedule = MonthlySchedule(
-        startDate: start,
-        interval: 12,
-        dayOfMonth: 31,
-        startRelativeTime: defaultStart,
-        dueRelativeTime: defaultDue,
-      );
+    test(
+      'MonthlySchedule returns null when no occurrence found within 10 years',
+      () {
+        // 6th Monday of the month never occurs
+        const start = CivilDay(year: 2026, month: 2, day: 1);
+        final schedule = MonthlySchedule(
+          startDate: start,
+          interval: 1,
+          dayOfWeek: DateTime.monday,
+          occurrence: 6,
+          startRelativeTime: defaultStart,
+          dueRelativeTime: defaultDue,
+        );
 
-      expect(schedule.nextOccurrenceAfter(start), isNull);
-      expect(schedule.advanceAfterCompletion(start), isNull);
-    });
+        expect(schedule.nextOccurrenceAfter(start), isNull);
+        expect(schedule.advanceAfterCompletion(start), isNull);
+      },
+    );
 
-    test('YearlySchedule returns null when no occurrence found within 20 years', () {
-      // Feb 30 never occurs in any calendar year
-      const start = CivilDay(year: 2026, month: 2, day: 1);
-      final schedule = YearlySchedule(
-        startDate: start,
-        interval: 1,
-        month: 2,
-        day: 30,
-        startRelativeTime: defaultStart,
-        dueRelativeTime: defaultDue,
-      );
+    test(
+      'YearlySchedule returns null when no occurrence found within 20 years',
+      () {
+        // Feb 30 never occurs in any calendar year
+        const start = CivilDay(year: 2026, month: 2, day: 1);
+        final schedule = YearlySchedule(
+          startDate: start,
+          interval: 1,
+          month: 2,
+          day: 30,
+          startRelativeTime: defaultStart,
+          dueRelativeTime: defaultDue,
+        );
 
-      expect(schedule.nextOccurrenceAfter(start), isNull);
-      expect(schedule.advanceAfterCompletion(start), isNull);
-    });
+        expect(schedule.nextOccurrenceAfter(start), isNull);
+        expect(schedule.advanceAfterCompletion(start), isNull);
+      },
+    );
 
     test('YearlySchedule returns null for leap day on odd-year interval', () {
-      // Feb 29 on 2-year interval starting in 2025 only checks odd years (which cannot be leap years)
+      // Feb 29 on 2-year interval starting in 2025 only checks odd years
+      // (which cannot be leap years)
       const start = CivilDay(year: 2025, month: 2, day: 1);
       final schedule = YearlySchedule(
         startDate: start,
