@@ -339,6 +339,9 @@ void main() {
           .doc('I-2')
           .set(remoteInst.toFirestore());
 
+      // Allow multiple turns of the event loop for the async stream listener
+      // and subsequent sequential storage writes (deleteInstances, saveInstances,
+      // and dirty state batch updates) to complete.
       await pumpEventQueue(times: 20);
 
       final instances = localDataSource.getInstances();
@@ -405,7 +408,7 @@ void main() {
       expect(instances.any((i) => i.id == 'I-2'), isFalse);
 
       final dirtyIds = localDataSource.getDirtyTaskIds();
-      expect(dirtyIds.contains('I-1'), isFalse);
+      expect(dirtyIds, isNot(contains('I-1')));
 
       final remoteLoserSnap = await firestore
           .collection('users')
@@ -2940,8 +2943,112 @@ void main() {
 
           // Dirty tasks must be cleared when accepted from remote
           final dirtyIds = localDataSource.getDirtyTaskIds();
-          expect(dirtyIds.contains('I-dirty-clear-test'), isFalse);
-          expect(dirtyIds.contains('S-dirty-clear-test'), isFalse);
+          expect(dirtyIds, isNot(contains('I-dirty-clear-test')));
+          expect(dirtyIds, isNot(contains('S-dirty-clear-test')));
+        },
+      );
+
+      test(
+        'push failure during remote tasks snapshot conflict leaves task marked dirty for retry',
+        () async {
+          final failingFirestore = _PushFailingFirestore();
+          final tLocal = DateTime.utc(2026, 9, 16, 12, 0);
+          final tRemote = DateTime.utc(2026, 9, 16, 10, 0);
+
+          final localTask = TaskSchedule(
+            id: 'S-fail-push',
+            title: 'Local Winning Task',
+            description: '',
+            updatedAt: tLocal,
+          );
+          await localDataSource.saveTask(localTask);
+
+          final service = TaskSyncService(
+            firestore: failingFirestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final remoteTask = localTask.copyWith(
+            title: 'Remote Older Task',
+            updatedAt: tRemote,
+          );
+
+          await failingFirestore
+              .collection('users')
+              .doc('user1')
+              .collection('tasks')
+              .doc('S-fail-push')
+              .set(remoteTask.toFirestore());
+
+          failingFirestore.failPush = true;
+          await pumpEventQueue();
+
+          final dirtyIds = localDataSource.getDirtyTaskIds();
+          expect(dirtyIds, contains('S-fail-push'));
+        },
+      );
+
+      test(
+        'push failure during remote instances snapshot conflict leaves instance marked dirty for retry',
+        () async {
+          final failingFirestore = _PushFailingFirestore();
+          final tLocal = DateTime.utc(2026, 9, 16, 12, 0);
+          final tRemote = DateTime.utc(2026, 9, 16, 10, 0);
+
+          final localInst = TaskInstance(
+            id: 'I-fail-push',
+            scheduleId: 'S-fail-1',
+            ruleId: 'R-1',
+            title: 'Local Winning Instance',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 20),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            statusReason: 'user_modified',
+            updatedAt: tLocal,
+          );
+          await localDataSource.saveInstance(localInst);
+
+          final service = TaskSyncService(
+            firestore: failingFirestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final remoteInst = localInst.copyWith(
+            title: 'Remote Older Instance',
+            statusReason: 'scheduler_prefer_older',
+            updatedAt: tRemote,
+          );
+
+          await failingFirestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-fail-push')
+              .set(remoteInst.toFirestore());
+
+          failingFirestore.failPush = true;
+          await pumpEventQueue();
+
+          final dirtyIds = localDataSource.getDirtyTaskIds();
+          expect(dirtyIds, contains('I-fail-push'));
         },
       );
     });
@@ -3009,4 +3116,91 @@ class _IntermittentHiveLocalDataSource extends HiveLocalDataSource {
     }
     return super.getTasks();
   }
+}
+
+class _PushFailingFirestore extends FakeFirebaseFirestore {
+  bool failPush = false;
+
+  @override
+  CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
+    return _PushFailingCollectionReference(
+      super.collection(collectionPath),
+      this,
+    );
+  }
+}
+
+class _PushFailingCollectionReference extends Fake
+    implements CollectionReference<Map<String, dynamic>> {
+  final CollectionReference<Map<String, dynamic>> _delegate;
+  final _PushFailingFirestore _root;
+
+  _PushFailingCollectionReference(this._delegate, this._root);
+
+  @override
+  DocumentReference<Map<String, dynamic>> doc([String? path]) {
+    return _PushFailingDocumentReference(_delegate.doc(path), _root);
+  }
+
+  @override
+  Stream<QuerySnapshot<Map<String, dynamic>>> snapshots({
+    bool includeMetadataChanges = false,
+    ListenSource source = ListenSource.defaultSource,
+  }) =>
+      _delegate.snapshots(
+        includeMetadataChanges: includeMetadataChanges,
+        source: source,
+      );
+
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> get([GetOptions? options]) =>
+      _delegate.get(options);
+}
+
+class _PushFailingDocumentReference extends Fake
+    implements DocumentReference<Map<String, dynamic>> {
+  final DocumentReference<Map<String, dynamic>> _delegate;
+  final _PushFailingFirestore _root;
+
+  _PushFailingDocumentReference(this._delegate, this._root);
+
+  @override
+  String get id => _delegate.id;
+
+  @override
+  CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
+    return _PushFailingCollectionReference(
+      _delegate.collection(collectionPath),
+      _root,
+    );
+  }
+
+  @override
+  Future<void> set(Map<String, dynamic> data, [SetOptions? options]) {
+    if (_root.failPush) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'unavailable',
+        message: 'Simulated remote push failure',
+      );
+    }
+    return _delegate.set(data, options);
+  }
+
+  @override
+  Future<void> delete() => _delegate.delete();
+
+  @override
+  Future<DocumentSnapshot<Map<String, dynamic>>> get([GetOptions? options]) =>
+      _delegate.get(options);
+
+  @override
+  Stream<DocumentSnapshot<Map<String, dynamic>>> snapshots({
+    bool includeMetadataChanges = false,
+    ListenSource source = ListenSource.defaultSource,
+  }) =>
+      _delegate.snapshots(
+        includeMetadataChanges: includeMetadataChanges,
+        source: source,
+      );
 }

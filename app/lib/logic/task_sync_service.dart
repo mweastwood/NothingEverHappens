@@ -486,10 +486,7 @@ class TaskSyncService {
           final localTask = localMap[remoteTask.id];
 
           if (localTask != null) {
-            final diffMs =
-                localTask.updatedAt.millisecondsSinceEpoch -
-                remoteTask.updatedAt.millisecondsSinceEpoch;
-            if (diffMs > 0) {
+            if (_isStrictlyNewer(localTask.updatedAt, remoteTask.updatedAt)) {
               toPush.add(localTask);
             } else {
               toSave.add(remoteTask);
@@ -531,6 +528,7 @@ class TaskSyncService {
         await _pushTaskToRemote(task);
         await _localDataSource.clearDirty(task.id);
       } catch (e, st) {
+        // Keep dirty flag so the next sync retries pushing this task.
         logger?.error(
           'sync',
           'Failed to push task ${task.id} to remote',
@@ -667,6 +665,7 @@ class TaskSyncService {
         await _pushInstanceToRemote(inst);
         await _localDataSource.clearDirty(inst.id);
       } catch (e, st) {
+        // Keep dirty flag so the next sync retries pushing this instance.
         logger?.error(
           'sync',
           'Failed to push instance ${inst.id} to remote',
@@ -706,6 +705,12 @@ class TaskSyncService {
     }
   }
 
+  /// Compares timestamps at millisecond resolution to determine if [a] is strictly
+  /// newer than [b], avoiding conflict loops from sub-millisecond precision differences.
+  static bool _isStrictlyNewer(DateTime a, DateTime b) {
+    return (a.millisecondsSinceEpoch - b.millisecondsSinceEpoch) > 0;
+  }
+
   bool _doesLocalWin(TaskInstance local, TaskInstance remote) {
     final localIsUser =
         (local.status != TaskStatus.pending) &&
@@ -731,10 +736,7 @@ class TaskSyncService {
     // 3. Homogeneous Resolution:
     // If both records are user_*, both are scheduler_*, or neither, fall back to Last-Write-Wins based on updatedAt.
     // Compare in milliseconds to avoid sub-millisecond precision differences between platforms causing conflict loops.
-    final diffMs =
-        local.updatedAt.millisecondsSinceEpoch -
-        remote.updatedAt.millisecondsSinceEpoch;
-    return diffMs > 0;
+    return _isStrictlyNewer(local.updatedAt, remote.updatedAt);
   }
 
   Future<void> _handleRemoteRecipesSnapshot(

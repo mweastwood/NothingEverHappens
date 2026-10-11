@@ -235,5 +235,17 @@ void main() {
       expect(inst.updatedAt.toIso8601String(),
           equals('2026-09-16T15:16:27.529188Z'));
     });
+
+    test('normalizes caller-supplied local DateTime to UTC in constructor', () {
+      final localTime = DateTime(2026, 9, 16, 15, 16, 27);
+      final inst = TaskInstance(
+        scheduleId: 'S-1',
+        ruleId: 'R-1',
+        title: 'Local DateTime Instance',
+        updatedAt: localTime,
+      );
+      expect(inst.updatedAt.isUtc, isTrue);
+      expect(inst.updatedAt, equals(localTime.toUtc()));
+    });
   });
 }

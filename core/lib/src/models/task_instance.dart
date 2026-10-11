@@ -80,7 +80,7 @@ class TaskInstance {
   })  : id = id ?? TaskInstance.generateId(),
         title = title.trim(),
         description = description.trim(),
-        updatedAt = updatedAt ?? DateTime.now().toUtc(),
+        updatedAt = (updatedAt ?? DateTime.now()).toUtc(),
         completedByUserIds = completedByUserIds ?? const [],
         notificationRelativeTimes = notificationRelativeTimes ?? const [];
 
