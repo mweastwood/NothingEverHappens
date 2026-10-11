@@ -71,6 +71,7 @@ void main() {
     tasksSubject.close();
     instancesSubject.close();
     settingsSubject.close();
+    AppConfig.reset();
   });
 
   Widget createScreen({Uri? mockUri, Size size = const Size(400, 800)}) {

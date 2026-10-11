@@ -57,6 +57,8 @@ void main() {
       AppConfig.reset();
     });
 
+    tearDown(AppConfig.reset);
+
     test('currentUser returns firebaseAuth currentUser', () {
       final mockUser = MockUser();
       when(mockFirebaseAuth.currentUser).thenReturn(mockUser);
@@ -197,6 +199,13 @@ void main() {
                 '936469690744-8bthibeb317ifso2jc25ra9jmlaggdac.apps.googleusercontent.com',
           ),
         ).called(1);
+      },
+    );
+
+    test(
+      'AppConfig.environment is restored to dev in subsequent test',
+      () {
+        expect(AppConfig.environment, AppEnvironment.dev);
       },
     );
   });

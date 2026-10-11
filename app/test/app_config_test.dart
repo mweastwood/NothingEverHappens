@@ -13,5 +13,14 @@ void main() {
       AppConfig.reset();
       expect(AppConfig.environment, AppEnvironment.dev);
     });
+
+    test('sets prod in one test to verify teardown isolation', () {
+      AppConfig.environment = AppEnvironment.prod;
+      expect(AppConfig.environment, AppEnvironment.prod);
+    });
+
+    test('asserts dev in subsequent test to confirm no cross-test leakage', () {
+      expect(AppConfig.environment, AppEnvironment.dev);
+    });
   });
 }

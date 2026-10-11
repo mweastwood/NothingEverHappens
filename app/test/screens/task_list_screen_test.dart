@@ -124,6 +124,7 @@ void main() {
   tearDown(() {
     tasksSubject.close();
     instancesSubject.close();
+    AppConfig.reset();
   });
 
   Widget createScreen() {
