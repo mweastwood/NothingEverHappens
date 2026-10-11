@@ -251,5 +251,22 @@ void main() {
       expect(inst.updatedAt.isUtc, isTrue);
       expect(inst.updatedAt, equals(localTime.toUtc()));
     });
+
+    test('normalizes caller-supplied local completedAt to UTC in constructor', () {
+      final localTime = DateTime(2026, 9, 16, 15, 16, 27);
+      final inst = TaskInstance(
+        scheduleId: 'S-1',
+        ruleId: 'R-1',
+        title: 'Local DateTime Instance',
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        completedAt: localTime,
+      );
+      expect(inst.completedAt, isNotNull);
+      expect(inst.completedAt!.isUtc, isTrue);
+      expect(inst.completedAt, equals(localTime.toUtc()));
+    });
   });
 }

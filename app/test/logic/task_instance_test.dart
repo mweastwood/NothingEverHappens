@@ -262,7 +262,7 @@ void main() {
         final refInt = firestore.collection('instances').doc('inst-int');
         final refNull = firestore.collection('instances').doc('inst-null');
 
-        final time = DateTime(2026, 8, 16, 12, 0);
+        final time = DateTime.utc(2026, 8, 16, 12, 0);
 
         await refTimestamp.set({'updatedAt': Timestamp.fromDate(time)});
         await refString.set({'updatedAt': time.toIso8601String()});

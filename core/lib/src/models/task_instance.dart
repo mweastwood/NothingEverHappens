@@ -66,7 +66,7 @@ class TaskInstance {
     this.assignedUserId,
     this.completedByUserId,
     List<String>? completedByUserIds,
-    this.completedAt,
+    DateTime? completedAt,
     this.status = TaskStatus.pending,
     this.workflowPayload,
     this.lastModifiedByUserId,
@@ -81,6 +81,7 @@ class TaskInstance {
         title = title.trim(),
         description = description.trim(),
         updatedAt = (updatedAt ?? DateTime.now()).toUtc(),
+        completedAt = completedAt?.toUtc(),
         completedByUserIds = completedByUserIds ?? const [],
         notificationRelativeTimes = notificationRelativeTimes ?? const [];
 
