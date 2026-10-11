@@ -54,11 +54,11 @@ void main() {
         notificationService: fakeNotificationService,
       );
       // Reset environment to dev for each test
-      AppConfig.environment = AppEnvironment.dev;
+      AppConfig.reset();
     });
 
     tearDown(() {
-      AppConfig.environment = AppEnvironment.dev;
+      AppConfig.reset();
     });
 
     test('currentUser returns firebaseAuth currentUser', () {

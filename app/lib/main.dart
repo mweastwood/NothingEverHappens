@@ -280,4 +280,7 @@ enum AppEnvironment { dev, prod }
 
 class AppConfig {
   static AppEnvironment environment = AppEnvironment.dev;
+
+  /// Resets [environment] to its default ([AppEnvironment.dev]).
+  static void reset() => environment = AppEnvironment.dev;
 }

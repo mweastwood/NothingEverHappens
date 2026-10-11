@@ -46,6 +46,7 @@ void main() {
   late BehaviorSubject<UserSettings> settingsSubject;
 
   setUp(() {
+    AppConfig.reset();
     mockAuthRepository = MockAuthRepository();
     mockTaskRepository = MockTaskRepository();
     mockUserSettingsRepository = MockUserSettingsRepository();
@@ -70,7 +71,7 @@ void main() {
     tasksSubject.close();
     instancesSubject.close();
     settingsSubject.close();
-    AppConfig.environment = AppEnvironment.dev;
+    AppConfig.reset();
   });
 
   Widget createScreen({Uri? mockUri, Size size = const Size(400, 800)}) {

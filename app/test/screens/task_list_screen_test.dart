@@ -40,6 +40,7 @@ void main() {
   late BehaviorSubject<List<TaskInstance>> instancesSubject;
 
   setUp(() {
+    AppConfig.reset();
     mockAuthRepository = MockAuthRepository();
     mockTaskRepository = MockTaskRepository();
     mockUserSettingsRepository = home_mocks.MockUserSettingsRepository();
@@ -123,7 +124,7 @@ void main() {
   tearDown(() {
     tasksSubject.close();
     instancesSubject.close();
-    AppConfig.environment = AppEnvironment.dev;
+    AppConfig.reset();
   });
 
   Widget createScreen() {
