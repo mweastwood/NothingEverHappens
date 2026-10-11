@@ -87,6 +87,9 @@ abstract class TaskScheduleRule {
   bool occursOn(CivilDay date);
 
   /// Calculates the next occurrence of the task strictly after [date].
+  ///
+  /// Returns `null` if there are no further occurrences (e.g. the schedule is
+  /// exhausted or has no valid recurring dates).
   CivilDay? nextOccurrenceAfter(CivilDay date);
 
   /// Checks if two rules have identical recurrence patterns.

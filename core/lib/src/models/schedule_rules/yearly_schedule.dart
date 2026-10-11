@@ -141,7 +141,7 @@ class YearlySchedule extends TaskScheduleRule {
         return occurrenceDay;
       }
     }
-    throw Exception('No occurrence found within 20 years');
+    return null;
   }
 
   @override
@@ -211,8 +211,12 @@ class YearlySchedule extends TaskScheduleRule {
     final firstOccur = occursOn(scheduledDate)
         ? scheduledDate
         : nextOccurrenceAfter(scheduledDate);
-    if (firstOccur != null &&
-        (firstOccur.isBefore(today) || firstOccur == today)) {
+    // If the schedule has no valid occurrences (e.g. non-existent date or exhausted search window),
+    // there are no further occurrences to advance to.
+    if (firstOccur == null) {
+      return null;
+    }
+    if (firstOccur.isBefore(today) || firstOccur == today) {
       final refDate = today.isBefore(scheduledDate) ? firstOccur : today;
       final nextOccur = nextOccurrenceAfter(refDate);
       if (nextOccur != null) {

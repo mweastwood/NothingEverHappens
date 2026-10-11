@@ -120,7 +120,7 @@ class WeeklySchedule extends TaskScheduleRule {
   @override
   CivilDay? nextOccurrenceAfter(CivilDay date) {
     if (daysOfWeek.isEmpty) {
-      throw Exception('No occurrence found within 10 years');
+      return null;
     }
 
     final safeInterval = interval <= 0 ? 1 : interval;
@@ -238,8 +238,12 @@ class WeeklySchedule extends TaskScheduleRule {
     final firstOccur = occursOn(scheduledDate)
         ? scheduledDate
         : nextOccurrenceAfter(scheduledDate);
-    if (firstOccur != null &&
-        (firstOccur.isBefore(today) || firstOccur == today)) {
+    // If the schedule has no valid occurrences (e.g. exhausted or empty days),
+    // there are no further occurrences to advance to.
+    if (firstOccur == null) {
+      return null;
+    }
+    if (firstOccur.isBefore(today) || firstOccur == today) {
       final refDate = today.isBefore(scheduledDate) ? firstOccur : today;
       final nextOccur = nextOccurrenceAfter(refDate);
       if (nextOccur != null) {
