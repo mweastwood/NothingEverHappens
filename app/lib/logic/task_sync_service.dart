@@ -486,7 +486,7 @@ class TaskSyncService {
           final localTask = localMap[remoteTask.id];
 
           if (localTask != null) {
-            if (localTask.updatedAt.isAfter(remoteTask.updatedAt)) {
+            if (_isStrictlyNewer(localTask.updatedAt, remoteTask.updatedAt)) {
               toPush.add(localTask);
             } else {
               toSave.add(remoteTask);
@@ -513,16 +513,29 @@ class TaskSyncService {
 
     if (toDelete.isNotEmpty) {
       await _localDataSource.deleteTasks(toDelete);
+      await _localDataSource.clearDirtyBatch(toDelete);
     }
     if (toSave.isNotEmpty) {
       await _localDataSource.saveTasks(toSave);
+      await _localDataSource.clearDirtyBatch(toSave.map((t) => t.id).toList());
     }
 
     final pushedTaskIds = <String>{};
     for (final task in toPush) {
       if (!pushedTaskIds.add(task.id)) continue;
       await _localDataSource.markDirty(task.id);
-      await _pushTaskToRemote(task);
+      try {
+        await _pushTaskToRemote(task);
+        await _localDataSource.clearDirty(task.id);
+      } catch (e, st) {
+        // Keep dirty flag so the next sync retries pushing this task.
+        logger?.error(
+          'sync',
+          'Failed to push task ${task.id} to remote',
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 
@@ -637,16 +650,29 @@ class TaskSyncService {
 
     if (toDelete.isNotEmpty) {
       await _localDataSource.deleteInstances(toDelete);
+      await _localDataSource.clearDirtyBatch(toDelete);
     }
     if (toSave.isNotEmpty) {
       await _localDataSource.saveInstances(toSave);
+      await _localDataSource.clearDirtyBatch(toSave.map((i) => i.id).toList());
     }
 
     final pushedInstIds = <String>{};
     for (final inst in toPush) {
       if (!pushedInstIds.add(inst.id)) continue;
       await _localDataSource.markDirty(inst.id);
-      await _pushInstanceToRemote(inst);
+      try {
+        await _pushInstanceToRemote(inst);
+        await _localDataSource.clearDirty(inst.id);
+      } catch (e, st) {
+        // Keep dirty flag so the next sync retries pushing this instance.
+        logger?.error(
+          'sync',
+          'Failed to push instance ${inst.id} to remote',
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
     for (final remId in remoteIdsToDelete) {
       if (isFamily) {
@@ -679,6 +705,12 @@ class TaskSyncService {
     }
   }
 
+  /// Compares timestamps at millisecond resolution to determine if [a] is strictly
+  /// newer than [b], avoiding conflict loops from sub-millisecond precision differences.
+  static bool _isStrictlyNewer(DateTime a, DateTime b) {
+    return a.millisecondsSinceEpoch > b.millisecondsSinceEpoch;
+  }
+
   bool _doesLocalWin(TaskInstance local, TaskInstance remote) {
     final localIsUser =
         (local.status != TaskStatus.pending) &&
@@ -703,7 +735,8 @@ class TaskSyncService {
 
     // 3. Homogeneous Resolution:
     // If both records are user_*, both are scheduler_*, or neither, fall back to Last-Write-Wins based on updatedAt.
-    return local.updatedAt.isAfter(remote.updatedAt);
+    // Compare in milliseconds to avoid sub-millisecond precision differences between platforms causing conflict loops.
+    return _isStrictlyNewer(local.updatedAt, remote.updatedAt);
   }
 
   Future<void> _handleRemoteRecipesSnapshot(

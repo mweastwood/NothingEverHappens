@@ -217,5 +217,56 @@ void main() {
       expect(instCompact.completedAt!.month, equals(9));
       expect(instCompact.completedAt!.day, equals(23));
     });
+
+    test(
+        'preserves microsecond precision and normalizes to UTC from Firestore map',
+        () {
+      final inst = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Microsecond Map Instance',
+        'updatedAt': {
+          '_seconds': 1789571787,
+          '_nanoseconds': 529188000,
+        },
+      });
+      expect(inst.updatedAt.isUtc, isTrue);
+      expect(inst.updatedAt.microsecondsSinceEpoch, equals(1789571787529188));
+      expect(inst.updatedAt.toIso8601String(),
+          equals('2026-09-16T15:16:27.529188Z'));
+    });
+
+    test('normalizes caller-supplied local DateTime to UTC in constructor', () {
+      final localTime = DateTime(2026, 9, 16, 15, 16, 27);
+      final inst = TaskInstance(
+        scheduleId: 'S-1',
+        ruleId: 'R-1',
+        title: 'Local DateTime Instance',
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        updatedAt: localTime,
+      );
+      expect(inst.updatedAt.isUtc, isTrue);
+      expect(inst.updatedAt, equals(localTime.toUtc()));
+    });
+
+    test('normalizes caller-supplied completedAt to UTC in constructor', () {
+      final localTime = DateTime(2026, 9, 16, 15, 16, 27);
+      final inst = TaskInstance(
+        scheduleId: 'S-1',
+        ruleId: 'R-1',
+        title: 'Local DateTime Instance',
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        completedAt: localTime,
+      );
+      expect(inst.completedAt, isNotNull);
+      expect(inst.completedAt!.isUtc, isTrue);
+      expect(inst.completedAt, equals(localTime.toUtc()));
+    });
   });
 }
