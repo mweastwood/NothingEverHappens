@@ -46,6 +46,7 @@ void main() {
   late BehaviorSubject<UserSettings> settingsSubject;
 
   setUp(() {
+    AppConfig.reset();
     mockAuthRepository = MockAuthRepository();
     mockTaskRepository = MockTaskRepository();
     mockUserSettingsRepository = MockUserSettingsRepository();
@@ -321,6 +322,7 @@ void main() {
     'HomeScreen FAB on Tasks tab navigates to CreateTaskScreen defaulting to one-off',
     (WidgetTester tester) async {
       AppConfig.environment = AppEnvironment.prod;
+      addTearDown(AppConfig.reset);
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
       addTearDown(AppClock.reset);
 
@@ -343,6 +345,7 @@ void main() {
     'HomeScreen FAB on Schedule tab navigates to CreateTaskScreen defaulting to repeating',
     (WidgetTester tester) async {
       AppConfig.environment = AppEnvironment.prod;
+      addTearDown(AppConfig.reset);
       AppClock.setMockTime(DateTime(2026, 3, 8, 9, 0));
       addTearDown(AppClock.reset);
 
