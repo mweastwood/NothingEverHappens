@@ -238,6 +238,8 @@ class WeeklySchedule extends TaskScheduleRule {
     final firstOccur = occursOn(scheduledDate)
         ? scheduledDate
         : nextOccurrenceAfter(scheduledDate);
+    // If the schedule has no valid occurrences (e.g. exhausted or empty days),
+    // there are no further occurrences to advance to.
     if (firstOccur == null) {
       return null;
     }

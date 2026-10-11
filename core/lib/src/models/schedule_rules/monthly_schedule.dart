@@ -301,6 +301,8 @@ class MonthlySchedule extends TaskScheduleRule {
     final firstOccur = occursOn(scheduledDate)
         ? scheduledDate
         : nextOccurrenceAfter(scheduledDate);
+    // If the schedule has no valid occurrences (e.g. exhausted search window),
+    // there are no further occurrences to advance to.
     if (firstOccur == null) {
       return null;
     }
