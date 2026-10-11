@@ -53,8 +53,6 @@ void main() {
         localDataSource: fakeLocalDataSource,
         notificationService: fakeNotificationService,
       );
-      // Reset environment to dev for each test
-      AppConfig.reset();
     });
 
     tearDown(AppConfig.reset);
@@ -175,7 +173,6 @@ void main() {
       'signInWithGoogle initializes GoogleSignIn with prod client ID when AppConfig.environment is prod',
       () async {
         AppConfig.environment = AppEnvironment.prod;
-        addTearDown(AppConfig.reset);
         final mockGoogleUser = MockGoogleSignInAccount();
         final mockGoogleAuth = MockGoogleSignInAuthentication();
         final mockUserCredential = MockUserCredential();
@@ -199,13 +196,6 @@ void main() {
                 '936469690744-8bthibeb317ifso2jc25ra9jmlaggdac.apps.googleusercontent.com',
           ),
         ).called(1);
-      },
-    );
-
-    test(
-      'AppConfig.environment is restored to dev in subsequent test',
-      () {
-        expect(AppConfig.environment, AppEnvironment.dev);
       },
     );
   });

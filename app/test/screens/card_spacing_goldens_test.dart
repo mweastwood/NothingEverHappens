@@ -111,7 +111,6 @@ void main() {
 
   setUp(() async {
     await loadAppFonts();
-    AppConfig.reset();
     AppClock.setMockTime(fixedDate);
     AppConfig.environment = AppEnvironment.prod;
 
