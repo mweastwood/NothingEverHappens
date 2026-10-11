@@ -177,40 +177,37 @@ void main() {
     },
   );
 
-  test(
-    'restoreTaskSchedule restores task and pending instances to localDataSource and marks dirty',
-    () async {
-      final task = TaskSchedule(
-        id: 'S-restore',
-        title: 'Restore Task',
-        description: 'Desc restore',
-        schedules: [],
-        updatedAt: DateTime.now(),
-      );
-      final instance = TaskInstance(
-        id: 'I-restore',
-        scheduleId: 'S-restore',
-        ruleId: 'R-restore',
-        title: 'Restore Instance',
-        description: 'Desc',
-        scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
-        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
-        status: TaskStatus.pending,
-        updatedAt: DateTime.now(),
-      );
+  test('restoreTaskSchedule restores task and pending instances to localDataSource and marks dirty', () async {
+    final task = TaskSchedule(
+      id: 'S-restore',
+      title: 'Restore Task',
+      description: 'Desc restore',
+      schedules: [],
+      updatedAt: DateTime.now(),
+    );
+    final instance = TaskInstance(
+      id: 'I-restore',
+      scheduleId: 'S-restore',
+      ruleId: 'R-restore',
+      title: 'Restore Instance',
+      description: 'Desc',
+      scheduledDate: const CivilDay(year: 2026, month: 8, day: 16),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      status: TaskStatus.pending,
+      updatedAt: DateTime.now(),
+    );
 
-      await repository.restoreTaskSchedule(task, [instance]);
+    await repository.restoreTaskSchedule(task, [instance]);
 
-      final tasks = localDataSource.getTasks();
-      expect(tasks.any((t) => t.id == 'S-restore'), true);
-      final instances = localDataSource.getInstances();
-      expect(instances.any((i) => i.id == 'I-restore'), true);
-      final dirty = localDataSource.getDirtyTaskIds();
-      expect(dirty.contains('S-restore'), true);
-      expect(dirty.contains('I-restore'), true);
-    },
-  );
+    final tasks = localDataSource.getTasks();
+    expect(tasks.any((t) => t.id == 'S-restore'), true);
+    final instances = localDataSource.getInstances();
+    expect(instances.any((i) => i.id == 'I-restore'), true);
+    final dirty = localDataSource.getDirtyTaskIds();
+    expect(dirty.contains('S-restore'), true);
+    expect(dirty.contains('I-restore'), true);
+  });
 
   test(
     'coalesces concurrent missed-policy triggers on UnifiedTaskRepository',
@@ -377,187 +374,175 @@ void main() {
     AppClock.reset();
   });
 
-  test(
-    'deleteTaskSchedule triggers missed policy processing and re-evaluates capacity for remaining tasks',
-    () async {
-      final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
-      AppClock.setMockTime(mockTime);
+  test('deleteTaskSchedule triggers missed policy processing and re-evaluates capacity for remaining tasks', () async {
+    final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
+    AppClock.setMockTime(mockTime);
 
-      final taskA = TaskSchedule(
-        id: 'U-del-a',
-        title: 'Unified Task A to delete',
-        description: 'High priority task consuming capacity',
-        priority: TaskPriority.high,
-        estimatedDuration: const Duration(hours: 6),
-        schedules: [
-          DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 8, day: 10),
-            interval: 1,
-          ),
-        ],
-        updatedAt: DateTime.now(),
-      );
+    final taskA = TaskSchedule(
+      id: 'U-del-a',
+      title: 'Unified Task A to delete',
+      description: 'High priority task consuming capacity',
+      priority: TaskPriority.high,
+      estimatedDuration: const Duration(hours: 6),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 1,
+        ),
+      ],
+      updatedAt: DateTime.now(),
+    );
 
-      final taskB = TaskSchedule(
-        id: 'U-del-b',
-        title: 'Unified Task B remaining',
-        description: 'Low priority capacity task initially skipped',
-        priority: TaskPriority.low,
-        skipIfNoCapacity: true,
-        estimatedDuration: const Duration(hours: 4),
-        schedules: [
-          DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 8, day: 10),
-            interval: 1,
-          ),
-        ],
-        updatedAt: DateTime.now(),
-      );
+    final taskB = TaskSchedule(
+      id: 'U-del-b',
+      title: 'Unified Task B remaining',
+      description: 'Low priority capacity task initially skipped',
+      priority: TaskPriority.low,
+      skipIfNoCapacity: true,
+      estimatedDuration: const Duration(hours: 4),
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 1,
+        ),
+      ],
+      updatedAt: DateTime.now(),
+    );
 
-      await repository.addTaskSchedule(taskA);
-      await repository.addTaskSchedule(taskB);
+    await repository.addTaskSchedule(taskA);
+    await repository.addTaskSchedule(taskB);
 
-      final instsBefore = localDataSource.getInstances();
-      final instBBefore = instsBefore.firstWhere(
-        (i) => i.scheduleId == 'S-U-del-b',
-      );
-      expect(instBBefore.status, TaskStatus.skipped);
+    final instsBefore = localDataSource.getInstances();
+    final instBBefore = instsBefore.firstWhere(
+      (i) => i.scheduleId == 'S-U-del-b',
+    );
+    expect(instBBefore.status, TaskStatus.skipped);
 
-      // Delete Task A, freeing up schedule capacity
-      await repository.deleteTaskSchedule('S-U-del-a');
+    // Delete Task A, freeing up schedule capacity
+    await repository.deleteTaskSchedule('S-U-del-a');
 
-      final instsAfter = localDataSource.getInstances();
-      final instBAfter = instsAfter.firstWhere(
-        (i) => i.scheduleId == 'S-U-del-b',
-      );
-      expect(instBAfter.status, TaskStatus.pending);
+    final instsAfter = localDataSource.getInstances();
+    final instBAfter = instsAfter.firstWhere(
+      (i) => i.scheduleId == 'S-U-del-b',
+    );
+    expect(instBAfter.status, TaskStatus.pending);
 
-      AppClock.reset();
-    },
-  );
+    AppClock.reset();
+  });
 
-  test(
-    'addTaskSchedule awaits missed policy processing completion before returning',
-    () async {
-      final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
-      AppClock.setMockTime(mockTime);
+  test('addTaskSchedule awaits missed policy processing completion before returning', () async {
+    final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
+    AppClock.setMockTime(mockTime);
 
-      final task = TaskSchedule(
-        id: 'U-await-test',
-        title: 'Await Task',
-        description: 'Await task description',
-        schedules: [
-          DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 8, day: 10),
-            interval: 1,
-          ),
-        ],
-        updatedAt: DateTime.now(),
-      );
+    final task = TaskSchedule(
+      id: 'U-await-test',
+      title: 'Await Task',
+      description: 'Await task description',
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 1,
+        ),
+      ],
+      updatedAt: DateTime.now(),
+    );
 
-      await repository.addTaskSchedule(task);
+    await repository.addTaskSchedule(task);
 
-      // Verify missed-policy processing completed and spawned instances
-      // immediately upon addTaskSchedule completion.
-      final instances = localDataSource.getInstances();
-      expect(instances.any((i) => i.scheduleId == 'S-U-await-test'), isTrue);
+    // Verify missed-policy processing completed and spawned instances
+    // immediately upon addTaskSchedule completion.
+    final instances = localDataSource.getInstances();
+    expect(instances.any((i) => i.scheduleId == 'S-U-await-test'), isTrue);
 
-      AppClock.reset();
-    },
-  );
+    AppClock.reset();
+  });
 
-  test(
-    'triggerMissedPolicyProcessing executes all postProcess callbacks under concurrent invocation',
-    () async {
-      final executedCallbacks = <int>[];
-      final completer1 = Completer<void>();
-      final completer2 = Completer<void>();
-      final completer3 = Completer<void>();
+  test('triggerMissedPolicyProcessing executes all postProcess callbacks under concurrent invocation', () async {
+    final executedCallbacks = <int>[];
+    final completer1 = Completer<void>();
+    final completer2 = Completer<void>();
+    final completer3 = Completer<void>();
 
-      Future<void> postProcess1() async {
-        await completer1.future;
-        executedCallbacks.add(1);
-      }
+    Future<void> postProcess1() async {
+      await completer1.future;
+      executedCallbacks.add(1);
+    }
 
-      Future<void> postProcess2() async {
-        await completer2.future;
-        executedCallbacks.add(2);
-      }
+    Future<void> postProcess2() async {
+      await completer2.future;
+      executedCallbacks.add(2);
+    }
 
-      Future<void> postProcess3() async {
-        await completer3.future;
-        executedCallbacks.add(3);
-      }
+    Future<void> postProcess3() async {
+      await completer3.future;
+      executedCallbacks.add(3);
+    }
 
-      final f1 = repository.triggerMissedPolicyProcessing(
-        postProcess: postProcess1,
-      );
-      final f2 = repository.triggerMissedPolicyProcessing(
-        postProcess: postProcess2,
-      );
-      final f3 = repository.triggerMissedPolicyProcessing(
-        postProcess: postProcess3,
-      );
+    final f1 = repository.triggerMissedPolicyProcessing(
+      postProcess: postProcess1,
+    );
+    final f2 = repository.triggerMissedPolicyProcessing(
+      postProcess: postProcess2,
+    );
+    final f3 = repository.triggerMissedPolicyProcessing(
+      postProcess: postProcess3,
+    );
 
-      completer1.complete();
-      completer2.complete();
-      completer3.complete();
+    completer1.complete();
+    completer2.complete();
+    completer3.complete();
 
-      await Future.wait([f1, f2, f3]);
+    await Future.wait([f1, f2, f3]);
 
-      expect(executedCallbacks, containsAll([1, 2, 3]));
-      expect(executedCallbacks.length, equals(3));
-    },
-  );
+    expect(executedCallbacks, containsAll([1, 2, 3]));
+    expect(executedCallbacks.length, equals(3));
+  });
 
-  test(
-    'concurrent addTaskSchedule calls in UnifiedTaskRepository preserve all tasks and execute processing',
-    () async {
-      final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
-      AppClock.setMockTime(mockTime);
+  test('concurrent addTaskSchedule calls in UnifiedTaskRepository preserve all tasks and execute processing', () async {
+    final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
+    AppClock.setMockTime(mockTime);
 
-      final task1 = TaskSchedule(
-        id: 'U-concurrent-1',
-        title: 'Task 1',
-        description: 'Task 1',
-        schedules: [
-          DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 8, day: 10),
-            interval: 1,
-          ),
-        ],
-        updatedAt: DateTime.now(),
-      );
+    final task1 = TaskSchedule(
+      id: 'U-concurrent-1',
+      title: 'Task 1',
+      description: 'Task 1',
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 1,
+        ),
+      ],
+      updatedAt: DateTime.now(),
+    );
 
-      final task2 = TaskSchedule(
-        id: 'U-concurrent-2',
-        title: 'Task 2',
-        description: 'Task 2',
-        schedules: [
-          DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 8, day: 10),
-            interval: 1,
-          ),
-        ],
-        updatedAt: DateTime.now(),
-      );
+    final task2 = TaskSchedule(
+      id: 'U-concurrent-2',
+      title: 'Task 2',
+      description: 'Task 2',
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 1,
+        ),
+      ],
+      updatedAt: DateTime.now(),
+    );
 
-      await Future.wait([
-        repository.addTaskSchedule(task1),
-        repository.addTaskSchedule(task2),
-      ]);
+    await Future.wait([
+      repository.addTaskSchedule(task1),
+      repository.addTaskSchedule(task2),
+    ]);
 
-      final tasks = localDataSource.getTasks();
-      expect(tasks.any((t) => t.id == 'S-U-concurrent-1'), isTrue);
-      expect(tasks.any((t) => t.id == 'S-U-concurrent-2'), isTrue);
+    final tasks = localDataSource.getTasks();
+    expect(tasks.any((t) => t.id == 'S-U-concurrent-1'), isTrue);
+    expect(tasks.any((t) => t.id == 'S-U-concurrent-2'), isTrue);
 
-      final instances = localDataSource.getInstances();
-      expect(instances.any((i) => i.scheduleId == 'S-U-concurrent-1'), isTrue);
-      expect(instances.any((i) => i.scheduleId == 'S-U-concurrent-2'), isTrue);
+    final instances = localDataSource.getInstances();
+    expect(instances.any((i) => i.scheduleId == 'S-U-concurrent-1'), isTrue);
+    expect(instances.any((i) => i.scheduleId == 'S-U-concurrent-2'), isTrue);
 
-      AppClock.reset();
-    },
-  );
+    AppClock.reset();
+  });
 
   test('uses local user settings during missed policy processing', () async {
     await localDataSource.saveSettings(const UserSettings(hoursAvailable: 4.0));
@@ -568,115 +553,109 @@ void main() {
     expect(localDataSource.getSettings().hoursAvailable, equals(4.0));
   });
 
-  test(
-    'completing a recurring task instance does not create duplicate occurrences across evaluation passes',
-    () async {
-      final mockTime = DateTime(2026, 8, 15, 10, 0, 0);
-      AppClock.setMockTime(mockTime);
+  test('completing a recurring task instance does not create duplicate occurrences across evaluation passes', () async {
+    final mockTime = DateTime(2026, 8, 15, 10, 0, 0);
+    AppClock.setMockTime(mockTime);
 
-      final task = TaskSchedule(
-        id: 'U-recurring-test',
-        title: 'Weigh myself',
-        description: 'Daily recurring schedule',
-        schedules: [
-          DailySchedule(
-            startDate: const CivilDay(year: 2026, month: 8, day: 15),
-            interval: 1,
-          ),
-        ],
-        updatedAt: DateTime.now(),
+    final task = TaskSchedule(
+      id: 'U-recurring-test',
+      title: 'Weigh myself',
+      description: 'Daily recurring schedule',
+      schedules: [
+        DailySchedule(
+          startDate: const CivilDay(year: 2026, month: 8, day: 15),
+          interval: 1,
+        ),
+      ],
+      updatedAt: DateTime.now(),
+    );
+
+    await repository.addTaskSchedule(task);
+
+    // Initial state: 1 today + 10 future instances = 11 pending instances
+    var instances = localDataSource
+        .getInstances()
+        .where((i) => i.scheduleId == 'S-U-recurring-test')
+        .toList();
+    expect(instances.length, equals(11));
+
+    final todayInstance = instances.firstWhere(
+      (i) => i.scheduledDate == const CivilDay(year: 2026, month: 8, day: 15),
+    );
+
+    // Complete today's instance
+    await repository.completeTaskInstance(todayInstance.id);
+
+    // Trigger missed policy processing evaluation passes
+    await repository.triggerMissedPolicyProcessing();
+    await repository.triggerMissedPolicyProcessing();
+
+    instances = localDataSource
+        .getInstances()
+        .where((i) => i.scheduleId == 'S-U-recurring-test')
+        .toList();
+
+    final pendingInstances = instances
+        .where((i) => i.status == TaskStatus.pending)
+        .toList();
+    final completedInstances = instances
+        .where((i) => i.status == TaskStatus.completed)
+        .toList();
+
+    expect(completedInstances.length, equals(1));
+    expect(pendingInstances.length, equals(10));
+
+    // Verify no duplicate scheduledDate entries across all instances
+    final dateSet = <CivilDay>{};
+    for (final inst in instances) {
+      expect(
+        dateSet.contains(inst.scheduledDate),
+        isFalse,
+        reason: 'Duplicate instance found for date: ${inst.scheduledDate}',
       );
+      dateSet.add(inst.scheduledDate);
+    }
 
-      await repository.addTaskSchedule(task);
+    AppClock.reset();
+  });
 
-      // Initial state: 1 today + 10 future instances = 11 pending instances
-      var instances = localDataSource
-          .getInstances()
-          .where((i) => i.scheduleId == 'S-U-recurring-test')
-          .toList();
-      expect(instances.length, equals(11));
+  test('resetLocalDataAndResync clears stale local data and re-migrates from cloud', () async {
+    // 1. Populate Firestore with cloud task
+    await firestore
+        .collection('users')
+        .doc('user1')
+        .collection('tasks')
+        .doc('S-remote')
+        .set({
+          'id': 'S-remote',
+          'title': 'Remote Cloud Task',
+          'updatedAt': DateTime.now().toIso8601String(),
+        });
 
-      final todayInstance = instances.firstWhere(
-        (i) => i.scheduledDate == const CivilDay(year: 2026, month: 8, day: 15),
-      );
+    // 2. Put stale local task and dirty task in local storage
+    final staleTask = TaskSchedule(
+      id: 'S-stale',
+      title: 'Stale Local Task',
+      description: 'Stale',
+      schedules: [],
+      updatedAt: DateTime.now(),
+    );
+    await localDataSource.saveTask(staleTask);
+    await localDataSource.markDirty('S-stale');
 
-      // Complete today's instance
-      await repository.completeTaskInstance(todayInstance.id);
+    expect(localDataSource.getTasks().any((t) => t.id == 'S-stale'), isTrue);
+    expect(localDataSource.getDirtyTaskIds(), contains('S-stale'));
 
-      // Trigger missed policy processing evaluation passes
-      await repository.triggerMissedPolicyProcessing();
-      await repository.triggerMissedPolicyProcessing();
+    // 3. Trigger reset & resync
+    await repository.resetLocalDataAndResync();
 
-      instances = localDataSource
-          .getInstances()
-          .where((i) => i.scheduleId == 'S-U-recurring-test')
-          .toList();
-
-      final pendingInstances = instances
-          .where((i) => i.status == TaskStatus.pending)
-          .toList();
-      final completedInstances = instances
-          .where((i) => i.status == TaskStatus.completed)
-          .toList();
-
-      expect(completedInstances.length, equals(1));
-      expect(pendingInstances.length, equals(10));
-
-      // Verify no duplicate scheduledDate entries across all instances
-      final dateSet = <CivilDay>{};
-      for (final inst in instances) {
-        expect(
-          dateSet.contains(inst.scheduledDate),
-          isFalse,
-          reason: 'Duplicate instance found for date: ${inst.scheduledDate}',
-        );
-        dateSet.add(inst.scheduledDate);
-      }
-
-      AppClock.reset();
-    },
-  );
-
-  test(
-    'resetLocalDataAndResync clears stale local data and re-migrates from cloud',
-    () async {
-      // 1. Populate Firestore with cloud task
-      await firestore
-          .collection('users')
-          .doc('user1')
-          .collection('tasks')
-          .doc('S-remote')
-          .set({
-            'id': 'S-remote',
-            'title': 'Remote Cloud Task',
-            'updatedAt': DateTime.now().toIso8601String(),
-          });
-
-      // 2. Put stale local task and dirty task in local storage
-      final staleTask = TaskSchedule(
-        id: 'S-stale',
-        title: 'Stale Local Task',
-        description: 'Stale',
-        schedules: [],
-        updatedAt: DateTime.now(),
-      );
-      await localDataSource.saveTask(staleTask);
-      await localDataSource.markDirty('S-stale');
-
-      expect(localDataSource.getTasks().any((t) => t.id == 'S-stale'), isTrue);
-      expect(localDataSource.getDirtyTaskIds(), contains('S-stale'));
-
-      // 3. Trigger reset & resync
-      await repository.resetLocalDataAndResync();
-
-      // 4. Verify local DB now has remote task and no stale/dirty artifacts
-      final tasks = localDataSource.getTasks();
-      expect(tasks.any((t) => t.id == 'S-stale'), isFalse);
-      expect(tasks.any((t) => t.id == 'S-remote'), isTrue);
-      expect(localDataSource.getDirtyTaskIds().isEmpty, isTrue);
-      expect(localDataSource.isMigrationCompleted(), isTrue);
-    },
-  );
+    // 4. Verify local DB now has remote task and no stale/dirty artifacts
+    final tasks = localDataSource.getTasks();
+    expect(tasks.any((t) => t.id == 'S-stale'), isFalse);
+    expect(tasks.any((t) => t.id == 'S-remote'), isTrue);
+    expect(localDataSource.getDirtyTaskIds().isEmpty, isTrue);
+    expect(localDataSource.isMigrationCompleted(), isTrue);
+  });
 
   test(
     'completeTaskInstance increments completed count and triggers telemetry',
@@ -725,257 +704,237 @@ void main() {
     },
   );
 
-  test(
-    'Account switch: initializing repository for different user clears old user tasks and loads new user tasks',
-    () async {
-      // 1. Setup User 1 tasks locally
-      final user1Task = TaskSchedule(
-        id: 'S-user1-task',
-        title: 'User 1 Secret Task',
-        description: 'User 1 Private Info',
-        schedules: [],
-        updatedAt: DateTime.now(),
-      );
-      await localDataSource.saveTask(user1Task);
-      await localDataSource.setActiveUserId('user1');
-      await localDataSource.setMigrationCompleted(true);
+  test('Account switch: initializing repository for different user clears old user tasks and loads new user tasks', () async {
+    // 1. Setup User 1 tasks locally
+    final user1Task = TaskSchedule(
+      id: 'S-user1-task',
+      title: 'User 1 Secret Task',
+      description: 'User 1 Private Info',
+      schedules: [],
+      updatedAt: DateTime.now(),
+    );
+    await localDataSource.saveTask(user1Task);
+    await localDataSource.setActiveUserId('user1');
+    await localDataSource.setMigrationCompleted(true);
 
-      expect(
-        localDataSource.getTasks().any((t) => t.id == 'S-user1-task'),
-        true,
-      );
+    expect(localDataSource.getTasks().any((t) => t.id == 'S-user1-task'), true);
 
-      // 2. Setup User 2 tasks in Firestore
-      await firestore
-          .collection('users')
-          .doc('user2')
-          .collection('tasks')
-          .doc('S-user2-task')
-          .set({
-            'id': 'S-user2-task',
-            'title': 'User 2 Fresh Task',
-            'updatedAt': DateTime.now().toIso8601String(),
-          });
+    // 2. Setup User 2 tasks in Firestore
+    await firestore
+        .collection('users')
+        .doc('user2')
+        .collection('tasks')
+        .doc('S-user2-task')
+        .set({
+          'id': 'S-user2-task',
+          'title': 'User 2 Fresh Task',
+          'updatedAt': DateTime.now().toIso8601String(),
+        });
 
-      final syncServiceUser2 = TaskSyncService(
-        firestore: firestore,
-        localDataSource: localDataSource,
-        userId: 'user2',
-        isActivePremium: false,
-      );
+    final syncServiceUser2 = TaskSyncService(
+      firestore: firestore,
+      localDataSource: localDataSource,
+      userId: 'user2',
+      isActivePremium: false,
+    );
 
-      // 3. Initialize repository for User 2
-      final repoUser2 = UnifiedTaskRepository(
-        localDataSource: localDataSource,
-        syncService: syncServiceUser2,
-        firestore: firestore,
-        userId: 'user2',
-      );
+    // 3. Initialize repository for User 2
+    final repoUser2 = UnifiedTaskRepository(
+      localDataSource: localDataSource,
+      syncService: syncServiceUser2,
+      firestore: firestore,
+      userId: 'user2',
+    );
 
-      // Wait for initial migration to complete
-      await repoUser2.initializationFuture;
+    // Wait for initial migration to complete
+    await repoUser2.initializationFuture;
 
-      final tasksStream = repoUser2.getTasks();
-      final tasks = await tasksStream.first;
+    final tasksStream = repoUser2.getTasks();
+    final tasks = await tasksStream.first;
 
-      // User 1 tasks MUST NOT be present
-      expect(tasks.any((t) => t.id == 'S-user1-task'), false);
+    // User 1 tasks MUST NOT be present
+    expect(tasks.any((t) => t.id == 'S-user1-task'), false);
 
-      // User 2 tasks MUST be present
-      expect(tasks.any((t) => t.id == 'S-user2-task'), true);
-      expect(localDataSource.getActiveUserId(), 'user2');
+    // User 2 tasks MUST be present
+    expect(tasks.any((t) => t.id == 'S-user2-task'), true);
+    expect(localDataSource.getActiveUserId(), 'user2');
 
-      syncServiceUser2.dispose();
-    },
-  );
+    syncServiceUser2.dispose();
+  });
 
-  test(
-    'orphan pending task instances with non-existent scheduleId are swept on missed policy processing',
-    () async {
-      final orphanInstance = TaskInstance(
-        id: 'orphan-inst-1',
-        scheduleId: 'non-existent-schedule-id',
-        ruleId: 'rule-1',
-        title: 'Orphan Task Instance',
-        description: 'No schedule attached',
-        scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
-        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
-        status: TaskStatus.pending,
-        updatedAt: DateTime(2026, 8, 19, 9, 0),
-      );
+  test('orphan pending task instances with non-existent scheduleId are swept on missed policy processing', () async {
+    final orphanInstance = TaskInstance(
+      id: 'orphan-inst-1',
+      scheduleId: 'non-existent-schedule-id',
+      ruleId: 'rule-1',
+      title: 'Orphan Task Instance',
+      description: 'No schedule attached',
+      scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      status: TaskStatus.pending,
+      updatedAt: DateTime(2026, 8, 19, 9, 0),
+    );
 
-      await localDataSource.saveInstance(orphanInstance);
-      expect(
-        localDataSource.getInstances().any((i) => i.id == 'orphan-inst-1'),
-        true,
-      );
+    await localDataSource.saveInstance(orphanInstance);
+    expect(
+      localDataSource.getInstances().any((i) => i.id == 'orphan-inst-1'),
+      true,
+    );
 
-      await repository.triggerMissedPolicyProcessing();
+    await repository.triggerMissedPolicyProcessing();
 
-      expect(
-        localDataSource.getInstances().any((i) => i.id == 'orphan-inst-1'),
-        false,
-      );
-      expect(localDataSource.getDirtyTaskIds().contains('orphan-inst-1'), true);
-    },
-  );
+    expect(
+      localDataSource.getInstances().any((i) => i.id == 'orphan-inst-1'),
+      false,
+    );
+    expect(localDataSource.getDirtyTaskIds().contains('orphan-inst-1'), true);
+  });
 
-  test(
-    'orphan completed or skipped task instances with non-existent scheduleId are preserved',
-    () async {
-      final completedOrphan = TaskInstance(
-        id: 'orphan-completed-1',
-        scheduleId: 'non-existent-schedule-id',
-        ruleId: 'rule-1',
-        title: 'Completed Orphan Instance',
-        description: 'Completed history preserved',
-        scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
-        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
-        status: TaskStatus.completed,
-        completedAt: DateTime(2026, 8, 19, 10, 0),
-        updatedAt: DateTime(2026, 8, 19, 10, 0),
-      );
+  test('orphan completed or skipped task instances with non-existent scheduleId are preserved', () async {
+    final completedOrphan = TaskInstance(
+      id: 'orphan-completed-1',
+      scheduleId: 'non-existent-schedule-id',
+      ruleId: 'rule-1',
+      title: 'Completed Orphan Instance',
+      description: 'Completed history preserved',
+      scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      status: TaskStatus.completed,
+      completedAt: DateTime(2026, 8, 19, 10, 0),
+      updatedAt: DateTime(2026, 8, 19, 10, 0),
+    );
 
-      final skippedOrphan = TaskInstance(
-        id: 'orphan-skipped-1',
-        scheduleId: 'non-existent-schedule-id',
-        ruleId: 'rule-1',
-        title: 'Skipped Orphan Instance',
-        description: 'Skipped history preserved',
-        scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
-        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
-        status: TaskStatus.skipped,
-        updatedAt: DateTime(2026, 8, 19, 10, 0),
-      );
+    final skippedOrphan = TaskInstance(
+      id: 'orphan-skipped-1',
+      scheduleId: 'non-existent-schedule-id',
+      ruleId: 'rule-1',
+      title: 'Skipped Orphan Instance',
+      description: 'Skipped history preserved',
+      scheduledDate: CivilDay(year: 2026, month: 8, day: 19),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      status: TaskStatus.skipped,
+      updatedAt: DateTime(2026, 8, 19, 10, 0),
+    );
 
-      await localDataSource.saveInstance(completedOrphan);
-      await localDataSource.saveInstance(skippedOrphan);
+    await localDataSource.saveInstance(completedOrphan);
+    await localDataSource.saveInstance(skippedOrphan);
 
-      await repository.triggerMissedPolicyProcessing();
+    await repository.triggerMissedPolicyProcessing();
 
-      final instances = localDataSource.getInstances();
-      expect(instances.any((i) => i.id == 'orphan-completed-1'), true);
-      expect(instances.any((i) => i.id == 'orphan-skipped-1'), true);
-    },
-  );
+    final instances = localDataSource.getInstances();
+    expect(instances.any((i) => i.id == 'orphan-completed-1'), true);
+    expect(instances.any((i) => i.id == 'orphan-skipped-1'), true);
+  });
 
-  test(
-    'UnifiedTaskRepository handles individual family task completion and undo correctly',
-    () async {
-      const familyId = 'fam-unified';
-      const user1 = 'user1';
-      const user2 = 'user2';
+  test('UnifiedTaskRepository handles individual family task completion and undo correctly', () async {
+    const familyId = 'fam-unified';
+    const user1 = 'user1';
+    const user2 = 'user2';
 
-      await firestore.collection('families').doc(familyId).set({
-        'name': 'Unified Fam',
-        'members': {
-          user1: {'role': 'parent', 'displayName': 'User 1'},
-          user2: {'role': 'child', 'displayName': 'User 2'},
-        },
-      });
-      await firestore.collection('users').doc(user1).set({
-        'familyId': familyId,
-      });
+    await firestore.collection('families').doc(familyId).set({
+      'name': 'Unified Fam',
+      'members': {
+        user1: {'role': 'parent', 'displayName': 'User 1'},
+        user2: {'role': 'child', 'displayName': 'User 2'},
+      },
+    });
+    await firestore.collection('users').doc(user1).set({'familyId': familyId});
 
-      final task = TaskSchedule(
-        id: 'U-indiv-fam',
-        title: 'Walk the dog',
-        description: 'Everyone walks the dog once',
-        isFamily: true,
-        familyCompletionMode: FamilyCompletionMode.individual,
-      );
-      await repository.addTaskSchedule(task);
+    final task = TaskSchedule(
+      id: 'U-indiv-fam',
+      title: 'Walk the dog',
+      description: 'Everyone walks the dog once',
+      isFamily: true,
+      familyCompletionMode: FamilyCompletionMode.individual,
+    );
+    await repository.addTaskSchedule(task);
 
-      final instance = TaskInstance(
-        id: 'I-indiv-fam-1',
-        scheduleId: 'S-U-indiv-fam',
-        ruleId: 'R-1',
-        title: task.title,
-        description: task.description,
-        scheduledDate: const CivilDay(year: 2026, month: 8, day: 19),
-        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 20, minute: 0),
-        isFamily: true,
-        familyCompletionMode: FamilyCompletionMode.individual,
-        status: TaskStatus.pending,
-      );
-      await localDataSource.saveInstance(instance);
+    final instance = TaskInstance(
+      id: 'I-indiv-fam-1',
+      scheduleId: 'S-U-indiv-fam',
+      ruleId: 'R-1',
+      title: task.title,
+      description: task.description,
+      scheduledDate: const CivilDay(year: 2026, month: 8, day: 19),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 20, minute: 0),
+      isFamily: true,
+      familyCompletionMode: FamilyCompletionMode.individual,
+      status: TaskStatus.pending,
+    );
+    await localDataSource.saveInstance(instance);
 
-      // User 1 completes
-      final result1 = await repository.completeTaskInstance(instance.id);
-      expect(result1?.status, TaskStatus.pending);
-      expect(result1?.completedByUserIds, [user1]);
+    // User 1 completes
+    final result1 = await repository.completeTaskInstance(instance.id);
+    expect(result1?.status, TaskStatus.pending);
+    expect(result1?.completedByUserIds, [user1]);
 
-      var savedInst = localDataSource.getInstances().firstWhere(
-        (i) => i.id == instance.id,
-      );
-      expect(savedInst.status, TaskStatus.pending);
-      expect(savedInst.completedByUserIds, [user1]);
+    var savedInst = localDataSource.getInstances().firstWhere(
+      (i) => i.id == instance.id,
+    );
+    expect(savedInst.status, TaskStatus.pending);
+    expect(savedInst.completedByUserIds, [user1]);
 
-      // Undo user 1 completion
-      await repository.undoResolveTaskInstance(savedInst);
-      savedInst = localDataSource.getInstances().firstWhere(
-        (i) => i.id == instance.id,
-      );
-      expect(savedInst.status, TaskStatus.pending);
-      expect(savedInst.completedByUserIds, isEmpty);
-    },
-  );
+    // Undo user 1 completion
+    await repository.undoResolveTaskInstance(savedInst);
+    savedInst = localDataSource.getInstances().firstWhere(
+      (i) => i.id == instance.id,
+    );
+    expect(savedInst.status, TaskStatus.pending);
+    expect(savedInst.completedByUserIds, isEmpty);
+  });
 
-  test(
-    'undoResolveTaskInstance clears statusReason on both dismissed and completed tasks',
-    () async {
-      final task = TaskSchedule(
-        id: 'S-test-undo-reason',
-        title: 'Undo Reason Test',
-        description: '',
-        schedules: [],
-      );
-      await repository.addTaskSchedule(task);
+  test('undoResolveTaskInstance clears statusReason on both dismissed and completed tasks', () async {
+    final task = TaskSchedule(
+      id: 'S-test-undo-reason',
+      title: 'Undo Reason Test',
+      description: '',
+      schedules: [],
+    );
+    await repository.addTaskSchedule(task);
 
-      final instance = TaskInstance(
-        id: 'I-undo-reason',
-        scheduleId: task.id,
-        ruleId: 'R-undo',
-        title: task.title,
-        description: '',
-        scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
-        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
-        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
-        status: TaskStatus.pending,
-      );
-      await localDataSource.saveInstance(instance);
+    final instance = TaskInstance(
+      id: 'I-undo-reason',
+      scheduleId: task.id,
+      ruleId: 'R-undo',
+      title: task.title,
+      description: '',
+      scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
+      startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+      dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+      status: TaskStatus.pending,
+    );
+    await localDataSource.saveInstance(instance);
 
-      // 1. Dismiss task -> statusReason is user_dismissed
-      final dismissed = await repository.dismissTaskInstance(instance.id);
-      expect(dismissed?.status, TaskStatus.skipped);
-      expect(dismissed?.statusReason, 'user_dismissed');
+    // 1. Dismiss task -> statusReason is user_dismissed
+    final dismissed = await repository.dismissTaskInstance(instance.id);
+    expect(dismissed?.status, TaskStatus.skipped);
+    expect(dismissed?.statusReason, 'user_dismissed');
 
-      // Undo dismissal -> statusReason must be null and status pending
-      await repository.undoResolveTaskInstance(dismissed!);
-      var restored = localDataSource.getInstances().firstWhere(
-        (i) => i.id == instance.id,
-      );
-      expect(restored.status, TaskStatus.pending);
-      expect(restored.statusReason, isNull);
+    // Undo dismissal -> statusReason must be null and status pending
+    await repository.undoResolveTaskInstance(dismissed!);
+    var restored = localDataSource.getInstances().firstWhere(
+      (i) => i.id == instance.id,
+    );
+    expect(restored.status, TaskStatus.pending);
+    expect(restored.statusReason, isNull);
 
-      // 2. Complete task -> statusReason is user_completed
-      final completed = await repository.completeTaskInstance(instance.id);
-      expect(completed?.status, TaskStatus.completed);
-      expect(completed?.statusReason, 'user_completed');
+    // 2. Complete task -> statusReason is user_completed
+    final completed = await repository.completeTaskInstance(instance.id);
+    expect(completed?.status, TaskStatus.completed);
+    expect(completed?.statusReason, 'user_completed');
 
-      // Undo completion -> statusReason must be null and status pending
-      await repository.undoResolveTaskInstance(completed!);
-      restored = localDataSource.getInstances().firstWhere(
-        (i) => i.id == instance.id,
-      );
-      expect(restored.status, TaskStatus.pending);
-      expect(restored.statusReason, isNull);
-    },
-  );
+    // Undo completion -> statusReason must be null and status pending
+    await repository.undoResolveTaskInstance(completed!);
+    restored = localDataSource.getInstances().firstWhere(
+      (i) => i.id == instance.id,
+    );
+    expect(restored.status, TaskStatus.pending);
+    expect(restored.statusReason, isNull);
+  });
 
   test(
     'missed policy processing batches instance persistence and dirty marking',
@@ -1064,264 +1023,243 @@ void main() {
     },
   );
 
-  test(
-    'UnifiedTaskRepository logs error and reports to ErrorHandler when postProcess callback fails',
-    () async {
-      final logger = AppLogger();
-      final errorHandler = ErrorHandler();
-      final repo = UnifiedTaskRepository(
-        localDataSource: localDataSource,
-        syncService: syncService,
-        firestore: firestore,
-        userId: 'user1',
-        logger: logger,
-        errorHandler: errorHandler,
-      );
+  test('UnifiedTaskRepository logs error and reports to ErrorHandler when postProcess callback fails', () async {
+    final logger = AppLogger();
+    final errorHandler = ErrorHandler();
+    final repo = UnifiedTaskRepository(
+      localDataSource: localDataSource,
+      syncService: syncService,
+      firestore: firestore,
+      userId: 'user1',
+      logger: logger,
+      errorHandler: errorHandler,
+    );
 
-      await repo.triggerMissedPolicyProcessing(
-        postProcess: () async {
-          throw Exception('postProcess callback failed test');
-        },
-      );
+    await repo.triggerMissedPolicyProcessing(
+      postProcess: () async {
+        throw Exception('postProcess callback failed test');
+      },
+    );
 
-      final errorEvents = logger
-          .getEvents()
-          .where((e) => e.level == LogLevel.error)
-          .toList();
-      expect(
-        errorEvents.any(
-          (e) =>
-              e.category == 'task' &&
-              e.message.contains('postProcess callback'),
-        ),
-        true,
-      );
-      expect(errorHandler.history.isNotEmpty, true);
-    },
-  );
+    final errorEvents = logger
+        .getEvents()
+        .where((e) => e.level == LogLevel.error)
+        .toList();
+    expect(
+      errorEvents.any(
+        (e) =>
+            e.category == 'task' && e.message.contains('postProcess callback'),
+      ),
+      true,
+    );
+    expect(errorHandler.history.isNotEmpty, true);
+  });
 
   group('Designated Evaluator and Gating (Issue #713)', () {
-    test(
-      'triggerMissedPolicyProcessing(evaluateFamilyTasks: false) skips family tasks but evaluates personal tasks',
-      () async {
-        final personalTask = TaskSchedule(
-          id: 'S-personal-1',
-          title: 'Personal Task',
-          description: 'Desc',
-          isFamily: false,
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 8, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 8, 1),
-        );
-        final familyTask = TaskSchedule(
-          id: 'S-family-1',
-          title: 'Family Task',
-          description: 'Desc',
-          isFamily: true,
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 8, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 8, 1),
-        );
+    test('triggerMissedPolicyProcessing(evaluateFamilyTasks: false) skips family tasks but evaluates personal tasks', () async {
+      final personalTask = TaskSchedule(
+        id: 'S-personal-1',
+        title: 'Personal Task',
+        description: 'Desc',
+        isFamily: false,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 1),
+            interval: 1,
+          ),
+        ],
+        updatedAt: DateTime(2026, 8, 1),
+      );
+      final familyTask = TaskSchedule(
+        id: 'S-family-1',
+        title: 'Family Task',
+        description: 'Desc',
+        isFamily: true,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 1),
+            interval: 1,
+          ),
+        ],
+        updatedAt: DateTime(2026, 8, 1),
+      );
 
-        await localDataSource.saveTask(personalTask);
-        await localDataSource.saveTask(familyTask);
+      await localDataSource.saveTask(personalTask);
+      await localDataSource.saveTask(familyTask);
 
-        await repository.triggerMissedPolicyProcessing(
-          evaluateFamilyTasks: false,
-        );
+      await repository.triggerMissedPolicyProcessing(
+        evaluateFamilyTasks: false,
+      );
 
-        final instances = localDataSource.getInstances();
-        // Personal task was evaluated and spawned an instance
-        expect(instances.any((i) => i.scheduleId == 'S-personal-1'), isTrue);
-        // Family task was skipped and spawned no instances
-        expect(instances.any((i) => i.scheduleId == 'S-family-1'), isFalse);
-      },
-    );
+      final instances = localDataSource.getInstances();
+      // Personal task was evaluated and spawned an instance
+      expect(instances.any((i) => i.scheduleId == 'S-personal-1'), isTrue);
+      // Family task was skipped and spawned no instances
+      expect(instances.any((i) => i.scheduleId == 'S-family-1'), isFalse);
+    });
 
-    test(
-      'family tasks are not evaluated locally and trigger Cloud Family Scheduler',
-      () async {
-        await firestore.collection('users').doc('user1').set({
-          'familyId': 'family-test',
-        });
-        final assignedToOther = TaskSchedule(
-          id: 'S-fam-assigned-other',
-          title: 'Assigned to Other',
-          description: 'Desc',
-          isFamily: true,
-          assignedUserId: 'user2',
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 8, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 8, 1),
-        );
-        final assignedToMe = TaskSchedule(
-          id: 'S-fam-assigned-me',
-          title: 'Assigned to Me',
-          description: 'Desc',
-          isFamily: true,
-          assignedUserId: 'user1',
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 8, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 8, 1),
-        );
+    test('family tasks are not evaluated locally and trigger Cloud Family Scheduler', () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'family-test',
+      });
+      final assignedToOther = TaskSchedule(
+        id: 'S-fam-assigned-other',
+        title: 'Assigned to Other',
+        description: 'Desc',
+        isFamily: true,
+        assignedUserId: 'user2',
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 1),
+            interval: 1,
+          ),
+        ],
+        updatedAt: DateTime(2026, 8, 1),
+      );
+      final assignedToMe = TaskSchedule(
+        id: 'S-fam-assigned-me',
+        title: 'Assigned to Me',
+        description: 'Desc',
+        isFamily: true,
+        assignedUserId: 'user1',
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 1),
+            interval: 1,
+          ),
+        ],
+        updatedAt: DateTime(2026, 8, 1),
+      );
 
-        await localDataSource.saveTask(assignedToOther);
-        await localDataSource.saveTask(assignedToMe);
+      await localDataSource.saveTask(assignedToOther);
+      await localDataSource.saveTask(assignedToMe);
 
-        // Current repository user is 'user1'
-        await repository.triggerMissedPolicyProcessing(
-          evaluateFamilyTasks: true,
-        );
+      // Current repository user is 'user1'
+      await repository.triggerMissedPolicyProcessing(evaluateFamilyTasks: true);
 
-        final instances = localDataSource.getInstances();
-        // Neither assigned task should be evaluated/spawned locally
-        expect(
-          instances.any((i) => i.scheduleId == 'S-fam-assigned-other'),
-          isFalse,
-          reason: 'Family tasks must not spawn instances locally',
-        );
-        expect(
-          instances.any((i) => i.scheduleId == 'S-fam-assigned-me'),
-          isFalse,
-          reason: 'Family tasks must not spawn instances locally',
-        );
-        // Cloud Family Scheduler must be triggered
-        expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
-      },
-    );
+      final instances = localDataSource.getInstances();
+      // Neither assigned task should be evaluated/spawned locally
+      expect(
+        instances.any((i) => i.scheduleId == 'S-fam-assigned-other'),
+        isFalse,
+        reason: 'Family tasks must not spawn instances locally',
+      );
+      expect(
+        instances.any((i) => i.scheduleId == 'S-fam-assigned-me'),
+        isFalse,
+        reason: 'Family tasks must not spawn instances locally',
+      );
+      // Cloud Family Scheduler must be triggered
+      expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+    });
 
-    test(
-      'unassigned family task is not evaluated locally by leader or member, but triggers cloud scheduler',
-      () async {
-        await firestore.collection('families').doc('family-test').set({
-          'name': 'Test Family',
-          'creatorId': 'user-leader',
-          'members': {
-            'user-leader': {
-              'userId': 'user-leader',
-              'displayName': 'Leader Parent',
-              'email': 'leader@example.com',
-              'role': 'parent',
-            },
-            'user-member': {
-              'userId': 'user-member',
-              'displayName': 'Regular Member',
-              'email': 'member@example.com',
-              'role': 'non-parent',
-            },
+    test('unassigned family task is not evaluated locally by leader or member, but triggers cloud scheduler', () async {
+      await firestore.collection('families').doc('family-test').set({
+        'name': 'Test Family',
+        'creatorId': 'user-leader',
+        'members': {
+          'user-leader': {
+            'userId': 'user-leader',
+            'displayName': 'Leader Parent',
+            'email': 'leader@example.com',
+            'role': 'parent',
           },
-        });
-        await firestore.collection('users').doc('user-leader').set({
-          'familyId': 'family-test',
-        });
-        await firestore.collection('users').doc('user-member').set({
-          'familyId': 'family-test',
-        });
+          'user-member': {
+            'userId': 'user-member',
+            'displayName': 'Regular Member',
+            'email': 'member@example.com',
+            'role': 'non-parent',
+          },
+        },
+      });
+      await firestore.collection('users').doc('user-leader').set({
+        'familyId': 'family-test',
+      });
+      await firestore.collection('users').doc('user-member').set({
+        'familyId': 'family-test',
+      });
 
-        final unassignedFamilyTask = TaskSchedule(
-          id: 'S-unassigned-fam',
-          title: 'Unassigned Shared Task',
-          description: 'Desc',
-          isFamily: true,
-          assignedUserId: null,
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 8, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 8, 1),
-        );
+      final unassignedFamilyTask = TaskSchedule(
+        id: 'S-unassigned-fam',
+        title: 'Unassigned Shared Task',
+        description: 'Desc',
+        isFamily: true,
+        assignedUserId: null,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 1),
+            interval: 1,
+          ),
+        ],
+        updatedAt: DateTime(2026, 8, 1),
+      );
 
-        // 1. Non-leader repository evaluates
-        final memberLocalSource = HiveLocalDataSource();
-        await memberLocalSource.init();
-        await memberLocalSource.setMigrationCompleted(true);
+      // 1. Non-leader repository evaluates
+      final memberLocalSource = HiveLocalDataSource();
+      await memberLocalSource.init();
+      await memberLocalSource.setMigrationCompleted(true);
 
-        final memberSync = TaskSyncService(
-          firestore: firestore,
-          localDataSource: memberLocalSource,
-          userId: 'user-member',
-          isActivePremium: false,
-        );
-        addTearDown(() => memberSync.dispose());
+      final memberSync = TaskSyncService(
+        firestore: firestore,
+        localDataSource: memberLocalSource,
+        userId: 'user-member',
+        isActivePremium: false,
+      );
+      addTearDown(() => memberSync.dispose());
 
-        final memberScheduler = _FakeCloudFamilySchedulerClient();
-        final memberRepo = UnifiedTaskRepository(
-          localDataSource: memberLocalSource,
-          syncService: memberSync,
-          firestore: firestore,
-          userId: 'user-member',
-          cloudFamilySchedulerClient: memberScheduler,
-        );
+      final memberScheduler = _FakeCloudFamilySchedulerClient();
+      final memberRepo = UnifiedTaskRepository(
+        localDataSource: memberLocalSource,
+        syncService: memberSync,
+        firestore: firestore,
+        userId: 'user-member',
+        cloudFamilySchedulerClient: memberScheduler,
+      );
 
-        await memberLocalSource.saveTask(unassignedFamilyTask);
-        await memberRepo.triggerMissedPolicyProcessing(
-          evaluateFamilyTasks: true,
-        );
+      await memberLocalSource.saveTask(unassignedFamilyTask);
+      await memberRepo.triggerMissedPolicyProcessing(evaluateFamilyTasks: true);
 
-        var memberInstances = memberLocalSource.getInstances();
-        expect(
-          memberInstances.any((i) => i.scheduleId == 'S-unassigned-fam'),
-          isFalse,
-          reason:
-              'Non-leader member must not evaluate unassigned family task locally',
-        );
-        expect(memberScheduler.triggeredFamilyIds, contains('family-test'));
+      var memberInstances = memberLocalSource.getInstances();
+      expect(
+        memberInstances.any((i) => i.scheduleId == 'S-unassigned-fam'),
+        isFalse,
+        reason: 'Non-leader member must not evaluate unassigned family task locally',
+      );
+      expect(memberScheduler.triggeredFamilyIds, contains('family-test'));
 
-        // 2. Leader repository evaluates
-        final leaderLocalSource = HiveLocalDataSource();
-        await leaderLocalSource.init();
-        await leaderLocalSource.setMigrationCompleted(true);
+      // 2. Leader repository evaluates
+      final leaderLocalSource = HiveLocalDataSource();
+      await leaderLocalSource.init();
+      await leaderLocalSource.setMigrationCompleted(true);
 
-        final leaderSync = TaskSyncService(
-          firestore: firestore,
-          localDataSource: leaderLocalSource,
-          userId: 'user-leader',
-          isActivePremium: false,
-        );
-        addTearDown(() => leaderSync.dispose());
+      final leaderSync = TaskSyncService(
+        firestore: firestore,
+        localDataSource: leaderLocalSource,
+        userId: 'user-leader',
+        isActivePremium: false,
+      );
+      addTearDown(() => leaderSync.dispose());
 
-        final leaderScheduler = _FakeCloudFamilySchedulerClient();
-        final leaderRepo = UnifiedTaskRepository(
-          localDataSource: leaderLocalSource,
-          syncService: leaderSync,
-          firestore: firestore,
-          userId: 'user-leader',
-          cloudFamilySchedulerClient: leaderScheduler,
-        );
+      final leaderScheduler = _FakeCloudFamilySchedulerClient();
+      final leaderRepo = UnifiedTaskRepository(
+        localDataSource: leaderLocalSource,
+        syncService: leaderSync,
+        firestore: firestore,
+        userId: 'user-leader',
+        cloudFamilySchedulerClient: leaderScheduler,
+      );
 
-        await leaderLocalSource.saveTask(unassignedFamilyTask);
-        await leaderRepo.triggerMissedPolicyProcessing(
-          evaluateFamilyTasks: true,
-        );
+      await leaderLocalSource.saveTask(unassignedFamilyTask);
+      await leaderRepo.triggerMissedPolicyProcessing(evaluateFamilyTasks: true);
 
-        var leaderInstances = leaderLocalSource.getInstances();
-        expect(
-          leaderInstances.any((i) => i.scheduleId == 'S-unassigned-fam'),
-          isFalse,
-          reason:
-              'Leader must not evaluate unassigned family task locally (cloud is single authority)',
-        );
-        expect(leaderScheduler.triggeredFamilyIds, contains('family-test'));
-      },
-    );
+      var leaderInstances = leaderLocalSource.getInstances();
+      expect(
+        leaderInstances.any((i) => i.scheduleId == 'S-unassigned-fam'),
+        isFalse,
+        reason: 'Leader must not evaluate unassigned family task locally (cloud is single authority)',
+      );
+      expect(leaderScheduler.triggeredFamilyIds, contains('family-test'));
+    });
 
     test('mutations on family tasks trigger Cloud Family Scheduler', () async {
       await firestore.collection('users').doc('user1').set({
@@ -1495,229 +1433,186 @@ void main() {
       },
     );
 
-    test(
-      'undoResolveTaskInstance triggers Cloud Family Scheduler and skips local next-occurrence deletion for family tasks',
-      () async {
-        await firestore.collection('users').doc('user1').set({
-          'familyId': 'family-test',
-        });
+    test('undoResolveTaskInstance triggers Cloud Family Scheduler and skips local next-occurrence deletion for family tasks', () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'family-test',
+      });
 
-        final familyTask = TaskSchedule(
-          id: 'S-fam-undo',
-          title: 'Family Undo Task',
-          description: 'Desc',
-          isFamily: true,
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 8, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 8, 1),
-        );
-
-        final completedInstance = TaskInstance(
-          id: 'I-fam-undo-1',
-          scheduleId: familyTask.id,
-          ruleId: 'r1',
-          title: familyTask.title,
-          description: familyTask.description,
-          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 9,
-            minute: 0,
+      final familyTask = TaskSchedule(
+        id: 'S-fam-undo',
+        title: 'Family Undo Task',
+        description: 'Desc',
+        isFamily: true,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 1),
+            interval: 1,
           ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 17,
-            minute: 0,
+        ],
+        updatedAt: DateTime(2026, 8, 1),
+      );
+
+      final completedInstance = TaskInstance(
+        id: 'I-fam-undo-1',
+        scheduleId: familyTask.id,
+        ruleId: 'r1',
+        title: familyTask.title,
+        description: familyTask.description,
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        isFamily: true,
+        status: TaskStatus.completed,
+        completedAt: DateTime(2026, 8, 1, 10),
+      );
+
+      // Simulate a locally-present "next occurrence" that must NOT be deleted
+      // by undoResolveTaskInstance for family tasks (cloud scheduler owns this)
+      final nextInstance = TaskInstance(
+        id: 'I-fam-undo-next',
+        scheduleId: familyTask.id,
+        ruleId: 'r1',
+        title: familyTask.title,
+        description: familyTask.description,
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 2),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        isFamily: true,
+        status: TaskStatus.pending,
+      );
+
+      await localDataSource.saveTask(familyTask);
+      await localDataSource.saveInstance(completedInstance);
+      await localDataSource.saveInstance(nextInstance);
+
+      fakeCloudScheduler.triggeredFamilyIds.clear();
+
+      await repository.undoResolveTaskInstance(completedInstance);
+
+      // Cloud scheduler must be triggered
+      expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+
+      // The "next occurrence" must NOT have been deleted on-device
+      final instances = localDataSource.getInstances();
+      expect(
+        instances.any((i) => i.id == nextInstance.id),
+        isTrue,
+        reason: 'undoResolveTaskInstance must not delete family next occurrences locally',
+      );
+    });
+
+    test('completeTaskInstance triggers CloudFamilySchedulerClient when all members complete a family task with familyCompletionMode == FamilyCompletionMode.individual', () async {
+      const familyId = 'fam-indiv-all-complete';
+      const user1 = 'user1';
+      const user2 = 'user2';
+
+      await firestore.collection('families').doc(familyId).set({
+        'name': 'Family',
+        'members': {
+          user1: {'role': 'parent', 'displayName': 'User 1'},
+          user2: {'role': 'child', 'displayName': 'User 2'},
+        },
+      });
+      await firestore.collection('users').doc(user1).set({
+        'familyId': familyId,
+      });
+
+      final familyTask = TaskSchedule(
+        id: 'S-fam-indiv-all',
+        title: 'Family Chore',
+        description: 'All members clean',
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.individual,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 1),
+            interval: 1,
           ),
-          isFamily: true,
-          status: TaskStatus.completed,
-          completedAt: DateTime(2026, 8, 1, 10),
-        );
+        ],
+        updatedAt: DateTime(2026, 8, 1),
+      );
 
-        // Simulate a locally-present "next occurrence" that must NOT be deleted
-        // by undoResolveTaskInstance for family tasks (cloud scheduler owns this)
-        final nextInstance = TaskInstance(
-          id: 'I-fam-undo-next',
-          scheduleId: familyTask.id,
-          ruleId: 'r1',
-          title: familyTask.title,
-          description: familyTask.description,
-          scheduledDate: const CivilDay(year: 2026, month: 8, day: 2),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 9,
-            minute: 0,
+      final pendingInstance = TaskInstance(
+        id: 'I-fam-indiv-all-1',
+        scheduleId: familyTask.id,
+        ruleId: 'r1',
+        title: familyTask.title,
+        description: familyTask.description,
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.individual,
+        status: TaskStatus.pending,
+        completedByUserIds: [user2], // user2 already completed
+      );
+
+      await localDataSource.saveTask(familyTask);
+      await localDataSource.saveInstance(pendingInstance);
+
+      fakeCloudScheduler.triggeredFamilyIds.clear();
+
+      // User 1 completes (now both user1 and user2 completed -> allCompleted is true)
+      final completed = await repository.completeTaskInstance(
+        pendingInstance.id,
+      );
+
+      expect(completed, isNotNull);
+      expect(completed?.status, TaskStatus.completed);
+      expect(completed?.completedByUserIds, containsAll([user1, user2]));
+
+      // Cloud scheduler must be triggered because all members completed
+      expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
+    });
+
+    test('uncompleteTaskInstance triggers CloudFamilySchedulerClient exactly once without duplicate requests', () async {
+      await firestore.collection('users').doc('user1').set({
+        'familyId': 'family-test',
+      });
+
+      final familyTask = TaskSchedule(
+        id: 'S-fam-uncomplete-single',
+        title: 'Family Task Single',
+        description: 'Desc',
+        isFamily: true,
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 8, day: 1),
+            interval: 1,
           ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 17,
-            minute: 0,
-          ),
-          isFamily: true,
-          status: TaskStatus.pending,
-        );
+        ],
+        updatedAt: DateTime(2026, 8, 1),
+      );
 
-        await localDataSource.saveTask(familyTask);
-        await localDataSource.saveInstance(completedInstance);
-        await localDataSource.saveInstance(nextInstance);
+      final completedInstance = TaskInstance(
+        id: 'I-fam-uncomplete-single-1',
+        scheduleId: familyTask.id,
+        ruleId: 'r1',
+        title: familyTask.title,
+        description: familyTask.description,
+        scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        isFamily: true,
+        status: TaskStatus.completed,
+        completedAt: DateTime(2026, 8, 1, 10),
+      );
 
-        fakeCloudScheduler.triggeredFamilyIds.clear();
+      await localDataSource.saveTask(familyTask);
+      await localDataSource.saveInstance(completedInstance);
 
-        await repository.undoResolveTaskInstance(completedInstance);
+      fakeCloudScheduler.triggeredFamilyIds.clear();
 
-        // Cloud scheduler must be triggered
-        expect(fakeCloudScheduler.triggeredFamilyIds, contains('family-test'));
+      await repository.uncompleteTaskInstance(completedInstance.id);
 
-        // The "next occurrence" must NOT have been deleted on-device
-        final instances = localDataSource.getInstances();
-        expect(
-          instances.any((i) => i.id == nextInstance.id),
-          isTrue,
-          reason:
-              'undoResolveTaskInstance must not delete family next occurrences locally',
-        );
-      },
-    );
-
-    test(
-      'completeTaskInstance triggers CloudFamilySchedulerClient when all members complete a family task with familyCompletionMode == FamilyCompletionMode.individual',
-      () async {
-        const familyId = 'fam-indiv-all-complete';
-        const user1 = 'user1';
-        const user2 = 'user2';
-
-        await firestore.collection('families').doc(familyId).set({
-          'name': 'Family',
-          'members': {
-            user1: {'role': 'parent', 'displayName': 'User 1'},
-            user2: {'role': 'child', 'displayName': 'User 2'},
-          },
-        });
-        await firestore.collection('users').doc(user1).set({
-          'familyId': familyId,
-        });
-
-        final familyTask = TaskSchedule(
-          id: 'S-fam-indiv-all',
-          title: 'Family Chore',
-          description: 'All members clean',
-          isFamily: true,
-          familyCompletionMode: FamilyCompletionMode.individual,
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 8, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 8, 1),
-        );
-
-        final pendingInstance = TaskInstance(
-          id: 'I-fam-indiv-all-1',
-          scheduleId: familyTask.id,
-          ruleId: 'r1',
-          title: familyTask.title,
-          description: familyTask.description,
-          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 9,
-            minute: 0,
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 17,
-            minute: 0,
-          ),
-          isFamily: true,
-          familyCompletionMode: FamilyCompletionMode.individual,
-          status: TaskStatus.pending,
-          completedByUserIds: [user2], // user2 already completed
-        );
-
-        await localDataSource.saveTask(familyTask);
-        await localDataSource.saveInstance(pendingInstance);
-
-        fakeCloudScheduler.triggeredFamilyIds.clear();
-
-        // User 1 completes (now both user1 and user2 completed -> allCompleted is true)
-        final completed = await repository.completeTaskInstance(
-          pendingInstance.id,
-        );
-
-        expect(completed, isNotNull);
-        expect(completed?.status, TaskStatus.completed);
-        expect(completed?.completedByUserIds, containsAll([user1, user2]));
-
-        // Cloud scheduler must be triggered because all members completed
-        expect(fakeCloudScheduler.triggeredFamilyIds, contains(familyId));
-      },
-    );
-
-    test(
-      'uncompleteTaskInstance triggers CloudFamilySchedulerClient exactly once without duplicate requests',
-      () async {
-        await firestore.collection('users').doc('user1').set({
-          'familyId': 'family-test',
-        });
-
-        final familyTask = TaskSchedule(
-          id: 'S-fam-uncomplete-single',
-          title: 'Family Task Single',
-          description: 'Desc',
-          isFamily: true,
-          schedules: [
-            DailySchedule(
-              startDate: const CivilDay(year: 2026, month: 8, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 8, 1),
-        );
-
-        final completedInstance = TaskInstance(
-          id: 'I-fam-uncomplete-single-1',
-          scheduleId: familyTask.id,
-          ruleId: 'r1',
-          title: familyTask.title,
-          description: familyTask.description,
-          scheduledDate: const CivilDay(year: 2026, month: 8, day: 1),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 9,
-            minute: 0,
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 17,
-            minute: 0,
-          ),
-          isFamily: true,
-          status: TaskStatus.completed,
-          completedAt: DateTime(2026, 8, 1, 10),
-        );
-
-        await localDataSource.saveTask(familyTask);
-        await localDataSource.saveInstance(completedInstance);
-
-        fakeCloudScheduler.triggeredFamilyIds.clear();
-
-        await repository.uncompleteTaskInstance(completedInstance.id);
-
-        expect(
-          fakeCloudScheduler.triggeredFamilyIds
-              .where((id) => id == 'family-test')
-              .length,
-          1,
-          reason:
-              'uncompleteTaskInstance should trigger cloud family scheduler exactly once',
-        );
-      },
-    );
+      expect(
+        fakeCloudScheduler.triggeredFamilyIds
+            .where((id) => id == 'family-test')
+            .length,
+        1,
+        reason: 'uncompleteTaskInstance should trigger cloud family scheduler exactly once',
+      );
+    });
 
     test(
       'lifecycle resume gates triggerMissedPolicyProcessing on initial sync',
@@ -1798,9 +1693,7 @@ void main() {
             .toList();
         expect(instances.length, 2);
 
-        final completedSaved = instances.firstWhere(
-          (i) => i.id == instance.id,
-        );
+        final completedSaved = instances.firstWhere((i) => i.id == instance.id);
         expect(completedSaved.status, TaskStatus.completed);
 
         final nextInstance = instances.firstWhere((i) => i.id != instance.id);
@@ -1868,9 +1761,7 @@ void main() {
             .toList();
         expect(instances.length, 2);
 
-        final dismissedSaved = instances.firstWhere(
-          (i) => i.id == instance.id,
-        );
+        final dismissedSaved = instances.firstWhere((i) => i.id == instance.id);
         expect(dismissedSaved.status, TaskStatus.skipped);
 
         final nextInstance = instances.firstWhere((i) => i.id != instance.id);
@@ -1887,262 +1778,218 @@ void main() {
       },
     );
 
-    test(
-      'CompletionRelativePolicy spawns next occurrence at completion time + interval',
-      () async {
-        final fixedNow = DateTime(2026, 10, 5, 14, 0);
-        AppClock.setMockTime(fixedNow);
-        addTearDown(AppClock.reset);
+    test('CompletionRelativePolicy spawns next occurrence at completion time + interval', () async {
+      final fixedNow = DateTime(2026, 10, 5, 14, 0);
+      AppClock.setMockTime(fixedNow);
+      addTearDown(AppClock.reset);
 
-        final task = TaskSchedule(
-          id: 'S-rec-cr',
-          title: 'Air Filter Task',
-          description: 'Relative chore',
-          isFamily: false,
-          schedules: [
-            DailySchedule(
-              id: 'R-cr-1',
-              startDate: const CivilDay(year: 2026, month: 10, day: 1),
-              interval: 1,
-              schedulingPolicy: const CompletionRelativePolicy(
-                interval: Duration(days: 7),
-                targetHour: 10,
-                targetMinute: 30,
-              ),
+      final task = TaskSchedule(
+        id: 'S-rec-cr',
+        title: 'Air Filter Task',
+        description: 'Relative chore',
+        isFamily: false,
+        schedules: [
+          DailySchedule(
+            id: 'R-cr-1',
+            startDate: const CivilDay(year: 2026, month: 10, day: 1),
+            interval: 1,
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 7),
+              targetHour: 10,
+              targetMinute: 30,
             ),
-          ],
-          updatedAt: fixedNow,
-        );
-        await localDataSource.saveTask(task);
-
-        final instance = TaskInstance(
-          id: 'I-cr-1',
-          scheduleId: task.id,
-          ruleId: 'R-cr-1',
-          title: task.title,
-          description: task.description,
-          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 10,
-            minute: 30,
           ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 18,
-            minute: 0,
+        ],
+        updatedAt: fixedNow,
+      );
+      await localDataSource.saveTask(task);
+
+      final instance = TaskInstance(
+        id: 'I-cr-1',
+        scheduleId: task.id,
+        ruleId: 'R-cr-1',
+        title: task.title,
+        description: task.description,
+        scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+        startRelativeTime: const RelativeTime(
+          dayOffset: 0,
+          hour: 10,
+          minute: 30,
+        ),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 18, minute: 0),
+        status: TaskStatus.pending,
+      );
+      await localDataSource.saveInstance(instance);
+
+      final completed = await repository.completeTaskInstance(instance.id);
+      expect(completed, isNotNull);
+
+      final instances = localDataSource
+          .getInstances()
+          .where((i) => i.scheduleId == task.id)
+          .toList();
+      expect(instances.length, 2);
+
+      final nextInstance = instances.firstWhere((i) => i.id != instance.id);
+      expect(nextInstance.status, TaskStatus.pending);
+      expect(
+        nextInstance.scheduledDate,
+        CivilDay.fromDateTime(fixedNow.add(const Duration(days: 7))),
+      );
+      expect(
+        nextInstance.startRelativeTime.time,
+        const TimeOfDay(hour: 10, minute: 30),
+      );
+    });
+
+    test('undoResolveTaskInstance cleanly deletes spawned occurrence on completion undo', () async {
+      final task = TaskSchedule(
+        id: 'S-rec-undo-comp',
+        title: 'Daily Task',
+        description: 'Undo test',
+        isFamily: false,
+        schedules: [
+          DailySchedule(
+            id: 'R-undo-comp-1',
+            startDate: const CivilDay(year: 2026, month: 10, day: 1),
+            interval: 1,
           ),
-          status: TaskStatus.pending,
-        );
-        await localDataSource.saveInstance(instance);
+        ],
+        updatedAt: DateTime(2026, 10, 1),
+      );
+      await localDataSource.saveTask(task);
 
-        final completed = await repository.completeTaskInstance(instance.id);
-        expect(completed, isNotNull);
+      final instance = TaskInstance(
+        id: 'I-undo-comp-1',
+        scheduleId: task.id,
+        ruleId: 'R-undo-comp-1',
+        title: task.title,
+        description: task.description,
+        scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        status: TaskStatus.pending,
+      );
+      await localDataSource.saveInstance(instance);
 
-        final instances = localDataSource
-            .getInstances()
-            .where((i) => i.scheduleId == task.id)
-            .toList();
-        expect(instances.length, 2);
+      final completed = await repository.completeTaskInstance(instance.id);
+      expect(completed, isNotNull);
 
-        final nextInstance = instances.firstWhere((i) => i.id != instance.id);
-        expect(nextInstance.status, TaskStatus.pending);
-        expect(
-          nextInstance.scheduledDate,
-          CivilDay.fromDateTime(fixedNow.add(const Duration(days: 7))),
-        );
-        expect(
-          nextInstance.startRelativeTime.time,
-          const TimeOfDay(hour: 10, minute: 30),
-        );
-      },
-    );
+      final instancesAfterComp = localDataSource
+          .getInstances()
+          .where((i) => i.scheduleId == task.id)
+          .toList();
+      expect(instancesAfterComp.length, 2);
+      final spawnedId = instancesAfterComp
+          .firstWhere((i) => i.id != instance.id)
+          .id;
 
-    test(
-      'undoResolveTaskInstance cleanly deletes spawned occurrence on completion undo',
-      () async {
-        final task = TaskSchedule(
-          id: 'S-rec-undo-comp',
-          title: 'Daily Task',
-          description: 'Undo test',
-          isFamily: false,
-          schedules: [
-            DailySchedule(
-              id: 'R-undo-comp-1',
-              startDate: const CivilDay(year: 2026, month: 10, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 10, 1),
-        );
-        await localDataSource.saveTask(task);
+      await repository.undoResolveTaskInstance(completed!);
 
-        final instance = TaskInstance(
-          id: 'I-undo-comp-1',
-          scheduleId: task.id,
-          ruleId: 'R-undo-comp-1',
-          title: task.title,
-          description: task.description,
-          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 9,
-            minute: 0,
+      final instancesAfterUndo = localDataSource
+          .getInstances()
+          .where((i) => i.scheduleId == task.id)
+          .toList();
+      expect(instancesAfterUndo.length, 1);
+      expect(instancesAfterUndo.first.id, instance.id);
+      expect(instancesAfterUndo.first.status, TaskStatus.pending);
+      expect(localDataSource.getDirtyTaskIds().contains(spawnedId), isTrue);
+    });
+
+    test('undoResolveTaskInstance cleanly deletes spawned occurrence on dismissal undo', () async {
+      final task = TaskSchedule(
+        id: 'S-rec-undo-dism',
+        title: 'Daily Task',
+        description: 'Undo dismiss test',
+        isFamily: false,
+        schedules: [
+          DailySchedule(
+            id: 'R-undo-dism-1',
+            startDate: const CivilDay(year: 2026, month: 10, day: 1),
+            interval: 1,
           ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 17,
-            minute: 0,
+        ],
+        updatedAt: DateTime(2026, 10, 1),
+      );
+      await localDataSource.saveTask(task);
+
+      final instance = TaskInstance(
+        id: 'I-undo-dism-1',
+        scheduleId: task.id,
+        ruleId: 'R-undo-dism-1',
+        title: task.title,
+        description: task.description,
+        scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        status: TaskStatus.pending,
+      );
+      await localDataSource.saveInstance(instance);
+
+      final dismissed = await repository.dismissTaskInstance(instance.id);
+      expect(dismissed, isNotNull);
+
+      final instancesAfterDism = localDataSource
+          .getInstances()
+          .where((i) => i.scheduleId == task.id)
+          .toList();
+      expect(instancesAfterDism.length, 2);
+      final spawnedId = instancesAfterDism
+          .firstWhere((i) => i.id != instance.id)
+          .id;
+
+      await repository.undoResolveTaskInstance(dismissed!);
+
+      final instancesAfterUndo = localDataSource
+          .getInstances()
+          .where((i) => i.scheduleId == task.id)
+          .toList();
+      expect(instancesAfterUndo.length, 1);
+      expect(instancesAfterUndo.first.id, instance.id);
+      expect(instancesAfterUndo.first.status, TaskStatus.pending);
+      expect(localDataSource.getDirtyTaskIds().contains(spawnedId), isTrue);
+    });
+
+    test('family tasks do not locally spawn next occurrence on completion or dismissal', () async {
+      final familyTask = TaskSchedule(
+        id: 'S-rec-family',
+        title: 'Family Daily Task',
+        description: 'Family chore',
+        isFamily: true,
+        schedules: [
+          DailySchedule(
+            id: 'R-fam-1',
+            startDate: const CivilDay(year: 2026, month: 10, day: 1),
+            interval: 1,
           ),
-          status: TaskStatus.pending,
-        );
-        await localDataSource.saveInstance(instance);
+        ],
+        updatedAt: DateTime(2026, 10, 1),
+      );
+      await localDataSource.saveTask(familyTask);
 
-        final completed = await repository.completeTaskInstance(instance.id);
-        expect(completed, isNotNull);
+      final instance = TaskInstance(
+        id: 'I-fam-rec-1',
+        scheduleId: familyTask.id,
+        ruleId: 'R-fam-1',
+        title: familyTask.title,
+        description: familyTask.description,
+        isFamily: true,
+        scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+        startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        status: TaskStatus.pending,
+      );
+      await localDataSource.saveInstance(instance);
 
-        final instancesAfterComp = localDataSource
-            .getInstances()
-            .where((i) => i.scheduleId == task.id)
-            .toList();
-        expect(instancesAfterComp.length, 2);
-        final spawnedId =
-            instancesAfterComp.firstWhere((i) => i.id != instance.id).id;
+      await repository.completeTaskInstance(instance.id);
 
-        await repository.undoResolveTaskInstance(completed!);
-
-        final instancesAfterUndo = localDataSource
-            .getInstances()
-            .where((i) => i.scheduleId == task.id)
-            .toList();
-        expect(instancesAfterUndo.length, 1);
-        expect(instancesAfterUndo.first.id, instance.id);
-        expect(instancesAfterUndo.first.status, TaskStatus.pending);
-        expect(
-          localDataSource.getDirtyTaskIds().contains(spawnedId),
-          isTrue,
-        );
-      },
-    );
-
-    test(
-      'undoResolveTaskInstance cleanly deletes spawned occurrence on dismissal undo',
-      () async {
-        final task = TaskSchedule(
-          id: 'S-rec-undo-dism',
-          title: 'Daily Task',
-          description: 'Undo dismiss test',
-          isFamily: false,
-          schedules: [
-            DailySchedule(
-              id: 'R-undo-dism-1',
-              startDate: const CivilDay(year: 2026, month: 10, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 10, 1),
-        );
-        await localDataSource.saveTask(task);
-
-        final instance = TaskInstance(
-          id: 'I-undo-dism-1',
-          scheduleId: task.id,
-          ruleId: 'R-undo-dism-1',
-          title: task.title,
-          description: task.description,
-          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 9,
-            minute: 0,
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 17,
-            minute: 0,
-          ),
-          status: TaskStatus.pending,
-        );
-        await localDataSource.saveInstance(instance);
-
-        final dismissed = await repository.dismissTaskInstance(instance.id);
-        expect(dismissed, isNotNull);
-
-        final instancesAfterDism = localDataSource
-            .getInstances()
-            .where((i) => i.scheduleId == task.id)
-            .toList();
-        expect(instancesAfterDism.length, 2);
-        final spawnedId =
-            instancesAfterDism.firstWhere((i) => i.id != instance.id).id;
-
-        await repository.undoResolveTaskInstance(dismissed!);
-
-        final instancesAfterUndo = localDataSource
-            .getInstances()
-            .where((i) => i.scheduleId == task.id)
-            .toList();
-        expect(instancesAfterUndo.length, 1);
-        expect(instancesAfterUndo.first.id, instance.id);
-        expect(instancesAfterUndo.first.status, TaskStatus.pending);
-        expect(
-          localDataSource.getDirtyTaskIds().contains(spawnedId),
-          isTrue,
-        );
-      },
-    );
-
-    test(
-      'family tasks do not locally spawn next occurrence on completion or dismissal',
-      () async {
-        final familyTask = TaskSchedule(
-          id: 'S-rec-family',
-          title: 'Family Daily Task',
-          description: 'Family chore',
-          isFamily: true,
-          schedules: [
-            DailySchedule(
-              id: 'R-fam-1',
-              startDate: const CivilDay(year: 2026, month: 10, day: 1),
-              interval: 1,
-            ),
-          ],
-          updatedAt: DateTime(2026, 10, 1),
-        );
-        await localDataSource.saveTask(familyTask);
-
-        final instance = TaskInstance(
-          id: 'I-fam-rec-1',
-          scheduleId: familyTask.id,
-          ruleId: 'R-fam-1',
-          title: familyTask.title,
-          description: familyTask.description,
-          isFamily: true,
-          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 9,
-            minute: 0,
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 17,
-            minute: 0,
-          ),
-          status: TaskStatus.pending,
-        );
-        await localDataSource.saveInstance(instance);
-
-        await repository.completeTaskInstance(instance.id);
-
-        final instances = localDataSource
-            .getInstances()
-            .where((i) => i.scheduleId == familyTask.id)
-            .toList();
-        expect(instances.length, 1);
-        expect(instances.first.status, TaskStatus.completed);
-      },
-    );
+      final instances = localDataSource
+          .getInstances()
+          .where((i) => i.scheduleId == familyTask.id)
+          .toList();
+      expect(instances.length, 1);
+      expect(instances.first.status, TaskStatus.completed);
+    });
   });
 }
 
