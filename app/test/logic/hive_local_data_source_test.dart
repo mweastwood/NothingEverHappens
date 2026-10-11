@@ -611,6 +611,7 @@ void main() {
         scheduleId: 'S-utc-test',
         ruleId: 'R-1',
         title: 'UTC Instance',
+        description: 'UTC Instance Description',
         scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
         startRelativeTime: const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
         dueRelativeTime: const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
