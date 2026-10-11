@@ -1745,6 +1745,457 @@ void main() {
       },
     );
   });
+
+  group('Personal Recurring Chore Spawning & Rollback', () {
+    test(
+      'completeTaskInstance spawns next occurrence locally and marks dirty',
+      () async {
+        final task = TaskSchedule(
+          id: 'S-rec-complete',
+          title: 'Recurring Task',
+          description: 'Daily chore',
+          isFamily: false,
+          schedules: [
+            DailySchedule(
+              id: 'R-daily-1',
+              startDate: const CivilDay(year: 2026, month: 10, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 10, 1),
+        );
+        await localDataSource.saveTask(task);
+
+        final instance = TaskInstance(
+          id: 'I-rec-1',
+          scheduleId: task.id,
+          ruleId: 'R-daily-1',
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveInstance(instance);
+
+        final completed = await repository.completeTaskInstance(instance.id);
+        expect(completed, isNotNull);
+        expect(completed!.status, TaskStatus.completed);
+        expect(completed.statusReason, 'user_completed');
+
+        final instances = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instances.length, 2);
+
+        final completedSaved = instances.firstWhere((i) => i.id == instance.id);
+        expect(completedSaved.status, TaskStatus.completed);
+
+        final nextInstance = instances.firstWhere((i) => i.id != instance.id);
+        expect(nextInstance.status, TaskStatus.pending);
+        expect(
+          nextInstance.scheduledDate,
+          const CivilDay(year: 2026, month: 10, day: 2),
+        );
+        expect(nextInstance.hasPendingWrites, isTrue);
+        expect(
+          localDataSource.getDirtyTaskIds().contains(nextInstance.id),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'dismissTaskInstance spawns next occurrence locally and marks dirty',
+      () async {
+        final task = TaskSchedule(
+          id: 'S-rec-dismiss',
+          title: 'Recurring Task Dismiss',
+          description: 'Daily chore',
+          isFamily: false,
+          schedules: [
+            DailySchedule(
+              id: 'R-daily-2',
+              startDate: const CivilDay(year: 2026, month: 10, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 10, 1),
+        );
+        await localDataSource.saveTask(task);
+
+        final instance = TaskInstance(
+          id: 'I-rec-dismiss-1',
+          scheduleId: task.id,
+          ruleId: 'R-daily-2',
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveInstance(instance);
+
+        final dismissed = await repository.dismissTaskInstance(instance.id);
+        expect(dismissed, isNotNull);
+        expect(dismissed!.status, TaskStatus.skipped);
+        expect(dismissed.statusReason, 'user_dismissed');
+
+        final instances = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instances.length, 2);
+
+        final dismissedSaved = instances.firstWhere((i) => i.id == instance.id);
+        expect(dismissedSaved.status, TaskStatus.skipped);
+
+        final nextInstance = instances.firstWhere((i) => i.id != instance.id);
+        expect(nextInstance.status, TaskStatus.pending);
+        expect(
+          nextInstance.scheduledDate,
+          const CivilDay(year: 2026, month: 10, day: 2),
+        );
+        expect(nextInstance.hasPendingWrites, isTrue);
+        expect(
+          localDataSource.getDirtyTaskIds().contains(nextInstance.id),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'CompletionRelativePolicy spawns next occurrence at completion time + interval',
+      () async {
+        final fixedNow = DateTime(2026, 10, 5, 14, 0);
+        AppClock.setMockTime(fixedNow);
+        addTearDown(AppClock.reset);
+
+        final task = TaskSchedule(
+          id: 'S-rec-cr',
+          title: 'Air Filter Task',
+          description: 'Relative chore',
+          isFamily: false,
+          schedules: [
+            DailySchedule(
+              id: 'R-cr-1',
+              startDate: const CivilDay(year: 2026, month: 10, day: 1),
+              interval: 1,
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 7),
+                targetHour: 10,
+                targetMinute: 30,
+              ),
+            ),
+          ],
+          updatedAt: fixedNow,
+        );
+        await localDataSource.saveTask(task);
+
+        final instance = TaskInstance(
+          id: 'I-cr-1',
+          scheduleId: task.id,
+          ruleId: 'R-cr-1',
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 30,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveInstance(instance);
+
+        final completed = await repository.completeTaskInstance(instance.id);
+        expect(completed, isNotNull);
+
+        final instances = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instances.length, 2);
+
+        final nextInstance = instances.firstWhere((i) => i.id != instance.id);
+        expect(nextInstance.status, TaskStatus.pending);
+        expect(
+          nextInstance.scheduledDate,
+          CivilDay.fromDateTime(fixedNow.add(const Duration(days: 7))),
+        );
+        expect(
+          nextInstance.startRelativeTime.time,
+          const TimeOfDay(hour: 10, minute: 30),
+        );
+      },
+    );
+
+    test(
+      'undoResolveTaskInstance cleanly deletes spawned occurrence on completion undo',
+      () async {
+        final task = TaskSchedule(
+          id: 'S-rec-undo-comp',
+          title: 'Daily Task',
+          description: 'Undo test',
+          isFamily: false,
+          schedules: [
+            DailySchedule(
+              id: 'R-undo-comp-1',
+              startDate: const CivilDay(year: 2026, month: 10, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 10, 1),
+        );
+        await localDataSource.saveTask(task);
+
+        final instance = TaskInstance(
+          id: 'I-undo-comp-1',
+          scheduleId: task.id,
+          ruleId: 'R-undo-comp-1',
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveInstance(instance);
+
+        final completed = await repository.completeTaskInstance(instance.id);
+        expect(completed, isNotNull);
+
+        final instancesAfterComp = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instancesAfterComp.length, 2);
+        final spawnedId = instancesAfterComp
+            .firstWhere((i) => i.id != instance.id)
+            .id;
+
+        await repository.undoResolveTaskInstance(completed!);
+
+        final instancesAfterUndo = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instancesAfterUndo.length, 1);
+        expect(instancesAfterUndo.first.id, instance.id);
+        expect(instancesAfterUndo.first.status, TaskStatus.pending);
+        expect(localDataSource.getDirtyTaskIds().contains(spawnedId), isTrue);
+      },
+    );
+
+    test(
+      'undoResolveTaskInstance cleanly deletes spawned occurrence on dismissal undo',
+      () async {
+        final task = TaskSchedule(
+          id: 'S-rec-undo-dism',
+          title: 'Daily Task',
+          description: 'Undo dismiss test',
+          isFamily: false,
+          schedules: [
+            DailySchedule(
+              id: 'R-undo-dism-1',
+              startDate: const CivilDay(year: 2026, month: 10, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 10, 1),
+        );
+        await localDataSource.saveTask(task);
+
+        final instance = TaskInstance(
+          id: 'I-undo-dism-1',
+          scheduleId: task.id,
+          ruleId: 'R-undo-dism-1',
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveInstance(instance);
+
+        final dismissed = await repository.dismissTaskInstance(instance.id);
+        expect(dismissed, isNotNull);
+
+        final instancesAfterDism = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instancesAfterDism.length, 2);
+        final spawnedId = instancesAfterDism
+            .firstWhere((i) => i.id != instance.id)
+            .id;
+
+        await repository.undoResolveTaskInstance(dismissed!);
+
+        final instancesAfterUndo = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instancesAfterUndo.length, 1);
+        expect(instancesAfterUndo.first.id, instance.id);
+        expect(instancesAfterUndo.first.status, TaskStatus.pending);
+        expect(localDataSource.getDirtyTaskIds().contains(spawnedId), isTrue);
+      },
+    );
+
+    test(
+      'undoResolveTaskInstance retains restored instance when no next occurrence was spawned',
+      () async {
+        final task = TaskSchedule(
+          id: 'S-rec-undo-no-spawn',
+          title: 'Daily Task',
+          description: 'Undo test when no next occurrence was spawned',
+          isFamily: false,
+          schedules: [
+            DailySchedule(
+              id: 'R-undo-no-spawn-1',
+              startDate: const CivilDay(year: 2026, month: 10, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 10, 1),
+        );
+        await localDataSource.saveTask(task);
+
+        final instance = TaskInstance(
+          id: 'I-undo-no-spawn-1',
+          scheduleId: task.id,
+          ruleId: 'R-undo-no-spawn-1',
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 10, 1, 10, 0),
+        );
+        await localDataSource.saveInstance(instance);
+
+        final instancesBeforeUndo = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instancesBeforeUndo.length, 1);
+        expect(instancesBeforeUndo.first.status, TaskStatus.completed);
+
+        await repository.undoResolveTaskInstance(instance);
+
+        final instancesAfterUndo = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        expect(instancesAfterUndo.length, 1);
+        expect(instancesAfterUndo.first.id, instance.id);
+        expect(instancesAfterUndo.first.status, TaskStatus.pending);
+      },
+    );
+
+    test(
+      'family tasks do not locally spawn next occurrence on completion or dismissal',
+      () async {
+        final familyTask = TaskSchedule(
+          id: 'S-rec-family',
+          title: 'Family Daily Task',
+          description: 'Family chore',
+          isFamily: true,
+          schedules: [
+            DailySchedule(
+              id: 'R-fam-1',
+              startDate: const CivilDay(year: 2026, month: 10, day: 1),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 10, 1),
+        );
+        await localDataSource.saveTask(familyTask);
+
+        final instance = TaskInstance(
+          id: 'I-fam-rec-1',
+          scheduleId: familyTask.id,
+          ruleId: 'R-fam-1',
+          title: familyTask.title,
+          description: familyTask.description,
+          isFamily: true,
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 1),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveInstance(instance);
+
+        await repository.completeTaskInstance(instance.id);
+
+        final instances = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == familyTask.id)
+            .toList();
+        expect(instances.length, 1);
+        expect(instances.first.status, TaskStatus.completed);
+      },
+    );
+  });
 }
 
 class _TrackingHiveLocalDataSource extends HiveLocalDataSource {
