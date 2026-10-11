@@ -401,7 +401,6 @@ class UnifiedTaskRepository implements TaskRepository {
       data: {'instanceId': id, 'scheduleId': instance.scheduleId},
     );
 
-    _syncService.sync();
     if (completedInstance.isFamily || isFamily) {
       final familyId = await getFamilyId();
       if (familyId != null && familyId.isNotEmpty) {
@@ -411,7 +410,14 @@ class UnifiedTaskRepository implements TaskRepository {
           ),
         );
       }
+    } else if (task != null) {
+      await _spawnNextOccurrence(
+        task,
+        completedInstance,
+        completedInstance.completedAt ?? AppClock.now,
+      );
     }
+    _syncService.sync();
     return completedInstance;
   }
 
@@ -470,7 +476,6 @@ class UnifiedTaskRepository implements TaskRepository {
       data: {'instanceId': id, 'scheduleId': instance.scheduleId},
     );
 
-    _syncService.sync();
     if (dismissedInstance.isFamily || isFamily) {
       final familyId = await getFamilyId();
       if (familyId != null && familyId.isNotEmpty) {
@@ -480,8 +485,43 @@ class UnifiedTaskRepository implements TaskRepository {
           ),
         );
       }
+    } else if (task != null) {
+      await _spawnNextOccurrence(
+        task,
+        dismissedInstance,
+        dismissedInstance.completedAt ?? AppClock.now,
+      );
     }
+    _syncService.sync();
     return dismissedInstance;
+  }
+
+  Future<void> _spawnNextOccurrence(
+    TaskSchedule task,
+    TaskInstance completedInstance,
+    DateTime now,
+  ) async {
+    final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+    if (!isRecurring) return;
+
+    final instances = _localDataSource
+        .getInstances()
+        .where((i) => i.scheduleId == task.id)
+        .toList();
+    final nextInst = TaskSpawnerEngine.calculateNextOccurrence(
+      task: task,
+      completedInstance: completedInstance,
+      completionTime: now,
+      existingInstances: instances,
+    );
+    if (nextInst != null) {
+      final nextWithPendingWrites = nextInst.copyWith(
+        hasPendingWrites: true,
+        updatedAt: DateTime.now().toUtc(),
+      );
+      await _localDataSource.saveInstance(nextWithPendingWrites);
+      await _localDataSource.markDirty(nextWithPendingWrites.id);
+    }
   }
 
   @override
