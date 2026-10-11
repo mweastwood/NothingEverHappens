@@ -141,7 +141,7 @@ class YearlySchedule extends TaskScheduleRule {
         return occurrenceDay;
       }
     }
-    throw Exception('No occurrence found within 20 years');
+    return null;
   }
 
   @override

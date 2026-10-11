@@ -187,6 +187,20 @@ void main() {
         expect(deserialized, isA<WeeklySchedule>());
         expect((deserialized as WeeklySchedule).daysOfWeek, equals({1, 5}));
       });
+
+      test('returns null when daysOfWeek is empty', () {
+        const monday = CivilDay(year: 2026, month: 9, day: 7);
+        final schedule = WeeklySchedule(
+          startDate: monday,
+          interval: 1,
+          daysOfWeek: const {},
+          startRelativeTime: defaultStart,
+          dueRelativeTime: defaultDue,
+        );
+
+        expect(schedule.nextOccurrenceAfter(monday), isNull);
+        expect(schedule.advanceAfterCompletion(monday), isNull);
+      });
     });
 
     group('MonthlySchedule', () {
@@ -254,6 +268,20 @@ void main() {
         expect((deserialized as MonthlySchedule).dayOfMonth, equals(15));
         expect(deserialized.interval, equals(2));
       });
+
+      test('returns null when no occurrence found within 10 years', () {
+        const start = CivilDay(year: 2026, month: 2, day: 1);
+        final schedule = MonthlySchedule(
+          startDate: start,
+          interval: 12,
+          dayOfMonth: 31,
+          startRelativeTime: defaultStart,
+          dueRelativeTime: defaultDue,
+        );
+
+        expect(schedule.nextOccurrenceAfter(start), isNull);
+        expect(schedule.advanceAfterCompletion(start), isNull);
+      });
     });
 
     group('YearlySchedule', () {
@@ -299,6 +327,38 @@ void main() {
         expect(deserialized, isA<YearlySchedule>());
         expect((deserialized as YearlySchedule).month, equals(12));
         expect(deserialized.day, equals(25));
+      });
+
+      test('returns null when no occurrence found within search limit', () {
+        // Feb 30 never occurs
+        const start = CivilDay(year: 2026, month: 2, day: 1);
+        final schedule = YearlySchedule(
+          startDate: start,
+          interval: 1,
+          month: 2,
+          day: 30,
+          startRelativeTime: defaultStart,
+          dueRelativeTime: defaultDue,
+        );
+
+        expect(schedule.nextOccurrenceAfter(start), isNull);
+        expect(schedule.advanceAfterCompletion(start), isNull);
+      });
+
+      test('returns null for leap day on odd-year interval', () {
+        // Feb 29 on 2-year interval starting in odd year (2025)
+        const start = CivilDay(year: 2025, month: 2, day: 1);
+        final schedule = YearlySchedule(
+          startDate: start,
+          interval: 2,
+          month: 2,
+          day: 29,
+          startRelativeTime: defaultStart,
+          dueRelativeTime: defaultDue,
+        );
+
+        expect(schedule.nextOccurrenceAfter(start), isNull);
+        expect(schedule.advanceAfterCompletion(start), isNull);
       });
     });
 

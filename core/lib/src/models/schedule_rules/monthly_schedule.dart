@@ -228,7 +228,7 @@ class MonthlySchedule extends TaskScheduleRule {
         return occurrenceDay;
       }
     }
-    throw Exception('No occurrence found within 10 years');
+    return null;
   }
 
   @override

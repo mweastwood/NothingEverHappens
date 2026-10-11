@@ -120,7 +120,7 @@ class WeeklySchedule extends TaskScheduleRule {
   @override
   CivilDay? nextOccurrenceAfter(CivilDay date) {
     if (daysOfWeek.isEmpty) {
-      throw Exception('No occurrence found within 10 years');
+      return null;
     }
 
     final safeInterval = interval <= 0 ? 1 : interval;

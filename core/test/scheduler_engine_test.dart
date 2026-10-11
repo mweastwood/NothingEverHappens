@@ -232,5 +232,49 @@ void main() {
         equals(['L-groceries']),
       );
     });
+
+    test('evaluates exhausted schedule rule gracefully without throwing', () {
+      final today = CivilDay(year: 2026, month: 9, day: 8);
+      final now = DateTime(2026, 9, 8, 8, 0);
+
+      final weeklyEmpty = WeeklySchedule(
+        id: 'rule-empty-weekly',
+        scheduleId: 'task-exhausted',
+        startDate: today,
+        interval: 1,
+        daysOfWeek: const {},
+        startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+      );
+
+      final task = TaskSchedule(
+        id: 'task-exhausted',
+        title: 'Exhausted Schedule Task',
+        description: 'Test task',
+        schedules: [weeklyEmpty],
+      );
+
+      final completedInst = TaskInstance(
+        id: 'inst-completed',
+        scheduleId: task.id,
+        ruleId: weeklyEmpty.id,
+        title: task.title,
+        description: task.description,
+        scheduledDate: today,
+        startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+        dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+        status: TaskStatus.completed,
+        completedAt: now,
+      );
+
+      // Should not throw Exception('No occurrence found within 10 years')
+      final action = const SchedulerEngine().evaluate(
+        task,
+        [completedInst],
+        now,
+      );
+      expect(action.instancesToSpawn, isEmpty);
+    });
   });
 }
+
