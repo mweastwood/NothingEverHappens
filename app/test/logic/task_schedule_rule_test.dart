@@ -576,10 +576,7 @@ void main() {
           dueRelativeTime: testDue,
         );
 
-        expect(
-          schedule.nextOccurrenceAfter(start),
-          isNull,
-        );
+        expect(schedule.nextOccurrenceAfter(start), isNull);
       },
     );
 
