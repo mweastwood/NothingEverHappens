@@ -13,7 +13,7 @@ void main() {
     const testNotification = RelativeTime(dayOffset: 0, hour: 8, minute: 30);
 
     test('Constructor initializes all fields correctly', () {
-      final completedAt = DateTime(2026, 6, 13, 10, 0);
+      final completedAt = DateTime.utc(2026, 6, 13, 10, 0);
       final instance = TaskInstance(
         id: 'instance-123',
         scheduleId: 'schedule-456',
@@ -51,7 +51,7 @@ void main() {
     });
 
     test('toFirestore serializes fields correctly', () {
-      final completedAt = DateTime(2026, 6, 13, 10, 0);
+      final completedAt = DateTime.utc(2026, 6, 13, 10, 0);
       final instance = TaskInstance(
         id: 'instance-123',
         scheduleId: 'schedule-456',
@@ -92,7 +92,7 @@ void main() {
     test('fromFirestore deserializes data correctly', () async {
       final firestore = FakeFirebaseFirestore();
       final ref = firestore.collection('instances').doc('instance-123');
-      final completedAt = DateTime(2026, 6, 13, 10, 0);
+      final completedAt = DateTime.utc(2026, 6, 13, 10, 0);
 
       await ref.set({
         'scheduleId': 'schedule-456',
@@ -170,7 +170,7 @@ void main() {
       final firestore = FakeFirebaseFirestore();
       final ref1 = firestore.collection('instances').doc('inst-string');
       final ref2 = firestore.collection('instances').doc('inst-int');
-      final completedAt = DateTime(2026, 6, 13, 10, 0);
+      final completedAt = DateTime.utc(2026, 6, 13, 10, 0);
 
       await ref1.set({'completedAt': completedAt.toIso8601String()});
       await ref2.set({'completedAt': completedAt.millisecondsSinceEpoch});
@@ -186,7 +186,7 @@ void main() {
     });
 
     test('copyWith copies and overrides fields correctly', () {
-      final completedAt = DateTime(2026, 6, 13, 10, 0);
+      final completedAt = DateTime.utc(2026, 6, 13, 10, 0);
       final instance = TaskInstance(
         id: 'instance-123',
         scheduleId: 'schedule-456',

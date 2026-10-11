@@ -252,7 +252,9 @@ void main() {
       expect(inst.updatedAt, equals(localTime.toUtc()));
     });
 
-    test('normalizes caller-supplied local completedAt to UTC in constructor', () {
+    test(
+        'normalizes caller-supplied local completedAt to UTC in constructor',
+        () {
       final localTime = DateTime(2026, 9, 16, 15, 16, 27);
       final inst = TaskInstance(
         scheduleId: 'S-1',

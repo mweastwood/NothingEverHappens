@@ -446,12 +446,21 @@ class HiveLocalDataSource {
     if (tasks.isEmpty) return;
     _isWritingInternally = true;
     try {
-      for (final task in tasks) {
+      final normalizedTasks = tasks.map((task) {
+        if (task.updatedAt.isUtc) {
+          return task;
+        }
+        return task.copyWith(
+          updatedAt: task.updatedAt.toUtc(),
+        );
+      }).toList();
+
+      for (final task in normalizedTasks) {
         _memTasks[task.id] = task;
       }
       if (_tasksBox != null && _tasksBox!.isOpen) {
         final entries = <String, Map<String, dynamic>>{};
-        for (final task in tasks) {
+        for (final task in normalizedTasks) {
           final data = task.toFirestore();
           data['id'] = task.id;
           if (data['updatedAt'] is DateTime) {
