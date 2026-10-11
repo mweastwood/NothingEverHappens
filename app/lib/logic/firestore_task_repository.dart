@@ -646,6 +646,7 @@ class FirestoreTaskRepository implements TaskRepository {
         continue;
       }
 
+      final rule = task.schedules.firstWhereOrNull((s) => s.id == key.ruleId);
       taskInstances.add(
         TaskInstance(
           id: 'VIRTUAL-${TaskInstance.generateId()}',
@@ -655,8 +656,16 @@ class FirestoreTaskRepository implements TaskRepository {
           description: task.description,
           labelIds: task.labelIds,
           scheduledDate: key.date,
-          startRelativeTime: _defaultVirtualStartRelativeTime,
-          dueRelativeTime: _defaultVirtualDueRelativeTime,
+          startRelativeTime:
+              rule?.startRelativeTime ?? _defaultVirtualStartRelativeTime,
+          dueRelativeTime:
+              rule?.dueRelativeTime ?? _defaultVirtualDueRelativeTime,
+          notificationRelativeTimes: rule?.notificationRelativeTimes,
+          isFamily: task.isFamily,
+          assignedUserId: task.assignedUserId,
+          priority: task.priority,
+          familyCompletionMode: task.familyCompletionMode,
+          cycleId: task.cycleId,
           status: TaskStatus.pending,
         ),
       );

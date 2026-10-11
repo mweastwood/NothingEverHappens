@@ -369,6 +369,9 @@ void main() {
     test(
       'remote Firestore settings snapshot updates local Hive storage when subscribed',
       () async {
+        AppClock.setMockTime(DateTime(2026, 7, 10));
+        addTearDown(AppClock.reset);
+
         await firestore
             .collection('users')
             .doc(userId)

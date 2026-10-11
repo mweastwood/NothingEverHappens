@@ -31,12 +31,20 @@ void main() {
     required String id,
     String title = 'Test Task',
     bool isFamily = false,
+    TaskPriority priority = TaskPriority.medium,
+    FamilyCompletionMode familyCompletionMode = FamilyCompletionMode.anyone,
+    String? assignedUserId,
+    String? cycleId,
     List<TaskScheduleRule>? schedules,
   }) {
     return TaskSchedule(
       id: id,
       title: title,
       description: 'Test description for $title',
+      priority: priority,
+      familyCompletionMode: familyCompletionMode,
+      assignedUserId: assignedUserId,
+      cycleId: cycleId,
       schedules:
           schedules ??
           [
@@ -614,8 +622,34 @@ void main() {
 
   group('4. Virtual Instance Expiration', () {
     test('Virtual Instance Injection: caches recently spawned instance and '
-        'injects virtual TaskInstance within 2 seconds', () {
-      final task = createTestTask(id: 'S-virtual-task');
+        'injects virtual TaskInstance within 2 seconds with task metadata and rule times', () {
+      final task = createTestTask(
+        id: 'S-virtual-task',
+        isFamily: true,
+        priority: TaskPriority.high,
+        familyCompletionMode: FamilyCompletionMode.individual,
+        assignedUserId: 'U-assigned-1',
+        cycleId: 'C-cycle-1',
+        schedules: [
+          OneOffSchedule(
+            id: 'R-rule-1',
+            date: const CivilDay(year: 2026, month: 6, day: 3),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 10,
+              minute: 30,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 18,
+              minute: 45,
+            ),
+            notificationRelativeTimes: const [
+              RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+            ],
+          ),
+        ],
+      );
       const ruleId = 'R-rule-1';
       final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
 
@@ -638,10 +672,64 @@ void main() {
       expect(virtualInst.ruleId, ruleId);
       expect(virtualInst.scheduledDate, targetDate);
       expect(virtualInst.status, TaskStatus.pending);
+      expect(virtualInst.isFamily, isTrue);
+      expect(virtualInst.priority, TaskPriority.high);
+      expect(virtualInst.familyCompletionMode, FamilyCompletionMode.individual);
+      expect(virtualInst.assignedUserId, 'U-assigned-1');
+      expect(virtualInst.cycleId, 'C-cycle-1');
+      expect(
+        virtualInst.startRelativeTime,
+        const RelativeTime(dayOffset: 0, hour: 10, minute: 30),
+      );
+      expect(
+        virtualInst.dueRelativeTime,
+        const RelativeTime(dayOffset: 0, hour: 18, minute: 45),
+      );
+      expect(
+        virtualInst.notificationRelativeTimes,
+        const [RelativeTime(dayOffset: 0, hour: 10, minute: 0)],
+      );
 
       // Cache entry remains valid (within 2 seconds)
       expect(repository.spawnedInstancesCache.containsKey(cacheKey), isTrue);
     });
+
+    test(
+      'Virtual Instance Injection: falls back to default relative times when rule is not found',
+      () {
+        final task = createTestTask(id: 'S-fallback-task', schedules: const []);
+        const ruleId = 'R-missing-rule';
+        final targetDate = const CivilDay(year: 2026, month: 6, day: 3);
+
+        final cacheKey = (
+          scheduleId: task.id,
+          ruleId: ruleId,
+          date: targetDate,
+        );
+        repository.spawnedInstancesCache[cacheKey] = fixedClockTime.subtract(
+          const Duration(milliseconds: 500),
+        );
+
+        final taskInstances = <TaskInstance>[];
+        repository.injectVirtualSpawnedInstances(
+          task,
+          taskInstances,
+          fixedClockTime,
+        );
+
+        expect(taskInstances.length, 1);
+        final virtualInst = taskInstances.first;
+        expect(
+          virtualInst.startRelativeTime,
+          const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+        );
+        expect(
+          virtualInst.dueRelativeTime,
+          const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+        );
+        expect(virtualInst.notificationRelativeTimes, isEmpty);
+      },
+    );
 
     test(
       'Cache Expiration: purges expired entries after 2 seconds and does not '
