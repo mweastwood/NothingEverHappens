@@ -14,8 +14,25 @@ import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/family_id_fetcher.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
+
+Future<void> pumpUntil(
+  FutureOr<bool> Function() condition, {
+  Duration timeout = const Duration(seconds: 5),
+  int turnsPerStep = 20,
+}) async {
+  final stopwatch = Stopwatch()..start();
+  while (!await condition()) {
+    if (stopwatch.elapsed > timeout) {
+      fail(
+        'pumpUntil timed out after ${stopwatch.elapsedMilliseconds}ms waiting for condition.',
+      );
+    }
+    await pumpEventQueue(times: turnsPerStep);
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -1966,9 +1983,18 @@ void main() {
           .doc('I-slot-remote')
           .set(remoteSlotBot.toFirestore());
 
-      await pumpEventQueue();
-      await Future<void>.delayed(Duration.zero);
-      await pumpEventQueue();
+      await pumpUntil(() async {
+        final instances = localDataSource.getInstances();
+        final remoteDoc = await firestore
+            .collection('users')
+            .doc('user1')
+            .collection('instances')
+            .doc('I-slot-remote')
+            .get();
+        return instances.any((i) => i.id == 'I-slot-local') &&
+            !instances.any((i) => i.id == 'I-slot-remote') &&
+            !remoteDoc.exists;
+      });
 
       final instances = localDataSource.getInstances();
       // Local user action should win: local kept, remote duplicate not saved
@@ -2023,9 +2049,11 @@ void main() {
           .doc('I-slot2-remote')
           .set(remoteSlotUser.toFirestore());
 
-      await pumpEventQueue();
-      await Future<void>.delayed(Duration.zero);
-      await pumpEventQueue();
+      await pumpUntil(() {
+        final instances = localDataSource.getInstances();
+        return instances.any((i) => i.id == 'I-slot2-remote') &&
+            !instances.any((i) => i.id == 'I-slot2-local');
+      });
 
       final instances2 = localDataSource.getInstances();
       // Remote user action wins: local deleted, remote saved
