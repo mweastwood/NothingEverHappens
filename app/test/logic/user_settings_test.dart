@@ -387,7 +387,10 @@ void main() {
             });
 
         final current = await localDataSource.watchSettings().firstWhere(
-          (settings) => settings.hoursAvailable == 6.0,
+          (settings) =>
+              settings.hoursAvailable == 6.0 &&
+              (settings.dailyCapacityOverrides?.containsKey('2026-07-10') ??
+                  false),
         );
         expect(current.hoursAvailable, 6.0);
         expect(current.defaultDailyCapacity, {'1': 4.0, '2': 5.0});
