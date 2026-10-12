@@ -2606,6 +2606,8 @@ void main() {
     });
 
     group('Web Stream & Missed Policy Stability Tests', () {
+      tearDown(AppClock.reset);
+
       test(
         'getTasks stream emissions process missed policies out-of-band via microtask without re-entrancy error loops',
         () async {
@@ -2680,6 +2682,7 @@ void main() {
           'tasks sequentially', () async {
         final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
         AppClock.setMockTime(mockTime);
+        addTearDown(AppClock.reset);
 
         final notificationService = ControlledNotificationService();
         notificationService.prepareTask('S-queue-test-task-1');
@@ -2780,8 +2783,6 @@ void main() {
             'S-queue-test-task-3',
           ]),
         );
-
-        AppClock.reset();
       });
 
       test(
@@ -2789,6 +2790,7 @@ void main() {
         () async {
           final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
           AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
 
           final firestore = FakeFirebaseFirestore();
           final repository = FirestoreTaskRepository(
@@ -2822,8 +2824,6 @@ void main() {
               .collection('instances')
               .get();
           expect(instances.docs, isNotEmpty);
-
-          AppClock.reset();
         },
       );
 
@@ -2833,6 +2833,7 @@ void main() {
         () async {
           final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
           AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
 
           final firestore = FakeFirebaseFirestore();
           final repository = FirestoreTaskRepository(
@@ -2916,8 +2917,6 @@ void main() {
               .doc(instanceBId)
               .get();
           expect(instanceBSnapUpdated.data()!['status'], 'pending');
-
-          AppClock.reset();
         },
       );
 
@@ -2926,6 +2925,7 @@ void main() {
         () async {
           final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
           AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
 
           final firestore = FakeFirebaseFirestore();
           final repository = FirestoreTaskRepository(
@@ -3008,8 +3008,6 @@ void main() {
               .doc(instanceBId)
               .get();
           expect(instanceBSnapUpdated.data()!['status'], 'pending');
-
-          AppClock.reset();
         },
       );
 
@@ -3084,6 +3082,7 @@ void main() {
         () async {
           final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
           AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
 
           final firestore = FakeFirebaseFirestore();
           final repository = FirestoreTaskRepository(
@@ -3106,8 +3105,6 @@ void main() {
           await repository.addTaskSchedule(task);
           final result = await repository.deleteTaskSchedule('del-task');
           expect(result, isNotNull);
-
-          AppClock.reset();
         },
       );
 
@@ -3116,6 +3113,7 @@ void main() {
         () async {
           final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
           AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
 
           final firestore = FakeFirebaseFirestore();
 
@@ -3181,8 +3179,6 @@ void main() {
               .get();
           expect(bInstances.docs, isNotEmpty);
           expect(bInstances.docs.first.data()['status'], equals('pending'));
-
-          AppClock.reset();
         },
       );
 
@@ -3191,6 +3187,7 @@ void main() {
         () async {
           final mockTime = DateTime(2026, 6, 23, 10, 0, 0);
           AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
 
           final notificationService = ControlledNotificationService();
           notificationService.prepareTask('S-force-run-task-1');
@@ -3231,8 +3228,6 @@ void main() {
               .collection('instances')
               .get();
           expect(instances.docs, isNotEmpty);
-
-          AppClock.reset();
         },
       );
 
@@ -3241,6 +3236,7 @@ void main() {
         () async {
           final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
           AppClock.setMockTime(mockTime);
+          addTearDown(AppClock.reset);
 
           final taskA = TaskSchedule(
             id: 'S-order-test-1',
@@ -3279,8 +3275,6 @@ void main() {
 
           final ids = tasksSnap.docs.map((d) => d.id).toSet();
           expect(ids, containsAll(['S-order-test-1', 'S-order-test-2']));
-
-          AppClock.reset();
         },
       );
     });
