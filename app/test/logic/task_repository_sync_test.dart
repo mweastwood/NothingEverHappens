@@ -112,7 +112,7 @@ void main() {
       isFamily: false,
     );
     await repository.addTaskSchedule(task);
-    await Future.delayed(Duration.zero);
+    await pumpEventQueue();
 
     // Verify it exists in personal tasks collection
     final personalDoc = await firestore
@@ -214,7 +214,7 @@ void main() {
       isFamily: true,
     );
     await repository.addTaskSchedule(task);
-    await Future.delayed(Duration.zero);
+    await pumpEventQueue();
 
     // Verify it exists in family tasks
     final familyDoc = await firestore
