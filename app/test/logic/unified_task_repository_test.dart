@@ -32,6 +32,7 @@ void main() {
   late _FakeCloudFamilySchedulerClient fakeCloudScheduler;
 
   setUp(() async {
+    AppClock.reset();
     tempDir = await Directory.systemTemp.createTemp('hive_test');
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -2191,6 +2192,11 @@ void main() {
         expect(instances.first.status, TaskStatus.completed);
       },
     );
+  });
+
+  test('AppClock mock time is inactive and reset following test execution', () {
+    expect(AppClock.isMockActive, isFalse);
+    expect(AppClock.timeNotifier.value, isNull);
   });
 }
 
