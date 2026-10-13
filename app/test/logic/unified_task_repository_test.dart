@@ -32,6 +32,7 @@ void main() {
   late _FakeCloudFamilySchedulerClient fakeCloudScheduler;
 
   setUp(() async {
+    AppClock.reset();
     tempDir = await Directory.systemTemp.createTemp('hive_test');
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -68,6 +69,7 @@ void main() {
   });
 
   tearDown(() async {
+    AppClock.reset();
     syncService.dispose();
     await Hive.close();
     await tempDir.delete(recursive: true);
@@ -312,6 +314,7 @@ void main() {
       're-evaluates capacity and policies', () async {
     final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
     AppClock.setMockTime(mockTime);
+    addTearDown(AppClock.reset);
 
     final taskA = TaskSchedule(
       id: 'U-task-a',
@@ -373,8 +376,6 @@ void main() {
       (i) => i.scheduleId == 'S-U-task-b',
     );
     expect(instBAfter.status, TaskStatus.pending);
-
-    AppClock.reset();
   });
 
   test(
@@ -382,6 +383,7 @@ void main() {
     () async {
       final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
       AppClock.setMockTime(mockTime);
+      addTearDown(AppClock.reset);
 
       final taskA = TaskSchedule(
         id: 'U-del-a',
@@ -431,8 +433,6 @@ void main() {
         (i) => i.scheduleId == 'S-U-del-b',
       );
       expect(instBAfter.status, TaskStatus.pending);
-
-      AppClock.reset();
     },
   );
 
@@ -441,6 +441,7 @@ void main() {
     () async {
       final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
       AppClock.setMockTime(mockTime);
+      addTearDown(AppClock.reset);
 
       final task = TaskSchedule(
         id: 'U-await-test',
@@ -461,8 +462,6 @@ void main() {
       // immediately upon addTaskSchedule completion.
       final instances = localDataSource.getInstances();
       expect(instances.any((i) => i.scheduleId == 'S-U-await-test'), isTrue);
-
-      AppClock.reset();
     },
   );
 
@@ -515,6 +514,7 @@ void main() {
     () async {
       final mockTime = DateTime(2026, 8, 10, 8, 0, 0);
       AppClock.setMockTime(mockTime);
+      addTearDown(AppClock.reset);
 
       final task1 = TaskSchedule(
         id: 'U-concurrent-1',
@@ -554,8 +554,6 @@ void main() {
       final instances = localDataSource.getInstances();
       expect(instances.any((i) => i.scheduleId == 'S-U-concurrent-1'), isTrue);
       expect(instances.any((i) => i.scheduleId == 'S-U-concurrent-2'), isTrue);
-
-      AppClock.reset();
     },
   );
 
@@ -573,6 +571,7 @@ void main() {
     () async {
       final mockTime = DateTime(2026, 8, 15, 10, 0, 0);
       AppClock.setMockTime(mockTime);
+      addTearDown(AppClock.reset);
 
       final task = TaskSchedule(
         id: 'U-recurring-test',
@@ -632,8 +631,6 @@ void main() {
         );
         dateSet.add(inst.scheduledDate);
       }
-
-      AppClock.reset();
     },
   );
 
@@ -2195,6 +2192,11 @@ void main() {
         expect(instances.first.status, TaskStatus.completed);
       },
     );
+  });
+
+  test('AppClock mock time is inactive and reset following test execution', () {
+    expect(AppClock.isMockActive, isFalse);
+    expect(AppClock.timeNotifier.value, isNull);
   });
 }
 
