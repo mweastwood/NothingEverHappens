@@ -215,7 +215,6 @@ class SchedulerEngine {
     final task = context.task;
     final taskInstances = context.taskInstances;
     final now = context.now;
-    final policy = s.schedulingPolicy as CompletionRelativePolicy;
     final ruleInstances = taskInstances
         .where((inst) => _isInstanceForRule(inst, s, task))
         .toList();
@@ -270,7 +269,9 @@ class SchedulerEngine {
         if (resolved.isNotEmpty) {
           final latest = resolved.first;
           final completedAtTime = latest.completedAt ?? latest.updatedAt;
-          final nextSpawnTime = completedAtTime.add(policy.interval);
+          final referenceTime =
+              now.isUtc ? completedAtTime.toUtc() : completedAtTime.toLocal();
+          final nextSpawnTime = s.nextCompletionRelativeDateTime(referenceTime);
           if (!now.isBefore(nextSpawnTime)) {
             dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
           }
@@ -278,37 +279,11 @@ class SchedulerEngine {
       }
 
       if (dateToSpawn != null) {
-        final instId = generateId();
-        final startRelative = RelativeTime(
-          dayOffset: 0,
-          hour: policy.targetHour,
-          minute: policy.targetMinute,
-        );
-        final dueRelative = _getCompletionRelativeDue(s, policy, dateToSpawn);
-        final notifRelative = _getCompletionRelativeNotifications(
-          s,
-          policy,
-          dateToSpawn,
-        );
-
         toSpawn.add(
-          TaskInstance(
-            id: instId,
-            scheduleId: task.id,
-            ruleId: s.id,
-            title: task.title,
-            description: task.description,
+          _createInstanceForRule(
+            task: task,
+            rule: s,
             scheduledDate: dateToSpawn,
-            startRelativeTime: startRelative,
-            dueRelativeTime: dueRelative,
-            notificationRelativeTimes: notifRelative,
-            isFamily: task.isFamily,
-            familyCompletionMode: task.familyCompletionMode,
-            priority: task.priority,
-            cycleId: task.cycleId,
-            assignedUserId: task.assignedUserId,
-            status: TaskStatus.pending,
-            labelIds: task.labelIds,
           ),
         );
       }
@@ -392,38 +367,52 @@ class SchedulerEngine {
           initialBaseDate = nextOcc;
         }
       } else {
+        final firstOcc = s.occursOn(s.scheduledDate)
+            ? s.scheduledDate
+            : s.nextOccurrenceAfter(s.scheduledDate);
+        if (firstOcc == null) {
+          return maxSpawned;
+        }
         if (s.missedOccurrencePolicy.policy == MissedPolicy.preferNewer &&
-            s.scheduledDate.isBefore(today)) {
-          initialBaseDate = s.occursOn(today)
-              ? today
-              : (s.nextOccurrenceAfter(today) ?? s.scheduledDate);
+            firstOcc.isBefore(today)) {
+          final fromToday =
+              s.occursOn(today) ? today : s.nextOccurrenceAfter(today);
+          if (fromToday == null) {
+            return maxSpawned;
+          }
+          initialBaseDate = fromToday;
         } else {
-          initialBaseDate = s.occursOn(s.scheduledDate)
-              ? s.scheduledDate
-              : (s.nextOccurrenceAfter(s.scheduledDate) ?? s.scheduledDate);
+          initialBaseDate = firstOcc;
         }
       }
     }
 
-    final maxEvaluationDate = initialBaseDate.addDays(maxEvaluationDays);
-
-    // Loop to maintain the queue of N future pending instances
+    // Loop to maintain the queue of N future pending instances.
+    // Past catch-up (<= today) is capped at maxEvaluationDays occurrences per pass,
+    // while future lookahead (> today) always projects up to ruleFutureInstancesCount
+    // occurrences regardless of calendar interval (supporting weekly, monthly, yearly).
     var currentBaseDate = initialBaseDate;
     final List<CivilDay> targetDates = [];
-    while (true) {
-      // If the currentBaseDate is past the 30-day cap, we must stop!
-      if (currentBaseDate.compareTo(maxEvaluationDate) > 0) {
-        break;
-      }
+    final ruleFutureInstancesCount =
+        futureInstancesCount ?? s.futureInstancesCount;
+    int safetyIterations = 0;
+    while (safetyIterations < maxEvaluationDays) {
+      safetyIterations++;
 
       // Generate target pending dates (currentBaseDate up to today, plus N future occurrences after today)
       targetDates.clear();
 
-      // 1. Generate occurrences from currentBaseDate up to today
+      // 1. Past catch-up: generate occurrences from currentBaseDate up to today
       var current = currentBaseDate;
-      while (current.compareTo(today) <= 0 &&
-          current.compareTo(maxEvaluationDate) <= 0) {
+      int pastOccurrencesCount = 0;
+      bool hitPastCap = false;
+      while (current.compareTo(today) <= 0) {
+        if (pastOccurrencesCount >= maxEvaluationDays) {
+          hitPastCap = true;
+          break;
+        }
         targetDates.add(current);
+        pastOccurrencesCount++;
         final next = s.nextOccurrenceAfter(current);
         if (next != null) {
           current = next;
@@ -432,25 +421,21 @@ class SchedulerEngine {
         }
       }
 
-      // 2. Generate N future occurrences after today
-      var startFuture =
-          today.isBefore(currentBaseDate) ? currentBaseDate : current;
-      if (startFuture.compareTo(today) <= 0) {
-        final next = s.nextOccurrenceAfter(startFuture);
-        if (next != null) {
-          startFuture = next;
+      // 2. Future lookahead: generate N future occurrences after today
+      if (!hitPastCap) {
+        var startFuture =
+            today.isBefore(currentBaseDate) ? currentBaseDate : current;
+        if (startFuture.compareTo(today) <= 0) {
+          final next = s.nextOccurrenceAfter(startFuture);
+          if (next != null) {
+            startFuture = next;
+          }
         }
-      }
 
-      current = startFuture;
-      int spawnedFutureCount = 0;
-      final ruleFutureInstancesCount =
-          futureInstancesCount ?? s.futureInstancesCount;
-      while (spawnedFutureCount < ruleFutureInstancesCount) {
-        if (current.compareTo(maxEvaluationDate) > 0) {
-          break;
-        }
-        if (current.compareTo(today) > 0) {
+        current = startFuture;
+        int spawnedFutureCount = 0;
+        while (spawnedFutureCount < ruleFutureInstancesCount &&
+            current.compareTo(today) > 0) {
           final existing = workingInstances[current];
           final isResolved =
               existing != null && existing.status != TaskStatus.pending;
@@ -458,52 +443,21 @@ class SchedulerEngine {
             targetDates.add(current);
             spawnedFutureCount++;
           }
-        }
-        final next = s.nextOccurrenceAfter(current);
-        if (next != null) {
-          current = next;
-        } else {
-          break;
+          final next = s.nextOccurrenceAfter(current);
+          if (next != null) {
+            current = next;
+          } else {
+            break;
+          }
         }
       }
 
       for (final date in targetDates) {
         if (!workingInstances.containsKey(date)) {
-          final instId = generateId();
-          RelativeTime startRelative = s.startRelativeTime;
-          RelativeTime dueRelative = s.dueRelativeTime;
-          WorkflowInstancePayload? workflowPayload;
-
-          if (task.workflowType == 'mealWorkflow') {
-            final cfg = task.mealWorkflowConfig ?? const MealWorkflowConfig();
-            startRelative = cfg.selectTime;
-            dueRelative = cfg.selectTime;
-            workflowPayload = WorkflowInstancePayload(
-              workflowType: 'mealWorkflow',
-              stage: WorkflowStage.selectMeal,
-              workflowGroupId:
-                  '${task.id}-${date.year}-${date.month}-${date.day}',
-            );
-          }
-
-          workingInstances[date] = TaskInstance(
-            id: instId,
-            scheduleId: task.id,
-            ruleId: s.id,
-            title: task.title,
-            description: task.description,
+          workingInstances[date] = _createInstanceForRule(
+            task: task,
+            rule: s,
             scheduledDate: date,
-            startRelativeTime: startRelative,
-            dueRelativeTime: dueRelative,
-            notificationRelativeTimes: s.notificationRelativeTimes,
-            isFamily: task.isFamily,
-            familyCompletionMode: task.familyCompletionMode,
-            priority: task.priority,
-            cycleId: task.cycleId,
-            assignedUserId: task.assignedUserId,
-            workflowPayload: workflowPayload,
-            status: TaskStatus.pending,
-            labelIds: task.labelIds,
           );
         }
       }
@@ -518,13 +472,9 @@ class SchedulerEngine {
       );
 
       // If we had any new skipped instances, the baseDate of the queue might have shifted forward.
-      if (hasNewSkipped) {
+      if (hasNewSkipped && !hitPastCap) {
         final pendingAfterMissed = workingInstances.values
-            .where(
-              (inst) =>
-                  inst.status == TaskStatus.pending &&
-                  inst.scheduledDate.compareTo(maxEvaluationDate) <= 0,
-            )
+            .where((inst) => inst.status == TaskStatus.pending)
             .toList()
           ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
@@ -534,10 +484,11 @@ class SchedulerEngine {
             currentBaseDate = nextBase;
             continue; // Loop again to fill the queue from the new base date
           }
-        } else {
+        } else if (targetDates.isNotEmpty) {
           final lastEvaluatedDate = targetDates.last;
           final nextOcc = s.nextOccurrenceAfter(lastEvaluatedDate);
-          if (nextOcc != null && nextOcc.compareTo(maxEvaluationDate) <= 0) {
+          if (nextOcc != null &&
+              (nextOcc.compareTo(today) <= 0 || ruleFutureInstancesCount > 0)) {
             currentBaseDate = nextOcc;
             continue;
           }
@@ -613,6 +564,7 @@ class SchedulerEngine {
           canonicalInstances,
           targetDates,
           context.now,
+          context.today,
           context.userId,
           context.task,
         );
@@ -622,6 +574,7 @@ class SchedulerEngine {
           canonicalInstances,
           targetDates,
           context.now,
+          context.today,
           context.userId,
           context.task,
         );
@@ -670,7 +623,7 @@ class SchedulerEngine {
         workingInstances,
         date,
         nextStatus,
-        statusReason: 'scheduler_auto_dismiss',
+        statusReason: InstanceStatusReason.schedulerAutoDismiss.value,
         userId: userId,
         logMessage:
             'autoDismiss: expired instance skipped for "${task.title}" ($date)',
@@ -686,11 +639,13 @@ class SchedulerEngine {
     List<TaskInstance> canonicalInstances,
     List<CivilDay> targetDates,
     DateTime now,
+    CivilDay today,
     String? userId,
     TaskSchedule task,
   ) {
     bool hasNewSkipped = false;
     final startedDates = targetDates.where((d) {
+      if (d.isAfter(today)) return false;
       final inst = workingInstances[d]!;
       final isOriginalResolved = canonicalInstances.any(
         (x) => x.id == inst.id && x.status != TaskStatus.pending,
@@ -721,7 +676,7 @@ class SchedulerEngine {
         workingInstances,
         date,
         nextStatus,
-        statusReason: 'scheduler_prefer_newer',
+        statusReason: InstanceStatusReason.schedulerPreferNewer.value,
         userId: userId,
         logMessage:
             'preferNewer: older instance skipped for "${task.title}" ($date in favor of $latestStartedDate)',
@@ -737,11 +692,13 @@ class SchedulerEngine {
     List<TaskInstance> canonicalInstances,
     List<CivilDay> targetDates,
     DateTime now,
+    CivilDay today,
     String? userId,
     TaskSchedule task,
   ) {
     bool hasNewSkipped = false;
     final startedDates = targetDates.where((d) {
+      if (d.isAfter(today)) return false;
       final inst = workingInstances[d]!;
       final isOriginalResolved = canonicalInstances.any(
         (x) => x.id == inst.id && x.status != TaskStatus.pending,
@@ -763,7 +720,8 @@ class SchedulerEngine {
       if (isOriginalResolved) continue;
 
       final TaskStatus nextStatus;
-      if (!now.isBefore(inst.startRelativeTime.referenceTo(date))) {
+      if (!date.isAfter(today) &&
+          !now.isBefore(inst.startRelativeTime.referenceTo(date))) {
         nextStatus = date == earliestStartedDate
             ? TaskStatus.pending
             : TaskStatus.skipped;
@@ -774,7 +732,7 @@ class SchedulerEngine {
         workingInstances,
         date,
         nextStatus,
-        statusReason: 'scheduler_prefer_older',
+        statusReason: InstanceStatusReason.schedulerPreferOlder.value,
         userId: userId,
         logMessage:
             'preferOlder: subsequent instance skipped for "${task.title}" ($date, keeping $earliestStartedDate active)',
@@ -876,7 +834,7 @@ class SchedulerEngine {
         final effectiveStatus = effectiveInst.status;
 
         if ((effectiveStatus == TaskStatus.pending ||
-                effectiveStatus == TaskStatus.skipped) &&
+                effectiveInst.isRevivableByCapacity) &&
             isFuture) {
           final capacity = userSettings?.getCapacityForDate(
                 inst.scheduledDate.toDateTime(),
@@ -896,7 +854,8 @@ class SchedulerEngine {
                 } else {
                   finalToUpdate[updateIdx] = finalToUpdate[updateIdx].copyWith(
                     status: TaskStatus.skipped,
-                    statusReason: 'scheduler_capacity_limit',
+                    statusReason:
+                        InstanceStatusReason.schedulerCapacityLimit.value,
                     lastModifiedByAppVersion: appVersion,
                     lastModifiedByPlatform: platform,
                     lastModifiedByUserId: context.userId,
@@ -905,7 +864,8 @@ class SchedulerEngine {
               } else {
                 final newUpdate = inst.copyWith(
                   status: TaskStatus.skipped,
-                  statusReason: 'scheduler_capacity_limit',
+                  statusReason:
+                      InstanceStatusReason.schedulerCapacityLimit.value,
                   lastModifiedByAppVersion: appVersion,
                   lastModifiedByPlatform: platform,
                   lastModifiedByUserId: context.userId,
@@ -915,7 +875,7 @@ class SchedulerEngine {
               }
             }
           } else {
-            if (effectiveStatus == TaskStatus.skipped) {
+            if (effectiveInst.isRevivableByCapacity) {
               if (!isMarkedForUpdate) {
                 final newUpdate = inst.copyWith(
                   status: TaskStatus.pending,
@@ -949,7 +909,7 @@ class SchedulerEngine {
             finalToSpawn.add(
               inst.copyWith(
                 status: TaskStatus.skipped,
-                statusReason: 'scheduler_capacity_limit',
+                statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
                 lastModifiedByAppVersion: appVersion,
                 lastModifiedByPlatform: platform,
                 lastModifiedByUserId: context.userId,
@@ -980,7 +940,7 @@ class SchedulerEngine {
           if (capacity - planned < taskDuration) {
             finalToUpdate[i] = inst.copyWith(
               status: TaskStatus.skipped,
-              statusReason: 'scheduler_capacity_limit',
+              statusReason: InstanceStatusReason.schedulerCapacityLimit.value,
               lastModifiedByAppVersion: appVersion,
               lastModifiedByPlatform: platform,
               lastModifiedByUserId: context.userId,
@@ -991,21 +951,27 @@ class SchedulerEngine {
         }
       }
     } else {
-      // If skipIfNoCapacity is false and applyCapacityLimits is true, revive any skipped instances back to pending
+      // If skipIfNoCapacity is false and applyCapacityLimits is true, revive only capacity-skipped instances back to pending
       if (!task.skipIfNoCapacity && applyCapacityLimits) {
         for (final inst in taskInstances) {
           final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
           final isFuture = now.isBefore(start);
-          if (inst.status == TaskStatus.skipped && isFuture) {
+          if (inst.isRevivableByCapacity && isFuture) {
             final isMarkedForDelete = toDeleteSet.contains(inst.id);
             if (isMarkedForDelete) continue;
             final updateIdx = updateIndexById[inst.id];
             if (updateIdx != null) {
-              finalToUpdate[updateIdx] = finalToUpdate[updateIdx].copyWith(
-                status: TaskStatus.pending,
-              );
+              if (finalToUpdate[updateIdx].isRevivableByCapacity) {
+                finalToUpdate[updateIdx] = finalToUpdate[updateIdx].copyWith(
+                  status: TaskStatus.pending,
+                  clearStatusReason: true,
+                );
+              }
             } else {
-              final newUpdate = inst.copyWith(status: TaskStatus.pending);
+              final newUpdate = inst.copyWith(
+                status: TaskStatus.pending,
+                clearStatusReason: true,
+              );
               updateIndexById[newUpdate.id] = finalToUpdate.length;
               finalToUpdate.add(newUpdate);
             }
@@ -1073,23 +1039,10 @@ class SchedulerEngine {
         );
         if (!exists) {
           toSpawn.add(
-            TaskInstance(
-              id: generateId(),
-              scheduleId: task.id,
-              ruleId: s.id,
-              title: task.title,
-              description: task.description,
+            _createInstanceForRule(
+              task: task,
+              rule: s,
               scheduledDate: s.scheduledDate,
-              startRelativeTime: s.startRelativeTime,
-              dueRelativeTime: s.dueRelativeTime,
-              notificationRelativeTimes: s.notificationRelativeTimes,
-              isFamily: task.isFamily,
-              familyCompletionMode: task.familyCompletionMode,
-              priority: task.priority,
-              cycleId: task.cycleId,
-              assignedUserId: task.assignedUserId,
-              status: TaskStatus.pending,
-              labelIds: task.labelIds,
             ),
           );
         }
@@ -1108,6 +1061,65 @@ class SchedulerEngine {
       instancesToSpawn: capacityResult.finalToSpawn,
       instancesToUpdate: capacityResult.finalToUpdate,
       triggerTimes: triggerTimes,
+    );
+  }
+
+  TaskInstance _createInstanceForRule({
+    required TaskSchedule task,
+    required TaskScheduleRule rule,
+    required CivilDay scheduledDate,
+  }) {
+    final instId = generateId();
+    RelativeTime startRelative = rule.startRelativeTime;
+    RelativeTime dueRelative = rule.dueRelativeTime;
+    List<RelativeTime> notifRelative = rule.notificationRelativeTimes;
+    WorkflowInstancePayload? workflowPayload;
+
+    if (rule.schedulingPolicy is CompletionRelativePolicy) {
+      final policy = rule.schedulingPolicy as CompletionRelativePolicy;
+      startRelative = RelativeTime(
+        dayOffset: 0,
+        hour: policy.targetHour,
+        minute: policy.targetMinute,
+      );
+      dueRelative = _getCompletionRelativeDue(rule, policy, scheduledDate);
+      notifRelative = _getCompletionRelativeNotifications(
+        rule,
+        policy,
+        scheduledDate,
+      );
+    }
+
+    if (task.workflowType == 'mealWorkflow') {
+      final cfg = task.mealWorkflowConfig ?? const MealWorkflowConfig();
+      startRelative = cfg.selectTime;
+      dueRelative = cfg.selectTime;
+      workflowPayload = WorkflowInstancePayload(
+        workflowType: 'mealWorkflow',
+        stage: WorkflowStage.selectMeal,
+        workflowGroupId:
+            '${task.id}-${scheduledDate.year}-${scheduledDate.month}-${scheduledDate.day}',
+      );
+    }
+
+    return TaskInstance(
+      id: instId,
+      scheduleId: task.id,
+      ruleId: rule.id,
+      title: task.title,
+      description: task.description,
+      scheduledDate: scheduledDate,
+      startRelativeTime: startRelative,
+      dueRelativeTime: dueRelative,
+      notificationRelativeTimes: notifRelative,
+      isFamily: task.isFamily,
+      familyCompletionMode: task.familyCompletionMode,
+      priority: task.priority,
+      cycleId: task.cycleId,
+      assignedUserId: task.assignedUserId,
+      workflowPayload: workflowPayload,
+      status: TaskStatus.pending,
+      labelIds: task.labelIds,
     );
   }
 
@@ -1177,78 +1189,56 @@ class SchedulerEngine {
     final ruleIndex = _ruleIndexOfInstance(task, completedInstance);
     if (ruleIndex < 0 || ruleIndex >= task.schedules.length) return null;
     final rule = task.schedules[ruleIndex];
+    if (rule is OneOffSchedule) return null;
 
     if (rule.schedulingPolicy is CompletionRelativePolicy) {
-      final policy = rule.schedulingPolicy as CompletionRelativePolicy;
-      final nextDate = CivilDay.fromDateTime(now.add(policy.interval));
-      final nextInstId = generateId();
-
-      final startRelative = RelativeTime(
-        dayOffset: 0,
-        hour: policy.targetHour,
-        minute: policy.targetMinute,
+      final hasPendingForRule = taskInstances.any(
+        (inst) =>
+            _isInstanceForRule(inst, rule, task) &&
+            inst.id != completedInstance.id &&
+            inst.status == TaskStatus.pending,
       );
-      final dueRelative = _getCompletionRelativeDue(rule, policy, nextDate);
-      final notifRelative = _getCompletionRelativeNotifications(
-        rule,
-        policy,
-        nextDate,
-      );
+      if (hasPendingForRule) return null;
 
-      return TaskInstance(
-        id: nextInstId,
-        scheduleId: task.id,
-        ruleId: rule.id,
-        title: task.title,
-        description: task.description,
+      final nextSpawnTime = rule.nextCompletionRelativeDateTime(now);
+      final nextDate = CivilDay.fromDateTime(nextSpawnTime);
+      return _createInstanceForRule(
+        task: task,
+        rule: rule,
         scheduledDate: nextDate,
-        startRelativeTime: startRelative,
-        dueRelativeTime: dueRelative,
-        notificationRelativeTimes: notifRelative,
-        isFamily: task.isFamily,
-        familyCompletionMode: task.familyCompletionMode,
-        priority: task.priority,
-        cycleId: task.cycleId,
-        assignedUserId: task.assignedUserId,
-        status: TaskStatus.pending,
-        labelIds: task.labelIds,
       );
     } else {
       // Find the latest uncompleted instance of this rule (excluding the completedInstance)
       final ruleInstances = taskInstances
           .where(
             (inst) =>
-                inst.ruleId == rule.id &&
+                _isInstanceForRule(inst, rule, task) &&
                 inst.id != completedInstance.id &&
                 inst.status == TaskStatus.pending,
           )
           .toList()
         ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
 
-      final baseDate = ruleInstances.isNotEmpty
+      final baseDate = (ruleInstances.isNotEmpty &&
+              ruleInstances.first.scheduledDate.isAfter(
+                completedInstance.scheduledDate,
+              ))
           ? ruleInstances.first.scheduledDate
           : completedInstance.scheduledDate;
 
       final nextDate = rule.nextOccurrenceAfter(baseDate);
       if (nextDate != null) {
-        final nextInstId = generateId();
-        return TaskInstance(
-          id: nextInstId,
-          scheduleId: task.id,
-          ruleId: rule.id,
-          title: task.title,
-          description: task.description,
+        final alreadyExists = taskInstances.any(
+          (inst) =>
+              _isInstanceForRule(inst, rule, task) &&
+              inst.scheduledDate == nextDate,
+        );
+        if (alreadyExists) return null;
+
+        return _createInstanceForRule(
+          task: task,
+          rule: rule,
           scheduledDate: nextDate,
-          startRelativeTime: rule.startRelativeTime,
-          dueRelativeTime: rule.dueRelativeTime,
-          notificationRelativeTimes: rule.notificationRelativeTimes,
-          isFamily: task.isFamily,
-          familyCompletionMode: task.familyCompletionMode,
-          priority: task.priority,
-          cycleId: task.cycleId,
-          assignedUserId: task.assignedUserId,
-          status: TaskStatus.pending,
-          labelIds: task.labelIds,
         );
       }
     }
@@ -1264,10 +1254,18 @@ class SchedulerEngine {
     final ruleIndex = _ruleIndexOfInstance(task, completedInstance);
     if (ruleIndex < 0 || ruleIndex >= task.schedules.length) return null;
     final rule = task.schedules[ruleIndex];
+    if (rule is OneOffSchedule) return null;
 
+    final isCompletionRelative =
+        rule.schedulingPolicy is CompletionRelativePolicy;
     final ruleInstances = taskInstances
         .where(
-          (inst) => inst.ruleId == rule.id && inst.status == TaskStatus.pending,
+          (inst) =>
+              _isInstanceForRule(inst, rule, task) &&
+              inst.id != completedInstance.id &&
+              inst.status == TaskStatus.pending &&
+              (isCompletionRelative ||
+                  inst.scheduledDate.isAfter(completedInstance.scheduledDate)),
         )
         .toList()
       ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
@@ -1275,6 +1273,90 @@ class SchedulerEngine {
       return ruleInstances.first.id;
     }
     return null;
+  }
+
+  /// Projects up to [count] upcoming [CivilDay] occurrences for [rule] on or
+  /// after [fromDate], accounting for [existingInstances] when [rule] uses
+  /// [CompletionRelativePolicy].
+  List<CivilDay> projectUpcomingOccurrences(
+    TaskSchedule task,
+    TaskScheduleRule rule,
+    CivilDay fromDate, {
+    int count = 5,
+    List<TaskInstance> existingInstances = const [],
+  }) {
+    if (count <= 0) return const [];
+    final List<CivilDay> result = [];
+
+    if (rule is OneOffSchedule) {
+      if (!rule.scheduledDate.isBefore(fromDate)) {
+        result.add(rule.scheduledDate);
+      }
+      return result;
+    }
+
+    if (rule.schedulingPolicy is CompletionRelativePolicy) {
+      final ruleInstances = existingInstances
+          .where((inst) => _isInstanceForRule(inst, rule, task))
+          .toList();
+      final pending = ruleInstances
+          .where((inst) => inst.status == TaskStatus.pending)
+          .toList()
+        ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+
+      DateTime cursorTime;
+      if (pending.isNotEmpty) {
+        final firstDay = pending.first.scheduledDate;
+        if (!firstDay.isBefore(fromDate)) {
+          result.add(firstDay);
+        }
+        cursorTime = firstDay.toDateTime();
+      } else {
+        final resolved = ruleInstances
+            .where((inst) => inst.status != TaskStatus.pending)
+            .toList()
+          ..sort(
+            (a, b) => (b.completedAt ?? b.updatedAt).compareTo(
+              a.completedAt ?? a.updatedAt,
+            ),
+          );
+        if (resolved.isNotEmpty) {
+          final latest = resolved.first;
+          final resolvedTime =
+              (latest.completedAt ?? latest.updatedAt).toLocal();
+          cursorTime = rule.nextCompletionRelativeDateTime(resolvedTime);
+          final nextDay = CivilDay.fromDateTime(cursorTime);
+          if (!nextDay.isBefore(fromDate)) {
+            result.add(nextDay);
+          }
+        } else {
+          final startDay = rule.scheduledDate.isBefore(fromDate)
+              ? fromDate
+              : rule.scheduledDate;
+          result.add(startDay);
+          cursorTime = startDay.toDateTime();
+        }
+      }
+
+      while (result.length < count) {
+        final nextTime = rule.nextCompletionRelativeDateTime(cursorTime);
+        if (!nextTime.isAfter(cursorTime)) break;
+        cursorTime = nextTime;
+        final day = CivilDay.fromDateTime(cursorTime);
+        if (!day.isBefore(fromDate)) {
+          result.add(day);
+        }
+      }
+      return result;
+    }
+
+    var current =
+        rule.occursOn(fromDate) ? fromDate : rule.nextOccurrenceAfter(fromDate);
+    while (current != null && result.length < count) {
+      result.add(current);
+      current = rule.nextOccurrenceAfter(current);
+    }
+    return result;
   }
 
   bool _isInstanceForRule(

@@ -108,6 +108,21 @@ class TaskInstance {
     return completedAt!.difference(dueDateTime) > const Duration(hours: 24);
   }
 
+  /// Parsed [InstanceStatusReason] for [statusReason], or `null` if unset or unknown.
+  InstanceStatusReason? get parsedStatusReason =>
+      InstanceStatusReason.tryParse(statusReason);
+
+  /// Whether a skipped instance is eligible to be revived back to [TaskStatus.pending]
+  /// when capacity becomes available or capacity limits are disabled.
+  ///
+  /// Only instances skipped due to capacity limits (or legacy skipped instances with no
+  /// recorded [statusReason]) may be revived; user-dismissed or policy-skipped instances
+  /// must remain skipped.
+  bool get isRevivableByCapacity =>
+      status == TaskStatus.skipped &&
+      (statusReason == null ||
+          parsedStatusReason == InstanceStatusReason.schedulerCapacityLimit);
+
   static DateTime? _parseDateTime(dynamic raw) {
     if (raw == null) return null;
     if (raw is DateTime) return raw;

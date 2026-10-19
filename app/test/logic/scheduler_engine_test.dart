@@ -1368,11 +1368,15 @@ void main() {
           resolvedMay1,
         ], now);
 
-        // Under N=1 model, the future July 1 occurrence is spawned immediately
-        expect(action.instancesToSpawn, hasLength(1));
+        // MonthlySchedule default lookahead is 3 future occurrences: July 1, Sept 1, Nov 1
+        expect(action.instancesToSpawn, hasLength(3));
         expect(
-          action.instancesToSpawn.first.scheduledDate,
-          equals(CivilDay(year: 2026, month: 7, day: 1)),
+          action.instancesToSpawn.map((i) => i.scheduledDate).toList(),
+          equals([
+            const CivilDay(year: 2026, month: 7, day: 1),
+            const CivilDay(year: 2026, month: 9, day: 1),
+            const CivilDay(year: 2026, month: 11, day: 1),
+          ]),
         );
         expect(action.updatedSchedule, isNull);
       });
@@ -1395,38 +1399,21 @@ void main() {
             ],
           );
 
-          // First evaluate from null. Capped at 30 days from May 1 -> May 31. Spawns May 15.
+          // Evaluates past catch-up (May 15, June 15) plus 3 future lookahead instances (July 15, Aug 15, Sept 15)
           final action1 = const SchedulerEngine().evaluate(task, [], now);
-          expect(action1.instancesToSpawn, hasLength(1));
+          expect(action1.instancesToSpawn, hasLength(5));
           expect(
-            action1.instancesToSpawn.first.scheduledDate,
-            equals(CivilDay(year: 2026, month: 5, day: 15)),
-          );
-          expect(
-            action1.updatedSchedule!.lastSpawnedDate,
-            equals(CivilDay(year: 2026, month: 5, day: 15)),
-          );
-
-          // Complete the May 15 instance, and evaluate again. Capped at 30 days from June 15 -> July 15.
-          final spawnedMay15 = action1.instancesToSpawn.first.copyWith(
-            status: TaskStatus.completed,
-            completedAt: now,
-          );
-          final updatedTask1 = action1.updatedSchedule!;
-          final action2 = const SchedulerEngine().evaluate(updatedTask1, [
-            spawnedMay15,
-          ], now);
-
-          expect(action2.instancesToSpawn, hasLength(2));
-          expect(
-            action2.instancesToSpawn.map((i) => i.scheduledDate).toList(),
-            containsAll([
-              CivilDay(year: 2026, month: 6, day: 15),
-              CivilDay(year: 2026, month: 7, day: 15),
+            action1.instancesToSpawn.map((i) => i.scheduledDate).toList(),
+            equals([
+              const CivilDay(year: 2026, month: 5, day: 15),
+              const CivilDay(year: 2026, month: 6, day: 15),
+              const CivilDay(year: 2026, month: 7, day: 15),
+              const CivilDay(year: 2026, month: 8, day: 15),
+              const CivilDay(year: 2026, month: 9, day: 15),
             ]),
           );
           expect(
-            action2.updatedSchedule!.lastSpawnedDate,
+            action1.updatedSchedule!.lastSpawnedDate,
             equals(CivilDay(year: 2026, month: 6, day: 15)),
           );
         },
@@ -1752,11 +1739,11 @@ void main() {
               .toList();
           expect(dailySpawns, hasLength(11));
 
-          // Weekly rule (limit 5) spawns today + 4 lookahead = 5 weekly instances
+          // Weekly rule (limit 5) spawns today + 5 lookahead = 6 weekly instances
           final weeklySpawns = action.instancesToSpawn
               .where((inst) => inst.ruleId == weeklyRule.id)
               .toList();
-          expect(weeklySpawns, hasLength(5));
+          expect(weeklySpawns, hasLength(6));
         },
       );
     });

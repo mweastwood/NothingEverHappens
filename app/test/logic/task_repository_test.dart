@@ -526,7 +526,7 @@ void main() {
             .collection('instances')
             .get();
 
-        expect(instancesSnap.docs.length, 7);
+        expect(instancesSnap.docs.length, 10);
 
         final weeklyRule = modification.newTask.schedules[0];
         final monthlyRule = modification.newTask.schedules[1];
@@ -1607,7 +1607,7 @@ void main() {
         // Yield event loop to allow background streams and futures to complete
         await Future(() {});
 
-        // Verify that 2 future instances have been created (for June 24 and July 24; August 24 is outside the 30-day window)
+        // Verify that 3 future instances have been created (for June 24, July 24, and August 24)
         final instsAfter3 = await firestore
             .collection('users')
             .doc(userId)
@@ -1628,10 +1628,18 @@ void main() {
               d.data()['scheduledDate']['month'] == 7 &&
               d.data()['scheduledDate']['day'] == 24,
         );
+        final hasAugust24 = instsAfter3.docs.any(
+          (d) =>
+              d.data()['scheduleId'] == task.id &&
+              d.data()['scheduledDate']['year'] == 2026 &&
+              d.data()['scheduledDate']['month'] == 8 &&
+              d.data()['scheduledDate']['day'] == 24,
+        );
 
         expect(hasJune24, isTrue);
         expect(hasJuly24, isTrue);
-        expect(instsAfter3.docs.length, 2);
+        expect(hasAugust24, isTrue);
+        expect(instsAfter3.docs.length, 3);
       },
     );
 
