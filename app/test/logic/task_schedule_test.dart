@@ -1109,8 +1109,8 @@ void main() {
         final dailyRule = task.schedules[0];
         final weeklyRule = task.schedules[1];
 
-        // Expect 18 instances: Daily (June 1-11) + Weekly (June 3, 10, 17, 24, July 1)
-        expect(insts.docs.length, 18);
+        // Expect 19 instances: Daily (June 1-13) + Weekly (June 3, 10, 17, 24, July 1, July 8)
+        expect(insts.docs.length, 19);
         expect(
           insts.docs.any(
             (d) => matchInst(
@@ -1229,8 +1229,8 @@ void main() {
         final monthlyRule = task.schedules[3];
         final yearlyRule = task.schedules[4];
 
-        // Total: 1 (OneOff) + 13 (Daily) + 5 (Weekly) + 2 (Monthly) + 1 (Yearly) = 22 instances.
-        expect(insts.docs.length, 22);
+        // Total: 1 (OneOff) + 13 (Daily) + 6 (Weekly) + 3 (Monthly) + 2 (Yearly) = 25 instances.
+        expect(insts.docs.length, 25);
 
         expect(
           insts.docs.any(

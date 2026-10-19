@@ -407,7 +407,7 @@ class SchedulerEngine {
       int pastOccurrencesCount = 0;
       bool hitPastCap = false;
       while (current.compareTo(today) <= 0) {
-        if (pastOccurrencesCount >= maxEvaluationDays) {
+        if (pastOccurrencesCount > maxEvaluationDays) {
           hitPastCap = true;
           break;
         }
@@ -1200,7 +1200,7 @@ class SchedulerEngine {
       );
       if (hasPendingForRule) return null;
 
-      final nextSpawnTime = rule.nextCompletionRelativeDateTime(now);
+      final nextSpawnTime = rule.nextCompletionRelativeDateTime(now.toLocal());
       final nextDate = CivilDay.fromDateTime(nextSpawnTime);
       return _createInstanceForRule(
         task: task,
@@ -1307,10 +1307,10 @@ class SchedulerEngine {
       DateTime cursorTime;
       if (pending.isNotEmpty) {
         final firstDay = pending.first.scheduledDate;
-        if (!firstDay.isBefore(fromDate)) {
-          result.add(firstDay);
-        }
-        cursorTime = firstDay.toDateTime();
+        final effectiveFirstDay =
+            firstDay.isBefore(fromDate) ? fromDate : firstDay;
+        result.add(effectiveFirstDay);
+        cursorTime = effectiveFirstDay.toDateTime();
       } else {
         final resolved = ruleInstances
             .where((inst) => inst.status != TaskStatus.pending)
@@ -1326,9 +1326,11 @@ class SchedulerEngine {
               (latest.completedAt ?? latest.updatedAt).toLocal();
           cursorTime = rule.nextCompletionRelativeDateTime(resolvedTime);
           final nextDay = CivilDay.fromDateTime(cursorTime);
-          if (!nextDay.isBefore(fromDate)) {
-            result.add(nextDay);
-          }
+          final effectiveNextDay =
+              nextDay.isBefore(fromDate) ? fromDate : nextDay;
+          result.add(effectiveNextDay);
+          cursorTime =
+              nextDay.isBefore(fromDate) ? fromDate.toDateTime() : cursorTime;
         } else {
           final startDay = rule.scheduledDate.isBefore(fromDate)
               ? fromDate
@@ -1338,12 +1340,14 @@ class SchedulerEngine {
         }
       }
 
-      while (result.length < count) {
+      int iterations = 0;
+      while (result.length < count && iterations < count * 10) {
+        iterations++;
         final nextTime = rule.nextCompletionRelativeDateTime(cursorTime);
         if (!nextTime.isAfter(cursorTime)) break;
         cursorTime = nextTime;
         final day = CivilDay.fromDateTime(cursorTime);
-        if (!day.isBefore(fromDate)) {
+        if (!day.isBefore(fromDate) && (result.isEmpty || result.last != day)) {
           result.add(day);
         }
       }

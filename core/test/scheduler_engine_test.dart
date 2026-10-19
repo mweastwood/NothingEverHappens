@@ -722,5 +722,240 @@ void main() {
       );
       expect(idToDeleteWithFuture, equals(spawned.id));
     });
+
+    test(
+      'getNextOccurrenceToSpawn normalizes UTC completedAt to local calendar date for CompletionRelativePolicy',
+      () {
+        final jan31 = const CivilDay(year: 2026, month: 1, day: 31);
+        final rule = MonthlySchedule(
+          id: 'R-monthly-cr',
+          scheduleId: 'task-cr',
+          startDate: jan31,
+          interval: 1,
+          dayOfMonth: -1,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 30),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+        final task = TaskSchedule(
+          id: 'task-cr',
+          title: 'Monthly CR Task',
+          description: 'Test',
+          schedules: [rule],
+        );
+
+        // Late-evening local time on Jan 31 (stored as UTC on TaskInstance.completedAt)
+        final localCompletionTime = DateTime(2026, 1, 31, 22, 0);
+        final completedInstance = TaskInstance(
+          id: 'I-jan31',
+          scheduleId: task.id,
+          ruleId: rule.id,
+          title: task.title,
+          description: task.description,
+          scheduledDate: jan31,
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.completed,
+          completedAt: localCompletionTime, // TaskInstance converts this to UTC
+        );
+        expect(completedInstance.completedAt!.isUtc, isTrue);
+
+        final spawned = const SchedulerEngine().getNextOccurrenceToSpawn(
+          task,
+          completedInstance,
+          completedInstance.completedAt!,
+          [completedInstance],
+        );
+
+        expect(spawned, isNotNull);
+        expect(
+          spawned!.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 2, day: 28)),
+        );
+      },
+    );
+
+    test(
+      'projectUpcomingOccurrences handles OneOff, fixed-calendar, and CompletionRelativePolicy edge cases',
+      () {
+        const engine = SchedulerEngine();
+        final fromDate = const CivilDay(year: 2026, month: 6, day: 10);
+
+        // 1. OneOffSchedule before and on/after fromDate
+        final pastOneOff = OneOffSchedule(
+          id: 'R-oneoff-past',
+          date: const CivilDay(year: 2026, month: 6, day: 5),
+        );
+        final futureOneOff = OneOffSchedule(
+          id: 'R-oneoff-future',
+          date: const CivilDay(year: 2026, month: 6, day: 12),
+        );
+        final oneOffTask = TaskSchedule(
+          id: 'T-oneoff',
+          title: 'OneOff',
+          description: '',
+          schedules: [pastOneOff, futureOneOff],
+        );
+        expect(
+          engine.projectUpcomingOccurrences(oneOffTask, pastOneOff, fromDate),
+          isEmpty,
+        );
+        expect(
+          engine.projectUpcomingOccurrences(oneOffTask, futureOneOff, fromDate),
+          equals([const CivilDay(year: 2026, month: 6, day: 12)]),
+        );
+
+        // 2. Fixed-calendar rule
+        final weeklyRule = WeeklySchedule(
+          id: 'R-weekly',
+          startDate: const CivilDay(year: 2026, month: 6, day: 1),
+          interval: 1,
+          daysOfWeek: const {3}, // Wednesday (June 10, 17, 24)
+        );
+        final weeklyTask = TaskSchedule(
+          id: 'T-weekly',
+          title: 'Weekly',
+          description: '',
+          schedules: [weeklyRule],
+        );
+        expect(
+          engine.projectUpcomingOccurrences(
+            weeklyTask,
+            weeklyRule,
+            fromDate,
+            count: 3,
+          ),
+          equals([
+            const CivilDay(year: 2026, month: 6, day: 10),
+            const CivilDay(year: 2026, month: 6, day: 17),
+            const CivilDay(year: 2026, month: 6, day: 24),
+          ]),
+        );
+
+        // 3. CompletionRelativePolicy: initial (no instances), overdue pending, elapsed resolved, and sub-day deduplication
+        final crDailyRule = DailySchedule(
+          id: 'R-cr-daily',
+          scheduleId: 'T-cr',
+          startDate: const CivilDay(year: 2026, month: 6, day: 1),
+          interval: 2,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 2),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+        final crTask = TaskSchedule(
+          id: 'T-cr',
+          title: 'CR Task',
+          description: '',
+          schedules: [crDailyRule],
+        );
+
+        // Initial (startDate before fromDate -> clamps to fromDate)
+        expect(
+          engine.projectUpcomingOccurrences(
+            crTask,
+            crDailyRule,
+            fromDate,
+            count: 3,
+          ),
+          equals([
+            const CivilDay(year: 2026, month: 6, day: 10),
+            const CivilDay(year: 2026, month: 6, day: 12),
+            const CivilDay(year: 2026, month: 6, day: 14),
+          ]),
+        );
+
+        // Overdue pending instance (scheduledDate June 5 < fromDate June 10 -> clamps first upcoming to June 10)
+        final overduePending = TaskInstance(
+          id: 'I-overdue',
+          scheduleId: crTask.id,
+          ruleId: crDailyRule.id,
+          title: crTask.title,
+          description: crTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 6, day: 5),
+          startRelativeTime: crDailyRule.startRelativeTime,
+          dueRelativeTime: crDailyRule.dueRelativeTime,
+          status: TaskStatus.pending,
+        );
+        expect(
+          engine.projectUpcomingOccurrences(
+            crTask,
+            crDailyRule,
+            fromDate,
+            count: 3,
+            existingInstances: [overduePending],
+          ),
+          equals([
+            const CivilDay(year: 2026, month: 6, day: 10),
+            const CivilDay(year: 2026, month: 6, day: 12),
+            const CivilDay(year: 2026, month: 6, day: 14),
+          ]),
+        );
+
+        // Resolved instance whose next occurrence is in the past (completed June 1 + 2d = June 3 < June 10 -> clamps to June 10)
+        final oldResolved = TaskInstance(
+          id: 'I-resolved-old',
+          scheduleId: crTask.id,
+          ruleId: crDailyRule.id,
+          title: crTask.title,
+          description: crTask.description,
+          scheduledDate: const CivilDay(year: 2026, month: 6, day: 1),
+          startRelativeTime: crDailyRule.startRelativeTime,
+          dueRelativeTime: crDailyRule.dueRelativeTime,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 6, 1, 10, 0),
+        );
+        expect(
+          engine.projectUpcomingOccurrences(
+            crTask,
+            crDailyRule,
+            fromDate,
+            count: 3,
+            existingInstances: [oldResolved],
+          ),
+          equals([
+            const CivilDay(year: 2026, month: 6, day: 10),
+            const CivilDay(year: 2026, month: 6, day: 12),
+            const CivilDay(year: 2026, month: 6, day: 14),
+          ]),
+        );
+
+        // Sub-day CompletionRelativePolicy interval deduplicates same CivilDay
+        final subDayRule = DailySchedule(
+          id: 'R-subday',
+          scheduleId: 'T-subday',
+          startDate: fromDate,
+          interval: 1,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(hours: 6),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+        final subDayTask = TaskSchedule(
+          id: 'T-subday',
+          title: 'Sub-day CR',
+          description: '',
+          schedules: [subDayRule],
+        );
+        final projectedSubDay = engine.projectUpcomingOccurrences(
+          subDayTask,
+          subDayRule,
+          fromDate,
+          count: 3,
+        );
+        expect(
+          projectedSubDay,
+          equals([
+            const CivilDay(year: 2026, month: 6, day: 10),
+            const CivilDay(year: 2026, month: 6, day: 11),
+            const CivilDay(year: 2026, month: 6, day: 12),
+          ]),
+        );
+      },
+    );
   });
 }
