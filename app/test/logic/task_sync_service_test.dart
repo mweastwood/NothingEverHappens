@@ -358,10 +358,11 @@ void main() {
           .doc('I-2')
           .set(remoteInst.toFirestore());
 
-      // Allow multiple turns of the event loop for the async stream listener
-      // and subsequent sequential storage writes (deleteInstances, saveInstances,
-      // and dirty state batch updates) to complete.
-      await pumpEventQueue(times: 20);
+      await pumpUntil(() {
+        final instances = localDataSource.getInstances();
+        return instances.any((i) => i.id == 'I-2') &&
+            !instances.any((i) => i.id == 'I-1');
+      });
 
       final instances = localDataSource.getInstances();
       expect(instances.any((i) => i.id == 'I-1'), isFalse);
@@ -420,7 +421,27 @@ void main() {
           .doc('I-2')
           .set(remoteInst.toFirestore());
 
-      await pumpEventQueue();
+      await pumpUntil(() async {
+        final instances = localDataSource.getInstances();
+        final dirtyIds = localDataSource.getDirtyTaskIds();
+        final remoteLoserSnap = await firestore
+            .collection('users')
+            .doc('user1')
+            .collection('instances')
+            .doc('I-2')
+            .get();
+        final remoteWinnerSnap = await firestore
+            .collection('users')
+            .doc('user1')
+            .collection('instances')
+            .doc('I-1')
+            .get();
+        return instances.any((i) => i.id == 'I-1') &&
+            !instances.any((i) => i.id == 'I-2') &&
+            !dirtyIds.contains('I-1') &&
+            !remoteLoserSnap.exists &&
+            remoteWinnerSnap.exists;
+      });
 
       final instances = localDataSource.getInstances();
       expect(instances.any((i) => i.id == 'I-1'), isTrue);
