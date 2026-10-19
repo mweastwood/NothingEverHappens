@@ -326,6 +326,7 @@ class UnifiedTaskRepository implements TaskRepository {
           completedByUserId: userId,
           completedAt: AppClock.now,
           completedByUserIds: updatedUserIds,
+          statusReason: InstanceStatusReason.userCompleted.value,
           hasPendingWrites: true,
           updatedAt: DateTime.now().toUtc(),
         );
@@ -379,7 +380,7 @@ class UnifiedTaskRepository implements TaskRepository {
       status: TaskStatus.completed,
       completedByUserId: userId,
       completedAt: AppClock.now,
-      statusReason: 'user_completed',
+      statusReason: InstanceStatusReason.userCompleted.value,
       lastModifiedByUserId: userId,
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
@@ -414,7 +415,7 @@ class UnifiedTaskRepository implements TaskRepository {
       await _spawnNextOccurrence(
         task,
         completedInstance,
-        completedInstance.completedAt ?? AppClock.now,
+        completedInstance.completedAt?.toLocal() ?? AppClock.now,
       );
     }
     _syncService.sync();
@@ -461,7 +462,7 @@ class UnifiedTaskRepository implements TaskRepository {
       status: TaskStatus.skipped,
       completedByUserId: userId,
       completedAt: AppClock.now,
-      statusReason: 'user_dismissed',
+      statusReason: InstanceStatusReason.userDismissed.value,
       lastModifiedByUserId: userId,
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
@@ -489,7 +490,7 @@ class UnifiedTaskRepository implements TaskRepository {
       await _spawnNextOccurrence(
         task,
         dismissedInstance,
-        dismissedInstance.completedAt ?? AppClock.now,
+        dismissedInstance.completedAt?.toLocal() ?? AppClock.now,
       );
     }
     _syncService.sync();
@@ -613,7 +614,7 @@ class UnifiedTaskRepository implements TaskRepository {
       final nextId = TaskSpawnerEngine.calculateOccurrenceIdToUndo(
         task: task,
         completedInstance: resolvedInstance,
-        completionTime: resolvedInstance.completedAt ?? AppClock.now,
+        completionTime: resolvedInstance.completedAt?.toLocal() ?? AppClock.now,
         existingInstances: instances,
       );
       if (nextId != null && nextId != resolvedInstance.id) {

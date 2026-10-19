@@ -1,1 +1,1 @@
-export 'package:core/core.dart' show TaskStatus;
+export 'package:core/core.dart' show TaskStatus, InstanceStatusReason;

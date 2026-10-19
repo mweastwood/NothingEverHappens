@@ -714,14 +714,18 @@ class TaskSyncService {
   bool _doesLocalWin(TaskInstance local, TaskInstance remote) {
     final localIsUser =
         (local.status != TaskStatus.pending) &&
-        (local.statusReason?.startsWith('user_') ?? false);
+        ((local.parsedStatusReason?.isUserAction ?? false) ||
+            (local.statusReason?.startsWith('user_') ?? false));
     final remoteIsUser =
         (remote.status != TaskStatus.pending) &&
-        (remote.statusReason?.startsWith('user_') ?? false);
+        ((remote.parsedStatusReason?.isUserAction ?? false) ||
+            (remote.statusReason?.startsWith('user_') ?? false));
     final localIsScheduler =
-        local.statusReason?.startsWith('scheduler_') ?? false;
+        (local.parsedStatusReason?.isSchedulerAction ?? false) ||
+        (local.statusReason?.startsWith('scheduler_') ?? false);
     final remoteIsScheduler =
-        remote.statusReason?.startsWith('scheduler_') ?? false;
+        (remote.parsedStatusReason?.isSchedulerAction ?? false) ||
+        (remote.statusReason?.startsWith('scheduler_') ?? false);
 
     // 1. User vs. Scheduler Conflict & Non-downgrade Invariant:
     // A user action (user_completed, user_dismissed) always wins over an automated

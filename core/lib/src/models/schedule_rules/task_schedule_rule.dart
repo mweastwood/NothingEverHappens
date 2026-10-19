@@ -116,6 +116,68 @@ abstract class TaskScheduleRule {
   /// before [today] (completed), otherwise returns `this` unchanged.
   /// For recurring schedules: advances to the next occurrence after [today].
   TaskScheduleRule? advanceAfterCompletion(CivilDay today);
+
+  /// Calculates the next spawn [DateTime] for a rule using
+  /// [CompletionRelativePolicy], advancing by true calendar months or years
+  /// for [MonthlySchedule] and [YearlySchedule] rules (clamping to the end of
+  /// the month when needed, e.g. Jan 31 + 1 month -> Feb 28/29) instead of
+  /// fixed 30-day or 365-day approximations.
+  DateTime nextCompletionRelativeDateTime(DateTime resolvedAt) {
+    final policy = schedulingPolicy;
+    if (policy is! CompletionRelativePolicy) {
+      return resolvedAt;
+    }
+
+    DateTime buildDateTime(int year, int month, int day) {
+      if (resolvedAt.isUtc) {
+        return DateTime.utc(
+          year,
+          month,
+          day,
+          resolvedAt.hour,
+          resolvedAt.minute,
+          resolvedAt.second,
+          resolvedAt.millisecond,
+          resolvedAt.microsecond,
+        );
+      }
+      return DateTime(
+        year,
+        month,
+        day,
+        resolvedAt.hour,
+        resolvedAt.minute,
+        resolvedAt.second,
+        resolvedAt.millisecond,
+        resolvedAt.microsecond,
+      );
+    }
+
+    final self = this;
+    if (self is MonthlySchedule &&
+        policy.interval == Duration(days: self.interval * 30)) {
+      final totalMonths = (resolvedAt.month - 1) + self.interval;
+      final targetYear = resolvedAt.year + (totalMonths ~/ 12);
+      final targetMonth = (totalMonths % 12) + 1;
+      final maxDaysInMonth = DateTime(targetYear, targetMonth + 1, 0).day;
+      final targetDay =
+          resolvedAt.day > maxDaysInMonth ? maxDaysInMonth : resolvedAt.day;
+      return buildDateTime(targetYear, targetMonth, targetDay);
+    }
+
+    if (self is YearlySchedule &&
+        policy.interval == Duration(days: self.interval * 365)) {
+      final targetYear = resolvedAt.year + self.interval;
+      final targetMonth = resolvedAt.month;
+      final maxDaysInMonth = DateTime(targetYear, targetMonth + 1, 0).day;
+      final targetDay =
+          resolvedAt.day > maxDaysInMonth ? maxDaysInMonth : resolvedAt.day;
+      return buildDateTime(targetYear, targetMonth, targetDay);
+    }
+
+    return resolvedAt.add(policy.interval);
+  }
+
   Map<String, dynamic> toJson();
 
   factory TaskScheduleRule.fromJson(Map<String, dynamic> json) {

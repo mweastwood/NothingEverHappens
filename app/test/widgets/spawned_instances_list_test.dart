@@ -483,7 +483,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         ProviderScope(overrides: defaultTestOverrides, child: builder.build()),
         wrapper: l10nMaterialAppWrapper(),
-        surfaceSize: const Size(800, 600),
+        surfaceSize: const Size(800, 650),
       );
 
       await screenMatchesGolden(tester, 'spawned_instances_list_wide_golden');

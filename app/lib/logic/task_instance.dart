@@ -3,6 +3,7 @@ export 'package:core/core.dart'
         TaskInstance,
         TaskPriority,
         TaskStatus,
+        InstanceStatusReason,
         WorkflowInstancePayload,
         WorkflowStage,
         ShoppingItemPayload,
