@@ -67,6 +67,7 @@ class TaskSyncService {
   bool get isDisposed => _isDisposed;
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
+  bool _hasQueuedSync = false;
   final _isSyncingSubject = BehaviorSubject<bool>.seeded(false);
   Stream<bool> get isSyncingStream => _isSyncingSubject.stream;
   Timer? _periodicSyncTimer;
@@ -152,6 +153,7 @@ class TaskSyncService {
 
   void dispose() {
     _isDisposed = true;
+    _hasQueuedSync = false;
     _initialSyncTimeoutTimer?.cancel();
     _completeInitialSync();
     _periodicSyncTimer?.cancel();
@@ -525,8 +527,10 @@ class TaskSyncService {
       if (!pushedTaskIds.add(task.id)) continue;
       await _localDataSource.markDirty(task.id);
       try {
-        await _pushTaskToRemote(task);
-        await _localDataSource.clearDirty(task.id);
+        final canClearDirty = await _pushTaskToRemote(task);
+        if (canClearDirty) {
+          await _localDataSource.clearDirty(task.id);
+        }
       } catch (e, st) {
         // Keep dirty flag so the next sync retries pushing this task.
         logger?.error(
@@ -566,6 +570,16 @@ class TaskSyncService {
             (isFamily ? localInst.isFamily : !localInst.isFamily)) {
           toDelete.add(docId);
           localMap.remove(docId);
+          toSave.removeWhere((i) => i.id == docId);
+          if (localInst != null) {
+            final slotKey =
+                '${localInst.scheduleId}_${localInst.ruleId}_${localInst.scheduledDate}';
+            if (localSlotMap[slotKey]?.id == docId) {
+              localSlotMap.remove(slotKey);
+            }
+          } else {
+            localSlotMap.removeWhere((_, v) => v.id == docId);
+          }
           logger?.info(
             'sync',
             'Remote instance removed: $docId',
@@ -617,12 +631,13 @@ class TaskSyncService {
                 '${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}';
             final localSlotInst = localSlotMap[slotKey];
             if (localSlotInst != null) {
-              if (_doesLocalWin(localSlotInst, remoteInst)) {
+              if (_doesSlotCandidateWin(localSlotInst, remoteInst)) {
                 toPush.add(localSlotInst);
                 remoteIdsToDelete.add(remoteInst.id);
               } else {
                 toDelete.add(localSlotInst.id);
                 localMap.remove(localSlotInst.id);
+                toSave.removeWhere((i) => i.id == localSlotInst.id);
                 toSave.add(remoteInst);
                 localMap[remoteInst.id] = remoteInst;
                 localSlotMap[slotKey] = remoteInst;
@@ -662,8 +677,10 @@ class TaskSyncService {
       if (!pushedInstIds.add(inst.id)) continue;
       await _localDataSource.markDirty(inst.id);
       try {
-        await _pushInstanceToRemote(inst);
-        await _localDataSource.clearDirty(inst.id);
+        final canClearDirty = await _pushInstanceToRemote(inst);
+        if (canClearDirty) {
+          await _localDataSource.clearDirty(inst.id);
+        }
       } catch (e, st) {
         // Keep dirty flag so the next sync retries pushing this instance.
         logger?.error(
@@ -711,15 +728,54 @@ class TaskSyncService {
     return a.millisecondsSinceEpoch > b.millisecondsSinceEpoch;
   }
 
+  bool _hasSlotUserActionOrProgress(TaskInstance inst) {
+    final isSchedulerAction =
+        (inst.parsedStatusReason?.isSchedulerAction ?? false) ||
+        (inst.statusReason?.startsWith('scheduler_') ?? false);
+    if (isSchedulerAction) {
+      return false;
+    }
+    if (inst.status == TaskStatus.completed ||
+        inst.status == TaskStatus.skipped ||
+        inst.parsedStatusReason == InstanceStatusReason.userModified ||
+        (inst.parsedStatusReason?.isUserAction ?? false) ||
+        (inst.statusReason?.startsWith('user_') ?? false)) {
+      return true;
+    }
+    if (inst.completedByUserIds.isNotEmpty) {
+      return true;
+    }
+    if (inst.workflowPayload != null &&
+        inst.workflowPayload!.stage != WorkflowStage.selectMeal) {
+      return true;
+    }
+    return false;
+  }
+
+  bool _doesSlotCandidateWin(TaskInstance local, TaskInstance remote) {
+    final localHasUserProgress = _hasSlotUserActionOrProgress(local);
+    final remoteHasUserProgress = _hasSlotUserActionOrProgress(remote);
+    if (localHasUserProgress != remoteHasUserProgress) {
+      return localHasUserProgress;
+    }
+    if (local.updatedAt.millisecondsSinceEpoch ==
+        remote.updatedAt.millisecondsSinceEpoch) {
+      return local.id.compareTo(remote.id) < 0;
+    }
+    return _doesLocalWin(local, remote);
+  }
+
   bool _doesLocalWin(TaskInstance local, TaskInstance remote) {
     final localIsUser =
-        (local.status != TaskStatus.pending) &&
-        ((local.parsedStatusReason?.isUserAction ?? false) ||
-            (local.statusReason?.startsWith('user_') ?? false));
+        local.parsedStatusReason == InstanceStatusReason.userModified ||
+        ((local.status != TaskStatus.pending) &&
+            ((local.parsedStatusReason?.isUserAction ?? false) ||
+                (local.statusReason?.startsWith('user_') ?? false)));
     final remoteIsUser =
-        (remote.status != TaskStatus.pending) &&
-        ((remote.parsedStatusReason?.isUserAction ?? false) ||
-            (remote.statusReason?.startsWith('user_') ?? false));
+        remote.parsedStatusReason == InstanceStatusReason.userModified ||
+        ((remote.status != TaskStatus.pending) &&
+            ((remote.parsedStatusReason?.isUserAction ?? false) ||
+                (remote.statusReason?.startsWith('user_') ?? false)));
     final localIsScheduler =
         (local.parsedStatusReason?.isSchedulerAction ?? false) ||
         (local.statusReason?.startsWith('scheduler_') ?? false);
@@ -804,8 +860,11 @@ class TaskSyncService {
     if (_isDisposed ||
         !_isActivePremium ||
         _userId.isEmpty ||
-        _isSyncing ||
         !_localDataSource.isMigrationCompleted()) {
+      return;
+    }
+    if (_isSyncing) {
+      _hasQueuedSync = true;
       return;
     }
     _isSyncing = true;
@@ -814,74 +873,45 @@ class TaskSyncService {
     }
 
     try {
-      final dirtyTaskIds = _localDataSource.getDirtyTaskIds();
-      logger?.debug(
-        'sync',
-        'Firestore sync started',
-        data: {'dirtyCount': dirtyTaskIds.length},
-      );
-      final localTasks = _localDataSource.getTasks();
-      final localInstances = _localDataSource.getInstances();
+      do {
+        _hasQueuedSync = false;
+        final dirtyTaskIds = _localDataSource.getDirtyTaskIds();
+        logger?.debug(
+          'sync',
+          'Firestore sync started',
+          data: {'dirtyCount': dirtyTaskIds.length},
+        );
+        final localTasks = _localDataSource.getTasks();
+        final localInstances = _localDataSource.getInstances();
 
-      final tasksMap = {for (final t in localTasks) t.id: t};
-      final instancesMap = {for (final i in localInstances) i.id: i};
-      final familyId = await _getFamilyId();
+        final tasksMap = {for (final t in localTasks) t.id: t};
+        final instancesMap = {for (final i in localInstances) i.id: i};
+        final familyId = await _getFamilyId();
 
-      for (final taskId in dirtyTaskIds) {
-        if (_isDisposed) break;
-        try {
-          if (taskId.startsWith('S-')) {
-            final task = tasksMap[taskId];
-            if (task != null) {
-              await _pushTaskToRemote(task);
-            } else {
-              // Deleted locally, remove from remote:
-              // 1. Delete from personal user collection first
-              await _firestore
-                  .collection(FirestorePaths.users)
-                  .doc(_userId)
-                  .collection(FirestorePaths.tasks)
-                  .doc(taskId)
-                  .delete();
-              // 2. Attempt family collection delete if familyId exists, swallowing permission-denied
-              if (familyId != null && familyId.isNotEmpty) {
-                try {
-                  await _firestore
-                      .collection(FirestorePaths.families)
-                      .doc(familyId)
-                      .collection(FirestorePaths.tasks)
-                      .doc(taskId)
-                      .delete();
-                } catch (e) {
-                  if (e is! FirebaseException ||
-                      e.code != 'permission-denied') {
-                    rethrow;
-                  }
-                }
-              }
-            }
-          } else if (taskId.startsWith('I-')) {
-            final inst = instancesMap[taskId];
-            if (inst != null) {
-              await _pushInstanceToRemote(inst);
-            } else {
-              // Deleted locally, remove from remote:
-              // 1. Delete from personal user collection first
-              await _firestore
-                  .collection(FirestorePaths.users)
-                  .doc(_userId)
-                  .collection(FirestorePaths.instances)
-                  .doc(taskId)
-                  .delete();
-              // 2. Only parents can delete from family instances
-              if (familyId != null && familyId.isNotEmpty) {
-                final isParent = await _isFamilyParent();
-                if (isParent) {
+        for (final taskId in dirtyTaskIds) {
+          if (_isDisposed) break;
+          try {
+            bool canClearDirty = true;
+            if (taskId.startsWith('S-')) {
+              final task = tasksMap[taskId];
+              if (task != null) {
+                canClearDirty = await _pushTaskToRemote(task);
+              } else {
+                // Deleted locally, remove from remote:
+                // 1. Delete from personal user collection first
+                await _firestore
+                    .collection(FirestorePaths.users)
+                    .doc(_userId)
+                    .collection(FirestorePaths.tasks)
+                    .doc(taskId)
+                    .delete();
+                // 2. Attempt family collection delete if familyId exists, swallowing permission-denied
+                if (familyId != null && familyId.isNotEmpty) {
                   try {
                     await _firestore
                         .collection(FirestorePaths.families)
                         .doc(familyId)
-                        .collection(FirestorePaths.instances)
+                        .collection(FirestorePaths.tasks)
                         .doc(taskId)
                         .delete();
                   } catch (e) {
@@ -891,28 +921,73 @@ class TaskSyncService {
                     }
                   }
                 }
+                if (_localDataSource.getTasks().any((t) => t.id == taskId)) {
+                  canClearDirty = false;
+                  _hasQueuedSync = true;
+                }
+              }
+            } else if (taskId.startsWith('I-')) {
+              final inst = instancesMap[taskId];
+              if (inst != null) {
+                canClearDirty = await _pushInstanceToRemote(inst);
+              } else {
+                // Deleted locally, remove from remote:
+                // 1. Delete from personal user collection first
+                await _firestore
+                    .collection(FirestorePaths.users)
+                    .doc(_userId)
+                    .collection(FirestorePaths.instances)
+                    .doc(taskId)
+                    .delete();
+                // 2. Only parents can delete from family instances
+                if (familyId != null && familyId.isNotEmpty) {
+                  final isParent = await _isFamilyParent();
+                  if (isParent) {
+                    try {
+                      await _firestore
+                          .collection(FirestorePaths.families)
+                          .doc(familyId)
+                          .collection(FirestorePaths.instances)
+                          .doc(taskId)
+                          .delete();
+                    } catch (e) {
+                      if (e is! FirebaseException ||
+                          e.code != 'permission-denied') {
+                        rethrow;
+                      }
+                    }
+                  }
+                }
+                if (_localDataSource.getInstances().any(
+                  (i) => i.id == taskId,
+                )) {
+                  canClearDirty = false;
+                  _hasQueuedSync = true;
+                }
               }
             }
-          }
-          if (_isDisposed) break;
-          await _localDataSource.clearDirty(taskId);
-        } catch (e, st) {
-          logger?.error(
-            'sync',
-            'Failed to sync dirty item $taskId',
-            error: e,
-            stackTrace: st,
-          );
-          if (e is FirebaseException && e.code == 'permission-denied') {
-            await _localDataSource.clearDirty(taskId);
-          } else {
-            rethrow;
+            if (_isDisposed) break;
+            if (canClearDirty) {
+              await _localDataSource.clearDirty(taskId);
+            }
+          } catch (e, st) {
+            logger?.error(
+              'sync',
+              'Failed to sync dirty item $taskId',
+              error: e,
+              stackTrace: st,
+            );
+            if (e is FirebaseException && e.code == 'permission-denied') {
+              await _localDataSource.clearDirty(taskId);
+            } else {
+              rethrow;
+            }
           }
         }
-      }
-      if (!_isDisposed) {
-        logger?.info('sync', 'Firestore sync completed successfully');
-      }
+        if (!_isDisposed) {
+          logger?.info('sync', 'Firestore sync completed successfully');
+        }
+      } while (_hasQueuedSync && !_isDisposed && _isActivePremium);
     } catch (e, st) {
       logger?.error('sync', 'Firestore sync failed', error: e, stackTrace: st);
       errorHandler?.report(e, stackTrace: st);
@@ -924,15 +999,25 @@ class TaskSyncService {
     }
   }
 
-  Future<void> _pushTaskToRemote(TaskSchedule task) async {
+  Future<bool> _pushTaskToRemote(TaskSchedule task) async {
     final familyId = await _getFamilyId();
+    final taskData = <String, dynamic>{
+      ...task.toFirestore(),
+      'lastSpawnedDate': task.lastSpawnedDate?.toJson(),
+      'parentTaskId': task.parentTaskId,
+      'cycleId': task.cycleId,
+      'assignedUserId': task.assignedUserId,
+      'appLaunchUrl': task.appLaunchUrl,
+      'workflowType': task.workflowType,
+      'mealWorkflowConfig': task.mealWorkflowConfig?.toJson(),
+    };
     if (task.isFamily && familyId != null && familyId.isNotEmpty) {
       await _firestore
           .collection(FirestorePaths.families)
           .doc(familyId)
           .collection(FirestorePaths.tasks)
           .doc(task.id)
-          .set(task.toFirestore(), SetOptions(merge: true));
+          .set(taskData, SetOptions(merge: true));
       await _firestore
           .collection(FirestorePaths.users)
           .doc(_userId)
@@ -945,7 +1030,7 @@ class TaskSyncService {
           .doc(_userId)
           .collection(FirestorePaths.tasks)
           .doc(task.id)
-          .set(task.toFirestore(), SetOptions(merge: true));
+          .set(taskData, SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
         final isParent = await _isFamilyParent();
         if (isParent) {
@@ -967,23 +1052,43 @@ class TaskSyncService {
         .getTasks()
         .where((t) => t.id == task.id)
         .firstOrNull;
-    if (localCurrent != null &&
-        (localCurrent.hasPendingWrites || localCurrent.isFromCache)) {
+    if (localCurrent == null || localCurrent.updatedAt != task.updatedAt) {
+      _hasQueuedSync = true;
+      return false;
+    }
+    if (localCurrent.hasPendingWrites || localCurrent.isFromCache) {
       await _localDataSource.saveTask(
         localCurrent.copyWith(hasPendingWrites: false, isFromCache: false),
       );
     }
+    return true;
   }
 
-  Future<void> _pushInstanceToRemote(TaskInstance inst) async {
+  Future<bool> _pushInstanceToRemote(TaskInstance inst) async {
     final familyId = await _getFamilyId();
+    final instData = <String, dynamic>{
+      ...inst.toFirestore(),
+      'notificationRelativeTimes': inst.notificationRelativeTimes
+          .map((t) => t.toJson())
+          .toList(),
+      'completedByUserId': inst.completedByUserId,
+      'completedByUserIds': inst.completedByUserIds,
+      'completedAt': inst.completedAt,
+      'statusReason': inst.statusReason,
+      'cycleId': inst.cycleId,
+      'assignedUserId': inst.assignedUserId,
+      'workflowPayload': inst.workflowPayload?.toJson(),
+      'lastModifiedByUserId': inst.lastModifiedByUserId,
+      'lastModifiedByAppVersion': inst.lastModifiedByAppVersion,
+      'lastModifiedByPlatform': inst.lastModifiedByPlatform,
+    };
     if (inst.isFamily && familyId != null && familyId.isNotEmpty) {
       await _firestore
           .collection(FirestorePaths.families)
           .doc(familyId)
           .collection(FirestorePaths.instances)
           .doc(inst.id)
-          .set(inst.toFirestore(), SetOptions(merge: true));
+          .set(instData, SetOptions(merge: true));
       await _firestore
           .collection(FirestorePaths.users)
           .doc(_userId)
@@ -996,7 +1101,7 @@ class TaskSyncService {
           .doc(_userId)
           .collection(FirestorePaths.instances)
           .doc(inst.id)
-          .set(inst.toFirestore(), SetOptions(merge: true));
+          .set(instData, SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
         final isParent = await _isFamilyParent();
         if (isParent) {
@@ -1021,12 +1126,16 @@ class TaskSyncService {
         .getInstances()
         .where((i) => i.id == inst.id)
         .firstOrNull;
-    if (localCurrent != null &&
-        (localCurrent.hasPendingWrites || localCurrent.isFromCache)) {
+    if (localCurrent == null || localCurrent.updatedAt != inst.updatedAt) {
+      _hasQueuedSync = true;
+      return false;
+    }
+    if (localCurrent.hasPendingWrites || localCurrent.isFromCache) {
       await _localDataSource.saveInstance(
         localCurrent.copyWith(hasPendingWrites: false, isFromCache: false),
       );
     }
+    return true;
   }
 
   Future<void> _updateClientMetadata() async {

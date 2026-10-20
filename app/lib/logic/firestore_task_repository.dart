@@ -561,10 +561,14 @@ class FirestoreTaskRepository implements TaskRepository {
       if (inst.status != TaskStatus.skipped &&
           inst.status != TaskStatus.failed) {
         final t = taskMap[inst.scheduleId];
-        if (t != null && t.estimatedDuration != null && !t.skipIfNoCapacity) {
-          final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
-          dayPlannedHours[inst.scheduledDate] =
-              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+        if (t != null && t.estimatedDuration != null) {
+          // Pre-count family instances and already-resolved personal instances.
+          // Pending personal instances are added after each task is evaluated in _applyTaskEvaluationResult.
+          if (t.isFamily || inst.status != TaskStatus.pending) {
+            final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
+            dayPlannedHours[inst.scheduledDate] =
+                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+          }
         }
       }
     }
@@ -601,9 +605,14 @@ class FirestoreTaskRepository implements TaskRepository {
 
     final tasksToEvaluate = List<TaskSchedule>.from(tasks);
 
-    // Prioritize capacity-dependent tasks by Priority (High > Medium > Low)
-    // If priority is equal, prioritize (evaluate first) the least recently completed task.
+    // Evaluate mandatory (!skipIfNoCapacity) tasks first so their spawned pending
+    // instances reserve daily capacity before capacity-dependent tasks are evaluated.
+    // Then prioritize by Priority (High > Medium > Low), then least recently completed.
     tasksToEvaluate.sort((a, b) {
+      if (a.skipIfNoCapacity != b.skipIfNoCapacity) {
+        return a.skipIfNoCapacity ? 1 : -1;
+      }
+
       final pCompare = b.priority.index.compareTo(a.priority.index);
       if (pCompare != 0) return pCompare;
 
@@ -690,11 +699,15 @@ class FirestoreTaskRepository implements TaskRepository {
   }) {
     for (final inst in action.instancesToUpdate) {
       final updatedInst = inst.copyWith(updatedAt: now);
-      batch.set(
-        _instanceRefFor(updatedInst, familyId),
-        updatedInst,
-        SetOptions(merge: true),
-      );
+      if (updatedInst.statusReason == null) {
+        batch.set(_instanceRefFor(updatedInst, familyId), updatedInst);
+      } else {
+        batch.set(
+          _instanceRefFor(updatedInst, familyId),
+          updatedInst,
+          SetOptions(merge: true),
+        );
+      }
       markChanged();
       instancesById[inst.id] = updatedInst;
       final sList = instancesByScheduleId[inst.scheduleId];
@@ -987,6 +1000,9 @@ class FirestoreTaskRepository implements TaskRepository {
 
   @override
   Future<void> updateTaskSchedule(TaskModification modification) async {
+    final oldTask =
+        _cachedTasksMap[modification.newTask.id] ??
+        await _fetchTask(modification.newTask.id);
     final familyId = await getFamilyId();
     final batch = _firestore.batch();
 
@@ -1034,6 +1050,7 @@ class FirestoreTaskRepository implements TaskRepository {
 
     final List<DocumentSnapshot<TaskInstance>> personalPending = [];
     final List<DocumentSnapshot<TaskInstance>> familyPending = [];
+    final List<TaskInstance> allTaskInstances = [];
 
     final personalSnapFuture = _instancesRef
         .where('scheduleId', isEqualTo: newTask.id)
@@ -1051,6 +1068,7 @@ class FirestoreTaskRepository implements TaskRepository {
 
     final personalSnap = results[0];
     for (final doc in personalSnap.docs) {
+      allTaskInstances.add(doc.data());
       if (doc.data().status == TaskStatus.pending) {
         personalPending.add(doc);
       }
@@ -1059,30 +1077,108 @@ class FirestoreTaskRepository implements TaskRepository {
     if (familySnapFuture != null) {
       final familySnap = results[1];
       for (final doc in familySnap.docs) {
+        allTaskInstances.add(doc.data());
         if (doc.data().status == TaskStatus.pending) {
           familyPending.add(doc);
         }
       }
     }
 
-    final allPending = [...personalPending, ...familyPending];
+    final allPending = [...personalPending, ...familyPending]
+      ..sort(
+        (a, b) => a.data()!.scheduledDate.compareTo(b.data()!.scheduledDate),
+      );
 
     if (schedulesChanged) {
+      final preservedCompletionRelativeRules = <String>{};
       for (final doc in allPending) {
-        batch.delete(doc.reference);
+        final inst = doc.data()!;
+        final newRule = newTask.schedules
+            .where((s) => s.id == inst.ruleId)
+            .firstOrNull;
+        final oldRule = oldTask?.schedules
+            .where((s) => s.id == inst.ruleId)
+            .firstOrNull;
+
+        final alreadyPreservedCompletionRelative =
+            newRule != null &&
+            newRule.schedulingPolicy is CompletionRelativePolicy &&
+            !preservedCompletionRelativeRules.add(newRule.id);
+
+        if (newRule != null &&
+            !alreadyPreservedCompletionRelative &&
+            _shouldPreservePendingInstanceOnScheduleEdit(
+              inst: inst,
+              newTask: newTask,
+              oldRule: oldRule,
+              newRule: newRule,
+              changes: changes,
+            )) {
+          CivilDay? updatedScheduledDate;
+          if (newRule.schedulingPolicy is CompletionRelativePolicy) {
+            final resolvedForRule =
+                allTaskInstances
+                    .where(
+                      (i) =>
+                          i.ruleId == newRule.id &&
+                          i.status != TaskStatus.pending,
+                    )
+                    .toList()
+                  ..sort(
+                    (a, b) => (b.completedAt ?? b.updatedAt).compareTo(
+                      a.completedAt ?? a.updatedAt,
+                    ),
+                  );
+            if (resolvedForRule.isNotEmpty) {
+              final latest = resolvedForRule.first;
+              final refTime = (latest.completedAt ?? latest.updatedAt)
+                  .toLocal();
+              updatedScheduledDate = CivilDay.fromDateTime(
+                newRule.nextCompletionRelativeDateTime(refTime),
+              );
+            } else {
+              updatedScheduledDate = newRule.scheduledDate;
+            }
+          }
+          final updatedInst = _buildUpdatedPendingInstance(
+            inst: inst,
+            task: newTask,
+            rule: newRule,
+            newScheduledDate: updatedScheduledDate,
+          );
+          if (isFamilyChanged) {
+            batch.delete(doc.reference);
+            if (newTask.isFamily) {
+              batch.set(
+                _instanceRefFor(updatedInst, familyId),
+                updatedInst,
+                SetOptions(merge: true),
+              );
+            } else {
+              batch.set(
+                _instancesRef.doc(updatedInst.id),
+                updatedInst,
+                SetOptions(merge: true),
+              );
+            }
+          } else {
+            batch.set(doc.reference, updatedInst, SetOptions(merge: true));
+          }
+        } else {
+          _spawnedInstancesCache.remove(_spawnedKeyFor(inst));
+          batch.delete(doc.reference);
+        }
       }
     } else {
       for (final doc in allPending) {
-        final updatedInst = doc.data()!.copyWith(
-          title: newTask.title,
-          description: newTask.description,
-          priority: newTask.priority,
-          isFamily: newTask.isFamily,
-          cycleId: newTask.cycleId,
-          clearCycleId: newTask.cycleId == null,
-          assignedUserId: newTask.assignedUserId,
-          clearAssignedUserId: newTask.assignedUserId == null,
-          labelIds: newTask.labelIds,
+        final inst = doc.data()!;
+        final rule = newTask.schedules
+            .where((s) => s.id == inst.ruleId)
+            .firstOrNull;
+        final updatedInst = _buildUpdatedPendingInstance(
+          inst: inst,
+          task: newTask,
+          rule: rule,
         );
 
         if (isFamilyChanged) {
@@ -1120,6 +1216,164 @@ class FirestoreTaskRepository implements TaskRepository {
       );
     }
     await _checkAndProcessMissedPolicies([newTask]);
+  }
+
+  bool _shouldPreservePendingInstanceOnScheduleEdit({
+    required TaskInstance inst,
+    required TaskSchedule newTask,
+    required TaskScheduleRule? oldRule,
+    required TaskScheduleRule newRule,
+    required Map<String, dynamic> changes,
+  }) {
+    if (newRule.schedulingPolicy is CompletionRelativePolicy) {
+      return true;
+    }
+    if (oldRule != null &&
+        oldRule.toJson().toString() == newRule.toJson().toString()) {
+      return true;
+    }
+    final isDateStillValid =
+        !inst.scheduledDate.isBefore(newRule.scheduledDate) &&
+        newRule.occursOn(inst.scheduledDate);
+    if (!isDateStillValid) {
+      return false;
+    }
+    if (oldRule != null && _onlyRuleTimingsChanged(oldRule, newRule)) {
+      return true;
+    }
+    if (newTask.isFamily && !changes.containsKey('isFamily')) {
+      return true;
+    }
+    final hasActiveWorkflowProgress =
+        inst.workflowPayload != null &&
+        inst.workflowPayload!.stage != WorkflowStage.selectMeal;
+    if (hasActiveWorkflowProgress || inst.completedByUserIds.isNotEmpty) {
+      return true;
+    }
+    return false;
+  }
+
+  bool _onlyRuleTimingsChanged(
+    TaskScheduleRule oldRule,
+    TaskScheduleRule newRule,
+  ) {
+    final oldJson = Map<String, dynamic>.from(oldRule.toJson())
+      ..remove('startRelativeTime')
+      ..remove('dueRelativeTime')
+      ..remove('notificationRelativeTimes');
+    final newJson = Map<String, dynamic>.from(newRule.toJson())
+      ..remove('startRelativeTime')
+      ..remove('dueRelativeTime')
+      ..remove('notificationRelativeTimes');
+    return oldJson.toString() == newJson.toString();
+  }
+
+  TaskInstance _buildUpdatedPendingInstance({
+    required TaskInstance inst,
+    required TaskSchedule task,
+    TaskScheduleRule? rule,
+    CivilDay? newScheduledDate,
+  }) {
+    final effectiveDate = newScheduledDate ?? inst.scheduledDate;
+    final hasStageSpecificText =
+        inst.workflowPayload != null &&
+        inst.workflowPayload!.stage != WorkflowStage.selectMeal;
+
+    var startRel = inst.startRelativeTime;
+    var dueRel = inst.dueRelativeTime;
+    var notifRel = inst.notificationRelativeTimes;
+
+    if (rule != null) {
+      if (rule.schedulingPolicy is CompletionRelativePolicy) {
+        final policy = rule.schedulingPolicy as CompletionRelativePolicy;
+        startRel = RelativeTime(
+          dayOffset: 0,
+          hour: policy.targetHour,
+          minute: policy.targetMinute,
+        );
+        dueRel = _shiftRelativeToStart(
+          rule.dueRelativeTime,
+          rule,
+          policy,
+          effectiveDate,
+        );
+        notifRel = rule.notificationRelativeTimes
+            .map((n) => _shiftRelativeToStart(n, rule, policy, effectiveDate))
+            .toList();
+      } else {
+        startRel = rule.startRelativeTime;
+        dueRel = rule.dueRelativeTime;
+        notifRel = rule.notificationRelativeTimes;
+      }
+    }
+
+    if (task.workflowType == 'mealWorkflow') {
+      final cfg = task.mealWorkflowConfig ?? const MealWorkflowConfig();
+      final stage = inst.workflowPayload?.stage ?? WorkflowStage.selectMeal;
+      switch (stage) {
+        case WorkflowStage.shoppingList:
+          startRel = cfg.shopTime;
+          dueRel = cfg.shopTime;
+          break;
+        case WorkflowStage.prepDinner:
+          startRel = cfg.prepTime;
+          dueRel = cfg.prepTime;
+          break;
+        case WorkflowStage.selectMeal:
+          startRel = cfg.selectTime;
+          dueRel = cfg.selectTime;
+          break;
+      }
+    }
+
+    return inst.copyWith(
+      title: hasStageSpecificText ? inst.title : task.title,
+      description: hasStageSpecificText ? inst.description : task.description,
+      scheduledDate: effectiveDate,
+      startRelativeTime: startRel,
+      dueRelativeTime: dueRel,
+      notificationRelativeTimes: notifRel,
+      priority: task.priority,
+      isFamily: task.isFamily,
+      familyCompletionMode: task.familyCompletionMode,
+      labelIds: task.labelIds,
+      cycleId: task.cycleId,
+      clearCycleId: task.cycleId == null,
+      assignedUserId: task.assignedUserId,
+      clearAssignedUserId: task.assignedUserId == null,
+      updatedAt: DateTime.now().toUtc(),
+    );
+  }
+
+  RelativeTime _shiftRelativeToStart(
+    RelativeTime targetRel,
+    TaskScheduleRule rule,
+    CompletionRelativePolicy policy,
+    CivilDay newScheduledDate,
+  ) {
+    final originalStartRef = rule.startRelativeTime.referenceTo(
+      rule.scheduledDate,
+    );
+    final originalTargetRef = targetRel.referenceTo(rule.scheduledDate);
+    final duration = originalTargetRef.difference(originalStartRef);
+
+    final newStartRef = DateTime(
+      newScheduledDate.year,
+      newScheduledDate.month,
+      newScheduledDate.day,
+      policy.targetHour,
+      policy.targetMinute,
+    );
+    final newTargetRef = newStartRef.add(duration);
+    final targetDay = CivilDay.fromDateTime(newTargetRef);
+    return RelativeTime(
+      dayOffset: targetDay
+          .toDateTime()
+          .difference(newScheduledDate.toDateTime())
+          .inDays,
+      hour: newTargetRef.hour,
+      minute: newTargetRef.minute,
+    );
   }
 
   @override
