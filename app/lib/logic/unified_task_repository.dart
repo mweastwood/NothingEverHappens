@@ -156,13 +156,14 @@ class UnifiedTaskRepository implements TaskRepository {
     );
     await _localDataSource.saveTask(t);
     await _localDataSource.markDirty(t.id);
+    await notificationService?.scheduleNotifications(t);
     logger?.info(
       'task',
       'Task created: ${t.id}',
       data: {'taskId': t.id, 'title': t.title},
     );
-    _syncService.sync();
     await triggerMissedPolicyProcessing(evaluateFamilyTasks: t.isFamily);
+    _syncService.sync();
   }
 
   @override
@@ -194,11 +195,12 @@ class UnifiedTaskRepository implements TaskRepository {
         .getInstances()
         .where((i) => i.scheduleId == t.id)
         .toList();
-    final instances = allTaskInstances
-        .where((i) => i.status == TaskStatus.pending)
-        .toList();
+    final instances =
+        allTaskInstances.where((i) => i.status == TaskStatus.pending).toList()
+          ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
     if (schedulesChanged) {
+      final preservedCompletionRelativeRules = <String>{};
       for (final inst in instances) {
         final newRule = t.schedules
             .where((s) => s.id == inst.ruleId)
@@ -207,7 +209,13 @@ class UnifiedTaskRepository implements TaskRepository {
             .where((s) => s.id == inst.ruleId)
             .firstOrNull;
 
+        final alreadyPreservedCompletionRelative =
+            newRule != null &&
+            newRule.schedulingPolicy is CompletionRelativePolicy &&
+            !preservedCompletionRelativeRules.add(newRule.id);
+
         if (newRule != null &&
+            !alreadyPreservedCompletionRelative &&
             _shouldPreservePendingInstanceOnScheduleEdit(
               inst: inst,
               newTask: t,
@@ -267,10 +275,11 @@ class UnifiedTaskRepository implements TaskRepository {
       }
     }
 
-    _syncService.sync();
+    await notificationService?.scheduleNotifications(t);
     await triggerMissedPolicyProcessing(
       evaluateFamilyTasks: t.isFamily || changes.containsKey('isFamily'),
     );
+    _syncService.sync();
   }
 
   bool _shouldPreservePendingInstanceOnScheduleEdit({
@@ -458,8 +467,9 @@ class UnifiedTaskRepository implements TaskRepository {
       }
     }
 
-    _syncService.sync();
+    await notificationService?.cancelNotifications(id);
     await triggerMissedPolicyProcessing(evaluateFamilyTasks: task.isFamily);
+    _syncService.sync();
     return (task: task, pendingInstances: pendingInstances);
   }
 
@@ -468,7 +478,8 @@ class UnifiedTaskRepository implements TaskRepository {
     TaskSchedule task,
     List<TaskInstance> pendingInstances,
   ) async {
-    await _localDataSource.saveTask(task.copyWith(hasPendingWrites: true));
+    final t = task.copyWith(hasPendingWrites: true);
+    await _localDataSource.saveTask(t);
     await _localDataSource.markDirty(task.id);
     for (final inst in pendingInstances) {
       await _localDataSource.saveInstance(
@@ -476,13 +487,14 @@ class UnifiedTaskRepository implements TaskRepository {
       );
       await _localDataSource.markDirty(inst.id);
     }
+    await notificationService?.scheduleNotifications(t);
     logger?.info(
       'task',
       'Task restored: ${task.id}',
       data: {'taskId': task.id, 'title': task.title},
     );
-    _syncService.sync();
     await triggerMissedPolicyProcessing(evaluateFamilyTasks: task.isFamily);
+    _syncService.sync();
   }
 
   @override

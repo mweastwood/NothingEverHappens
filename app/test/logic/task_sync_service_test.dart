@@ -3251,6 +3251,229 @@ void main() {
           expect(saved.statusReason, equals('user_modified'));
         },
       );
+
+      test(
+        'slot duplicate resolution: user_completed instance wins over newer unacted-upon pending duplicate on different UUID',
+        () async {
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          final olderCompletedTime = DateTime.utc(2026, 9, 16, 10, 0);
+          final newerSpawnedTime = DateTime.utc(2026, 9, 16, 12, 0);
+
+          final localCompleted = TaskInstance(
+            id: 'I-slot-completed',
+            scheduleId: 'S-slot-dup',
+            ruleId: 'R-slot-1',
+            title: 'Slot Task',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.completed,
+            statusReason: 'user_completed',
+            completedAt: olderCompletedTime,
+            completedByUserId: 'user1',
+            updatedAt: olderCompletedTime,
+          );
+          await localDataSource.saveInstance(localCompleted);
+
+          // Another device spawns a fresh unacted-upon pending instance (statusReason: null) for the same slot with a newer updatedAt
+          final remoteDuplicate = TaskInstance(
+            id: 'I-slot-spawned-dup',
+            scheduleId: 'S-slot-dup',
+            ruleId: 'R-slot-1',
+            title: 'Slot Task',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            statusReason: null,
+            updatedAt: newerSpawnedTime,
+          );
+
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-slot-spawned-dup')
+              .set(remoteDuplicate.toFirestore());
+          await pumpEventQueue();
+
+          final instances = localDataSource
+              .getInstances()
+              .where((i) => i.scheduleId == 'S-slot-dup')
+              .toList();
+          expect(instances, hasLength(1));
+          expect(instances.first.id, equals('I-slot-completed'));
+          expect(instances.first.status, equals(TaskStatus.completed));
+
+          final dupDoc = await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-slot-spawned-dup')
+              .get();
+          expect(dupDoc.exists, isFalse);
+        },
+      );
+
+      test(
+        'clearing notificationRelativeTimes on pending instance writes empty list to Firestore under merge: true',
+        () async {
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          final t1 = DateTime.utc(2026, 9, 16, 10, 0);
+          final t2 = DateTime.utc(2026, 9, 16, 11, 0);
+
+          final instWithNotif = TaskInstance(
+            id: 'I-clear-notif',
+            scheduleId: 'S-clear-notif',
+            ruleId: 'R-1',
+            title: 'Notif Instance',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            notificationRelativeTimes: const [
+              RelativeTime(dayOffset: 0, hour: 8, minute: 30),
+            ],
+            updatedAt: t1,
+          );
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-clear-notif')
+              .set(instWithNotif.toFirestore());
+          await pumpEventQueue();
+
+          final instWithoutNotif = instWithNotif.copyWith(
+            clearNotificationRelativeTimes: true,
+            updatedAt: t2,
+            hasPendingWrites: true,
+          );
+          await localDataSource.saveInstance(instWithoutNotif);
+          await localDataSource.markDirty('I-clear-notif');
+
+          await service.sync();
+          await pumpEventQueue();
+
+          final doc = await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-clear-notif')
+              .get();
+          expect(doc.data()?['notificationRelativeTimes'], isEmpty);
+        },
+      );
+
+      test(
+        'concurrent sync() call while sync is in-flight queues follow-up pass and preserves dirty state if local item modified during push',
+        () async {
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          final t1 = DateTime.utc(2026, 9, 16, 10, 0);
+          final t2 = DateTime.utc(2026, 9, 16, 11, 0);
+
+          final task1 = TaskSchedule(
+            id: 'S-concurrent-1',
+            title: 'Task 1 Initial',
+            description: '',
+            updatedAt: t1,
+            hasPendingWrites: true,
+          );
+          await localDataSource.saveTask(task1);
+          await localDataSource.markDirty(task1.id);
+
+          // Start first sync without awaiting immediately
+          final syncFuture1 = service.sync();
+
+          // While syncFuture1 is in-flight, modify task1 and add task2, then call sync()
+          final task1Updated = task1.copyWith(
+            title: 'Task 1 Updated During Sync',
+            updatedAt: t2,
+            hasPendingWrites: true,
+          );
+          final task2 = TaskSchedule(
+            id: 'S-concurrent-2',
+            title: 'Task 2 Added During Sync',
+            description: '',
+            updatedAt: t2,
+            hasPendingWrites: true,
+          );
+          await localDataSource.saveTask(task1Updated);
+          await localDataSource.markDirty(task1Updated.id);
+          await localDataSource.saveTask(task2);
+          await localDataSource.markDirty(task2.id);
+          // Concurrent sync() call while _isSyncing is true queues another pass
+          unawaited(service.sync());
+
+          await syncFuture1;
+          await pumpEventQueue();
+
+          final doc1 = await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('tasks')
+              .doc('S-concurrent-1')
+              .get();
+          final doc2 = await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('tasks')
+              .doc('S-concurrent-2')
+              .get();
+
+          expect(doc1.data()?['title'], equals('Task 1 Updated During Sync'));
+          expect(doc2.exists, isTrue);
+          expect(doc2.data()?['title'], equals('Task 2 Added During Sync'));
+          expect(localDataSource.getDirtyTaskIds(), isEmpty);
+        },
+      );
     });
   });
 }

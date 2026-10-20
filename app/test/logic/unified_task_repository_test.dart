@@ -14,6 +14,7 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/user_settings.dart';
 import 'package:nothing_ever_happens/logic/telemetry_service.dart';
+import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -2558,6 +2559,128 @@ void main() {
           instB.statusReason,
           equals(InstanceStatusReason.schedulerCapacityLimit.value),
         );
+      },
+    );
+
+    test(
+      'updateTaskSchedule switching rule from FixedCalendarPolicy to CompletionRelativePolicy preserves only 1 pending instance per rule',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 8, 0));
+        addTearDown(AppClock.reset);
+
+        final fixedRule = DailySchedule(
+          id: 'R-switch-cr',
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 1,
+          schedulingPolicy: const FixedCalendarPolicy(),
+        );
+        final task = TaskSchedule(
+          id: 'S-switch-cr',
+          title: 'Switch Fixed to CR',
+          description: '',
+          schedules: [fixedRule],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+        await repository.addTaskSchedule(task);
+
+        final initialPending =
+            localDataSource
+                .getInstances()
+                .where(
+                  (i) =>
+                      i.scheduleId == task.id && i.status == TaskStatus.pending,
+                )
+                .toList()
+              ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+        expect(initialPending.length, greaterThan(1));
+        final firstId = initialPending.first.id;
+
+        final crRule = DailySchedule(
+          id: 'R-switch-cr',
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 2,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 2),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+        final mod = task.edit(
+          newTitle: task.title,
+          newDescription: task.description,
+          newSchedules: [crRule],
+          newEstimatedDuration: task.estimatedDuration,
+          newMissedPolicy: task.missedPolicy,
+          newIsMaster: task.isMaster,
+          newLastSpawnedDate: task.lastSpawnedDate,
+          newIsFamily: task.isFamily,
+          newPriority: task.priority,
+        );
+        await repository.updateTaskSchedule(mod);
+
+        final pendingAfter = localDataSource
+            .getInstances()
+            .where(
+              (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+            )
+            .toList();
+        expect(pendingAfter, hasLength(1));
+        expect(pendingAfter.first.id, equals(firstId));
+        expect(
+          pendingAfter.first.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 8, day: 10)),
+        );
+      },
+    );
+
+    test(
+      'UnifiedTaskRepository schedules and cancels notifications on add, update, delete, and restore',
+      () async {
+        final notifService = LoggingNotificationService();
+        final repoWithNotif = UnifiedTaskRepository(
+          localDataSource: localDataSource,
+          syncService: syncService,
+          firestore: firestore,
+          userId: 'user1',
+          notificationService: notifService,
+        );
+
+        final task = TaskSchedule(
+          id: 'S-notif-test',
+          title: 'Notification Task',
+          description: '',
+          schedules: [
+            DailySchedule(
+              id: 'R-notif-1',
+              startDate: const CivilDay(year: 2026, month: 8, day: 10),
+              interval: 1,
+              notificationRelativeTimes: const [
+                RelativeTime(dayOffset: 0, hour: 8, minute: 30),
+              ],
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+
+        await repoWithNotif.addTaskSchedule(task);
+        expect(notifService.scheduledTasks.containsKey(task.id), isTrue);
+
+        final mod = task.updateTitle('Updated Notification Task');
+        await repoWithNotif.updateTaskSchedule(mod);
+        expect(
+          notifService.scheduledTasks[task.id]?.title,
+          equals('Updated Notification Task'),
+        );
+
+        final deleted = await repoWithNotif.deleteTaskSchedule(task.id);
+        expect(deleted, isNotNull);
+        expect(notifService.scheduledTasks.containsKey(task.id), isFalse);
+
+        await repoWithNotif.restoreTaskSchedule(
+          deleted!.task,
+          deleted.pendingInstances,
+        );
+        expect(notifService.scheduledTasks.containsKey(task.id), isTrue);
       },
     );
   });
