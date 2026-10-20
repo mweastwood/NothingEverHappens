@@ -804,5 +804,90 @@ void main() {
         expect(scheduledDate.minute, 0);
       },
     );
+
+    test(
+      'past OneOffSchedule does NOT schedule a spurious +24h fallback notification',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 12, 0));
+        final pastOneOff = OneOffSchedule(
+          id: 'R-past-oneoff',
+          date: const CivilDay(year: 2026, month: 8, day: 10),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+          ],
+        );
+        final task = TaskSchedule(
+          id: 'S-past-oneoff',
+          title: 'Past One-Off Task',
+          description: '',
+          schedules: [pastOneOff],
+        );
+
+        final service = PlatformNotificationService(plugin: mockPlugin);
+        addTearDown(service.dispose);
+
+        await service.scheduleNotifications(task);
+
+        expect(mockPlugin.scheduled, isEmpty);
+      },
+    );
+
+    test(
+      'CompletionRelativePolicy with pending instance whose notification time is in the past does NOT schedule future hypothetical occurrence',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 12, 0));
+        final crRule = DailySchedule(
+          id: 'R-cr-past-notif',
+          startDate: const CivilDay(year: 2026, month: 8, day: 1),
+          interval: 3,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 3),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+          ],
+        );
+        final task = TaskSchedule(
+          id: 'S-cr-past-notif',
+          title: 'Overdue CR Task',
+          description: '',
+          schedules: [crRule],
+        );
+
+        final instances = <TaskInstance>[
+          TaskInstance(
+            id: 'I-cr-pending-today',
+            scheduleId: task.id,
+            ruleId: crRule.id,
+            title: task.title,
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 8, day: 10),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+          ),
+        ];
+
+        final service = PlatformNotificationService(
+          plugin: mockPlugin,
+          instancesLookup: (_) => instances,
+        );
+        addTearDown(service.dispose);
+
+        await service.scheduleNotifications(task);
+
+        expect(mockPlugin.scheduled, isEmpty);
+      },
+    );
   });
 }

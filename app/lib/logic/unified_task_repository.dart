@@ -42,6 +42,7 @@ class UnifiedTaskRepository implements TaskRepository {
   Future<void>? _initializationFuture;
   Timer? _triggerTimer;
   DateTime? _scheduledTriggerTime;
+  bool _isDisposed = false;
 
   @visibleForTesting
   DateTime? get scheduledTriggerTime => _scheduledTriggerTime;
@@ -77,6 +78,7 @@ class UnifiedTaskRepository implements TaskRepository {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _triggerTimer?.cancel();
     _triggerTimer = null;
     _scheduledTriggerTime = null;
@@ -166,13 +168,13 @@ class UnifiedTaskRepository implements TaskRepository {
     );
     await _localDataSource.saveTask(t);
     await _localDataSource.markDirty(t.id);
-    await notificationService?.scheduleNotifications(t);
     logger?.info(
       'task',
       'Task created: ${t.id}',
       data: {'taskId': t.id, 'title': t.title},
     );
     await triggerMissedPolicyProcessing(evaluateFamilyTasks: t.isFamily);
+    await _rescheduleOrCancelNotificationsForTask(t);
     _syncService.sync();
   }
 
@@ -285,10 +287,10 @@ class UnifiedTaskRepository implements TaskRepository {
       }
     }
 
-    await notificationService?.scheduleNotifications(t);
     await triggerMissedPolicyProcessing(
       evaluateFamilyTasks: t.isFamily || changes.containsKey('isFamily'),
     );
+    await _rescheduleOrCancelNotificationsForTask(t);
     _syncService.sync();
   }
 
@@ -497,13 +499,13 @@ class UnifiedTaskRepository implements TaskRepository {
       );
       await _localDataSource.markDirty(inst.id);
     }
-    await notificationService?.scheduleNotifications(t);
     logger?.info(
       'task',
       'Task restored: ${task.id}',
       data: {'taskId': task.id, 'title': task.title},
     );
     await triggerMissedPolicyProcessing(evaluateFamilyTasks: task.isFamily);
+    await _rescheduleOrCancelNotificationsForTask(t);
     _syncService.sync();
   }
 
@@ -654,19 +656,7 @@ class UnifiedTaskRepository implements TaskRepository {
         completedInstance.completedAt?.toLocal() ?? AppClock.now,
       );
       await _reEvaluateCapacityIfNeeded(task);
-      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-      if (isRecurring) {
-        await notificationService?.scheduleNotifications(task);
-      } else {
-        final hasRemainingPending = _localDataSource.getInstances().any(
-          (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
-        );
-        if (!hasRemainingPending) {
-          await notificationService?.cancelNotifications(task.id);
-        } else {
-          await notificationService?.scheduleNotifications(task);
-        }
-      }
+      await _rescheduleOrCancelNotificationsForTask(task);
     }
     _syncService.sync();
     return completedInstance;
@@ -743,22 +733,29 @@ class UnifiedTaskRepository implements TaskRepository {
         dismissedInstance.completedAt?.toLocal() ?? AppClock.now,
       );
       await _reEvaluateCapacityIfNeeded(task);
-      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
-      if (isRecurring) {
-        await notificationService?.scheduleNotifications(task);
-      } else {
-        final hasRemainingPending = _localDataSource.getInstances().any(
-          (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
-        );
-        if (!hasRemainingPending) {
-          await notificationService?.cancelNotifications(task.id);
-        } else {
-          await notificationService?.scheduleNotifications(task);
-        }
-      }
+      await _rescheduleOrCancelNotificationsForTask(task);
     }
     _syncService.sync();
     return dismissedInstance;
+  }
+
+  Future<void> _rescheduleOrCancelNotificationsForTask(
+    TaskSchedule task,
+  ) async {
+    if (notificationService == null) return;
+    final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+    if (isRecurring) {
+      await notificationService?.scheduleNotifications(task);
+    } else {
+      final hasRemainingPending = _localDataSource.getInstances().any(
+        (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+      );
+      if (hasRemainingPending || task.isFamily) {
+        await notificationService?.scheduleNotifications(task);
+      } else {
+        await notificationService?.cancelNotifications(task.id);
+      }
+    }
   }
 
   Future<void> _reEvaluateCapacityIfNeeded(TaskSchedule? task) async {
@@ -916,6 +913,7 @@ class UnifiedTaskRepository implements TaskRepository {
     bool evaluateFamilyTasks = true,
     Future<void> Function()? postProcess,
   }) async {
+    if (_isDisposed) return;
     if (!_localDataSource.isMigrationCompleted()) {
       if (postProcess != null) {
         await postProcess();
@@ -929,11 +927,13 @@ class UnifiedTaskRepository implements TaskRepository {
       _queuedEvaluateFamilyTasks = true;
     }
     while (true) {
+      if (_isDisposed) return;
       final active = _activeProcessingFuture;
       if (active != null) {
         _hasQueuedProcessing = true;
         await active;
-        if (!_hasQueuedProcessing && _queuedPostProcessCallbacks.isEmpty) {
+        if (_isDisposed ||
+            (!_hasQueuedProcessing && _queuedPostProcessCallbacks.isEmpty)) {
           return;
         }
         continue;
@@ -941,7 +941,8 @@ class UnifiedTaskRepository implements TaskRepository {
 
       _activeProcessingFuture = _processQueue();
       await _activeProcessingFuture;
-      if (!_hasQueuedProcessing && _queuedPostProcessCallbacks.isEmpty) {
+      if (_isDisposed ||
+          (!_hasQueuedProcessing && _queuedPostProcessCallbacks.isEmpty)) {
         return;
       }
     }
@@ -950,6 +951,7 @@ class UnifiedTaskRepository implements TaskRepository {
   Future<void> _processQueue() async {
     try {
       do {
+        if (_isDisposed) return;
         _hasQueuedProcessing = false;
         final shouldEvaluateFamily = _queuedEvaluateFamilyTasks;
         _queuedEvaluateFamilyTasks = false;
@@ -962,7 +964,9 @@ class UnifiedTaskRepository implements TaskRepository {
         try {
           if (shouldEvaluateFamily) {
             await _syncService.waitForInitialSync;
+            if (_isDisposed) return;
             final familyId = await getFamilyId();
+            if (_isDisposed) return;
             if (familyId != null && familyId.isNotEmpty) {
               unawaited(
                 cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
@@ -985,6 +989,7 @@ class UnifiedTaskRepository implements TaskRepository {
         }
 
         for (final cb in callbacksToRun) {
+          if (_isDisposed) return;
           try {
             await cb();
           } catch (e, st) {
@@ -997,7 +1002,8 @@ class UnifiedTaskRepository implements TaskRepository {
             );
           }
         }
-      } while (_hasQueuedProcessing || _queuedPostProcessCallbacks.isNotEmpty);
+      } while (!_isDisposed &&
+          (_hasQueuedProcessing || _queuedPostProcessCallbacks.isNotEmpty));
     } finally {
       _activeProcessingFuture = null;
     }
@@ -1082,6 +1088,7 @@ class UnifiedTaskRepository implements TaskRepository {
     final tasksToSave = <TaskSchedule>[];
     final dirtyIds = <String>[];
     final allTriggerTimes = <DateTime>[];
+    final tasksNeedingNotificationUpdate = <TaskSchedule>[];
 
     for (final task in tasksToEvaluate) {
       if (task.isFamily) {
@@ -1146,6 +1153,7 @@ class UnifiedTaskRepository implements TaskRepository {
         }
       }
 
+      TaskSchedule effectiveTask = task;
       if (action.updatedSchedule != null) {
         final updatedTask = action.updatedSchedule!.copyWith(
           updatedAt: DateTime.now().toUtc(),
@@ -1153,6 +1161,13 @@ class UnifiedTaskRepository implements TaskRepository {
         );
         tasksToSave.add(updatedTask);
         dirtyIds.add(updatedTask.id);
+        effectiveTask = updatedTask;
+      }
+
+      if (action.instancesToUpdate.isNotEmpty ||
+          action.instancesToSpawn.isNotEmpty ||
+          action.instancesToDelete.isNotEmpty) {
+        tasksNeedingNotificationUpdate.add(effectiveTask);
       }
     }
 
@@ -1190,6 +1205,11 @@ class UnifiedTaskRepository implements TaskRepository {
       await _localDataSource.markDirtyBatch(dirtyIds);
     }
 
+    for (final affectedTask in tasksNeedingNotificationUpdate) {
+      if (_isDisposed) return;
+      await _rescheduleOrCancelNotificationsForTask(affectedTask);
+    }
+
     logger?.debug(
       'scheduler',
       'Scheduler cycle evaluated ${tasksToEvaluate.length} tasks',
@@ -1200,10 +1220,13 @@ class UnifiedTaskRepository implements TaskRepository {
       _syncService.sync();
     }
 
+    if (_isDisposed) return;
     _scheduleNextDynamicTrigger(allTriggerTimes, now);
   }
 
   void _scheduleNextDynamicTrigger(List<DateTime> triggerTimes, DateTime now) {
+    if (_isDisposed) return;
+
     DateTime? earliest;
     for (final t in triggerTimes) {
       if (t.isAfter(now)) {
@@ -1220,16 +1243,11 @@ class UnifiedTaskRepository implements TaskRepository {
       return;
     }
 
-    if (_scheduledTriggerTime == earliest &&
-        _triggerTimer != null &&
-        _triggerTimer!.isActive) {
-      return;
-    }
-
     _triggerTimer?.cancel();
     _scheduledTriggerTime = earliest;
     final delay = earliest.difference(now);
     _triggerTimer = Timer(delay, () {
+      if (_isDisposed) return;
       _scheduledTriggerTime = null;
       triggerMissedPolicyProcessing(evaluateFamilyTasks: false);
     });

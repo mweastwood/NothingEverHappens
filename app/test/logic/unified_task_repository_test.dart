@@ -2843,6 +2843,124 @@ void main() {
         expect(repository.scheduledTriggerTime, isNull);
       },
     );
+
+    test(
+      'dispose prevents in-flight triggerMissedPolicyProcessing from arming _triggerTimer',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 8, 0));
+        addTearDown(AppClock.reset);
+
+        final task = TaskSchedule(
+          id: 'S-dispose-race',
+          title: 'Dispose Race Task',
+          description: '',
+          schedules: [
+            DailySchedule(
+              id: 'R-disp-1',
+              startDate: const CivilDay(year: 2026, month: 8, day: 10),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 9,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 10,
+                minute: 0,
+              ),
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+        await localDataSource.saveTask(task);
+
+        final future = repository.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: true,
+        );
+        repository.dispose();
+        await future;
+
+        expect(repository.scheduledTriggerTime, isNull);
+      },
+    );
+
+    test(
+      '_doProcessMissedPolicies reschedules notifications when an instance is auto-dismissed',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 8, 0));
+        addTearDown(AppClock.reset);
+
+        final notifService = LoggingNotificationService();
+        final repoWithNotif = UnifiedTaskRepository(
+          localDataSource: localDataSource,
+          syncService: syncService,
+          firestore: firestore,
+          userId: 'user1',
+          notificationService: notifService,
+        );
+        addTearDown(repoWithNotif.dispose);
+
+        final autoDismissTask = TaskSchedule(
+          id: 'S-autodismiss-daily',
+          title: 'Auto-dismiss Daily',
+          description: '',
+          schedules: [
+            DailySchedule(
+              id: 'R-autodismiss-daily',
+              startDate: const CivilDay(year: 2026, month: 8, day: 10),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 9,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 10,
+                minute: 0,
+              ),
+              notificationRelativeTimes: const [
+                RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+              ],
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration(hours: 1),
+              ),
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+
+        await repoWithNotif.addTaskSchedule(autoDismissTask);
+        expect(
+          notifService.scheduledTasks.containsKey(autoDismissTask.id),
+          isTrue,
+        );
+
+        notifService.clear();
+        expect(
+          notifService.scheduledTasks.containsKey(autoDismissTask.id),
+          isFalse,
+        );
+
+        // Advance past due + grace period (11:30) and evaluate missed policies
+        AppClock.setMockTime(DateTime(2026, 8, 10, 11, 30));
+        await repoWithNotif.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: false,
+        );
+
+        final inst = localDataSource.getInstances().firstWhere(
+          (i) =>
+              i.scheduleId == autoDismissTask.id &&
+              i.scheduledDate == const CivilDay(year: 2026, month: 8, day: 10),
+        );
+        expect(inst.status, equals(TaskStatus.skipped));
+        expect(
+          notifService.scheduledTasks.containsKey(autoDismissTask.id),
+          isTrue,
+        );
+      },
+    );
   });
 
   test('AppClock mock time is inactive and reset following test execution', () {

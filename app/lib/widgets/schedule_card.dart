@@ -345,9 +345,10 @@ class ScheduleCard extends ConsumerWidget {
                 ),
               ],
             ),
-            if (schedule is WeeklySchedule ||
-                schedule is MonthlySchedule ||
-                schedule is YearlySchedule) ...[
+            if (daysStr.isNotEmpty &&
+                (schedule is WeeklySchedule ||
+                    schedule is MonthlySchedule ||
+                    schedule is YearlySchedule)) ...[
               const SizedBox(height: 4),
               Row(
                 children: [

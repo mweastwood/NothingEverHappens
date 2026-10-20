@@ -151,6 +151,58 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
         const [(column: 'title', ascending: true)];
   }
 
+  CivilDay? _getNextOccurrenceDayForRule(
+    TaskSchedule task,
+    TaskScheduleRule s,
+    CivilDay day,
+    List<TaskInstance> taskInstances,
+  ) {
+    final ruleInstances = taskInstances
+        .where(
+          (i) =>
+              i.ruleId == s.id ||
+              (i.ruleId.isEmpty && task.schedules.indexOf(s) == 0),
+        )
+        .toList();
+
+    final pending =
+        ruleInstances
+            .where(
+              (i) =>
+                  i.status == TaskStatus.pending &&
+                  (!i.scheduledDate.isBefore(day) ||
+                      s.schedulingPolicy is CompletionRelativePolicy),
+            )
+            .toList()
+          ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+    if (pending.isNotEmpty) {
+      final d = pending.first.scheduledDate;
+      return d.isBefore(day) ? day : d;
+    }
+
+    final resolvedDays = ruleInstances
+        .where(
+          (i) =>
+              i.status != TaskStatus.pending && !i.scheduledDate.isBefore(day),
+        )
+        .map((i) => i.scheduledDate)
+        .toSet();
+
+    final projected = const SchedulerEngine().projectUpcomingOccurrences(
+      task,
+      s,
+      day,
+      existingInstances: taskInstances,
+      count: resolvedDays.length + 1,
+    );
+    for (final d in projected) {
+      if (!resolvedDays.contains(d)) {
+        return d;
+      }
+    }
+    return null;
+  }
+
   DateTime? _getNextStartTime(
     TaskSchedule task, [
     CivilDay? today,
@@ -163,15 +215,9 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     DateTime? earliest;
 
     for (final s in task.schedules) {
-      final projected = const SchedulerEngine().projectUpcomingOccurrences(
-        task,
-        s,
-        day,
-        existingInstances: taskInstances,
-        count: 1,
-      );
-      if (projected.isNotEmpty) {
-        final dt = s.startRelativeTime.referenceTo(projected.first);
+      final nextDay = _getNextOccurrenceDayForRule(task, s, day, taskInstances);
+      if (nextDay != null) {
+        final dt = s.startRelativeTime.referenceTo(nextDay);
         if (earliest == null || dt.isBefore(earliest)) {
           earliest = dt;
         }
@@ -192,15 +238,9 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     DateTime? earliest;
 
     for (final s in task.schedules) {
-      final projected = const SchedulerEngine().projectUpcomingOccurrences(
-        task,
-        s,
-        day,
-        existingInstances: taskInstances,
-        count: 1,
-      );
-      if (projected.isNotEmpty) {
-        final dt = s.dueRelativeTime.referenceTo(projected.first);
+      final nextDay = _getNextOccurrenceDayForRule(task, s, day, taskInstances);
+      if (nextDay != null) {
+        final dt = s.dueRelativeTime.referenceTo(nextDay);
         if (earliest == null || dt.isBefore(earliest)) {
           earliest = dt;
         }
@@ -217,17 +257,22 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     Map<String, DateTime?>? nextStartMap,
     Map<String, DateTime?>? nextDueMap,
   }) {
+    final fallbackInstances = _cachedAllInstances ?? const [];
     if (column == 'next_start') {
       final aStart = nextStartMap != null
           ? nextStartMap[a.id]
-          : _getNextStartTime(a);
+          : _getNextStartTime(a, null, fallbackInstances);
       final bStart = nextStartMap != null
           ? nextStartMap[b.id]
-          : _getNextStartTime(b);
+          : _getNextStartTime(b, null, fallbackInstances);
       return compareDateTimes(aStart, bStart, ascending);
     } else if (column == 'next_due') {
-      final aDue = nextDueMap != null ? nextDueMap[a.id] : _getNextDueTime(a);
-      final bDue = nextDueMap != null ? nextDueMap[b.id] : _getNextDueTime(b);
+      final aDue = nextDueMap != null
+          ? nextDueMap[a.id]
+          : _getNextDueTime(a, null, fallbackInstances);
+      final bDue = nextDueMap != null
+          ? nextDueMap[b.id]
+          : _getNextDueTime(b, null, fallbackInstances);
       return compareDateTimes(aDue, bDue, ascending);
     }
 

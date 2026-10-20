@@ -205,6 +205,7 @@ class PlatformNotificationService implements NotificationService {
             s,
             notifRel,
           );
+          if (scheduledDate == null) continue;
           final delay = scheduledDate.difference(AppClock.now);
           if (delay.isNegative) continue;
 
@@ -238,6 +239,7 @@ class PlatformNotificationService implements NotificationService {
             s,
             notifRel,
           );
+          if (scheduledDate == null) continue;
           final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
           final notifId = (task.id.hashCode + i * 100 + j) & 0x7FFFFFFF;
           notifIds.add(notifId);
@@ -403,7 +405,7 @@ class PlatformNotificationService implements NotificationService {
     }
   }
 
-  DateTime _calculateNextNotificationDateTimeForNotif(
+  DateTime? _calculateNextNotificationDateTimeForNotif(
     TaskSchedule task,
     TaskScheduleRule s,
     RelativeTime notifRel,
@@ -415,7 +417,7 @@ class PlatformNotificationService implements NotificationService {
         .where(
           (i) =>
               i.ruleId == s.id ||
-              (i.ruleId.isEmpty && task.schedules.length == 1),
+              (i.ruleId.isEmpty && task.schedules.indexOf(s) == 0),
         )
         .toList();
 
@@ -439,11 +441,16 @@ class PlatformNotificationService implements NotificationService {
           return occurrenceDateTime;
         }
       }
+      if (s.schedulingPolicy is CompletionRelativePolicy) {
+        return null;
+      }
     }
 
-    final fromDate = notifRel.dayOffset > 0
-        ? today.addDays(-notifRel.dayOffset)
-        : today;
+    final fromDate =
+        (s.schedulingPolicy is CompletionRelativePolicy ||
+            notifRel.dayOffset <= 0)
+        ? today
+        : today.addDays(-notifRel.dayOffset);
     final upcomingDays = const SchedulerEngine().projectUpcomingOccurrences(
       task,
       s,
@@ -460,7 +467,7 @@ class PlatformNotificationService implements NotificationService {
       }
     }
 
-    return now.add(const Duration(days: 1));
+    return null;
   }
 
   @override
