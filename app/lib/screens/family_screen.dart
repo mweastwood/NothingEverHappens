@@ -437,18 +437,16 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
                 ),
               );
             }
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: invites.length,
-              itemBuilder: (context, index) {
-                final invite = invites[index];
-                return FamilyInviteCard(
-                  invite: invite,
-                  onAccept: () => _handleInvite(repository, invite, true),
-                  onDecline: () => _handleInvite(repository, invite, false),
-                );
-              },
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final invite in invites)
+                  FamilyInviteCard(
+                    invite: invite,
+                    onAccept: () => _handleInvite(repository, invite, true),
+                    onDecline: () => _handleInvite(repository, invite, false),
+                  ),
+              ],
             );
           },
         ),
@@ -645,17 +643,15 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
             ),
           );
         }
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: invites.length,
-          itemBuilder: (context, index) {
-            final invite = invites[index];
-            return FamilyOutstandingInviteTile(
-              invite: invite,
-              onRevoke: () => _revokeInvite(repository, invite),
-            );
-          },
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final invite in invites)
+              FamilyOutstandingInviteTile(
+                invite: invite,
+                onRevoke: () => _revokeInvite(repository, invite),
+              ),
+          ],
         );
       },
     );
@@ -676,18 +672,16 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: invites.length,
-          itemBuilder: (context, index) {
-            final invite = invites[index];
-            return FamilyInviteCard(
-              invite: invite,
-              onAccept: () => _handleInvite(repository, invite, true),
-              onDecline: () => _handleInvite(repository, invite, false),
-            );
-          },
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final invite in invites)
+              FamilyInviteCard(
+                invite: invite,
+                onAccept: () => _handleInvite(repository, invite, true),
+                onDecline: () => _handleInvite(repository, invite, false),
+              ),
+          ],
         ),
         if (isFamilyPlan) ...[
           const SizedBox(height: 24),

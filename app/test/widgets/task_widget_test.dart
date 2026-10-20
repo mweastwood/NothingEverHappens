@@ -2497,5 +2497,53 @@ void main() {
         await nameStreamController.close();
       },
     );
+
+    testWidgets(
+      'TaskBadge and TaskWidget do not overflow when constrained to ultra-narrow width',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      const SizedBox(
+                        width: 20,
+                        child: TaskBadge(
+                          icon: Icons.priority_high,
+                          label: 'High Priority',
+                          color: Colors.red,
+                        ),
+                      ),
+                      const SizedBox(
+                        width: 10,
+                        child: TaskBadge(
+                          icon: Icons.priority_high,
+                          label: 'High Priority',
+                          color: Colors.red,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 133,
+                        child: TaskWidget(
+                          instance: createInstanceFor(testTask),
+                          schedule: testTask,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }

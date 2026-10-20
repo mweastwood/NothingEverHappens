@@ -978,5 +978,50 @@ void main() {
         expect(scrollController.offset, equals(700));
       },
     );
+
+    testWidgets(
+      'TaskScheduleCard does not overflow when constrained to narrow width with badges',
+      (tester) async {
+        final narrowLabel = TaskLabel(
+          id: 'lbl-narrow',
+          name: 'Very Long Label Name That Must Truncate Gracefully',
+          colorKey: 'emerald',
+          iconKey: 'cleaning',
+          scope: TaskLabelScope.personal,
+          createdAt: DateTime(2026, 1, 1),
+          updatedAt: DateTime(2026, 1, 1),
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              allLabelsMapProvider.overrideWithValue({
+                'lbl-narrow': narrowLabel,
+              }),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: SizedBox(
+                    width: 150,
+                    child: TaskScheduleCard(
+                      task: familyTask,
+                      isParent: false,
+                      showLastSpawnedDate: false,
+                      labels: [narrowLabel],
+                      repository: mockTaskRepository,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }
