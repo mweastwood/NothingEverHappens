@@ -746,15 +746,13 @@ class TaskBadge extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const NeverScrollableScrollPhysics(),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
-            Text(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -764,8 +762,8 @@ class TaskBadge extends StatelessWidget {
                 color: color,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

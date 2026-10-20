@@ -71,15 +71,13 @@ class TaskScheduleCard extends ConsumerWidget {
           width: 1,
         ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const NeverScrollableScrollPhysics(),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
-            Text(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -89,8 +87,8 @@ class TaskScheduleCard extends ConsumerWidget {
                 color: color,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -576,159 +574,11 @@ class TaskScheduleCard extends ConsumerWidget {
                   ),
                 const Divider(height: 1, thickness: 0.5),
                 // Rule list inside task card (high density)
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: task.schedules.length,
-                  separatorBuilder: (context, _) =>
-                      const Divider(height: 1, indent: 12, endIndent: 12),
-                  itemBuilder: (context, idx) {
-                    final rule = task.schedules[idx];
-                    final parts = _getRecurrenceRuleDetails(context, rule);
-
-                    String freqText = _getRecurrenceRuleTypeName(context, rule);
-                    int interval = 1;
-                    if (rule is DailySchedule) {
-                      interval = rule.interval;
-                    } else if (rule is WeeklySchedule) {
-                      interval = rule.interval;
-                    } else if (rule is MonthlySchedule) {
-                      interval = rule.interval;
-                    } else if (rule is YearlySchedule) {
-                      interval = rule.interval;
-                    }
-                    if (interval > 1) {
-                      freqText = '$freqText (${parts.interval})';
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12.0,
-                        vertical: 8.0,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Column 1
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  freqText,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                if (parts.days.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    parts.days,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          // Column 2
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      rule.schedulingPolicy
-                                              is CompletionRelativePolicy
-                                          ? Icons.sync
-                                          : Icons.calendar_today,
-                                      size: 14,
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        rule.schedulingPolicy
-                                                is CompletionRelativePolicy
-                                            ? context
-                                                  .l10n
-                                                  .completionRelativeLabel
-                                            : context.l10n.fixedCalendarLabel,
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: theme
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (rule is! OneOffSchedule &&
-                                    rule.schedulingPolicy
-                                        is! CompletionRelativePolicy) ...[
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.assignment_late_outlined,
-                                        size: 14,
-                                        color:
-                                            theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          _getMissedPolicyString(context, rule),
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: theme
-                                                    .colorScheme
-                                                    .onSurfaceVariant,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                                const SizedBox(height: 4),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.access_time,
-                                      size: 14,
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        '${_formatRelativeTime(context, rule.startRelativeTime)} -- ${_formatRelativeTime(context, rule.dueRelativeTime)}',
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: theme
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                for (int idx = 0; idx < task.schedules.length; idx++) ...[
+                  if (idx > 0)
+                    const Divider(height: 1, indent: 12, endIndent: 12),
+                  _buildScheduleRuleRow(context, theme, task.schedules[idx]),
+                ],
               ],
             ),
             if (labelColors.isNotEmpty)
@@ -742,6 +592,137 @@ class TaskScheduleCard extends ConsumerWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleRuleRow(
+    BuildContext context,
+    ThemeData theme,
+    TaskScheduleRule rule,
+  ) {
+    final parts = _getRecurrenceRuleDetails(context, rule);
+
+    String freqText = _getRecurrenceRuleTypeName(context, rule);
+    int interval = 1;
+    if (rule is DailySchedule) {
+      interval = rule.interval;
+    } else if (rule is WeeklySchedule) {
+      interval = rule.interval;
+    } else if (rule is MonthlySchedule) {
+      interval = rule.interval;
+    } else if (rule is YearlySchedule) {
+      interval = rule.interval;
+    }
+    if (interval > 1) {
+      freqText = '$freqText (${parts.interval})';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Column 1
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  freqText,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (parts.days.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    parts.days,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Column 2
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Icon(
+                      rule.schedulingPolicy is CompletionRelativePolicy
+                          ? Icons.sync
+                          : Icons.calendar_today,
+                      size: 14,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        rule.schedulingPolicy is CompletionRelativePolicy
+                            ? context.l10n.completionRelativeLabel
+                            : context.l10n.fixedCalendarLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (rule is! OneOffSchedule &&
+                    rule.schedulingPolicy is! CompletionRelativePolicy) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.assignment_late_outlined,
+                        size: 14,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          _getMissedPolicyString(context, rule),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: 14,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '${_formatRelativeTime(context, rule.startRelativeTime)} -- ${_formatRelativeTime(context, rule.dueRelativeTime)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

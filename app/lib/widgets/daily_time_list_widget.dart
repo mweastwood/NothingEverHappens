@@ -107,215 +107,206 @@ class _DailyTimeListWidgetState extends State<DailyTimeListWidget> {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        ListView.builder(
-          padding: EdgeInsets.zero,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _times.length,
-          itemBuilder: (context, index) {
-            final slot = _times[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: Card(
-                elevation: 0,
-                color: Theme.of(context).colorScheme.surfaceContainerLow,
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                    color: Theme.of(
-                      context,
-                    ).dividerColor.withValues(alpha: 0.5),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+        for (int index = 0; index < _times.length; index++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: Card(
+              elevation: 0,
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              alignment: WrapAlignment.spaceBetween,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                Text(
-                                  context.l10n.startTimeLabel,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                context.l10n.startTimeLabel,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              FilledButton.tonalIcon(
+                                onPressed: () => _pickTime(
+                                  index: index,
+                                  isStart: true,
+                                  initialTime: _times[index].startTime,
+                                ),
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  fixedSize: const Size.fromHeight(36),
+                                ),
+                                icon: const Icon(Icons.access_time, size: 16),
+                                label: Text(
+                                  _times[index].startTime.format(context),
                                   style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
                                     fontSize: 13,
-                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                FilledButton.tonalIcon(
-                                  onPressed: () => _pickTime(
-                                    index: index,
-                                    isStart: true,
-                                    initialTime: slot.startTime,
-                                  ),
-                                  style: FilledButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    fixedSize: const Size.fromHeight(36),
-                                  ),
-                                  icon: const Icon(Icons.access_time, size: 16),
-                                  label: Text(
-                                    slot.startTime.format(context),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              alignment: WrapAlignment.spaceBetween,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                Text(
-                                  context.l10n.dueTimeLabel,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                FilledButton.tonalIcon(
-                                  onPressed: () => _pickTime(
-                                    index: index,
-                                    isStart: false,
-                                    initialTime: slot.dueTime,
-                                  ),
-                                  style: FilledButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    fixedSize: const Size.fromHeight(36),
-                                  ),
-                                  icon: const Icon(Icons.access_time, size: 16),
-                                  label: Text(
-                                    slot.dueTime.format(context),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              alignment: WrapAlignment.spaceBetween,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                Text(
-                                  context.l10n.notificationTimeLabel,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                if (slot.notificationTime == null)
-                                  OutlinedButton.icon(
-                                    onPressed: () => _pickNotificationTime(
-                                      index: index,
-                                      initialTime: const TimeOfDay(
-                                        hour: 9,
-                                        minute: 0,
-                                      ),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 4,
-                                      ),
-                                      fixedSize: const Size.fromHeight(36),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.notifications_none,
-                                      size: 16,
-                                    ),
-                                    label: Text(
-                                      context.l10n.noneLabel,
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                  )
-                                else
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      FilledButton.tonalIcon(
-                                        onPressed: () => _pickNotificationTime(
-                                          index: index,
-                                          initialTime: slot.notificationTime!,
-                                        ),
-                                        style: FilledButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 4,
-                                          ),
-                                          fixedSize: const Size.fromHeight(36),
-                                        ),
-                                        icon: const Icon(
-                                          Icons.notifications_active,
-                                          size: 16,
-                                        ),
-                                        label: Text(
-                                          slot.notificationTime!.format(
-                                            context,
-                                          ),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      IconButton(
-                                        icon: const Icon(Icons.clear, size: 16),
-                                        onPressed: () =>
-                                            _clearNotificationTime(index),
-                                        visualDensity: VisualDensity.compact,
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                        tooltip: context
-                                            .l10n
-                                            .clearNotificationTimeTooltip,
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_times.length > 1) ...[
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: Icon(
-                            Icons.delete_outline,
-                            color: Theme.of(context).colorScheme.error,
+                              ),
+                            ],
                           ),
-                          onPressed: () => _removeTimeSlot(index),
-                          tooltip: context.l10n.removeTimeSlotTooltip,
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                context.l10n.dueTimeLabel,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              FilledButton.tonalIcon(
+                                onPressed: () => _pickTime(
+                                  index: index,
+                                  isStart: false,
+                                  initialTime: _times[index].dueTime,
+                                ),
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  fixedSize: const Size.fromHeight(36),
+                                ),
+                                icon: const Icon(Icons.access_time, size: 16),
+                                label: Text(
+                                  _times[index].dueTime.format(context),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                context.l10n.notificationTimeLabel,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (_times[index].notificationTime == null)
+                                OutlinedButton.icon(
+                                  onPressed: () => _pickNotificationTime(
+                                    index: index,
+                                    initialTime: const TimeOfDay(
+                                      hour: 9,
+                                      minute: 0,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                    fixedSize: const Size.fromHeight(36),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.notifications_none,
+                                    size: 16,
+                                  ),
+                                  label: Text(
+                                    context.l10n.noneLabel,
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                )
+                              else
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    FilledButton.tonalIcon(
+                                      onPressed: () => _pickNotificationTime(
+                                        index: index,
+                                        initialTime:
+                                            _times[index].notificationTime!,
+                                      ),
+                                      style: FilledButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 4,
+                                        ),
+                                        fixedSize: const Size.fromHeight(36),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.notifications_active,
+                                        size: 16,
+                                      ),
+                                      label: Text(
+                                        _times[index].notificationTime!.format(
+                                          context,
+                                        ),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      icon: const Icon(Icons.clear, size: 16),
+                                      onPressed: () =>
+                                          _clearNotificationTime(index),
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      tooltip: context
+                                          .l10n
+                                          .clearNotificationTimeTooltip,
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_times.length > 1) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: Theme.of(context).colorScheme.error,
                         ),
-                      ],
+                        onPressed: () => _removeTimeSlot(index),
+                        tooltip: context.l10n.removeTimeSlotTooltip,
+                      ),
                     ],
-                  ),
+                  ],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: _addTimeSlot,
