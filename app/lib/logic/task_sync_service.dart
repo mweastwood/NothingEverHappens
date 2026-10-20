@@ -713,13 +713,15 @@ class TaskSyncService {
 
   bool _doesLocalWin(TaskInstance local, TaskInstance remote) {
     final localIsUser =
-        (local.status != TaskStatus.pending) &&
-        ((local.parsedStatusReason?.isUserAction ?? false) ||
-            (local.statusReason?.startsWith('user_') ?? false));
+        local.parsedStatusReason == InstanceStatusReason.userModified ||
+        ((local.status != TaskStatus.pending) &&
+            ((local.parsedStatusReason?.isUserAction ?? false) ||
+                (local.statusReason?.startsWith('user_') ?? false)));
     final remoteIsUser =
-        (remote.status != TaskStatus.pending) &&
-        ((remote.parsedStatusReason?.isUserAction ?? false) ||
-            (remote.statusReason?.startsWith('user_') ?? false));
+        remote.parsedStatusReason == InstanceStatusReason.userModified ||
+        ((remote.status != TaskStatus.pending) &&
+            ((remote.parsedStatusReason?.isUserAction ?? false) ||
+                (remote.statusReason?.startsWith('user_') ?? false)));
     final localIsScheduler =
         (local.parsedStatusReason?.isSchedulerAction ?? false) ||
         (local.statusReason?.startsWith('scheduler_') ?? false);
@@ -926,13 +928,22 @@ class TaskSyncService {
 
   Future<void> _pushTaskToRemote(TaskSchedule task) async {
     final familyId = await _getFamilyId();
+    final taskData = <String, dynamic>{
+      ...task.toFirestore(),
+      'lastSpawnedDate': task.lastSpawnedDate?.toJson(),
+      'cycleId': task.cycleId,
+      'assignedUserId': task.assignedUserId,
+      'appLaunchUrl': task.appLaunchUrl,
+      'workflowType': task.workflowType,
+      'mealWorkflowConfig': task.mealWorkflowConfig?.toJson(),
+    };
     if (task.isFamily && familyId != null && familyId.isNotEmpty) {
       await _firestore
           .collection(FirestorePaths.families)
           .doc(familyId)
           .collection(FirestorePaths.tasks)
           .doc(task.id)
-          .set(task.toFirestore(), SetOptions(merge: true));
+          .set(taskData, SetOptions(merge: true));
       await _firestore
           .collection(FirestorePaths.users)
           .doc(_userId)
@@ -945,7 +956,7 @@ class TaskSyncService {
           .doc(_userId)
           .collection(FirestorePaths.tasks)
           .doc(task.id)
-          .set(task.toFirestore(), SetOptions(merge: true));
+          .set(taskData, SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
         final isParent = await _isFamilyParent();
         if (isParent) {
@@ -977,13 +988,23 @@ class TaskSyncService {
 
   Future<void> _pushInstanceToRemote(TaskInstance inst) async {
     final familyId = await _getFamilyId();
+    final instData = <String, dynamic>{
+      ...inst.toFirestore(),
+      'completedByUserId': inst.completedByUserId,
+      'completedByUserIds': inst.completedByUserIds,
+      'completedAt': inst.completedAt,
+      'statusReason': inst.statusReason,
+      'cycleId': inst.cycleId,
+      'assignedUserId': inst.assignedUserId,
+      'workflowPayload': inst.workflowPayload?.toJson(),
+    };
     if (inst.isFamily && familyId != null && familyId.isNotEmpty) {
       await _firestore
           .collection(FirestorePaths.families)
           .doc(familyId)
           .collection(FirestorePaths.instances)
           .doc(inst.id)
-          .set(inst.toFirestore(), SetOptions(merge: true));
+          .set(instData, SetOptions(merge: true));
       await _firestore
           .collection(FirestorePaths.users)
           .doc(_userId)
@@ -996,7 +1017,7 @@ class TaskSyncService {
           .doc(_userId)
           .collection(FirestorePaths.instances)
           .doc(inst.id)
-          .set(inst.toFirestore(), SetOptions(merge: true));
+          .set(instData, SetOptions(merge: true));
       if (familyId != null && familyId.isNotEmpty) {
         final isParent = await _isFamilyParent();
         if (isParent) {

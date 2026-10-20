@@ -3102,6 +3102,155 @@ void main() {
           expect(dirtyIds, contains('I-fail-push'));
         },
       );
+
+      test(
+        'pushing undone instance clears statusReason, completedByUserId, and completedAt in Firestore while preserving unknown fields',
+        () async {
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          final tCompleted = DateTime.utc(2026, 9, 16, 10, 0);
+          final tUndone = DateTime.utc(2026, 9, 16, 11, 0);
+
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-undo-sync')
+              .set({
+                'id': 'I-undo-sync',
+                'scheduleId': 'S-undo-sync',
+                'ruleId': 'R-1',
+                'title': 'Undo Sync Instance',
+                'description': '',
+                'scheduledDate': {'year': 2026, 'month': 9, 'day': 16},
+                'startRelativeTime': {'dayOffset': 0, 'hour': 9, 'minute': 0},
+                'dueRelativeTime': {'dayOffset': 0, 'hour': 17, 'minute': 0},
+                'status': 'completed',
+                'statusReason': 'user_completed',
+                'completedByUserId': 'user1',
+                'completedByUserIds': ['user1'],
+                'completedAt': tCompleted.toIso8601String(),
+                'customExtensionField': 'keep_me',
+                'updatedAt': tCompleted.toIso8601String(),
+              });
+          await pumpEventQueue();
+
+          final undoneInst = TaskInstance(
+            id: 'I-undo-sync',
+            scheduleId: 'S-undo-sync',
+            ruleId: 'R-1',
+            title: 'Undo Sync Instance',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            statusReason: null,
+            completedByUserId: null,
+            completedByUserIds: const [],
+            completedAt: null,
+            updatedAt: tUndone,
+          );
+          await localDataSource.saveInstance(undoneInst);
+          await localDataSource.markDirty('I-undo-sync');
+
+          await service.sync();
+          await pumpEventQueue();
+
+          final doc = await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-undo-sync')
+              .get();
+          expect(doc.data()?['status'], equals('pending'));
+          expect(doc.data()?['statusReason'], isNull);
+          expect(doc.data()?['completedByUserId'], isNull);
+          expect(doc.data()?['completedAt'], isNull);
+          expect(doc.data()?['completedByUserIds'], isEmpty);
+          expect(doc.data()?['customExtensionField'], equals('keep_me'));
+
+          final localAfterSync = localDataSource.getInstances().firstWhere(
+            (i) => i.id == 'I-undo-sync',
+          );
+          expect(localAfterSync.status, equals(TaskStatus.pending));
+          expect(localAfterSync.statusReason, isNull);
+          expect(localAfterSync.completedByUserId, isNull);
+          expect(localAfterSync.completedAt, isNull);
+        },
+      );
+
+      test(
+        'pending instance with user_modified statusReason wins over newer scheduler skip',
+        () async {
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+
+          final olderUserTime = DateTime.utc(2026, 9, 16, 10, 0);
+          final newerSchedulerTime = DateTime.utc(2026, 9, 16, 12, 0);
+
+          final localModified = TaskInstance(
+            id: 'I-user-mod-pending',
+            scheduleId: 'S-user-mod',
+            ruleId: 'R-1',
+            title: 'User Modified Pending Instance',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 16),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            statusReason: 'user_modified',
+            updatedAt: olderUserTime,
+          );
+          await localDataSource.saveInstance(localModified);
+
+          final remoteSchedulerSkip = localModified.copyWith(
+            status: TaskStatus.skipped,
+            statusReason: 'scheduler_prefer_older',
+            updatedAt: newerSchedulerTime,
+          );
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-user-mod-pending')
+              .set(remoteSchedulerSkip.toFirestore());
+          await pumpEventQueue();
+
+          final saved = localDataSource.getInstances().firstWhere(
+            (i) => i.id == 'I-user-mod-pending',
+          );
+          expect(saved.status, equals(TaskStatus.pending));
+          expect(saved.statusReason, equals('user_modified'));
+        },
+      );
     });
   });
 }

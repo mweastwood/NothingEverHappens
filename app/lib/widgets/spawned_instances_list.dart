@@ -181,6 +181,10 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
     final taskMap = {for (final t in allTasks) t.id: t};
     final Map<CivilDay, double> dayPlannedHours = {};
     for (final inst in allInstances) {
+      if (inst.scheduleId == widget.task.id &&
+          inst.status == TaskStatus.pending) {
+        continue;
+      }
       if (inst.status != TaskStatus.skipped &&
           inst.status != TaskStatus.failed) {
         final t = taskMap[inst.scheduleId];
@@ -526,7 +530,10 @@ class PastOccurrenceCard extends StatelessWidget {
 
     if (instance.status == TaskStatus.completed) {
       final formattedCompletedAt = instance.completedAt != null
-          ? SpawnedInstancesList.formatDateTime(context, instance.completedAt!)
+          ? SpawnedInstancesList.formatDateTime(
+              context,
+              instance.completedAt!.toLocal(),
+            )
           : '';
       statusText = context.l10n.occurrenceCompleted(formattedCompletedAt);
       iconData = Icons.check_circle;

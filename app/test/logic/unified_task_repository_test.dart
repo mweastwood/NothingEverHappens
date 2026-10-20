@@ -2194,6 +2194,374 @@ void main() {
     );
   });
 
+  group('Schedule Edit Reconciliation & Capacity Re-evaluation', () {
+    test(
+      'updateTaskSchedule preserves pending instances in-place when only rule timings change and propagates familyCompletionMode',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 8, 0));
+        addTearDown(AppClock.reset);
+
+        final rule = DailySchedule(
+          id: 'R-timing-edit',
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 1,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+        );
+        final task = TaskSchedule(
+          id: 'S-timing-edit',
+          title: 'Timing Edit Task',
+          description: 'Desc',
+          familyCompletionMode: FamilyCompletionMode.anyone,
+          schedules: [rule],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+        await repository.addTaskSchedule(task);
+
+        final initialToday = localDataSource.getInstances().firstWhere(
+          (i) =>
+              i.scheduleId == task.id &&
+              i.scheduledDate == const CivilDay(year: 2026, month: 8, day: 10),
+        );
+
+        final updatedRule = rule.copyWithTiming(
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 10,
+            minute: 30,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 18,
+            minute: 0,
+          ),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, hour: 10, minute: 0),
+          ],
+        );
+
+        final mod = task.edit(
+          newTitle: 'Updated Timing Title',
+          newDescription: task.description,
+          newSchedules: [updatedRule],
+          newEstimatedDuration: task.estimatedDuration,
+          newMissedPolicy: task.missedPolicy,
+          newIsMaster: task.isMaster,
+          newLastSpawnedDate: task.lastSpawnedDate,
+          newIsFamily: task.isFamily,
+          newFamilyCompletionMode: FamilyCompletionMode.individual,
+          newPriority: task.priority,
+        );
+
+        await repository.updateTaskSchedule(mod);
+
+        final updatedToday = localDataSource.getInstances().firstWhere(
+          (i) =>
+              i.scheduleId == task.id &&
+              i.scheduledDate == const CivilDay(year: 2026, month: 8, day: 10),
+        );
+        expect(updatedToday.id, equals(initialToday.id));
+        expect(updatedToday.title, equals('Updated Timing Title'));
+        expect(
+          updatedToday.startRelativeTime,
+          equals(const RelativeTime(dayOffset: 0, hour: 10, minute: 30)),
+        );
+        expect(
+          updatedToday.dueRelativeTime,
+          equals(const RelativeTime(dayOffset: 0, hour: 18, minute: 0)),
+        );
+        expect(
+          updatedToday.notificationRelativeTimes,
+          equals(const [RelativeTime(dayOffset: 0, hour: 10, minute: 0)]),
+        );
+        expect(
+          updatedToday.familyCompletionMode,
+          equals(FamilyCompletionMode.individual),
+        );
+      },
+    );
+
+    test(
+      'updateTaskSchedule preserves and updates future CompletionRelativePolicy pending instance on interval edit',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 10, 0));
+        addTearDown(AppClock.reset);
+
+        final rule = DailySchedule(
+          id: 'R-cr-edit',
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 3,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 9,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 3),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+        final task = TaskSchedule(
+          id: 'S-cr-edit',
+          title: 'CR Edit Task',
+          description: 'Desc',
+          schedules: [rule],
+          updatedAt: DateTime(2026, 8, 10, 9, 0),
+        );
+        await repository.addTaskSchedule(task);
+
+        final firstInst = localDataSource.getInstances().firstWhere(
+          (i) => i.scheduleId == task.id,
+        );
+        await repository.completeTaskInstance(firstInst.id);
+
+        final pendingBeforeEdit = localDataSource.getInstances().firstWhere(
+          (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+        );
+        expect(
+          pendingBeforeEdit.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 8, day: 13)),
+        );
+
+        // Edit interval from 3 days to 5 days and targetHour from 9 to 11
+        final editedRule = DailySchedule(
+          id: 'R-cr-edit',
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 5,
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 11,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 19,
+            minute: 0,
+          ),
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 5),
+            targetHour: 11,
+            targetMinute: 0,
+          ),
+        );
+        final mod = task.edit(
+          newTitle: task.title,
+          newDescription: task.description,
+          newSchedules: [editedRule],
+          newEstimatedDuration: task.estimatedDuration,
+          newMissedPolicy: task.missedPolicy,
+          newIsMaster: task.isMaster,
+          newLastSpawnedDate: task.lastSpawnedDate,
+          newIsFamily: task.isFamily,
+          newPriority: task.priority,
+        );
+        await repository.updateTaskSchedule(mod);
+
+        final pendingAfterEdit = localDataSource
+            .getInstances()
+            .where(
+              (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+            )
+            .toList();
+        expect(pendingAfterEdit, hasLength(1));
+        expect(pendingAfterEdit.first.id, equals(pendingBeforeEdit.id));
+        expect(
+          pendingAfterEdit.first.scheduledDate,
+          equals(const CivilDay(year: 2026, month: 8, day: 15)),
+        );
+        expect(
+          pendingAfterEdit.first.startRelativeTime,
+          equals(const RelativeTime(dayOffset: 0, hour: 11, minute: 0)),
+        );
+      },
+    );
+
+    test(
+      'updateTaskSchedule preserves mealWorkflow stage-specific title and updates stage timings',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 8, 0));
+        addTearDown(AppClock.reset);
+
+        final rule = DailySchedule(
+          id: 'R-meal-edit',
+          startDate: const CivilDay(year: 2026, month: 8, day: 10),
+          interval: 1,
+        );
+        final task = TaskSchedule(
+          id: 'S-meal-edit',
+          title: 'Dinner',
+          description: 'Plan dinner',
+          workflowType: 'mealWorkflow',
+          mealWorkflowConfig: const MealWorkflowConfig(
+            selectTime: RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+            shopTime: RelativeTime(dayOffset: 0, hour: 14, minute: 0),
+            prepTime: RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+          ),
+          schedules: [rule],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+        await localDataSource.saveTask(task);
+
+        final prepInstance = TaskInstance(
+          id: 'I-meal-prep-1',
+          scheduleId: task.id,
+          ruleId: rule.id,
+          title: 'Prep & Cook: Tacos',
+          description: 'Follow recipe instructions to prepare and cook Tacos',
+          scheduledDate: const CivilDay(year: 2026, month: 8, day: 10),
+          startRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          dueRelativeTime: const RelativeTime(
+            dayOffset: 0,
+            hour: 17,
+            minute: 0,
+          ),
+          status: TaskStatus.pending,
+          workflowPayload: const WorkflowInstancePayload(
+            workflowType: 'mealWorkflow',
+            stage: WorkflowStage.prepDinner,
+            workflowGroupId: 'S-meal-edit-2026-8-10',
+            recipeTitle: 'Tacos',
+          ),
+        );
+        await localDataSource.saveInstance(prepInstance);
+
+        final mod = task.edit(
+          newTitle: 'Family Dinner',
+          newDescription: 'Updated dinner description',
+          newSchedules: [rule],
+          newEstimatedDuration: task.estimatedDuration,
+          newMissedPolicy: task.missedPolicy,
+          newIsMaster: task.isMaster,
+          newLastSpawnedDate: task.lastSpawnedDate,
+          newIsFamily: task.isFamily,
+          newPriority: task.priority,
+          newWorkflowType: 'mealWorkflow',
+          newMealWorkflowConfig: const MealWorkflowConfig(
+            selectTime: RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+            shopTime: RelativeTime(dayOffset: 0, hour: 15, minute: 0),
+            prepTime: RelativeTime(dayOffset: 0, hour: 18, minute: 30),
+          ),
+        );
+        await repository.updateTaskSchedule(mod);
+
+        final updatedPrep = localDataSource.getInstances().firstWhere(
+          (i) => i.id == 'I-meal-prep-1',
+        );
+        expect(updatedPrep.title, equals('Prep & Cook: Tacos'));
+        expect(
+          updatedPrep.startRelativeTime,
+          equals(const RelativeTime(dayOffset: 0, hour: 18, minute: 30)),
+        );
+        expect(
+          updatedPrep.dueRelativeTime,
+          equals(const RelativeTime(dayOffset: 0, hour: 18, minute: 30)),
+        );
+      },
+    );
+
+    test(
+      'dismissTaskInstance and undoResolveTaskInstance re-evaluate capacity for skipIfNoCapacity tasks',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 8, 0));
+        addTearDown(AppClock.reset);
+
+        final taskA = TaskSchedule(
+          id: 'S-cap-dismiss-a',
+          title: 'Mandatory 6h Task',
+          description: '',
+          priority: TaskPriority.low,
+          skipIfNoCapacity: false,
+          estimatedDuration: const Duration(hours: 6),
+          schedules: [
+            DailySchedule(
+              id: 'R-cap-a',
+              startDate: const CivilDay(year: 2026, month: 8, day: 10),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+
+        final taskB = TaskSchedule(
+          id: 'S-cap-dismiss-b',
+          title: 'Optional 4h Task',
+          description: '',
+          priority: TaskPriority.high,
+          skipIfNoCapacity: true,
+          estimatedDuration: const Duration(hours: 4),
+          schedules: [
+            DailySchedule(
+              id: 'R-cap-b',
+              startDate: const CivilDay(year: 2026, month: 8, day: 10),
+              interval: 1,
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+
+        // Save both tasks before triggering missed policy processing to verify
+        // mandatory (!skipIfNoCapacity) taskA is evaluated before optional taskB
+        // even though taskA has lower priority than taskB.
+        await localDataSource.saveTask(taskA);
+        await localDataSource.saveTask(taskB);
+        await repository.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: false,
+        );
+
+        const today = CivilDay(year: 2026, month: 8, day: 10);
+        final instA = localDataSource.getInstances().firstWhere(
+          (i) => i.scheduleId == taskA.id && i.scheduledDate == today,
+        );
+        var instB = localDataSource.getInstances().firstWhere(
+          (i) => i.scheduleId == taskB.id && i.scheduledDate == today,
+        );
+        expect(instA.status, equals(TaskStatus.pending));
+        expect(instB.status, equals(TaskStatus.skipped));
+        expect(
+          instB.statusReason,
+          equals(InstanceStatusReason.schedulerCapacityLimit.value),
+        );
+
+        // Dismiss taskA -> frees 6h on today -> taskB (4h <= 8h) becomes pending
+        final dismissedA = await repository.dismissTaskInstance(instA.id);
+        instB = localDataSource.getInstances().firstWhere(
+          (i) => i.scheduleId == taskB.id && i.scheduledDate == today,
+        );
+        expect(instB.status, equals(TaskStatus.pending));
+        expect(instB.statusReason, isNull);
+
+        // Undo dismissal of taskA -> consumes 6h again -> taskB is skipped again
+        await repository.undoResolveTaskInstance(dismissedA!);
+        instB = localDataSource.getInstances().firstWhere(
+          (i) => i.scheduleId == taskB.id && i.scheduledDate == today,
+        );
+        expect(instB.status, equals(TaskStatus.skipped));
+        expect(
+          instB.statusReason,
+          equals(InstanceStatusReason.schedulerCapacityLimit.value),
+        );
+      },
+    );
+  });
+
   test('AppClock mock time is inactive and reset following test execution', () {
     expect(AppClock.isMockActive, isFalse);
     expect(AppClock.timeNotifier.value, isNull);

@@ -561,10 +561,14 @@ class FirestoreTaskRepository implements TaskRepository {
       if (inst.status != TaskStatus.skipped &&
           inst.status != TaskStatus.failed) {
         final t = taskMap[inst.scheduleId];
-        if (t != null && t.estimatedDuration != null && !t.skipIfNoCapacity) {
-          final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
-          dayPlannedHours[inst.scheduledDate] =
-              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+        if (t != null && t.estimatedDuration != null) {
+          // Pre-count family instances and already-resolved personal instances.
+          // Pending personal instances are added after each task is evaluated in _applyTaskEvaluationResult.
+          if (t.isFamily || inst.status != TaskStatus.pending) {
+            final hours = t.estimatedDuration!.inMinutes / _minutesPerHour;
+            dayPlannedHours[inst.scheduledDate] =
+                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
+          }
         }
       }
     }
@@ -601,9 +605,14 @@ class FirestoreTaskRepository implements TaskRepository {
 
     final tasksToEvaluate = List<TaskSchedule>.from(tasks);
 
-    // Prioritize capacity-dependent tasks by Priority (High > Medium > Low)
-    // If priority is equal, prioritize (evaluate first) the least recently completed task.
+    // Evaluate mandatory (!skipIfNoCapacity) tasks first so their spawned pending
+    // instances reserve daily capacity before capacity-dependent tasks are evaluated.
+    // Then prioritize by Priority (High > Medium > Low), then least recently completed.
     tasksToEvaluate.sort((a, b) {
+      if (a.skipIfNoCapacity != b.skipIfNoCapacity) {
+        return a.skipIfNoCapacity ? 1 : -1;
+      }
+
       final pCompare = b.priority.index.compareTo(a.priority.index);
       if (pCompare != 0) return pCompare;
 
@@ -1078,6 +1087,7 @@ class FirestoreTaskRepository implements TaskRepository {
           description: newTask.description,
           priority: newTask.priority,
           isFamily: newTask.isFamily,
+          familyCompletionMode: newTask.familyCompletionMode,
           cycleId: newTask.cycleId,
           clearCycleId: newTask.cycleId == null,
           assignedUserId: newTask.assignedUserId,
