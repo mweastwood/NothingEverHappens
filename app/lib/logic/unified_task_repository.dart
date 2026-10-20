@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/task_sync_service.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
@@ -39,6 +40,11 @@ class UnifiedTaskRepository implements TaskRepository {
   bool _queuedEvaluateFamilyTasks = false;
   final List<Future<void> Function()> _queuedPostProcessCallbacks = [];
   Future<void>? _initializationFuture;
+  Timer? _triggerTimer;
+  DateTime? _scheduledTriggerTime;
+
+  @visibleForTesting
+  DateTime? get scheduledTriggerTime => _scheduledTriggerTime;
 
   /// Completes when the initial migration and repository setup finishes.
   Future<void> get initializationFuture =>
@@ -70,7 +76,11 @@ class UnifiedTaskRepository implements TaskRepository {
   }
 
   @override
-  void dispose() {}
+  void dispose() {
+    _triggerTimer?.cancel();
+    _triggerTimer = null;
+    _scheduledTriggerTime = null;
+  }
 
   @override
   Future<String?> getFamilyId() => _familyIdFetcher.getFamilyId();
@@ -644,6 +654,19 @@ class UnifiedTaskRepository implements TaskRepository {
         completedInstance.completedAt?.toLocal() ?? AppClock.now,
       );
       await _reEvaluateCapacityIfNeeded(task);
+      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+      if (isRecurring) {
+        await notificationService?.scheduleNotifications(task);
+      } else {
+        final hasRemainingPending = _localDataSource.getInstances().any(
+          (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+        );
+        if (!hasRemainingPending) {
+          await notificationService?.cancelNotifications(task.id);
+        } else {
+          await notificationService?.scheduleNotifications(task);
+        }
+      }
     }
     _syncService.sync();
     return completedInstance;
@@ -720,6 +743,19 @@ class UnifiedTaskRepository implements TaskRepository {
         dismissedInstance.completedAt?.toLocal() ?? AppClock.now,
       );
       await _reEvaluateCapacityIfNeeded(task);
+      final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
+      if (isRecurring) {
+        await notificationService?.scheduleNotifications(task);
+      } else {
+        final hasRemainingPending = _localDataSource.getInstances().any(
+          (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
+        );
+        if (!hasRemainingPending) {
+          await notificationService?.cancelNotifications(task.id);
+        } else {
+          await notificationService?.scheduleNotifications(task);
+        }
+      }
     }
     _syncService.sync();
     return dismissedInstance;
@@ -870,6 +906,7 @@ class UnifiedTaskRepository implements TaskRepository {
         }
       }
       await _reEvaluateCapacityIfNeeded(task);
+      await notificationService?.scheduleNotifications(task);
     }
     _syncService.sync();
   }
@@ -1044,6 +1081,7 @@ class UnifiedTaskRepository implements TaskRepository {
     final instancesToDelete = <String>[];
     final tasksToSave = <TaskSchedule>[];
     final dirtyIds = <String>[];
+    final allTriggerTimes = <DateTime>[];
 
     for (final task in tasksToEvaluate) {
       if (task.isFamily) {
@@ -1063,6 +1101,8 @@ class UnifiedTaskRepository implements TaskRepository {
             task.assignedUserId == null || task.assignedUserId == userId,
         userId: userId,
       );
+
+      allTriggerTimes.addAll(action.triggerTimes);
 
       for (final inst in action.instancesToUpdate) {
         final updatedInst = inst.copyWith(
@@ -1159,5 +1199,39 @@ class UnifiedTaskRepository implements TaskRepository {
     if (hasChanges) {
       _syncService.sync();
     }
+
+    _scheduleNextDynamicTrigger(allTriggerTimes, now);
+  }
+
+  void _scheduleNextDynamicTrigger(List<DateTime> triggerTimes, DateTime now) {
+    DateTime? earliest;
+    for (final t in triggerTimes) {
+      if (t.isAfter(now)) {
+        if (earliest == null || t.isBefore(earliest)) {
+          earliest = t;
+        }
+      }
+    }
+
+    if (earliest == null) {
+      _triggerTimer?.cancel();
+      _triggerTimer = null;
+      _scheduledTriggerTime = null;
+      return;
+    }
+
+    if (_scheduledTriggerTime == earliest &&
+        _triggerTimer != null &&
+        _triggerTimer!.isActive) {
+      return;
+    }
+
+    _triggerTimer?.cancel();
+    _scheduledTriggerTime = earliest;
+    final delay = earliest.difference(now);
+    _triggerTimer = Timer(delay, () {
+      _scheduledTriggerTime = null;
+      triggerMissedPolicyProcessing(evaluateFamilyTasks: false);
+    });
   }
 }

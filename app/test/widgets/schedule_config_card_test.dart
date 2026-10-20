@@ -421,5 +421,69 @@ void main() {
         expect(policy.interval, const Duration(days: 5));
       },
     );
+
+    testWidgets(
+      'collapsed CompletionRelativePolicy MonthlySchedule and YearlySchedule display month and year units',
+      (tester) async {
+        final monthlyCr = MonthlySchedule(
+          id: 'R-monthly-cr',
+          scheduleId: 'S-mock',
+          startDate: const CivilDay(year: 2026, month: 6, day: 15),
+          interval: 2,
+          dayOfMonth: 15,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 60),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+
+        final yearlyCr = YearlySchedule(
+          id: 'R-yearly-cr',
+          scheduleId: 'S-mock',
+          startDate: const CivilDay(year: 2026, month: 6, day: 15),
+          interval: 1,
+          month: 6,
+          day: 15,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 365),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: Column(
+                children: [
+                  ScheduleConfigCard(
+                    schedule: monthlyCr,
+                    onChanged: (_) {},
+                    isExpanded: false,
+                    onExpansionChanged: (_) {},
+                  ),
+                  ScheduleConfigCard(
+                    schedule: yearlyCr,
+                    onChanged: (_) {},
+                    isExpanded: false,
+                    onExpansionChanged: (_) {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        expect(
+          find.textContaining('Completion-relative: every 2 months'),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('Completion-relative: every 1 year'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

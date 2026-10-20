@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/task_schedule.dart';
+import '../logic/scheduler_engine.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/app_clock.dart';
 
@@ -103,27 +104,47 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
                     ? today
                     : sched.scheduledDate);
 
-          CivilDay current = startDay;
-          if (sched.occursOn(current)) {
-            allOccurrences.add(OccurrenceInfo(current, sched));
-          }
+          if (sched.schedulingPolicy is CompletionRelativePolicy) {
+            final dummyTask = TaskSchedule(
+              id: sched.scheduleId,
+              title: '',
+              description: '',
+              schedules: [sched],
+            );
+            final projected = const SchedulerEngine()
+                .projectUpcomingOccurrences(
+                  dummyTask,
+                  sched,
+                  startDay,
+                  existingInstances: const [],
+                  count: maxOccurrences,
+                );
+            for (final day in projected) {
+              allOccurrences.add(OccurrenceInfo(day, sched));
+            }
+          } else {
+            CivilDay current = startDay;
+            if (sched.occursOn(current)) {
+              allOccurrences.add(OccurrenceInfo(current, sched));
+            }
 
-          int count = sched.occursOn(current) ? 1 : 0;
-          int iterations = 0;
-          while (count < maxOccurrences && iterations < 1000) {
-            iterations++;
-            final next = sched.nextOccurrenceAfter(current);
-            if (next == null) {
-              break;
+            int count = sched.occursOn(current) ? 1 : 0;
+            int iterations = 0;
+            while (count < maxOccurrences && iterations < 1000) {
+              iterations++;
+              final next = sched.nextOccurrenceAfter(current);
+              if (next == null) {
+                break;
+              }
+              current = next;
+              if (allOccurrences.any(
+                (o) => o.schedule == sched && o.date == current,
+              )) {
+                break;
+              }
+              allOccurrences.add(OccurrenceInfo(current, sched));
+              count++;
             }
-            current = next;
-            if (allOccurrences.any(
-              (o) => o.schedule == sched && o.date == current,
-            )) {
-              break;
-            }
-            allOccurrences.add(OccurrenceInfo(current, sched));
-            count++;
           }
         } catch (e) {
           // Gracefully ignore calculation errors for transient/invalid configurations

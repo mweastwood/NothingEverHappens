@@ -5,6 +5,7 @@ import '../logic/civil_day.dart';
 import '../logic/app_clock.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/relative_time.dart';
+import '../logic/scheduler_engine.dart';
 import 'schedule_rule_config_widget.dart';
 import 'month_grid.dart';
 import 'upcoming_occurrences_preview.dart';
@@ -74,6 +75,20 @@ class _SchedulingPlaygroundTabState extends State<SchedulingPlaygroundTab> {
 
         if (schedule is OneOffSchedule) {
           occurrences.add(schedule.scheduledDate);
+        } else if (schedule.schedulingPolicy is CompletionRelativePolicy) {
+          final dummyTask = TaskSchedule(
+            id: schedule.scheduleId,
+            title: '',
+            description: '',
+            schedules: [schedule],
+          );
+          occurrences = const SchedulerEngine().projectUpcomingOccurrences(
+            dummyTask,
+            schedule,
+            current,
+            existingInstances: const [],
+            count: 10,
+          );
         } else {
           if (schedule.occursOn(current)) {
             occurrences.add(current);

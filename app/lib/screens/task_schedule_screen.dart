@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 
 import '../logic/task_schedule.dart';
+import '../logic/task_instance.dart';
+import '../logic/scheduler_engine.dart';
 import '../logic/civil_day.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
@@ -33,6 +35,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
   List<({String column, bool ascending})>? _localSortHistory;
 
   List<TaskSchedule>? _cachedAllTasks;
+  List<TaskInstance>? _cachedAllInstances;
   String? _cachedSearchQuery;
   String? _cachedSortHistoryString;
   DateTime? _cachedMockTime;
@@ -45,9 +48,11 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     List<({String column, bool ascending})> sortHistory,
     DateTime? mockTime, {
     Map<String, TaskLabel>? labelsMap,
+    List<TaskInstance> allInstances = const [],
   }) {
     final sortHistoryString = sortHistory.toString();
     if (_cachedAllTasks == allTasks &&
+        _cachedAllInstances == allInstances &&
         _cachedSearchQuery == searchQuery &&
         _cachedSortHistoryString == sortHistoryString &&
         _cachedMockTime == mockTime &&
@@ -90,13 +95,15 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
 
     final nextStartMap = hasNextStart
         ? <String, DateTime?>{
-            for (final t in filteredTasks) t.id: _getNextStartTime(t, today),
+            for (final t in filteredTasks)
+              t.id: _getNextStartTime(t, today, allInstances),
           }
         : null;
 
     final nextDueMap = hasNextDue
         ? <String, DateTime?>{
-            for (final t in filteredTasks) t.id: _getNextDueTime(t, today),
+            for (final t in filteredTasks)
+              t.id: _getNextDueTime(t, today, allInstances),
           }
         : null;
 
@@ -118,6 +125,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     });
 
     _cachedAllTasks = allTasks;
+    _cachedAllInstances = allInstances;
     _cachedSearchQuery = searchQuery;
     _cachedSortHistoryString = sortHistoryString;
     _cachedMockTime = mockTime;
@@ -143,19 +151,27 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
         const [(column: 'title', ascending: true)];
   }
 
-  DateTime? _getNextStartTime(TaskSchedule task, [CivilDay? today]) {
+  DateTime? _getNextStartTime(
+    TaskSchedule task, [
+    CivilDay? today,
+    List<TaskInstance> allInstances = const [],
+  ]) {
     final day = today ?? CivilDay.fromDateTime(AppClock.now);
+    final taskInstances = allInstances
+        .where((i) => i.scheduleId == task.id)
+        .toList();
     DateTime? earliest;
 
     for (final s in task.schedules) {
-      CivilDay? nextDay;
-      if (s.occursOn(day)) {
-        nextDay = day;
-      } else {
-        nextDay = s.nextOccurrenceAfter(day);
-      }
-      if (nextDay != null) {
-        final dt = s.startRelativeTime.referenceTo(nextDay);
+      final projected = const SchedulerEngine().projectUpcomingOccurrences(
+        task,
+        s,
+        day,
+        existingInstances: taskInstances,
+        count: 1,
+      );
+      if (projected.isNotEmpty) {
+        final dt = s.startRelativeTime.referenceTo(projected.first);
         if (earliest == null || dt.isBefore(earliest)) {
           earliest = dt;
         }
@@ -164,19 +180,27 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
     return earliest;
   }
 
-  DateTime? _getNextDueTime(TaskSchedule task, [CivilDay? today]) {
+  DateTime? _getNextDueTime(
+    TaskSchedule task, [
+    CivilDay? today,
+    List<TaskInstance> allInstances = const [],
+  ]) {
     final day = today ?? CivilDay.fromDateTime(AppClock.now);
+    final taskInstances = allInstances
+        .where((i) => i.scheduleId == task.id)
+        .toList();
     DateTime? earliest;
 
     for (final s in task.schedules) {
-      CivilDay? nextDay;
-      if (s.occursOn(day)) {
-        nextDay = day;
-      } else {
-        nextDay = s.nextOccurrenceAfter(day);
-      }
-      if (nextDay != null) {
-        final dt = s.dueRelativeTime.referenceTo(nextDay);
+      final projected = const SchedulerEngine().projectUpcomingOccurrences(
+        task,
+        s,
+        day,
+        existingInstances: taskInstances,
+        count: 1,
+      );
+      if (projected.isNotEmpty) {
+        final dt = s.dueRelativeTime.referenceTo(projected.first);
         if (earliest == null || dt.isBefore(earliest)) {
           earliest = dt;
         }
@@ -220,6 +244,8 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
   Widget build(BuildContext context) {
     final taskRepository = ref.watch(taskRepositoryProvider);
     final schedulesVal = ref.watch(taskSchedulesProvider);
+    final instancesVal = ref.watch(taskInstancesProvider);
+    final allInstances = instancesVal.value ?? const [];
     final settingsVal = ref.watch(userSettingsProvider);
     final settingsRepository = ref.watch(userSettingsRepositoryProvider);
     final familyProfileVal = ref.watch(familyProfileStreamProvider);
@@ -296,6 +322,7 @@ class _TaskScheduleScreenState extends ConsumerState<TaskScheduleScreen> {
                           sortHistory,
                           mockTime,
                           labelsMap: labelsMap,
+                          allInstances: allInstances,
                         );
 
                         if (filteredTasks.isEmpty && searchQuery.isNotEmpty) {

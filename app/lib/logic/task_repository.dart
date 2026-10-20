@@ -88,12 +88,19 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
 
   AppClock.timeNotifier.addListener(clockListener);
 
+  // Monitor calendar day and timezone transitions to trigger missed policy processing
+  var lastCheckedDay = CivilDay.fromDateTime(AppClock.now);
+  var lastCheckedTimeZoneOffset = AppClock.now.timeZoneOffset;
+
   // Monitor app lifecycle changes to trigger sync on resume
   AppLifecycleObserver? lifecycleObserver;
   try {
     lifecycleObserver = AppLifecycleObserver(
       onResume: () async {
         await syncService.waitForInitialSync;
+        final now = AppClock.now;
+        lastCheckedDay = CivilDay.fromDateTime(now);
+        lastCheckedTimeZoneOffset = now.timeZoneOffset;
         repo.triggerMissedPolicyProcessing();
       },
     );
@@ -104,12 +111,14 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
     lifecycleObserver = null;
   }
 
-  // Monitor calendar day transitions to trigger missed policy processing at midnight
-  var lastCheckedDay = CivilDay.fromDateTime(AppClock.now);
   final dayChangeTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-    final currentDay = CivilDay.fromDateTime(AppClock.now);
-    if (currentDay != lastCheckedDay) {
+    final now = AppClock.now;
+    final currentDay = CivilDay.fromDateTime(now);
+    final currentOffset = now.timeZoneOffset;
+    if (currentDay != lastCheckedDay ||
+        currentOffset != lastCheckedTimeZoneOffset) {
       lastCheckedDay = currentDay;
+      lastCheckedTimeZoneOffset = currentOffset;
       repo.triggerMissedPolicyProcessing();
     }
   });

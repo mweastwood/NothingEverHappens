@@ -845,5 +845,68 @@ void main() {
       expect(stripe.colors, [expectedColor]);
       expect(find.text('Custom'), findsOneWidget);
     });
+
+    testWidgets(
+      'omits fixed-calendar weekday/day details on CompletionRelativePolicy rules',
+      (tester) async {
+        final crMonthlyTask = TaskSchedule(
+          id: 'S-monthly-cr',
+          title: 'Monthly CR Task',
+          description: '',
+          schedules: [
+            MonthlySchedule(
+              id: 'rule-mcr',
+              scheduleId: 'S-monthly-cr',
+              startDate: const CivilDay(year: 2024, month: 1, day: 1),
+              interval: 1,
+              dayOfMonth: 15,
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 30),
+                targetHour: 9,
+                targetMinute: 0,
+              ),
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 9,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 17,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              allLabelsMapProvider.overrideWithValue({}),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: TaskScheduleCard(
+                    task: crMonthlyTask,
+                    isParent: true,
+                    showLastSpawnedDate: false,
+                    labels: const [],
+                    repository: mockTaskRepository,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Monthly CR Task'), findsOneWidget);
+        expect(find.text('Monthly'), findsOneWidget);
+        // Must not display fixed-calendar "On day 15"
+        expect(find.textContaining('On day 15'), findsNothing);
+      },
+    );
   });
 }

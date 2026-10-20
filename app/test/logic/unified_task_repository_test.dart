@@ -71,6 +71,7 @@ void main() {
 
   tearDown(() async {
     AppClock.reset();
+    repository.dispose();
     syncService.dispose();
     await Hive.close();
     await tempDir.delete(recursive: true);
@@ -698,6 +699,7 @@ void main() {
         userId: 'user1',
         telemetryService: fakeTelemetry,
       );
+      addTearDown(repoWithTelemetry.dispose);
 
       final instance = TaskInstance(
         id: 'I-telem-1',
@@ -769,6 +771,7 @@ void main() {
         firestore: firestore,
         userId: 'user2',
       );
+      addTearDown(repoUser2.dispose);
 
       // Wait for initial migration to complete
       await repoUser2.initializationFuture;
@@ -1056,6 +1059,7 @@ void main() {
         expect(instances.any((i) => i.scheduleId == 'S-Batch-1'), true);
         expect(instances.any((i) => i.scheduleId == 'S-Batch-2'), true);
       } finally {
+        trackingRepo.dispose();
         trackingSync.dispose();
         trackingDataSource.dispose();
       }
@@ -1075,6 +1079,7 @@ void main() {
         logger: logger,
         errorHandler: errorHandler,
       );
+      addTearDown(repo.dispose);
 
       await repo.triggerMissedPolicyProcessing(
         postProcess: () async {
@@ -1268,6 +1273,7 @@ void main() {
           userId: 'user-member',
           cloudFamilySchedulerClient: memberScheduler,
         );
+        addTearDown(memberRepo.dispose);
 
         await memberLocalSource.saveTask(unassignedFamilyTask);
         await memberRepo.triggerMissedPolicyProcessing(
@@ -1304,6 +1310,7 @@ void main() {
           userId: 'user-leader',
           cloudFamilySchedulerClient: leaderScheduler,
         );
+        addTearDown(leaderRepo.dispose);
 
         await leaderLocalSource.saveTask(unassignedFamilyTask);
         await leaderRepo.triggerMissedPolicyProcessing(
@@ -2644,6 +2651,7 @@ void main() {
           userId: 'user1',
           notificationService: notifService,
         );
+        addTearDown(repoWithNotif.dispose);
 
         final task = TaskSchedule(
           id: 'S-notif-test',
@@ -2681,6 +2689,158 @@ void main() {
           deleted.pendingInstances,
         );
         expect(notifService.scheduledTasks.containsKey(task.id), isTrue);
+      },
+    );
+
+    test(
+      'UnifiedTaskRepository reschedules notifications on recurring complete/dismiss/undo and cancels on one-off complete',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 8, 0));
+        addTearDown(AppClock.reset);
+
+        final notifService = LoggingNotificationService();
+        final repoWithNotif = UnifiedTaskRepository(
+          localDataSource: localDataSource,
+          syncService: syncService,
+          firestore: firestore,
+          userId: 'user1',
+          notificationService: notifService,
+        );
+        addTearDown(repoWithNotif.dispose);
+
+        final oneOffTask = TaskSchedule(
+          id: 'S-notif-oneoff',
+          title: 'One-Off Notification Task',
+          description: '',
+          schedules: [
+            OneOffSchedule(
+              id: 'R-notif-oneoff',
+              date: const CivilDay(year: 2026, month: 8, day: 10),
+              notificationRelativeTimes: const [
+                RelativeTime(dayOffset: 0, hour: 8, minute: 30),
+              ],
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+
+        await repoWithNotif.addTaskSchedule(oneOffTask);
+        expect(notifService.scheduledTasks.containsKey(oneOffTask.id), isTrue);
+
+        final oneOffInst = localDataSource.getInstances().firstWhere(
+          (i) => i.scheduleId == oneOffTask.id,
+        );
+        final completedOneOff = await repoWithNotif.completeTaskInstance(
+          oneOffInst.id,
+        );
+        expect(notifService.scheduledTasks.containsKey(oneOffTask.id), isFalse);
+
+        await repoWithNotif.undoResolveTaskInstance(completedOneOff!);
+        expect(notifService.scheduledTasks.containsKey(oneOffTask.id), isTrue);
+
+        // Dismissing one-off also cancels notifications
+        await repoWithNotif.dismissTaskInstance(oneOffInst.id);
+        expect(notifService.scheduledTasks.containsKey(oneOffTask.id), isFalse);
+
+        // Recurring task keeps notifications scheduled on complete & dismiss
+        final recurringTask = TaskSchedule(
+          id: 'S-notif-recurring',
+          title: 'Recurring Notification Task',
+          description: '',
+          schedules: [
+            DailySchedule(
+              id: 'R-notif-rec',
+              startDate: const CivilDay(year: 2026, month: 8, day: 10),
+              interval: 1,
+              notificationRelativeTimes: const [
+                RelativeTime(dayOffset: 0, hour: 8, minute: 30),
+              ],
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+
+        await repoWithNotif.addTaskSchedule(recurringTask);
+        expect(
+          notifService.scheduledTasks.containsKey(recurringTask.id),
+          isTrue,
+        );
+
+        final recInst = localDataSource.getInstances().firstWhere(
+          (i) =>
+              i.scheduleId == recurringTask.id &&
+              i.scheduledDate == const CivilDay(year: 2026, month: 8, day: 10),
+        );
+        notifService.clear();
+        await repoWithNotif.completeTaskInstance(recInst.id);
+        expect(
+          notifService.scheduledTasks.containsKey(recurringTask.id),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'UnifiedTaskRepository schedules dynamic intraday trigger timer for earliest future triggerTime and cancels on dispose',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 8, 0));
+        addTearDown(AppClock.reset);
+
+        final task = TaskSchedule(
+          id: 'S-dynamic-trigger',
+          title: 'Auto-dismiss Task',
+          description: '',
+          schedules: [
+            DailySchedule(
+              id: 'R-dyn-1',
+              startDate: const CivilDay(year: 2026, month: 8, day: 10),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 9,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 10,
+                minute: 0,
+              ),
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration(hours: 2),
+              ),
+            ),
+          ],
+          updatedAt: DateTime(2026, 8, 10, 8, 0),
+        );
+
+        await repository.addTaskSchedule(task);
+        expect(
+          repository.scheduledTriggerTime,
+          equals(DateTime(2026, 8, 10, 9, 0)),
+        );
+
+        // Advance past start time (9:30) -> next trigger is due time (10:00)
+        AppClock.setMockTime(DateTime(2026, 8, 10, 9, 30));
+        await repository.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: false,
+        );
+        expect(
+          repository.scheduledTriggerTime,
+          equals(DateTime(2026, 8, 10, 10, 0)),
+        );
+
+        // Advance past due time (10:30) -> next trigger is auto-dismiss expiration (12:00)
+        AppClock.setMockTime(DateTime(2026, 8, 10, 10, 30));
+        await repository.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: false,
+        );
+        expect(
+          repository.scheduledTriggerTime,
+          equals(DateTime(2026, 8, 10, 12, 0)),
+        );
+
+        repository.dispose();
+        expect(repository.scheduledTriggerTime, isNull);
       },
     );
   });

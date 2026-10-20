@@ -27,9 +27,26 @@ class ScheduleConfigCard extends StatefulWidget {
 class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
   (int, String) _getCompletionRelativeValueAndUnit(
     BuildContext context,
+    TaskScheduleRule schedule,
     Duration duration,
   ) {
     final l10n = context.l10n;
+    if (schedule is MonthlySchedule) {
+      return (
+        schedule.interval,
+        schedule.interval == 1
+            ? l10n.presetMonthSingular
+            : l10n.presetMonthPlural,
+      );
+    }
+    if (schedule is YearlySchedule) {
+      return (
+        schedule.interval,
+        schedule.interval == 1
+            ? l10n.presetYearSingular
+            : l10n.presetYearPlural,
+      );
+    }
     if (duration.inMinutes == 0) return (0, l10n.unitDays);
     if (duration.inMinutes % (7 * 24 * 60) == 0) {
       return (duration.inDays ~/ 7, l10n.unitWeeks);
@@ -100,6 +117,7 @@ class _ScheduleConfigCardState extends State<ScheduleConfigCard> {
       final policy = schedule.schedulingPolicy as CompletionRelativePolicy;
       final (val, unit) = _getCompletionRelativeValueAndUnit(
         context,
+        schedule,
         policy.interval,
       );
       final timeStr = policy.targetTime.format(context);

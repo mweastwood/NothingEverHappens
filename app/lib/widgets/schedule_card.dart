@@ -91,6 +91,8 @@ class ScheduleCard extends ConsumerWidget {
     String intervalStr = '';
     String startStr = '';
     String daysStr = '';
+    final isCompletionRelative =
+        schedule.schedulingPolicy is CompletionRelativePolicy;
 
     if (schedule is DailySchedule) {
       final ds = schedule;
@@ -109,18 +111,20 @@ class ScheduleCard extends ConsumerWidget {
           '${ws.startDate.year}-${ws.startDate.month.toString().padLeft(2, '0')}-${ws.startDate.day.toString().padLeft(2, '0')}';
       startStr = context.l10n.startingDate(dateStr);
 
-      final dayNames = {
-        1: 'Mon',
-        2: 'Tue',
-        3: 'Wed',
-        4: 'Thu',
-        5: 'Fri',
-        6: 'Sat',
-        7: 'Sun',
-      };
-      final selectedDays = ws.daysOfWeek.toList()..sort();
-      final joinedDays = selectedDays.map((d) => dayNames[d]).join(', ');
-      daysStr = context.l10n.onDaysOfWeek(joinedDays);
+      if (!isCompletionRelative) {
+        final dayNames = {
+          1: 'Mon',
+          2: 'Tue',
+          3: 'Wed',
+          4: 'Thu',
+          5: 'Fri',
+          6: 'Sat',
+          7: 'Sun',
+        };
+        final selectedDays = ws.daysOfWeek.toList()..sort();
+        final joinedDays = selectedDays.map((d) => dayNames[d]).join(', ');
+        daysStr = context.l10n.onDaysOfWeek(joinedDays);
+      }
     } else if (schedule is MonthlySchedule) {
       final ms = schedule;
       intervalStr = ms.interval == 1
@@ -130,32 +134,34 @@ class ScheduleCard extends ConsumerWidget {
           '${ms.startDate.year}-${ms.startDate.month.toString().padLeft(2, '0')}-${ms.startDate.day.toString().padLeft(2, '0')}';
       startStr = context.l10n.startingDate(dateStr);
 
-      if (ms.dayOfMonth != null) {
-        if (ms.dayOfMonth! > 0) {
-          daysStr = context.l10n.dayOfMonthOnDay(ms.dayOfMonth!);
+      if (!isCompletionRelative) {
+        if (ms.dayOfMonth != null) {
+          if (ms.dayOfMonth! > 0) {
+            daysStr = context.l10n.dayOfMonthOnDay(ms.dayOfMonth!);
+          } else {
+            daysStr = context.l10n.dayOfMonthFromEnd(ms.dayOfMonth!.abs());
+          }
         } else {
-          daysStr = context.l10n.dayOfMonthFromEnd(ms.dayOfMonth!.abs());
+          final occurrenceNames = {
+            1: context.l10n.firstOccurrence,
+            2: context.l10n.secondOccurrence,
+            3: context.l10n.thirdOccurrence,
+            4: context.l10n.fourthOccurrence,
+            -1: context.l10n.lastOccurrence,
+          };
+          final dayOfWeekNames = {
+            1: 'Monday',
+            2: 'Tuesday',
+            3: 'Wednesday',
+            4: 'Thursday',
+            5: 'Friday',
+            6: 'Saturday',
+            7: 'Sunday',
+          };
+          final occStr = occurrenceNames[ms.occurrence] ?? '';
+          final dowStr = dayOfWeekNames[ms.dayOfWeek] ?? '';
+          daysStr = context.l10n.nthDayOfWeekOccurrence(occStr, dowStr);
         }
-      } else {
-        final occurrenceNames = {
-          1: context.l10n.firstOccurrence,
-          2: context.l10n.secondOccurrence,
-          3: context.l10n.thirdOccurrence,
-          4: context.l10n.fourthOccurrence,
-          -1: context.l10n.lastOccurrence,
-        };
-        final dayOfWeekNames = {
-          1: 'Monday',
-          2: 'Tuesday',
-          3: 'Wednesday',
-          4: 'Thursday',
-          5: 'Friday',
-          6: 'Saturday',
-          7: 'Sunday',
-        };
-        final occStr = occurrenceNames[ms.occurrence] ?? '';
-        final dowStr = dayOfWeekNames[ms.dayOfWeek] ?? '';
-        daysStr = context.l10n.nthDayOfWeekOccurrence(occStr, dowStr);
       }
     } else if (schedule is YearlySchedule) {
       final ys = schedule;
@@ -166,22 +172,24 @@ class ScheduleCard extends ConsumerWidget {
           '${ys.startDate.year}-${ys.startDate.month.toString().padLeft(2, '0')}-${ys.startDate.day.toString().padLeft(2, '0')}';
       startStr = context.l10n.startingDate(dateStr);
 
-      final monthNames = {
-        1: 'January',
-        2: 'February',
-        3: 'March',
-        4: 'April',
-        5: 'May',
-        6: 'June',
-        7: 'July',
-        8: 'August',
-        9: 'September',
-        10: 'October',
-        11: 'November',
-        12: 'December',
-      };
-      final mStr = monthNames[ys.month] ?? '';
-      daysStr = context.l10n.yearlyOn(mStr, ys.day);
+      if (!isCompletionRelative) {
+        final monthNames = {
+          1: 'January',
+          2: 'February',
+          3: 'March',
+          4: 'April',
+          5: 'May',
+          6: 'June',
+          7: 'July',
+          8: 'August',
+          9: 'September',
+          10: 'October',
+          11: 'November',
+          12: 'December',
+        };
+        final mStr = monthNames[ys.month] ?? '';
+        daysStr = context.l10n.yearlyOn(mStr, ys.day);
+      }
     }
 
     return Card(
