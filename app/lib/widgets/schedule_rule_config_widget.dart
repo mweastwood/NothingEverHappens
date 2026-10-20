@@ -502,7 +502,9 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
       }
     }
 
-    if (s is MonthlySchedule && s.dayOfMonth != null) {
+    final isCompletionRelative = s.schedulingPolicy is CompletionRelativePolicy;
+
+    if (!isCompletionRelative && s is MonthlySchedule && s.dayOfMonth != null) {
       final domText = _monthlyDayOfMonthController.text.trim();
       final dom = int.tryParse(domText);
       if (dom == null || dom == 0 || dom.abs() > 28) {
@@ -510,7 +512,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
       }
     }
 
-    if (s is YearlySchedule) {
+    if (!isCompletionRelative && s is YearlySchedule) {
       final yMonth = s.month;
       final yDayText = _yearlyDayController.text.trim();
       final yDay = int.tryParse(yDayText);

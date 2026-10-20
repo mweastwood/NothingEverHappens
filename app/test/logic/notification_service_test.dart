@@ -3,8 +3,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive/hive.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -618,5 +620,274 @@ void main() {
       // taskLookup takes precedence or fallback to scheduledTasks
       expect(webNotificationService.scheduledTasks[webTask.id], isNotNull);
     });
+  });
+
+  group('PlatformNotificationService Policy & Instance-Aware Scheduling', () {
+    late FakeFlutterLocalNotificationsPlugin mockPlugin;
+
+    setUp(() {
+      mockPlugin = FakeFlutterLocalNotificationsPlugin();
+      AppClock.reset();
+    });
+
+    tearDown(() {
+      AppClock.reset();
+    });
+
+    test(
+      'schedules notification for CompletionRelativePolicy based on pending/completed instances',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 10, 0));
+        final crRule = DailySchedule(
+          id: 'R-cr-notif',
+          startDate: const CivilDay(year: 2026, month: 8, day: 1),
+          interval: 3,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 3),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+          ],
+        );
+        final task = TaskSchedule(
+          id: 'S-cr-notif',
+          title: 'Completion Relative Task',
+          description: '',
+          schedules: [crRule],
+        );
+
+        final instances = <TaskInstance>[
+          TaskInstance(
+            id: 'I-cr-pending',
+            scheduleId: task.id,
+            ruleId: crRule.id,
+            title: task.title,
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 8, day: 13),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+          ),
+        ];
+
+        final service = PlatformNotificationService(
+          plugin: mockPlugin,
+          instancesLookup: (_) => instances,
+        );
+        addTearDown(service.dispose);
+
+        await service.scheduleNotifications(task);
+
+        expect(mockPlugin.scheduled, hasLength(1));
+        final scheduledDate = DateTime.fromMillisecondsSinceEpoch(
+          (mockPlugin.scheduled.first['scheduledDate'] as tz.TZDateTime)
+              .millisecondsSinceEpoch,
+        );
+        expect(scheduledDate.year, 2026);
+        expect(scheduledDate.month, 8);
+        expect(scheduledDate.day, 13);
+        expect(scheduledDate.hour, 9);
+        expect(scheduledDate.minute, 0);
+      },
+    );
+
+    test(
+      'skips already-completed today occurrence and schedules notification for next occurrence',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 8, 0));
+        final dailyRule = DailySchedule(
+          id: 'R-daily-skip-completed',
+          startDate: const CivilDay(year: 2026, month: 8, day: 1),
+          interval: 1,
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+          ],
+        );
+        final task = TaskSchedule(
+          id: 'S-daily-skip-completed',
+          title: 'Daily Task',
+          description: '',
+          schedules: [dailyRule],
+        );
+
+        // Today (Aug 10) is already completed at 8:00 AM, even though notification time is 9:00 AM
+        final instances = <TaskInstance>[
+          TaskInstance(
+            id: 'I-aug-10',
+            scheduleId: task.id,
+            ruleId: dailyRule.id,
+            title: task.title,
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 8, day: 10),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 7,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 8, 10, 8, 0),
+          ),
+        ];
+
+        final service = PlatformNotificationService(
+          plugin: mockPlugin,
+          instancesLookup: (_) => instances,
+        );
+        addTearDown(service.dispose);
+
+        await service.scheduleNotifications(task);
+
+        expect(mockPlugin.scheduled, hasLength(1));
+        final scheduledDate = DateTime.fromMillisecondsSinceEpoch(
+          (mockPlugin.scheduled.first['scheduledDate'] as tz.TZDateTime)
+              .millisecondsSinceEpoch,
+        );
+        // Must schedule for Aug 11 at 9:00 AM, NOT Aug 10 at 9:00 AM!
+        expect(scheduledDate.year, 2026);
+        expect(scheduledDate.month, 8);
+        expect(scheduledDate.day, 11);
+        expect(scheduledDate.hour, 9);
+        expect(scheduledDate.minute, 0);
+      },
+    );
+
+    test(
+      'schedules notification accurately for multi-year YearlySchedule beyond 365 days',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 10, 0));
+        final yearlyRule = YearlySchedule(
+          id: 'R-yearly-2yr',
+          startDate: const CivilDay(year: 2026, month: 1, day: 15),
+          interval: 2,
+          month: 1,
+          day: 15,
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+          ],
+        );
+        final task = TaskSchedule(
+          id: 'S-yearly-2yr',
+          title: 'Biennial Task',
+          description: '',
+          schedules: [yearlyRule],
+        );
+
+        final service = PlatformNotificationService(plugin: mockPlugin);
+        addTearDown(service.dispose);
+
+        await service.scheduleNotifications(task);
+
+        expect(mockPlugin.scheduled, hasLength(1));
+        final scheduledDate = DateTime.fromMillisecondsSinceEpoch(
+          (mockPlugin.scheduled.first['scheduledDate'] as tz.TZDateTime)
+              .millisecondsSinceEpoch,
+        );
+        expect(scheduledDate.year, 2028);
+        expect(scheduledDate.month, 1);
+        expect(scheduledDate.day, 15);
+        expect(scheduledDate.hour, 9);
+        expect(scheduledDate.minute, 0);
+      },
+    );
+
+    test(
+      'past OneOffSchedule does NOT schedule a spurious +24h fallback notification',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 12, 0));
+        final pastOneOff = OneOffSchedule(
+          id: 'R-past-oneoff',
+          date: const CivilDay(year: 2026, month: 8, day: 10),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+          ],
+        );
+        final task = TaskSchedule(
+          id: 'S-past-oneoff',
+          title: 'Past One-Off Task',
+          description: '',
+          schedules: [pastOneOff],
+        );
+
+        final service = PlatformNotificationService(plugin: mockPlugin);
+        addTearDown(service.dispose);
+
+        await service.scheduleNotifications(task);
+
+        expect(mockPlugin.scheduled, isEmpty);
+      },
+    );
+
+    test(
+      'CompletionRelativePolicy with pending instance whose notification time is in the past does NOT schedule future hypothetical occurrence',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 8, 10, 12, 0));
+        final crRule = DailySchedule(
+          id: 'R-cr-past-notif',
+          startDate: const CivilDay(year: 2026, month: 8, day: 1),
+          interval: 3,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 3),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+          notificationRelativeTimes: const [
+            RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+          ],
+        );
+        final task = TaskSchedule(
+          id: 'S-cr-past-notif',
+          title: 'Overdue CR Task',
+          description: '',
+          schedules: [crRule],
+        );
+
+        final instances = <TaskInstance>[
+          TaskInstance(
+            id: 'I-cr-pending-today',
+            scheduleId: task.id,
+            ruleId: crRule.id,
+            title: task.title,
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 8, day: 10),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+          ),
+        ];
+
+        final service = PlatformNotificationService(
+          plugin: mockPlugin,
+          instancesLookup: (_) => instances,
+        );
+        addTearDown(service.dispose);
+
+        await service.scheduleNotifications(task);
+
+        expect(mockPlugin.scheduled, isEmpty);
+      },
+    );
   });
 }

@@ -424,6 +424,52 @@ void main() {
       },
     );
 
+    testWidgets(
+      'does not render fixed day-of-month text or calendar icon for CompletionRelativePolicy MonthlySchedule',
+      (tester) async {
+        final crMonthlyTask = TaskSchedule(
+          id: 'S-cr-monthly',
+          title: 'CR Monthly Task',
+          description: '',
+          schedules: [
+            MonthlySchedule(
+              id: 'R-cr-m',
+              scheduleId: 'S-cr-monthly',
+              startDate: const CivilDay(year: 2026, month: 1, day: 15),
+              interval: 1,
+              dayOfMonth: 15,
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 30),
+                targetHour: 9,
+                targetMinute: 0,
+              ),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: ScheduleCard(
+                    task: crMonthlyTask,
+                    onEdit: () {},
+                    onDelete: () {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Every month'), findsOneWidget);
+        expect(find.textContaining('On day 15'), findsNothing);
+        expect(find.byIcon(Icons.calendar_view_month), findsNothing);
+      },
+    );
+
     testGoldens(
       'ScheduleCard renders correctly across different schedule types and family badges',
       (tester) async {

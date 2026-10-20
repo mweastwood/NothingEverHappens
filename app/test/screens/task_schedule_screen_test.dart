@@ -2003,5 +2003,140 @@ void main() {
         expect(find.text('Call Plumber'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'TaskScheduleScreen sorts Next Start and Next Due using pending CompletionRelativePolicy instance and skipping already-completed today instance',
+      (tester) async {
+        tester.view.physicalSize = const Size(400, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        // AppClock is 2026-06-22 12:00
+        final dailyDoneTodayTask = TaskSchedule(
+          id: 'S-daily-done-today',
+          title: 'Alpha Daily Done Today',
+          description: '',
+          schedules: [
+            DailySchedule(
+              id: 'R-daily-done',
+              startDate: const CivilDay(year: 2026, month: 6, day: 1),
+              interval: 1,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 8,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 10,
+                minute: 0,
+              ),
+            ),
+          ],
+        );
+
+        final crPendingTomorrowTask = TaskSchedule(
+          id: 'S-cr-tomorrow',
+          title: 'Beta CR Pending Tomorrow',
+          description: '',
+          schedules: [
+            DailySchedule(
+              id: 'R-cr-tom',
+              startDate: const CivilDay(year: 2026, month: 6, day: 1),
+              interval: 5,
+              startRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 7,
+                minute: 0,
+              ),
+              dueRelativeTime: const RelativeTime(
+                dayOffset: 0,
+                hour: 9,
+                minute: 0,
+              ),
+              schedulingPolicy: const CompletionRelativePolicy(
+                interval: Duration(days: 5),
+                targetHour: 7,
+                targetMinute: 0,
+              ),
+            ),
+          ],
+        );
+
+        // Today (2026-06-22) is already completed for dailyDoneTodayTask, so its next occurrence is tomorrow (2026-06-23) at 8:00 AM.
+        // crPendingTomorrowTask has a pending instance on tomorrow (2026-06-23) at 7:00 AM, so it should sort BEFORE dailyDoneTodayTask!
+        final instances = <TaskInstance>[
+          TaskInstance(
+            id: 'I-daily-done-22',
+            scheduleId: dailyDoneTodayTask.id,
+            ruleId: 'R-daily-done',
+            title: dailyDoneTodayTask.title,
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 22),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 8,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 10,
+              minute: 0,
+            ),
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 6, 22, 9, 0),
+          ),
+          TaskInstance(
+            id: 'I-cr-pending-23',
+            scheduleId: crPendingTomorrowTask.id,
+            ruleId: 'R-cr-tom',
+            title: crPendingTomorrowTask.title,
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 23),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 7,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+          ),
+        ];
+
+        tasksSubject.add([dailyDoneTodayTask, crPendingTomorrowTask]);
+
+        await tester.pumpWidget(
+          createScreen(
+            overrides: [
+              taskInstancesProvider.overrideWith(
+                (ref) => Stream.value(instances),
+              ),
+              userSettingsProvider.overrideWith(
+                (ref) => Stream.value(
+                  const UserSettings(
+                    hoursAvailable: 8.0,
+                    scheduleListSort: [(column: 'next_start', ascending: true)],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final betaY = tester
+            .getTopLeft(find.text('Beta CR Pending Tomorrow'))
+            .dy;
+        final alphaY = tester
+            .getTopLeft(find.text('Alpha Daily Done Today'))
+            .dy;
+        expect(betaY, lessThan(alphaY));
+      },
+    );
   });
 }

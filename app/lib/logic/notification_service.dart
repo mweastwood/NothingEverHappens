@@ -10,8 +10,12 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:hive/hive.dart';
 
 import 'task_schedule.dart';
+import 'task_instance.dart';
 import 'civil_day.dart';
 import 'relative_time.dart';
+import 'app_clock.dart';
+import 'scheduler_engine.dart';
+import 'hive_local_data_source.dart';
 import 'notification_helper.dart';
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {
@@ -21,7 +25,31 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
       box = Hive.box(PlatformNotificationService.notificationIdsBoxName);
     }
   } catch (_) {}
-  final service = PlatformNotificationService(notificationIdsBox: box);
+  final service = PlatformNotificationService(
+    notificationIdsBox: box,
+    taskLookup: (taskId) {
+      try {
+        return ref
+            .read(hiveLocalDataSourceProvider)
+            .getTasks()
+            .where((t) => t.id == taskId)
+            .firstOrNull;
+      } catch (_) {
+        return null;
+      }
+    },
+    instancesLookup: (taskId) {
+      try {
+        return ref
+            .read(hiveLocalDataSourceProvider)
+            .getInstances()
+            .where((i) => i.scheduleId == taskId)
+            .toList();
+      } catch (_) {
+        return const [];
+      }
+    },
+  );
   ref.onDispose(() => service.dispose());
   return service;
 });
@@ -47,6 +75,7 @@ class PlatformNotificationService implements NotificationService {
   final Map<String, List<Timer>> _webTimers = {};
   final Map<String, TaskSchedule> _scheduledTasks = {};
   final TaskSchedule? Function(String taskId)? _taskLookup;
+  final List<TaskInstance> Function(String taskId)? _instancesLookup;
   final bool _isWeb;
   final void Function(String title, String body)? _onWebNotification;
   final Map<String, List<int>> _scheduledNotificationIds = {};
@@ -55,11 +84,13 @@ class PlatformNotificationService implements NotificationService {
     FlutterLocalNotificationsPlugin? plugin,
     Box<dynamic>? notificationIdsBox,
     TaskSchedule? Function(String taskId)? taskLookup,
+    List<TaskInstance> Function(String taskId)? instancesLookup,
     bool isWeb = kIsWeb,
     void Function(String title, String body)? onWebNotification,
   }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
        _notificationIdsBox = notificationIdsBox,
        _taskLookup = taskLookup,
+       _instancesLookup = instancesLookup,
        _isWeb = isWeb,
        _onWebNotification = onWebNotification {
     _loadTrackedNotificationIds();
@@ -174,7 +205,8 @@ class PlatformNotificationService implements NotificationService {
             s,
             notifRel,
           );
-          final delay = scheduledDate.difference(DateTime.now());
+          if (scheduledDate == null) continue;
+          final delay = scheduledDate.difference(AppClock.now);
           if (delay.isNegative) continue;
 
           debugPrint(
@@ -207,6 +239,7 @@ class PlatformNotificationService implements NotificationService {
             s,
             notifRel,
           );
+          if (scheduledDate == null) continue;
           final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
           final notifId = (task.id.hashCode + i * 100 + j) & 0x7FFFFFFF;
           notifIds.add(notifId);
@@ -372,32 +405,69 @@ class PlatformNotificationService implements NotificationService {
     }
   }
 
-  DateTime _calculateNextNotificationDateTimeForNotif(
+  DateTime? _calculateNextNotificationDateTimeForNotif(
     TaskSchedule task,
     TaskScheduleRule s,
     RelativeTime notifRel,
   ) {
-    final now = DateTime.now();
-    var checkDate = DateTime(now.year, now.month, now.day);
+    final now = AppClock.now;
+    final today = CivilDay.fromDateTime(now);
+    final taskInstances = _instancesLookup?.call(task.id) ?? const [];
+    final ruleInstances = taskInstances
+        .where(
+          (i) =>
+              i.ruleId == s.id ||
+              (i.ruleId.isEmpty && task.schedules.indexOf(s) == 0),
+        )
+        .toList();
 
-    for (var i = 0; i < 365; i++) {
-      final civilDay = CivilDay(
-        year: checkDate.year,
-        month: checkDate.month,
-        day: checkDate.day,
+    final resolvedDays = <CivilDay>{};
+    final pendingInstances = <TaskInstance>[];
+    for (final inst in ruleInstances) {
+      if (inst.status == TaskStatus.pending) {
+        pendingInstances.add(inst);
+      } else {
+        resolvedDays.add(inst.scheduledDate);
+      }
+    }
+
+    if (pendingInstances.isNotEmpty) {
+      pendingInstances.sort(
+        (a, b) => a.scheduledDate.compareTo(b.scheduledDate),
       );
-
-      if (s.occursOn(civilDay)) {
-        final occurrenceDateTime = notifRel.referenceTo(civilDay);
-
+      for (final inst in pendingInstances) {
+        final occurrenceDateTime = notifRel.referenceTo(inst.scheduledDate);
         if (occurrenceDateTime.isAfter(now)) {
           return occurrenceDateTime;
         }
       }
-      checkDate = checkDate.add(const Duration(days: 1));
+      if (s.schedulingPolicy is CompletionRelativePolicy) {
+        return null;
+      }
     }
 
-    return now.add(const Duration(days: 1));
+    final fromDate =
+        (s.schedulingPolicy is CompletionRelativePolicy ||
+            notifRel.dayOffset <= 0)
+        ? today
+        : today.addDays(-notifRel.dayOffset);
+    final upcomingDays = const SchedulerEngine().projectUpcomingOccurrences(
+      task,
+      s,
+      fromDate,
+      existingInstances: taskInstances,
+      count: 10,
+    );
+
+    for (final day in upcomingDays) {
+      if (resolvedDays.contains(day)) continue;
+      final occurrenceDateTime = notifRel.referenceTo(day);
+      if (occurrenceDateTime.isAfter(now)) {
+        return occurrenceDateTime;
+      }
+    }
+
+    return null;
   }
 
   @override

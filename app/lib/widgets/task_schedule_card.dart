@@ -152,6 +152,8 @@ class TaskScheduleCard extends ConsumerWidget {
     String intervalStr = '';
     String startStr = '';
     String daysStr = '';
+    final isCompletionRelative =
+        schedule.schedulingPolicy is CompletionRelativePolicy;
 
     if (schedule is OneOffSchedule) {
       final dateStr =
@@ -175,18 +177,22 @@ class TaskScheduleCard extends ConsumerWidget {
           '${ws.startDate.year}-${ws.startDate.month.toString().padLeft(2, '0')}-${ws.startDate.day.toString().padLeft(2, '0')}';
       startStr = context.l10n.startingDate(dateStr);
 
-      final dayNames = {
-        1: context.l10n.weekdayShortMonday,
-        2: context.l10n.weekdayShortTuesday,
-        3: context.l10n.weekdayShortWednesday,
-        4: context.l10n.weekdayShortThursday,
-        5: context.l10n.weekdayShortFriday,
-        6: context.l10n.weekdayShortSaturday,
-        7: context.l10n.weekdayShortSunday,
-      };
-      final selectedDays = ws.daysOfWeek.toList()..sort();
-      final joinedDays = selectedDays.map((d) => dayNames[d] ?? '').join(', ');
-      daysStr = context.l10n.onDaysOfWeek(joinedDays);
+      if (!isCompletionRelative) {
+        final dayNames = {
+          1: context.l10n.weekdayShortMonday,
+          2: context.l10n.weekdayShortTuesday,
+          3: context.l10n.weekdayShortWednesday,
+          4: context.l10n.weekdayShortThursday,
+          5: context.l10n.weekdayShortFriday,
+          6: context.l10n.weekdayShortSaturday,
+          7: context.l10n.weekdayShortSunday,
+        };
+        final selectedDays = ws.daysOfWeek.toList()..sort();
+        final joinedDays = selectedDays
+            .map((d) => dayNames[d] ?? '')
+            .join(', ');
+        daysStr = context.l10n.onDaysOfWeek(joinedDays);
+      }
     } else if (schedule is MonthlySchedule) {
       final ms = schedule;
       intervalStr = ms.interval == 1
@@ -196,32 +202,34 @@ class TaskScheduleCard extends ConsumerWidget {
           '${ms.startDate.year}-${ms.startDate.month.toString().padLeft(2, '0')}-${ms.startDate.day.toString().padLeft(2, '0')}';
       startStr = context.l10n.startingDate(dateStr);
 
-      if (ms.dayOfMonth != null) {
-        if (ms.dayOfMonth! > 0) {
-          daysStr = context.l10n.dayOfMonthOnDay(ms.dayOfMonth!);
+      if (!isCompletionRelative) {
+        if (ms.dayOfMonth != null) {
+          if (ms.dayOfMonth! > 0) {
+            daysStr = context.l10n.dayOfMonthOnDay(ms.dayOfMonth!);
+          } else {
+            daysStr = context.l10n.dayOfMonthFromEnd(ms.dayOfMonth!.abs());
+          }
         } else {
-          daysStr = context.l10n.dayOfMonthFromEnd(ms.dayOfMonth!.abs());
+          final occurrenceNames = {
+            1: context.l10n.firstOccurrence,
+            2: context.l10n.secondOccurrence,
+            3: context.l10n.thirdOccurrence,
+            4: context.l10n.fourthOccurrence,
+            -1: context.l10n.lastOccurrence,
+          };
+          final dayOfWeekNames = {
+            1: context.l10n.weekdayMonday,
+            2: context.l10n.weekdayTuesday,
+            3: context.l10n.weekdayWednesday,
+            4: context.l10n.weekdayThursday,
+            5: context.l10n.weekdayFriday,
+            6: context.l10n.weekdaySaturday,
+            7: context.l10n.weekdaySunday,
+          };
+          final occStr = occurrenceNames[ms.occurrence] ?? '';
+          final dowStr = dayOfWeekNames[ms.dayOfWeek] ?? '';
+          daysStr = context.l10n.nthDayOfWeekOccurrence(occStr, dowStr);
         }
-      } else {
-        final occurrenceNames = {
-          1: context.l10n.firstOccurrence,
-          2: context.l10n.secondOccurrence,
-          3: context.l10n.thirdOccurrence,
-          4: context.l10n.fourthOccurrence,
-          -1: context.l10n.lastOccurrence,
-        };
-        final dayOfWeekNames = {
-          1: context.l10n.weekdayMonday,
-          2: context.l10n.weekdayTuesday,
-          3: context.l10n.weekdayWednesday,
-          4: context.l10n.weekdayThursday,
-          5: context.l10n.weekdayFriday,
-          6: context.l10n.weekdaySaturday,
-          7: context.l10n.weekdaySunday,
-        };
-        final occStr = occurrenceNames[ms.occurrence] ?? '';
-        final dowStr = dayOfWeekNames[ms.dayOfWeek] ?? '';
-        daysStr = context.l10n.nthDayOfWeekOccurrence(occStr, dowStr);
       }
     } else if (schedule is YearlySchedule) {
       final ys = schedule;
@@ -232,22 +240,24 @@ class TaskScheduleCard extends ConsumerWidget {
           '${ys.startDate.year}-${ys.startDate.month.toString().padLeft(2, '0')}-${ys.startDate.day.toString().padLeft(2, '0')}';
       startStr = context.l10n.startingDate(dateStr);
 
-      final monthNames = {
-        1: context.l10n.monthJanuary,
-        2: context.l10n.monthFebruary,
-        3: context.l10n.monthMarch,
-        4: context.l10n.monthApril,
-        5: context.l10n.monthMay,
-        6: context.l10n.monthJune,
-        7: context.l10n.monthJuly,
-        8: context.l10n.monthAugust,
-        9: context.l10n.monthSeptember,
-        10: context.l10n.monthOctober,
-        11: context.l10n.monthNovember,
-        12: context.l10n.monthDecember,
-      };
-      final mStr = monthNames[ys.month] ?? '';
-      daysStr = context.l10n.yearlyOn(mStr, ys.day);
+      if (!isCompletionRelative) {
+        final monthNames = {
+          1: context.l10n.monthJanuary,
+          2: context.l10n.monthFebruary,
+          3: context.l10n.monthMarch,
+          4: context.l10n.monthApril,
+          5: context.l10n.monthMay,
+          6: context.l10n.monthJune,
+          7: context.l10n.monthJuly,
+          8: context.l10n.monthAugust,
+          9: context.l10n.monthSeptember,
+          10: context.l10n.monthOctober,
+          11: context.l10n.monthNovember,
+          12: context.l10n.monthDecember,
+        };
+        final mStr = monthNames[ys.month] ?? '';
+        daysStr = context.l10n.yearlyOn(mStr, ys.day);
+      }
     }
 
     return (interval: intervalStr, days: daysStr, start: startStr);

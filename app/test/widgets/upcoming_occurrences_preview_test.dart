@@ -98,6 +98,42 @@ void main() {
     });
 
     testWidgets(
+      'renders projected occurrences for CompletionRelativePolicy task',
+      (tester) async {
+        final schedule = WeeklySchedule(
+          id: 'R-mock-cr',
+          scheduleId: 'S-mock-cr',
+          startDate: const CivilDay(year: 2026, month: 6, day: 8),
+          interval: 1,
+          daysOfWeek: const {},
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 7),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: UpcomingOccurrencesPreview(
+                  schedule: schedule,
+                  startDateTime: DateTime(2026, 6, 8, 9, 0),
+                  dueDateTime: DateTime(2026, 6, 8, 17, 0),
+                  scheduleType: RecurrenceType.weekly,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        expect(find.byKey(const Key('occurrence_card_0')), findsOneWidget);
+        expect(find.byKey(const Key('occurrence_card_9')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
       'gracefully handles invalid/non-existent dates for Yearly tasks',
       (tester) async {
         final schedule = YearlySchedule(
