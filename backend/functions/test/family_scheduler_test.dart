@@ -992,5 +992,81 @@ void main() {
         ),
       );
     });
+
+    test(
+        'processFamily falls back to users/{uid}.timeZoneOffsetMinutes for legacy family members and backfills family doc',
+        () async {
+      final service = FamilySchedulerService(db);
+
+      // Legacy family member entry has no timeZoneOffsetMinutes yet,
+      // but users/user_legacy has timeZoneOffsetMinutes: -420 (PDT).
+      db.collection('families').doc('fam_legacy').set({
+        'name': 'Legacy Family',
+        'members': {
+          'user_legacy': {
+            'displayName': 'Legacy User',
+            'role': 'parent',
+          },
+        },
+      });
+      db.collection('users').doc('user_legacy').set({
+        'timeZone': 'PDT',
+        'timeZoneOffsetMinutes': -420,
+      });
+
+      final task = TaskSchedule(
+        id: 'task_legacy',
+        title: 'Legacy PDT Task',
+        description: '',
+        isFamily: true,
+        missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+          gracePeriod: Duration.zero,
+        ),
+        schedules: [
+          DailySchedule(
+            id: 'rule_legacy',
+            scheduleId: 'task_legacy',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 7, minute: 30),
+            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          ),
+        ],
+      );
+      db
+          .collection('families/fam_legacy/tasks')
+          .doc(task.id)
+          .set(task.toFirestore());
+
+      // Evaluate at 2026-09-10 21:00 UTC (14:00 PDT) with no caller offset (e.g. hourly cron)
+      final summary = await service.processFamily(
+        'fam_legacy',
+        now: DateTime.utc(2026, 9, 10, 21, 0),
+      );
+      expect(summary.error, isNull);
+      expect(summary.instancesSpawned, greaterThan(0));
+      expect(summary.instancesUpdated, equals(0));
+
+      // Verify Sep 10 instance is pending (not auto-dismissed at 20:00 UTC)
+      final instancesSnap =
+          await db.collection('families/fam_legacy/instances').get();
+      final sept10Doc = instancesSnap.docs.firstWhere(
+        (d) =>
+            (d.data()?['scheduledDate'] as Map<String, dynamic>?)?['day'] == 10,
+      );
+      expect(sept10Doc.data()?['status'], equals('pending'));
+
+      // Verify family document was backfilled with the user's offset and timeZone
+      final familyDocRef = db.collection('families').doc('fam_legacy');
+      expect(
+        familyDocRef.updateCalls,
+        contains(
+          allOf(
+            containsPair('members.user_legacy.timeZoneOffsetMinutes', -420),
+            containsPair('members.user_legacy.timeZone', 'PDT'),
+          ),
+        ),
+      );
+    });
   });
 }

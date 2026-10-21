@@ -1169,6 +1169,143 @@ void main() {
             afterIntervalPdt.instancesToSpawn.single.scheduledDate,
             equals(const CivilDay(year: 2026, month: 9, day: 11)),
           );
+
+          // Verify getNextOccurrenceToSpawn and projectUpcomingOccurrences also respect utcOffset
+          final nextToSpawn = engine.getNextOccurrenceToSpawn(
+            task,
+            completedInstance,
+            DateTime.utc(2026, 9, 11, 3, 0),
+            [completedInstance],
+            utcOffset: pdtOffset,
+          );
+          expect(
+            nextToSpawn?.scheduledDate,
+            equals(const CivilDay(year: 2026, month: 9, day: 11)),
+          );
+          final projected = engine.projectUpcomingOccurrences(
+            task,
+            rule,
+            const CivilDay(year: 2026, month: 9, day: 10),
+            count: 2,
+            existingInstances: [completedInstance],
+            utcOffset: pdtOffset,
+          );
+          expect(
+            projected,
+            equals([
+              const CivilDay(year: 2026, month: 9, day: 11),
+              const CivilDay(year: 2026, month: 9, day: 12),
+            ]),
+          );
+        },
+      );
+
+      test(
+        'preferNewer and preferOlder wait until startRelativeTime in latestUtcOffset before skipping across multi-timezone bounding box',
+        () {
+          const edtOffset = Duration(hours: -4); // Eastern member (earliest)
+          const pdtOffset = Duration(hours: -7); // Western member (latest)
+
+          final rule = DailySchedule(
+            id: 'R-pref',
+            scheduleId: 'T-pref',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          );
+
+          final preferNewerTask = TaskSchedule(
+            id: 'T-pref',
+            title: 'Prefer Newer Family Task',
+            description: '',
+            isFamily: true,
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
+            schedules: [rule],
+          );
+
+          final sept10Inst = TaskInstance(
+            id: 'I-sep10',
+            scheduleId: 'T-pref',
+            ruleId: 'R-pref',
+            title: 'Prefer Newer Family Task',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
+            startRelativeTime: rule.startRelativeTime,
+            dueRelativeTime: rule.dueRelativeTime,
+            status: TaskStatus.pending,
+          );
+          final sept11Inst = TaskInstance(
+            id: 'I-sep11',
+            scheduleId: 'T-pref',
+            ruleId: 'R-pref',
+            title: 'Prefer Newer Family Task',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 11),
+            startRelativeTime: rule.startRelativeTime,
+            dueRelativeTime: rule.dueRelativeTime,
+            status: TaskStatus.pending,
+          );
+
+          // 1. At 2026-09-11 13:00 UTC (09:00 EDT / 06:00 PDT):
+          // Sep 11 08:00 has started in EDT, but NOT yet in PDT (06:00 PDT < 08:00 PDT).
+          // Neither preferNewer nor preferOlder should skip yet!
+          final beforeWesternStartNewer = engine.evaluate(
+            preferNewerTask,
+            [sept10Inst, sept11Inst],
+            DateTime.utc(2026, 9, 11, 13, 0),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(beforeWesternStartNewer.instancesToUpdate, isEmpty);
+
+          final preferOlderTask = preferNewerTask.copyWith(
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
+          );
+          final beforeWesternStartOlder = engine.evaluate(
+            preferOlderTask,
+            [sept10Inst, sept11Inst],
+            DateTime.utc(2026, 9, 11, 13, 0),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(beforeWesternStartOlder.instancesToUpdate, isEmpty);
+
+          // 2. At 2026-09-11 15:01 UTC (11:01 EDT / 08:01 PDT):
+          // Sep 11 08:00 has now started in PDT (latestUtcOffset) as well!
+          final afterWesternStartNewer = engine.evaluate(
+            preferNewerTask,
+            [sept10Inst, sept11Inst],
+            DateTime.utc(2026, 9, 11, 15, 1),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(afterWesternStartNewer.instancesToUpdate, hasLength(1));
+          expect(
+            afterWesternStartNewer.instancesToUpdate.single.id,
+            equals('I-sep10'),
+          );
+          expect(
+            afterWesternStartNewer.instancesToUpdate.single.statusReason,
+            equals(InstanceStatusReason.schedulerPreferNewer.value),
+          );
+
+          final afterWesternStartOlder = engine.evaluate(
+            preferOlderTask,
+            [sept10Inst, sept11Inst],
+            DateTime.utc(2026, 9, 11, 15, 1),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(afterWesternStartOlder.instancesToUpdate, hasLength(1));
+          expect(
+            afterWesternStartOlder.instancesToUpdate.single.id,
+            equals('I-sep11'),
+          );
+          expect(
+            afterWesternStartOlder.instancesToUpdate.single.statusReason,
+            equals(InstanceStatusReason.schedulerPreferOlder.value),
+          );
         },
       );
     });

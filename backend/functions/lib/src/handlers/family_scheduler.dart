@@ -269,6 +269,7 @@ Future<dynamic> processFamilyScheduleDirect(
   String? familyId,
   dynamic now,
   dynamic timeZoneOffsetMinutes,
+  String? callerUserId,
 }) async {
   final service = FamilySchedulerService(db);
   final effectiveNow = parseScheduleTimestamp(now);
@@ -279,6 +280,7 @@ Future<dynamic> processFamilyScheduleDirect(
       familyId,
       now: effectiveNow,
       callerTimeZoneOffsetMinutes: effectiveOffsetMinutes,
+      callerUserId: callerUserId,
     );
   } else {
     return service.processAllFamilies(now: effectiveNow);

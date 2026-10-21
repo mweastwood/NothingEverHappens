@@ -387,12 +387,17 @@ class FamilyRepository {
     required String appVersion,
     required String platform,
   }) async {
-    final now = DateTime.now().toUtc();
+    final localNow = AppClock.now;
+    final now = localNow.toUtc();
+    final offsetMinutes = localNow.timeZoneOffset.inMinutes;
+    final timeZoneName = localNow.timeZoneName;
     final batch = _firestore.batch();
     batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
       'appVersion': appVersion,
       'platform': platform,
       'lastSeenAt': now.toIso8601String(),
+      'timeZone': timeZoneName,
+      'timeZoneOffsetMinutes': offsetMinutes,
     }, SetOptions(merge: true));
 
     if (familyId != null && familyId.isNotEmpty) {
@@ -402,6 +407,8 @@ class FamilyRepository {
           'members.$_userId.appVersion': appVersion,
           'members.$_userId.platform': platform,
           'members.$_userId.lastSeenAt': now.toIso8601String(),
+          'members.$_userId.timeZone': timeZoneName,
+          'members.$_userId.timeZoneOffsetMinutes': offsetMinutes,
         },
       );
     }

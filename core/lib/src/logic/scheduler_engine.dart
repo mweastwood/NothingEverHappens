@@ -837,7 +837,7 @@ class SchedulerEngine {
     final task = context.task;
     final taskInstances = context.taskInstances;
     final now = context.now;
-    final today = context.today;
+    final latestToday = context.latestToday;
     final userSettings = context.userSettings;
     final dayPlannedHours = context.dayPlannedHours;
     final applyCapacityLimits = context.applyCapacityLimits;
@@ -939,7 +939,7 @@ class SchedulerEngine {
       // 2. Process toSpawn instances
       for (final inst in toSpawn) {
         if (inst.status == TaskStatus.pending &&
-            inst.scheduledDate.compareTo(today) >= 0) {
+            inst.scheduledDate.compareTo(latestToday) >= 0) {
           final capacity = userSettings?.getCapacityForDate(
                 inst.scheduledDate.toDateTime(),
               ) ??
@@ -971,7 +971,7 @@ class SchedulerEngine {
         final wasProcessed = taskInstanceIds.contains(inst.id);
         if (!wasProcessed &&
             inst.status == TaskStatus.pending &&
-            inst.scheduledDate.compareTo(today) >= 0) {
+            inst.scheduledDate.compareTo(latestToday) >= 0) {
           final capacity = userSettings?.getCapacityForDate(
                 inst.scheduledDate.toDateTime(),
               ) ??
@@ -1234,8 +1234,9 @@ class SchedulerEngine {
     TaskSchedule task,
     TaskInstance completedInstance,
     DateTime now,
-    List<TaskInstance> taskInstances,
-  ) {
+    List<TaskInstance> taskInstances, {
+    Duration? utcOffset,
+  }) {
     final ruleIndex = _ruleIndexOfInstance(task, completedInstance);
     if (ruleIndex < 0 || ruleIndex >= task.schedules.length) return null;
     final rule = task.schedules[ruleIndex];
@@ -1250,7 +1251,9 @@ class SchedulerEngine {
       );
       if (hasPendingForRule) return null;
 
-      final nextSpawnTime = rule.nextCompletionRelativeDateTime(now.toLocal());
+      final wallClockNow =
+          utcOffset != null ? now.toUtc().add(utcOffset) : now.toLocal();
+      final nextSpawnTime = rule.nextCompletionRelativeDateTime(wallClockNow);
       final nextDate = CivilDay.fromDateTime(nextSpawnTime);
       return _createInstanceForRule(
         task: task,
@@ -1334,6 +1337,7 @@ class SchedulerEngine {
     CivilDay fromDate, {
     int count = 5,
     List<TaskInstance> existingInstances = const [],
+    Duration? utcOffset,
   }) {
     if (count <= 0) return const [];
     final List<CivilDay> result = [];
@@ -1372,8 +1376,10 @@ class SchedulerEngine {
           );
         if (resolved.isNotEmpty) {
           final latest = resolved.first;
-          final resolvedTime =
-              (latest.completedAt ?? latest.updatedAt).toLocal();
+          final rawResolvedTime = latest.completedAt ?? latest.updatedAt;
+          final resolvedTime = utcOffset != null
+              ? rawResolvedTime.toUtc().add(utcOffset)
+              : rawResolvedTime.toLocal();
           cursorTime = rule.nextCompletionRelativeDateTime(resolvedTime);
           final nextDay = CivilDay.fromDateTime(cursorTime);
           final effectiveNextDay =

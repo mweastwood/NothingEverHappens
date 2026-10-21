@@ -1146,8 +1146,7 @@ class TaskSyncService {
       final now = localNow.toUtc();
       final offsetMinutes = localNow.timeZoneOffset.inMinutes;
       final timeZoneName = localNow.timeZoneName;
-      final batch = _firestore.batch();
-      batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
+      await _firestore.collection(FirestorePaths.users).doc(_userId).set({
         'appVersion': AppVersion.display,
         'platform': AppVersion.platform,
         'lastSeenAt': now.toIso8601String(),
@@ -1156,18 +1155,25 @@ class TaskSyncService {
       }, SetOptions(merge: true));
 
       if (_familyId != null && _familyId!.isNotEmpty) {
-        batch.update(
-          _firestore.collection(FirestorePaths.families).doc(_familyId),
-          {
-            'members.$_userId.appVersion': AppVersion.display,
-            'members.$_userId.platform': AppVersion.platform,
-            'members.$_userId.lastSeenAt': now.toIso8601String(),
-            'members.$_userId.timeZone': timeZoneName,
-            'members.$_userId.timeZoneOffsetMinutes': offsetMinutes,
-          },
-        );
+        try {
+          await _firestore
+              .collection(FirestorePaths.families)
+              .doc(_familyId)
+              .update({
+                'members.$_userId.appVersion': AppVersion.display,
+                'members.$_userId.platform': AppVersion.platform,
+                'members.$_userId.lastSeenAt': now.toIso8601String(),
+                'members.$_userId.timeZone': timeZoneName,
+                'members.$_userId.timeZoneOffsetMinutes': offsetMinutes,
+              });
+        } catch (e) {
+          logger?.debug(
+            'sync',
+            'Failed to update family member client metadata in Firestore',
+            error: e,
+          );
+        }
       }
-      await batch.commit();
     } catch (e) {
       logger?.debug(
         'sync',

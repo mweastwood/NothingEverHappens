@@ -283,6 +283,34 @@ class FamilySchedulerService {
         callerUserId: callerUserId,
       );
 
+      final backfilledMemberOffsets = <String, int>{};
+      final backfilledMemberTimeZones = <String, String>{};
+      final rawMembers = effectiveFamilyData?['members'];
+      if (rawMembers is Map) {
+        for (final entry in rawMembers.entries) {
+          final uid = entry.key.toString();
+          if (uid.isEmpty || memberOffsets.containsKey(uid)) continue;
+          try {
+            final userDoc = await db.collection('users').doc(uid).get();
+            if (userDoc.exists) {
+              final userData = userDoc.data();
+              final userOffset =
+                  _parseOffsetMinutes(userData?['timeZoneOffsetMinutes']);
+              if (userOffset != null) {
+                memberOffsets[uid] = Duration(minutes: userOffset);
+                backfilledMemberOffsets[uid] = userOffset;
+                final userTz = userData?['timeZone'];
+                if (userTz is String && userTz.isNotEmpty) {
+                  backfilledMemberTimeZones[uid] = userTz;
+                }
+              }
+            }
+          } catch (_) {
+            // Ignore fallback user document read failures
+          }
+        }
+      }
+
       // 2. Fetch all existing instances for this family
       final instancesSnap = await familyRef.collection('instances').get();
       final instances = <TaskInstance>[];
@@ -317,6 +345,7 @@ class FamilySchedulerService {
         }
       }
 
+      final familyMetadataUpdates = <String, dynamic>{};
       final parsedCallerOffset =
           _parseOffsetMinutes(callerTimeZoneOffsetMinutes);
       if (parsedCallerOffset != null &&
@@ -330,13 +359,24 @@ class FamilySchedulerService {
               ? _parseOffsetMinutes(memberMap['timeZoneOffsetMinutes'])
               : null;
           if (existingOffset != parsedCallerOffset) {
-            batch.update(familyRef, {
-              'members.$callerUserId.timeZoneOffsetMinutes': parsedCallerOffset,
-            });
-            batchOps++;
-            await commitBatchIfNeeded();
+            familyMetadataUpdates[
+                    'members.$callerUserId.timeZoneOffsetMinutes'] =
+                parsedCallerOffset;
           }
         }
+      }
+      for (final entry in backfilledMemberOffsets.entries) {
+        familyMetadataUpdates['members.${entry.key}.timeZoneOffsetMinutes'] =
+            entry.value;
+        final tz = backfilledMemberTimeZones[entry.key];
+        if (tz != null) {
+          familyMetadataUpdates['members.${entry.key}.timeZone'] = tz;
+        }
+      }
+      if (familyMetadataUpdates.isNotEmpty) {
+        batch.update(familyRef, familyMetadataUpdates);
+        batchOps++;
+        await commitBatchIfNeeded();
       }
 
       // 3. Evaluate each family task using SchedulerEngine
