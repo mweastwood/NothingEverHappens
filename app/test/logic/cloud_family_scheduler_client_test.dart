@@ -211,6 +211,7 @@ void main() {
         final success = await client.triggerFamilyScheduleProcessing(
           familyId: 'family-abc',
           now: testTime,
+          timeZoneOffsetMinutes: -420,
         );
 
         expect(success, isTrue);
@@ -232,6 +233,7 @@ void main() {
             jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
         expect(decodedBody['familyId'], 'family-abc');
         expect(decodedBody['now'], testTime.toIso8601String());
+        expect(decodedBody['timeZoneOffsetMinutes'], -420);
         expect(errorHandler.errors, isEmpty);
       },
     );

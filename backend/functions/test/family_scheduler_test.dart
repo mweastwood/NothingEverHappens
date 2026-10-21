@@ -805,5 +805,268 @@ void main() {
       final allResult = result as FamilySchedulerResult;
       expect(allResult.success, isTrue);
     });
+
+    test(
+        'timezone-aware evaluation: unassigned task uses [maxOffset, minOffset] bounding box and assigned task uses assignee offset',
+        () async {
+      final service = FamilySchedulerService(db);
+
+      // Family has User East (-240 mins = EDT) and User West (-420 mins = PDT)
+      db.collection('families').doc('fam_tz').set({
+        'name': 'Multi-TZ Family',
+        'members': {
+          'user_east': {
+            'displayName': 'East Member',
+            'role': 'admin',
+            'timeZone': 'EDT',
+            'timeZoneOffsetMinutes': -240,
+          },
+          'user_west': {
+            'displayName': 'West Member',
+            'role': 'member',
+            'timeZone': 'PDT',
+            'timeZoneOffsetMinutes': -420,
+          },
+        },
+      });
+
+      final sharedTask = TaskSchedule(
+        id: 'task_shared',
+        title: 'Shared Daily Mass',
+        description: '',
+        isFamily: true,
+        missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+          gracePeriod: Duration.zero,
+        ),
+        schedules: [
+          DailySchedule(
+            id: 'rule_shared',
+            scheduleId: 'task_shared',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          ),
+        ],
+      );
+
+      final assignedWestTask = TaskSchedule(
+        id: 'task_west',
+        title: 'West Member Morning Task',
+        description: '',
+        isFamily: true,
+        assignedUserId: 'user_west',
+        missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+          gracePeriod: Duration.zero,
+        ),
+        schedules: [
+          DailySchedule(
+            id: 'rule_west',
+            scheduleId: 'task_west',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          ),
+        ],
+      );
+
+      db
+          .collection('families/fam_tz/tasks')
+          .doc(sharedTask.id)
+          .set(sharedTask.toFirestore());
+      db
+          .collection('families/fam_tz/tasks')
+          .doc(assignedWestTask.id)
+          .set(assignedWestTask.toFirestore());
+
+      // 1. At 2026-09-10 05:00 UTC (01:00 EDT, 2026-09-09 22:00 PDT):
+      // - Shared task evaluates on Sep 10 (01:00 EDT) and spawns Sep 10..12
+      // - West-assigned task evaluates on Sep 9 (22:00 PDT < Sep 10 startDate) and only spawns Sep 10..11
+      final summary1 = await service.processFamily(
+        'fam_tz',
+        now: DateTime.utc(2026, 9, 10, 5, 0),
+      );
+      expect(summary1.error, isNull);
+      expect(summary1.instancesSpawned, greaterThan(0));
+
+      // 2. At 2026-09-11 01:00 UTC (21:00 EDT on Sep 10, 18:00 PDT on Sep 10):
+      // - Both tasks are past 20:00 EDT, MUST NOT auto-dismiss Sep 10 instance yet because West Member is still at 18:00 PDT!
+      final summary2 = await service.processFamily(
+        'fam_tz',
+        now: DateTime.utc(2026, 9, 11, 1, 0),
+      );
+      expect(summary2.error, isNull);
+      expect(summary2.instancesUpdated, equals(0));
+
+      // 3. At 2026-09-11 03:01 UTC (20:01 PDT on Sep 10):
+      // - Both tasks are past 20:00 in westernmost/assignee timezone and auto-dismiss Sep 10 instance
+      final summary3 = await service.processFamily(
+        'fam_tz',
+        now: DateTime.utc(2026, 9, 11, 3, 1),
+      );
+      expect(summary3.error, isNull);
+      expect(summary3.instancesUpdated, equals(2));
+    });
+
+    test(
+        'handleProcessFamilySchedule accepts timeZoneOffsetMinutes and persists it to family member metadata',
+        () async {
+      final auth = MockAuthService();
+      auth.onVerifyIdToken = (token) async => const DecodedIdToken(
+            uid: 'user_pdt',
+          );
+
+      db.collection('families').doc('fam_caller_tz').set({
+        'name': 'Caller TZ Family',
+        'members': {
+          'user_pdt': {
+            'displayName': 'PDT User',
+            'role': 'admin',
+          },
+        },
+      });
+
+      final task = TaskSchedule(
+        id: 'task_pdt',
+        title: 'PDT Evening Task',
+        description: '',
+        isFamily: true,
+        missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+          gracePeriod: Duration.zero,
+        ),
+        schedules: [
+          DailySchedule(
+            id: 'rule_pdt',
+            scheduleId: 'task_pdt',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 7, minute: 30),
+            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          ),
+        ],
+      );
+      db
+          .collection('families/fam_caller_tz/tasks')
+          .doc(task.id)
+          .set(task.toFirestore());
+
+      final req = TestHttpRequest(
+        method: 'POST',
+        headers: {'authorization': 'Bearer valid_token'},
+        body: {
+          'familyId': 'fam_caller_tz',
+          'now': '2026-09-10T21:00:00Z', // 14:00 PDT (would be expired in UTC!)
+          'timeZoneOffsetMinutes': -420,
+        },
+      );
+      final res = TestHttpResponse();
+
+      await handleProcessFamilySchedule(
+        req,
+        res,
+        db: db,
+        auth: auth,
+        service: FamilySchedulerService(db),
+      );
+
+      expect(res.statusCode, equals(200));
+      expect(res.responseData['instancesSpawned'], greaterThan(0));
+      expect(res.responseData['instancesUpdated'], equals(0));
+
+      // Verify Sep 10 instance was spawned as pending (not skipped!)
+      final instancesSnap =
+          await db.collection('families/fam_caller_tz/instances').get();
+      final sept10Doc = instancesSnap.docs.firstWhere(
+        (d) =>
+            (d.data()?['scheduledDate'] as Map<String, dynamic>?)?['day'] == 10,
+      );
+      expect(sept10Doc.data()?['status'], equals('pending'));
+
+      // Verify caller's timezone offset was persisted via familyRef.update
+      final familyDocRef = db.collection('families').doc('fam_caller_tz');
+      expect(
+        familyDocRef.updateCalls,
+        contains(
+          containsPair('members.user_pdt.timeZoneOffsetMinutes', -420),
+        ),
+      );
+    });
+
+    test(
+        'processFamily falls back to users/{uid}.timeZoneOffsetMinutes for legacy family members and backfills family doc',
+        () async {
+      final service = FamilySchedulerService(db);
+
+      // Legacy family member entry has no timeZoneOffsetMinutes yet,
+      // but users/user_legacy has timeZoneOffsetMinutes: -420 (PDT).
+      db.collection('families').doc('fam_legacy').set({
+        'name': 'Legacy Family',
+        'members': {
+          'user_legacy': {
+            'displayName': 'Legacy User',
+            'role': 'parent',
+          },
+        },
+      });
+      db.collection('users').doc('user_legacy').set({
+        'timeZone': 'PDT',
+        'timeZoneOffsetMinutes': -420,
+      });
+
+      final task = TaskSchedule(
+        id: 'task_legacy',
+        title: 'Legacy PDT Task',
+        description: '',
+        isFamily: true,
+        missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+          gracePeriod: Duration.zero,
+        ),
+        schedules: [
+          DailySchedule(
+            id: 'rule_legacy',
+            scheduleId: 'task_legacy',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 7, minute: 30),
+            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          ),
+        ],
+      );
+      db
+          .collection('families/fam_legacy/tasks')
+          .doc(task.id)
+          .set(task.toFirestore());
+
+      // Evaluate at 2026-09-10 21:00 UTC (14:00 PDT) with no caller offset (e.g. hourly cron)
+      final summary = await service.processFamily(
+        'fam_legacy',
+        now: DateTime.utc(2026, 9, 10, 21, 0),
+      );
+      expect(summary.error, isNull);
+      expect(summary.instancesSpawned, greaterThan(0));
+      expect(summary.instancesUpdated, equals(0));
+
+      // Verify Sep 10 instance is pending (not auto-dismissed at 20:00 UTC)
+      final instancesSnap =
+          await db.collection('families/fam_legacy/instances').get();
+      final sept10Doc = instancesSnap.docs.firstWhere(
+        (d) =>
+            (d.data()?['scheduledDate'] as Map<String, dynamic>?)?['day'] == 10,
+      );
+      expect(sept10Doc.data()?['status'], equals('pending'));
+
+      // Verify family document was backfilled with the user's offset and timeZone
+      final familyDocRef = db.collection('families').doc('fam_legacy');
+      expect(
+        familyDocRef.updateCalls,
+        contains(
+          allOf(
+            containsPair('members.user_legacy.timeZoneOffsetMinutes', -420),
+            containsPair('members.user_legacy.timeZone', 'PDT'),
+          ),
+        ),
+      );
+    });
   });
 }

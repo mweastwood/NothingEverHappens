@@ -871,6 +871,8 @@ void main() {
         expect(userDoc.data()?['appVersion'], 'v2.0.1 (def5678)');
         expect(userDoc.data()?['platform'], 'android');
         expect(userDoc.data()?['lastSeenAt'], isNotNull);
+        expect(userDoc.data()?['timeZone'], isA<String>());
+        expect(userDoc.data()?['timeZoneOffsetMinutes'], isA<int>());
 
         final familyDoc = await firestore
             .collection('families')
@@ -881,6 +883,8 @@ void main() {
         expect(member['appVersion'], 'v2.0.1 (def5678)');
         expect(member['platform'], 'android');
         expect(member['lastSeenAt'], isNotNull);
+        expect(member['timeZone'], isA<String>());
+        expect(member['timeZoneOffsetMinutes'], isA<int>());
       },
     );
 

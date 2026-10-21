@@ -957,5 +957,357 @@ void main() {
         );
       },
     );
+
+    group('Timezone-Aware & Multi-Timezone Bounding-Box Evaluation', () {
+      const engine = SchedulerEngine();
+
+      test(
+        'utcOffset evaluates floating wall-clock start and autoDismiss relative to target timezone instead of UTC',
+        () {
+          const pdtOffset = Duration(hours: -7);
+          final rule = DailySchedule(
+            id: 'R-tz-daily',
+            scheduleId: 'T-tz-daily',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 7, minute: 30),
+            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          );
+          final task = TaskSchedule(
+            id: 'T-tz-daily',
+            title: 'Daily Mass',
+            description: '',
+            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+              gracePeriod: Duration.zero,
+            ),
+            schedules: [rule],
+          );
+
+          // 1. At 2026-09-10 10:00 UTC (03:00 PDT): spawns for today with pending status, triggerTimes includes 07:30 PDT (14:30 UTC)
+          final beforeStart = engine.evaluate(
+            task,
+            [],
+            DateTime.utc(2026, 9, 10, 10, 0),
+            utcOffset: pdtOffset,
+          );
+          final sept10Inst = beforeStart.instancesToSpawn.firstWhere(
+            (i) =>
+                i.scheduledDate ==
+                const CivilDay(year: 2026, month: 9, day: 10),
+          );
+          expect(sept10Inst.status, equals(TaskStatus.pending));
+          expect(
+            beforeStart.triggerTimes,
+            contains(DateTime.utc(2026, 9, 10, 14, 30)),
+          );
+
+          // 2. At 2026-09-10 14:30 UTC (07:30 PDT): triggerTimes includes 20:00 PDT (03:00 UTC next day)
+          final atStart = engine.evaluate(
+            task,
+            beforeStart.instancesToSpawn,
+            DateTime.utc(2026, 9, 10, 14, 30),
+            utcOffset: pdtOffset,
+          );
+          expect(atStart.instancesToUpdate, isEmpty);
+          expect(
+            atStart.triggerTimes,
+            contains(DateTime.utc(2026, 9, 11, 3, 0)),
+          );
+
+          // 3. At 2026-09-10 21:00 UTC (14:00 PDT): past 20:00 UTC, but still 14:00 PDT -> MUST NOT auto-dismiss!
+          final midAfternoonPdt = engine.evaluate(
+            task,
+            beforeStart.instancesToSpawn,
+            DateTime.utc(2026, 9, 10, 21, 0),
+            utcOffset: pdtOffset,
+          );
+          expect(midAfternoonPdt.instancesToUpdate, isEmpty);
+
+          // 4. At 2026-09-11 03:01 UTC (20:01 PDT on Sep 10): past 20:00 PDT -> auto-dismisses Sep 10 instance!
+          final atDuePdt = engine.evaluate(
+            task,
+            beforeStart.instancesToSpawn,
+            DateTime.utc(2026, 9, 11, 3, 1),
+            utcOffset: pdtOffset,
+          );
+          expect(atDuePdt.instancesToUpdate, hasLength(1));
+          expect(
+            atDuePdt.instancesToUpdate.single.scheduledDate,
+            equals(const CivilDay(year: 2026, month: 9, day: 10)),
+          );
+          expect(
+            atDuePdt.instancesToUpdate.single.status,
+            equals(TaskStatus.skipped),
+          );
+          expect(
+            atDuePdt.instancesToUpdate.single.statusReason,
+            equals(InstanceStatusReason.schedulerAutoDismiss.value),
+          );
+        },
+      );
+
+      test(
+        'earliestUtcOffset and latestUtcOffset implement Option 1 bounding-box window for multi-timezone families',
+        () {
+          const edtOffset = Duration(hours: -4); // Eastern member (earliest)
+          const pdtOffset = Duration(hours: -7); // Western member (latest)
+
+          final rule = DailySchedule(
+            id: 'R-family-tz',
+            scheduleId: 'T-family-tz',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          );
+          final task = TaskSchedule(
+            id: 'T-family-tz',
+            title: 'Family Chore',
+            description: '',
+            isFamily: true,
+            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+              gracePeriod: Duration.zero,
+            ),
+            schedules: [rule],
+          );
+
+          // 1. At 2026-09-10 11:00 UTC (07:00 EDT / 04:00 PDT): triggerTimes includes 08:00 EDT (12:00 UTC)
+          final beforeEasternStart = engine.evaluate(
+            task,
+            [],
+            DateTime.utc(2026, 9, 10, 11, 0),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(
+            beforeEasternStart.triggerTimes,
+            contains(DateTime.utc(2026, 9, 10, 12, 0)),
+          );
+
+          // 2. At 2026-09-11 01:00 UTC (21:00 EDT / 18:00 PDT): past due in EDT, still active in PDT -> NOT dismissed!
+          final afterEasternDue = engine.evaluate(
+            task,
+            beforeEasternStart.instancesToSpawn,
+            DateTime.utc(2026, 9, 11, 1, 0),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(afterEasternDue.instancesToUpdate, isEmpty);
+          expect(
+            afterEasternDue.triggerTimes,
+            contains(DateTime.utc(2026, 9, 11, 3, 0)),
+          );
+
+          // 3. At 2026-09-11 03:01 UTC (23:01 EDT / 20:01 PDT): due in westernmost timezone -> dismissed
+          final atWesternDue = engine.evaluate(
+            task,
+            beforeEasternStart.instancesToSpawn,
+            DateTime.utc(2026, 9, 11, 3, 1),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(atWesternDue.instancesToUpdate, hasLength(1));
+          expect(
+            atWesternDue.instancesToUpdate.single.scheduledDate,
+            equals(const CivilDay(year: 2026, month: 9, day: 10)),
+          );
+          expect(
+            atWesternDue.instancesToUpdate.single.status,
+            equals(TaskStatus.skipped),
+          );
+        },
+      );
+
+      test(
+        'CompletionRelativePolicy computes next scheduledDate in earliestUtcOffset local wall-clock time across UTC midnight',
+        () {
+          const pdtOffset = Duration(hours: -7);
+          final rule = DailySchedule(
+            id: 'R-cr-tz',
+            scheduleId: 'T-cr-tz',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 1),
+              targetHour: 8,
+              targetMinute: 0,
+            ),
+          );
+          final task = TaskSchedule(
+            id: 'T-cr-tz',
+            title: 'Water Plants',
+            description: '',
+            schedules: [rule],
+          );
+
+          // Completed on 2026-09-10 at 20:00 PDT, which is 2026-09-11 03:00 UTC (next UTC day!)
+          final completedInstance = TaskInstance(
+            id: 'I-cr-1',
+            scheduleId: task.id,
+            ruleId: rule.id,
+            title: task.title,
+            description: task.description,
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
+            startRelativeTime: rule.startRelativeTime,
+            dueRelativeTime: rule.dueRelativeTime,
+            status: TaskStatus.completed,
+            completedAt: DateTime.utc(2026, 9, 11, 3, 0),
+          );
+
+          // At 2026-09-12 03:00 UTC (2026-09-11 20:00 PDT): 24h after completion,
+          // local calendar day in PDT is Sep 11 (whereas in UTC it would be Sep 12).
+          final afterIntervalPdt = engine.evaluate(
+            task,
+            [completedInstance],
+            DateTime.utc(2026, 9, 12, 3, 0),
+            utcOffset: pdtOffset,
+          );
+          expect(afterIntervalPdt.instancesToSpawn, hasLength(1));
+          expect(
+            afterIntervalPdt.instancesToSpawn.single.scheduledDate,
+            equals(const CivilDay(year: 2026, month: 9, day: 11)),
+          );
+
+          // Verify getNextOccurrenceToSpawn and projectUpcomingOccurrences also respect utcOffset
+          final nextToSpawn = engine.getNextOccurrenceToSpawn(
+            task,
+            completedInstance,
+            DateTime.utc(2026, 9, 11, 3, 0),
+            [completedInstance],
+            utcOffset: pdtOffset,
+          );
+          expect(
+            nextToSpawn?.scheduledDate,
+            equals(const CivilDay(year: 2026, month: 9, day: 11)),
+          );
+          final projected = engine.projectUpcomingOccurrences(
+            task,
+            rule,
+            const CivilDay(year: 2026, month: 9, day: 10),
+            count: 2,
+            existingInstances: [completedInstance],
+            utcOffset: pdtOffset,
+          );
+          expect(
+            projected,
+            equals([
+              const CivilDay(year: 2026, month: 9, day: 11),
+              const CivilDay(year: 2026, month: 9, day: 12),
+            ]),
+          );
+        },
+      );
+
+      test(
+        'preferNewer and preferOlder wait until startRelativeTime in latestUtcOffset before skipping across multi-timezone bounding box',
+        () {
+          const edtOffset = Duration(hours: -4); // Eastern member (earliest)
+          const pdtOffset = Duration(hours: -7); // Western member (latest)
+
+          final rule = DailySchedule(
+            id: 'R-pref',
+            scheduleId: 'T-pref',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          );
+
+          final preferNewerTask = TaskSchedule(
+            id: 'T-pref',
+            title: 'Prefer Newer Family Task',
+            description: '',
+            isFamily: true,
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferNewer(),
+            schedules: [rule],
+          );
+
+          final sept10Inst = TaskInstance(
+            id: 'I-sep10',
+            scheduleId: 'T-pref',
+            ruleId: 'R-pref',
+            title: 'Prefer Newer Family Task',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
+            startRelativeTime: rule.startRelativeTime,
+            dueRelativeTime: rule.dueRelativeTime,
+            status: TaskStatus.pending,
+          );
+          final sept11Inst = TaskInstance(
+            id: 'I-sep11',
+            scheduleId: 'T-pref',
+            ruleId: 'R-pref',
+            title: 'Prefer Newer Family Task',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 9, day: 11),
+            startRelativeTime: rule.startRelativeTime,
+            dueRelativeTime: rule.dueRelativeTime,
+            status: TaskStatus.pending,
+          );
+
+          // 1. At 2026-09-11 13:00 UTC (09:00 EDT / 06:00 PDT):
+          // Sep 11 08:00 has started in EDT, but NOT yet in PDT (06:00 PDT < 08:00 PDT).
+          // Neither preferNewer nor preferOlder should skip yet!
+          final beforeWesternStartNewer = engine.evaluate(
+            preferNewerTask,
+            [sept10Inst, sept11Inst],
+            DateTime.utc(2026, 9, 11, 13, 0),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(beforeWesternStartNewer.instancesToUpdate, isEmpty);
+
+          final preferOlderTask = preferNewerTask.copyWith(
+            missedOccurrencePolicy: const MissedOccurrencePolicy.preferOlder(),
+          );
+          final beforeWesternStartOlder = engine.evaluate(
+            preferOlderTask,
+            [sept10Inst, sept11Inst],
+            DateTime.utc(2026, 9, 11, 13, 0),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(beforeWesternStartOlder.instancesToUpdate, isEmpty);
+
+          // 2. At 2026-09-11 15:01 UTC (11:01 EDT / 08:01 PDT):
+          // Sep 11 08:00 has now started in PDT (latestUtcOffset) as well!
+          final afterWesternStartNewer = engine.evaluate(
+            preferNewerTask,
+            [sept10Inst, sept11Inst],
+            DateTime.utc(2026, 9, 11, 15, 1),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(afterWesternStartNewer.instancesToUpdate, hasLength(1));
+          expect(
+            afterWesternStartNewer.instancesToUpdate.single.id,
+            equals('I-sep10'),
+          );
+          expect(
+            afterWesternStartNewer.instancesToUpdate.single.statusReason,
+            equals(InstanceStatusReason.schedulerPreferNewer.value),
+          );
+
+          final afterWesternStartOlder = engine.evaluate(
+            preferOlderTask,
+            [sept10Inst, sept11Inst],
+            DateTime.utc(2026, 9, 11, 15, 1),
+            earliestUtcOffset: edtOffset,
+            latestUtcOffset: pdtOffset,
+          );
+          expect(afterWesternStartOlder.instancesToUpdate, hasLength(1));
+          expect(
+            afterWesternStartOlder.instancesToUpdate.single.id,
+            equals('I-sep11'),
+          );
+          expect(
+            afterWesternStartOlder.instancesToUpdate.single.statusReason,
+            equals(InstanceStatusReason.schedulerPreferOlder.value),
+          );
+        },
+      );
+    });
   });
 }

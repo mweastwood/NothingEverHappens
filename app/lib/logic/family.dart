@@ -41,6 +41,8 @@ class FamilyMember {
   final String? appVersion;
   final String? platform;
   final DateTime? lastSeenAt;
+  final String? timeZone;
+  final int? timeZoneOffsetMinutes;
 
   const FamilyMember({
     required this.userId,
@@ -50,6 +52,8 @@ class FamilyMember {
     this.appVersion,
     this.platform,
     this.lastSeenAt,
+    this.timeZone,
+    this.timeZoneOffsetMinutes,
   });
 
   factory FamilyMember.fromJson(Map<String, dynamic> json) {
@@ -73,6 +77,8 @@ class FamilyMember {
       appVersion: json['appVersion'] as String?,
       platform: json['platform'] as String?,
       lastSeenAt: lastSeenAt,
+      timeZone: json['timeZone'] as String?,
+      timeZoneOffsetMinutes: (json['timeZoneOffsetMinutes'] as num?)?.toInt(),
     );
   }
 
@@ -86,6 +92,9 @@ class FamilyMember {
       if (platform != null) 'platform': platform,
       if (lastSeenAt != null)
         'lastSeenAt': lastSeenAt!.toUtc().toIso8601String(),
+      if (timeZone != null) 'timeZone': timeZone,
+      if (timeZoneOffsetMinutes != null)
+        'timeZoneOffsetMinutes': timeZoneOffsetMinutes,
     };
   }
 
@@ -97,6 +106,8 @@ class FamilyMember {
     String? appVersion,
     String? platform,
     DateTime? lastSeenAt,
+    String? timeZone,
+    int? timeZoneOffsetMinutes,
   }) {
     return FamilyMember(
       userId: userId ?? this.userId,
@@ -106,6 +117,9 @@ class FamilyMember {
       appVersion: appVersion ?? this.appVersion,
       platform: platform ?? this.platform,
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      timeZone: timeZone ?? this.timeZone,
+      timeZoneOffsetMinutes:
+          timeZoneOffsetMinutes ?? this.timeZoneOffsetMinutes,
     );
   }
 }

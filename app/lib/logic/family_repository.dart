@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app_clock.dart';
 import 'auth_repository.dart';
 import 'family.dart';
 import 'firestore_paths.dart';
@@ -108,12 +109,15 @@ class FamilyRepository {
   Future<void> createFamily(String name) async {
     final familyRef = _firestore.collection(FirestorePaths.families).doc();
     final familyId = familyRef.id;
+    final now = AppClock.now;
 
     final creator = FamilyMember(
       userId: _userId,
       displayName: _userDisplayName ?? _userEmail ?? 'Parent',
       email: _userEmail?.trim().toLowerCase() ?? '',
       role: FamilyRole.parent,
+      timeZone: now.timeZoneName,
+      timeZoneOffsetMinutes: now.timeZoneOffset.inMinutes,
     );
 
     final family = Family(
@@ -128,6 +132,8 @@ class FamilyRepository {
     batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
       'familyId': familyId,
       'familyRole': FamilyRole.parent.toJson(),
+      'timeZone': now.timeZoneName,
+      'timeZoneOffsetMinutes': now.timeZoneOffset.inMinutes,
     }, SetOptions(merge: true));
 
     await batch.commit();
@@ -166,11 +172,14 @@ class FamilyRepository {
         .collection(FirestorePaths.families)
         .doc(invite.familyId);
 
+    final now = AppClock.now;
     final newMember = FamilyMember(
       userId: _userId,
       displayName: _userDisplayName ?? _userEmail ?? 'Member',
       email: _userEmail?.trim().toLowerCase() ?? '',
       role: invite.role,
+      timeZone: now.timeZoneName,
+      timeZoneOffsetMinutes: now.timeZoneOffset.inMinutes,
     );
 
     final batch = _firestore.batch();
@@ -186,6 +195,8 @@ class FamilyRepository {
     batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
       'familyId': invite.familyId,
       'familyRole': invite.role.toJson(),
+      'timeZone': now.timeZoneName,
+      'timeZoneOffsetMinutes': now.timeZoneOffset.inMinutes,
     }, SetOptions(merge: true));
 
     batch.update(_firestore.collection(FirestorePaths.invites).doc(invite.id), {
@@ -376,12 +387,17 @@ class FamilyRepository {
     required String appVersion,
     required String platform,
   }) async {
-    final now = DateTime.now().toUtc();
+    final localNow = AppClock.now;
+    final now = localNow.toUtc();
+    final offsetMinutes = localNow.timeZoneOffset.inMinutes;
+    final timeZoneName = localNow.timeZoneName;
     final batch = _firestore.batch();
     batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
       'appVersion': appVersion,
       'platform': platform,
       'lastSeenAt': now.toIso8601String(),
+      'timeZone': timeZoneName,
+      'timeZoneOffsetMinutes': offsetMinutes,
     }, SetOptions(merge: true));
 
     if (familyId != null && familyId.isNotEmpty) {
@@ -391,6 +407,8 @@ class FamilyRepository {
           'members.$_userId.appVersion': appVersion,
           'members.$_userId.platform': platform,
           'members.$_userId.lastSeenAt': now.toIso8601String(),
+          'members.$_userId.timeZone': timeZoneName,
+          'members.$_userId.timeZoneOffsetMinutes': offsetMinutes,
         },
       );
     }

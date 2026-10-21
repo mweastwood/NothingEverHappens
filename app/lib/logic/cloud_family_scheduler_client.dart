@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import 'app_clock.dart';
 import 'app_logger.dart';
 import 'error_handler.dart';
 
@@ -58,6 +59,7 @@ class CloudFamilySchedulerClient {
   Future<bool> triggerFamilyScheduleProcessing({
     required String familyId,
     DateTime? now,
+    int? timeZoneOffsetMinutes,
   }) async {
     if (familyId.isEmpty) return false;
 
@@ -90,9 +92,16 @@ class CloudFamilySchedulerClient {
         return false;
       }
 
+      final effectiveOffsetMinutes =
+          timeZoneOffsetMinutes ??
+          (now != null && !now.isUtc
+              ? now.timeZoneOffset.inMinutes
+              : AppClock.now.timeZoneOffset.inMinutes);
+
       final url = resolveEndpointUrl();
       final bodyMap = <String, dynamic>{
         'familyId': familyId,
+        'timeZoneOffsetMinutes': effectiveOffsetMinutes,
         if (now != null) 'now': now.toUtc().toIso8601String(),
       };
       final requestBody = jsonEncode(bodyMap);

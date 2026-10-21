@@ -102,9 +102,14 @@ class MissedOccurrencePolicy {
   }
 
   /// Checks if the task instance is expired at [now] under this policy.
-  bool isInstanceExpired(TaskInstance instance, DateTime now) {
+  bool isInstanceExpired(
+    TaskInstance instance,
+    DateTime now, {
+    Duration? utcOffset,
+  }) {
     final dueDateTime = instance.dueRelativeTime.referenceTo(
       instance.scheduledDate,
+      utcOffset: utcOffset,
     );
     return isExpired(dueDateTime, now);
   }

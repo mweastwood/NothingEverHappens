@@ -137,11 +137,103 @@ class FamilySchedulerService {
               appVersion: 'backend',
             );
 
+  static int? _parseOffsetMinutes(dynamic raw) {
+    if (raw == null) return null;
+    int? value;
+    if (raw is int) {
+      value = raw;
+    } else if (raw is num) {
+      value = raw.toInt();
+    } else if (raw is String) {
+      value = int.tryParse(raw.trim());
+    }
+    if (value == null || value < -840 || value > 840) return null;
+    return value;
+  }
+
+  /// Extracts per-member UTC offsets from [familyData] and optional caller metadata.
+  @visibleForTesting
+  static Map<String, Duration> extractMemberTimeZoneOffsets(
+    Map<String, dynamic>? familyData, {
+    int? callerTimeZoneOffsetMinutes,
+    String? callerUserId,
+  }) {
+    final offsets = <String, Duration>{};
+    final members = familyData?['members'];
+    if (members is Map) {
+      for (final entry in members.entries) {
+        final uid = entry.key.toString();
+        final value = entry.value;
+        if (value is Map) {
+          final parsed = _parseOffsetMinutes(value['timeZoneOffsetMinutes']);
+          if (parsed != null) {
+            offsets[uid] = Duration(minutes: parsed);
+          }
+        }
+      }
+    }
+
+    final callerParsed = _parseOffsetMinutes(callerTimeZoneOffsetMinutes);
+    if (callerParsed != null) {
+      final key = (callerUserId != null && callerUserId.isNotEmpty)
+          ? callerUserId
+          : '_caller';
+      offsets[key] = Duration(minutes: callerParsed);
+    }
+
+    if (offsets.isEmpty) {
+      final familyLevelOffset =
+          _parseOffsetMinutes(familyData?['timeZoneOffsetMinutes']);
+      if (familyLevelOffset != null) {
+        offsets['_family'] = Duration(minutes: familyLevelOffset);
+      }
+    }
+
+    return offsets;
+  }
+
+  /// Resolves the `(earliest, latest)` UTC offset window for [task] given [memberOffsets].
+  ///
+  /// - If [task] is assigned to a specific member whose timezone offset is known,
+  ///   both `earliest` and `latest` use that assignee's offset.
+  /// - Otherwise, `earliest` is the easternmost (largest) member offset and `latest`
+  ///   is the westernmost (smallest) member offset across the family.
+  @visibleForTesting
+  static ({Duration? earliest, Duration? latest}) resolveTaskTimeZoneWindow(
+    TaskSchedule task,
+    Map<String, Duration> memberOffsets,
+  ) {
+    if (memberOffsets.isEmpty) {
+      return (earliest: null, latest: null);
+    }
+    final assignedUid = task.assignedUserId;
+    if (assignedUid != null &&
+        assignedUid.isNotEmpty &&
+        memberOffsets.containsKey(assignedUid)) {
+      final offset = memberOffsets[assignedUid]!;
+      return (earliest: offset, latest: offset);
+    }
+    Duration? earliest;
+    Duration? latest;
+    for (final offset in memberOffsets.values) {
+      if (earliest == null || offset > earliest) {
+        earliest = offset;
+      }
+      if (latest == null || offset < latest) {
+        latest = offset;
+      }
+    }
+    return (earliest: earliest, latest: latest);
+  }
+
   /// Evaluates and applies scheduling actions for all tasks within a single [familyId].
   Future<FamilyScheduleSummary> processFamily(
     String familyId, {
     DateTime? now,
     int? futureInstancesCount,
+    Map<String, dynamic>? familyData,
+    int? callerTimeZoneOffsetMinutes,
+    String? callerUserId,
   }) async {
     final effectiveNow = now ?? DateTime.now().toUtc();
     final familyRef = db.collection('families').doc(familyId);
@@ -171,6 +263,52 @@ class FamilySchedulerService {
           familyId: familyId,
           tasksEvaluated: 0,
         );
+      }
+
+      Map<String, dynamic>? effectiveFamilyData = familyData;
+      if (effectiveFamilyData == null) {
+        try {
+          final familyDoc = await familyRef.get();
+          if (familyDoc.exists) {
+            effectiveFamilyData = familyDoc.data();
+          }
+        } catch (_) {
+          // Continue if family document metadata is unavailable
+        }
+      }
+
+      final memberOffsets = extractMemberTimeZoneOffsets(
+        effectiveFamilyData,
+        callerTimeZoneOffsetMinutes: callerTimeZoneOffsetMinutes,
+        callerUserId: callerUserId,
+      );
+
+      final backfilledMemberOffsets = <String, int>{};
+      final backfilledMemberTimeZones = <String, String>{};
+      final rawMembers = effectiveFamilyData?['members'];
+      if (rawMembers is Map) {
+        for (final entry in rawMembers.entries) {
+          final uid = entry.key.toString();
+          if (uid.isEmpty || memberOffsets.containsKey(uid)) continue;
+          try {
+            final userDoc = await db.collection('users').doc(uid).get();
+            if (userDoc.exists) {
+              final userData = userDoc.data();
+              final userOffset =
+                  _parseOffsetMinutes(userData?['timeZoneOffsetMinutes']);
+              if (userOffset != null) {
+                memberOffsets[uid] = Duration(minutes: userOffset);
+                backfilledMemberOffsets[uid] = userOffset;
+                final userTz = userData?['timeZone'];
+                if (userTz is String && userTz.isNotEmpty) {
+                  backfilledMemberTimeZones[uid] = userTz;
+                }
+              }
+            }
+          } catch (_) {
+            // Ignore fallback user document read failures
+          }
+        }
       }
 
       // 2. Fetch all existing instances for this family
@@ -207,9 +345,44 @@ class FamilySchedulerService {
         }
       }
 
+      final familyMetadataUpdates = <String, dynamic>{};
+      final parsedCallerOffset =
+          _parseOffsetMinutes(callerTimeZoneOffsetMinutes);
+      if (parsedCallerOffset != null &&
+          callerUserId != null &&
+          callerUserId.isNotEmpty &&
+          effectiveFamilyData != null) {
+        final members = effectiveFamilyData['members'];
+        if (members is Map && members.containsKey(callerUserId)) {
+          final memberMap = members[callerUserId];
+          final existingOffset = memberMap is Map
+              ? _parseOffsetMinutes(memberMap['timeZoneOffsetMinutes'])
+              : null;
+          if (existingOffset != parsedCallerOffset) {
+            familyMetadataUpdates[
+                    'members.$callerUserId.timeZoneOffsetMinutes'] =
+                parsedCallerOffset;
+          }
+        }
+      }
+      for (final entry in backfilledMemberOffsets.entries) {
+        familyMetadataUpdates['members.${entry.key}.timeZoneOffsetMinutes'] =
+            entry.value;
+        final tz = backfilledMemberTimeZones[entry.key];
+        if (tz != null) {
+          familyMetadataUpdates['members.${entry.key}.timeZone'] = tz;
+        }
+      }
+      if (familyMetadataUpdates.isNotEmpty) {
+        batch.update(familyRef, familyMetadataUpdates);
+        batchOps++;
+        await commitBatchIfNeeded();
+      }
+
       // 3. Evaluate each family task using SchedulerEngine
       for (final task in familyTasks) {
         final taskInstances = instancesByScheduleId[task.id] ?? const [];
+        final tzWindow = resolveTaskTimeZoneWindow(task, memberOffsets);
         final action = engine.evaluate(
           task,
           taskInstances,
@@ -217,6 +390,8 @@ class FamilySchedulerService {
           applyCapacityLimits: false,
           userId: 'cloud_scheduler',
           futureInstancesCount: futureInstancesCount,
+          earliestUtcOffset: tzWindow.earliest,
+          latestUtcOffset: tzWindow.latest,
         );
 
         for (final spawned in action.instancesToSpawn) {
@@ -302,6 +477,7 @@ class FamilySchedulerService {
         doc.id,
         now: effectiveNow,
         futureInstancesCount: futureInstancesCount,
+        familyData: doc.data(),
       );
       summaries.add(summary);
 

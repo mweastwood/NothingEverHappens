@@ -135,12 +135,17 @@ void main() {
   // 8. export processFamilyScheduleDirect for testing & direct invocation parity
   exportFunction(
     'processFamilyScheduleDirect',
-    js.allowInterop(([dynamic jsDb, String? familyId, dynamic now]) {
+    js.allowInterop((
+        [dynamic jsDb,
+        String? familyId,
+        dynamic now,
+        dynamic timeZoneOffsetMinutes]) {
       final db = getFirebaseAdminDb(jsDb);
       return futureToJsPromise(processFamilyScheduleDirect(
         db,
         familyId: familyId,
         now: now,
+        timeZoneOffsetMinutes: timeZoneOffsetMinutes,
       ).then((res) {
         return res is FamilyScheduleSummary
             ? res.toJson()
