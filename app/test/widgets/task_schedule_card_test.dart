@@ -908,5 +908,120 @@ void main() {
         expect(find.textContaining('On day 15'), findsNothing);
       },
     );
+
+    testWidgets(
+      'does not use nested Scrollable widgets or collide with parent PageStorageKey when scrolling',
+      (tester) async {
+        final bucket = PageStorageBucket();
+        final scrollController = ScrollController();
+        addTearDown(scrollController.dispose);
+        const scrollKey = PageStorageKey<String>('schedulesView');
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              allLabelsMapProvider.overrideWithValue({}),
+            ],
+            child: buildTestableWidget(
+              child: PageStorage(
+                bucket: bucket,
+                child: Scaffold(
+                  body: CustomScrollView(
+                    key: scrollKey,
+                    controller: scrollController,
+                    slivers: [
+                      const SliverToBoxAdapter(child: SizedBox(height: 1200)),
+                      SliverList(
+                        delegate: SliverChildListDelegate([
+                          TaskScheduleCard(
+                            task: dailyTask,
+                            isParent: true,
+                            showLastSpawnedDate: false,
+                            labels: const [],
+                            repository: mockTaskRepository,
+                          ),
+                        ]),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // Scroll the outer CustomScrollView so it writes a non-zero offset into
+        // PageStorage under `schedulesView` and brings the TaskScheduleCard into view.
+        scrollController.jumpTo(700);
+        await tester.pump();
+
+        // Verify there are no nested Scrollable widgets inside TaskScheduleCard
+        expect(
+          find.descendant(
+            of: find.byType(TaskScheduleCard),
+            matching: find.byType(Scrollable),
+          ),
+          findsNothing,
+        );
+
+        // Schedule details should be at their exact final position inside the
+        // card on the immediate frame without needing a ballistic settle animation.
+        final relativeDyBeforeSettle =
+            tester.getTopLeft(find.textContaining('Every 2 days')).dy -
+            tester.getTopLeft(find.byType(TaskScheduleCard)).dy;
+        await tester.pumpAndSettle();
+        final relativeDyAfterSettle =
+            tester.getTopLeft(find.textContaining('Every 2 days')).dy -
+            tester.getTopLeft(find.byType(TaskScheduleCard)).dy;
+        expect(relativeDyBeforeSettle, equals(relativeDyAfterSettle));
+        expect(scrollController.offset, equals(700));
+      },
+    );
+
+    testWidgets(
+      'TaskScheduleCard does not overflow when constrained to narrow width with badges',
+      (tester) async {
+        final narrowLabel = TaskLabel(
+          id: 'lbl-narrow',
+          name: 'Very Long Label Name That Must Truncate Gracefully',
+          colorKey: 'emerald',
+          iconKey: 'cleaning',
+          scope: TaskLabelScope.personal,
+          createdAt: DateTime(2026, 1, 1),
+          updatedAt: DateTime(2026, 1, 1),
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+              allLabelsMapProvider.overrideWithValue({
+                'lbl-narrow': narrowLabel,
+              }),
+            ],
+            child: buildTestableWidget(
+              child: Scaffold(
+                body: SingleChildScrollView(
+                  child: SizedBox(
+                    width: 150,
+                    child: TaskScheduleCard(
+                      task: familyTask,
+                      isParent: false,
+                      showLastSpawnedDate: false,
+                      labels: [narrowLabel],
+                      repository: mockTaskRepository,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }

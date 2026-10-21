@@ -237,88 +237,87 @@ class UpcomingOccurrencesPreview extends StatelessWidget {
             ),
           )
         else
-          ListView.builder(
-            padding: EdgeInsets.zero,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: occurrences.length,
-            itemBuilder: (context, index) {
-              final occurrenceInfo = occurrences[index];
-              final occurrence = occurrenceInfo.date;
-              final sched = occurrenceInfo.schedule;
-              final startAbs = sched.startRelativeTime.referenceTo(occurrence);
-              final dueAbs = sched.dueRelativeTime.referenceTo(occurrence);
+          for (int index = 0; index < occurrences.length; index++)
+            Builder(
+              builder: (context) {
+                final occurrenceInfo = occurrences[index];
+                final occurrence = occurrenceInfo.date;
+                final sched = occurrenceInfo.schedule;
+                final startAbs = sched.startRelativeTime.referenceTo(
+                  occurrence,
+                );
+                final dueAbs = sched.dueRelativeTime.referenceTo(occurrence);
 
-              final detailsWidget = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.visibility,
-                        size: 14,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          context.l10n.occurrenceAppears(
-                            _formatDateTime(context, startAbs),
-                          ),
-                          style: theme.textTheme.bodySmall,
+                final detailsWidget = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.visibility,
+                          size: 14,
+                          color: theme.colorScheme.primary,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.alarm,
-                        size: 14,
-                        color: theme.colorScheme.error,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          context.l10n.occurrenceDue(
-                            _formatDateTime(context, dueAbs),
-                          ),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            context.l10n.occurrenceAppears(
+                              _formatDateTime(context, startAbs),
+                            ),
+                            style: theme.textTheme.bodySmall,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.alarm,
+                          size: 14,
+                          color: theme.colorScheme.error,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            context.l10n.occurrenceDue(
+                              _formatDateTime(context, dueAbs),
+                            ),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
 
-              return Card(
-                key: Key('occurrence_card_$index'),
-                margin: const EdgeInsets.only(bottom: 8.0),
-                elevation: 1,
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                    child: Text(
-                      '${index + 1}',
-                      style: TextStyle(
-                        color: theme.colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.bold,
+                return Card(
+                  key: Key('occurrence_card_$index'),
+                  margin: const EdgeInsets.only(bottom: 8.0),
+                  elevation: 1,
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: theme.colorScheme.primaryContainer,
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
+                    title: Text(
+                      _formatCivilDay(context, occurrence),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: detailsWidget,
                   ),
-                  title: Text(
-                    _formatCivilDay(context, occurrence),
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  subtitle: detailsWidget,
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
       ],
     );
   }

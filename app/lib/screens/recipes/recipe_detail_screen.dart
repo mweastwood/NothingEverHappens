@@ -194,44 +194,54 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           Text('Ingredients', style: theme.textTheme.titleLarge),
           const SizedBox(height: 8),
           Card(
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _recipe.ingredients.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final rawIng = _recipe.ingredients[index];
-                final scaled = UnitConverter.scale(
-                  ingredient: rawIng,
-                  originalServings: _recipe.servings,
-                  targetServings: _servings,
-                );
-                final converted = UnitConverter.convert(
-                  quantity: scaled.quantity,
-                  unit: scaled.unit,
-                  targetSystem: _unitSystem,
-                );
+            child: Column(
+              children: [
+                for (
+                  int index = 0;
+                  index < _recipe.ingredients.length;
+                  index++
+                ) ...[
+                  if (index > 0) const Divider(height: 1),
+                  Builder(
+                    builder: (context) {
+                      final rawIng = _recipe.ingredients[index];
+                      final scaled = UnitConverter.scale(
+                        ingredient: rawIng,
+                        originalServings: _recipe.servings,
+                        targetServings: _servings,
+                      );
+                      final converted = UnitConverter.convert(
+                        quantity: scaled.quantity,
+                        unit: scaled.unit,
+                        targetSystem: _unitSystem,
+                      );
 
-                final formatted = UnitConverter.formatQuantityAndUnit(
-                  converted.quantity,
-                  converted.unit,
-                );
+                      final formatted = UnitConverter.formatQuantityAndUnit(
+                        converted.quantity,
+                        converted.unit,
+                      );
 
-                return ListTile(
-                  leading: const Icon(Icons.check_box_outline_blank, size: 20),
-                  title: Text(
-                    rawIng.name,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                      return ListTile(
+                        leading: const Icon(
+                          Icons.check_box_outline_blank,
+                          size: 20,
+                        ),
+                        title: Text(
+                          rawIng.name,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        trailing: Text(
+                          formatted,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  trailing: Text(
-                    formatted,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                );
-              },
+                ],
+              ],
             ),
           ),
           const SizedBox(height: 24),
@@ -241,30 +251,34 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             Text('Prep Instructions', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Card(
-              child: ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _recipe.prepSteps.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final step = _recipe.prepSteps[index];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      radius: 12,
-                      child: Text(
-                        '${step.stepNumber}',
-                        style: const TextStyle(fontSize: 11),
+              child: Column(
+                children: [
+                  for (
+                    int index = 0;
+                    index < _recipe.prepSteps.length;
+                    index++
+                  ) ...[
+                    if (index > 0) const Divider(height: 1),
+                    ListTile(
+                      leading: CircleAvatar(
+                        radius: 12,
+                        child: Text(
+                          '${_recipe.prepSteps[index].stepNumber}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
                       ),
+                      title: Text(_recipe.prepSteps[index].instruction),
+                      trailing: _recipe.prepSteps[index].estimatedMinutes > 0
+                          ? Chip(
+                              label: Text(
+                                '${_recipe.prepSteps[index].estimatedMinutes} min',
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            )
+                          : null,
                     ),
-                    title: Text(step.instruction),
-                    trailing: step.estimatedMinutes > 0
-                        ? Chip(
-                            label: Text('${step.estimatedMinutes} min'),
-                            visualDensity: VisualDensity.compact,
-                          )
-                        : null,
-                  );
-                },
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: 24),
@@ -275,30 +289,34 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             Text('Cook Instructions', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Card(
-              child: ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _recipe.cookSteps.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final step = _recipe.cookSteps[index];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      radius: 12,
-                      child: Text(
-                        '${step.stepNumber}',
-                        style: const TextStyle(fontSize: 11),
+              child: Column(
+                children: [
+                  for (
+                    int index = 0;
+                    index < _recipe.cookSteps.length;
+                    index++
+                  ) ...[
+                    if (index > 0) const Divider(height: 1),
+                    ListTile(
+                      leading: CircleAvatar(
+                        radius: 12,
+                        child: Text(
+                          '${_recipe.cookSteps[index].stepNumber}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
                       ),
+                      title: Text(_recipe.cookSteps[index].instruction),
+                      trailing: _recipe.cookSteps[index].estimatedMinutes > 0
+                          ? Chip(
+                              label: Text(
+                                '${_recipe.cookSteps[index].estimatedMinutes} min',
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            )
+                          : null,
                     ),
-                    title: Text(step.instruction),
-                    trailing: step.estimatedMinutes > 0
-                        ? Chip(
-                            label: Text('${step.estimatedMinutes} min'),
-                            visualDensity: VisualDensity.compact,
-                          )
-                        : null,
-                  );
-                },
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: 24),

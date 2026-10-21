@@ -396,30 +396,27 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
       );
     }
 
-    return ListView.builder(
-      padding: EdgeInsets.zero,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: instances.length,
-      itemBuilder: (context, index) {
-        if (isPast) {
-          return PastOccurrenceCard(
-            instance: instances[index],
-            index: index,
-            now: widget.now,
-            keyPrefix: 'past',
-          );
-        } else if (isCurrent) {
-          return PastOccurrenceCard(
-            instance: instances[index],
-            index: index,
-            now: widget.now,
-            keyPrefix: 'current',
-          );
-        } else {
-          return FutureOccurrenceCard(instance: instances[index], index: index);
-        }
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (int index = 0; index < instances.length; index++)
+          if (isPast)
+            PastOccurrenceCard(
+              instance: instances[index],
+              index: index,
+              now: widget.now,
+              keyPrefix: 'past',
+            )
+          else if (isCurrent)
+            PastOccurrenceCard(
+              instance: instances[index],
+              index: index,
+              now: widget.now,
+              keyPrefix: 'current',
+            )
+          else
+            FutureOccurrenceCard(instance: instances[index], index: index),
+      ],
     );
   }
 }

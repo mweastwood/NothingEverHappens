@@ -275,96 +275,101 @@ class _HierarchicalRecurrenceSelectorState
                     ),
                   ),
                 ),
-                ListView.separated(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: options.length,
-                  separatorBuilder: (context, index) => Divider(
-                    height: 1,
-                    indent: 16,
-                    endIndent: 16,
-                    color: theme.colorScheme.outlineVariant.withValues(
-                      alpha: 0.3,
-                    ),
-                  ),
-                  itemBuilder: (context, index) {
-                    final option = options[index];
-                    final isOptionSelected =
-                        widget.selectedValue == option.kind;
-
-                    return InkWell(
-                      onTap: widget.readOnly
-                          ? null
-                          : () {
-                              widget.onSelected(option.kind);
-                            },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 12.0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isOptionSelected
-                              ? theme.colorScheme.primaryContainer.withValues(
-                                  alpha: 0.25,
-                                )
-                              : Colors.transparent,
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 2.0,
-                                right: 12.0,
-                              ),
-                              child: Icon(
-                                option.icon,
-                                size: 20,
-                                color: isOptionSelected
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    option.title,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      fontWeight: isOptionSelected
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      color: isOptionSelected
-                                          ? theme.colorScheme.onPrimaryContainer
-                                          : theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    option.subtitle,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (isOptionSelected)
-                              Icon(
-                                Icons.check_circle,
-                                size: 20,
-                                color: theme.colorScheme.primary,
-                              ),
-                          ],
-                        ),
+                for (int index = 0; index < options.length; index++) ...[
+                  if (index > 0)
+                    Divider(
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.3,
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  Builder(
+                    builder: (context) {
+                      final option = options[index];
+                      final isOptionSelected =
+                          widget.selectedValue == option.kind;
+
+                      return InkWell(
+                        onTap: widget.readOnly
+                            ? null
+                            : () {
+                                widget.onSelected(option.kind);
+                              },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 12.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isOptionSelected
+                                ? theme.colorScheme.primaryContainer.withValues(
+                                    alpha: 0.25,
+                                  )
+                                : Colors.transparent,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 2.0,
+                                  right: 12.0,
+                                ),
+                                child: Icon(
+                                  option.icon,
+                                  size: 20,
+                                  color: isOptionSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      option.title,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            fontWeight: isOptionSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                            color: isOptionSelected
+                                                ? theme
+                                                      .colorScheme
+                                                      .onPrimaryContainer
+                                                : theme.colorScheme.onSurface,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      option.subtitle,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (isOptionSelected)
+                                Icon(
+                                  Icons.check_circle,
+                                  size: 20,
+                                  color: theme.colorScheme.primary,
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ),
