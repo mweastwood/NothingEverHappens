@@ -168,6 +168,8 @@ Future<void> handleProcessFamilySchedule(
 
   final familyId = body['familyId'] as String?;
   final now = parseScheduleTimestamp(body['now']);
+  final callerTimeZoneOffsetMinutes =
+      parseTimeZoneOffsetMinutes(body['timeZoneOffsetMinutes']);
 
   final firestoreDb = db ?? getFirebaseAdminDb();
   final authResult = await authenticateFamilySchedulerRequest(
@@ -191,7 +193,12 @@ Future<void> handleProcessFamilySchedule(
     final schedulerService = service ?? FamilySchedulerService(firestoreDb);
 
     if (familyId != null && familyId.isNotEmpty) {
-      final summary = await schedulerService.processFamily(familyId, now: now);
+      final summary = await schedulerService.processFamily(
+        familyId,
+        now: now,
+        callerTimeZoneOffsetMinutes: callerTimeZoneOffsetMinutes,
+        callerUserId: authResult.uid,
+      );
       if (summary.error != null) {
         logError(
           'Error evaluating family schedule for familyId=$familyId: ${summary.error}',
@@ -224,6 +231,21 @@ Future<void> handleProcessFamilySchedule(
   }
 }
 
+/// Parses an incoming dynamic timezone offset in minutes from HTTP payloads or JS interop.
+int? parseTimeZoneOffsetMinutes(dynamic raw) {
+  if (raw == null) return null;
+  int? value;
+  if (raw is int) {
+    value = raw;
+  } else if (raw is num) {
+    value = raw.toInt();
+  } else {
+    value = int.tryParse(raw.toString().trim());
+  }
+  if (value == null || value < -840 || value > 840) return null;
+  return value;
+}
+
 /// Parses an incoming dynamic timestamp from HTTP payloads or JS interop.
 /// Supports epoch milliseconds as `int`, `num`, or numeric `String`, ISO strings, and `DateTime`.
 DateTime? parseScheduleTimestamp(dynamic now) {
@@ -246,11 +268,18 @@ Future<dynamic> processFamilyScheduleDirect(
   FirestoreDatabase db, {
   String? familyId,
   dynamic now,
+  dynamic timeZoneOffsetMinutes,
 }) async {
   final service = FamilySchedulerService(db);
   final effectiveNow = parseScheduleTimestamp(now);
+  final effectiveOffsetMinutes =
+      parseTimeZoneOffsetMinutes(timeZoneOffsetMinutes);
   if (familyId != null && familyId.isNotEmpty) {
-    return service.processFamily(familyId, now: effectiveNow);
+    return service.processFamily(
+      familyId,
+      now: effectiveNow,
+      callerTimeZoneOffsetMinutes: effectiveOffsetMinutes,
+    );
   } else {
     return service.processAllFamilies(now: effectiveNow);
   }

@@ -28,23 +28,39 @@ class SchedulerEvaluationContext {
   final List<TaskInstance> taskInstances;
   final DateTime now;
   final CivilDay today;
+  final CivilDay latestToday;
   final UserSettings? userSettings;
   final Map<CivilDay, double>? dayPlannedHours;
   final bool applyCapacityLimits;
   final int? futureInstancesCount;
   final String? userId;
+  final Duration? earliestUtcOffset;
+  final Duration? latestUtcOffset;
 
   const SchedulerEvaluationContext({
     required this.task,
     required this.taskInstances,
     required this.now,
     required this.today,
+    CivilDay? latestToday,
     this.userSettings,
     this.dayPlannedHours,
     this.applyCapacityLimits = true,
     this.futureInstancesCount,
     this.userId,
-  });
+    this.earliestUtcOffset,
+    this.latestUtcOffset,
+  }) : latestToday = latestToday ?? today;
+
+  DateTime referenceToEarliest(RelativeTime rel, CivilDay day) =>
+      rel.referenceTo(day, utcOffset: earliestUtcOffset);
+
+  DateTime referenceToLatest(RelativeTime rel, CivilDay day) =>
+      rel.referenceTo(day, utcOffset: latestUtcOffset);
+
+  DateTime toEarliestWallClock(DateTime instant) => earliestUtcOffset != null
+      ? instant.toUtc().add(earliestUtcOffset!)
+      : (now.isUtc ? instant.toUtc() : instant.toLocal());
 }
 
 class SchedulerEngine {
@@ -78,18 +94,39 @@ class SchedulerEngine {
     Map<CivilDay, double>? dayPlannedHours,
     bool applyCapacityLimits = true,
     String? userId,
+    Duration? utcOffset,
+    Duration? earliestUtcOffset,
+    Duration? latestUtcOffset,
   }) {
-    final today = CivilDay.fromDateTime(now);
+    final rawEarliest = earliestUtcOffset ?? utcOffset ?? latestUtcOffset;
+    final rawLatest = latestUtcOffset ?? utcOffset ?? earliestUtcOffset;
+    final resolvedEarliestOffset = (rawEarliest != null && rawLatest != null)
+        ? (rawEarliest >= rawLatest ? rawEarliest : rawLatest)
+        : (rawEarliest ?? rawLatest);
+    final resolvedLatestOffset = (rawEarliest != null && rawLatest != null)
+        ? (rawEarliest <= rawLatest ? rawEarliest : rawLatest)
+        : (rawLatest ?? rawEarliest);
+
+    final today = resolvedEarliestOffset != null
+        ? CivilDay.fromDateTime(now.toUtc().add(resolvedEarliestOffset))
+        : CivilDay.fromDateTime(now);
+    final latestToday = resolvedLatestOffset != null
+        ? CivilDay.fromDateTime(now.toUtc().add(resolvedLatestOffset))
+        : today;
+
     final context = SchedulerEvaluationContext(
       task: task,
       taskInstances: taskInstances,
       now: now,
       today: today,
+      latestToday: latestToday,
       userSettings: userSettings,
       dayPlannedHours: dayPlannedHours,
       applyCapacityLimits: applyCapacityLimits,
       futureInstancesCount: futureInstancesCount,
       userId: userId,
+      earliestUtcOffset: resolvedEarliestOffset,
+      latestUtcOffset: resolvedLatestOffset,
     );
 
     final isRecurring = task.schedules.any((s) => s is! OneOffSchedule);
@@ -269,10 +306,10 @@ class SchedulerEngine {
         if (resolved.isNotEmpty) {
           final latest = resolved.first;
           final completedAtTime = latest.completedAt ?? latest.updatedAt;
-          final referenceTime =
-              now.isUtc ? completedAtTime.toUtc() : completedAtTime.toLocal();
+          final referenceTime = context.toEarliestWallClock(completedAtTime);
+          final currentWallClock = context.toEarliestWallClock(now);
           final nextSpawnTime = s.nextCompletionRelativeDateTime(referenceTime);
-          if (!now.isBefore(nextSpawnTime)) {
+          if (!currentWallClock.isBefore(nextSpawnTime)) {
             dateToSpawn = CivilDay.fromDateTime(nextSpawnTime);
           }
         }
@@ -301,6 +338,7 @@ class SchedulerEngine {
     final task = context.task;
     final taskInstances = context.taskInstances;
     final today = context.today;
+    final latestToday = context.latestToday;
     final futureInstancesCount = context.futureInstancesCount;
 
     final ruleInstances = taskInstances
@@ -355,13 +393,13 @@ class SchedulerEngine {
         // Only preferNewer and autoDismiss benefit from fast-forwarding to today.
         if (s.missedOccurrencePolicy.policy != MissedPolicy.stack &&
             s.missedOccurrencePolicy.policy != MissedPolicy.preferOlder &&
-            nextOcc.isBefore(today)) {
-          if (s.scheduledDate.compareTo(today) > 0) {
+            nextOcc.isBefore(latestToday)) {
+          if (s.scheduledDate.compareTo(latestToday) > 0) {
             initialBaseDate = s.scheduledDate;
           } else {
-            initialBaseDate = s.occursOn(today)
-                ? today
-                : (s.nextOccurrenceAfter(today) ?? nextOcc);
+            initialBaseDate = s.occursOn(latestToday)
+                ? latestToday
+                : (s.nextOccurrenceAfter(latestToday) ?? nextOcc);
           }
         } else {
           initialBaseDate = nextOcc;
@@ -374,9 +412,10 @@ class SchedulerEngine {
           return maxSpawned;
         }
         if (s.missedOccurrencePolicy.policy == MissedPolicy.preferNewer &&
-            firstOcc.isBefore(today)) {
-          final fromToday =
-              s.occursOn(today) ? today : s.nextOccurrenceAfter(today);
+            firstOcc.isBefore(latestToday)) {
+          final fromToday = s.occursOn(latestToday)
+              ? latestToday
+              : s.nextOccurrenceAfter(latestToday);
           if (fromToday == null) {
             return maxSpawned;
           }
@@ -529,7 +568,7 @@ class SchedulerEngine {
     _pruneStaleQueueEntries(
       pendingInstances: pending,
       targetDates: targetDates,
-      today: today,
+      today: latestToday,
       toDelete: toDelete,
     );
 
@@ -554,29 +593,21 @@ class SchedulerEngine {
           canonicalInstances,
           targetDates,
           rule,
-          context.now,
-          context.userId,
-          context.task,
+          context,
         );
       case MissedPolicy.preferNewer:
         return _applyPreferNewerPolicy(
           workingInstances,
           canonicalInstances,
           targetDates,
-          context.now,
-          context.today,
-          context.userId,
-          context.task,
+          context,
         );
       case MissedPolicy.preferOlder:
         return _applyPreferOlderPolicy(
           workingInstances,
           canonicalInstances,
           targetDates,
-          context.now,
-          context.today,
-          context.userId,
-          context.task,
+          context,
         );
     }
   }
@@ -602,10 +633,11 @@ class SchedulerEngine {
     List<TaskInstance> canonicalInstances,
     List<CivilDay> targetDates,
     TaskScheduleRule rule,
-    DateTime now,
-    String? userId,
-    TaskSchedule task,
+    SchedulerEvaluationContext context,
   ) {
+    final now = context.now;
+    final userId = context.userId;
+    final task = context.task;
     bool hasNewSkipped = false;
     for (final date in targetDates) {
       final inst = workingInstances[date]!;
@@ -617,6 +649,7 @@ class SchedulerEngine {
       final isExpired = rule.missedOccurrencePolicy.isInstanceExpired(
         inst,
         now,
+        utcOffset: context.latestUtcOffset,
       );
       final nextStatus = isExpired ? TaskStatus.skipped : TaskStatus.pending;
       if (_updateInstanceStatus(
@@ -638,20 +671,21 @@ class SchedulerEngine {
     Map<CivilDay, TaskInstance> workingInstances,
     List<TaskInstance> canonicalInstances,
     List<CivilDay> targetDates,
-    DateTime now,
-    CivilDay today,
-    String? userId,
-    TaskSchedule task,
+    SchedulerEvaluationContext context,
   ) {
+    final now = context.now;
+    final latestToday = context.latestToday;
+    final userId = context.userId;
+    final task = context.task;
     bool hasNewSkipped = false;
     final startedDates = targetDates.where((d) {
-      if (d.isAfter(today)) return false;
+      if (d.isAfter(latestToday)) return false;
       final inst = workingInstances[d]!;
       final isOriginalResolved = canonicalInstances.any(
         (x) => x.id == inst.id && x.status != TaskStatus.pending,
       );
       if (isOriginalResolved) return false;
-      final start = inst.startRelativeTime.referenceTo(d);
+      final start = context.referenceToLatest(inst.startRelativeTime, d);
       return !now.isBefore(start);
     }).toList();
 
@@ -691,11 +725,13 @@ class SchedulerEngine {
     Map<CivilDay, TaskInstance> workingInstances,
     List<TaskInstance> canonicalInstances,
     List<CivilDay> targetDates,
-    DateTime now,
-    CivilDay today,
-    String? userId,
-    TaskSchedule task,
+    SchedulerEvaluationContext context,
   ) {
+    final now = context.now;
+    final today = context.today;
+    final latestToday = context.latestToday;
+    final userId = context.userId;
+    final task = context.task;
     bool hasNewSkipped = false;
     final startedDates = targetDates.where((d) {
       if (d.isAfter(today)) return false;
@@ -704,7 +740,7 @@ class SchedulerEngine {
         (x) => x.id == inst.id && x.status != TaskStatus.pending,
       );
       if (isOriginalResolved) return false;
-      final start = inst.startRelativeTime.referenceTo(d);
+      final start = context.referenceToEarliest(inst.startRelativeTime, d);
       return !now.isBefore(start);
     }).toList();
 
@@ -720,11 +756,13 @@ class SchedulerEngine {
       if (isOriginalResolved) continue;
 
       final TaskStatus nextStatus;
-      if (!date.isAfter(today) &&
-          !now.isBefore(inst.startRelativeTime.referenceTo(date))) {
-        nextStatus = date == earliestStartedDate
-            ? TaskStatus.pending
-            : TaskStatus.skipped;
+      if (date == earliestStartedDate) {
+        nextStatus = TaskStatus.pending;
+      } else if (!date.isAfter(latestToday) &&
+          !now.isBefore(
+            context.referenceToLatest(inst.startRelativeTime, date),
+          )) {
+        nextStatus = TaskStatus.skipped;
       } else {
         nextStatus = TaskStatus.pending;
       }
@@ -821,7 +859,10 @@ class SchedulerEngine {
 
       // 1. Process instances already in the DB that are pending or skipped (support skipping and revival)
       for (final inst in taskInstances) {
-        final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
+        final start = context.referenceToEarliest(
+          inst.startRelativeTime,
+          inst.scheduledDate,
+        );
         final isFuture = now.isBefore(start);
 
         final isMarkedForDelete = toDeleteSet.contains(inst.id);
@@ -954,7 +995,10 @@ class SchedulerEngine {
       // If skipIfNoCapacity is false and applyCapacityLimits is true, revive only capacity-skipped instances back to pending
       if (!task.skipIfNoCapacity && applyCapacityLimits) {
         for (final inst in taskInstances) {
-          final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
+          final start = context.referenceToEarliest(
+            inst.startRelativeTime,
+            inst.scheduledDate,
+          );
           final isFuture = now.isBefore(start);
           if (inst.isRevivableByCapacity && isFuture) {
             final isMarkedForDelete = toDeleteSet.contains(inst.id);
@@ -1002,8 +1046,14 @@ class SchedulerEngine {
     final allCurrentInstances = [...effectiveExistingInstances, ...toSpawn];
     for (final inst in allCurrentInstances) {
       if (inst.status == TaskStatus.pending) {
-        final start = inst.startRelativeTime.referenceTo(inst.scheduledDate);
-        final due = inst.dueRelativeTime.referenceTo(inst.scheduledDate);
+        final start = context.referenceToEarliest(
+          inst.startRelativeTime,
+          inst.scheduledDate,
+        );
+        final due = context.referenceToLatest(
+          inst.dueRelativeTime,
+          inst.scheduledDate,
+        );
         if (start.isAfter(now)) triggerTimes.add(start);
         if (due.isAfter(now)) triggerTimes.add(due);
 

@@ -66,13 +66,27 @@ class RelativeTime {
   }
 
   /// Calculates the [DateTime] relative to the given [reference] day.
-  DateTime referenceTo(CivilDay reference) {
+  ///
+  /// When [utcOffset] is provided, the wall-clock time on [reference] (+ [dayOffset])
+  /// is interpreted in that UTC offset and returned as a UTC [DateTime] instant
+  /// (`wallClockUtc.subtract(utcOffset)`). When [utcOffset] is omitted, it is
+  /// constructed in the host process's local timezone.
+  DateTime referenceTo(CivilDay reference, {Duration? utcOffset}) {
     final referenceUtc = DateTime.utc(
       reference.year,
       reference.month,
       reference.day,
     );
     final targetUtc = referenceUtc.add(Duration(days: dayOffset));
+    if (utcOffset != null) {
+      return DateTime.utc(
+        targetUtc.year,
+        targetUtc.month,
+        targetUtc.day,
+        hour,
+        minute,
+      ).subtract(utcOffset);
+    }
     return DateTime(
       targetUtc.year,
       targetUtc.month,

@@ -4138,14 +4138,17 @@ class _FakeCloudFamilySchedulerClient extends Fake
     implements CloudFamilySchedulerClient {
   final List<String> triggeredFamilyIds = [];
   final List<DateTime?> triggeredNows = [];
+  final List<int?> triggeredTimeZoneOffsetMinutes = [];
 
   @override
   Future<bool> triggerFamilyScheduleProcessing({
     required String familyId,
     DateTime? now,
+    int? timeZoneOffsetMinutes,
   }) async {
     triggeredFamilyIds.add(familyId);
     triggeredNows.add(now);
+    triggeredTimeZoneOffsetMinutes.add(timeZoneOffsetMinutes);
     return true;
   }
 }

@@ -101,6 +101,7 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
         final now = AppClock.now;
         lastCheckedDay = CivilDay.fromDateTime(now);
         lastCheckedTimeZoneOffset = now.timeZoneOffset;
+        unawaited(syncService.updateClientMetadata());
         repo.triggerMissedPolicyProcessing();
       },
     );
@@ -117,8 +118,12 @@ final taskRepositoryProvider = Provider<TaskRepository?>((ref) {
     final currentOffset = now.timeZoneOffset;
     if (currentDay != lastCheckedDay ||
         currentOffset != lastCheckedTimeZoneOffset) {
+      final offsetChanged = currentOffset != lastCheckedTimeZoneOffset;
       lastCheckedDay = currentDay;
       lastCheckedTimeZoneOffset = currentOffset;
+      if (offsetChanged) {
+        unawaited(syncService.updateClientMetadata());
+      }
       repo.triggerMissedPolicyProcessing();
     }
   });

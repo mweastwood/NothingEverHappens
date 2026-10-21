@@ -3474,6 +3474,49 @@ void main() {
           expect(localDataSource.getDirtyTaskIds(), isEmpty);
         },
       );
+
+      test(
+        'updateClientMetadata writes timeZone and timeZoneOffsetMinutes to user and family member documents',
+        () async {
+          await firestore.collection('users').doc('user1').set({
+            'familyId': 'family1',
+          });
+          await firestore.collection('families').doc('family1').set({
+            'name': 'Test Family',
+            'members': {
+              'user1': {'displayName': 'User 1', 'role': 'admin'},
+            },
+          });
+
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          await service.updateClientMetadata();
+
+          final userSnap = await firestore
+              .collection('users')
+              .doc('user1')
+              .get();
+          expect(userSnap.data()?['timeZone'], isA<String>());
+          expect(userSnap.data()?['timeZoneOffsetMinutes'], isA<int>());
+
+          final familySnap = await firestore
+              .collection('families')
+              .doc('family1')
+              .get();
+          final members =
+              familySnap.data()?['members'] as Map<String, dynamic>?;
+          final userMember = members?['user1'] as Map<String, dynamic>?;
+          expect(userMember?['timeZone'], isA<String>());
+          expect(userMember?['timeZoneOffsetMinutes'], isA<int>());
+        },
+      );
     });
   });
 }

@@ -10,6 +10,7 @@ import 'package:nothing_ever_happens/logic/auth_repository.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/firestore_paths.dart';
+import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 import 'package:rxdart/rxdart.dart';
@@ -227,7 +228,7 @@ class TaskSyncService {
       data: {'userId': _userId},
     );
 
-    _updateClientMetadata();
+    updateClientMetadata();
 
     _userDocSub = _firestore
         .collection(FirestorePaths.users)
@@ -253,7 +254,7 @@ class TaskSyncService {
               _receivedFamilyInstances = false;
               if (_familyId != null && _familyId!.isNotEmpty) {
                 _startListeningToFamilyRemote(_familyId!);
-                _updateClientMetadata();
+                updateClientMetadata();
               }
             } else if (roleChanged) {
               _familyIdFetcher.clearCache();
@@ -1138,14 +1139,20 @@ class TaskSyncService {
     return true;
   }
 
-  Future<void> _updateClientMetadata() async {
+  Future<void> updateClientMetadata() async {
+    if (_isDisposed || _userId.isEmpty) return;
     try {
-      final now = DateTime.now().toUtc();
+      final localNow = AppClock.now;
+      final now = localNow.toUtc();
+      final offsetMinutes = localNow.timeZoneOffset.inMinutes;
+      final timeZoneName = localNow.timeZoneName;
       final batch = _firestore.batch();
       batch.set(_firestore.collection(FirestorePaths.users).doc(_userId), {
         'appVersion': AppVersion.display,
         'platform': AppVersion.platform,
         'lastSeenAt': now.toIso8601String(),
+        'timeZone': timeZoneName,
+        'timeZoneOffsetMinutes': offsetMinutes,
       }, SetOptions(merge: true));
 
       if (_familyId != null && _familyId!.isNotEmpty) {
@@ -1155,6 +1162,8 @@ class TaskSyncService {
             'members.$_userId.appVersion': AppVersion.display,
             'members.$_userId.platform': AppVersion.platform,
             'members.$_userId.lastSeenAt': now.toIso8601String(),
+            'members.$_userId.timeZone': timeZoneName,
+            'members.$_userId.timeZoneOffsetMinutes': offsetMinutes,
           },
         );
       }
