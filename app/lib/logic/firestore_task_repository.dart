@@ -698,7 +698,13 @@ class FirestoreTaskRepository implements TaskRepository {
     required void Function() markChanged,
   }) {
     for (final inst in action.instancesToUpdate) {
+      final origInst =
+          instancesById[inst.id] ??
+          taskInstances.firstWhereOrNull((x) => x.id == inst.id);
       final updatedInst = inst.copyWith(updatedAt: now);
+      if (origInst != null && origInst.isFamily != updatedInst.isFamily) {
+        batch.delete(_instanceRefFor(origInst, familyId));
+      }
       if (updatedInst.statusReason == null) {
         batch.set(_instanceRefFor(updatedInst, familyId), updatedInst);
       } else {
@@ -745,7 +751,7 @@ class FirestoreTaskRepository implements TaskRepository {
       if (inst != null) {
         _spawnedInstancesCache.remove(_spawnedKeyFor(inst));
       }
-      final isFamily = task.isFamily;
+      final isFamily = inst?.isFamily ?? task.isFamily;
       batch.delete(_instanceRefForId(instId, isFamily, familyId));
       markChanged();
       deletedInstanceIds.add(instId);
@@ -857,6 +863,37 @@ class FirestoreTaskRepository implements TaskRepository {
 
       for (final task in sortedTasks) {
         if (task.isFamily) {
+          final familyTaskInstances =
+              instancesByScheduleId[task.id] ?? const <TaskInstance>[];
+          for (final inst in familyTaskInstances) {
+            if (deletedInstanceIds.contains(inst.id)) continue;
+            if (inst.isFamily != task.isFamily ||
+                inst.familyCompletionMode != task.familyCompletionMode) {
+              final updatedInst = inst.copyWith(
+                isFamily: task.isFamily,
+                familyCompletionMode: task.familyCompletionMode,
+                lastModifiedByUserId: _userId,
+                lastModifiedByAppVersion: AppVersion.display,
+                lastModifiedByPlatform: AppVersion.platform,
+                updatedAt: now,
+              );
+              if (inst.isFamily != updatedInst.isFamily) {
+                batch.delete(_instanceRefFor(inst, familyId));
+              }
+              batch.set(
+                _instanceRefFor(updatedInst, familyId),
+                updatedInst,
+                SetOptions(merge: true),
+              );
+              markChanged();
+              instancesById[inst.id] = updatedInst;
+              final sList = instancesByScheduleId[inst.scheduleId];
+              if (sList != null) {
+                final idx = sList.indexWhere((x) => x.id == inst.id);
+                if (idx >= 0) sList[idx] = updatedInst;
+              }
+            }
+          }
           // Shared family tasks are evaluated exclusively by the Cloud Family Scheduler.
           continue;
         }
@@ -1050,6 +1087,7 @@ class FirestoreTaskRepository implements TaskRepository {
 
     final List<DocumentSnapshot<TaskInstance>> personalPending = [];
     final List<DocumentSnapshot<TaskInstance>> familyPending = [];
+    final List<DocumentSnapshot<TaskInstance>> nonPendingDocs = [];
     final List<TaskInstance> allTaskInstances = [];
 
     final personalSnapFuture = _instancesRef
@@ -1071,6 +1109,8 @@ class FirestoreTaskRepository implements TaskRepository {
       allTaskInstances.add(doc.data());
       if (doc.data().status == TaskStatus.pending) {
         personalPending.add(doc);
+      } else {
+        nonPendingDocs.add(doc);
       }
     }
 
@@ -1080,6 +1120,8 @@ class FirestoreTaskRepository implements TaskRepository {
         allTaskInstances.add(doc.data());
         if (doc.data().status == TaskStatus.pending) {
           familyPending.add(doc);
+        } else {
+          nonPendingDocs.add(doc);
         }
       }
     }
@@ -1182,6 +1224,41 @@ class FirestoreTaskRepository implements TaskRepository {
         );
 
         if (isFamilyChanged) {
+          batch.delete(doc.reference);
+          if (newTask.isFamily) {
+            batch.set(
+              _instanceRefFor(updatedInst, familyId),
+              updatedInst,
+              SetOptions(merge: true),
+            );
+          } else {
+            batch.set(
+              _instancesRef.doc(updatedInst.id),
+              updatedInst,
+              SetOptions(merge: true),
+            );
+          }
+        } else {
+          batch.set(doc.reference, updatedInst, SetOptions(merge: true));
+        }
+      }
+    }
+
+    for (final doc in nonPendingDocs) {
+      final inst = doc.data();
+      if (inst == null) continue;
+      if (isFamilyChanged ||
+          inst.isFamily != newTask.isFamily ||
+          inst.familyCompletionMode != newTask.familyCompletionMode) {
+        final updatedInst = inst.copyWith(
+          isFamily: newTask.isFamily,
+          familyCompletionMode: newTask.familyCompletionMode,
+          lastModifiedByUserId: _userId,
+          lastModifiedByAppVersion: AppVersion.display,
+          lastModifiedByPlatform: AppVersion.platform,
+          updatedAt: AppClock.now,
+        );
+        if (isFamilyChanged || inst.isFamily != newTask.isFamily) {
           batch.delete(doc.reference);
           if (newTask.isFamily) {
             batch.set(
@@ -1528,6 +1605,9 @@ class FirestoreTaskRepository implements TaskRepository {
           lastModifiedByPlatform: AppVersion.platform,
           completedByUserIds: updatedCompletedByUserIds,
         );
+        if (instance.isFamily != completedInstance.isFamily) {
+          batch.delete(_instanceRefFor(instance, familyId));
+        }
         batch.set(
           _instanceRefFor(completedInstance, familyId),
           completedInstance,
@@ -1568,8 +1648,22 @@ class FirestoreTaskRepository implements TaskRepository {
           isFamily: isFamily,
           familyCompletionMode: familyCompletionMode,
           completedByUserIds: updatedCompletedByUserIds,
+          lastModifiedByUserId: _userId,
+          lastModifiedByAppVersion: AppVersion.display,
+          lastModifiedByPlatform: AppVersion.platform,
         );
-        await saveTaskInstance(partialInstance);
+        if (instance.isFamily != partialInstance.isFamily) {
+          final batch = _firestore.batch();
+          batch.delete(_instanceRefFor(instance, familyId));
+          batch.set(
+            _instanceRefFor(partialInstance, familyId),
+            partialInstance,
+            SetOptions(merge: true),
+          );
+          await batch.commit();
+        } else {
+          await saveTaskInstance(partialInstance);
+        }
         return partialInstance;
       }
     }
@@ -1587,6 +1681,9 @@ class FirestoreTaskRepository implements TaskRepository {
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
     );
+    if (instance.isFamily != completedInstance.isFamily) {
+      batch.delete(_instanceRefFor(instance, familyId));
+    }
     batch.set(
       _instanceRefFor(completedInstance, familyId),
       completedInstance,
@@ -1669,6 +1766,9 @@ class FirestoreTaskRepository implements TaskRepository {
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
     );
+    if (instance.isFamily != dismissedInstance.isFamily) {
+      batch.delete(_instanceRefFor(instance, familyId));
+    }
     batch.set(
       _instanceRefFor(dismissedInstance, familyId),
       dismissedInstance,
@@ -1731,6 +1831,9 @@ class FirestoreTaskRepository implements TaskRepository {
         clearStatusReason: true,
         completedByUserIds: updatedUserIds,
       );
+      if (resolvedInstance.isFamily != pendingInstance.isFamily) {
+        batch.delete(_instanceRefFor(resolvedInstance, familyId));
+      }
       // NOTE: Deliberately omits SetOptions(merge: true) because toMap() omits
       // null cleared fields such as completedByUserId, completedAt, and statusReason,
       // which would prevent them from being cleared in Firestore if merge: true
@@ -1758,6 +1861,9 @@ class FirestoreTaskRepository implements TaskRepository {
       clearCompletedAt: true,
       clearStatusReason: true,
     );
+    if (resolvedInstance.isFamily != pendingInstance.isFamily) {
+      batch.delete(_instanceRefFor(resolvedInstance, familyId));
+    }
     // NOTE: Deliberately omits SetOptions(merge: true) because toMap() omits
     // null cleared fields such as completedByUserId, completedAt, and statusReason,
     // which would prevent them from being cleared in Firestore if merge: true
@@ -1793,7 +1899,7 @@ class FirestoreTaskRepository implements TaskRepository {
             _spawnedInstancesCache.remove(_spawnedKeyFor(nextInst));
           }
           batch.delete(
-            _instanceRefForId(nextId, resolvedInstance.isFamily, familyId),
+            _instanceRefForId(nextId, nextInst?.isFamily ?? isFamily, familyId),
           );
         }
       }

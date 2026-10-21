@@ -588,6 +588,9 @@ class UnifiedTaskRepository implements TaskRepository {
           completedAt: AppClock.now,
           completedByUserIds: updatedUserIds,
           statusReason: InstanceStatusReason.userCompleted.value,
+          lastModifiedByUserId: userId,
+          lastModifiedByAppVersion: AppVersion.display,
+          lastModifiedByPlatform: AppVersion.platform,
           hasPendingWrites: true,
           updatedAt: DateTime.now().toUtc(),
         );
@@ -623,6 +626,9 @@ class UnifiedTaskRepository implements TaskRepository {
           isFamily: isFamily,
           familyCompletionMode: familyCompletionMode,
           completedByUserIds: updatedUserIds,
+          lastModifiedByUserId: userId,
+          lastModifiedByAppVersion: AppVersion.display,
+          lastModifiedByPlatform: AppVersion.platform,
           hasPendingWrites: true,
           updatedAt: DateTime.now().toUtc(),
         );
@@ -1130,6 +1136,7 @@ class UnifiedTaskRepository implements TaskRepository {
       final taskInstances = instancesByScheduleId[task.id] ?? [];
 
       if (task.isFamily) {
+        bool familyTaskReconciled = false;
         for (final inst in taskInstances) {
           if (inst.isFamily != task.isFamily ||
               inst.familyCompletionMode != task.familyCompletionMode) {
@@ -1144,12 +1151,16 @@ class UnifiedTaskRepository implements TaskRepository {
             );
             instancesToSave.add(updatedInst);
             dirtyIds.add(updatedInst.id);
+            familyTaskReconciled = true;
 
             final idx = allInstances.indexWhere((x) => x.id == inst.id);
             if (idx >= 0) {
               allInstances[idx] = updatedInst;
             }
           }
+        }
+        if (familyTaskReconciled) {
+          tasksNeedingNotificationUpdate.add(task);
         }
         // Shared family tasks are evaluated exclusively by the Cloud Family Scheduler.
         continue;
