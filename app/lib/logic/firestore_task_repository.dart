@@ -218,6 +218,20 @@ class FirestoreTaskRepository implements TaskRepository {
     return _instanceRefForId(instance.id, instance.isFamily, familyId);
   }
 
+  void _deleteOldRefIfMigrated(
+    WriteBatch batch,
+    TaskInstance? origInst,
+    TaskInstance updatedInst,
+    String? familyId,
+  ) {
+    if (origInst == null || origInst.isFamily == updatedInst.isFamily) return;
+    final oldRef = _instanceRefFor(origInst, familyId);
+    final newRef = _instanceRefFor(updatedInst, familyId);
+    if (oldRef.path != newRef.path) {
+      batch.delete(oldRef);
+    }
+  }
+
   Future<TaskSchedule?> _fetchTask(String id) async {
     final searchIds = [
       id,
@@ -702,9 +716,7 @@ class FirestoreTaskRepository implements TaskRepository {
           instancesById[inst.id] ??
           taskInstances.firstWhereOrNull((x) => x.id == inst.id);
       final updatedInst = inst.copyWith(updatedAt: now);
-      if (origInst != null && origInst.isFamily != updatedInst.isFamily) {
-        batch.delete(_instanceRefFor(origInst, familyId));
-      }
+      _deleteOldRefIfMigrated(batch, origInst, updatedInst, familyId);
       if (updatedInst.statusReason == null) {
         batch.set(_instanceRefFor(updatedInst, familyId), updatedInst);
       } else {
@@ -877,9 +889,7 @@ class FirestoreTaskRepository implements TaskRepository {
                 lastModifiedByPlatform: AppVersion.platform,
                 updatedAt: now,
               );
-              if (inst.isFamily != updatedInst.isFamily) {
-                batch.delete(_instanceRefFor(inst, familyId));
-              }
+              _deleteOldRefIfMigrated(batch, inst, updatedInst, familyId);
               batch.set(
                 _instanceRefFor(updatedInst, familyId),
                 updatedInst,
@@ -1188,7 +1198,7 @@ class FirestoreTaskRepository implements TaskRepository {
             rule: newRule,
             newScheduledDate: updatedScheduledDate,
           );
-          if (isFamilyChanged) {
+          if (isFamilyChanged || inst.isFamily != newTask.isFamily) {
             batch.delete(doc.reference);
             if (newTask.isFamily) {
               batch.set(
@@ -1223,7 +1233,7 @@ class FirestoreTaskRepository implements TaskRepository {
           rule: rule,
         );
 
-        if (isFamilyChanged) {
+        if (isFamilyChanged || inst.isFamily != newTask.isFamily) {
           batch.delete(doc.reference);
           if (newTask.isFamily) {
             batch.set(
@@ -1605,9 +1615,7 @@ class FirestoreTaskRepository implements TaskRepository {
           lastModifiedByPlatform: AppVersion.platform,
           completedByUserIds: updatedCompletedByUserIds,
         );
-        if (instance.isFamily != completedInstance.isFamily) {
-          batch.delete(_instanceRefFor(instance, familyId));
-        }
+        _deleteOldRefIfMigrated(batch, instance, completedInstance, familyId);
         batch.set(
           _instanceRefFor(completedInstance, familyId),
           completedInstance,
@@ -1654,7 +1662,7 @@ class FirestoreTaskRepository implements TaskRepository {
         );
         if (instance.isFamily != partialInstance.isFamily) {
           final batch = _firestore.batch();
-          batch.delete(_instanceRefFor(instance, familyId));
+          _deleteOldRefIfMigrated(batch, instance, partialInstance, familyId);
           batch.set(
             _instanceRefFor(partialInstance, familyId),
             partialInstance,
@@ -1681,9 +1689,7 @@ class FirestoreTaskRepository implements TaskRepository {
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
     );
-    if (instance.isFamily != completedInstance.isFamily) {
-      batch.delete(_instanceRefFor(instance, familyId));
-    }
+    _deleteOldRefIfMigrated(batch, instance, completedInstance, familyId);
     batch.set(
       _instanceRefFor(completedInstance, familyId),
       completedInstance,
@@ -1766,9 +1772,7 @@ class FirestoreTaskRepository implements TaskRepository {
       lastModifiedByAppVersion: AppVersion.display,
       lastModifiedByPlatform: AppVersion.platform,
     );
-    if (instance.isFamily != dismissedInstance.isFamily) {
-      batch.delete(_instanceRefFor(instance, familyId));
-    }
+    _deleteOldRefIfMigrated(batch, instance, dismissedInstance, familyId);
     batch.set(
       _instanceRefFor(dismissedInstance, familyId),
       dismissedInstance,
@@ -1831,9 +1835,12 @@ class FirestoreTaskRepository implements TaskRepository {
         clearStatusReason: true,
         completedByUserIds: updatedUserIds,
       );
-      if (resolvedInstance.isFamily != pendingInstance.isFamily) {
-        batch.delete(_instanceRefFor(resolvedInstance, familyId));
-      }
+      _deleteOldRefIfMigrated(
+        batch,
+        resolvedInstance,
+        pendingInstance,
+        familyId,
+      );
       // NOTE: Deliberately omits SetOptions(merge: true) because toMap() omits
       // null cleared fields such as completedByUserId, completedAt, and statusReason,
       // which would prevent them from being cleared in Firestore if merge: true
@@ -1861,9 +1868,7 @@ class FirestoreTaskRepository implements TaskRepository {
       clearCompletedAt: true,
       clearStatusReason: true,
     );
-    if (resolvedInstance.isFamily != pendingInstance.isFamily) {
-      batch.delete(_instanceRefFor(resolvedInstance, familyId));
-    }
+    _deleteOldRefIfMigrated(batch, resolvedInstance, pendingInstance, familyId);
     // NOTE: Deliberately omits SetOptions(merge: true) because toMap() omits
     // null cleared fields such as completedByUserId, completedAt, and statusReason,
     // which would prevent them from being cleared in Firestore if merge: true
