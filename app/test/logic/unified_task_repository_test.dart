@@ -2961,6 +2961,238 @@ void main() {
         );
       },
     );
+
+    test(
+      'updateTaskSchedule and triggerMissedPolicyProcessing reconcile isFamily and familyCompletionMode on pending and historical instances',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 10, 21, 10, 0));
+        addTearDown(AppClock.reset);
+
+        final rule = DailySchedule(
+          id: 'R-scope-test',
+          scheduleId: 'S-scope-test',
+          startDate: const CivilDay(year: 2026, month: 10, day: 18),
+          interval: 1,
+        );
+        final familyTask = TaskSchedule(
+          id: 'S-scope-test',
+          title: 'Scope Test Task',
+          description: '',
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          schedules: [rule],
+          updatedAt: DateTime(2026, 10, 18),
+        );
+
+        final completedFamilyInst = TaskInstance(
+          id: 'I-completed-fam',
+          scheduleId: familyTask.id,
+          ruleId: rule.id,
+          title: familyTask.title,
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 19),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 10, 19, 12, 0),
+        );
+        final pendingFamilyInst = TaskInstance(
+          id: 'I-pending-fam',
+          scheduleId: familyTask.id,
+          ruleId: rule.id,
+          title: familyTask.title,
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 21),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.pending,
+        );
+
+        await localDataSource.saveTask(familyTask);
+        await localDataSource.saveInstances([
+          completedFamilyInst,
+          pendingFamilyInst,
+        ]);
+
+        // Convert from Family -> Personal via updateTaskSchedule
+        final mod = familyTask.edit(
+          newTitle: familyTask.title,
+          newDescription: familyTask.description,
+          newSchedules: familyTask.schedules,
+          newEstimatedDuration: familyTask.estimatedDuration,
+          newMissedPolicy: familyTask.missedPolicy,
+          newIsMaster: familyTask.isMaster,
+          newLastSpawnedDate: familyTask.lastSpawnedDate,
+          newIsFamily: false,
+          newFamilyCompletionMode: FamilyCompletionMode.anyone,
+          newPriority: familyTask.priority,
+        );
+        await repository.updateTaskSchedule(mod);
+
+        final updatedCompleted = localDataSource.getInstances().firstWhere(
+          (i) => i.id == 'I-completed-fam',
+        );
+        final updatedPending = localDataSource.getInstances().firstWhere(
+          (i) => i.id == 'I-pending-fam',
+        );
+        expect(updatedCompleted.isFamily, isFalse);
+        expect(
+          updatedCompleted.familyCompletionMode,
+          FamilyCompletionMode.anyone,
+        );
+        expect(updatedPending.isFamily, isFalse);
+        expect(
+          updatedPending.familyCompletionMode,
+          FamilyCompletionMode.anyone,
+        );
+        expect(
+          localDataSource.getDirtyTaskIds(),
+          containsAll(['I-completed-fam', 'I-pending-fam']),
+        );
+
+        // Also test self-healing when a family task has a stale personal instance
+        final stalePersonalInstForFamilyTask = TaskInstance(
+          id: 'I-stale-personal',
+          scheduleId: 'S-fam-heal',
+          ruleId: 'R-fam-heal',
+          title: 'Family Heal',
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 20),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          isFamily: false,
+          status: TaskStatus.completed,
+          completedAt: DateTime(2026, 10, 20, 12, 0),
+        );
+        final healFamilyTask = TaskSchedule(
+          id: 'S-fam-heal',
+          title: 'Family Heal',
+          description: '',
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          schedules: [
+            DailySchedule(
+              id: 'R-fam-heal',
+              scheduleId: 'S-fam-heal',
+              startDate: const CivilDay(year: 2026, month: 10, day: 20),
+              interval: 1,
+            ),
+          ],
+        );
+        await localDataSource.saveTask(healFamilyTask);
+        await localDataSource.saveInstance(stalePersonalInstForFamilyTask);
+
+        await repository.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: false,
+        );
+
+        final healedInst = localDataSource.getInstances().firstWhere(
+          (i) => i.id == 'I-stale-personal',
+        );
+        expect(healedInst.isFamily, isTrue);
+        expect(
+          healedInst.familyCompletionMode,
+          FamilyCompletionMode.individual,
+        );
+        expect(localDataSource.getDirtyTaskIds(), contains('I-stale-personal'));
+      },
+    );
+
+    test(
+      'completeTaskInstance, dismissTaskInstance, and undoResolveTaskInstance use parent task.isFamily when instance has stale isFamily: true',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 10, 21, 10, 0));
+        addTearDown(AppClock.reset);
+
+        await firestore.collection('users').doc('user1').set({
+          'familyId': 'family-test',
+        });
+
+        final rule = DailySchedule(
+          id: 'R-stale-action',
+          scheduleId: 'S-stale-action',
+          startDate: const CivilDay(year: 2026, month: 10, day: 21),
+          interval: 1,
+          schedulingPolicy: const CompletionRelativePolicy(
+            interval: Duration(days: 1),
+            targetHour: 9,
+            targetMinute: 0,
+          ),
+        );
+        final personalTask = TaskSchedule(
+          id: 'S-stale-action',
+          title: 'Personal Task With Stale Family Instance',
+          description: '',
+          isFamily: false,
+          schedules: [rule],
+        );
+        final staleInstance = TaskInstance(
+          id: 'I-stale-action-1',
+          scheduleId: personalTask.id,
+          ruleId: rule.id,
+          title: personalTask.title,
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 21),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.pending,
+        );
+
+        await localDataSource.saveTask(personalTask);
+        await localDataSource.saveInstance(staleInstance);
+        fakeCloudScheduler.triggeredFamilyIds.clear();
+
+        // 1. Complete should reconcile isFamily: false, spawn next occurrence locally, and NOT trigger cloud family scheduler
+        final completed = await repository.completeTaskInstance(
+          staleInstance.id,
+        );
+        expect(completed, isNotNull);
+        expect(completed!.status, TaskStatus.completed);
+        expect(completed.isFamily, isFalse);
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+
+        final afterCompleteInstances = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == personalTask.id)
+            .toList();
+        expect(
+          afterCompleteInstances.any(
+            (i) =>
+                i.status == TaskStatus.pending &&
+                i.scheduledDate ==
+                    const CivilDay(year: 2026, month: 10, day: 22),
+          ),
+          isTrue,
+        );
+
+        // 2. Undo should keep isFamily: false, delete the spawned next occurrence locally, and NOT trigger cloud family scheduler
+        await repository.undoResolveTaskInstance(
+          completed.copyWith(isFamily: true),
+        );
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+        final undone = localDataSource.getInstances().firstWhere(
+          (i) => i.id == staleInstance.id,
+        );
+        expect(undone.status, TaskStatus.pending);
+        expect(undone.isFamily, isFalse);
+
+        // 3. Dismiss should reconcile isFamily: false, spawn next occurrence locally, and NOT trigger cloud family scheduler
+        await localDataSource.saveInstance(undone.copyWith(isFamily: true));
+        final dismissed = await repository.dismissTaskInstance(
+          staleInstance.id,
+        );
+        expect(dismissed, isNotNull);
+        expect(dismissed!.status, TaskStatus.skipped);
+        expect(dismissed.isFamily, isFalse);
+        expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+      },
+    );
   });
 
   test('AppClock mock time is inactive and reset following test execution', () {

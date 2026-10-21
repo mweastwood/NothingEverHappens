@@ -1226,10 +1226,11 @@ void main() {
 
           final sept10Inst = TaskInstance(
             id: 'I-sep10',
-            scheduleId: 'T-pref',
+            scheduleId: 'S-T-pref',
             ruleId: 'R-pref',
             title: 'Prefer Newer Family Task',
             description: '',
+            isFamily: true,
             scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
             startRelativeTime: rule.startRelativeTime,
             dueRelativeTime: rule.dueRelativeTime,
@@ -1237,10 +1238,11 @@ void main() {
           );
           final sept11Inst = TaskInstance(
             id: 'I-sep11',
-            scheduleId: 'T-pref',
+            scheduleId: 'S-T-pref',
             ruleId: 'R-pref',
             title: 'Prefer Newer Family Task',
             description: '',
+            isFamily: true,
             scheduledDate: const CivilDay(year: 2026, month: 9, day: 11),
             startRelativeTime: rule.startRelativeTime,
             dueRelativeTime: rule.dueRelativeTime,
@@ -1306,6 +1308,150 @@ void main() {
             afterWesternStartOlder.instancesToUpdate.single.statusReason,
             equals(InstanceStatusReason.schedulerPreferOlder.value),
           );
+        },
+      );
+    });
+
+    group('Family Scope & Completion Mode Reconciliation', () {
+      test(
+        'reconciles stale isFamily and familyCompletionMode on existing pending, skipped, and completed instances for fixed-calendar, completion-relative, and one-off tasks',
+        () {
+          const engine = SchedulerEngine(
+            appVersion: 'v1.9.10',
+            platform: 'test',
+          );
+          final now = DateTime.utc(2026, 10, 21, 10, 0);
+
+          final rule = WeeklySchedule(
+            id: 'R-trash',
+            scheduleId: 'S-trash',
+            startDate: const CivilDay(year: 2026, month: 10, day: 1),
+            interval: 1,
+            daysOfWeek: const {DateTime.friday},
+            startRelativeTime: const RelativeTime(hour: 9, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 17, minute: 0),
+          );
+
+          final personalTask = TaskSchedule(
+            id: 'S-trash',
+            title: 'Take in the trash',
+            description: '',
+            isFamily: false,
+            familyCompletionMode: FamilyCompletionMode.anyone,
+            schedules: [rule],
+          );
+
+          final staleCompleted = TaskInstance(
+            id: 'I-completed-fam',
+            scheduleId: 'S-trash',
+            ruleId: 'R-trash',
+            title: 'Take in the trash',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 10, day: 9),
+            startRelativeTime: rule.startRelativeTime,
+            dueRelativeTime: rule.dueRelativeTime,
+            isFamily: true,
+            familyCompletionMode: FamilyCompletionMode.individual,
+            status: TaskStatus.completed,
+            completedAt: DateTime.utc(2026, 10, 9, 18, 0),
+          );
+
+          final staleMissedPending = TaskInstance(
+            id: 'I-missed-fam',
+            scheduleId: 'S-trash',
+            ruleId: 'R-trash',
+            title: 'Take in the trash',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 10, day: 16),
+            startRelativeTime: rule.startRelativeTime,
+            dueRelativeTime: rule.dueRelativeTime,
+            isFamily: true,
+            status: TaskStatus.pending,
+          );
+
+          final staleFuturePending = [
+            for (final day in [
+              const CivilDay(year: 2026, month: 10, day: 23),
+              const CivilDay(year: 2026, month: 10, day: 30),
+              const CivilDay(year: 2026, month: 11, day: 6),
+              const CivilDay(year: 2026, month: 11, day: 13),
+              const CivilDay(year: 2026, month: 11, day: 20),
+            ])
+              TaskInstance(
+                id: 'I-future-$day',
+                scheduleId: 'S-trash',
+                ruleId: 'R-trash',
+                title: 'Take in the trash',
+                description: '',
+                scheduledDate: day,
+                startRelativeTime: rule.startRelativeTime,
+                dueRelativeTime: rule.dueRelativeTime,
+                isFamily: true,
+                status: TaskStatus.pending,
+              ),
+          ];
+
+          final action = engine.evaluate(
+            personalTask.copyWith(
+              missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+                gracePeriod: Duration(days: 1),
+              ),
+            ),
+            [staleCompleted, staleMissedPending, ...staleFuturePending],
+            now,
+            userId: 'user-1',
+          );
+
+          // All 7 existing instances (1 completed, 1 newly skipped, 5 future pending)
+          // must be returned in instancesToUpdate with isFamily: false.
+          expect(action.instancesToUpdate, hasLength(7));
+          for (final updated in action.instancesToUpdate) {
+            expect(updated.isFamily, isFalse);
+            expect(updated.familyCompletionMode, FamilyCompletionMode.anyone);
+            expect(updated.lastModifiedByUserId, 'user-1');
+            expect(updated.lastModifiedByAppVersion, 'v1.9.10');
+            expect(updated.lastModifiedByPlatform, 'test');
+          }
+
+          final updatedMissed = action.instancesToUpdate.firstWhere(
+            (i) => i.id == 'I-missed-fam',
+          );
+          expect(updatedMissed.status, TaskStatus.skipped);
+          expect(updatedMissed.isFamily, isFalse);
+
+          // One-off task with stale isFamily on existing instance
+          final oneOffRule = OneOffSchedule(
+            id: 'R-oneoff',
+            scheduleId: 'S-oneoff',
+            date: const CivilDay(year: 2026, month: 10, day: 25),
+          );
+          final oneOffTask = TaskSchedule(
+            id: 'S-oneoff',
+            title: 'One-Off Personal',
+            description: '',
+            isFamily: false,
+            schedules: [oneOffRule],
+          );
+          final staleOneOffInst = TaskInstance(
+            id: 'I-oneoff',
+            scheduleId: 'S-oneoff',
+            ruleId: 'R-oneoff',
+            title: 'One-Off Personal',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 10, day: 25),
+            startRelativeTime: oneOffRule.startRelativeTime,
+            dueRelativeTime: oneOffRule.dueRelativeTime,
+            isFamily: true,
+            status: TaskStatus.pending,
+          );
+          final oneOffAction = engine.evaluate(
+            oneOffTask,
+            [staleOneOffInst],
+            now,
+          );
+          expect(oneOffAction.instancesToSpawn, isEmpty);
+          expect(oneOffAction.instancesToUpdate, hasLength(1));
+          expect(oneOffAction.instancesToUpdate.single.isFamily, isFalse);
         },
       );
     });

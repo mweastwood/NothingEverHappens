@@ -4089,6 +4089,229 @@ void main() {
           );
         },
       );
+
+      test(
+        'reconciles cross-collection instances and deletes stale collection documents across updateTaskSchedule, completeTaskInstance, dismissTaskInstance, and undoResolveTaskInstance',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          const userId = 'test-user-id';
+          const familyId = 'test-family-id';
+          await firestore.collection('users').doc(userId).set({
+            'familyId': familyId,
+          });
+          final repo = FirestoreTaskRepository(
+            firestore: firestore,
+            userId: userId,
+          );
+          addTearDown(repo.dispose);
+
+          AppClock.setMockTime(DateTime(2026, 6, 2, 10, 0));
+          addTearDown(AppClock.reset);
+
+          final familyTask = TestTaskFactory.createDaily(
+            id: 'task-cross-coll',
+            title: 'Cross Collection Task',
+            description: 'desc',
+            startDate: const CivilDay(year: 2026, month: 6, day: 1),
+            interval: 1,
+            isFamily: true,
+          );
+
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('tasks')
+              .doc(familyTask.id)
+              .set(familyTask.toFirestore());
+
+          // Seed a completed instance on June 1 and a pending instance on June 2 in families/{familyId}/instances
+          final completedFamilyInst = TaskInstance(
+            id: 'inst-completed-june1',
+            scheduleId: familyTask.id,
+            ruleId: familyTask.schedules.first.id,
+            title: familyTask.title,
+            description: familyTask.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 1),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 6, 1, 12, 0),
+            isFamily: true,
+          );
+          final pendingFamilyInst = TaskInstance(
+            id: 'inst-pending-june2',
+            scheduleId: familyTask.id,
+            ruleId: familyTask.schedules.first.id,
+            title: familyTask.title,
+            description: familyTask.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 2),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            isFamily: true,
+          );
+
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(completedFamilyInst.id)
+              .set(completedFamilyInst.toFirestore());
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(pendingFamilyInst.id)
+              .set(pendingFamilyInst.toFirestore());
+
+          final sub = repo.getTasks().listen((_) {});
+          addTearDown(sub.cancel);
+          await Future(() {});
+
+          // Convert task from family -> personal via updateTaskSchedule
+          final personalMod = familyTask.edit(
+            newTitle: familyTask.title,
+            newDescription: familyTask.description,
+            newSchedules: familyTask.schedules,
+            newEstimatedDuration: familyTask.estimatedDuration,
+            newMissedPolicy: familyTask.missedPolicy,
+            newIsMaster: familyTask.isMaster,
+            newLastSpawnedDate: const CivilDay(year: 2026, month: 6, day: 2),
+            newIsFamily: false,
+            newPriority: familyTask.priority,
+          );
+          await repo.updateTaskSchedule(personalMod);
+          await Future(() {});
+
+          // Both completed and pending instances should be deleted from families/{familyId}/instances
+          // and migrated to users/{userId}/instances with isFamily: false
+          final famInstSnap = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .get();
+          expect(famInstSnap.docs, isEmpty);
+
+          final userCompletedDoc = await firestore
+              .collection('users')
+              .doc(userId)
+              .collection('instances')
+              .doc(completedFamilyInst.id)
+              .get();
+          expect(userCompletedDoc.exists, isTrue);
+          expect(userCompletedDoc.data()!['isFamily'], isFalse);
+
+          // Now simulate an out-of-sync pending instance still sitting in families/{familyId}/instances
+          // while the task is personal, and complete it via completeTaskInstance.
+          final staleFamilyInst = TaskInstance(
+            id: 'inst-stale-june3',
+            scheduleId: familyTask.id,
+            ruleId: familyTask.schedules.first.id,
+            title: familyTask.title,
+            description: familyTask.description,
+            scheduledDate: const CivilDay(year: 2026, month: 6, day: 3),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            isFamily: true,
+          );
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(staleFamilyInst.id)
+              .set(staleFamilyInst.toFirestore());
+          await Future(() {});
+
+          await repo.completeTaskInstance(staleFamilyInst.id);
+          await Future(() {});
+
+          // Old doc in families/{familyId}/instances should be deleted, and new doc in users/{userId}/instances created
+          final staleFamDocAfterComplete = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(staleFamilyInst.id)
+              .get();
+          expect(staleFamDocAfterComplete.exists, isFalse);
+
+          final userDocAfterComplete = await firestore
+              .collection('users')
+              .doc(userId)
+              .collection('instances')
+              .doc(staleFamilyInst.id)
+              .get();
+          expect(userDocAfterComplete.exists, isTrue);
+          expect(userDocAfterComplete.data()!['isFamily'], isFalse);
+          expect(userDocAfterComplete.data()!['status'], 'completed');
+
+          // Also test undoResolveTaskInstance when the resolved instance was in families/{familyId}/instances
+          // while the next spawned instance is in users/{userId}/instances
+          await firestore
+              .collection('users')
+              .doc(userId)
+              .collection('instances')
+              .doc(staleFamilyInst.id)
+              .delete();
+          final completedStaleFamilyInst = staleFamilyInst.copyWith(
+            status: TaskStatus.completed,
+            completedAt: DateTime(2026, 6, 2, 10, 0),
+            isFamily: true,
+          );
+          await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(staleFamilyInst.id)
+              .set(completedStaleFamilyInst.toFirestore());
+          await Future(() {});
+
+          await repo.undoResolveTaskInstance(completedStaleFamilyInst);
+          await Future(() {});
+
+          final staleFamDocAfterUndo = await firestore
+              .collection('families')
+              .doc(familyId)
+              .collection('instances')
+              .doc(staleFamilyInst.id)
+              .get();
+          expect(staleFamDocAfterUndo.exists, isFalse);
+
+          final userDocAfterUndo = await firestore
+              .collection('users')
+              .doc(userId)
+              .collection('instances')
+              .doc(staleFamilyInst.id)
+              .get();
+          expect(userDocAfterUndo.exists, isTrue);
+          expect(userDocAfterUndo.data()!['isFamily'], isFalse);
+          expect(userDocAfterUndo.data()!['status'], 'pending');
+        },
+      );
     });
   });
 }
