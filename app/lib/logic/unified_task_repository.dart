@@ -287,6 +287,26 @@ class UnifiedTaskRepository implements TaskRepository {
       }
     }
 
+    final nonPendingScopeMismatches = allTaskInstances.where(
+      (i) =>
+          i.status != TaskStatus.pending &&
+          (i.isFamily != t.isFamily ||
+              i.familyCompletionMode != t.familyCompletionMode),
+    );
+    for (final inst in nonPendingScopeMismatches) {
+      final updatedInst = inst.copyWith(
+        isFamily: t.isFamily,
+        familyCompletionMode: t.familyCompletionMode,
+        lastModifiedByUserId: userId,
+        lastModifiedByAppVersion: AppVersion.display,
+        lastModifiedByPlatform: AppVersion.platform,
+        hasPendingWrites: true,
+        updatedAt: DateTime.now().toUtc(),
+      );
+      await _localDataSource.saveInstance(updatedInst);
+      await _localDataSource.markDirty(updatedInst.id);
+    }
+
     await triggerMissedPolicyProcessing(
       evaluateFamilyTasks: t.isFamily || changes.containsKey('isFamily'),
     );
@@ -521,10 +541,11 @@ class UnifiedTaskRepository implements TaskRepository {
         .getTasks()
         .where((t) => t.id == instance.scheduleId)
         .firstOrNull;
-    final isFamily = instance.isFamily || (task?.isFamily ?? false);
+    final isFamily = task?.isFamily ?? instance.isFamily;
+    final familyCompletionMode =
+        task?.familyCompletionMode ?? instance.familyCompletionMode;
 
-    if (isFamily &&
-        instance.familyCompletionMode == FamilyCompletionMode.individual) {
+    if (isFamily && familyCompletionMode == FamilyCompletionMode.individual) {
       final updatedUserIds = {...instance.completedByUserIds, userId}.toList();
 
       bool allCompleted = false;
@@ -560,6 +581,8 @@ class UnifiedTaskRepository implements TaskRepository {
 
       if (allCompleted) {
         final completedInstance = instance.copyWith(
+          isFamily: isFamily,
+          familyCompletionMode: familyCompletionMode,
           status: TaskStatus.completed,
           completedByUserId: userId,
           completedAt: AppClock.now,
@@ -584,7 +607,7 @@ class UnifiedTaskRepository implements TaskRepository {
         );
 
         _syncService.sync();
-        if (completedInstance.isFamily || isFamily) {
+        if (isFamily) {
           final familyId = await getFamilyId();
           if (familyId != null && familyId.isNotEmpty) {
             unawaited(
@@ -597,6 +620,8 @@ class UnifiedTaskRepository implements TaskRepository {
         return completedInstance;
       } else {
         final partialInstance = instance.copyWith(
+          isFamily: isFamily,
+          familyCompletionMode: familyCompletionMode,
           completedByUserIds: updatedUserIds,
           hasPendingWrites: true,
           updatedAt: DateTime.now().toUtc(),
@@ -615,6 +640,8 @@ class UnifiedTaskRepository implements TaskRepository {
     }
 
     final completedInstance = instance.copyWith(
+      isFamily: isFamily,
+      familyCompletionMode: familyCompletionMode,
       status: TaskStatus.completed,
       completedByUserId: userId,
       completedAt: AppClock.now,
@@ -640,7 +667,7 @@ class UnifiedTaskRepository implements TaskRepository {
       data: {'instanceId': id, 'scheduleId': instance.scheduleId},
     );
 
-    if (completedInstance.isFamily || isFamily) {
+    if (isFamily) {
       final familyId = await getFamilyId();
       if (familyId != null && familyId.isNotEmpty) {
         unawaited(
@@ -696,9 +723,13 @@ class UnifiedTaskRepository implements TaskRepository {
         .getTasks()
         .where((t) => t.id == instance.scheduleId)
         .firstOrNull;
-    final isFamily = instance.isFamily || (task?.isFamily ?? false);
+    final isFamily = task?.isFamily ?? instance.isFamily;
+    final familyCompletionMode =
+        task?.familyCompletionMode ?? instance.familyCompletionMode;
 
     final dismissedInstance = instance.copyWith(
+      isFamily: isFamily,
+      familyCompletionMode: familyCompletionMode,
       status: TaskStatus.skipped,
       completedByUserId: userId,
       completedAt: AppClock.now,
@@ -717,7 +748,7 @@ class UnifiedTaskRepository implements TaskRepository {
       data: {'instanceId': id, 'scheduleId': instance.scheduleId},
     );
 
-    if (dismissedInstance.isFamily || isFamily) {
+    if (isFamily) {
       final familyId = await getFamilyId();
       if (familyId != null && familyId.isNotEmpty) {
         unawaited(
@@ -807,15 +838,18 @@ class UnifiedTaskRepository implements TaskRepository {
         .getTasks()
         .where((t) => t.id == resolvedInstance.scheduleId)
         .firstOrNull;
-    final isFamilyTask = resolvedInstance.isFamily || (task?.isFamily ?? false);
+    final isFamilyTask = task?.isFamily ?? resolvedInstance.isFamily;
+    final familyCompletionMode =
+        task?.familyCompletionMode ?? resolvedInstance.familyCompletionMode;
 
     if (isFamilyTask &&
-        resolvedInstance.familyCompletionMode ==
-            FamilyCompletionMode.individual) {
+        familyCompletionMode == FamilyCompletionMode.individual) {
       final updatedUserIds = resolvedInstance.completedByUserIds
           .where((uid) => uid != userId)
           .toList();
       final pendingInstance = resolvedInstance.copyWith(
+        isFamily: isFamilyTask,
+        familyCompletionMode: familyCompletionMode,
         status: TaskStatus.pending,
         clearCompletedByUserId: true,
         clearCompletedAt: true,
@@ -850,6 +884,8 @@ class UnifiedTaskRepository implements TaskRepository {
     }
 
     final pendingInstance = resolvedInstance.copyWith(
+      isFamily: isFamilyTask,
+      familyCompletionMode: familyCompletionMode,
       status: TaskStatus.pending,
       clearCompletedByUserId: true,
       clearCompletedAt: true,
@@ -1091,12 +1127,33 @@ class UnifiedTaskRepository implements TaskRepository {
     final tasksNeedingNotificationUpdate = <TaskSchedule>[];
 
     for (final task in tasksToEvaluate) {
+      final taskInstances = instancesByScheduleId[task.id] ?? [];
+
       if (task.isFamily) {
+        for (final inst in taskInstances) {
+          if (inst.isFamily != task.isFamily ||
+              inst.familyCompletionMode != task.familyCompletionMode) {
+            final updatedInst = inst.copyWith(
+              isFamily: task.isFamily,
+              familyCompletionMode: task.familyCompletionMode,
+              lastModifiedByUserId: userId,
+              lastModifiedByAppVersion: AppVersion.display,
+              lastModifiedByPlatform: AppVersion.platform,
+              updatedAt: DateTime.now().toUtc(),
+              hasPendingWrites: true,
+            );
+            instancesToSave.add(updatedInst);
+            dirtyIds.add(updatedInst.id);
+
+            final idx = allInstances.indexWhere((x) => x.id == inst.id);
+            if (idx >= 0) {
+              allInstances[idx] = updatedInst;
+            }
+          }
+        }
         // Shared family tasks are evaluated exclusively by the Cloud Family Scheduler.
         continue;
       }
-
-      final taskInstances = instancesByScheduleId[task.id] ?? [];
 
       final action = SchedulerEngine(logger: logger).evaluate(
         task,

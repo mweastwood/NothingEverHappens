@@ -1486,10 +1486,11 @@ class FirestoreTaskRepository implements TaskRepository {
     final familyId = await getFamilyId();
     final now = AppClock.now;
 
-    final isFamily = instance.isFamily || (task?.isFamily ?? false);
+    final isFamily = task?.isFamily ?? instance.isFamily;
+    final familyCompletionMode =
+        task?.familyCompletionMode ?? instance.familyCompletionMode;
 
-    if (isFamily &&
-        instance.familyCompletionMode == FamilyCompletionMode.individual) {
+    if (isFamily && familyCompletionMode == FamilyCompletionMode.individual) {
       final updatedCompletedByUserIds = {
         ...instance.completedByUserIds,
         _userId,
@@ -1516,6 +1517,8 @@ class FirestoreTaskRepository implements TaskRepository {
       if (allCompleted) {
         final batch = _firestore.batch();
         final completedInstance = instance.copyWith(
+          isFamily: isFamily,
+          familyCompletionMode: familyCompletionMode,
           status: TaskStatus.completed,
           completedByUserId: _userId,
           completedAt: now,
@@ -1562,6 +1565,8 @@ class FirestoreTaskRepository implements TaskRepository {
         return completedInstance;
       } else {
         final partialInstance = instance.copyWith(
+          isFamily: isFamily,
+          familyCompletionMode: familyCompletionMode,
           completedByUserIds: updatedCompletedByUserIds,
         );
         await saveTaskInstance(partialInstance);
@@ -1572,6 +1577,8 @@ class FirestoreTaskRepository implements TaskRepository {
     final batch = _firestore.batch();
 
     final completedInstance = instance.copyWith(
+      isFamily: isFamily,
+      familyCompletionMode: familyCompletionMode,
       status: TaskStatus.completed,
       completedByUserId: _userId,
       completedAt: now,
@@ -1647,7 +1654,13 @@ class FirestoreTaskRepository implements TaskRepository {
 
     final batch = _firestore.batch();
 
+    final isFamily = task?.isFamily ?? instance.isFamily;
+    final familyCompletionMode =
+        task?.familyCompletionMode ?? instance.familyCompletionMode;
+
     final dismissedInstance = instance.copyWith(
+      isFamily: isFamily,
+      familyCompletionMode: familyCompletionMode,
       status: TaskStatus.skipped,
       completedByUserId: _userId,
       completedAt: now,
@@ -1663,7 +1676,6 @@ class FirestoreTaskRepository implements TaskRepository {
     );
     _spawnedInstancesCache.remove(_spawnedKeyFor(instance));
 
-    final isFamily = instance.isFamily || (task?.isFamily ?? false);
     if (isFamily) {
       if (familyId != null && familyId.isNotEmpty) {
         unawaited(
@@ -1702,15 +1714,17 @@ class FirestoreTaskRepository implements TaskRepository {
     final familyId = await getFamilyId();
     final batch = _firestore.batch();
     final now = resolvedInstance.completedAt ?? AppClock.now;
-    final isFamily = resolvedInstance.isFamily || (task?.isFamily ?? false);
+    final isFamily = task?.isFamily ?? resolvedInstance.isFamily;
+    final familyCompletionMode =
+        task?.familyCompletionMode ?? resolvedInstance.familyCompletionMode;
 
-    if (isFamily &&
-        resolvedInstance.familyCompletionMode ==
-            FamilyCompletionMode.individual) {
+    if (isFamily && familyCompletionMode == FamilyCompletionMode.individual) {
       final updatedUserIds = resolvedInstance.completedByUserIds
           .where((uid) => uid != _userId)
           .toList();
       final pendingInstance = resolvedInstance.copyWith(
+        isFamily: isFamily,
+        familyCompletionMode: familyCompletionMode,
         status: TaskStatus.pending,
         clearCompletedByUserId: true,
         clearCompletedAt: true,
@@ -1737,6 +1751,8 @@ class FirestoreTaskRepository implements TaskRepository {
     }
 
     final pendingInstance = resolvedInstance.copyWith(
+      isFamily: isFamily,
+      familyCompletionMode: familyCompletionMode,
       status: TaskStatus.pending,
       clearCompletedByUserId: true,
       clearCompletedAt: true,

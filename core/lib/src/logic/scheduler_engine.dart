@@ -155,7 +155,11 @@ class SchedulerEngine {
       toDelete: toDelete,
     );
     final finalToSpawn = capacityResult.finalToSpawn;
-    final finalToUpdate = capacityResult.finalToUpdate;
+    final finalToUpdate = _reconcileScopeMismatches(
+      context,
+      toUpdate: capacityResult.finalToUpdate,
+      toDelete: toDelete,
+    );
 
     final uniqueTriggerTimes = _calculateTriggerTimes(
       context,
@@ -170,6 +174,56 @@ class SchedulerEngine {
       updatedSchedule: updatedSchedule,
       triggerTimes: uniqueTriggerTimes,
     );
+  }
+
+  TaskInstance _reconcileInstanceFamilyScope(
+    TaskInstance inst,
+    TaskSchedule task, {
+    String? userId,
+  }) {
+    if (inst.isFamily == task.isFamily &&
+        inst.familyCompletionMode == task.familyCompletionMode) {
+      return inst;
+    }
+    return inst.copyWith(
+      isFamily: task.isFamily,
+      familyCompletionMode: task.familyCompletionMode,
+      lastModifiedByAppVersion: appVersion,
+      lastModifiedByPlatform: platform,
+      lastModifiedByUserId: userId,
+    );
+  }
+
+  List<TaskInstance> _reconcileScopeMismatches(
+    SchedulerEvaluationContext context, {
+    required List<TaskInstance> toUpdate,
+    List<String> toDelete = const [],
+  }) {
+    final task = context.task;
+    final toDeleteSet = toDelete.toSet();
+    final reconciled = <TaskInstance>[
+      for (final inst in toUpdate)
+        if (!toDeleteSet.contains(inst.id))
+          _reconcileInstanceFamilyScope(inst, task, userId: context.userId),
+    ];
+    final updatedIds = {for (final inst in reconciled) inst.id};
+
+    for (final inst in context.taskInstances) {
+      final belongsToTask = inst.scheduleId == task.id ||
+          task.schedules.any((s) => _isInstanceForRule(inst, s, task));
+      if (!belongsToTask) continue;
+      if (toDeleteSet.contains(inst.id) || updatedIds.contains(inst.id)) {
+        continue;
+      }
+      if (inst.isFamily != task.isFamily ||
+          inst.familyCompletionMode != task.familyCompletionMode) {
+        reconciled.add(
+          _reconcileInstanceFamilyScope(inst, task, userId: context.userId),
+        );
+        updatedIds.add(inst.id);
+      }
+    }
+    return reconciled;
   }
 
   static TaskInstance _selectCanonicalInstance(List<TaskInstance> instances) {
@@ -1100,16 +1154,20 @@ class SchedulerEngine {
     }
 
     final capacityResult = _applyCapacityLimits(context, toSpawn: toSpawn);
+    final finalToUpdate = _reconcileScopeMismatches(
+      context,
+      toUpdate: capacityResult.finalToUpdate,
+    );
 
     final triggerTimes = _calculateTriggerTimes(
       context,
       toSpawn: capacityResult.finalToSpawn,
-      toUpdate: capacityResult.finalToUpdate,
+      toUpdate: finalToUpdate,
     );
 
     return SchedulerAction(
       instancesToSpawn: capacityResult.finalToSpawn,
-      instancesToUpdate: capacityResult.finalToUpdate,
+      instancesToUpdate: finalToUpdate,
       triggerTimes: triggerTimes,
     );
   }
