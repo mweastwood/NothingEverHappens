@@ -396,7 +396,8 @@ class FamilySchedulerService {
 
         for (final spawned in action.instancesToSpawn) {
           final docRef = familyRef.collection('instances').doc(spawned.id);
-          batch.set(docRef, spawned.toFirestore());
+          final stamped = spawned.copyWith(updatedAt: effectiveNow.toUtc());
+          batch.set(docRef, stamped.toFirestore());
           batchOps++;
           spawnedCount++;
           await commitBatchIfNeeded();
@@ -404,7 +405,8 @@ class FamilySchedulerService {
 
         for (final updated in action.instancesToUpdate) {
           final docRef = familyRef.collection('instances').doc(updated.id);
-          batch.set(docRef, updated.toFirestore());
+          final stamped = updated.copyWith(updatedAt: effectiveNow.toUtc());
+          batch.set(docRef, stamped.toFirestore());
           batchOps++;
           updatedCount++;
           await commitBatchIfNeeded();
@@ -420,7 +422,10 @@ class FamilySchedulerService {
 
         if (action.updatedSchedule != null) {
           final docRef = familyRef.collection('tasks').doc(task.id);
-          batch.set(docRef, action.updatedSchedule!.toFirestore());
+          final stampedSchedule = action.updatedSchedule!.copyWith(
+            updatedAt: effectiveNow.toUtc(),
+          );
+          batch.set(docRef, stampedSchedule.toFirestore());
           batchOps++;
           schedulesUpdatedCount++;
           await commitBatchIfNeeded();

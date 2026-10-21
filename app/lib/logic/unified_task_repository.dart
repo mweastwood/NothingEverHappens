@@ -822,6 +822,7 @@ class UnifiedTaskRepository implements TaskRepository {
       completedInstance: completedInstance,
       completionTime: now,
       existingInstances: instances,
+      userId: userId,
     );
     if (nextInst != null) {
       final nextWithPendingWrites = nextInst.copyWith(
@@ -1166,16 +1167,21 @@ class UnifiedTaskRepository implements TaskRepository {
         continue;
       }
 
-      final action = SchedulerEngine(logger: logger).evaluate(
-        task,
-        taskInstances,
-        now,
-        userSettings: userSettings,
-        dayPlannedHours: dayPlannedHours,
-        applyCapacityLimits:
-            task.assignedUserId == null || task.assignedUserId == userId,
-        userId: userId,
-      );
+      final action =
+          SchedulerEngine(
+            logger: logger,
+            appVersion: AppVersion.display,
+            platform: AppVersion.platform,
+          ).evaluate(
+            task,
+            taskInstances,
+            now,
+            userSettings: userSettings,
+            dayPlannedHours: dayPlannedHours,
+            applyCapacityLimits:
+                task.assignedUserId == null || task.assignedUserId == userId,
+            userId: userId,
+          );
 
       allTriggerTimes.addAll(action.triggerTimes);
 

@@ -1068,5 +1068,68 @@ void main() {
         ),
       );
     });
+
+    test(
+        'processFamily bumps updatedAt on spawned instances, updated instances, and updated schedules',
+        () async {
+      final service = FamilySchedulerService(db);
+      final oldTimestamp = DateTime.utc(2026, 8, 1, 0, 0);
+      final t1 = DateTime(2026, 9, 10, 8, 0);
+      final t2 = DateTime(2026, 9, 10, 12, 0);
+
+      final task = TaskSchedule(
+        id: 'task_updated_at',
+        title: 'UpdatedAt Check',
+        description: '',
+        isFamily: true,
+        updatedAt: oldTimestamp,
+        schedules: [
+          DailySchedule(
+            id: 'rule_updated_at',
+            scheduleId: 'task_updated_at',
+            startDate: const CivilDay(year: 2026, month: 9, day: 10),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 9, minute: 0),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+              gracePeriod: Duration(hours: 2),
+            ),
+          ),
+        ],
+      );
+
+      final familyTasksCol = db.collection('families/fam_1/tasks');
+      familyTasksCol.doc(task.id).set(task.toFirestore());
+
+      final summary1 = await service.processFamily(
+        'fam_1',
+        now: t1,
+        futureInstancesCount: 0,
+      );
+      expect(summary1.instancesSpawned, equals(1));
+      expect(summary1.schedulesUpdated, equals(1));
+
+      final instancesCol = db.collection('families/fam_1/instances');
+      final spawnedDoc = instancesCol.documents.values.first.docData!;
+      expect(spawnedDoc['updatedAt'], equals(t1.toUtc()));
+      expect(spawnedDoc['lastModifiedByUserId'], equals('cloud_scheduler'));
+      expect(spawnedDoc['lastModifiedByAppVersion'], equals('backend'));
+      expect(spawnedDoc['lastModifiedByPlatform'], equals('cloud_functions'));
+
+      final updatedTaskDoc = familyTasksCol.documents[task.id]!.docData!;
+      expect(updatedTaskDoc['updatedAt'], equals(t1.toUtc()));
+
+      // Advance past due + grace period so the instance is auto-dismissed at t2
+      final summary2 = await service.processFamily(
+        'fam_1',
+        now: t2,
+        futureInstancesCount: 0,
+      );
+      expect(summary2.instancesUpdated, equals(1));
+
+      final updatedInstDoc = instancesCol.documents.values.first.docData!;
+      expect(updatedInstDoc['status'], equals('skipped'));
+      expect(updatedInstDoc['updatedAt'], equals(t2.toUtc()));
+    });
   });
 }

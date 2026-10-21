@@ -17,6 +17,7 @@ import 'package:nothing_ever_happens/logic/telemetry_service.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
+import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'dart:io';
@@ -3191,6 +3192,85 @@ void main() {
         expect(dismissed!.status, TaskStatus.skipped);
         expect(dismissed.isFamily, isFalse);
         expect(fakeCloudScheduler.triggeredFamilyIds, isEmpty);
+      },
+    );
+
+    test(
+      'local scheduler evaluation and next-occurrence spawning populate AppVersion.display and AppVersion.platform',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 10, 21, 14, 0));
+        addTearDown(AppClock.reset);
+
+        final rule = DailySchedule(
+          id: 'R-meta-daily',
+          scheduleId: 'S-meta-daily',
+          startDate: const CivilDay(year: 2026, month: 10, day: 20),
+          interval: 1,
+          startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 10, minute: 0),
+          missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+            gracePeriod: Duration(hours: 1),
+          ),
+        );
+        final task = TaskSchedule(
+          id: 'S-meta-daily',
+          title: 'Metadata Daily',
+          description: '',
+          schedules: [rule],
+        );
+        final expiredYesterday = TaskInstance(
+          id: 'I-meta-oct20',
+          scheduleId: task.id,
+          ruleId: rule.id,
+          title: task.title,
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 20),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.pending,
+        );
+
+        await localDataSource.saveTask(task);
+        await localDataSource.saveInstance(expiredYesterday);
+
+        await repository.triggerMissedPolicyProcessing(
+          evaluateFamilyTasks: false,
+        );
+
+        final instances = localDataSource
+            .getInstances()
+            .where((i) => i.scheduleId == task.id)
+            .toList();
+        final skippedYesterday = instances.firstWhere(
+          (i) => i.id == 'I-meta-oct20',
+        );
+        expect(skippedYesterday.status, TaskStatus.skipped);
+        expect(skippedYesterday.lastModifiedByUserId, 'user1');
+        expect(
+          skippedYesterday.lastModifiedByAppVersion,
+          equals(AppVersion.display),
+        );
+        expect(
+          skippedYesterday.lastModifiedByPlatform,
+          equals(AppVersion.platform),
+        );
+
+        final spawnedFuture = instances.firstWhere(
+          (i) =>
+              i.status == TaskStatus.pending &&
+              i.scheduledDate.isAfter(
+                const CivilDay(year: 2026, month: 10, day: 21),
+              ),
+        );
+        expect(spawnedFuture.lastModifiedByUserId, 'user1');
+        expect(
+          spawnedFuture.lastModifiedByAppVersion,
+          equals(AppVersion.display),
+        );
+        expect(
+          spawnedFuture.lastModifiedByPlatform,
+          equals(AppVersion.platform),
+        );
       },
     );
   });

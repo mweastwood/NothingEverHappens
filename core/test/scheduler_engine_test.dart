@@ -1452,6 +1452,90 @@ void main() {
           expect(oneOffAction.instancesToSpawn, isEmpty);
           expect(oneOffAction.instancesToUpdate, hasLength(1));
           expect(oneOffAction.instancesToUpdate.single.isFamily, isFalse);
+          expect(oneOffAction.instancesToUpdate.single.updatedAt, now.toUtc());
+        },
+      );
+
+      test(
+        'bumps updatedAt to now.toUtc() and sets lastModifiedBy metadata on spawned instances, updated instances, updatedSchedule, and getNextOccurrenceToSpawn',
+        () {
+          const engine = SchedulerEngine(
+            appVersion: 'v1.9.10',
+            platform: 'linux',
+          );
+          final oldTimestamp = DateTime.utc(2026, 9, 1, 0, 0);
+          final evalNow = DateTime.utc(2026, 10, 21, 9, 30);
+
+          final rule = DailySchedule(
+            id: 'R-daily',
+            scheduleId: 'S-daily',
+            startDate: const CivilDay(year: 2026, month: 10, day: 19),
+            interval: 1,
+            startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+            dueRelativeTime: const RelativeTime(hour: 10, minute: 0),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+              gracePeriod: Duration(hours: 2),
+            ),
+          );
+          final task = TaskSchedule(
+            id: 'S-daily',
+            title: 'Daily Task',
+            description: '',
+            schedules: [rule],
+            updatedAt: oldTimestamp,
+          );
+
+          final expiredInst = TaskInstance(
+            id: 'I-oct19',
+            scheduleId: 'S-daily',
+            ruleId: 'R-daily',
+            title: 'Daily Task',
+            description: '',
+            scheduledDate: const CivilDay(year: 2026, month: 10, day: 19),
+            startRelativeTime: rule.startRelativeTime,
+            dueRelativeTime: rule.dueRelativeTime,
+            status: TaskStatus.pending,
+            updatedAt: oldTimestamp,
+          );
+
+          final action = engine.evaluate(
+            task,
+            [expiredInst],
+            evalNow,
+            userId: 'user-meta',
+          );
+
+          expect(action.updatedSchedule, isNotNull);
+          expect(action.updatedSchedule!.updatedAt, equals(evalNow));
+
+          expect(action.instancesToUpdate, isNotEmpty);
+          for (final updated in action.instancesToUpdate) {
+            expect(updated.updatedAt, equals(evalNow));
+            expect(updated.lastModifiedByUserId, equals('user-meta'));
+            expect(updated.lastModifiedByAppVersion, equals('v1.9.10'));
+            expect(updated.lastModifiedByPlatform, equals('linux'));
+          }
+
+          expect(action.instancesToSpawn, isNotEmpty);
+          for (final spawned in action.instancesToSpawn) {
+            expect(spawned.updatedAt, equals(evalNow));
+            expect(spawned.lastModifiedByUserId, equals('user-meta'));
+            expect(spawned.lastModifiedByAppVersion, equals('v1.9.10'));
+            expect(spawned.lastModifiedByPlatform, equals('linux'));
+          }
+
+          final nextSpawned = engine.getNextOccurrenceToSpawn(
+            task,
+            expiredInst.copyWith(status: TaskStatus.completed),
+            evalNow,
+            const [],
+            userId: 'user-meta',
+          );
+          expect(nextSpawned, isNotNull);
+          expect(nextSpawned!.updatedAt, equals(evalNow));
+          expect(nextSpawned.lastModifiedByUserId, equals('user-meta'));
+          expect(nextSpawned.lastModifiedByAppVersion, equals('v1.9.10'));
+          expect(nextSpawned.lastModifiedByPlatform, equals('linux'));
         },
       );
     });

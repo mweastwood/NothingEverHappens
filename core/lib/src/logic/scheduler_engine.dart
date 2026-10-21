@@ -145,7 +145,10 @@ class SchedulerEngine {
     if (maxSpawned != null &&
         (task.lastSpawnedDate == null ||
             maxSpawned.compareTo(task.lastSpawnedDate!) > 0)) {
-      updatedSchedule = task.copyWith(lastSpawnedDate: maxSpawned);
+      updatedSchedule = task.copyWith(
+        lastSpawnedDate: maxSpawned,
+        updatedAt: now.toUtc(),
+      );
     }
 
     final capacityResult = _applyCapacityLimits(
@@ -179,6 +182,7 @@ class SchedulerEngine {
   TaskInstance _reconcileInstanceFamilyScope(
     TaskInstance inst,
     TaskSchedule task, {
+    required DateTime now,
     String? userId,
   }) {
     if (inst.isFamily == task.isFamily &&
@@ -191,6 +195,7 @@ class SchedulerEngine {
       lastModifiedByAppVersion: appVersion,
       lastModifiedByPlatform: platform,
       lastModifiedByUserId: userId,
+      updatedAt: now.toUtc(),
     );
   }
 
@@ -204,7 +209,12 @@ class SchedulerEngine {
     final reconciled = <TaskInstance>[
       for (final inst in toUpdate)
         if (!toDeleteSet.contains(inst.id))
-          _reconcileInstanceFamilyScope(inst, task, userId: context.userId),
+          _reconcileInstanceFamilyScope(
+            inst,
+            task,
+            now: context.now,
+            userId: context.userId,
+          ),
     ];
     final updatedIds = {for (final inst in reconciled) inst.id};
 
@@ -218,7 +228,12 @@ class SchedulerEngine {
       if (inst.isFamily != task.isFamily ||
           inst.familyCompletionMode != task.familyCompletionMode) {
         reconciled.add(
-          _reconcileInstanceFamilyScope(inst, task, userId: context.userId),
+          _reconcileInstanceFamilyScope(
+            inst,
+            task,
+            now: context.now,
+            userId: context.userId,
+          ),
         );
         updatedIds.add(inst.id);
       }
@@ -375,6 +390,8 @@ class SchedulerEngine {
             task: task,
             rule: s,
             scheduledDate: dateToSpawn,
+            now: now,
+            userId: context.userId,
           ),
         );
       }
@@ -551,6 +568,8 @@ class SchedulerEngine {
             task: task,
             rule: s,
             scheduledDate: date,
+            now: context.now,
+            userId: context.userId,
           );
         }
       }
@@ -639,7 +658,12 @@ class SchedulerEngine {
     final policy = rule.missedOccurrencePolicy.policy;
     switch (policy) {
       case MissedPolicy.stack:
-        _applyStackPolicy(workingInstances, canonicalInstances, targetDates);
+        _applyStackPolicy(
+          workingInstances,
+          canonicalInstances,
+          targetDates,
+          context,
+        );
         return false;
       case MissedPolicy.autoDismiss:
         return _applyAutoDismissPolicy(
@@ -670,14 +694,22 @@ class SchedulerEngine {
     Map<CivilDay, TaskInstance> workingInstances,
     List<TaskInstance> canonicalInstances,
     List<CivilDay> targetDates,
+    SchedulerEvaluationContext context,
   ) {
     for (final date in targetDates) {
       final inst = workingInstances[date]!;
       final isOriginalResolved = canonicalInstances.any(
         (x) => x.id == inst.id && x.status != TaskStatus.pending,
       );
-      if (!isOriginalResolved) {
-        workingInstances[date] = inst.copyWith(status: TaskStatus.pending);
+      if (!isOriginalResolved && inst.status != TaskStatus.pending) {
+        workingInstances[date] = inst.copyWith(
+          status: TaskStatus.pending,
+          clearStatusReason: true,
+          lastModifiedByAppVersion: appVersion,
+          lastModifiedByPlatform: platform,
+          lastModifiedByUserId: context.userId,
+          updatedAt: context.now.toUtc(),
+        );
       }
     }
   }
@@ -710,6 +742,7 @@ class SchedulerEngine {
         workingInstances,
         date,
         nextStatus,
+        now: now,
         statusReason: InstanceStatusReason.schedulerAutoDismiss.value,
         userId: userId,
         logMessage:
@@ -764,6 +797,7 @@ class SchedulerEngine {
         workingInstances,
         date,
         nextStatus,
+        now: now,
         statusReason: InstanceStatusReason.schedulerPreferNewer.value,
         userId: userId,
         logMessage:
@@ -824,6 +858,7 @@ class SchedulerEngine {
         workingInstances,
         date,
         nextStatus,
+        now: now,
         statusReason: InstanceStatusReason.schedulerPreferOlder.value,
         userId: userId,
         logMessage:
@@ -839,6 +874,7 @@ class SchedulerEngine {
     Map<CivilDay, TaskInstance> workingInstances,
     CivilDay date,
     TaskStatus nextStatus, {
+    required DateTime now,
     String? statusReason,
     String? userId,
     String? logMessage,
@@ -852,6 +888,7 @@ class SchedulerEngine {
         lastModifiedByAppVersion: appVersion,
         lastModifiedByPlatform: platform,
         lastModifiedByUserId: userId,
+        updatedAt: now.toUtc(),
       );
       if (nextStatus == TaskStatus.skipped) {
         if (logMessage != null) {
@@ -954,6 +991,7 @@ class SchedulerEngine {
                     lastModifiedByAppVersion: appVersion,
                     lastModifiedByPlatform: platform,
                     lastModifiedByUserId: context.userId,
+                    updatedAt: now.toUtc(),
                   );
                 }
               } else {
@@ -964,6 +1002,7 @@ class SchedulerEngine {
                   lastModifiedByAppVersion: appVersion,
                   lastModifiedByPlatform: platform,
                   lastModifiedByUserId: context.userId,
+                  updatedAt: now.toUtc(),
                 );
                 updateIndexById[newUpdate.id] = finalToUpdate.length;
                 finalToUpdate.add(newUpdate);
@@ -978,6 +1017,7 @@ class SchedulerEngine {
                   lastModifiedByAppVersion: appVersion,
                   lastModifiedByPlatform: platform,
                   lastModifiedByUserId: context.userId,
+                  updatedAt: now.toUtc(),
                 );
                 updateIndexById[newUpdate.id] = finalToUpdate.length;
                 finalToUpdate.add(newUpdate);
@@ -1008,6 +1048,7 @@ class SchedulerEngine {
                 lastModifiedByAppVersion: appVersion,
                 lastModifiedByPlatform: platform,
                 lastModifiedByUserId: context.userId,
+                updatedAt: now.toUtc(),
               ),
             );
           } else {
@@ -1039,6 +1080,7 @@ class SchedulerEngine {
               lastModifiedByAppVersion: appVersion,
               lastModifiedByPlatform: platform,
               lastModifiedByUserId: context.userId,
+              updatedAt: now.toUtc(),
             );
           } else {
             tempPlannedHours[inst.scheduledDate] = planned + taskDuration;
@@ -1063,12 +1105,20 @@ class SchedulerEngine {
                 finalToUpdate[updateIdx] = finalToUpdate[updateIdx].copyWith(
                   status: TaskStatus.pending,
                   clearStatusReason: true,
+                  lastModifiedByAppVersion: appVersion,
+                  lastModifiedByPlatform: platform,
+                  lastModifiedByUserId: context.userId,
+                  updatedAt: now.toUtc(),
                 );
               }
             } else {
               final newUpdate = inst.copyWith(
                 status: TaskStatus.pending,
                 clearStatusReason: true,
+                lastModifiedByAppVersion: appVersion,
+                lastModifiedByPlatform: platform,
+                lastModifiedByUserId: context.userId,
+                updatedAt: now.toUtc(),
               );
               updateIndexById[newUpdate.id] = finalToUpdate.length;
               finalToUpdate.add(newUpdate);
@@ -1147,6 +1197,8 @@ class SchedulerEngine {
               task: task,
               rule: s,
               scheduledDate: s.scheduledDate,
+              now: context.now,
+              userId: context.userId,
             ),
           );
         }
@@ -1176,6 +1228,8 @@ class SchedulerEngine {
     required TaskSchedule task,
     required TaskScheduleRule rule,
     required CivilDay scheduledDate,
+    DateTime? now,
+    String? userId,
   }) {
     final instId = generateId();
     RelativeTime startRelative = rule.startRelativeTime;
@@ -1228,6 +1282,10 @@ class SchedulerEngine {
       workflowPayload: workflowPayload,
       status: TaskStatus.pending,
       labelIds: task.labelIds,
+      lastModifiedByUserId: userId,
+      lastModifiedByAppVersion: appVersion,
+      lastModifiedByPlatform: platform,
+      updatedAt: (now ?? DateTime.now()).toUtc(),
     );
   }
 
@@ -1294,6 +1352,7 @@ class SchedulerEngine {
     DateTime now,
     List<TaskInstance> taskInstances, {
     Duration? utcOffset,
+    String? userId,
   }) {
     final ruleIndex = _ruleIndexOfInstance(task, completedInstance);
     if (ruleIndex < 0 || ruleIndex >= task.schedules.length) return null;
@@ -1317,6 +1376,8 @@ class SchedulerEngine {
         task: task,
         rule: rule,
         scheduledDate: nextDate,
+        now: now,
+        userId: userId,
       );
     } else {
       // Find the latest uncompleted instance of this rule (excluding the completedInstance)
@@ -1350,6 +1411,8 @@ class SchedulerEngine {
           task: task,
           rule: rule,
           scheduledDate: nextDate,
+          now: now,
+          userId: userId,
         );
       }
     }
