@@ -1,7 +1,7 @@
+import 'package:core/core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
-import 'package:nothing_ever_happens/logic/workflows/task_workflow.dart';
 
 void main() {
   group('MealWorkflowConfig', () {

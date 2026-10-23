@@ -1,46 +1,9 @@
-import '../civil_day.dart';
 import '../task_schedule.dart';
 import '../task_instance.dart';
 import '../recipes/recipe.dart';
 import '../recipes/unit_converter.dart';
 
 class MealWorkflowEngine {
-  /// Resolves the Stage 1 task instance for a given schedule and date.
-  static TaskInstance createInitialSelectInstance({
-    required TaskSchedule schedule,
-    required CivilDay scheduledDate,
-    String? ruleId,
-  }) {
-    final config = schedule.mealWorkflowConfig ?? const MealWorkflowConfig();
-    final groupId =
-        '${schedule.id}-${scheduledDate.year}-${scheduledDate.month}-${scheduledDate.day}';
-
-    return TaskInstance(
-      id: TaskInstance.generateId(),
-      scheduleId: schedule.id,
-      ruleId:
-          ruleId ??
-          (schedule.schedules.isNotEmpty
-              ? schedule.schedules.first.id
-              : 'R-initial'),
-      title: schedule.title.isNotEmpty ? schedule.title : 'Select Dinner',
-      description: 'Choose what to cook or eat for dinner tonight.',
-      scheduledDate: scheduledDate,
-      startRelativeTime: config.selectTime,
-      dueRelativeTime: config.selectTime,
-      isFamily: schedule.isFamily,
-      familyCompletionMode: schedule.familyCompletionMode,
-      priority: schedule.priority,
-      cycleId: schedule.cycleId,
-      assignedUserId: schedule.assignedUserId,
-      workflowPayload: WorkflowInstancePayload(
-        workflowType: 'mealWorkflow',
-        stage: WorkflowStage.selectMeal,
-        workflowGroupId: groupId,
-      ),
-    );
-  }
-
   /// Processes the completion of Stage 1 (Select Meal) and produces subsequent tasks (Shop, Prep).
   static List<TaskInstance> processMealSelection({
     required TaskSchedule schedule,

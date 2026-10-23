@@ -108,58 +108,6 @@ class UnitConverter {
   static bool isMass(String unit) =>
       _massToGrams.containsKey(unit.toLowerCase().trim());
 
-  static UnitSystem? getUnitSystem(String unit) {
-    final u = unit.toLowerCase().trim();
-    if ([
-      'ml',
-      'milliliter',
-      'milliliters',
-      'l',
-      'liter',
-      'liters',
-      'g',
-      'gram',
-      'grams',
-      'kg',
-      'kilogram',
-      'kilograms',
-    ].contains(u)) {
-      return UnitSystem.metric;
-    }
-    if ([
-      'tsp',
-      'teaspoon',
-      'teaspoons',
-      'tbsp',
-      'tablespoon',
-      'tablespoons',
-      'fl oz',
-      'fluid ounce',
-      'fluid ounces',
-      'cup',
-      'cups',
-      'pt',
-      'pint',
-      'pints',
-      'qt',
-      'quart',
-      'quarts',
-      'gal',
-      'gallon',
-      'gallons',
-      'oz',
-      'ounce',
-      'ounces',
-      'lb',
-      'lbs',
-      'pound',
-      'pounds',
-    ].contains(u)) {
-      return UnitSystem.imperial;
-    }
-    return null;
-  }
-
   /// Formats a unit as singular or plural based on the quantity.
   static String formatUnit(String unit, double quantity) {
     final trimmed = unit.trim();

@@ -10,7 +10,6 @@ import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
-import 'package:nothing_ever_happens/logic/task_spawner_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
 import 'package:nothing_ever_happens/logic/telemetry_service.dart';
@@ -86,9 +85,6 @@ class UnifiedTaskRepository implements TaskRepository {
 
   @override
   Future<String?> getFamilyId() => _familyIdFetcher.getFamilyId();
-
-  Future<bool> isFamilyLeader(String userId) =>
-      _familyIdFetcher.isFamilyLeader(userId);
 
   void _initMigration() {
     if (userId.isEmpty) {
@@ -387,14 +383,21 @@ class UnifiedTaskRepository implements TaskRepository {
           hour: policy.targetHour,
           minute: policy.targetMinute,
         );
-        dueRel = _shiftRelativeToStart(
+        dueRel = SchedulerEngine.shiftRelativeToStart(
           rule.dueRelativeTime,
           rule,
           policy,
           effectiveDate,
         );
         notifRel = rule.notificationRelativeTimes
-            .map((n) => _shiftRelativeToStart(n, rule, policy, effectiveDate))
+            .map(
+              (n) => SchedulerEngine.shiftRelativeToStart(
+                n,
+                rule,
+                policy,
+                effectiveDate,
+              ),
+            )
             .toList();
       } else {
         startRel = rule.startRelativeTime;
@@ -439,37 +442,6 @@ class UnifiedTaskRepository implements TaskRepository {
       clearAssignedUserId: task.assignedUserId == null,
       hasPendingWrites: true,
       updatedAt: DateTime.now().toUtc(),
-    );
-  }
-
-  RelativeTime _shiftRelativeToStart(
-    RelativeTime targetRel,
-    TaskScheduleRule rule,
-    CompletionRelativePolicy policy,
-    CivilDay newScheduledDate,
-  ) {
-    final originalStartRef = rule.startRelativeTime.referenceTo(
-      rule.scheduledDate,
-    );
-    final originalTargetRef = targetRel.referenceTo(rule.scheduledDate);
-    final duration = originalTargetRef.difference(originalStartRef);
-
-    final newStartRef = DateTime(
-      newScheduledDate.year,
-      newScheduledDate.month,
-      newScheduledDate.day,
-      policy.targetHour,
-      policy.targetMinute,
-    );
-    final newTargetRef = newStartRef.add(duration);
-    final targetDay = CivilDay.fromDateTime(newTargetRef);
-    return RelativeTime(
-      dayOffset: targetDay
-          .toDateTime()
-          .difference(newScheduledDate.toDateTime())
-          .inDays,
-      hour: newTargetRef.hour,
-      minute: newTargetRef.minute,
     );
   }
 
@@ -817,13 +789,17 @@ class UnifiedTaskRepository implements TaskRepository {
         .getInstances()
         .where((i) => i.scheduleId == task.id)
         .toList();
-    final nextInst = TaskSpawnerEngine.calculateNextOccurrence(
-      task: task,
-      completedInstance: completedInstance,
-      completionTime: now,
-      existingInstances: instances,
-      userId: userId,
-    );
+    final nextInst =
+        SchedulerEngine(
+          appVersion: AppVersion.display,
+          platform: AppVersion.platform,
+        ).getNextOccurrenceToSpawn(
+          task,
+          completedInstance,
+          now,
+          instances,
+          userId: userId,
+        );
     if (nextInst != null) {
       final nextWithPendingWrites = nextInst.copyWith(
         hasPendingWrites: true,
@@ -933,12 +909,11 @@ class UnifiedTaskRepository implements TaskRepository {
               (i) => i.scheduleId == task.id && i.id != resolvedInstance.id,
             )
             .toList();
-        final nextId = TaskSpawnerEngine.calculateOccurrenceIdToUndo(
-          task: task,
-          completedInstance: resolvedInstance,
-          completionTime:
-              resolvedInstance.completedAt?.toLocal() ?? AppClock.now,
-          existingInstances: instances,
+        final nextId = const SchedulerEngine().getNextOccurrenceIdToDelete(
+          task,
+          resolvedInstance,
+          resolvedInstance.completedAt?.toLocal() ?? AppClock.now,
+          instances,
         );
         if (nextId != null && nextId != resolvedInstance.id) {
           await _localDataSource.deleteInstance(nextId);

@@ -174,23 +174,6 @@ class DailySchedule extends TaskScheduleRule {
   }
 
   @override
-  TaskScheduleRule? advanceAfterCompletion(CivilDay today) {
-    final firstOccur = occursOn(scheduledDate)
-        ? scheduledDate
-        : nextOccurrenceAfter(scheduledDate);
-    if (firstOccur != null &&
-        (firstOccur.isBefore(today) || firstOccur == today)) {
-      final refDate = today.isBefore(scheduledDate) ? firstOccur : today;
-      final nextOccur = nextOccurrenceAfter(refDate);
-      if (nextOccur != null) {
-        return copyWithStartDate(nextOccur);
-      }
-      return null;
-    }
-    return this;
-  }
-
-  @override
   Map<String, dynamic> toJson() {
     return {
       'id': id,

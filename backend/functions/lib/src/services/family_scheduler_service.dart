@@ -137,15 +137,16 @@ class FamilySchedulerService {
               appVersion: 'backend',
             );
 
-  static int? _parseOffsetMinutes(dynamic raw) {
+  /// Parses an incoming dynamic timezone offset in minutes from HTTP payloads or Firestore documents.
+  static int? parseTimeZoneOffsetMinutes(dynamic raw) {
     if (raw == null) return null;
     int? value;
     if (raw is int) {
       value = raw;
     } else if (raw is num) {
       value = raw.toInt();
-    } else if (raw is String) {
-      value = int.tryParse(raw.trim());
+    } else {
+      value = int.tryParse(raw.toString().trim());
     }
     if (value == null || value < -840 || value > 840) return null;
     return value;
@@ -165,7 +166,8 @@ class FamilySchedulerService {
         final uid = entry.key.toString();
         final value = entry.value;
         if (value is Map) {
-          final parsed = _parseOffsetMinutes(value['timeZoneOffsetMinutes']);
+          final parsed =
+              parseTimeZoneOffsetMinutes(value['timeZoneOffsetMinutes']);
           if (parsed != null) {
             offsets[uid] = Duration(minutes: parsed);
           }
@@ -173,7 +175,8 @@ class FamilySchedulerService {
       }
     }
 
-    final callerParsed = _parseOffsetMinutes(callerTimeZoneOffsetMinutes);
+    final callerParsed =
+        parseTimeZoneOffsetMinutes(callerTimeZoneOffsetMinutes);
     if (callerParsed != null) {
       final key = (callerUserId != null && callerUserId.isNotEmpty)
           ? callerUserId
@@ -183,7 +186,7 @@ class FamilySchedulerService {
 
     if (offsets.isEmpty) {
       final familyLevelOffset =
-          _parseOffsetMinutes(familyData?['timeZoneOffsetMinutes']);
+          parseTimeZoneOffsetMinutes(familyData?['timeZoneOffsetMinutes']);
       if (familyLevelOffset != null) {
         offsets['_family'] = Duration(minutes: familyLevelOffset);
       }
@@ -304,8 +307,8 @@ class FamilySchedulerService {
               final userDoc = await db.collection('users').doc(uid).get();
               if (userDoc.exists) {
                 final userData = userDoc.data();
-                final userOffset =
-                    _parseOffsetMinutes(userData?['timeZoneOffsetMinutes']);
+                final userOffset = parseTimeZoneOffsetMinutes(
+                    userData?['timeZoneOffsetMinutes']);
                 if (userOffset != null) {
                   memberOffsets[uid] = Duration(minutes: userOffset);
                   backfilledMemberOffsets[uid] = userOffset;
@@ -349,7 +352,7 @@ class FamilySchedulerService {
 
       final familyMetadataUpdates = <String, dynamic>{};
       final parsedCallerOffset =
-          _parseOffsetMinutes(callerTimeZoneOffsetMinutes);
+          parseTimeZoneOffsetMinutes(callerTimeZoneOffsetMinutes);
       if (parsedCallerOffset != null &&
           callerUserId != null &&
           callerUserId.isNotEmpty &&
@@ -358,7 +361,7 @@ class FamilySchedulerService {
         if (members is Map && members.containsKey(callerUserId)) {
           final memberMap = members[callerUserId];
           final existingOffset = memberMap is Map
-              ? _parseOffsetMinutes(memberMap['timeZoneOffsetMinutes'])
+              ? parseTimeZoneOffsetMinutes(memberMap['timeZoneOffsetMinutes'])
               : null;
           if (existingOffset != parsedCallerOffset) {
             familyMetadataUpdates[

@@ -13,7 +13,6 @@ import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/screens/task_list_screen.dart';
 import 'package:nothing_ever_happens/screens/task_schedule_screen.dart';
-import 'package:nothing_ever_happens/widgets/smooth_shuffle_item.dart';
 
 import 'package:golden_toolkit/golden_toolkit.dart' hide materialAppWrapper;
 import '../test_helper.dart';
@@ -29,7 +28,6 @@ void main() {
   late home_mocks.MockUserSettingsRepository mockUserSettingsRepository;
 
   setUp(() {
-    SmoothShuffleItem.clearPositions();
     mockTaskRepository = MockTaskRepository();
     mockAuthRepository = MockAuthRepository();
     mockUserSettingsRepository = home_mocks.MockUserSettingsRepository();

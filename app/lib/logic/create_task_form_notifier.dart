@@ -350,10 +350,6 @@ class CreateTaskFormNotifier extends StateNotifier<CreateTaskFormState> {
     );
   }
 
-  void setIsExperimentalExpanded(bool expanded) {
-    state = state.copyWith(isExperimentalExpanded: expanded);
-  }
-
   void setIsMealWorkflow(bool isMealWorkflow) {
     state = state.copyWith(isMealWorkflow: isMealWorkflow);
   }
@@ -372,14 +368,6 @@ class CreateTaskFormNotifier extends StateNotifier<CreateTaskFormState> {
 
   void setIsSaving(bool isSaving) {
     state = state.copyWith(isSaving: isSaving);
-  }
-
-  void setCycleId(String? cycleId) {
-    state = state.copyWith(cycleId: cycleId);
-  }
-
-  void setPreferredBy(Map<String, bool> preferredBy) {
-    state = state.copyWith(preferredBy: preferredBy);
   }
 }
 

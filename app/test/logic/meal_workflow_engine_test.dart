@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
+import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 import 'package:nothing_ever_happens/logic/workflows/meal_workflow_engine.dart';
@@ -16,25 +17,31 @@ void main() {
 
     final testDay = CivilDay(year: 2026, month: 8, day: 16);
 
-    test('createInitialSelectInstance sets up Stage 1 task correctly', () {
-      final instance = MealWorkflowEngine.createInitialSelectInstance(
-        schedule: schedule,
+    TaskInstance createSelectInstance() {
+      final config = schedule.mealWorkflowConfig ?? const MealWorkflowConfig();
+      return TaskInstance(
+        id: 'I-select-test',
+        scheduleId: schedule.id,
+        ruleId: 'R-meal-select',
         scheduledDate: testDay,
+        title: '${schedule.title} (Select Meal)',
+        description: 'Choose what we are having for this meal.',
+        startRelativeTime: config.selectTime,
+        dueRelativeTime: config.selectTime,
+        isFamily: schedule.isFamily,
+        priority: schedule.priority,
+        workflowPayload: const WorkflowInstancePayload(
+          workflowType: 'mealWorkflow',
+          stage: WorkflowStage.selectMeal,
+          workflowGroupId: 'W-group-1',
+        ),
       );
-
-      expect(instance.scheduleId, schedule.id);
-      expect(instance.scheduledDate, testDay);
-      expect(instance.workflowPayload?.workflowType, 'mealWorkflow');
-      expect(instance.workflowPayload?.stage, WorkflowStage.selectMeal);
-    });
+    }
 
     test(
       'processMealSelection for Recipe spawns Stage 2 Shopping and Stage 3 Prep',
       () {
-        final selectInstance = MealWorkflowEngine.createInitialSelectInstance(
-          schedule: schedule,
-          scheduledDate: testDay,
-        );
+        final selectInstance = createSelectInstance();
 
         final recipe = Recipe(
           id: 'R-pasta',
@@ -102,10 +109,7 @@ void main() {
     test(
       'processMealSelection for Leftovers spawns Stage 3 Reheat and skips Shopping',
       () {
-        final selectInstance = MealWorkflowEngine.createInitialSelectInstance(
-          schedule: schedule,
-          scheduledDate: testDay,
-        );
+        final selectInstance = createSelectInstance();
 
         final results = MealWorkflowEngine.processMealSelection(
           schedule: schedule,
@@ -123,10 +127,7 @@ void main() {
     );
 
     test('processMealSelection for EatingOut returns no tasks', () {
-      final selectInstance = MealWorkflowEngine.createInitialSelectInstance(
-        schedule: schedule,
-        scheduledDate: testDay,
-      );
+      final selectInstance = createSelectInstance();
 
       final results = MealWorkflowEngine.processMealSelection(
         schedule: schedule,

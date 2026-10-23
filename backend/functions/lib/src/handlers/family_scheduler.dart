@@ -232,19 +232,8 @@ Future<void> handleProcessFamilySchedule(
 }
 
 /// Parses an incoming dynamic timezone offset in minutes from HTTP payloads or JS interop.
-int? parseTimeZoneOffsetMinutes(dynamic raw) {
-  if (raw == null) return null;
-  int? value;
-  if (raw is int) {
-    value = raw;
-  } else if (raw is num) {
-    value = raw.toInt();
-  } else {
-    value = int.tryParse(raw.toString().trim());
-  }
-  if (value == null || value < -840 || value > 840) return null;
-  return value;
-}
+int? parseTimeZoneOffsetMinutes(dynamic raw) =>
+    FamilySchedulerService.parseTimeZoneOffsetMinutes(raw);
 
 /// Parses an incoming dynamic timestamp from HTTP payloads or JS interop.
 /// Supports epoch milliseconds as `int`, `num`, or numeric `String`, ISO strings, and `DateTime`.

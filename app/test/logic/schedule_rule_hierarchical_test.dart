@@ -41,9 +41,6 @@ class _UnrecognizedScheduleRule extends TaskScheduleRule {
   }) => this;
 
   @override
-  TaskScheduleRule? advanceAfterCompletion(CivilDay today) => null;
-
-  @override
   Map<String, dynamic> toJson() => {};
 }
 

@@ -161,30 +161,6 @@ class Family {
     };
   }
 
-  String? get designatedLeaderId {
-    if (creatorId != null &&
-        creatorId!.isNotEmpty &&
-        members.containsKey(creatorId)) {
-      return creatorId;
-    }
-    final parentMembers = members.values
-        .where((m) => m.role == FamilyRole.parent)
-        .toList();
-    if (parentMembers.isNotEmpty) {
-      parentMembers.sort((a, b) => a.userId.compareTo(b.userId));
-      return parentMembers.first.userId;
-    }
-    if (members.isNotEmpty) {
-      final sortedMembers = members.values.toList()
-        ..sort((a, b) => a.userId.compareTo(b.userId));
-      return sortedMembers.first.userId;
-    }
-    return null;
-  }
-
-  bool isLeader(String userId) => designatedLeaderId == userId;
-  bool isFamilyLeader(String userId) => designatedLeaderId == userId;
-
   Family copyWith({
     String? id,
     String? name,

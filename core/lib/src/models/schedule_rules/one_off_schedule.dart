@@ -127,14 +127,6 @@ class OneOffSchedule extends TaskScheduleRule {
   }
 
   @override
-  TaskScheduleRule? advanceAfterCompletion(CivilDay today) {
-    if (scheduledDate.isBefore(today) || scheduledDate == today) {
-      return null; // Completed one-off, remove it.
-    }
-    return this; // Future one-off, keep it.
-  }
-
-  @override
   Map<String, dynamic> toJson() {
     return {
       'id': id,
