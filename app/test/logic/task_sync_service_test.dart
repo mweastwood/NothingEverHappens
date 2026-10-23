@@ -3740,6 +3740,107 @@ void main() {
           expect(localInstances.first.dueRelativeTime.hour, equals(18));
         },
       );
+
+      test(
+        'legacy remote task and instance missing updatedAt do not overwrite timestamped local edits',
+        () async {
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final localEditTime = DateTime.utc(2026, 10, 20, 12, 0);
+
+          final localTask = TaskSchedule(
+            id: 'S-legacy-no-ts',
+            title: 'Locally Edited Title',
+            description: 'Edited offline',
+            updatedAt: localEditTime,
+          );
+          final localInst = TaskInstance(
+            id: 'I-legacy-no-ts',
+            scheduleId: 'S-legacy-no-ts',
+            ruleId: 'R-legacy-1',
+            title: 'Locally Edited Title',
+            description: 'Edited offline',
+            scheduledDate: const CivilDay(year: 2026, month: 10, day: 20),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 9,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 17,
+              minute: 0,
+            ),
+            status: TaskStatus.completed,
+            statusReason: 'user_completed',
+            completedAt: localEditTime,
+            updatedAt: localEditTime,
+          );
+          await localDataSource.saveTask(localTask);
+          await localDataSource.saveInstance(localInst);
+
+          // Remote legacy documents arrive without an 'updatedAt' field
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('tasks')
+              .doc('S-legacy-no-ts')
+              .set({
+                'id': 'S-legacy-no-ts',
+                'title': 'Stale Legacy Remote Title',
+                'description': 'Legacy remote',
+              });
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-legacy-no-ts')
+              .set({
+                'id': 'I-legacy-no-ts',
+                'scheduleId': 'S-legacy-no-ts',
+                'ruleId': 'R-legacy-1',
+                'title': 'Stale Legacy Remote Title',
+                'description': 'Legacy remote',
+                'scheduledDate': {'year': 2026, 'month': 10, 'day': 20},
+                'startRelativeTime': {'dayOffset': 0, 'hour': 9, 'minute': 0},
+                'dueRelativeTime': {'dayOffset': 0, 'hour': 17, 'minute': 0},
+                'status': 'pending',
+              });
+
+          await pumpUntil(() async {
+            final taskDoc = await firestore
+                .collection('users')
+                .doc('user1')
+                .collection('tasks')
+                .doc('S-legacy-no-ts')
+                .get();
+            final instDoc = await firestore
+                .collection('users')
+                .doc('user1')
+                .collection('instances')
+                .doc('I-legacy-no-ts')
+                .get();
+            return taskDoc.data()?['title'] == 'Locally Edited Title' &&
+                instDoc.data()?['status'] == 'completed';
+          });
+
+          final savedTask = localDataSource.getTasks().firstWhere(
+            (t) => t.id == 'S-legacy-no-ts',
+          );
+          final savedInst = localDataSource.getInstances().firstWhere(
+            (i) => i.id == 'I-legacy-no-ts',
+          );
+          expect(savedTask.title, equals('Locally Edited Title'));
+          expect(savedInst.status, equals(TaskStatus.completed));
+        },
+      );
     });
   });
 }
