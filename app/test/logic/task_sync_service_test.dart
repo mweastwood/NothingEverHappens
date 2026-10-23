@@ -3517,6 +3517,229 @@ void main() {
           expect(userMember?['timeZoneOffsetMinutes'], isA<int>());
         },
       );
+
+      test(
+        'waitForInitialSync does not resolve prematurely while isSubscriptionResolved is false',
+        () async {
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: false,
+            isSubscriptionResolved: false,
+            initialSyncTimeout: const Duration(milliseconds: 80),
+          );
+          addTearDown(() => service.dispose());
+
+          // Even if UnifiedTaskRepository calls startListeningToRemote(), it must not complete immediately
+          service.startListeningToRemote();
+
+          var resolved = false;
+          unawaited(
+            service.waitForInitialSync.then((_) {
+              resolved = true;
+            }),
+          );
+
+          await pumpEventQueue();
+          expect(resolved, isFalse);
+
+          // Resolves after timeout (or dispose when subscription resolves)
+          await Future<void>.delayed(const Duration(milliseconds: 120));
+          expect(resolved, isTrue);
+        },
+      );
+
+      test(
+        'slot duplicate resolution: earlier canonical remote pending instance wins over newer identical local pending lookahead duplicate',
+        () async {
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final canonicalRemoteTime = DateTime.utc(2026, 10, 21, 10, 0);
+          final newerLocalDuplicateTime = DateTime.utc(2026, 10, 22, 5, 56);
+
+          // Simulate local scheduler having spawned a pending lookahead duplicate before remote snapshot arrived
+          final localDuplicate = TaskInstance(
+            id: 'I-local-dup',
+            scheduleId: 'S-daily-1',
+            ruleId: 'R-daily-1',
+            title: 'Take Vitamins',
+            description: 'Daily vitamin',
+            scheduledDate: const CivilDay(year: 2026, month: 10, day: 25),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 8,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 22,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            updatedAt: newerLocalDuplicateTime,
+            hasPendingWrites: true,
+          );
+          await localDataSource.saveInstance(localDuplicate);
+          await localDataSource.markDirty(localDuplicate.id);
+
+          // Canonical remote pending instance arrives with an older updatedAt
+          final remoteCanonical = TaskInstance(
+            id: 'I-remote-canonical',
+            scheduleId: 'S-daily-1',
+            ruleId: 'R-daily-1',
+            title: 'Take Vitamins',
+            description: 'Daily vitamin',
+            scheduledDate: const CivilDay(year: 2026, month: 10, day: 25),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 8,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 22,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            updatedAt: canonicalRemoteTime,
+          );
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc(remoteCanonical.id)
+              .set(remoteCanonical.toFirestore());
+
+          await pumpEventQueue();
+
+          // Local Hive should adopt I-remote-canonical and remove I-local-dup
+          final localInstances = localDataSource
+              .getInstances()
+              .where((i) => i.scheduleId == 'S-daily-1')
+              .toList();
+          expect(localInstances, hasLength(1));
+          expect(localInstances.first.id, equals('I-remote-canonical'));
+          expect(
+            localDataSource.getDirtyTaskIds(),
+            isNot(contains('I-local-dup')),
+          );
+
+          // Remote Firestore must retain I-remote-canonical and NOT have I-local-dup pushed
+          final remoteCanonicalDoc = await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-remote-canonical')
+              .get();
+          final localDupDoc = await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc('I-local-dup')
+              .get();
+          expect(remoteCanonicalDoc.exists, isTrue);
+          expect(localDupDoc.exists, isFalse);
+        },
+      );
+
+      test(
+        'slot duplicate resolution: newer local pending instance with modified schedule times wins over older remote pending instance',
+        () async {
+          final service = TaskSyncService(
+            firestore: firestore,
+            localDataSource: localDataSource,
+            userId: 'user1',
+            isActivePremium: true,
+          );
+          addTearDown(() => service.dispose());
+          await pumpEventQueue();
+
+          final olderRemoteTime = DateTime.utc(2026, 10, 21, 10, 0);
+          final newerEditedLocalTime = DateTime.utc(2026, 10, 22, 6, 0);
+
+          // User edited schedule rule locally (changing due time from 22:00 to 18:00), spawning a new pending instance
+          final localEditedPending = TaskInstance(
+            id: 'I-local-edited',
+            scheduleId: 'S-edit-1',
+            ruleId: 'R-edit-1',
+            title: 'Take Vitamins',
+            description: 'Daily vitamin',
+            scheduledDate: const CivilDay(year: 2026, month: 10, day: 25),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 8,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 18,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            updatedAt: newerEditedLocalTime,
+          );
+          await localDataSource.saveInstance(localEditedPending);
+
+          final remoteOldSchedulePending = TaskInstance(
+            id: 'I-remote-old-sched',
+            scheduleId: 'S-edit-1',
+            ruleId: 'R-edit-1',
+            title: 'Take Vitamins',
+            description: 'Daily vitamin',
+            scheduledDate: const CivilDay(year: 2026, month: 10, day: 25),
+            startRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 8,
+              minute: 0,
+            ),
+            dueRelativeTime: const RelativeTime(
+              dayOffset: 0,
+              hour: 22,
+              minute: 0,
+            ),
+            status: TaskStatus.pending,
+            updatedAt: olderRemoteTime,
+          );
+          await firestore
+              .collection('users')
+              .doc('user1')
+              .collection('instances')
+              .doc(remoteOldSchedulePending.id)
+              .set(remoteOldSchedulePending.toFirestore());
+
+          await pumpUntil(() async {
+            final newDoc = await firestore
+                .collection('users')
+                .doc('user1')
+                .collection('instances')
+                .doc('I-local-edited')
+                .get();
+            final oldDoc = await firestore
+                .collection('users')
+                .doc('user1')
+                .collection('instances')
+                .doc('I-remote-old-sched')
+                .get();
+            return newDoc.exists && !oldDoc.exists;
+          });
+
+          final localInstances = localDataSource
+              .getInstances()
+              .where((i) => i.scheduleId == 'S-edit-1')
+              .toList();
+          expect(localInstances, hasLength(1));
+          expect(localInstances.first.id, equals('I-local-edited'));
+          expect(localInstances.first.dueRelativeTime.hour, equals(18));
+        },
+      );
     });
   });
 }

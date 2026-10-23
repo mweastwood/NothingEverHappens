@@ -1005,9 +1005,9 @@ class UnifiedTaskRepository implements TaskRepository {
         _queuedPostProcessCallbacks.clear();
 
         try {
+          await _syncService.waitForInitialSync;
+          if (_isDisposed) return;
           if (shouldEvaluateFamily) {
-            await _syncService.waitForInitialSync;
-            if (_isDisposed) return;
             final familyId = await getFamilyId();
             if (_isDisposed) return;
             if (familyId != null && familyId.isNotEmpty) {

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -29,6 +30,7 @@ final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
     localDataSource: localDataSource,
     userId: user?.uid ?? '',
     isActivePremium: subscriptionState.isActivePremium,
+    isSubscriptionResolved: subscriptionState.isResolved,
     errorHandler: ref.read(errorHandlerProvider),
     logger: ref.watch(appLoggerProvider),
   );
@@ -50,6 +52,8 @@ class TaskSyncService {
   final HiveLocalDataSource _localDataSource;
   final String _userId;
   final bool _isActivePremium;
+  final bool _isSubscriptionResolved;
+  final Duration _initialSyncTimeout;
   final ErrorHandler? errorHandler;
   final AppLogger? logger;
   final FamilyIdFetcher _familyIdFetcher;
@@ -63,6 +67,7 @@ class TaskSyncService {
   StreamSubscription? _familyRecipesSub;
   String? _familyId;
   String? _familyRole;
+  bool _updatedInitialClientMetadata = false;
 
   bool _isDisposed = false;
   bool get isDisposed => _isDisposed;
@@ -75,7 +80,7 @@ class TaskSyncService {
 
   final Completer<void> _initialSyncCompleter = Completer<void>();
   Future<void> get waitForInitialSync {
-    if (!_isActivePremium ||
+    if ((!_isActivePremium && _isSubscriptionResolved) ||
         _userId.isEmpty ||
         !_localDataSource.isMigrationCompleted()) {
       return Future.value();
@@ -84,7 +89,7 @@ class TaskSyncService {
       return Future.value();
     }
     return _initialSyncCompleter.future.timeout(
-      const Duration(seconds: 4),
+      _initialSyncTimeout + const Duration(seconds: 1),
       onTimeout: () {
         _completeInitialSync();
       },
@@ -97,6 +102,14 @@ class TaskSyncService {
   bool _receivedFamilyTasks = false;
   bool _receivedFamilyInstances = false;
   Timer? _initialSyncTimeoutTimer;
+
+  void _startInitialSyncTimeoutTimer() {
+    if (_initialSyncCompleter.isCompleted) return;
+    _initialSyncTimeoutTimer?.cancel();
+    _initialSyncTimeoutTimer = Timer(_initialSyncTimeout, () {
+      _completeInitialSync();
+    });
+  }
 
   void _completeInitialSync() {
     _initialSyncTimeoutTimer?.cancel();
@@ -129,6 +142,8 @@ class TaskSyncService {
     required HiveLocalDataSource localDataSource,
     required String userId,
     required bool isActivePremium,
+    bool isSubscriptionResolved = true,
+    Duration initialSyncTimeout = const Duration(seconds: 10),
     this.errorHandler,
     this.logger,
     FamilyIdFetcher? familyIdFetcher,
@@ -136,6 +151,8 @@ class TaskSyncService {
        _localDataSource = localDataSource,
        _userId = userId,
        _isActivePremium = isActivePremium,
+       _isSubscriptionResolved = isSubscriptionResolved,
+       _initialSyncTimeout = initialSyncTimeout,
        _familyIdFetcher =
            familyIdFetcher ??
            FamilyIdFetcher(
@@ -147,6 +164,10 @@ class TaskSyncService {
         _userId.isNotEmpty &&
         _localDataSource.isMigrationCompleted()) {
       startListeningToRemote();
+    } else if (!_isSubscriptionResolved &&
+        _userId.isNotEmpty &&
+        _localDataSource.isMigrationCompleted()) {
+      _startInitialSyncTimeoutTimer();
     } else {
       _completeInitialSync();
     }
@@ -172,10 +193,17 @@ class TaskSyncService {
 
   void startListeningToRemote() {
     if (_isDisposed ||
-        !_isActivePremium ||
         _userId.isEmpty ||
         !_localDataSource.isMigrationCompleted()) {
       _completeInitialSync();
+      return;
+    }
+    if (!_isActivePremium) {
+      if (_isSubscriptionResolved) {
+        _completeInitialSync();
+      } else {
+        _startInitialSyncTimeoutTimer();
+      }
       return;
     }
     if (_tasksSub != null && _instancesSub != null) return;
@@ -186,11 +214,9 @@ class TaskSyncService {
     _familyTasksSub?.cancel();
     _familyInstancesSub?.cancel();
     _familyRecipesSub?.cancel();
+    _updatedInitialClientMetadata = false;
 
-    _initialSyncTimeoutTimer?.cancel();
-    _initialSyncTimeoutTimer = Timer(const Duration(seconds: 3), () {
-      _completeInitialSync();
-    });
+    _startInitialSyncTimeoutTimer();
 
     _periodicSyncTimer?.cancel();
     _periodicSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -228,8 +254,6 @@ class TaskSyncService {
       data: {'userId': _userId},
     );
 
-    updateClientMetadata();
-
     _userDocSub = _firestore
         .collection(FirestorePaths.users)
         .doc(_userId)
@@ -254,10 +278,17 @@ class TaskSyncService {
               _receivedFamilyInstances = false;
               if (_familyId != null && _familyId!.isNotEmpty) {
                 _startListeningToFamilyRemote(_familyId!);
+              }
+              _updatedInitialClientMetadata = true;
+              updateClientMetadata();
+            } else {
+              if (roleChanged) {
+                _familyIdFetcher.clearCache();
+              }
+              if (!_updatedInitialClientMetadata) {
+                _updatedInitialClientMetadata = true;
                 updateClientMetadata();
               }
-            } else if (roleChanged) {
-              _familyIdFetcher.clearCache();
             }
             _checkInitialSyncComplete();
           },
@@ -560,6 +591,7 @@ class TaskSyncService {
     final toDelete = <String>[];
     final toPush = <TaskInstance>[];
     final remoteIdsToDelete = <String>[];
+    final remoteIdsInSnapshot = {for (final doc in snapshot.docs) doc.id};
 
     final familyId = await _getFamilyId();
 
@@ -572,6 +604,7 @@ class TaskSyncService {
           toDelete.add(docId);
           localMap.remove(docId);
           toSave.removeWhere((i) => i.id == docId);
+          toPush.removeWhere((i) => i.id == docId);
           if (localInst != null) {
             final slotKey =
                 '${localInst.scheduleId}_${localInst.ruleId}_${localInst.scheduledDate}';
@@ -637,8 +670,12 @@ class TaskSyncService {
                 remoteIdsToDelete.add(remoteInst.id);
               } else {
                 toDelete.add(localSlotInst.id);
+                if (remoteIdsInSnapshot.contains(localSlotInst.id)) {
+                  remoteIdsToDelete.add(localSlotInst.id);
+                }
                 localMap.remove(localSlotInst.id);
                 toSave.removeWhere((i) => i.id == localSlotInst.id);
+                toPush.removeWhere((i) => i.id == localSlotInst.id);
                 toSave.add(remoteInst);
                 localMap[remoteInst.id] = remoteInst;
                 localSlotMap[slotKey] = remoteInst;
@@ -753,11 +790,39 @@ class TaskSyncService {
     return false;
   }
 
+  bool _isEquivalentPendingSlotInstance(TaskInstance a, TaskInstance b) {
+    if (a.status != TaskStatus.pending || b.status != TaskStatus.pending) {
+      return false;
+    }
+    return a.title == b.title &&
+        a.description == b.description &&
+        a.startRelativeTime == b.startRelativeTime &&
+        a.dueRelativeTime == b.dueRelativeTime &&
+        a.priority == b.priority &&
+        a.isFamily == b.isFamily &&
+        a.familyCompletionMode == b.familyCompletionMode &&
+        a.assignedUserId == b.assignedUserId &&
+        a.cycleId == b.cycleId &&
+        listEquals(a.labelIds, b.labelIds) &&
+        listEquals(a.notificationRelativeTimes, b.notificationRelativeTimes);
+  }
+
   bool _doesSlotCandidateWin(TaskInstance local, TaskInstance remote) {
     final localHasUserProgress = _hasSlotUserActionOrProgress(local);
     final remoteHasUserProgress = _hasSlotUserActionOrProgress(remote);
     if (localHasUserProgress != remoteHasUserProgress) {
       return localHasUserProgress;
+    }
+    if (!localHasUserProgress &&
+        !remoteHasUserProgress &&
+        _isEquivalentPendingSlotInstance(local, remote)) {
+      if (local.updatedAt.millisecondsSinceEpoch ==
+          remote.updatedAt.millisecondsSinceEpoch) {
+        return local.id.compareTo(remote.id) < 0;
+      }
+      // Prefer the earlier-spawned canonical pending instance over a later
+      // duplicate lookahead spawn for the same unchanged schedule slot.
+      return _isStrictlyNewer(remote.updatedAt, local.updatedAt);
     }
     if (local.updatedAt.millisecondsSinceEpoch ==
         remote.updatedAt.millisecondsSinceEpoch) {

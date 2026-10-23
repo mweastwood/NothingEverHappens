@@ -85,7 +85,9 @@ void main() {
 
       // Start listening to the mock user doc
       service.triggerListenToFirestore('test-user-123');
+      expect(service.state.isResolved, isFalse);
       await pumpEventQueue();
+      expect(service.state.isResolved, isTrue);
 
       // Write 'family' tier to user doc
       await fakeFirestore.collection('users').doc('test-user-123').set({
