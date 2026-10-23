@@ -3627,7 +3627,10 @@ void main() {
               .toList();
           expect(localInstances, hasLength(1));
           expect(localInstances.first.id, equals('I-remote-canonical'));
-          expect(localDataSource.getDirtyTaskIds(), isNot(contains('I-local-dup')));
+          expect(
+            localDataSource.getDirtyTaskIds(),
+            isNot(contains('I-local-dup')),
+          );
 
           // Remote Firestore must retain I-remote-canonical and NOT have I-local-dup pushed
           final remoteCanonicalDoc = await firestore
