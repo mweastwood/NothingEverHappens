@@ -15,14 +15,24 @@ enum SubscriptionTier { free, standard, family }
 
 class SubscriptionState {
   final SubscriptionTier tier;
+  final bool isResolved;
 
-  const SubscriptionState({required this.tier});
+  const SubscriptionState({
+    required this.tier,
+    this.isResolved = true,
+  });
 
   bool get isActivePremium => tier != SubscriptionTier.free;
   bool get isFamilyPlan => tier == SubscriptionTier.family;
 
-  SubscriptionState copyWith({SubscriptionTier? tier}) {
-    return SubscriptionState(tier: tier ?? this.tier);
+  SubscriptionState copyWith({
+    SubscriptionTier? tier,
+    bool? isResolved,
+  }) {
+    return SubscriptionState(
+      tier: tier ?? this.tier,
+      isResolved: isResolved ?? this.isResolved,
+    );
   }
 }
 
@@ -37,11 +47,17 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
   final Ref _ref;
   final FirebaseFirestore? _firestore;
   StreamSubscription<DocumentSnapshot>? _firestoreSub;
+  String? _listeningUid;
   bool _initialized = false;
 
   SubscriptionService(this._ref, {FirebaseFirestore? firestore})
     : _firestore = firestore ?? _safeGetFirestore(),
-      super(const SubscriptionState(tier: SubscriptionTier.free)) {
+      super(
+        SubscriptionState(
+          tier: SubscriptionTier.free,
+          isResolved: !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST'),
+        ),
+      ) {
     _init();
   }
 
@@ -57,44 +73,12 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
     if (_initialized) return;
     _initialized = true;
 
-    // Configure RevenueCat SDK on all platforms (Android/iOS/Web)
     final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
-    if (!isTest) {
-      try {
-        await Purchases.setLogLevel(LogLevel.debug);
-        const apiKey = String.fromEnvironment(
-          'REVENUECAT_API_KEY',
-          defaultValue: '',
-        );
-        final configuredKey = apiKey.isNotEmpty ? apiKey : 'goog_mock_api_key';
-        if (apiKey.isEmpty) {
-          debugPrint(
-            'RevenueCat Warning: REVENUECAT_API_KEY is not set. Defaulting to mock key.',
-          );
-        }
-        await Purchases.configure(PurchasesConfiguration(configuredKey));
-        debugPrint(
-          'RevenueCat SDK successfully configured on ${kIsWeb ? "Web" : "Mobile"}.',
-        );
-      } catch (e) {
-        debugPrint("RevenueCat SDK configuration error: $e");
-      } finally {
-        if (!_configureCompleter.isCompleted) {
-          _configureCompleter.complete();
-        }
-      }
-
-      if (!kIsWeb) {
-        // Listen for customer info updates on mobile
-        Purchases.addCustomerInfoUpdateListener((customerInfo) {
-          _updateEntitlements(customerInfo);
-        });
-      }
-    }
-
-    // Listen to Auth changes to configure/identify user
     if (isTest) return;
 
+    // Attach auth listener and start Firestore subscription resolution immediately
+    // before awaiting RevenueCat SDK configuration so Web/Mobile startup does not
+    // stay in an unresolved free tier while RevenueCat initializes.
     _ref.listen<AsyncValue<dynamic>>(authStateProvider, (previous, next) async {
       final user = next.value;
       if (user != null) {
@@ -104,9 +88,46 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
       }
     });
 
-    final currentUser = _ref.read(authRepositoryProvider).currentUser;
+    final currentUser =
+        _ref.read(authStateProvider).value ??
+        _ref.read(authRepositoryProvider).currentUser;
     if (currentUser != null) {
-      await _identifyUser(currentUser.uid);
+      listenToUserSubscriptionInFirestore(currentUser.uid);
+    }
+
+    // Configure RevenueCat SDK on all platforms (Android/iOS/Web)
+    try {
+      await Purchases.setLogLevel(LogLevel.debug);
+      const apiKey = String.fromEnvironment(
+        'REVENUECAT_API_KEY',
+        defaultValue: '',
+      );
+      final configuredKey = apiKey.isNotEmpty ? apiKey : 'goog_mock_api_key';
+      if (apiKey.isEmpty) {
+        debugPrint(
+          'RevenueCat Warning: REVENUECAT_API_KEY is not set. Defaulting to mock key.',
+        );
+      }
+      await Purchases.configure(PurchasesConfiguration(configuredKey));
+      debugPrint(
+        'RevenueCat SDK successfully configured on ${kIsWeb ? "Web" : "Mobile"}.',
+      );
+    } catch (e) {
+      debugPrint("RevenueCat SDK configuration error: $e");
+    } finally {
+      if (!_configureCompleter.isCompleted) {
+        _configureCompleter.complete();
+      }
+    }
+
+    if (!kIsWeb) {
+      // Listen for customer info updates on mobile
+      Purchases.addCustomerInfoUpdateListener((customerInfo) {
+        _updateEntitlements(customerInfo);
+      });
+      if (currentUser != null) {
+        await _loginToRevenueCat(currentUser.uid);
+      }
     }
   }
 
@@ -117,6 +138,11 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
 
     if (kIsWeb) return;
 
+    await ensureConfigured();
+    await _loginToRevenueCat(uid);
+  }
+
+  Future<void> _loginToRevenueCat(String uid) async {
     try {
       final result = await Purchases.logIn(uid);
       _updateEntitlements(result.customerInfo);
@@ -126,19 +152,23 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
   }
 
   void _setSubscriptionState(SubscriptionState newState) {
-    if (state.tier != newState.tier) {
+    if (state.tier != newState.tier || state.isResolved != newState.isResolved) {
       state = newState;
     }
   }
 
   Future<void> _resetUser() async {
+    _listeningUid = null;
     _firestoreSub?.cancel();
+    _firestoreSub = null;
     if (!kIsWeb) {
       try {
         await Purchases.logOut();
       } catch (_) {}
     }
-    _setSubscriptionState(const SubscriptionState(tier: SubscriptionTier.free));
+    _setSubscriptionState(
+      const SubscriptionState(tier: SubscriptionTier.free, isResolved: false),
+    );
   }
 
   void _updateEntitlements(CustomerInfo info) {
@@ -159,7 +189,12 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
       return;
     }
 
-    _setSubscriptionState(SubscriptionState(tier: detectedTier));
+    _setSubscriptionState(
+      SubscriptionState(
+        tier: detectedTier,
+        isResolved: detectedTier != SubscriptionTier.free || state.isResolved,
+      ),
+    );
     if (detectedTier != SubscriptionTier.free) {
       _syncTierToFirestore(detectedTier);
     }
@@ -169,8 +204,16 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
   void updateEntitlements(CustomerInfo info) => _updateEntitlements(info);
 
   void listenToUserSubscriptionInFirestore(String uid) {
-    if (_firestore == null) return;
+    if (_firestore == null) {
+      _setSubscriptionState(state.copyWith(isResolved: true));
+      return;
+    }
+    if (_listeningUid == uid && _firestoreSub != null) {
+      return;
+    }
+    _listeningUid = uid;
     _firestoreSub?.cancel();
+    _setSubscriptionState(state.copyWith(isResolved: false));
     final logger = _ref.read(appLoggerProvider);
     logger.info(
       'subscription',
@@ -199,14 +242,19 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
                 'Subscription document snapshot received',
                 data: {'tier': detectedTier.name, 'familyId': familyId},
               );
-              _setSubscriptionState(SubscriptionState(tier: detectedTier));
+              _setSubscriptionState(
+                SubscriptionState(tier: detectedTier, isResolved: true),
+              );
             } else {
               logger.info(
                 'subscription',
                 'Subscription document does not exist, defaulting to free tier',
               );
               _setSubscriptionState(
-                const SubscriptionState(tier: SubscriptionTier.free),
+                const SubscriptionState(
+                  tier: SubscriptionTier.free,
+                  isResolved: true,
+                ),
               );
             }
           },
@@ -218,6 +266,7 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
               stackTrace: st,
             );
             _ref.read(errorHandlerProvider).report(e, stackTrace: st);
+            _setSubscriptionState(state.copyWith(isResolved: true));
           },
         );
   }

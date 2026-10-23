@@ -3273,6 +3273,93 @@ void main() {
         );
       },
     );
+
+    test(
+      'triggerMissedPolicyProcessing waits for waitForInitialSync even when evaluateFamilyTasks is false',
+      () async {
+        AppClock.setMockTime(DateTime(2026, 10, 22, 9, 0));
+        addTearDown(AppClock.reset);
+
+        // Create a syncService whose initial sync is pending (isSubscriptionResolved: false)
+        final pendingSyncService = TaskSyncService(
+          firestore: firestore,
+          localDataSource: localDataSource,
+          userId: 'user1',
+          isActivePremium: false,
+          isSubscriptionResolved: false,
+          initialSyncTimeout: const Duration(milliseconds: 100),
+        );
+        addTearDown(pendingSyncService.dispose);
+
+        final delayedRepo = UnifiedTaskRepository(
+          localDataSource: localDataSource,
+          syncService: pendingSyncService,
+          firestore: firestore,
+          userId: 'user1',
+        );
+        addTearDown(delayedRepo.dispose);
+
+        final rule = DailySchedule(
+          id: 'R-wait-sync',
+          scheduleId: 'S-wait-sync',
+          startDate: const CivilDay(year: 2026, month: 10, day: 22),
+          interval: 1,
+        );
+        final task = TaskSchedule(
+          id: 'S-wait-sync',
+          title: 'Wait For Sync Task',
+          description: '',
+          schedules: [rule],
+        );
+        await localDataSource.saveTask(task);
+
+        // Start triggerMissedPolicyProcessing with evaluateFamilyTasks: false
+        var processingFinished = false;
+        final processingFuture = delayedRepo
+            .triggerMissedPolicyProcessing(evaluateFamilyTasks: false)
+            .then((_) {
+              processingFinished = true;
+            });
+
+        await pumpEventQueue();
+        // Should still be waiting for initial sync before spawning any local instances
+        expect(processingFinished, isFalse);
+        expect(
+          localDataSource.getInstances().where((i) => i.scheduleId == task.id),
+          isEmpty,
+        );
+
+        // Simulate remote canonical instance arriving before initial sync finishes
+        final remoteInstance = TaskInstance(
+          id: 'I-remote-oct22',
+          scheduleId: task.id,
+          ruleId: rule.id,
+          title: task.title,
+          description: '',
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 22),
+          startRelativeTime: rule.startRelativeTime,
+          dueRelativeTime: rule.dueRelativeTime,
+          status: TaskStatus.pending,
+        );
+        await localDataSource.saveInstance(remoteInstance);
+
+        await processingFuture;
+        expect(processingFinished, isTrue);
+
+        // Today's slot (Oct 22) must still use the remote instance ID, not a duplicate local UUID
+        final oct22Instances = localDataSource
+            .getInstances()
+            .where(
+              (i) =>
+                  i.scheduleId == task.id &&
+                  i.scheduledDate ==
+                      const CivilDay(year: 2026, month: 10, day: 22),
+            )
+            .toList();
+        expect(oct22Instances, hasLength(1));
+        expect(oct22Instances.first.id, equals('I-remote-oct22'));
+      },
+    );
   });
 
   test('AppClock mock time is inactive and reset following test execution', () {
