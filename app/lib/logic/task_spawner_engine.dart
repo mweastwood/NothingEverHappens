@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'task_schedule.dart';
 import 'task_instance.dart';
 import 'scheduler_engine.dart';
+import 'utils/app_version.dart';
 
 /// Central engine for evaluating task recurrence rules and calculating spawned task instances.
 class TaskSpawnerEngine {
@@ -12,12 +13,17 @@ class TaskSpawnerEngine {
     required TaskInstance completedInstance,
     required DateTime completionTime,
     required List<TaskInstance> existingInstances,
+    String? userId,
   }) {
-    return const SchedulerEngine().getNextOccurrenceToSpawn(
+    return SchedulerEngine(
+      appVersion: AppVersion.display,
+      platform: AppVersion.platform,
+    ).getNextOccurrenceToSpawn(
       task,
       completedInstance,
       completionTime,
       existingInstances,
+      userId: userId,
     );
   }
 

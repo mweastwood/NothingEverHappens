@@ -785,9 +785,12 @@ class FirestoreTaskRepository implements TaskRepository {
     }
 
     if (action.updatedSchedule != null) {
+      final updatedSchedule = action.updatedSchedule!.copyWith(
+        updatedAt: now.toUtc(),
+      );
       batch.set(
-        _taskRefFor(action.updatedSchedule!, familyId),
-        action.updatedSchedule!,
+        _taskRefFor(updatedSchedule, familyId),
+        updatedSchedule,
         SetOptions(merge: true),
       );
       markChanged();
@@ -919,16 +922,21 @@ class FirestoreTaskRepository implements TaskRepository {
 
         _injectVirtualSpawnedInstances(task, taskInstances, now);
 
-        final action = SchedulerEngine(logger: logger).evaluate(
-          task,
-          taskInstances,
-          now,
-          userSettings: userSettings,
-          dayPlannedHours: dayPlannedHours,
-          applyCapacityLimits:
-              task.assignedUserId == null || task.assignedUserId == _userId,
-          userId: _userId,
-        );
+        final action =
+            SchedulerEngine(
+              logger: logger,
+              appVersion: AppVersion.display,
+              platform: AppVersion.platform,
+            ).evaluate(
+              task,
+              taskInstances,
+              now,
+              userSettings: userSettings,
+              dayPlannedHours: dayPlannedHours,
+              applyCapacityLimits:
+                  task.assignedUserId == null || task.assignedUserId == _userId,
+              userId: _userId,
+            );
 
         _applyTaskEvaluationResult(
           task: task,
@@ -1944,14 +1952,16 @@ class FirestoreTaskRepository implements TaskRepository {
       completedInstance: completedInstance,
       completionTime: now,
       existingInstances: taskInstances,
+      userId: _userId,
     );
     if (nextInst != null) {
+      final stampedNext = nextInst.copyWith(updatedAt: now.toUtc());
       batch.set(
-        _instanceRefFor(nextInst, familyId),
-        nextInst,
+        _instanceRefFor(stampedNext, familyId),
+        stampedNext,
         SetOptions(merge: true),
       );
-      _spawnedInstancesCache[_spawnedKeyFor(nextInst)] = now;
+      _spawnedInstancesCache[_spawnedKeyFor(stampedNext)] = now;
     }
   }
 
