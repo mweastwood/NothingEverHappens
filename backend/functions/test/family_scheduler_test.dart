@@ -1131,5 +1131,140 @@ void main() {
       expect(updatedInstDoc['status'], equals('skipped'));
       expect(updatedInstDoc['updatedAt'], equals(t2.toUtc()));
     });
+
+    test(
+        'processFamily sweeps orphaned pending instances while preserving completed and skipped history',
+        () async {
+      final service = FamilySchedulerService(db);
+      final now = DateTime.utc(2026, 9, 10, 8, 0);
+
+      final activeTask = TaskSchedule(
+        id: 'S-active-family',
+        title: 'Active Family Task',
+        description: '',
+        isFamily: true,
+        schedules: [
+          OneOffSchedule(
+            id: 'R-active-1',
+            scheduleId: 'S-active-family',
+            date: const CivilDay(year: 2026, month: 9, day: 10),
+          ),
+        ],
+      );
+
+      final familyTasksCol = db.collection('families/fam_orphan/tasks');
+      await familyTasksCol.doc(activeTask.id).set(activeTask.toFirestore());
+
+      final instancesCol = db.collection('families/fam_orphan/instances');
+      // 1. Orphaned pending instance (parent schedule S-deleted-family was deleted)
+      final orphanPending = TaskInstance(
+        id: 'I-orphan-pending',
+        scheduleId: 'S-deleted-family',
+        ruleId: 'R-del-1',
+        title: 'Deleted Family Task',
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
+        startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+        dueRelativeTime: const RelativeTime(hour: 9, minute: 0),
+        isFamily: true,
+        status: TaskStatus.pending,
+      );
+      // 2. Orphaned completed instance (should be preserved for history)
+      final orphanCompleted = TaskInstance(
+        id: 'I-orphan-completed',
+        scheduleId: 'S-deleted-family',
+        ruleId: 'R-del-1',
+        title: 'Deleted Family Task',
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 9),
+        startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+        dueRelativeTime: const RelativeTime(hour: 9, minute: 0),
+        isFamily: true,
+        status: TaskStatus.completed,
+        completedAt: DateTime.utc(2026, 9, 9, 10, 0),
+      );
+      // 3. Orphaned skipped instance (should be preserved for history)
+      final orphanSkipped = TaskInstance(
+        id: 'I-orphan-skipped',
+        scheduleId: 'S-deleted-family',
+        ruleId: 'R-del-1',
+        title: 'Deleted Family Task',
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 8),
+        startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+        dueRelativeTime: const RelativeTime(hour: 9, minute: 0),
+        isFamily: true,
+        status: TaskStatus.skipped,
+      );
+
+      await instancesCol.doc(orphanPending.id).set(orphanPending.toFirestore());
+      await instancesCol
+          .doc(orphanCompleted.id)
+          .set(orphanCompleted.toFirestore());
+      await instancesCol.doc(orphanSkipped.id).set(orphanSkipped.toFirestore());
+
+      final summary = await service.processFamily(
+        'fam_orphan',
+        now: now,
+        futureInstancesCount: 0,
+      );
+
+      expect(summary.tasksEvaluated, equals(1));
+      expect(summary.instancesSpawned, equals(1));
+      expect(summary.instancesDeleted, equals(1));
+
+      expect(instancesCol.documents[orphanPending.id]!.isExisting, isFalse);
+      expect(instancesCol.documents[orphanCompleted.id]!.isExisting, isTrue);
+      expect(instancesCol.documents[orphanSkipped.id]!.isExisting, isTrue);
+    });
+
+    test(
+        'processFamily sweeps orphaned pending instances even when all family tasks have been deleted',
+        () async {
+      final service = FamilySchedulerService(db);
+      final now = DateTime.utc(2026, 9, 10, 8, 0);
+
+      final instancesCol = db.collection('families/fam_no_tasks/instances');
+      final orphanPending = TaskInstance(
+        id: 'I-last-orphan-pending',
+        scheduleId: 'S-last-deleted-family',
+        ruleId: 'R-del-last',
+        title: 'Last Deleted Family Task',
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 10),
+        startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+        dueRelativeTime: const RelativeTime(hour: 9, minute: 0),
+        isFamily: true,
+        status: TaskStatus.pending,
+      );
+      final orphanCompleted = TaskInstance(
+        id: 'I-last-orphan-completed',
+        scheduleId: 'S-last-deleted-family',
+        ruleId: 'R-del-last',
+        title: 'Last Deleted Family Task',
+        description: '',
+        scheduledDate: const CivilDay(year: 2026, month: 9, day: 9),
+        startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+        dueRelativeTime: const RelativeTime(hour: 9, minute: 0),
+        isFamily: true,
+        status: TaskStatus.completed,
+        completedAt: DateTime.utc(2026, 9, 9, 10, 0),
+      );
+
+      await instancesCol.doc(orphanPending.id).set(orphanPending.toFirestore());
+      await instancesCol
+          .doc(orphanCompleted.id)
+          .set(orphanCompleted.toFirestore());
+
+      final summary = await service.processFamily(
+        'fam_no_tasks',
+        now: now,
+      );
+
+      expect(summary.tasksEvaluated, equals(0));
+      expect(summary.instancesDeleted, equals(1));
+      expect(instancesCol.documents[orphanPending.id]!.isExisting, isFalse);
+      expect(instancesCol.documents[orphanCompleted.id]!.isExisting, isTrue);
+    });
   });
 }

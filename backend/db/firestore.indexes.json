@@ -1,11 +1,15 @@
 {
   "indexes": [
     {
-      "collectionGroup": "history",
+      "collectionGroup": "instances",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
-          "fieldPath": "expiresAt",
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
           "order": "ASCENDING"
         }
       ]
