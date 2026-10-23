@@ -17,18 +17,12 @@ class SubscriptionState {
   final SubscriptionTier tier;
   final bool isResolved;
 
-  const SubscriptionState({
-    required this.tier,
-    this.isResolved = true,
-  });
+  const SubscriptionState({required this.tier, this.isResolved = true});
 
   bool get isActivePremium => tier != SubscriptionTier.free;
   bool get isFamilyPlan => tier == SubscriptionTier.family;
 
-  SubscriptionState copyWith({
-    SubscriptionTier? tier,
-    bool? isResolved,
-  }) {
+  SubscriptionState copyWith({SubscriptionTier? tier, bool? isResolved}) {
     return SubscriptionState(
       tier: tier ?? this.tier,
       isResolved: isResolved ?? this.isResolved,
@@ -55,7 +49,8 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
       super(
         SubscriptionState(
           tier: SubscriptionTier.free,
-          isResolved: !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST'),
+          isResolved:
+              !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST'),
         ),
       ) {
     _init();
@@ -125,7 +120,7 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
       Purchases.addCustomerInfoUpdateListener((customerInfo) {
         _updateEntitlements(customerInfo);
       });
-      if (currentUser != null) {
+      if (currentUser != null && _listeningUid == currentUser.uid) {
         await _loginToRevenueCat(currentUser.uid);
       }
     }
@@ -152,7 +147,8 @@ class SubscriptionService extends StateNotifier<SubscriptionState> {
   }
 
   void _setSubscriptionState(SubscriptionState newState) {
-    if (state.tier != newState.tier || state.isResolved != newState.isResolved) {
+    if (state.tier != newState.tier ||
+        state.isResolved != newState.isResolved) {
       state = newState;
     }
   }

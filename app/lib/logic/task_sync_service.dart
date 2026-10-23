@@ -604,6 +604,7 @@ class TaskSyncService {
           toDelete.add(docId);
           localMap.remove(docId);
           toSave.removeWhere((i) => i.id == docId);
+          toPush.removeWhere((i) => i.id == docId);
           if (localInst != null) {
             final slotKey =
                 '${localInst.scheduleId}_${localInst.ruleId}_${localInst.scheduledDate}';
@@ -674,6 +675,7 @@ class TaskSyncService {
                 }
                 localMap.remove(localSlotInst.id);
                 toSave.removeWhere((i) => i.id == localSlotInst.id);
+                toPush.removeWhere((i) => i.id == localSlotInst.id);
                 toSave.add(remoteInst);
                 localMap[remoteInst.id] = remoteInst;
                 localSlotMap[slotKey] = remoteInst;
@@ -799,6 +801,9 @@ class TaskSyncService {
         a.priority == b.priority &&
         a.isFamily == b.isFamily &&
         a.familyCompletionMode == b.familyCompletionMode &&
+        a.assignedUserId == b.assignedUserId &&
+        a.cycleId == b.cycleId &&
+        listEquals(a.labelIds, b.labelIds) &&
         listEquals(a.notificationRelativeTimes, b.notificationRelativeTimes);
   }
 
