@@ -249,67 +249,8 @@ class FamilySchedulerService {
         }
       }
 
-      if (tasks.isEmpty) {
-        return FamilyScheduleSummary(
-          familyId: familyId,
-          tasksEvaluated: 0,
-        );
-      }
-
       // Filter tasks to only family tasks
       final familyTasks = tasks.where((t) => t.isFamily).toList();
-      if (familyTasks.isEmpty) {
-        return FamilyScheduleSummary(
-          familyId: familyId,
-          tasksEvaluated: 0,
-        );
-      }
-
-      Map<String, dynamic>? effectiveFamilyData = familyData;
-      if (effectiveFamilyData == null) {
-        try {
-          final familyDoc = await familyRef.get();
-          if (familyDoc.exists) {
-            effectiveFamilyData = familyDoc.data();
-          }
-        } catch (_) {
-          // Continue if family document metadata is unavailable
-        }
-      }
-
-      final memberOffsets = extractMemberTimeZoneOffsets(
-        effectiveFamilyData,
-        callerTimeZoneOffsetMinutes: callerTimeZoneOffsetMinutes,
-        callerUserId: callerUserId,
-      );
-
-      final backfilledMemberOffsets = <String, int>{};
-      final backfilledMemberTimeZones = <String, String>{};
-      final rawMembers = effectiveFamilyData?['members'];
-      if (rawMembers is Map) {
-        for (final entry in rawMembers.entries) {
-          final uid = entry.key.toString();
-          if (uid.isEmpty || memberOffsets.containsKey(uid)) continue;
-          try {
-            final userDoc = await db.collection('users').doc(uid).get();
-            if (userDoc.exists) {
-              final userData = userDoc.data();
-              final userOffset =
-                  _parseOffsetMinutes(userData?['timeZoneOffsetMinutes']);
-              if (userOffset != null) {
-                memberOffsets[uid] = Duration(minutes: userOffset);
-                backfilledMemberOffsets[uid] = userOffset;
-                final userTz = userData?['timeZone'];
-                if (userTz is String && userTz.isNotEmpty) {
-                  backfilledMemberTimeZones[uid] = userTz;
-                }
-              }
-            }
-          } catch (_) {
-            // Ignore fallback user document read failures
-          }
-        }
-      }
 
       // 2. Fetch all existing instances for this family
       final instancesSnap = await familyRef.collection('instances').get();
@@ -318,6 +259,66 @@ class FamilySchedulerService {
         final data = doc.data();
         if (data != null) {
           instances.add(TaskInstance.fromMap(data, id: doc.id));
+        }
+      }
+
+      if (familyTasks.isEmpty &&
+          !instances.any((i) => i.status == TaskStatus.pending)) {
+        return FamilyScheduleSummary(
+          familyId: familyId,
+          tasksEvaluated: 0,
+        );
+      }
+
+      final memberOffsets = <String, Duration>{};
+      final backfilledMemberOffsets = <String, int>{};
+      final backfilledMemberTimeZones = <String, String>{};
+      Map<String, dynamic>? effectiveFamilyData = familyData;
+
+      if (familyTasks.isNotEmpty) {
+        if (effectiveFamilyData == null) {
+          try {
+            final familyDoc = await familyRef.get();
+            if (familyDoc.exists) {
+              effectiveFamilyData = familyDoc.data();
+            }
+          } catch (_) {
+            // Continue if family document metadata is unavailable
+          }
+        }
+
+        memberOffsets.addAll(
+          extractMemberTimeZoneOffsets(
+            effectiveFamilyData,
+            callerTimeZoneOffsetMinutes: callerTimeZoneOffsetMinutes,
+            callerUserId: callerUserId,
+          ),
+        );
+
+        final rawMembers = effectiveFamilyData?['members'];
+        if (rawMembers is Map) {
+          for (final entry in rawMembers.entries) {
+            final uid = entry.key.toString();
+            if (uid.isEmpty || memberOffsets.containsKey(uid)) continue;
+            try {
+              final userDoc = await db.collection('users').doc(uid).get();
+              if (userDoc.exists) {
+                final userData = userDoc.data();
+                final userOffset =
+                    _parseOffsetMinutes(userData?['timeZoneOffsetMinutes']);
+                if (userOffset != null) {
+                  memberOffsets[uid] = Duration(minutes: userOffset);
+                  backfilledMemberOffsets[uid] = userOffset;
+                  final userTz = userData?['timeZone'];
+                  if (userTz is String && userTz.isNotEmpty) {
+                    backfilledMemberTimeZones[uid] = userTz;
+                  }
+                }
+              }
+            } catch (_) {
+              // Ignore fallback user document read failures
+            }
+          }
         }
       }
 
@@ -333,6 +334,7 @@ class FamilySchedulerService {
       var updatedCount = 0;
       var deletedCount = 0;
       var schedulesUpdatedCount = 0;
+      final deletedInstanceIds = <String>{};
 
       WriteBatch batch = db.batch();
       var batchOps = 0;
@@ -413,11 +415,13 @@ class FamilySchedulerService {
         }
 
         for (final deleteId in action.instancesToDelete) {
-          final docRef = familyRef.collection('instances').doc(deleteId);
-          batch.delete(docRef);
-          batchOps++;
-          deletedCount++;
-          await commitBatchIfNeeded();
+          if (deletedInstanceIds.add(deleteId)) {
+            final docRef = familyRef.collection('instances').doc(deleteId);
+            batch.delete(docRef);
+            batchOps++;
+            deletedCount++;
+            await commitBatchIfNeeded();
+          }
         }
 
         if (action.updatedSchedule != null) {
@@ -428,6 +432,20 @@ class FamilySchedulerService {
           batch.set(docRef, stampedSchedule.toFirestore());
           batchOps++;
           schedulesUpdatedCount++;
+          await commitBatchIfNeeded();
+        }
+      }
+
+      // 4. Sweep orphaned pending instances whose parent family task no longer exists
+      final familyTaskIds = familyTasks.map((t) => t.id).toSet();
+      for (final instance in instances) {
+        if (instance.status == TaskStatus.pending &&
+            !familyTaskIds.contains(instance.scheduleId) &&
+            deletedInstanceIds.add(instance.id)) {
+          final docRef = familyRef.collection('instances').doc(instance.id);
+          batch.delete(docRef);
+          batchOps++;
+          deletedCount++;
           await commitBatchIfNeeded();
         }
       }

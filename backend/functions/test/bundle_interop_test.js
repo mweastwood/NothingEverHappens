@@ -152,35 +152,42 @@ async function runTests() {
 
   // 3. Test processHistoryCleanup with mock Firestore DB
   let historyDocs = [
-    { id: 'hist_1', expiresAt: 1725000000000 },
-    { id: 'hist_2', expiresAt: 1725500000000 }
+    { id: 'inst_old_1', status: 'completed', updatedAt: 1715000000000 },
+    { id: 'inst_old_2', status: 'skipped', updatedAt: 1715500000000 }
   ];
 
   const capturedCleanupWhereArgs = [];
-  const mockCleanupDb = {
-    collectionGroup: (name) => ({
+  let capturedCleanupCollectionGroup = null;
+  const createCleanupQuery = () => {
+    const q = {
       where: (field, op, value) => {
         capturedCleanupWhereArgs.push({ field, op, value });
-        return {
-          limit: () => ({
-            get: () => {
-              const current = [...historyDocs];
-              historyDocs = [];
-              return Promise.resolve({
-                empty: current.length === 0,
-                size: current.length,
-                docs: current.map(d => ({
-                  id: d.id,
-                  exists: true,
-                  ref: { id: d.id },
-                  data: () => d
-                }))
-              });
-            }
-          })
-        };
-      }
-    }),
+        return q;
+      },
+      limit: () => ({
+        get: () => {
+          const current = [...historyDocs];
+          historyDocs = [];
+          return Promise.resolve({
+            empty: current.length === 0,
+            size: current.length,
+            docs: current.map(d => ({
+              id: d.id,
+              exists: true,
+              ref: { id: d.id },
+              data: () => d
+            }))
+          });
+        }
+      })
+    };
+    return q;
+  };
+  const mockCleanupDb = {
+    collectionGroup: (name) => {
+      capturedCleanupCollectionGroup = name;
+      return createCleanupQuery();
+    },
     batch: () => {
       const deleted = [];
       return {
@@ -205,6 +212,13 @@ async function runTests() {
   const cleanupResult = await cleanupPromise;
   assert(cleanupResult, 'Cleanup result must be returned');
   assert.strictEqual(cleanupResult.success, true);
+  assert.strictEqual(cleanupResult.totalDeleted, 2);
+  assert.strictEqual(capturedCleanupCollectionGroup, 'instances');
+  assert.strictEqual(capturedCleanupWhereArgs.length, 2);
+  assert.strictEqual(capturedCleanupWhereArgs[0].field, 'status');
+  assert.strictEqual(capturedCleanupWhereArgs[0].op, 'in');
+  assert.strictEqual(capturedCleanupWhereArgs[1].field, 'updatedAt');
+  assert.strictEqual(capturedCleanupWhereArgs[1].op, '<=');
 
   console.log('✔ processHistoryCleanup executes and resolves native Promises cleanly');
 
