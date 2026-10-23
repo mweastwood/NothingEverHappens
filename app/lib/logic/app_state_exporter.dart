@@ -30,6 +30,8 @@ final appStateExporterProvider = Provider<AppStateExporter>((ref) {
 });
 
 class AppStateExporter {
+  static const int _maxExportDocs = 500;
+
   final FirebaseFirestore? _firestore;
   final AuthRepository? _authRepository;
   final HiveLocalDataSource _hiveDataSource;
@@ -44,6 +46,83 @@ class AppStateExporter {
        _authRepository = authRepository,
        _hiveDataSource = hiveDataSource,
        _logger = logger;
+
+  Future<List<Map<String, dynamic>>> _fetchExportInstances(
+    CollectionReference<Map<String, dynamic>> colRef, {
+    int maxDocs = _maxExportDocs,
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    QuerySnapshot<Map<String, dynamic>>? pendingSnap;
+    QuerySnapshot<Map<String, dynamic>>? recentSnap;
+    QuerySnapshot<Map<String, dynamic>>? fallbackSnap;
+    Object? lastError;
+    StackTrace? lastStackTrace;
+
+    await Future.wait([
+      () async {
+        try {
+          pendingSnap = await colRef
+              .where('status', isEqualTo: 'pending')
+              .limit(maxDocs)
+              .safeGet(timeout: timeout);
+        } catch (e, st) {
+          lastError = e;
+          lastStackTrace = st;
+        }
+      }(),
+      () async {
+        try {
+          recentSnap = await colRef
+              .orderBy('updatedAt', descending: true)
+              .limit(maxDocs)
+              .safeGet(timeout: timeout);
+        } catch (e, st) {
+          lastError = e;
+          lastStackTrace = st;
+        }
+      }(),
+      () async {
+        try {
+          fallbackSnap = await colRef.limit(maxDocs).safeGet(timeout: timeout);
+        } catch (e, st) {
+          lastError = e;
+          lastStackTrace = st;
+        }
+      }(),
+    ]);
+
+    if (pendingSnap == null && recentSnap == null && fallbackSnap == null) {
+      if (lastError != null) {
+        Error.throwWithStackTrace(
+          lastError!,
+          lastStackTrace ?? StackTrace.current,
+        );
+      }
+      return <Map<String, dynamic>>[];
+    }
+
+    final seenIds = <String>{};
+    final result = <Map<String, dynamic>>[];
+
+    void addDocs(Iterable<QueryDocumentSnapshot<Map<String, dynamic>>>? docs) {
+      if (docs == null) return;
+      for (final doc in docs) {
+        if (result.length >= maxDocs) break;
+        if (seenIds.add(doc.id)) {
+          result.add({'id': doc.id, ...doc.data()});
+        }
+      }
+    }
+
+    // 1. Always prioritize all active pending instances
+    addDocs(pendingSnap?.docs);
+    // 2. Next, include the most recently updated instances (descending updatedAt)
+    addDocs(recentSnap?.docs);
+    // 3. Fill any remaining capacity with unfiltered docs (e.g. legacy docs lacking updatedAt)
+    addDocs(fallbackSnap?.docs);
+
+    return result;
+  }
 
   /// Masks an email address by delegating to [PiiSanitizer.maskEmail].
   static String? maskEmail(String? email) => PiiSanitizer.maskEmail(email);
@@ -180,13 +259,9 @@ class AppStateExporter {
         }(),
         () async {
           try {
-            final instancesQuery = await userDocRef
-                .collection(FirestorePaths.instances)
-                .limit(500)
-                .safeGet(timeout: const Duration(seconds: 5));
-            remoteFirebaseState['instances'] = instancesQuery.docs
-                .map((doc) => {'id': doc.id, ...doc.data()})
-                .toList();
+            remoteFirebaseState['instances'] = await _fetchExportInstances(
+              userDocRef.collection(FirestorePaths.instances),
+            );
           } catch (e) {
             if (isNetworkOrTimeoutError(e)) {
               networkErrorOccurred = true;
@@ -294,13 +369,10 @@ class AppStateExporter {
           }(),
           () async {
             try {
-              final familyInstancesQuery = await familyRef
-                  .collection(FirestorePaths.instances)
-                  .limit(500)
-                  .safeGet(timeout: const Duration(seconds: 5));
-              remoteFirebaseState['familyInstances'] = familyInstancesQuery.docs
-                  .map((doc) => {'id': doc.id, ...doc.data()})
-                  .toList();
+              remoteFirebaseState['familyInstances'] =
+                  await _fetchExportInstances(
+                    familyRef.collection(FirestorePaths.instances),
+                  );
             } catch (e) {
               if (isNetworkOrTimeoutError(e)) {
                 networkErrorOccurred = true;

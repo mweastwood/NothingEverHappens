@@ -733,5 +733,99 @@ void main() {
         expect(memberProfiles['user-partner']['platform'], 'ios');
       },
     );
+
+    test(
+      'exportStateRaw prioritizes pending and recently updated instances when remote collection exceeds 500 documents',
+      () async {
+        final fakeFirestore = FakeFirebaseFirestore();
+        final mockAuth = MockAuthRepository(MockUser());
+        const uid = 'user-123';
+        const familyId = 'fam-large';
+
+        await fakeFirestore.collection('users').doc(uid).set({
+          'familyId': familyId,
+        });
+        await fakeFirestore.collection('families').doc(familyId).set({
+          'name': 'Large Family',
+        });
+
+        final userInstancesRef = fakeFirestore
+            .collection('users')
+            .doc(uid)
+            .collection('instances');
+        final familyInstancesRef = fakeFirestore
+            .collection('families')
+            .doc(familyId)
+            .collection('instances');
+
+        final oldTime = Timestamp.fromDate(DateTime.utc(2026, 1, 1));
+        final recentTime = Timestamp.fromDate(DateTime.utc(2026, 10, 20));
+
+        // Seed 520 old completed instances with lexicographically early IDs (I-0000 .. I-0519)
+        for (int i = 0; i < 520; i++) {
+          final docId = 'I-${i.toString().padLeft(4, '0')}';
+          await userInstancesRef.doc(docId).set({
+            'title': 'Old Personal $i',
+            'status': 'completed',
+            'updatedAt': oldTime,
+          });
+          await familyInstancesRef.doc(docId).set({
+            'title': 'Old Family $i',
+            'status': 'completed',
+            'updatedAt': oldTime,
+          });
+        }
+
+        // Seed a pending instance and a recently-completed instance with lexicographically late IDs (I-zzzz-*)
+        await userInstancesRef.doc('I-zzzz-pending').set({
+          'title': 'Active Personal Pending',
+          'status': 'pending',
+          'updatedAt': oldTime,
+        });
+        await userInstancesRef.doc('I-zzzz-recent-completed').set({
+          'title': 'Recent Personal Completed',
+          'status': 'completed',
+          'updatedAt': recentTime,
+        });
+
+        await familyInstancesRef.doc('I-zzzz-family-pending').set({
+          'title': 'Active Family Pending',
+          'status': 'pending',
+          'updatedAt': oldTime,
+        });
+        await familyInstancesRef.doc('I-zzzz-family-recent-completed').set({
+          'title': 'Recent Family Completed',
+          'status': 'completed',
+          'updatedAt': recentTime,
+        });
+
+        final exporter = AppStateExporter(
+          firestore: fakeFirestore,
+          authRepository: mockAuth,
+          hiveDataSource: localDataSource,
+        );
+
+        final rawState = await exporter.exportStateRaw();
+        final remote = rawState['remoteFirebaseState'] as Map<String, dynamic>;
+
+        final exportedPersonal = (remote['instances'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
+        final exportedFamily = (remote['familyInstances'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
+
+        expect(exportedPersonal.length, 500);
+        expect(exportedFamily.length, 500);
+
+        final personalIds = exportedPersonal.map((d) => d['id']).toList();
+        expect(personalIds.toSet().length, 500);
+        expect(personalIds.first, 'I-zzzz-pending');
+        expect(personalIds, contains('I-zzzz-recent-completed'));
+
+        final familyIds = exportedFamily.map((d) => d['id']).toList();
+        expect(familyIds.toSet().length, 500);
+        expect(familyIds.first, 'I-zzzz-family-pending');
+        expect(familyIds, contains('I-zzzz-family-recent-completed'));
+      },
+    );
   });
 }
