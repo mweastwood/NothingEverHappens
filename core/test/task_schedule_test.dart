@@ -207,5 +207,27 @@ void main() {
       expect(schedule.updatedAt.toIso8601String(),
           equals('2026-09-16T15:16:27.529188Z'));
     });
+
+    test(
+        'fromMap and fromFirestore default missing or null updatedAt to UTC epoch instead of DateTime.now()',
+        () {
+      final epoch = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+
+      final missingUpdatedAt = TaskSchedule.fromMap({
+        'title': 'Legacy Task Missing UpdatedAt',
+      }, id: 'S-legacy-1');
+      expect(missingUpdatedAt.updatedAt, equals(epoch));
+
+      final nullUpdatedAt = TaskSchedule.fromFirestore(
+        _FakeDocumentSnapshot(
+          id: 'S-legacy-2',
+          dataMap: {
+            'title': 'Legacy Task Null UpdatedAt',
+            'updatedAt': null,
+          },
+        ),
+      );
+      expect(nullUpdatedAt.updatedAt, equals(epoch));
+    });
   });
 }

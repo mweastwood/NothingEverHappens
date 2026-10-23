@@ -265,7 +265,9 @@ class TaskInstance {
         ? statusRaw
         : TaskStatus.fromString(statusRaw as String?);
 
-    final updatedAt = _parseDateTime(data['updatedAt']);
+    final updatedAt = _parseDateTime(data['updatedAt']) ??
+        completedAt ??
+        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     final workflowPayloadRaw = data['workflowPayload'] as Map?;
     final workflowPayload = workflowPayloadRaw != null

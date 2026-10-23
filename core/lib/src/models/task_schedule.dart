@@ -306,7 +306,8 @@ class TaskSchedule {
     final appLaunchUrl = data['appLaunchUrl'] as String?;
     final skipIfNoCapacity = data['skipIfNoCapacity'] as bool? ?? false;
 
-    final updatedAt = _parseDateTime(data['updatedAt']);
+    final updatedAt = _parseDateTime(data['updatedAt']) ??
+        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     final workflowType = data['workflowType'] as String?;
     final mealWorkflowConfig = data['mealWorkflowConfig'] != null

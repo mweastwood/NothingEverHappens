@@ -872,7 +872,8 @@ class HiveLocalDataSource {
       skipIfNoCapacity: data['skipIfNoCapacity'] as bool? ?? false,
       hasPendingWrites: false,
       isFromCache: true,
-      updatedAt: updatedAt ?? DateTime.now().toUtc(),
+      updatedAt:
+          updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
     );
   }
 
@@ -986,7 +987,10 @@ class HiveLocalDataSource {
       statusReason: data['statusReason'] as String?,
       hasPendingWrites: false,
       isFromCache: true,
-      updatedAt: updatedAt ?? DateTime.now().toUtc(),
+      updatedAt:
+          updatedAt ??
+          completedAt ??
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
     );
   }
 

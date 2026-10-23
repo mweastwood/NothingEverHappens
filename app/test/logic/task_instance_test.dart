@@ -282,10 +282,16 @@ void main() {
         expect(instTs.updatedAt, time);
         expect(instStr.updatedAt, time);
         expect(instInt.updatedAt, time);
-        expect(instNull.updatedAt, isNotNull);
+        expect(
+          instNull.updatedAt,
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+        );
 
         final toFirestoreMap = instNull.toFirestore();
-        expect(toFirestoreMap['updatedAt'], isNotNull);
+        expect(
+          toFirestoreMap['updatedAt'],
+          DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+        );
       },
     );
 

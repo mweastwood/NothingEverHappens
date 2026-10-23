@@ -268,5 +268,33 @@ void main() {
       expect(inst.completedAt!.isUtc, isTrue);
       expect(inst.completedAt, equals(localTime.toUtc()));
     });
+
+    test(
+        'fromMap and fromFirestore default missing updatedAt to completedAt or UTC epoch instead of DateTime.now()',
+        () {
+      final epoch = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+      final completedTime = DateTime.utc(2026, 5, 10, 14, 30);
+
+      final missingBoth = TaskInstance.fromMap({
+        'scheduleId': 'S-1',
+        'ruleId': 'R-1',
+        'title': 'Legacy Pending Instance',
+      }, id: 'I-legacy-1');
+      expect(missingBoth.updatedAt, equals(epoch));
+
+      final withCompletedAt = TaskInstance.fromFirestore(
+        _FakeDocumentSnapshot(
+          id: 'I-legacy-2',
+          dataMap: {
+            'scheduleId': 'S-1',
+            'ruleId': 'R-1',
+            'title': 'Legacy Completed Instance',
+            'status': 'completed',
+            'completedAt': completedTime.toIso8601String(),
+          },
+        ),
+      );
+      expect(withCompletedAt.updatedAt, equals(completedTime));
+    });
   });
 }
