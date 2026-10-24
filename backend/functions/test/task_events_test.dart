@@ -1,8 +1,7 @@
 import 'package:functions/src/handlers/task_events.dart';
 import 'package:functions/src/interop/firebase_admin.dart';
 import 'package:functions/src/interop/firebase_functions.dart';
-import 'package:core/core.dart' show TaskInstance;
-import 'package:functions/src/models/civil_day.dart';
+import 'package:core/core.dart' show CivilDay, TaskInstance;
 import 'package:functions/src/models/task_event.dart';
 import 'package:test/test.dart';
 import 'test_helpers.dart';

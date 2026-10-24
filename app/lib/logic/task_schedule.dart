@@ -16,7 +16,6 @@ export 'package:core/core.dart'
         convertRuleToKind,
         MissedOccurrencePolicy,
         MissedPolicy,
-        WorkflowType,
         WorkflowStage,
         MealSelectionOption,
         MealWorkflowConfig,

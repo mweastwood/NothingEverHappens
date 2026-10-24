@@ -1,8 +1,6 @@
 import 'package:uuid/uuid.dart';
 import 'relative_time.dart';
 
-enum WorkflowType { standard, mealWorkflow }
-
 enum WorkflowStage { selectMeal, shoppingList, prepDinner }
 
 enum MealSelectionOption { recipe, leftovers, eatingOut, delivery }

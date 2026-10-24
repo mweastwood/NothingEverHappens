@@ -207,27 +207,6 @@ class YearlySchedule extends TaskScheduleRule {
   }
 
   @override
-  TaskScheduleRule? advanceAfterCompletion(CivilDay today) {
-    final firstOccur = occursOn(scheduledDate)
-        ? scheduledDate
-        : nextOccurrenceAfter(scheduledDate);
-    // If the schedule has no valid occurrences (e.g. non-existent date or exhausted search window),
-    // there are no further occurrences to advance to.
-    if (firstOccur == null) {
-      return null;
-    }
-    if (firstOccur.isBefore(today) || firstOccur == today) {
-      final refDate = today.isBefore(scheduledDate) ? firstOccur : today;
-      final nextOccur = nextOccurrenceAfter(refDate);
-      if (nextOccur != null) {
-        return copyWithStartDate(nextOccur);
-      }
-      return null;
-    }
-    return this;
-  }
-
-  @override
   Map<String, dynamic> toJson() {
     return {
       'id': id,

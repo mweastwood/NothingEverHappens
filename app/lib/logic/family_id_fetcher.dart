@@ -125,13 +125,6 @@ class FamilyIdFetcher {
     return _cachedFamily;
   }
 
-  Future<bool> isFamilyLeader([String? targetUserId]) async {
-    final uid = targetUserId ?? _userId;
-    final family = await getFamily();
-    if (family == null) return false;
-    return family.isFamilyLeader(uid);
-  }
-
   Future<bool> isFamilyParent([String? targetUserId]) async {
     final uid = targetUserId ?? _userId;
     if (uid == _userId) {

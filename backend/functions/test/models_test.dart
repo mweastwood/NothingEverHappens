@@ -1,5 +1,4 @@
-import 'package:functions/src/models/civil_day.dart';
-import 'package:functions/src/models/relative_time.dart';
+import 'package:core/core.dart' show CivilDay, RelativeTime;
 import 'package:test/test.dart';
 
 void main() {

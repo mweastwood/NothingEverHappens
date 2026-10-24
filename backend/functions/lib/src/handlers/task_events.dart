@@ -1,7 +1,7 @@
+import 'package:core/core.dart' show CivilDay;
 import '../interop/firebase_admin.dart';
 import '../interop/firebase_functions.dart';
 import '../interop/node_interop.dart';
-import '../models/civil_day.dart';
 import '../models/task_event.dart';
 
 /// Validates the structure of an incoming ExternalTaskEvent payload.

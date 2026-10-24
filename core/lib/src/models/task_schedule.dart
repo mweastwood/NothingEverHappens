@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:uuid/uuid.dart';
 import 'civil_day.dart';
-import 'relative_time.dart';
+import 'date_time_parser.dart';
 import 'task_priority.dart';
 import 'task_schedule_rule.dart';
 import 'scheduling_policy.dart';
@@ -169,24 +169,39 @@ class TaskSchedule {
         title = title.trim(),
         description = description.trim(),
         updatedAt = (updatedAt ?? DateTime.now()).toUtc(),
-        schedules = (schedules ?? []).map((s) {
-          final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
-          final mPolicy = missedOccurrencePolicy ??
-              (missedPolicy != null
-                  ? (missedPolicy == MissedPolicy.autoDismiss
-                      ? const MissedOccurrencePolicy.autoDismiss(
-                          gracePeriod: Duration(days: 1),
-                        )
-                      : MissedOccurrencePolicy(policy: missedPolicy))
-                  : s.missedOccurrencePolicy);
-          final resolvedId = id.startsWith('S-') ? id : 'S-$id';
-          return s.copyWithTiming(
-            id: s.id.startsWith('R-') ? s.id : TaskScheduleRule.generateId(),
-            scheduleId: resolvedId,
-            schedulingPolicy: sPolicy,
-            missedOccurrencePolicy: mPolicy,
-          );
-        }).toList();
+        schedules = _normalizeSchedules(
+          schedules ?? const [],
+          id.startsWith('S-') ? id : 'S-$id',
+          schedulingPolicy: schedulingPolicy,
+          missedOccurrencePolicy: missedOccurrencePolicy,
+          missedPolicy: missedPolicy,
+        );
+
+  static List<TaskScheduleRule> _normalizeSchedules(
+    List<TaskScheduleRule> schedules,
+    String scheduleId, {
+    SchedulingPolicy? schedulingPolicy,
+    MissedOccurrencePolicy? missedOccurrencePolicy,
+    MissedPolicy? missedPolicy,
+  }) {
+    return schedules.map((s) {
+      final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
+      final mPolicy = missedOccurrencePolicy ??
+          (missedPolicy != null
+              ? (missedPolicy == MissedPolicy.autoDismiss
+                  ? const MissedOccurrencePolicy.autoDismiss(
+                      gracePeriod: Duration(days: 1),
+                    )
+                  : MissedOccurrencePolicy(policy: missedPolicy))
+              : s.missedOccurrencePolicy);
+      return s.copyWithTiming(
+        id: s.id.startsWith('R-') ? s.id : TaskScheduleRule.generateId(),
+        scheduleId: scheduleId,
+        schedulingPolicy: sPolicy,
+        missedOccurrencePolicy: mPolicy,
+      );
+    }).toList();
+  }
 
   /// The starting day of this occurrence.
   CivilDay get startDate {
@@ -202,68 +217,6 @@ class TaskSchedule {
       currentSchedule.scheduledDate,
     );
     return CivilDay.fromDateTime(startDateTime);
-  }
-
-  static DateTime? _parseDateTime(dynamic raw) {
-    if (raw == null) return null;
-    if (raw is DateTime) return raw;
-    if (raw is String) {
-      final parsed = DateTime.tryParse(raw);
-      if (parsed != null && parsed.year <= 3000) return parsed;
-      if (RegExp(r'^\d{4}$').hasMatch(raw)) {
-        final year = int.parse(raw);
-        if (year >= 1900 && year <= 3000) return DateTime(year);
-      }
-      if (RegExp(r'^\d{6}$').hasMatch(raw)) {
-        final year = int.parse(raw.substring(0, 4));
-        final month = int.parse(raw.substring(4, 6));
-        if (year >= 1900 && year <= 3000 && month >= 1 && month <= 12) {
-          return DateTime(year, month);
-        }
-      }
-      if (RegExp(r'^\d{8}$').hasMatch(raw)) {
-        final year = int.parse(raw.substring(0, 4));
-        final month = int.parse(raw.substring(4, 6));
-        final day = int.parse(raw.substring(6, 8));
-        if (year >= 1900 &&
-            year <= 3000 &&
-            month >= 1 &&
-            month <= 12 &&
-            day >= 1 &&
-            day <= 31) {
-          return DateTime(year, month, day);
-        }
-      }
-      final numVal = num.tryParse(raw);
-      if (numVal != null) {
-        final ms =
-            numVal > 100000000000 ? numVal.toInt() : (numVal * 1000).toInt();
-        return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: false);
-      }
-      return parsed;
-    }
-    if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
-    if (raw is Map) {
-      final secondsRaw = raw['_seconds'] ?? raw['seconds'];
-      final nanosRaw = raw['_nanoseconds'] ?? raw['nanoseconds'] ?? 0;
-      final seconds = secondsRaw is num
-          ? secondsRaw
-          : (secondsRaw != null ? num.tryParse(secondsRaw.toString()) : null);
-      if (seconds != null) {
-        final nanos = nanosRaw is num
-            ? nanosRaw
-            : (num.tryParse(nanosRaw.toString()) ?? 0);
-        return DateTime.fromMicrosecondsSinceEpoch(
-          seconds.toInt() * 1000000 + (nanos.toInt() ~/ 1000),
-          isUtc: true,
-        );
-      }
-    }
-    try {
-      return (raw as dynamic).toDate() as DateTime?;
-    } catch (_) {
-      return null;
-    }
   }
 
   factory TaskSchedule.fromMap(
@@ -301,12 +254,12 @@ class TaskSchedule {
     final preferredByRaw = data['preferredBy'] as Map? ?? {};
     final preferredBy = Map<String, dynamic>.from(
       preferredByRaw,
-    ).map((k, v) => MapEntry(k.toString(), v as bool));
+    ).map((k, v) => MapEntry(k.toString(), v == true));
     final assignedUserId = data['assignedUserId'] as String?;
     final appLaunchUrl = data['appLaunchUrl'] as String?;
     final skipIfNoCapacity = data['skipIfNoCapacity'] as bool? ?? false;
 
-    final updatedAt = _parseDateTime(data['updatedAt']) ??
+    final updatedAt = parseFlexibleDateTime(data['updatedAt']) ??
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     final workflowType = data['workflowType'] as String?;
@@ -449,7 +402,7 @@ class TaskSchedule {
     final trimmedTitle = newTitle.trim();
     final trimmedDescription = newDescription.trim();
 
-    final newTask = _copyWith(
+    final newTask = copyWith(
       title: trimmedTitle,
       description: trimmedDescription,
       schedules: resolvedSchedules,
@@ -566,104 +519,6 @@ class TaskSchedule {
     return (newTask: newTask, changes: changes);
   }
 
-  /// Updates the title and returns the modified task and changes.
-  TaskModification updateTitle(String newTitle) {
-    final trimmedTitle = newTitle.trim();
-    final newTask = _copyWith(title: trimmedTitle);
-    return (newTask: newTask, changes: {'title': trimmedTitle});
-  }
-
-  /// Updates the description and returns the modified task and changes.
-  TaskModification updateDescription(String newDescription) {
-    final trimmedDescription = newDescription.trim();
-    final newTask = _copyWith(description: trimmedDescription);
-    return (newTask: newTask, changes: {'description': trimmedDescription});
-  }
-
-  /// Updates the schedule and returns the modified task and changes.
-  TaskModification reschedule(List<TaskScheduleRule> newSchedules) {
-    final newTask = _copyWith(schedules: newSchedules);
-    return (
-      newTask: newTask,
-      changes: {
-        'schedules': newSchedules.map((s) => s.toJson()).toList(),
-        if (newSchedules.isNotEmpty)
-          'schedulingPolicy': newSchedules.first.schedulingPolicy.toJson(),
-      },
-    );
-  }
-
-  /// Updates the start relative time and returns the modified task and changes.
-  TaskModification updateStart(RelativeTime newStart) {
-    if (schedules.isEmpty) {
-      return (newTask: this, changes: {'schedules': []});
-    }
-    final updatedFirst = schedules.first.copyWithTiming(
-      startRelativeTime: newStart,
-    );
-    final newSchedules = [updatedFirst, ...schedules.skip(1)];
-    final newTask = _copyWith(schedules: newSchedules);
-    return (
-      newTask: newTask,
-      changes: {
-        'schedules': newSchedules.map((s) => s.toJson()).toList(),
-        'schedulingPolicy': newTask.schedulingPolicy.toJson(),
-      },
-    );
-  }
-
-  /// Updates the due relative time and returns the modified task and changes.
-  TaskModification updateDue(RelativeTime newDue) {
-    if (schedules.isEmpty) {
-      return (newTask: this, changes: {'schedules': []});
-    }
-    final updatedFirst = schedules.first.copyWithTiming(
-      dueRelativeTime: newDue,
-    );
-    final newSchedules = [updatedFirst, ...schedules.skip(1)];
-    final newTask = _copyWith(schedules: newSchedules);
-    return (
-      newTask: newTask,
-      changes: {
-        'schedules': newSchedules.map((s) => s.toJson()).toList(),
-        'schedulingPolicy': newTask.schedulingPolicy.toJson(),
-      },
-    );
-  }
-
-  /// Updates the cycle ID and returns the modified task and changes.
-  TaskModification updateCycleId(String? newCycleId) {
-    final newTask = _copyWith(
-      cycleId: newCycleId,
-      clearCycleId: newCycleId == null,
-    );
-    return (newTask: newTask, changes: {'cycleId': newCycleId});
-  }
-
-  /// Updates the assigned user ID and returns the modified task and changes.
-  TaskModification updateAssignedUserId(String? newAssignedUserId) {
-    final newTask = _copyWith(
-      assignedUserId: newAssignedUserId,
-      clearAssignedUserId: newAssignedUserId == null,
-    );
-    return (newTask: newTask, changes: {'assignedUserId': newAssignedUserId});
-  }
-
-  /// Updates the app launch URL and returns the modified task and changes.
-  TaskModification updateAppLaunchUrl(String? newAppLaunchUrl) {
-    final newTask = _copyWith(
-      appLaunchUrl: newAppLaunchUrl,
-      clearAppLaunchUrl: newAppLaunchUrl == null,
-    );
-    return (newTask: newTask, changes: {'appLaunchUrl': newAppLaunchUrl});
-  }
-
-  /// Updates the preferredBy map and returns the modified task and changes.
-  TaskModification updatePreferredBy(Map<String, bool> newPreferredBy) {
-    final newTask = _copyWith(preferredBy: newPreferredBy);
-    return (newTask: newTask, changes: {'preferredBy': newPreferredBy});
-  }
-
   TaskSchedule copyWith({
     String? title,
     String? description,
@@ -699,96 +554,13 @@ class TaskSchedule {
     List<String>? labelIds,
     bool clearLabelIds = false,
   }) {
-    return _copyWith(
-      title: title,
-      description: description,
-      schedules: schedules,
-      activeOccurrenceIndex: activeOccurrenceIndex,
-      estimatedDuration: estimatedDuration,
-      clearEstimatedDuration: clearEstimatedDuration,
-      missedPolicy: missedPolicy,
-      isMaster: isMaster,
-      lastSpawnedDate: lastSpawnedDate,
-      clearLastSpawnedDate: clearLastSpawnedDate,
-      parentTaskId: parentTaskId,
-      isFamily: isFamily,
-      familyCompletionMode: familyCompletionMode,
-      priority: priority,
-      cycleId: cycleId,
-      clearCycleId: clearCycleId,
-      preferredBy: preferredBy,
-      assignedUserId: assignedUserId,
-      clearAssignedUserId: clearAssignedUserId,
-      appLaunchUrl: appLaunchUrl,
-      clearAppLaunchUrl: clearAppLaunchUrl,
-      workflowType: workflowType,
-      clearWorkflowType: clearWorkflowType,
-      mealWorkflowConfig: mealWorkflowConfig,
-      clearMealWorkflowConfig: clearMealWorkflowConfig,
+    final resolvedSchedules = _normalizeSchedules(
+      schedules ?? this.schedules,
+      id,
       schedulingPolicy: schedulingPolicy,
       missedOccurrencePolicy: missedOccurrencePolicy,
-      skipIfNoCapacity: skipIfNoCapacity,
-      hasPendingWrites: hasPendingWrites,
-      isFromCache: isFromCache,
-      updatedAt: updatedAt,
-      labelIds: labelIds,
-      clearLabelIds: clearLabelIds,
+      missedPolicy: missedPolicy,
     );
-  }
-
-  TaskSchedule _copyWith({
-    String? title,
-    String? description,
-    List<TaskScheduleRule>? schedules,
-    int? activeOccurrenceIndex,
-    Duration? estimatedDuration,
-    bool clearEstimatedDuration = false,
-    MissedPolicy? missedPolicy,
-    bool? isMaster,
-    CivilDay? lastSpawnedDate,
-    bool clearLastSpawnedDate = false,
-    String? parentTaskId,
-    bool? isFamily,
-    FamilyCompletionMode? familyCompletionMode,
-    TaskPriority? priority,
-    String? cycleId,
-    bool clearCycleId = false,
-    Map<String, bool>? preferredBy,
-    String? assignedUserId,
-    bool clearAssignedUserId = false,
-    String? appLaunchUrl,
-    bool clearAppLaunchUrl = false,
-    String? workflowType,
-    bool clearWorkflowType = false,
-    MealWorkflowConfig? mealWorkflowConfig,
-    bool clearMealWorkflowConfig = false,
-    SchedulingPolicy? schedulingPolicy,
-    MissedOccurrencePolicy? missedOccurrencePolicy,
-    bool? skipIfNoCapacity,
-    bool? hasPendingWrites,
-    bool? isFromCache,
-    DateTime? updatedAt,
-    List<String>? labelIds,
-    bool clearLabelIds = false,
-  }) {
-    final baseSchedules = schedules ?? this.schedules;
-    final resolvedSchedules = baseSchedules.map((s) {
-      final sPolicy = schedulingPolicy ?? s.schedulingPolicy;
-      final mPolicy = missedOccurrencePolicy ??
-          (missedPolicy != null
-              ? (missedPolicy == MissedPolicy.autoDismiss
-                  ? const MissedOccurrencePolicy.autoDismiss(
-                      gracePeriod: Duration(days: 1),
-                    )
-                  : MissedOccurrencePolicy(policy: missedPolicy))
-              : s.missedOccurrencePolicy);
-      return s.copyWithTiming(
-        id: s.id.startsWith('R-') ? s.id : TaskScheduleRule.generateId(),
-        scheduleId: id,
-        schedulingPolicy: sPolicy,
-        missedOccurrencePolicy: mPolicy,
-      );
-    }).toList();
 
     return TaskSchedule(
       id: id,

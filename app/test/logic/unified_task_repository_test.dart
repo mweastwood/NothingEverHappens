@@ -2674,7 +2674,10 @@ void main() {
         await repoWithNotif.addTaskSchedule(task);
         expect(notifService.scheduledTasks.containsKey(task.id), isTrue);
 
-        final mod = task.updateTitle('Updated Notification Task');
+        final mod = (
+          newTask: task.copyWith(title: 'Updated Notification Task'),
+          changes: <String, dynamic>{'title': 'Updated Notification Task'},
+        );
         await repoWithNotif.updateTaskSchedule(mod);
         expect(
           notifService.scheduledTasks[task.id]?.title,

@@ -1289,7 +1289,7 @@ class SchedulerEngine {
     );
   }
 
-  RelativeTime _shiftRelativeToStart(
+  static RelativeTime shiftRelativeToStart(
     RelativeTime targetRel,
     TaskScheduleRule rule,
     CompletionRelativePolicy policy,
@@ -1325,7 +1325,7 @@ class SchedulerEngine {
     CompletionRelativePolicy policy,
     CivilDay newScheduledDate,
   ) {
-    return _shiftRelativeToStart(
+    return shiftRelativeToStart(
       rule.dueRelativeTime,
       rule,
       policy,
@@ -1341,7 +1341,7 @@ class SchedulerEngine {
     return rule.notificationRelativeTimes
         .map(
           (notifRel) =>
-              _shiftRelativeToStart(notifRel, rule, policy, newScheduledDate),
+              shiftRelativeToStart(notifRel, rule, policy, newScheduledDate),
         )
         .toList();
   }

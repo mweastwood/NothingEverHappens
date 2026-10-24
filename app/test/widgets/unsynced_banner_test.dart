@@ -13,7 +13,6 @@ import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/widgets/unsynced_banner.dart';
 import 'package:nothing_ever_happens/widgets/unsynced_details_sheet.dart';
 import 'package:nothing_ever_happens/widgets/task_widget.dart';
-import 'package:nothing_ever_happens/widgets/schedule_card.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/task_sync_service.dart';
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
@@ -482,64 +481,6 @@ void main() {
       },
     );
 
-    testWidgets(
-      'ScheduleCard displays pending Cloud sync icon before title for active subscriber',
-      (tester) async {
-        final unsyncedSchedule = TaskSchedule(
-          id: 'S-unsynced-sched',
-          title: 'Local Schedule',
-          description: 'Test desc',
-          hasPendingWrites: true,
-          schedules: [
-            DailySchedule(
-              id: 'R-daily-1',
-              scheduleId: 'S-unsynced-sched',
-              startDate: const CivilDay(year: 2026, month: 8, day: 1),
-              interval: 1,
-              startRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                hour: 9,
-                minute: 0,
-              ),
-              dueRelativeTime: const RelativeTime(
-                dayOffset: 0,
-                hour: 17,
-                minute: 0,
-              ),
-            ),
-          ],
-        );
-
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              subscriptionServiceProvider.overrideWith(
-                (ref) => MockSubscriptionService(
-                  const SubscriptionState(tier: SubscriptionTier.standard),
-                ),
-              ),
-            ],
-            child: MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              home: Scaffold(
-                body: SingleChildScrollView(
-                  child: ScheduleCard(
-                    task: unsyncedSchedule,
-                    onEdit: () {},
-                    onDelete: () {},
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        expect(find.byIcon(Icons.cloud_sync_outlined), findsOneWidget);
-      },
-    );
-
     testWidgets('Tapping UnsyncedBanner opens UnsyncedDetailsSheet', (
       tester,
     ) async {
@@ -699,10 +640,6 @@ void main() {
           ..addScenario(
             'Unsynced TaskWidget (Pending Cloud Sync)',
             TaskWidget(instance: unsyncedInstance),
-          )
-          ..addScenario(
-            'Unsynced ScheduleCard (Pending Cloud Sync)',
-            ScheduleCard(task: unsyncedTask, onEdit: () {}, onDelete: () {}),
           );
 
         await tester.pumpWidgetBuilder(

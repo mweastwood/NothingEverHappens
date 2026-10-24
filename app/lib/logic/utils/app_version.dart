@@ -13,8 +13,6 @@ class AppVersion {
 
   static String get current => rawVersion;
 
-  static String get gitHash => rawGitHash;
-
   static String get shortGitHash =>
       rawGitHash.length >= 7 ? rawGitHash.substring(0, 7) : rawGitHash;
 

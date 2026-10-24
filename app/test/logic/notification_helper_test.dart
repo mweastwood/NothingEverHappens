@@ -67,52 +67,6 @@ void main() {
   });
 
   group('Notification Sanitization & Script Generation', () {
-    test('escapeNotificationText escapes single quotes correctly', () {
-      expect(
-        escapeNotificationText("Don't miss this"),
-        equals("Don\\'t miss this"),
-      );
-      expect(
-        escapeNotificationText("Today's schedule for Alice's task"),
-        equals("Today\\'s schedule for Alice\\'s task"),
-      );
-      expect(
-        escapeNotificationText("No quotes here"),
-        equals("No quotes here"),
-      );
-      expect(escapeNotificationText(''), equals(''));
-    });
-
-    test('escapeNotificationText leaves double quotes untouched', () {
-      expect(
-        escapeNotificationText('Double "quoted" text'),
-        equals('Double "quoted" text'),
-      );
-    });
-
-    test(
-      'escapeNotificationText escapes backslashes including trailing backslashes',
-      () {
-        expect(
-          escapeNotificationText(r'path\to\file'),
-          equals(r'path\\to\\file'),
-        );
-        expect(escapeNotificationText(r'test\'), equals(r'test\\'));
-        expect(escapeNotificationText(r"\'"), equals(r"\\\'"));
-        expect(
-          escapeNotificationText(r"\'); alert(1);//"),
-          equals(r"\\\'); alert(1);//"),
-        );
-      },
-    );
-
-    test('escapeNotificationText escapes newlines and carriage returns', () {
-      expect(
-        escapeNotificationText("line1\nline2\rline3\r\nline4"),
-        equals(r"line1\nline2\rline3\r\nline4"),
-      );
-    });
-
     test(
       'buildNotificationScript constructs valid Notification instantiation code',
       () {

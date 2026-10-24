@@ -34,33 +34,6 @@ void main() {
         );
       });
 
-      test('advanceAfterCompletion returns null if date is on or before today',
-          () {
-        const date = CivilDay(year: 2026, month: 9, day: 15);
-        final schedule = OneOffSchedule(
-          date: date,
-          startRelativeTime: defaultStart,
-          dueRelativeTime: defaultDue,
-        );
-
-        // Completed on the day
-        expect(schedule.advanceAfterCompletion(date), isNull);
-        // Completed after the day
-        expect(
-          schedule.advanceAfterCompletion(
-            const CivilDay(year: 2026, month: 9, day: 16),
-          ),
-          isNull,
-        );
-        // Today is before scheduled date (not completed yet)
-        expect(
-          schedule.advanceAfterCompletion(
-            const CivilDay(year: 2026, month: 9, day: 10),
-          ),
-          equals(schedule),
-        );
-      });
-
       test('toJson and fromJson polymorphic round-trip', () {
         const date = CivilDay(year: 2026, month: 9, day: 15);
         final schedule = OneOffSchedule(
@@ -104,25 +77,6 @@ void main() {
         expect(
           schedule.nextOccurrenceAfter(startDate),
           equals(const CivilDay(year: 2026, month: 9, day: 4)),
-        );
-      });
-
-      test('advanceAfterCompletion advances startDate to next occurrence', () {
-        const startDate = CivilDay(year: 2026, month: 9, day: 1);
-        final schedule = DailySchedule(
-          startDate: startDate,
-          interval: 2,
-          startRelativeTime: defaultStart,
-          dueRelativeTime: defaultDue,
-        );
-
-        final advanced = schedule.advanceAfterCompletion(
-          const CivilDay(year: 2026, month: 9, day: 1),
-        );
-        expect(advanced, isNotNull);
-        expect(
-          advanced!.scheduledDate,
-          equals(const CivilDay(year: 2026, month: 9, day: 3)),
         );
       });
 
@@ -199,7 +153,6 @@ void main() {
         );
 
         expect(schedule.nextOccurrenceAfter(monday), isNull);
-        expect(schedule.advanceAfterCompletion(monday), isNull);
       });
     });
 
@@ -281,7 +234,6 @@ void main() {
         );
 
         expect(schedule.nextOccurrenceAfter(start), isNull);
-        expect(schedule.advanceAfterCompletion(start), isNull);
       });
     });
 
@@ -343,7 +295,6 @@ void main() {
         );
 
         expect(schedule.nextOccurrenceAfter(start), isNull);
-        expect(schedule.advanceAfterCompletion(start), isNull);
       });
 
       test('returns null for leap day on odd-year interval', () {
@@ -359,7 +310,6 @@ void main() {
         );
 
         expect(schedule.nextOccurrenceAfter(start), isNull);
-        expect(schedule.advanceAfterCompletion(start), isNull);
       });
     });
 

@@ -19,12 +19,10 @@ import 'task_sync_service.dart';
 import 'error_handler.dart';
 import 'app_logger.dart';
 import 'telemetry_service.dart';
-import 'subscription_service.dart';
 import 'family.dart';
 import 'family_repository.dart';
 import 'cloud_family_scheduler_client.dart';
 
-export 'firestore_task_repository.dart';
 export 'family_id_fetcher.dart';
 export 'cloud_family_scheduler_client.dart';
 
@@ -190,15 +188,6 @@ final isFromCacheProvider = Provider<bool>((ref) {
   if (tasks.isEmpty && instances.isEmpty) return false;
   return tasks.every((t) => t.isFromCache) &&
       instances.every((i) => i.isFromCache);
-});
-
-final showUnsyncedBannerProvider = Provider<bool>((ref) {
-  final hasSubscription = ref
-      .watch(subscriptionServiceProvider)
-      .isActivePremium;
-  final isCache = ref.watch(isFromCacheProvider);
-  final count = ref.watch(unsyncedCountProvider);
-  return hasSubscription && (count > 0 || isCache);
 });
 
 final plannedMinutesPerDayProvider = Provider<Map<CivilDay, double>>((ref) {

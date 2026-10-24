@@ -1,12 +1,5 @@
 import 'dart:convert';
 
-/// Escapes characters for insertion into single-quoted JS string literals.
-String escapeNotificationText(String text) => text
-    .replaceAll(r'\', r'\\')
-    .replaceAll("'", r"\'")
-    .replaceAll('\n', r'\n')
-    .replaceAll('\r', r'\r');
-
 /// Builds the JS script for creating a browser Notification.
 String buildNotificationScript(String title, String body) {
   return 'new Notification(${jsonEncode(title)}, { body: ${jsonEncode(body)} });';

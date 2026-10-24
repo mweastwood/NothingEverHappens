@@ -109,14 +109,6 @@ abstract class TaskScheduleRule {
     MissedOccurrencePolicy? missedOccurrencePolicy,
   });
 
-  /// Returns the next schedule rule after completing on or before [today],
-  /// or `null` if this rule should be removed (e.g., a completed one-off).
-  ///
-  /// For one-off schedules: returns `null` if the scheduled date is on or
-  /// before [today] (completed), otherwise returns `this` unchanged.
-  /// For recurring schedules: advances to the next occurrence after [today].
-  TaskScheduleRule? advanceAfterCompletion(CivilDay today);
-
   /// Calculates the next spawn [DateTime] for a rule using
   /// [CompletionRelativePolicy], advancing by true calendar months or years
   /// for [MonthlySchedule] and [YearlySchedule] rules (clamping to the end of
