@@ -4,8 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/l10n/app_localizations.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
 import 'package:nothing_ever_happens/logic/relative_time.dart';
-import 'package:nothing_ever_happens/logic/schedule_rules/one_off_schedule.dart';
-import 'package:nothing_ever_happens/logic/schedule_rules/task_schedule_rule.dart';
+import 'package:nothing_ever_happens/logic/task_schedule_rule.dart';
 import 'package:nothing_ever_happens/widgets/create_task/task_schedule_list_section.dart';
 
 void main() {

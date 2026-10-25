@@ -60,12 +60,20 @@ void callbackDispatcher() {
 }
 
 Future<void> main() async {
+  await bootstrapApp(
+    firebaseOptions: dev.DefaultFirebaseOptions.currentPlatform,
+    environment: AppEnvironment.dev,
+  );
+}
+
+Future<void> bootstrapApp({
+  required FirebaseOptions firebaseOptions,
+  required AppEnvironment environment,
+}) async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: dev.DefaultFirebaseOptions.currentPlatform,
-      );
+      await Firebase.initializeApp(options: firebaseOptions);
     }
     if (kIsWeb) {
       FirebaseFirestore.instance.settings = const Settings(
@@ -76,6 +84,8 @@ Future<void> main() async {
   } catch (e) {
     debugPrint("Firebase initialization error: $e");
   }
+
+  AppConfig.environment = environment;
 
   if (!kIsWeb) {
     Workmanager()

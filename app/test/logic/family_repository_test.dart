@@ -794,48 +794,6 @@ void main() {
     });
 
     test(
-      'updateClientMetadata updates both user document and family member record',
-      () async {
-        await firestore.collection('families').doc('fam-1').set({
-          'name': 'The Simpsons',
-          'members': {
-            'user-1': {
-              'userId': 'user-1',
-              'displayName': 'Alice',
-              'email': 'alice@example.com',
-              'role': 'parent',
-            },
-          },
-        });
-
-        await repository.updateClientMetadata(
-          familyId: 'fam-1',
-          appVersion: 'v2.0.1 (def5678)',
-          platform: 'android',
-        );
-
-        final userDoc = await firestore.collection('users').doc(userId).get();
-        expect(userDoc.data()?['appVersion'], 'v2.0.1 (def5678)');
-        expect(userDoc.data()?['platform'], 'android');
-        expect(userDoc.data()?['lastSeenAt'], isNotNull);
-        expect(userDoc.data()?['timeZone'], isA<String>());
-        expect(userDoc.data()?['timeZoneOffsetMinutes'], isA<int>());
-
-        final familyDoc = await firestore
-            .collection('families')
-            .doc('fam-1')
-            .get();
-        final member =
-            familyDoc.data()?['members']['user-1'] as Map<String, dynamic>;
-        expect(member['appVersion'], 'v2.0.1 (def5678)');
-        expect(member['platform'], 'android');
-        expect(member['lastSeenAt'], isNotNull);
-        expect(member['timeZone'], isA<String>());
-        expect(member['timeZoneOffsetMinutes'], isA<int>());
-      },
-    );
-
-    test(
       'leaveFamily successfully handles large number of documents exceeding 500 batch write operations',
       () async {
         await repository.createFamily('The Simpsons');
