@@ -692,4 +692,36 @@ void main() {
       await reloadedDataSource.dispose();
     },
   );
+
+  test(
+    'appLaunchCount, tasksCompletedCount, and exportRawState persist and export accurately',
+    () async {
+      expect(dataSource.getAppLaunchCount(), 0);
+      expect(await dataSource.incrementAppLaunchCount(), 1);
+      expect(await dataSource.incrementAppLaunchCount(), 2);
+      expect(dataSource.getAppLaunchCount(), 2);
+
+      expect(dataSource.getTasksCompletedCount(), 0);
+      expect(await dataSource.incrementTasksCompletedCount(), 1);
+      expect(dataSource.getTasksCompletedCount(), 1);
+
+      final task = TaskSchedule(
+        id: 'S-export-1',
+        title: 'Export Task',
+        description: 'Desc',
+        schedules: const [],
+        updatedAt: DateTime.utc(2026, 9, 16, 12, 0),
+      );
+      await dataSource.saveTask(task);
+      await dataSource.markDirty('S-export-1');
+
+      final rawState = dataSource.exportRawState();
+      expect(rawState['inMemoryFallback'], isFalse);
+      expect((rawState['tasks'] as List).length, 1);
+      expect(
+        (rawState['syncMeta'] as Map<String, dynamic>)['dirty_tasks'],
+        contains('S-export-1'),
+      );
+    },
+  );
 }

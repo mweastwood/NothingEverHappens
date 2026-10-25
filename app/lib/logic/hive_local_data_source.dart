@@ -63,9 +63,9 @@ class HiveLocalDataSource {
 
   bool isFallbackInMemoryMode = false;
 
-  Future<Box<Map>?> _openBoxSafely(String boxName) async {
+  Future<Box<T>?> _openBoxSafely<T>(String boxName) async {
     try {
-      return await Hive.openBox<Map>(boxName);
+      return await Hive.openBox<T>(boxName);
     } catch (e, st) {
       errorHandler?.report(e, stackTrace: st);
       logger?.error(
@@ -76,7 +76,7 @@ class HiveLocalDataSource {
       );
       try {
         await Hive.deleteBoxFromDisk(boxName);
-        return await Hive.openBox<Map>(boxName);
+        return await Hive.openBox<T>(boxName);
       } catch (err, stack) {
         errorHandler?.report(err, stackTrace: stack);
         logger?.error(
@@ -90,43 +90,18 @@ class HiveLocalDataSource {
     }
   }
 
-  Future<Box<dynamic>?> _openBoxSafelyDynamic(String boxName) async {
-    try {
-      return await Hive.openBox(boxName);
-    } catch (e, st) {
-      errorHandler?.report(e, stackTrace: st);
-      // ignore: avoid_print
-      print(
-        '⚠️ [HIVE_UPGRADE_RECOVERY] Box "$boxName" opening failed on app '
-        'upgrade: $e\n$st. Re-creating clean box.',
-      );
-      try {
-        await Hive.deleteBoxFromDisk(boxName);
-        return await Hive.openBox(boxName);
-      } catch (err, stack) {
-        errorHandler?.report(err, stackTrace: stack);
-        // ignore: avoid_print
-        print(
-          '⚠️ [HIVE_UPGRADE_RECOVERY_FAILED] Failed to recreate box '
-          '"$boxName": $err\n$stack',
-        );
-        return null;
-      }
-    }
-  }
-
   bool _isWritingInternally = false;
 
   Future<void> init() async {
     try {
       await Hive.initFlutter();
       final results = await Future.wait([
-        _openBoxSafely(_tasksBoxName),
-        _openBoxSafely(_instancesBoxName),
-        _openBoxSafely(_syncMetaBoxName),
-        _openBoxSafely(_settingsBoxName),
-        _openBoxSafely(_recipesBoxName),
-        _openBoxSafelyDynamic(_notificationIdsBoxName),
+        _openBoxSafely<Map>(_tasksBoxName),
+        _openBoxSafely<Map>(_instancesBoxName),
+        _openBoxSafely<Map>(_syncMetaBoxName),
+        _openBoxSafely<Map>(_settingsBoxName),
+        _openBoxSafely<Map>(_recipesBoxName),
+        _openBoxSafely<dynamic>(_notificationIdsBoxName),
       ]);
       _tasksBox = results[0] as Box<Map>?;
       _instancesBox = results[1] as Box<Map>?;
@@ -156,63 +131,54 @@ class HiveLocalDataSource {
     await _setupBoxWatchers();
   }
 
+  void _loadEntityBox<T>({
+    required Box<Map>? box,
+    required Map<String, T> targetMap,
+    required T Function(Map<String, dynamic>) fromJson,
+    required String Function(T) idOf,
+    required String entityName,
+  }) {
+    targetMap.clear();
+    if (box == null || !box.isOpen) return;
+    for (final map in box.values) {
+      try {
+        final data = Map<String, dynamic>.from(map);
+        final entity = fromJson(data);
+        targetMap[idOf(entity)] = entity;
+      } catch (e, st) {
+        errorHandler?.report(e, stackTrace: st);
+        logger?.error(
+          'hive',
+          'Failed to parse $entityName from Hive',
+          error: e,
+          stackTrace: st,
+        );
+      }
+    }
+  }
+
   void _loadFromBoxes() {
-    _memTasks.clear();
-    if (_tasksBox != null && _tasksBox!.isOpen) {
-      for (final map in _tasksBox!.values) {
-        try {
-          final data = Map<String, dynamic>.from(map);
-          final task = _taskScheduleFromJson(data);
-          _memTasks[task.id] = task;
-        } catch (e, st) {
-          errorHandler?.report(e, stackTrace: st);
-          logger?.error(
-            'hive',
-            'Failed to parse task schedule from Hive',
-            error: e,
-            stackTrace: st,
-          );
-        }
-      }
-    }
-
-    _memInstances.clear();
-    if (_instancesBox != null && _instancesBox!.isOpen) {
-      for (final map in _instancesBox!.values) {
-        try {
-          final data = Map<String, dynamic>.from(map);
-          final inst = _taskInstanceFromJson(data);
-          _memInstances[inst.id] = inst;
-        } catch (e, st) {
-          errorHandler?.report(e, stackTrace: st);
-          logger?.error(
-            'hive',
-            'Failed to parse task instance from Hive',
-            error: e,
-            stackTrace: st,
-          );
-        }
-      }
-    }
-
-    _memRecipes.clear();
-    if (_recipesBox != null && _recipesBox!.isOpen) {
-      for (final map in _recipesBox!.values) {
-        try {
-          final data = Map<String, dynamic>.from(map);
-          final recipe = _recipeFromJson(data);
-          _memRecipes[recipe.id] = recipe;
-        } catch (e, st) {
-          errorHandler?.report(e, stackTrace: st);
-          logger?.error(
-            'hive',
-            'Failed to parse recipe from Hive',
-            error: e,
-            stackTrace: st,
-          );
-        }
-      }
-    }
+    _loadEntityBox<TaskSchedule>(
+      box: _tasksBox,
+      targetMap: _memTasks,
+      fromJson: _taskScheduleFromJson,
+      idOf: (t) => t.id,
+      entityName: 'task schedule',
+    );
+    _loadEntityBox<TaskInstance>(
+      box: _instancesBox,
+      targetMap: _memInstances,
+      fromJson: _taskInstanceFromJson,
+      idOf: (i) => i.id,
+      entityName: 'task instance',
+    );
+    _loadEntityBox<Recipe>(
+      box: _recipesBox,
+      targetMap: _memRecipes,
+      fromJson: _recipeFromJson,
+      idOf: (r) => r.id,
+      entityName: 'recipe',
+    );
 
     if (_settingsBox != null && _settingsBox!.isOpen) {
       try {
@@ -233,89 +199,68 @@ class HiveLocalDataSource {
     }
   }
 
+  void _watchEntityBox<T>({
+    required Box<Map>? box,
+    required Map<String, T> targetMap,
+    required T Function(Map<String, dynamic>) fromJson,
+    required String Function(T) idOf,
+    required String entityName,
+    required VoidCallback onEmit,
+  }) {
+    if (box == null || !box.isOpen) return;
+    _boxWatchSubscriptions.add(
+      box.watch().listen((event) {
+        if (_isWritingInternally) return;
+        if (event.deleted) {
+          targetMap.remove(event.key.toString());
+        } else if (event.value != null) {
+          try {
+            final data = Map<String, dynamic>.from(event.value as Map);
+            final entity = fromJson(data);
+            targetMap[idOf(entity)] = entity;
+          } catch (e, st) {
+            targetMap.remove(event.key.toString());
+            errorHandler?.report(e, stackTrace: st);
+            logger?.error(
+              'hive',
+              'Failed to parse $entityName from box watcher',
+              error: e,
+              stackTrace: st,
+            );
+          }
+        }
+        onEmit();
+      }),
+    );
+  }
+
   Future<void> _setupBoxWatchers() async {
     await _cancelBoxWatchers();
 
-    if (_tasksBox != null && _tasksBox!.isOpen) {
-      _boxWatchSubscriptions.add(
-        _tasksBox!.watch().listen((event) {
-          if (_isWritingInternally) return;
-          if (event.deleted) {
-            _memTasks.remove(event.key.toString());
-          } else if (event.value != null) {
-            try {
-              final data = Map<String, dynamic>.from(event.value as Map);
-              final task = _taskScheduleFromJson(data);
-              _memTasks[task.id] = task;
-            } catch (e, st) {
-              _memTasks.remove(event.key.toString());
-              errorHandler?.report(e, stackTrace: st);
-              logger?.error(
-                'hive',
-                'Failed to parse task schedule from box watcher',
-                error: e,
-                stackTrace: st,
-              );
-            }
-          }
-          _emitTasks();
-        }),
-      );
-    }
-
-    if (_instancesBox != null && _instancesBox!.isOpen) {
-      _boxWatchSubscriptions.add(
-        _instancesBox!.watch().listen((event) {
-          if (_isWritingInternally) return;
-          if (event.deleted) {
-            _memInstances.remove(event.key.toString());
-          } else if (event.value != null) {
-            try {
-              final data = Map<String, dynamic>.from(event.value as Map);
-              final inst = _taskInstanceFromJson(data);
-              _memInstances[inst.id] = inst;
-            } catch (e, st) {
-              _memInstances.remove(event.key.toString());
-              errorHandler?.report(e, stackTrace: st);
-              logger?.error(
-                'hive',
-                'Failed to parse task instance from box watcher',
-                error: e,
-                stackTrace: st,
-              );
-            }
-          }
-          _emitInstances();
-        }),
-      );
-    }
-
-    if (_recipesBox != null && _recipesBox!.isOpen) {
-      _boxWatchSubscriptions.add(
-        _recipesBox!.watch().listen((event) {
-          if (_isWritingInternally) return;
-          if (event.deleted) {
-            _memRecipes.remove(event.key.toString());
-          } else if (event.value != null) {
-            try {
-              final data = Map<String, dynamic>.from(event.value as Map);
-              final recipe = _recipeFromJson(data);
-              _memRecipes[recipe.id] = recipe;
-            } catch (e, st) {
-              _memRecipes.remove(event.key.toString());
-              errorHandler?.report(e, stackTrace: st);
-              logger?.error(
-                'hive',
-                'Failed to parse recipe from box watcher',
-                error: e,
-                stackTrace: st,
-              );
-            }
-          }
-          _emitRecipes();
-        }),
-      );
-    }
+    _watchEntityBox<TaskSchedule>(
+      box: _tasksBox,
+      targetMap: _memTasks,
+      fromJson: _taskScheduleFromJson,
+      idOf: (t) => t.id,
+      entityName: 'task schedule',
+      onEmit: _emitTasks,
+    );
+    _watchEntityBox<TaskInstance>(
+      box: _instancesBox,
+      targetMap: _memInstances,
+      fromJson: _taskInstanceFromJson,
+      idOf: (i) => i.id,
+      entityName: 'task instance',
+      onEmit: _emitInstances,
+    );
+    _watchEntityBox<Recipe>(
+      box: _recipesBox,
+      targetMap: _memRecipes,
+      fromJson: _recipeFromJson,
+      idOf: (r) => r.id,
+      entityName: 'recipe',
+      onEmit: _emitRecipes,
+    );
 
     if (_settingsBox != null && _settingsBox!.isOpen) {
       _boxWatchSubscriptions.add(
@@ -435,6 +380,27 @@ class HiveLocalDataSource {
     return _memInstances.values.toList();
   }
 
+  Future<void> _deleteEntities<T>({
+    required List<String> ids,
+    required Map<String, T> memoryMap,
+    required Box<Map>? box,
+    required VoidCallback onEmit,
+  }) async {
+    if (ids.isEmpty) return;
+    _isWritingInternally = true;
+    try {
+      for (final id in ids) {
+        memoryMap.remove(id);
+      }
+      if (box != null && box.isOpen) {
+        await box.deleteAll(ids);
+      }
+    } finally {
+      _isWritingInternally = false;
+    }
+    onEmit();
+  }
+
   Future<void> saveTask(TaskSchedule task) async {
     await saveTasks([task]);
   }
@@ -477,21 +443,12 @@ class HiveLocalDataSource {
     await deleteTasks([id]);
   }
 
-  Future<void> deleteTasks(List<String> ids) async {
-    if (ids.isEmpty) return;
-    _isWritingInternally = true;
-    try {
-      for (final id in ids) {
-        _memTasks.remove(id);
-      }
-      if (_tasksBox != null && _tasksBox!.isOpen) {
-        await _tasksBox!.deleteAll(ids);
-      }
-    } finally {
-      _isWritingInternally = false;
-    }
-    _emitTasks();
-  }
+  Future<void> deleteTasks(List<String> ids) => _deleteEntities(
+    ids: ids,
+    memoryMap: _memTasks,
+    box: _tasksBox,
+    onEmit: _emitTasks,
+  );
 
   Future<void> saveInstance(TaskInstance instance) async {
     await saveInstances([instance]);
@@ -544,21 +501,12 @@ class HiveLocalDataSource {
     await deleteInstances([id]);
   }
 
-  Future<void> deleteInstances(List<String> ids) async {
-    if (ids.isEmpty) return;
-    _isWritingInternally = true;
-    try {
-      for (final id in ids) {
-        _memInstances.remove(id);
-      }
-      if (_instancesBox != null && _instancesBox!.isOpen) {
-        await _instancesBox!.deleteAll(ids);
-      }
-    } finally {
-      _isWritingInternally = false;
-    }
-    _emitInstances();
-  }
+  Future<void> deleteInstances(List<String> ids) => _deleteEntities(
+    ids: ids,
+    memoryMap: _memInstances,
+    box: _instancesBox,
+    onEmit: _emitInstances,
+  );
 
   List<Recipe> getRecipes() {
     return _memRecipes.values.toList();
@@ -596,20 +544,46 @@ class HiveLocalDataSource {
     await deleteRecipes([id]);
   }
 
-  Future<void> deleteRecipes(List<String> ids) async {
-    if (ids.isEmpty) return;
-    _isWritingInternally = true;
-    try {
-      for (final id in ids) {
-        _memRecipes.remove(id);
-      }
-      if (_recipesBox != null && _recipesBox!.isOpen) {
-        await _recipesBox!.deleteAll(ids);
-      }
-    } finally {
-      _isWritingInternally = false;
+  Future<void> deleteRecipes(List<String> ids) => _deleteEntities(
+    ids: ids,
+    memoryMap: _memRecipes,
+    box: _recipesBox,
+    onEmit: _emitRecipes,
+  );
+
+  Map<dynamic, dynamic>? _getMetaEntry(String key) {
+    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+      return _syncMetaBox!.get(key);
     }
-    _emitRecipes();
+    return _memMeta[key] as Map<dynamic, dynamic>?;
+  }
+
+  Future<void> _putMetaEntry(String key, Map<String, dynamic> value) async {
+    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+      await _syncMetaBox!.put(key, value);
+    } else {
+      _memMeta[key] = value;
+    }
+  }
+
+  Future<void> _deleteMetaEntry(String key) async {
+    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
+      await _syncMetaBox!.delete(key);
+    } else {
+      _memMeta.remove(key);
+    }
+  }
+
+  int _getMetaCounter(String key) {
+    final data = _getMetaEntry(key);
+    if (data == null) return 0;
+    return (data['count'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<int> _incrementMetaCounter(String key) async {
+    final next = _getMetaCounter(key) + 1;
+    await _putMetaEntry(key, {'count': next});
+    return next;
   }
 
   Future<void> markDirty(String id) async {
@@ -627,19 +601,13 @@ class HiveLocalDataSource {
       }
     }
     if (changed) {
-      if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
-        await _syncMetaBox!.put('dirty_tasks', {'list': dirtyList});
-      } else {
-        _memMeta['dirty_tasks'] = {'list': dirtyList};
-      }
+      await _putMetaEntry('dirty_tasks', {'list': dirtyList});
       _emitSyncMeta();
     }
   }
 
   List<String> getDirtyTaskIds() {
-    final data = _syncMetaBox != null && _syncMetaBox!.isOpen
-        ? _syncMetaBox!.get('dirty_tasks')
-        : _memMeta['dirty_tasks'];
+    final data = _getMetaEntry('dirty_tasks');
     if (data == null) return [];
     return List<String>.from(data['list'] ?? []);
   }
@@ -655,11 +623,7 @@ class HiveLocalDataSource {
     final prevLength = dirtyList.length;
     dirtyList.removeWhere((id) => idSet.contains(id));
     if (dirtyList.length != prevLength) {
-      if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
-        await _syncMetaBox!.put('dirty_tasks', {'list': dirtyList});
-      } else {
-        _memMeta['dirty_tasks'] = {'list': dirtyList};
-      }
+      await _putMetaEntry('dirty_tasks', {'list': dirtyList});
       _emitSyncMeta();
     }
   }
@@ -707,83 +671,39 @@ class HiveLocalDataSource {
   }
 
   String? getActiveUserId() {
-    final data = _syncMetaBox != null && _syncMetaBox!.isOpen
-        ? _syncMetaBox!.get('active_user_id')
-        : _memMeta['active_user_id'];
+    final data = _getMetaEntry('active_user_id');
     if (data == null) return null;
     return data['userId'] as String?;
   }
 
   Future<void> setActiveUserId(String? userId) async {
     if (userId == null) {
-      if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
-        await _syncMetaBox!.delete('active_user_id');
-      } else {
-        _memMeta.remove('active_user_id');
-      }
+      await _deleteMetaEntry('active_user_id');
     } else {
-      if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
-        await _syncMetaBox!.put('active_user_id', {'userId': userId});
-      } else {
-        _memMeta['active_user_id'] = {'userId': userId};
-      }
+      await _putMetaEntry('active_user_id', {'userId': userId});
     }
   }
 
   Future<void> setMigrationCompleted(bool completed) async {
-    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
-      await _syncMetaBox!.put('migration_completed', {'value': completed});
-    } else {
-      _memMeta['migration_completed'] = {'value': completed};
-    }
+    await _putMetaEntry('migration_completed', {'value': completed});
     _emitSyncMeta();
   }
 
   bool isMigrationCompleted() {
-    final data = _syncMetaBox != null && _syncMetaBox!.isOpen
-        ? _syncMetaBox!.get('migration_completed')
-        : _memMeta['migration_completed'];
+    final data = _getMetaEntry('migration_completed');
     if (data == null) return false;
     return data['value'] == true;
   }
 
-  int getAppLaunchCount() {
-    final data = _syncMetaBox != null && _syncMetaBox!.isOpen
-        ? _syncMetaBox!.get('app_launch_count')
-        : _memMeta['app_launch_count'];
-    if (data == null) return 0;
-    return (data['count'] as num?)?.toInt() ?? 0;
-  }
+  int getAppLaunchCount() => _getMetaCounter('app_launch_count');
 
-  Future<int> incrementAppLaunchCount() async {
-    final current = getAppLaunchCount();
-    final next = current + 1;
-    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
-      await _syncMetaBox!.put('app_launch_count', {'count': next});
-    } else {
-      _memMeta['app_launch_count'] = {'count': next};
-    }
-    return next;
-  }
+  Future<int> incrementAppLaunchCount() =>
+      _incrementMetaCounter('app_launch_count');
 
-  int getTasksCompletedCount() {
-    final data = _syncMetaBox != null && _syncMetaBox!.isOpen
-        ? _syncMetaBox!.get('tasks_completed_count')
-        : _memMeta['tasks_completed_count'];
-    if (data == null) return 0;
-    return (data['count'] as num?)?.toInt() ?? 0;
-  }
+  int getTasksCompletedCount() => _getMetaCounter('tasks_completed_count');
 
-  Future<int> incrementTasksCompletedCount() async {
-    final current = getTasksCompletedCount();
-    final next = current + 1;
-    if (_syncMetaBox != null && _syncMetaBox!.isOpen) {
-      await _syncMetaBox!.put('tasks_completed_count', {'count': next});
-    } else {
-      _memMeta['tasks_completed_count'] = {'count': next};
-    }
-    return next;
-  }
+  Future<int> incrementTasksCompletedCount() =>
+      _incrementMetaCounter('tasks_completed_count');
 
   @visibleForTesting
   TaskSchedule taskScheduleFromJson(Map<String, dynamic> data) =>
@@ -799,40 +719,43 @@ class HiveLocalDataSource {
   TaskInstance _taskInstanceFromJson(Map<String, dynamic> data) =>
       TaskInstance.fromMap(data, id: data['id'] as String, isFromCache: true);
 
-  Map<String, dynamic> exportRawState() {
-    final tasksList = <Map<String, dynamic>>[];
-    if (_tasksBox != null && _tasksBox!.isOpen) {
-      for (final map in _tasksBox!.values) {
+  List<Map<String, dynamic>> _exportEntityBox<T>({
+    required Box<Map>? box,
+    required Map<String, T> memoryMap,
+    required Map<String, dynamic> Function(T) toRawMap,
+    required String entityLabel,
+  }) {
+    final result = <Map<String, dynamic>>[];
+    if (box != null && box.isOpen) {
+      for (final map in box.values) {
         try {
-          tasksList.add(Map<String, dynamic>.from(map));
+          result.add(Map<String, dynamic>.from(map));
         } catch (e, stackTrace) {
-          debugPrint('Error exporting raw task map: $e\n$stackTrace');
+          debugPrint('Error exporting raw $entityLabel map: $e\n$stackTrace');
         }
       }
     } else {
-      for (final task in _memTasks.values) {
-        final data = task.toFirestore();
-        data['id'] = task.id;
-        tasksList.add(data);
+      for (final entity in memoryMap.values) {
+        result.add(toRawMap(entity));
       }
     }
+    return result;
+  }
 
-    final instancesList = <Map<String, dynamic>>[];
-    if (_instancesBox != null && _instancesBox!.isOpen) {
-      for (final map in _instancesBox!.values) {
-        try {
-          instancesList.add(Map<String, dynamic>.from(map));
-        } catch (e, stackTrace) {
-          debugPrint('Error exporting raw instance map: $e\n$stackTrace');
-        }
-      }
-    } else {
-      for (final instance in _memInstances.values) {
-        final data = instance.toFirestore();
-        data['id'] = instance.id;
-        instancesList.add(data);
-      }
-    }
+  Map<String, dynamic> exportRawState() {
+    final tasksList = _exportEntityBox<TaskSchedule>(
+      box: _tasksBox,
+      memoryMap: _memTasks,
+      toRawMap: (task) => {...task.toFirestore(), 'id': task.id},
+      entityLabel: 'task',
+    );
+
+    final instancesList = _exportEntityBox<TaskInstance>(
+      box: _instancesBox,
+      memoryMap: _memInstances,
+      toRawMap: (instance) => {...instance.toFirestore(), 'id': instance.id},
+      entityLabel: 'instance',
+    );
 
     Map<String, dynamic> settingsMap = {};
     if (_settingsBox != null && _settingsBox!.isOpen) {
@@ -851,21 +774,12 @@ class HiveLocalDataSource {
       settingsMap = {..._memSettings.toJson(), ..._memRawSettings};
     }
 
-    final recipesList = <Map<String, dynamic>>[];
-    if (_recipesBox != null && _recipesBox!.isOpen) {
-      for (final map in _recipesBox!.values) {
-        try {
-          recipesList.add(Map<String, dynamic>.from(map));
-        } catch (e, stackTrace) {
-          debugPrint('Error exporting raw recipe map: $e\n$stackTrace');
-        }
-      }
-    } else {
-      for (final recipe in _memRecipes.values) {
-        final data = recipe.toJson();
-        recipesList.add(data);
-      }
-    }
+    final recipesList = _exportEntityBox<Recipe>(
+      box: _recipesBox,
+      memoryMap: _memRecipes,
+      toRawMap: (recipe) => recipe.toJson(),
+      entityLabel: 'recipe',
+    );
 
     return {
       'inMemoryFallback': isFallbackInMemoryMode,
