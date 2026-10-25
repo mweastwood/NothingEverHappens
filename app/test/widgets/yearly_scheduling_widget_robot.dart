@@ -20,10 +20,6 @@ class YearlySchedulingWidgetRobot {
     await tester.pumpAndSettle();
   }
 
-  Future<void> expandIntervalSection() async {
-    // No-op: Interval is always visible in the new design
-  }
-
   Future<void> enterInterval(String val) async {
     await tester.enterText(intervalField, val);
     await tester.pumpAndSettle();

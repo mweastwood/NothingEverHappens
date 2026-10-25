@@ -23,17 +23,9 @@ class MonthlySchedulingWidgetRobot {
     await tester.pumpAndSettle();
   }
 
-  Future<void> expandIntervalSection() async {
-    // No-op: Interval is always visible in the new design
-  }
-
   Future<void> enterInterval(String val) async {
     await tester.enterText(intervalField, val);
     await tester.pumpAndSettle();
-  }
-
-  Future<void> selectRuleType(String typeText) async {
-    // No-op: Rule type dropdown was removed as it is redundant with parent selector
   }
 
   Future<void> enterDayOfMonth(String val) async {
