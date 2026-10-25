@@ -18,17 +18,9 @@ class WeeklySchedulingWidgetRobot {
     await tester.pumpAndSettle();
   }
 
-  Future<void> expandIntervalSection() async {
-    // No-op: Interval is always visible in the new design
-  }
-
   Future<void> enterInterval(String val) async {
     await tester.enterText(intervalField, val);
     await tester.pumpAndSettle();
-  }
-
-  Future<void> selectIntervalType(String typeText) async {
-    // No-op: Done at a higher level via HierarchicalRecurrenceSelector now
   }
 
   Future<void> toggleDayByIndex(int index) async {

@@ -1923,53 +1923,20 @@ void main() {
   );
 
   testWidgets(
-    'TaskWidget does not display priority badge when priority is medium',
+    'TaskWidget does not render removed priority, time estimate, or recurrence badges',
     (tester) async {
-      final mediumTask = TaskSchedule(
-        id: 'S-medium',
-        title: 'Medium Priority Task',
-        description: 'Standard medium priority task',
-        priority: TaskPriority.medium,
-        schedules: [
-          OneOffSchedule(
-            id: 'R-medium-1',
-            scheduleId: 'S-medium',
-            date: const CivilDay(year: 2024, month: 1, day: 1),
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 9,
-              minute: 0,
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(createWidget(mediumTask));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Medium'), findsNothing);
-      expect(find.byIcon(Icons.info_outline), findsNothing);
-    },
-  );
-
-  testWidgets(
-    'TaskWidget does not display priority badge when priority is high or low',
-    (tester) async {
-      final highTask = TaskSchedule(
-        id: 'S-high',
-        title: 'High Priority Task',
-        description: 'High priority task',
+      final taskWithMetadata = TaskSchedule(
+        id: 'S-meta',
+        title: 'Task with Metadata',
+        description: 'Task with priority, duration, and recurrence',
         priority: TaskPriority.high,
+        estimatedDuration: const Duration(hours: 1, minutes: 30),
         schedules: [
-          OneOffSchedule(
-            id: 'R-high-1',
-            scheduleId: 'S-high',
-            date: const CivilDay(year: 2024, month: 1, day: 1),
+          DailySchedule(
+            id: 'R-meta-1',
+            scheduleId: 'S-meta',
+            startDate: const CivilDay(year: 2024, month: 1, day: 1),
+            interval: 1,
             startRelativeTime: const RelativeTime(
               dayOffset: 0,
               hour: 9,
@@ -1984,143 +1951,16 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(createWidget(highTask));
+      await tester.pumpWidget(createWidget(taskWithMetadata));
       await tester.pumpAndSettle();
 
       expect(find.text('High'), findsNothing);
       expect(find.byIcon(Icons.warning_amber_rounded), findsNothing);
-
-      final lowTask = TaskSchedule(
-        id: 'S-low',
-        title: 'Low Priority Task',
-        description: 'Low priority task',
-        priority: TaskPriority.low,
-        schedules: [
-          OneOffSchedule(
-            id: 'R-low-1',
-            scheduleId: 'S-low',
-            date: const CivilDay(year: 2024, month: 1, day: 1),
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 9,
-              minute: 0,
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(createWidget(lowTask));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Low'), findsNothing);
-      expect(find.byIcon(Icons.arrow_downward), findsNothing);
-    },
-  );
-
-  testWidgets(
-    'TaskWidget does not display time estimate badge when estimatedDuration is configured',
-    (tester) async {
-      final taskWithDuration = TaskSchedule(
-        id: 'S-duration',
-        title: 'Task with Duration',
-        description: 'Task with estimated duration',
-        estimatedDuration: const Duration(hours: 1, minutes: 30),
-        schedules: [
-          OneOffSchedule(
-            id: 'R-duration-1',
-            scheduleId: 'S-duration',
-            date: const CivilDay(year: 2024, month: 1, day: 1),
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 9,
-              minute: 0,
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(createWidget(taskWithDuration));
-      await tester.pumpAndSettle();
-
       expect(find.text('1h 30m'), findsNothing);
       expect(find.byIcon(Icons.timer_outlined), findsNothing);
-    },
-  );
-
-  testWidgets(
-    'TaskWidget does not display recurrence schedule badges for recurring tasks',
-    (tester) async {
-      final dailyTask = TaskSchedule(
-        id: 'S-daily',
-        title: 'Daily Recurring Task',
-        description: 'Daily task',
-        schedules: [
-          DailySchedule(
-            id: 'R-daily',
-            scheduleId: 'S-daily',
-            startDate: const CivilDay(year: 2024, month: 1, day: 1),
-            interval: 1,
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 9,
-              minute: 0,
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(createWidget(dailyTask));
-      await tester.pumpAndSettle();
-
       expect(find.text('Daily'), findsNothing);
       expect(find.text('Recurring'), findsNothing);
       expect(find.byIcon(Icons.repeat), findsNothing);
-
-      final weeklyTask = TaskSchedule(
-        id: 'S-weekly',
-        title: 'Weekly Recurring Task',
-        description: 'Weekly task',
-        schedules: [
-          WeeklySchedule(
-            id: 'R-weekly',
-            scheduleId: 'S-weekly',
-            startDate: const CivilDay(year: 2024, month: 1, day: 1),
-            interval: 1,
-            daysOfWeek: {1},
-            startRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 9,
-              minute: 0,
-            ),
-            dueRelativeTime: const RelativeTime(
-              dayOffset: 0,
-              hour: 17,
-              minute: 0,
-            ),
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(createWidget(weeklyTask));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Weekly'), findsNothing);
-      expect(find.byIcon(Icons.view_week), findsNothing);
     },
   );
 
