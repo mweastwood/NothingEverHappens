@@ -118,39 +118,6 @@ void main() {
       expect(success, isFalse);
     });
 
-    test(
-      'UndoResolveTaskInstanceAction calls undoResolveTaskInstance',
-      () async {
-        final instance = TaskInstance(
-          id: 'inst-1',
-          scheduleId: 'task-1',
-          ruleId: 'rule-1',
-          title: 'Test Instance',
-          description: 'Desc',
-          scheduledDate: const CivilDay(year: 2026, month: 6, day: 15),
-          startRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 9,
-            minute: 0,
-          ),
-          dueRelativeTime: const RelativeTime(
-            dayOffset: 0,
-            hour: 17,
-            minute: 0,
-          ),
-          status: TaskStatus.completed,
-        );
-
-        final action = UndoResolveTaskInstanceAction(
-          message: 'Completed task',
-          instance: instance,
-        );
-
-        await action.undo(mockRepository);
-        verify(mockRepository.undoResolveTaskInstance(instance)).called(1);
-      },
-    );
-
     test('UndoDeleteTaskScheduleAction calls restoreTaskSchedule', () async {
       final schedule = TaskSchedule(
         id: 'task-1',

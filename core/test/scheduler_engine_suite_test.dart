@@ -1,11 +1,6 @@
-import 'package:flutter_test/flutter_test.dart';
-import '../test_factories.dart';
-import 'package:nothing_ever_happens/logic/civil_day.dart';
-import 'package:nothing_ever_happens/logic/relative_time.dart';
-import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
-import 'package:nothing_ever_happens/logic/task_instance.dart';
-import 'package:nothing_ever_happens/logic/task_schedule.dart';
-import 'package:nothing_ever_happens/logic/user_settings.dart';
+import 'package:core/core.dart';
+import 'package:test/test.dart';
+import 'test_factories.dart';
 
 void main() {
   group('SchedulerEngine Tests', () {
@@ -80,9 +75,12 @@ void main() {
           status: TaskStatus.pending,
         );
 
-        final action = const SchedulerEngine().evaluate(task, [
-          existingInstance,
-        ], now);
+        final action = const SchedulerEngine().evaluate(
+            task,
+            [
+              existingInstance,
+            ],
+            now);
 
         expect(action.instancesToSpawn, isEmpty);
         expect(action.instancesToUpdate, isEmpty);
@@ -124,9 +122,12 @@ void main() {
             completedAt: now.subtract(const Duration(days: 2)),
           );
 
-          final action = const SchedulerEngine().evaluate(task, [
-            resolvedOneOff,
-          ], now);
+          final action = const SchedulerEngine().evaluate(
+              task,
+              [
+                resolvedOneOff,
+              ],
+              now);
 
           // Verify that resolvedOneOff is not modified / rescheduled / marked as skipped
           final changedIds = action.instancesToUpdate.map((i) => i.id).toList();
@@ -443,9 +444,8 @@ void main() {
           expect(action.instancesToUpdate, isEmpty);
 
           // Today (June 19) and tomorrow (June 20) are spawned as pending lookaheads
-          final spawnedDates = action.instancesToSpawn
-              .map((x) => x.scheduledDate.day)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((x) => x.scheduledDate.day).toList();
           expect(spawnedDates.contains(19), isTrue);
           expect(spawnedDates.contains(20), isTrue);
           expect(
@@ -533,9 +533,8 @@ void main() {
           expect(action.instancesToUpdate, isEmpty);
 
           // Only future lookahead instances (tomorrow June 20, etc.) are spawned
-          final spawnedDates = action.instancesToSpawn
-              .map((x) => x.scheduledDate.day)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((x) => x.scheduledDate.day).toList();
           expect(spawnedDates.contains(20), isTrue);
           expect(
             action.instancesToSpawn
@@ -621,9 +620,8 @@ void main() {
           expect(action.instancesToUpdate, isEmpty);
 
           // Future lookahead instances (tomorrow June 20, etc.) are spawned as pending
-          final spawnedDates = action.instancesToSpawn
-              .map((x) => x.scheduledDate.day)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((x) => x.scheduledDate.day).toList();
           expect(spawnedDates.contains(20), isTrue);
           expect(
             action.instancesToSpawn
@@ -761,9 +759,8 @@ void main() {
           final action = const SchedulerEngine().evaluate(task, [], now);
 
           // June 17 (oldest started) should be spawned as pending
-          final spawnedDates = action.instancesToSpawn
-              .map((x) => x.scheduledDate.day)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((x) => x.scheduledDate.day).toList();
           expect(spawnedDates.contains(17), isTrue);
           expect(
             action.instancesToSpawn
@@ -831,9 +828,8 @@ void main() {
           expect(action.instancesToUpdate, isEmpty);
 
           // Today's instance (June 19) has started, so it is skipped (not spawned)
-          final spawnedDates = action.instancesToSpawn
-              .map((x) => x.scheduledDate.day)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((x) => x.scheduledDate.day).toList();
           expect(spawnedDates.contains(19), isFalse);
 
           // Tomorrow's instance (June 20, future) has not started yet, so it is pending (spawned)
@@ -903,9 +899,8 @@ void main() {
           // Both today's instance (June 19) and tomorrow's instance (June 20, lookahead) have not started,
           // so both should be spawned as pending!
           expect(action.instancesToSpawn, hasLength(2));
-          final spawnedDates = action.instancesToSpawn
-              .map((x) => x.scheduledDate.day)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((x) => x.scheduledDate.day).toList();
           expect(spawnedDates.contains(19), isTrue);
           expect(spawnedDates.contains(20), isTrue);
           expect(
@@ -999,9 +994,8 @@ void main() {
           expect(action.instancesToUpdate, isEmpty);
 
           // Only future lookahead instances (tomorrow June 20, etc.) are spawned
-          final spawnedDates = action.instancesToSpawn
-              .map((x) => x.scheduledDate.day)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((x) => x.scheduledDate.day).toList();
           expect(spawnedDates.contains(20), isTrue);
           expect(
             action.instancesToSpawn
@@ -1087,9 +1081,8 @@ void main() {
           expect(action.instancesToUpdate, isEmpty);
 
           // Future lookahead instances (tomorrow June 20, etc.) are spawned as pending
-          final spawnedDates = action.instancesToSpawn
-              .map((x) => x.scheduledDate.day)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((x) => x.scheduledDate.day).toList();
           expect(spawnedDates.contains(20), isTrue);
           expect(
             action.instancesToSpawn
@@ -1249,9 +1242,12 @@ void main() {
             updatedAt: DateTime(2026, 6, 16, 10, 0),
           );
 
-          final action = const SchedulerEngine().evaluate(task, [
-            skippedInstance,
-          ], evalNow);
+          final action = const SchedulerEngine().evaluate(
+              task,
+              [
+                skippedInstance,
+              ],
+              evalNow);
           expect(action.instancesToSpawn, hasLength(1));
           expect(
             action.instancesToSpawn.first.scheduledDate,
@@ -1325,10 +1321,13 @@ void main() {
             updatedAt: DateTime(2026, 6, 20, 10, 0),
           );
 
-          final action = const SchedulerEngine().evaluate(task, [
-            olderCompletedInstance,
-            newerSkippedInstance,
-          ], evalNow);
+          final action = const SchedulerEngine().evaluate(
+              task,
+              [
+                olderCompletedInstance,
+                newerSkippedInstance,
+              ],
+              evalNow);
           expect(action.instancesToSpawn, hasLength(1));
           expect(
             action.instancesToSpawn.first.scheduledDate,
@@ -1364,9 +1363,12 @@ void main() {
           status: TaskStatus.completed,
         );
 
-        final action = const SchedulerEngine().evaluate(task, [
-          resolvedMay1,
-        ], now);
+        final action = const SchedulerEngine().evaluate(
+            task,
+            [
+              resolvedMay1,
+            ],
+            now);
 
         // MonthlySchedule default lookahead is 3 future occurrences: July 1, Sept 1, Nov 1
         expect(action.instancesToSpawn, hasLength(3));
@@ -1601,15 +1603,17 @@ void main() {
           // Evaluation:
           // We have a completed future instance on Tuesday.
           // Under new rules, Daily task pre-creates 10 pending future instances.
-          final action = const SchedulerEngine().evaluate(task, [
-            completedTomorrow,
-          ], now);
+          final action = const SchedulerEngine().evaluate(
+              task,
+              [
+                completedTomorrow,
+              ],
+              now);
 
           // Tuesday is completed (resolved), so it shouldn't count.
           // It should spawn 10 pending future instances starting from Wednesday.
-          final spawnedDates = action.instancesToSpawn
-              .map((i) => i.scheduledDate)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((i) => i.scheduledDate).toList();
           expect(
             spawnedDates,
             containsAll(List.generate(10, (i) => today.addDays(i + 2))),
@@ -1672,10 +1676,13 @@ void main() {
           );
 
           // Run evaluate
-          final action = const SchedulerEngine().evaluate(task, [
-            satInstance,
-            sunInstance,
-          ], now);
+          final action = const SchedulerEngine().evaluate(
+              task,
+              [
+                satInstance,
+                sunInstance,
+              ],
+              now);
 
           // The resolved Sunday instance (status: completed) must not be updated or reverted to pending/skipped
           final updatedCompletedInst = action.instancesToUpdate.any(
@@ -2216,8 +2223,8 @@ void main() {
                 interval: 1,
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
-                      gracePeriod: Duration.zero,
-                    ),
+                  gracePeriod: Duration.zero,
+                ),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
                   hour: 9,
@@ -2246,9 +2253,12 @@ void main() {
 
           final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
 
-          final action = const SchedulerEngine().evaluate(task, [
-            mondayInst,
-          ], tuesdayDateTime);
+          final action = const SchedulerEngine().evaluate(
+              task,
+              [
+                mondayInst,
+              ],
+              tuesdayDateTime);
 
           expect(action.instancesToUpdate, hasLength(1));
           expect(action.instancesToUpdate.first.id, 'monday');
@@ -2274,8 +2284,8 @@ void main() {
                 date: monday,
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
-                      gracePeriod: Duration.zero,
-                    ),
+                  gracePeriod: Duration.zero,
+                ),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
                   hour: 9,
@@ -2292,8 +2302,8 @@ void main() {
                 interval: 1,
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
-                      gracePeriod: Duration.zero,
-                    ),
+                  gracePeriod: Duration.zero,
+                ),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
                   hour: 9,
@@ -2334,10 +2344,13 @@ void main() {
 
           final tuesdayDateTime = DateTime(2026, 5, 26, 10, 0);
 
-          final action = const SchedulerEngine().evaluate(mixedTask, [
-            mondayOneOffInst,
-            mondayDailyInst,
-          ], tuesdayDateTime);
+          final action = const SchedulerEngine().evaluate(
+              mixedTask,
+              [
+                mondayOneOffInst,
+                mondayDailyInst,
+              ],
+              tuesdayDateTime);
 
           expect(action.instancesToUpdate, hasLength(2));
           final updatedOneOff = action.instancesToUpdate.firstWhere(
@@ -2373,8 +2386,8 @@ void main() {
                 interval: 1,
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
-                      gracePeriod: Duration.zero,
-                    ),
+                  gracePeriod: Duration.zero,
+                ),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
                   hour: 5,
@@ -2391,8 +2404,8 @@ void main() {
                 interval: 1,
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
-                      gracePeriod: Duration.zero,
-                    ),
+                  gracePeriod: Duration.zero,
+                ),
                 startRelativeTime: const RelativeTime(
                   dayOffset: 0,
                   hour: 20,
@@ -2434,10 +2447,13 @@ void main() {
           // Move to Thursday June 18th 10:00 PM (past sched0 due, before sched1 due)
           final thurs10pm = DateTime(2026, 6, 18, 22, 0);
 
-          var action = const SchedulerEngine().evaluate(task, [
-            sched0Inst,
-            sched1Inst,
-          ], thurs10pm);
+          var action = const SchedulerEngine().evaluate(
+              task,
+              [
+                sched0Inst,
+                sched1Inst,
+              ],
+              thurs10pm);
 
           expect(action.instancesToUpdate, hasLength(1));
           expect(action.instancesToUpdate.first.ruleId, task.schedules[0].id);
@@ -2447,10 +2463,13 @@ void main() {
           final fri1205am = DateTime(2026, 6, 19, 0, 5);
           // Sched1 inst should still be pending, and Friday's instance should spawn.
 
-          action = const SchedulerEngine().evaluate(task, [
-            sched0Inst.copyWith(status: TaskStatus.skipped),
-            sched1Inst,
-          ], fri1205am);
+          action = const SchedulerEngine().evaluate(
+              task,
+              [
+                sched0Inst.copyWith(status: TaskStatus.skipped),
+                sched1Inst,
+              ],
+              fri1205am);
 
           expect(action.instancesToUpdate, isEmpty);
           expect(
@@ -2464,10 +2483,13 @@ void main() {
           // Move to Friday June 19th 2:05 AM (AFTER due time 2:00 AM)
           final fri205am = DateTime(2026, 6, 19, 2, 5);
 
-          action = const SchedulerEngine().evaluate(task, [
-            sched0Inst.copyWith(status: TaskStatus.skipped),
-            sched1Inst,
-          ], fri205am);
+          action = const SchedulerEngine().evaluate(
+              task,
+              [
+                sched0Inst.copyWith(status: TaskStatus.skipped),
+                sched1Inst,
+              ],
+              fri205am);
 
           expect(action.instancesToUpdate, hasLength(1));
           expect(action.instancesToUpdate.first.ruleId, task.schedules[1].id);
@@ -2499,8 +2521,8 @@ void main() {
                 ),
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
-                      gracePeriod: Duration(hours: 3),
-                    ),
+                  gracePeriod: Duration(hours: 3),
+                ),
               ),
             ],
           );
@@ -2520,17 +2542,23 @@ void main() {
           // Move time to 6:00 PM (past due time of 5:00 PM, but within 3-hour grace period)
           final withinGrace = DateTime(2026, 5, 25, 18, 0);
 
-          var action = const SchedulerEngine().evaluate(task, [
-            mondayInst,
-          ], withinGrace);
+          var action = const SchedulerEngine().evaluate(
+              task,
+              [
+                mondayInst,
+              ],
+              withinGrace);
           expect(action.instancesToUpdate, isEmpty);
 
           // Move time to 8:05 PM (past 3-hour grace period)
           final pastGrace = DateTime(2026, 5, 25, 20, 5);
 
-          action = const SchedulerEngine().evaluate(task, [
-            mondayInst,
-          ], pastGrace);
+          action = const SchedulerEngine().evaluate(
+              task,
+              [
+                mondayInst,
+              ],
+              pastGrace);
           expect(action.instancesToUpdate, hasLength(1));
           expect(action.instancesToUpdate.first.status, TaskStatus.skipped);
         },
@@ -2576,9 +2604,8 @@ void main() {
 
           expect(action.instancesToSpawn.length, 13);
 
-          final spawnedDates = action.instancesToSpawn
-              .map((i) => i.scheduledDate.day)
-              .toSet();
+          final spawnedDates =
+              action.instancesToSpawn.map((i) => i.scheduledDate.day).toSet();
           expect(spawnedDates.containsAll([25, 26, 27]), isTrue);
 
           expect(
@@ -2910,8 +2937,8 @@ void main() {
                 ),
                 missedOccurrencePolicy:
                     const MissedOccurrencePolicy.autoDismiss(
-                      gracePeriod: Duration.zero,
-                    ),
+                  gracePeriod: Duration.zero,
+                ),
               ),
             ],
           );
@@ -2936,9 +2963,12 @@ void main() {
             status: TaskStatus.pending,
           );
 
-          final action = const SchedulerEngine().evaluate(task, [
-            yesterdayInst,
-          ], now);
+          final action = const SchedulerEngine().evaluate(
+              task,
+              [
+                yesterdayInst,
+              ],
+              now);
 
           // yesterdayInst is auto-dismissed (skipped)
           expect(
@@ -3021,11 +3051,11 @@ void main() {
           expect(action.instancesToSpawn.first.status, TaskStatus.pending);
           expect(action.triggerTimes, isNotEmpty);
           final expectedStart = tomorrow.toDateTime().add(
-            const Duration(hours: 10),
-          );
+                const Duration(hours: 10),
+              );
           final expectedDue = tomorrow.toDateTime().add(
-            const Duration(hours: 18),
-          );
+                const Duration(hours: 18),
+              );
           expect(
             action.triggerTimes,
             containsAll([expectedStart, expectedDue]),
@@ -3090,10 +3120,13 @@ void main() {
             updatedAt: now,
           );
 
-          final action = const SchedulerEngine().evaluate(task, [
-            completedInstance,
-            pendingInstance,
-          ], now);
+          final action = const SchedulerEngine().evaluate(
+              task,
+              [
+                completedInstance,
+                pendingInstance,
+              ],
+              now);
 
           expect(action.instancesToDelete, contains('inst-pending-1'));
           expect(action.instancesToDelete, isNot(contains('inst-completed-1')));
@@ -3158,10 +3191,13 @@ void main() {
             updatedAt: now.subtract(const Duration(hours: 1)),
           );
 
-          final action = const SchedulerEngine().evaluate(task, [
-            olderPending,
-            newerPending,
-          ], now);
+          final action = const SchedulerEngine().evaluate(
+              task,
+              [
+                olderPending,
+                newerPending,
+              ],
+              now);
 
           expect(action.instancesToDelete, contains('inst-older-pending'));
           expect(
@@ -3664,9 +3700,8 @@ void main() {
 
           // Sept 18 MUST be spawned as pending – it is the oldest unresolved occurrence.
           // Before the fix, initialBaseDate was jumped to today (Sept 19), silently skipping Sept 18.
-          final spawnedDates = action.instancesToSpawn
-              .map((x) => x.scheduledDate)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((x) => x.scheduledDate).toList();
           expect(
             spawnedDates.contains(sept18),
             isTrue,
@@ -3745,9 +3780,8 @@ void main() {
 
           // Day 2 occurrence must be spawned as pending. Its 9:00 AM start has NOT arrived at 12:01 AM,
           // so it must NOT be evaluated as "started" and must NOT be skipped.
-          final spawnedDates = action.instancesToSpawn
-              .map((x) => x.scheduledDate)
-              .toList();
+          final spawnedDates =
+              action.instancesToSpawn.map((x) => x.scheduledDate).toList();
           expect(
             spawnedDates.contains(day2),
             isTrue,

@@ -14,6 +14,10 @@ void main() {
       final dt = DateTime(2026, 8, 30, 15, 30);
       final fromDt = CivilDay.fromDateTime(dt);
       expect(fromDt, equals(day));
+      expect(fromDt.hashCode, equals(day.hashCode));
+
+      final midnight = day.toDateTime();
+      expect(midnight, equals(DateTime(2026, 8, 30, 0, 0)));
     });
 
     test('parses and validates YYYY-MM-DD', () {

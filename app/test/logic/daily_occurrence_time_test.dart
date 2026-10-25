@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 
 void main() {
@@ -74,6 +75,20 @@ void main() {
         slot.toString(),
         contains('start: 13:05, due: 14:20, notification: 12:50'),
       );
+    });
+
+    test('CompletionRelativePolicyFlutterExtension exposes targetTime', () {
+      const policy = CompletionRelativePolicy(
+        interval: Duration(days: 7),
+        targetHour: 9,
+        targetMinute: 30,
+      );
+      expect(policy.targetTime, const TimeOfDay(hour: 9, minute: 30));
+    });
+
+    test('RelativeTimeFlutterExtension exposes TimeOfDay', () {
+      const rt = RelativeTime(dayOffset: 0, hour: 11, minute: 30);
+      expect(rt.time, const TimeOfDay(hour: 11, minute: 30));
     });
   });
 }

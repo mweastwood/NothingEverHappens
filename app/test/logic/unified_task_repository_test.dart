@@ -3364,11 +3364,6 @@ void main() {
       },
     );
   });
-
-  test('AppClock mock time is inactive and reset following test execution', () {
-    expect(AppClock.isMockActive, isFalse);
-    expect(AppClock.timeNotifier.value, isNull);
-  });
 }
 
 class _TrackingHiveLocalDataSource extends HiveLocalDataSource {

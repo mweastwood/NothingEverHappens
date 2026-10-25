@@ -53,6 +53,13 @@ void main() {
       expect(dt.day, equals(31));
       expect(dt.hour, equals(10));
       expect(dt.minute, equals(0));
+
+      const prevDayRt = RelativeTime(dayOffset: -1, hour: 23, minute: 59);
+      expect(prevDayRt.referenceTo(reference),
+          equals(DateTime(2026, 8, 29, 23, 59)));
+
+      const oct31 = CivilDay(year: 2023, month: 10, day: 31);
+      expect(rt.referenceTo(oct31), equals(DateTime(2023, 11, 1, 10, 0)));
     });
   });
 }
