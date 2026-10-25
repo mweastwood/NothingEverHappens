@@ -8,7 +8,6 @@ import 'package:nothing_ever_happens/logic/task_instance.dart';
 import 'package:nothing_ever_happens/logic/task_repository.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/civil_day.dart';
-import 'package:nothing_ever_happens/logic/relative_time.dart';
 import 'package:nothing_ever_happens/logic/scheduler_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nothing_ever_happens/logic/initial_firebase_migration_service.dart';
@@ -18,6 +17,8 @@ import 'package:nothing_ever_happens/logic/firestore_paths.dart';
 import 'package:nothing_ever_happens/logic/notification_service.dart';
 import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
+import 'package:nothing_ever_happens/logic/missed_policy_runner.dart';
+import 'package:nothing_ever_happens/logic/task_schedule_reconciler.dart';
 import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 
 class UnifiedTaskRepository implements TaskRepository {
@@ -26,6 +27,8 @@ class UnifiedTaskRepository implements TaskRepository {
   final FirebaseFirestore? _rawFirestore;
   final TelemetryService? _telemetryService;
   final FamilyIdFetcher _familyIdFetcher;
+  final TaskScheduleReconciler _scheduleReconciler;
+  late final MissedPolicyRunner _missedPolicyRunner;
   final CloudFamilySchedulerClient? cloudFamilySchedulerClient;
 
   @override
@@ -34,17 +37,11 @@ class UnifiedTaskRepository implements TaskRepository {
   final ErrorHandler? errorHandler;
   final AppLogger? logger;
 
-  Future<void>? _activeProcessingFuture;
-  bool _hasQueuedProcessing = false;
-  bool _queuedEvaluateFamilyTasks = false;
-  final List<Future<void> Function()> _queuedPostProcessCallbacks = [];
   Future<void>? _initializationFuture;
-  Timer? _triggerTimer;
-  DateTime? _scheduledTriggerTime;
-  bool _isDisposed = false;
 
   @visibleForTesting
-  DateTime? get scheduledTriggerTime => _scheduledTriggerTime;
+  DateTime? get scheduledTriggerTime =>
+      _missedPolicyRunner.scheduledTriggerTime;
 
   /// Completes when the initial migration and repository setup finishes.
   Future<void> get initializationFuture =>
@@ -65,6 +62,10 @@ class UnifiedTaskRepository implements TaskRepository {
        _syncService = syncService,
        _rawFirestore = firestore,
        _telemetryService = telemetryService,
+       _scheduleReconciler = TaskScheduleReconciler(
+         localDataSource: localDataSource,
+         userId: userId,
+       ),
        _familyIdFetcher =
            familyIdFetcher ??
            FamilyIdFetcher(
@@ -72,15 +73,22 @@ class UnifiedTaskRepository implements TaskRepository {
              userId: userId,
              errorHandler: errorHandler,
            ) {
+    _missedPolicyRunner = MissedPolicyRunner(
+      localDataSource: _localDataSource,
+      syncService: _syncService,
+      userId: userId,
+      getFamilyId: getFamilyId,
+      rescheduleTaskNotifications: _rescheduleOrCancelNotificationsForTask,
+      cloudFamilySchedulerClient: cloudFamilySchedulerClient,
+      errorHandler: errorHandler,
+      logger: logger,
+    );
     _initMigration();
   }
 
   @override
   void dispose() {
-    _isDisposed = true;
-    _triggerTimer?.cancel();
-    _triggerTimer = null;
-    _scheduledTriggerTime = null;
+    _missedPolicyRunner.dispose();
   }
 
   @override
@@ -199,250 +207,17 @@ class UnifiedTaskRepository implements TaskRepository {
       data: {'taskId': t.id, 'title': t.title},
     );
 
-    final allTaskInstances = _localDataSource
-        .getInstances()
-        .where((i) => i.scheduleId == t.id)
-        .toList();
-    final instances =
-        allTaskInstances.where((i) => i.status == TaskStatus.pending).toList()
-          ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-
-    if (schedulesChanged) {
-      final preservedCompletionRelativeRules = <String>{};
-      for (final inst in instances) {
-        final newRule = t.schedules
-            .where((s) => s.id == inst.ruleId)
-            .firstOrNull;
-        final oldRule = oldTask?.schedules
-            .where((s) => s.id == inst.ruleId)
-            .firstOrNull;
-
-        final alreadyPreservedCompletionRelative =
-            newRule != null &&
-            newRule.schedulingPolicy is CompletionRelativePolicy &&
-            !preservedCompletionRelativeRules.add(newRule.id);
-
-        if (newRule != null &&
-            !alreadyPreservedCompletionRelative &&
-            _shouldPreservePendingInstanceOnScheduleEdit(
-              inst: inst,
-              newTask: t,
-              oldRule: oldRule,
-              newRule: newRule,
-              changes: changes,
-            )) {
-          CivilDay? updatedScheduledDate;
-          if (newRule.schedulingPolicy is CompletionRelativePolicy) {
-            final resolvedForRule =
-                allTaskInstances
-                    .where(
-                      (i) =>
-                          i.ruleId == newRule.id &&
-                          i.status != TaskStatus.pending,
-                    )
-                    .toList()
-                  ..sort(
-                    (a, b) => (b.completedAt ?? b.updatedAt).compareTo(
-                      a.completedAt ?? a.updatedAt,
-                    ),
-                  );
-            if (resolvedForRule.isNotEmpty) {
-              final latest = resolvedForRule.first;
-              final refTime = (latest.completedAt ?? latest.updatedAt)
-                  .toLocal();
-              updatedScheduledDate = CivilDay.fromDateTime(
-                newRule.nextCompletionRelativeDateTime(refTime),
-              );
-            } else {
-              updatedScheduledDate = newRule.scheduledDate;
-            }
-          }
-          final updatedInst = _buildUpdatedPendingInstance(
-            inst: inst,
-            task: t,
-            rule: newRule,
-            newScheduledDate: updatedScheduledDate,
-          );
-          await _localDataSource.saveInstance(updatedInst);
-          await _localDataSource.markDirty(updatedInst.id);
-        } else {
-          await _localDataSource.deleteInstance(inst.id);
-          await _localDataSource.markDirty(inst.id);
-        }
-      }
-    } else {
-      for (final inst in instances) {
-        final rule = t.schedules.where((s) => s.id == inst.ruleId).firstOrNull;
-        final updatedInst = _buildUpdatedPendingInstance(
-          inst: inst,
-          task: t,
-          rule: rule,
-        );
-        await _localDataSource.saveInstance(updatedInst);
-        await _localDataSource.markDirty(updatedInst.id);
-      }
-    }
-
-    final nonPendingScopeMismatches = allTaskInstances.where(
-      (i) =>
-          i.status != TaskStatus.pending &&
-          (i.isFamily != t.isFamily ||
-              i.familyCompletionMode != t.familyCompletionMode),
+    await _scheduleReconciler.reconcileInstancesOnUpdate(
+      oldTask: oldTask,
+      updatedTask: t,
+      changes: changes,
     );
-    for (final inst in nonPendingScopeMismatches) {
-      final updatedInst = inst.copyWith(
-        isFamily: t.isFamily,
-        familyCompletionMode: t.familyCompletionMode,
-        lastModifiedByUserId: userId,
-        lastModifiedByAppVersion: AppVersion.display,
-        lastModifiedByPlatform: AppVersion.platform,
-        hasPendingWrites: true,
-        updatedAt: DateTime.now().toUtc(),
-      );
-      await _localDataSource.saveInstance(updatedInst);
-      await _localDataSource.markDirty(updatedInst.id);
-    }
 
     await triggerMissedPolicyProcessing(
       evaluateFamilyTasks: t.isFamily || changes.containsKey('isFamily'),
     );
     await _rescheduleOrCancelNotificationsForTask(t);
     _syncService.sync();
-  }
-
-  bool _shouldPreservePendingInstanceOnScheduleEdit({
-    required TaskInstance inst,
-    required TaskSchedule newTask,
-    required TaskScheduleRule? oldRule,
-    required TaskScheduleRule newRule,
-    required Map<String, dynamic> changes,
-  }) {
-    if (newRule.schedulingPolicy is CompletionRelativePolicy) {
-      return true;
-    }
-    if (oldRule != null &&
-        oldRule.toJson().toString() == newRule.toJson().toString()) {
-      return true;
-    }
-    final isDateStillValid =
-        !inst.scheduledDate.isBefore(newRule.scheduledDate) &&
-        newRule.occursOn(inst.scheduledDate);
-    if (!isDateStillValid) {
-      return false;
-    }
-    if (oldRule != null && _onlyRuleTimingsChanged(oldRule, newRule)) {
-      return true;
-    }
-    if (newTask.isFamily && !changes.containsKey('isFamily')) {
-      return true;
-    }
-    final hasActiveWorkflowProgress =
-        inst.workflowPayload != null &&
-        inst.workflowPayload!.stage != WorkflowStage.selectMeal;
-    if (hasActiveWorkflowProgress || inst.completedByUserIds.isNotEmpty) {
-      return true;
-    }
-    return false;
-  }
-
-  bool _onlyRuleTimingsChanged(
-    TaskScheduleRule oldRule,
-    TaskScheduleRule newRule,
-  ) {
-    final oldJson = Map<String, dynamic>.from(oldRule.toJson())
-      ..remove('startRelativeTime')
-      ..remove('dueRelativeTime')
-      ..remove('notificationRelativeTimes');
-    final newJson = Map<String, dynamic>.from(newRule.toJson())
-      ..remove('startRelativeTime')
-      ..remove('dueRelativeTime')
-      ..remove('notificationRelativeTimes');
-    return oldJson.toString() == newJson.toString();
-  }
-
-  TaskInstance _buildUpdatedPendingInstance({
-    required TaskInstance inst,
-    required TaskSchedule task,
-    TaskScheduleRule? rule,
-    CivilDay? newScheduledDate,
-  }) {
-    final effectiveDate = newScheduledDate ?? inst.scheduledDate;
-    final hasStageSpecificText =
-        inst.workflowPayload != null &&
-        inst.workflowPayload!.stage != WorkflowStage.selectMeal;
-
-    var startRel = inst.startRelativeTime;
-    var dueRel = inst.dueRelativeTime;
-    var notifRel = inst.notificationRelativeTimes;
-
-    if (rule != null) {
-      if (rule.schedulingPolicy is CompletionRelativePolicy) {
-        final policy = rule.schedulingPolicy as CompletionRelativePolicy;
-        startRel = RelativeTime(
-          dayOffset: 0,
-          hour: policy.targetHour,
-          minute: policy.targetMinute,
-        );
-        dueRel = SchedulerEngine.shiftRelativeToStart(
-          rule.dueRelativeTime,
-          rule,
-          policy,
-          effectiveDate,
-        );
-        notifRel = rule.notificationRelativeTimes
-            .map(
-              (n) => SchedulerEngine.shiftRelativeToStart(
-                n,
-                rule,
-                policy,
-                effectiveDate,
-              ),
-            )
-            .toList();
-      } else {
-        startRel = rule.startRelativeTime;
-        dueRel = rule.dueRelativeTime;
-        notifRel = rule.notificationRelativeTimes;
-      }
-    }
-
-    if (task.workflowType == 'mealWorkflow') {
-      final cfg = task.mealWorkflowConfig ?? const MealWorkflowConfig();
-      final stage = inst.workflowPayload?.stage ?? WorkflowStage.selectMeal;
-      switch (stage) {
-        case WorkflowStage.shoppingList:
-          startRel = cfg.shopTime;
-          dueRel = cfg.shopTime;
-          break;
-        case WorkflowStage.prepDinner:
-          startRel = cfg.prepTime;
-          dueRel = cfg.prepTime;
-          break;
-        case WorkflowStage.selectMeal:
-          startRel = cfg.selectTime;
-          dueRel = cfg.selectTime;
-          break;
-      }
-    }
-
-    return inst.copyWith(
-      title: hasStageSpecificText ? inst.title : task.title,
-      description: hasStageSpecificText ? inst.description : task.description,
-      scheduledDate: effectiveDate,
-      startRelativeTime: startRel,
-      dueRelativeTime: dueRel,
-      notificationRelativeTimes: notifRel,
-      priority: task.priority,
-      isFamily: task.isFamily,
-      familyCompletionMode: task.familyCompletionMode,
-      labelIds: task.labelIds,
-      cycleId: task.cycleId,
-      clearCycleId: task.cycleId == null,
-      assignedUserId: task.assignedUserId,
-      clearAssignedUserId: task.assignedUserId == null,
-      hasPendingWrites: true,
-      updatedAt: DateTime.now().toUtc(),
-    );
   }
 
   @override
@@ -930,375 +705,8 @@ class UnifiedTaskRepository implements TaskRepository {
   Future<void> triggerMissedPolicyProcessing({
     bool evaluateFamilyTasks = true,
     Future<void> Function()? postProcess,
-  }) async {
-    if (_isDisposed) return;
-    if (!_localDataSource.isMigrationCompleted()) {
-      if (postProcess != null) {
-        await postProcess();
-      }
-      return;
-    }
-    if (postProcess != null) {
-      _queuedPostProcessCallbacks.add(postProcess);
-    }
-    if (evaluateFamilyTasks) {
-      _queuedEvaluateFamilyTasks = true;
-    }
-    while (true) {
-      if (_isDisposed) return;
-      final active = _activeProcessingFuture;
-      if (active != null) {
-        _hasQueuedProcessing = true;
-        await active;
-        if (_isDisposed ||
-            (!_hasQueuedProcessing && _queuedPostProcessCallbacks.isEmpty)) {
-          return;
-        }
-        continue;
-      }
-
-      _activeProcessingFuture = _processQueue();
-      await _activeProcessingFuture;
-      if (_isDisposed ||
-          (!_hasQueuedProcessing && _queuedPostProcessCallbacks.isEmpty)) {
-        return;
-      }
-    }
-  }
-
-  Future<void> _processQueue() async {
-    try {
-      do {
-        if (_isDisposed) return;
-        _hasQueuedProcessing = false;
-        final shouldEvaluateFamily = _queuedEvaluateFamilyTasks;
-        _queuedEvaluateFamilyTasks = false;
-
-        final callbacksToRun = List<Future<void> Function()>.from(
-          _queuedPostProcessCallbacks,
-        );
-        _queuedPostProcessCallbacks.clear();
-
-        try {
-          await _syncService.waitForInitialSync;
-          if (_isDisposed) return;
-          if (shouldEvaluateFamily) {
-            final familyId = await getFamilyId();
-            if (_isDisposed) return;
-            if (familyId != null && familyId.isNotEmpty) {
-              unawaited(
-                cloudFamilySchedulerClient?.triggerFamilyScheduleProcessing(
-                  familyId: familyId,
-                ),
-              );
-            }
-          }
-          await _doProcessMissedPolicies(
-            evaluateFamilyTasks: shouldEvaluateFamily,
-          );
-        } catch (e, st) {
-          errorHandler?.report(e, stackTrace: st);
-          logger?.error(
-            'task',
-            'Error in auto-processing missed policies loop',
-            error: e,
-            stackTrace: st,
-          );
-        }
-
-        for (final cb in callbacksToRun) {
-          if (_isDisposed) return;
-          try {
-            await cb();
-          } catch (e, st) {
-            errorHandler?.report(e, stackTrace: st);
-            logger?.error(
-              'task',
-              'Error in postProcess callback',
-              error: e,
-              stackTrace: st,
-            );
-          }
-        }
-      } while (!_isDisposed &&
-          (_hasQueuedProcessing || _queuedPostProcessCallbacks.isNotEmpty));
-    } finally {
-      _activeProcessingFuture = null;
-    }
-  }
-
-  Future<void> _doProcessMissedPolicies({
-    bool evaluateFamilyTasks = true,
-  }) async {
-    final now = AppClock.now;
-    final tasks = _localDataSource.getTasks();
-    final allInstances = _localDataSource.getInstances();
-    final userSettings = _localDataSource.getSettings();
-
-    final Map<CivilDay, double> dayPlannedHours = {};
-    for (final inst in allInstances) {
-      if (inst.status != TaskStatus.skipped &&
-          inst.status != TaskStatus.failed) {
-        final t = tasks.where((ts) => ts.id == inst.scheduleId).firstOrNull;
-        if (t != null && t.estimatedDuration != null) {
-          // Pre-count family instances (which are skipped in the local evaluation loop)
-          // and already-resolved (completed / in-progress) personal instances.
-          // Pending personal instances are added after each task is evaluated below.
-          if (t.isFamily || inst.status != TaskStatus.pending) {
-            final hours = t.estimatedDuration!.inMinutes / 60.0;
-            dayPlannedHours[inst.scheduledDate] =
-                (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-          }
-        }
-      }
-    }
-
-    final Map<String, DateTime> lastCompletionCache = {};
-    DateTime getLastCompletionTime(TaskSchedule task) {
-      return lastCompletionCache.putIfAbsent(task.id, () {
-        final completed = allInstances
-            .where(
-              (inst) =>
-                  inst.scheduleId == task.id &&
-                  inst.status == TaskStatus.completed,
-            )
-            .toList();
-        if (completed.isEmpty) {
-          return DateTime.fromMillisecondsSinceEpoch(0);
-        }
-        return completed
-            .map(
-              (inst) =>
-                  inst.completedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
-            )
-            .reduce((a, b) => a.isAfter(b) ? a : b);
-      });
-    }
-
-    final tasksToEvaluate = List<TaskSchedule>.from(tasks);
-    tasksToEvaluate.sort((a, b) {
-      if (a.skipIfNoCapacity != b.skipIfNoCapacity) {
-        return a.skipIfNoCapacity ? 1 : -1;
-      }
-
-      final pCompare = b.priority.index.compareTo(a.priority.index);
-      if (pCompare != 0) return pCompare;
-
-      if (a.skipIfNoCapacity && b.skipIfNoCapacity) {
-        final aTime = getLastCompletionTime(a);
-        final bTime = getLastCompletionTime(b);
-        final timeCompare = aTime.compareTo(bTime);
-        if (timeCompare != 0) return timeCompare;
-      }
-
-      return a.id.compareTo(b.id);
-    });
-
-    bool hasChanges = false;
-
-    final Map<String, List<TaskInstance>> instancesByScheduleId = {};
-    for (final inst in allInstances) {
-      instancesByScheduleId.putIfAbsent(inst.scheduleId, () => []).add(inst);
-    }
-
-    final instancesToSave = <TaskInstance>[];
-    final instancesToDelete = <String>[];
-    final tasksToSave = <TaskSchedule>[];
-    final dirtyIds = <String>[];
-    final allTriggerTimes = <DateTime>[];
-    final tasksNeedingNotificationUpdate = <TaskSchedule>[];
-
-    for (final task in tasksToEvaluate) {
-      final taskInstances = instancesByScheduleId[task.id] ?? [];
-
-      if (task.isFamily) {
-        bool familyTaskReconciled = false;
-        for (final inst in taskInstances) {
-          if (inst.isFamily != task.isFamily ||
-              inst.familyCompletionMode != task.familyCompletionMode) {
-            final updatedInst = inst.copyWith(
-              isFamily: task.isFamily,
-              familyCompletionMode: task.familyCompletionMode,
-              lastModifiedByUserId: userId,
-              lastModifiedByAppVersion: AppVersion.display,
-              lastModifiedByPlatform: AppVersion.platform,
-              updatedAt: DateTime.now().toUtc(),
-              hasPendingWrites: true,
-            );
-            instancesToSave.add(updatedInst);
-            dirtyIds.add(updatedInst.id);
-            familyTaskReconciled = true;
-
-            final idx = allInstances.indexWhere((x) => x.id == inst.id);
-            if (idx >= 0) {
-              allInstances[idx] = updatedInst;
-            }
-          }
-        }
-        if (familyTaskReconciled) {
-          tasksNeedingNotificationUpdate.add(task);
-        }
-        // Shared family tasks are evaluated exclusively by the Cloud Family Scheduler.
-        continue;
-      }
-
-      final action =
-          SchedulerEngine(
-            logger: logger,
-            appVersion: AppVersion.display,
-            platform: AppVersion.platform,
-          ).evaluate(
-            task,
-            taskInstances,
-            now,
-            userSettings: userSettings,
-            dayPlannedHours: dayPlannedHours,
-            applyCapacityLimits:
-                task.assignedUserId == null || task.assignedUserId == userId,
-            userId: userId,
-          );
-
-      allTriggerTimes.addAll(action.triggerTimes);
-
-      for (final inst in action.instancesToUpdate) {
-        final updatedInst = inst.copyWith(
-          updatedAt: DateTime.now().toUtc(),
-          hasPendingWrites: true,
-        );
-        instancesToSave.add(updatedInst);
-        dirtyIds.add(updatedInst.id);
-
-        final idx = allInstances.indexWhere((x) => x.id == inst.id);
-        if (idx >= 0) {
-          allInstances[idx] = updatedInst;
-        }
-      }
-
-      for (final inst in action.instancesToSpawn) {
-        final newInst = inst.copyWith(
-          updatedAt: DateTime.now().toUtc(),
-          hasPendingWrites: true,
-        );
-        instancesToSave.add(newInst);
-        dirtyIds.add(newInst.id);
-
-        allInstances.add(newInst);
-      }
-
-      for (final instId in action.instancesToDelete) {
-        instancesToDelete.add(instId);
-        dirtyIds.add(instId);
-        allInstances.removeWhere((x) => x.id == instId);
-      }
-
-      final activeInstances = allInstances.where(
-        (i) => i.scheduleId == task.id && i.status == TaskStatus.pending,
-      );
-      for (final inst in activeInstances) {
-        if (task.estimatedDuration != null) {
-          final hours = task.estimatedDuration!.inMinutes / 60.0;
-          dayPlannedHours[inst.scheduledDate] =
-              (dayPlannedHours[inst.scheduledDate] ?? 0.0) + hours;
-        }
-      }
-
-      TaskSchedule effectiveTask = task;
-      if (action.updatedSchedule != null) {
-        final updatedTask = action.updatedSchedule!.copyWith(
-          updatedAt: DateTime.now().toUtc(),
-          hasPendingWrites: true,
-        );
-        tasksToSave.add(updatedTask);
-        dirtyIds.add(updatedTask.id);
-        effectiveTask = updatedTask;
-      }
-
-      if (action.instancesToUpdate.isNotEmpty ||
-          action.instancesToSpawn.isNotEmpty ||
-          action.instancesToDelete.isNotEmpty) {
-        tasksNeedingNotificationUpdate.add(effectiveTask);
-      }
-    }
-
-    // Sweep: delete pending instances whose schedule no longer exists.
-    final taskIds = tasks.map((t) => t.id).toSet();
-    for (final inst in List<TaskInstance>.from(allInstances)) {
-      if (inst.isFamily) {
-        // Shared family instances are maintained exclusively by the Cloud Family Scheduler.
-        continue;
-      }
-      if (inst.status == TaskStatus.pending &&
-          !taskIds.contains(inst.scheduleId)) {
-        instancesToDelete.add(inst.id);
-        dirtyIds.add(inst.id);
-        allInstances.remove(inst);
-      }
-    }
-
-    if (instancesToSave.isNotEmpty) {
-      await _localDataSource.saveInstances(instancesToSave);
-      hasChanges = true;
-    }
-
-    if (instancesToDelete.isNotEmpty) {
-      await _localDataSource.deleteInstances(instancesToDelete);
-      hasChanges = true;
-    }
-
-    if (tasksToSave.isNotEmpty) {
-      await _localDataSource.saveTasks(tasksToSave);
-      hasChanges = true;
-    }
-
-    if (dirtyIds.isNotEmpty) {
-      await _localDataSource.markDirtyBatch(dirtyIds);
-    }
-
-    for (final affectedTask in tasksNeedingNotificationUpdate) {
-      if (_isDisposed) return;
-      await _rescheduleOrCancelNotificationsForTask(affectedTask);
-    }
-
-    logger?.debug(
-      'scheduler',
-      'Scheduler cycle evaluated ${tasksToEvaluate.length} tasks',
-      data: {'taskCount': tasksToEvaluate.length, 'hasChanges': hasChanges},
-    );
-
-    if (hasChanges) {
-      _syncService.sync();
-    }
-
-    if (_isDisposed) return;
-    _scheduleNextDynamicTrigger(allTriggerTimes, now);
-  }
-
-  void _scheduleNextDynamicTrigger(List<DateTime> triggerTimes, DateTime now) {
-    if (_isDisposed) return;
-
-    DateTime? earliest;
-    for (final t in triggerTimes) {
-      if (t.isAfter(now)) {
-        if (earliest == null || t.isBefore(earliest)) {
-          earliest = t;
-        }
-      }
-    }
-
-    if (earliest == null) {
-      _triggerTimer?.cancel();
-      _triggerTimer = null;
-      _scheduledTriggerTime = null;
-      return;
-    }
-
-    _triggerTimer?.cancel();
-    _scheduledTriggerTime = earliest;
-    final delay = earliest.difference(now);
-    _triggerTimer = Timer(delay, () {
-      if (_isDisposed) return;
-      _scheduledTriggerTime = null;
-      triggerMissedPolicyProcessing(evaluateFamilyTasks: false);
-    });
-  }
+  }) => _missedPolicyRunner.triggerMissedPolicyProcessing(
+    evaluateFamilyTasks: evaluateFamilyTasks,
+    postProcess: postProcess,
+  );
 }

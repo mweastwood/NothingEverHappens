@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart' show listEquals;
 import 'package:nothing_ever_happens/logic/hive_local_data_source.dart';
 import 'package:nothing_ever_happens/logic/task_schedule.dart';
 import 'package:nothing_ever_happens/logic/task_instance.dart';
@@ -13,10 +12,10 @@ import 'package:nothing_ever_happens/logic/error_handler.dart';
 import 'package:nothing_ever_happens/logic/firestore_paths.dart';
 import 'package:nothing_ever_happens/logic/app_clock.dart';
 import 'package:nothing_ever_happens/logic/app_logger.dart';
+import 'package:nothing_ever_happens/logic/remote_snapshot_reconciler.dart';
 import 'package:nothing_ever_happens/logic/utils/app_version.dart';
 import 'package:rxdart/rxdart.dart';
 
-import 'package:nothing_ever_happens/logic/recipes/recipe.dart';
 import 'package:nothing_ever_happens/logic/family.dart';
 
 final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
@@ -57,6 +56,7 @@ class TaskSyncService {
   final ErrorHandler? errorHandler;
   final AppLogger? logger;
   final FamilyIdFetcher _familyIdFetcher;
+  late final RemoteSnapshotReconciler _snapshotReconciler;
 
   StreamSubscription? _tasksSub;
   StreamSubscription? _instancesSub;
@@ -160,6 +160,16 @@ class TaskSyncService {
              userId: userId,
              errorHandler: errorHandler,
            ) {
+    _snapshotReconciler = RemoteSnapshotReconciler(
+      firestore: _firestore,
+      localDataSource: _localDataSource,
+      userId: _userId,
+      getFamilyId: _getFamilyId,
+      isFamilyParent: _isFamilyParent,
+      pushTaskToRemote: _pushTaskToRemote,
+      pushInstanceToRemote: _pushInstanceToRemote,
+      logger: logger,
+    );
     if (_isActivePremium &&
         _userId.isNotEmpty &&
         _localDataSource.isMigrationCompleted()) {
@@ -495,432 +505,26 @@ class TaskSyncService {
   Future<void> _handleRemoteTasksSnapshot(
     QuerySnapshot<Map<String, dynamic>> snapshot, {
     required bool isFamily,
-  }) async {
-    final isCache = snapshot.metadata.isFromCache;
-    final localTasks = _localDataSource.getTasks();
-    final localMap = {for (final t in localTasks) t.id: t};
-
-    final toSave = <TaskSchedule>[];
-    final toDelete = <String>[];
-    final toPush = <TaskSchedule>[];
-
-    for (final change in snapshot.docChanges) {
-      final docId = change.doc.id;
-      if (change.type == DocumentChangeType.removed) {
-        final localTask = localMap[docId];
-        if (localTask == null ||
-            (isFamily ? localTask.isFamily : !localTask.isFamily)) {
-          toDelete.add(docId);
-          localMap.remove(docId);
-        }
-      } else if (change.type == DocumentChangeType.added ||
-          change.type == DocumentChangeType.modified) {
-        if (change.doc.data() != null) {
-          final remoteTask = TaskSchedule.fromFirestore(change.doc);
-          final localTask = localMap[remoteTask.id];
-
-          if (localTask != null) {
-            if (_isStrictlyNewer(localTask.updatedAt, remoteTask.updatedAt)) {
-              toPush.add(localTask);
-            } else {
-              toSave.add(remoteTask);
-              localMap[remoteTask.id] = remoteTask;
-            }
-          } else {
-            toSave.add(remoteTask);
-            localMap[remoteTask.id] = remoteTask;
-          }
-        }
-      }
-    }
-
-    if (!isCache) {
-      for (final localTask in localMap.values) {
-        if ((isFamily ? localTask.isFamily : !localTask.isFamily) &&
-            localTask.isFromCache) {
-          final updated = localTask.copyWith(isFromCache: false);
-          toSave.add(updated);
-          localMap[localTask.id] = updated;
-        }
-      }
-    }
-
-    if (toDelete.isNotEmpty) {
-      await _localDataSource.deleteTasks(toDelete);
-      await _localDataSource.clearDirtyBatch(toDelete);
-    }
-    if (toSave.isNotEmpty) {
-      await _localDataSource.saveTasks(toSave);
-      await _localDataSource.clearDirtyBatch(toSave.map((t) => t.id).toList());
-    }
-
-    final pushedTaskIds = <String>{};
-    for (final task in toPush) {
-      if (!pushedTaskIds.add(task.id)) continue;
-      await _localDataSource.markDirty(task.id);
-      try {
-        final canClearDirty = await _pushTaskToRemote(task);
-        if (canClearDirty) {
-          await _localDataSource.clearDirty(task.id);
-        }
-      } catch (e, st) {
-        // Keep dirty flag so the next sync retries pushing this task.
-        logger?.error(
-          'sync',
-          'Failed to push task ${task.id} to remote',
-          error: e,
-          stackTrace: st,
-        );
-      }
-    }
-  }
+  }) => _snapshotReconciler.handleRemoteTasksSnapshot(
+    snapshot,
+    isFamily: isFamily,
+  );
 
   Future<void> _handleRemoteInstancesSnapshot(
     QuerySnapshot<Map<String, dynamic>> snapshot, {
     required bool isFamily,
-  }) async {
-    final isCache = snapshot.metadata.isFromCache;
-    final localInsts = _localDataSource.getInstances();
-    final localMap = {for (final inst in localInsts) inst.id: inst};
-    final localSlotMap = {
-      for (final inst in localInsts)
-        '${inst.scheduleId}_${inst.ruleId}_${inst.scheduledDate}': inst,
-    };
-
-    final toSave = <TaskInstance>[];
-    final toDelete = <String>[];
-    final toPush = <TaskInstance>[];
-    final remoteIdsToDelete = <String>[];
-    final remoteIdsInSnapshot = {for (final doc in snapshot.docs) doc.id};
-
-    final familyId = await _getFamilyId();
-
-    for (final change in snapshot.docChanges) {
-      final docId = change.doc.id;
-      if (change.type == DocumentChangeType.removed) {
-        final localInst = localMap[docId];
-        if (localInst == null ||
-            (isFamily ? localInst.isFamily : !localInst.isFamily)) {
-          toDelete.add(docId);
-          localMap.remove(docId);
-          toSave.removeWhere((i) => i.id == docId);
-          toPush.removeWhere((i) => i.id == docId);
-          if (localInst != null) {
-            final slotKey =
-                '${localInst.scheduleId}_${localInst.ruleId}_${localInst.scheduledDate}';
-            if (localSlotMap[slotKey]?.id == docId) {
-              localSlotMap.remove(slotKey);
-            }
-          } else {
-            localSlotMap.removeWhere((_, v) => v.id == docId);
-          }
-          logger?.info(
-            'sync',
-            'Remote instance removed: $docId',
-            data: {'instanceId': docId, 'isFamily': isFamily},
-          );
-        }
-      } else if (change.type == DocumentChangeType.added ||
-          change.type == DocumentChangeType.modified) {
-        if (change.doc.data() != null) {
-          final remoteInst = TaskInstance.fromFirestore(change.doc);
-          final localInst = localMap[remoteInst.id];
-
-          final oldStatus = localInst?.status.name;
-          final newStatus = remoteInst.status.name;
-          final statusChanged = localInst != null && oldStatus != newStatus;
-
-          logger?.info(
-            'sync',
-            'Remote instance ${change.type == DocumentChangeType.added ? "added" : "modified"}: "${remoteInst.title}" (${remoteInst.scheduledDate})',
-            data: {
-              'instanceId': remoteInst.id,
-              'scheduleId': remoteInst.scheduleId,
-              'date': remoteInst.scheduledDate.toString(),
-              if (statusChanged) 'statusChange': '$oldStatus -> $newStatus',
-              'status': newStatus,
-              if (remoteInst.statusReason != null)
-                'statusReason': remoteInst.statusReason,
-              if (remoteInst.lastModifiedByUserId != null)
-                'modifiedByUserId': remoteInst.lastModifiedByUserId,
-              if (remoteInst.lastModifiedByAppVersion != null)
-                'modifiedByAppVersion': remoteInst.lastModifiedByAppVersion,
-              if (remoteInst.lastModifiedByPlatform != null)
-                'modifiedByPlatform': remoteInst.lastModifiedByPlatform,
-              'isFamily': isFamily,
-            },
-          );
-
-          if (localInst != null) {
-            if (_doesLocalWin(localInst, remoteInst)) {
-              toPush.add(localInst);
-            } else {
-              toSave.add(remoteInst);
-              localMap[remoteInst.id] = remoteInst;
-              localSlotMap['${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}'] =
-                  remoteInst;
-            }
-          } else {
-            final slotKey =
-                '${remoteInst.scheduleId}_${remoteInst.ruleId}_${remoteInst.scheduledDate}';
-            final localSlotInst = localSlotMap[slotKey];
-            if (localSlotInst != null) {
-              if (_doesSlotCandidateWin(localSlotInst, remoteInst)) {
-                toPush.add(localSlotInst);
-                remoteIdsToDelete.add(remoteInst.id);
-              } else {
-                toDelete.add(localSlotInst.id);
-                if (remoteIdsInSnapshot.contains(localSlotInst.id)) {
-                  remoteIdsToDelete.add(localSlotInst.id);
-                }
-                localMap.remove(localSlotInst.id);
-                toSave.removeWhere((i) => i.id == localSlotInst.id);
-                toPush.removeWhere((i) => i.id == localSlotInst.id);
-                toSave.add(remoteInst);
-                localMap[remoteInst.id] = remoteInst;
-                localSlotMap[slotKey] = remoteInst;
-              }
-            } else {
-              toSave.add(remoteInst);
-              localMap[remoteInst.id] = remoteInst;
-              localSlotMap[slotKey] = remoteInst;
-            }
-          }
-        }
-      }
-    }
-
-    if (!isCache) {
-      for (final localInst in localMap.values) {
-        if ((isFamily ? localInst.isFamily : !localInst.isFamily) &&
-            localInst.isFromCache) {
-          final updated = localInst.copyWith(isFromCache: false);
-          toSave.add(updated);
-          localMap[localInst.id] = updated;
-        }
-      }
-    }
-
-    if (toDelete.isNotEmpty) {
-      await _localDataSource.deleteInstances(toDelete);
-      await _localDataSource.clearDirtyBatch(toDelete);
-    }
-    if (toSave.isNotEmpty) {
-      await _localDataSource.saveInstances(toSave);
-      await _localDataSource.clearDirtyBatch(toSave.map((i) => i.id).toList());
-    }
-
-    final pushedInstIds = <String>{};
-    for (final inst in toPush) {
-      if (!pushedInstIds.add(inst.id)) continue;
-      await _localDataSource.markDirty(inst.id);
-      try {
-        final canClearDirty = await _pushInstanceToRemote(inst);
-        if (canClearDirty) {
-          await _localDataSource.clearDirty(inst.id);
-        }
-      } catch (e, st) {
-        // Keep dirty flag so the next sync retries pushing this instance.
-        logger?.error(
-          'sync',
-          'Failed to push instance ${inst.id} to remote',
-          error: e,
-          stackTrace: st,
-        );
-      }
-    }
-    for (final remId in remoteIdsToDelete) {
-      if (isFamily) {
-        if (familyId != null && familyId.isNotEmpty) {
-          final isParent = await _isFamilyParent();
-          if (isParent) {
-            try {
-              await _firestore
-                  .collection(FirestorePaths.families)
-                  .doc(familyId)
-                  .collection(FirestorePaths.instances)
-                  .doc(remId)
-                  .delete();
-            } catch (e) {
-              logger?.warning(
-                'sync',
-                'Failed to delete remote family duplicate $remId: $e',
-              );
-            }
-          }
-        }
-      } else {
-        await _firestore
-            .collection(FirestorePaths.users)
-            .doc(_userId)
-            .collection(FirestorePaths.instances)
-            .doc(remId)
-            .delete();
-      }
-    }
-  }
-
-  /// Compares timestamps at millisecond resolution to determine if [a] is strictly
-  /// newer than [b], avoiding conflict loops from sub-millisecond precision differences.
-  static bool _isStrictlyNewer(DateTime a, DateTime b) {
-    return a.millisecondsSinceEpoch > b.millisecondsSinceEpoch;
-  }
-
-  bool _hasSlotUserActionOrProgress(TaskInstance inst) {
-    final isSchedulerAction =
-        (inst.parsedStatusReason?.isSchedulerAction ?? false) ||
-        (inst.statusReason?.startsWith('scheduler_') ?? false);
-    if (isSchedulerAction) {
-      return false;
-    }
-    if (inst.status == TaskStatus.completed ||
-        inst.status == TaskStatus.skipped ||
-        inst.parsedStatusReason == InstanceStatusReason.userModified ||
-        (inst.parsedStatusReason?.isUserAction ?? false) ||
-        (inst.statusReason?.startsWith('user_') ?? false)) {
-      return true;
-    }
-    if (inst.completedByUserIds.isNotEmpty) {
-      return true;
-    }
-    if (inst.workflowPayload != null &&
-        inst.workflowPayload!.stage != WorkflowStage.selectMeal) {
-      return true;
-    }
-    return false;
-  }
-
-  bool _isEquivalentPendingSlotInstance(TaskInstance a, TaskInstance b) {
-    if (a.status != TaskStatus.pending || b.status != TaskStatus.pending) {
-      return false;
-    }
-    return a.title == b.title &&
-        a.description == b.description &&
-        a.startRelativeTime == b.startRelativeTime &&
-        a.dueRelativeTime == b.dueRelativeTime &&
-        a.priority == b.priority &&
-        a.isFamily == b.isFamily &&
-        a.familyCompletionMode == b.familyCompletionMode &&
-        a.assignedUserId == b.assignedUserId &&
-        a.cycleId == b.cycleId &&
-        listEquals(a.labelIds, b.labelIds) &&
-        listEquals(a.notificationRelativeTimes, b.notificationRelativeTimes);
-  }
-
-  bool _doesSlotCandidateWin(TaskInstance local, TaskInstance remote) {
-    final localHasUserProgress = _hasSlotUserActionOrProgress(local);
-    final remoteHasUserProgress = _hasSlotUserActionOrProgress(remote);
-    if (localHasUserProgress != remoteHasUserProgress) {
-      return localHasUserProgress;
-    }
-    if (!localHasUserProgress &&
-        !remoteHasUserProgress &&
-        _isEquivalentPendingSlotInstance(local, remote)) {
-      if (local.updatedAt.millisecondsSinceEpoch ==
-          remote.updatedAt.millisecondsSinceEpoch) {
-        return local.id.compareTo(remote.id) < 0;
-      }
-      // Prefer the earlier-spawned canonical pending instance over a later
-      // duplicate lookahead spawn for the same unchanged schedule slot.
-      return _isStrictlyNewer(remote.updatedAt, local.updatedAt);
-    }
-    if (local.updatedAt.millisecondsSinceEpoch ==
-        remote.updatedAt.millisecondsSinceEpoch) {
-      return local.id.compareTo(remote.id) < 0;
-    }
-    return _doesLocalWin(local, remote);
-  }
-
-  bool _doesLocalWin(TaskInstance local, TaskInstance remote) {
-    final localIsUser =
-        local.parsedStatusReason == InstanceStatusReason.userModified ||
-        ((local.status != TaskStatus.pending) &&
-            ((local.parsedStatusReason?.isUserAction ?? false) ||
-                (local.statusReason?.startsWith('user_') ?? false)));
-    final remoteIsUser =
-        remote.parsedStatusReason == InstanceStatusReason.userModified ||
-        ((remote.status != TaskStatus.pending) &&
-            ((remote.parsedStatusReason?.isUserAction ?? false) ||
-                (remote.statusReason?.startsWith('user_') ?? false)));
-    final localIsScheduler =
-        (local.parsedStatusReason?.isSchedulerAction ?? false) ||
-        (local.statusReason?.startsWith('scheduler_') ?? false);
-    final remoteIsScheduler =
-        (remote.parsedStatusReason?.isSchedulerAction ?? false) ||
-        (remote.statusReason?.startsWith('scheduler_') ?? false);
-
-    // 1. User vs. Scheduler Conflict & Non-downgrade Invariant:
-    // A user action (user_completed, user_dismissed) always wins over an automated
-    // scheduler action (scheduler_*), regardless of updatedAt timestamps.
-    if (localIsUser && remoteIsScheduler) {
-      return true;
-    }
-    if (remoteIsUser && localIsScheduler) {
-      return false;
-    }
-
-    // 3. Homogeneous Resolution:
-    // If both records are user_*, both are scheduler_*, or neither, fall back to Last-Write-Wins based on updatedAt.
-    // Compare in milliseconds to avoid sub-millisecond precision differences between platforms causing conflict loops.
-    return _isStrictlyNewer(local.updatedAt, remote.updatedAt);
-  }
+  }) => _snapshotReconciler.handleRemoteInstancesSnapshot(
+    snapshot,
+    isFamily: isFamily,
+  );
 
   Future<void> _handleRemoteRecipesSnapshot(
     QuerySnapshot<Map<String, dynamic>> snapshot, {
     required bool isFamily,
-  }) async {
-    final isCache = snapshot.metadata.isFromCache;
-    final localRecipes = _localDataSource.getRecipes();
-    final localMap = {for (final r in localRecipes) r.id: r};
-
-    final toSave = <Recipe>[];
-    final toDelete = <String>[];
-
-    for (final change in snapshot.docChanges) {
-      final docId = change.doc.id;
-      if (change.type == DocumentChangeType.removed) {
-        final localRecipe = localMap[docId];
-        if (localRecipe == null ||
-            (isFamily ? localRecipe.isFamily : !localRecipe.isFamily)) {
-          toDelete.add(docId);
-          localMap.remove(docId);
-        }
-      } else if (change.type == DocumentChangeType.added ||
-          change.type == DocumentChangeType.modified) {
-        if (change.doc.data() != null) {
-          final remoteRecipe = Recipe.fromFirestore(change.doc);
-          final localRecipe = localMap[remoteRecipe.id];
-          if (localRecipe == null ||
-              remoteRecipe.updatedAt.isAfter(localRecipe.updatedAt)) {
-            final cleanRecipe = remoteRecipe.copyWith(
-              hasPendingWrites: false,
-              isFromCache: isCache,
-            );
-            toSave.add(cleanRecipe);
-            localMap[cleanRecipe.id] = cleanRecipe;
-          }
-        }
-      }
-    }
-
-    if (!isCache) {
-      for (final localRecipe in localMap.values) {
-        if ((isFamily ? localRecipe.isFamily : !localRecipe.isFamily) &&
-            localRecipe.isFromCache) {
-          final updated = localRecipe.copyWith(isFromCache: false);
-          toSave.add(updated);
-          localMap[localRecipe.id] = updated;
-        }
-      }
-    }
-
-    if (toDelete.isNotEmpty) {
-      await _localDataSource.deleteRecipes(toDelete);
-    }
-    if (toSave.isNotEmpty) {
-      await _localDataSource.saveRecipes(toSave);
-    }
-  }
+  }) => _snapshotReconciler.handleRemoteRecipesSnapshot(
+    snapshot,
+    isFamily: isFamily,
+  );
 
   Future<void> sync() async {
     if (_isDisposed ||
