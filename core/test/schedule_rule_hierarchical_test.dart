@@ -1,10 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:nothing_ever_happens/logic/app_clock.dart';
-import 'package:nothing_ever_happens/logic/civil_day.dart';
-import 'package:nothing_ever_happens/logic/missed_occurrence_policy.dart';
-import 'package:nothing_ever_happens/logic/relative_time.dart';
-import 'package:nothing_ever_happens/logic/scheduling_policy.dart';
-import 'package:nothing_ever_happens/logic/task_schedule_rule.dart';
+import 'package:core/core.dart';
+import 'package:test/test.dart';
 
 class _UnrecognizedScheduleRule extends TaskScheduleRule {
   _UnrecognizedScheduleRule({
@@ -38,7 +33,8 @@ class _UnrecognizedScheduleRule extends TaskScheduleRule {
     List<RelativeTime>? notificationRelativeTimes,
     SchedulingPolicy? schedulingPolicy,
     MissedOccurrencePolicy? missedOccurrencePolicy,
-  }) => this;
+  }) =>
+      this;
 
   @override
   Map<String, dynamic> toJson() => {};
@@ -61,7 +57,8 @@ void main() {
   ); // Aug 15 2026 is Saturday (6)
 
   group('schedule_rule_hierarchical Tests', () {
-    group('Group 1: TaskScheduleRuleHierarchicalExtension.hierarchicalKind', () {
+    group('Group 1: TaskScheduleRuleHierarchicalExtension.hierarchicalKind',
+        () {
       test('OneOffSchedule resolves to HierarchicalRecurrenceKind.oneOff', () {
         final rule = OneOffSchedule(
           date: testDate,
@@ -316,36 +313,28 @@ void main() {
         );
 
         // Daily source with interval 3 converted to various recurring kinds
-        final toWeekly =
-            convertRuleToKind(
-                  dailySource,
-                  HierarchicalRecurrenceKind.weeklyFixed,
-                )
-                as WeeklySchedule;
+        final toWeekly = convertRuleToKind(
+          dailySource,
+          HierarchicalRecurrenceKind.weeklyFixed,
+        ) as WeeklySchedule;
         expect(toWeekly.interval, 3);
 
-        final toMonthly =
-            convertRuleToKind(
-                  weeklySource,
-                  HierarchicalRecurrenceKind.monthlyFixedDay,
-                )
-                as MonthlySchedule;
+        final toMonthly = convertRuleToKind(
+          weeklySource,
+          HierarchicalRecurrenceKind.monthlyFixedDay,
+        ) as MonthlySchedule;
         expect(toMonthly.interval, 4);
 
-        final toYearly =
-            convertRuleToKind(
-                  monthlySource,
-                  HierarchicalRecurrenceKind.yearlyFixed,
-                )
-                as YearlySchedule;
+        final toYearly = convertRuleToKind(
+          monthlySource,
+          HierarchicalRecurrenceKind.yearlyFixed,
+        ) as YearlySchedule;
         expect(toYearly.interval, 5);
 
-        final toDaily =
-            convertRuleToKind(
-                  yearlySource,
-                  HierarchicalRecurrenceKind.dailyCompletionRelative,
-                )
-                as DailySchedule;
+        final toDaily = convertRuleToKind(
+          yearlySource,
+          HierarchicalRecurrenceKind.dailyCompletionRelative,
+        ) as DailySchedule;
         expect(toDaily.interval, 6);
       });
 
@@ -365,12 +354,10 @@ void main() {
                 as WeeklySchedule;
         expect(convertedWeekly.interval, 1);
 
-        final convertedMonthly =
-            convertRuleToKind(
-                  oneOff,
-                  HierarchicalRecurrenceKind.monthlyFixedDay,
-                )
-                as MonthlySchedule;
+        final convertedMonthly = convertRuleToKind(
+          oneOff,
+          HierarchicalRecurrenceKind.monthlyFixedDay,
+        ) as MonthlySchedule;
         expect(convertedMonthly.interval, 1);
 
         final convertedYearly =
@@ -520,12 +507,10 @@ void main() {
             date: const CivilDay(year: 2026, month: 2, day: 28),
             startRelativeTime: defaultStart,
           );
-          final monthly28 =
-              convertRuleToKind(
-                    rule28,
-                    HierarchicalRecurrenceKind.monthlyFixedDay,
-                  )
-                  as MonthlySchedule;
+          final monthly28 = convertRuleToKind(
+            rule28,
+            HierarchicalRecurrenceKind.monthlyFixedDay,
+          ) as MonthlySchedule;
           expect(monthly28.dayOfMonth, 28);
 
           // Test day > 28 (overflow: day 31 -> clamped to 28)
@@ -533,12 +518,10 @@ void main() {
             date: const CivilDay(year: 2026, month: 1, day: 31),
             startRelativeTime: defaultStart,
           );
-          final monthly31 =
-              convertRuleToKind(
-                    rule31,
-                    HierarchicalRecurrenceKind.monthlyFixedDay,
-                  )
-                  as MonthlySchedule;
+          final monthly31 = convertRuleToKind(
+            rule31,
+            HierarchicalRecurrenceKind.monthlyFixedDay,
+          ) as MonthlySchedule;
           expect(monthly31.dayOfMonth, 28);
 
           // Test day 29 -> clamped to 28
@@ -546,12 +529,10 @@ void main() {
             date: const CivilDay(year: 2024, month: 2, day: 29),
             startRelativeTime: defaultStart,
           );
-          final monthly29 =
-              convertRuleToKind(
-                    rule29,
-                    HierarchicalRecurrenceKind.monthlyFixedDay,
-                  )
-                  as MonthlySchedule;
+          final monthly29 = convertRuleToKind(
+            rule29,
+            HierarchicalRecurrenceKind.monthlyFixedDay,
+          ) as MonthlySchedule;
           expect(monthly29.dayOfMonth, 28);
         },
       );
@@ -583,12 +564,10 @@ void main() {
             date: const CivilDay(year: 2026, month: 10, day: 1),
             startRelativeTime: defaultStart,
           );
-          final monthlyOct1 =
-              convertRuleToKind(
-                    oct1,
-                    HierarchicalRecurrenceKind.monthlyNthWeekday,
-                  )
-                  as MonthlySchedule;
+          final monthlyOct1 = convertRuleToKind(
+            oct1,
+            HierarchicalRecurrenceKind.monthlyNthWeekday,
+          ) as MonthlySchedule;
           expect(monthlyOct1.dayOfWeek, DateTime.thursday);
           expect(monthlyOct1.occurrence, 1);
 
@@ -597,12 +576,10 @@ void main() {
             date: const CivilDay(year: 2026, month: 10, day: 7),
             startRelativeTime: defaultStart,
           );
-          final monthlyOct7 =
-              convertRuleToKind(
-                    oct7,
-                    HierarchicalRecurrenceKind.monthlyNthWeekday,
-                  )
-                  as MonthlySchedule;
+          final monthlyOct7 = convertRuleToKind(
+            oct7,
+            HierarchicalRecurrenceKind.monthlyNthWeekday,
+          ) as MonthlySchedule;
           expect(monthlyOct7.dayOfWeek, DateTime.wednesday);
           expect(monthlyOct7.occurrence, 1);
 
@@ -611,12 +588,10 @@ void main() {
             date: const CivilDay(year: 2026, month: 10, day: 8),
             startRelativeTime: defaultStart,
           );
-          final monthlyOct8 =
-              convertRuleToKind(
-                    oct8,
-                    HierarchicalRecurrenceKind.monthlyNthWeekday,
-                  )
-                  as MonthlySchedule;
+          final monthlyOct8 = convertRuleToKind(
+            oct8,
+            HierarchicalRecurrenceKind.monthlyNthWeekday,
+          ) as MonthlySchedule;
           expect(monthlyOct8.dayOfWeek, DateTime.thursday);
           expect(monthlyOct8.occurrence, 2);
 
@@ -625,12 +600,10 @@ void main() {
             date: const CivilDay(year: 2026, month: 10, day: 28),
             startRelativeTime: defaultStart,
           );
-          final monthlyOct28 =
-              convertRuleToKind(
-                    oct28,
-                    HierarchicalRecurrenceKind.monthlyNthWeekday,
-                  )
-                  as MonthlySchedule;
+          final monthlyOct28 = convertRuleToKind(
+            oct28,
+            HierarchicalRecurrenceKind.monthlyNthWeekday,
+          ) as MonthlySchedule;
           expect(monthlyOct28.dayOfWeek, DateTime.wednesday);
           expect(monthlyOct28.occurrence, 4);
 
@@ -639,12 +612,10 @@ void main() {
             date: const CivilDay(year: 2026, month: 10, day: 29),
             startRelativeTime: defaultStart,
           );
-          final monthlyOct29 =
-              convertRuleToKind(
-                    oct29,
-                    HierarchicalRecurrenceKind.monthlyNthWeekday,
-                  )
-                  as MonthlySchedule;
+          final monthlyOct29 = convertRuleToKind(
+            oct29,
+            HierarchicalRecurrenceKind.monthlyNthWeekday,
+          ) as MonthlySchedule;
           expect(monthlyOct29.dayOfWeek, DateTime.thursday);
           expect(monthlyOct29.occurrence, 5);
 
@@ -653,12 +624,10 @@ void main() {
             date: const CivilDay(year: 2026, month: 10, day: 31),
             startRelativeTime: defaultStart,
           );
-          final monthlyOct31 =
-              convertRuleToKind(
-                    oct31,
-                    HierarchicalRecurrenceKind.monthlyNthWeekday,
-                  )
-                  as MonthlySchedule;
+          final monthlyOct31 = convertRuleToKind(
+            oct31,
+            HierarchicalRecurrenceKind.monthlyNthWeekday,
+          ) as MonthlySchedule;
           expect(monthlyOct31.dayOfWeek, DateTime.saturday);
           expect(monthlyOct31.occurrence, 5);
         },
@@ -695,12 +664,10 @@ void main() {
             date: const CivilDay(year: 2026, month: 1, day: 31),
             startRelativeTime: defaultStart,
           );
-          final monthly31 =
-              convertRuleToKind(
-                    rule31,
-                    HierarchicalRecurrenceKind.monthlyCompletionRelative,
-                  )
-                  as MonthlySchedule;
+          final monthly31 = convertRuleToKind(
+            rule31,
+            HierarchicalRecurrenceKind.monthlyCompletionRelative,
+          ) as MonthlySchedule;
           expect(monthly31.dayOfMonth, 28);
         },
       );
@@ -751,7 +718,8 @@ void main() {
       );
     });
 
-    group('Group 4: convertRuleToKind - Special Date & Offset Normalization', () {
+    group('Group 4: convertRuleToKind - Special Date & Offset Normalization',
+        () {
       final mockNow = DateTime(2026, 8, 23, 10, 0);
       final todayCivil = CivilDay.fromDateTime(mockNow); // 2026-08-23
       final tomorrowCivil = CivilDay.fromDateTime(
@@ -759,11 +727,11 @@ void main() {
       ); // 2026-08-24
 
       setUp(() {
-        AppClock.setMockTime(mockNow);
+        CoreClock.setNow(() => mockNow);
       });
 
       tearDown(() {
-        AppClock.reset();
+        CoreClock.reset();
       });
 
       test(
@@ -809,12 +777,10 @@ void main() {
             ),
           );
 
-          final converted =
-              convertRuleToKind(
-                    oneOffTomorrow,
-                    HierarchicalRecurrenceKind.oneOff,
-                  )
-                  as OneOffSchedule;
+          final converted = convertRuleToKind(
+            oneOffTomorrow,
+            HierarchicalRecurrenceKind.oneOff,
+          ) as OneOffSchedule;
 
           expect(converted.date, tomorrowCivil);
           expect(

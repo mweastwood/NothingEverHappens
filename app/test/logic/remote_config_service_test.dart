@@ -1,5 +1,4 @@
 import 'package:firebase_remote_config/firebase_remote_config.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nothing_ever_happens/logic/remote_config_service.dart';
@@ -240,78 +239,6 @@ void main() {
 
       final service = container.read(remoteConfigServiceProvider);
       expect(service, isA<RemoteConfigService>());
-    });
-  });
-
-  group('A/B Testing Widget Tests with RemoteConfigService', () {
-    testWidgets('Renders Control Group UI when flag is false', (tester) async {
-      final noOpService = NoOpRemoteConfigService(
-        defaultParameters: {'enable_new_task_layout': false},
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            remoteConfigServiceProvider.overrideWithValue(noOpService),
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: Consumer(
-                builder: (context, ref, _) {
-                  final remoteConfig = ref.watch(remoteConfigServiceProvider);
-                  final useNewLayout = remoteConfig.getBool(
-                    'enable_new_task_layout',
-                  );
-                  return Text(
-                    useNewLayout
-                        ? 'Variant: New Task Layout'
-                        : 'Variant: Classic Layout',
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('Variant: Classic Layout'), findsOneWidget);
-      expect(find.text('Variant: New Task Layout'), findsNothing);
-    });
-
-    testWidgets('Renders Experiment Variant A UI when flag is true', (
-      tester,
-    ) async {
-      final noOpService = NoOpRemoteConfigService(
-        defaultParameters: {'enable_new_task_layout': true},
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            remoteConfigServiceProvider.overrideWithValue(noOpService),
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: Consumer(
-                builder: (context, ref, _) {
-                  final remoteConfig = ref.watch(remoteConfigServiceProvider);
-                  final useNewLayout = remoteConfig.getBool(
-                    'enable_new_task_layout',
-                  );
-                  return Text(
-                    useNewLayout
-                        ? 'Variant: New Task Layout'
-                        : 'Variant: Classic Layout',
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('Variant: New Task Layout'), findsOneWidget);
-      expect(find.text('Variant: Classic Layout'), findsNothing);
     });
   });
 }

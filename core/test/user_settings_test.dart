@@ -178,5 +178,58 @@ void main() {
       expect(updated.showLastSpawnedDate, isTrue);
       expect(updated.showTaskListSortBar, equals(original.showTaskListSortBar));
     });
+
+    test(
+        'fromJson safely parses raw Map<dynamic, dynamic> nested maps from Hive Web',
+        () {
+      CoreClock.setNow(() => DateTime(2026, 8, 5));
+      addTearDown(CoreClock.reset);
+
+      final Map<dynamic, dynamic> rawDynamicMap = <dynamic, dynamic>{
+        'hoursAvailable': 10.0,
+        'taskListSort': <dynamic>[
+          <dynamic, dynamic>{'column': 'priority', 'ascending': false},
+        ],
+        'scheduleListSort': <dynamic>[
+          <dynamic, dynamic>{'column': 'next_due', 'ascending': true},
+        ],
+        'defaultDailyCapacity': <dynamic, dynamic>{'1': 8.0},
+        'dailyCapacityOverrides': <dynamic, dynamic>{'2026-08-05': 6.0},
+      };
+
+      final settings = UserSettings.fromJson(
+        Map<String, dynamic>.from(rawDynamicMap),
+      );
+      expect(settings.hoursAvailable, equals(10.0));
+      expect(settings.taskListSort,
+          equals(const [(column: 'priority', ascending: false)]));
+      expect(settings.scheduleListSort,
+          equals(const [(column: 'next_due', ascending: true)]));
+      expect(settings.defaultDailyCapacity, equals({'1': 8.0}));
+      expect(settings.dailyCapacityOverrides, equals({'2026-08-05': 6.0}));
+    });
+
+    test('toJson and copyWith prune stale overrides and communications', () {
+      CoreClock.setNow(() => DateTime(2026, 7, 10));
+      addTearDown(CoreClock.reset);
+
+      const settingsUnpruned = UserSettings(
+        hoursAvailable: 8.0,
+        dailyCapacityOverrides: {'2026-07-10': 4.0, '2026-04-10': 2.0},
+        acknowledgedMissedTaskCommunications: [
+          't1:2026-07-05',
+          't2:2026-05-01',
+        ],
+      );
+      final json = settingsUnpruned.toJson();
+      expect(json['dailyCapacityOverrides'], equals({'2026-07-10': 4.0}));
+      expect(json['acknowledgedMissedTaskCommunications'],
+          equals(['t1:2026-07-05']));
+
+      final updated = settingsUnpruned.copyWith(
+        dailyCapacityOverrides: {'2026-07-09': 5.0, '2026-01-01': 1.0},
+      );
+      expect(updated.dailyCapacityOverrides, equals({'2026-07-09': 5.0}));
+    });
   });
 }

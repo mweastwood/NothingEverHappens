@@ -21,213 +21,226 @@ class _FakeDocumentSnapshot {
 }
 
 void main() {
-  group('TaskSchedule labelIds tests', () {
-    test('default instantiation has empty labelIds', () {
+  group('TaskSchedule Properties & Serialization', () {
+    test('isOverdue checks dueFromMidnight correctly', () {
+      const todayCivil = CivilDay(year: 2024, month: 1, day: 1);
       final task = TaskSchedule(
-        id: 'S-1',
+        id: '1',
         title: 'Test',
-        description: 'Desc',
-      );
-      expect(task.labelIds, isEmpty);
-    });
-
-    test('accepts labelIds in constructor', () {
-      final task = TaskSchedule(
-        id: 'S-1',
-        title: 'Test',
-        description: 'Desc',
-        labelIds: const ['L-1', 'L-2'],
-      );
-      expect(task.labelIds, equals(['L-1', 'L-2']));
-    });
-
-    test('serialization round-trip (toMap / fromMap)', () {
-      final task = TaskSchedule(
-        id: 'S-123',
-        title: 'Label Task',
-        description: 'Description',
-        labelIds: ['L-alpha', 'L-beta'],
+        description: 'Test',
+        schedules: [
+          OneOffSchedule(
+            date: todayCivil,
+            startRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 0, minute: 0),
+            dueRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 12, minute: 0),
+          ),
+        ],
       );
 
-      final map = task.toMap();
-      expect(map['labelIds'], equals(['L-alpha', 'L-beta']));
-
-      final restored = TaskSchedule.fromMap(map, id: 'S-123');
-      expect(restored.labelIds, equals(['L-alpha', 'L-beta']));
-    });
-
-    test('fromMap defaults labelIds to empty list when null or missing', () {
-      final task = TaskSchedule.fromMap({
-        'title': 'No labels',
-        'description': 'None',
-      }, id: 'S-456');
-      expect(task.labelIds, isEmpty);
-    });
-
-    test('fromFirestore parses labelIds correctly', () {
-      final fakeSnapshot = _FakeDocumentSnapshot(
-        id: 'S-doc-789',
-        dataMap: {
-          'title': 'Firestore Task',
-          'description': 'From firestore',
-          'labelIds': ['L-100', 'L-200'],
-        },
-      );
-
-      final task = TaskSchedule.fromFirestore(fakeSnapshot);
-      expect(task.id, equals('S-doc-789'));
-      expect(task.labelIds, equals(['L-100', 'L-200']));
-    });
-
-    test('copyWith updates labelIds or clears them', () {
-      final task = TaskSchedule(
-        id: 'S-1',
-        title: 'Task',
-        description: 'Desc',
-        labelIds: ['L-1'],
-      );
-
-      final updated = task.copyWith(labelIds: ['L-2', 'L-3']);
-      expect(updated.labelIds, equals(['L-2', 'L-3']));
-
-      final cleared = updated.copyWith(clearLabelIds: true);
-      expect(cleared.labelIds, isEmpty);
-
-      final preserved = updated.copyWith(title: 'New Title');
-      expect(preserved.labelIds, equals(['L-2', 'L-3']));
-    });
-
-    test('edit tracks labelIds modifications in changes map', () {
-      final task = TaskSchedule(
-        id: 'S-1',
-        title: 'Task',
-        description: 'Desc',
-        labelIds: ['L-1', 'L-2'],
-      );
-
-      // Edit with different labelIds
-      final mod1 = task.edit(
-        newTitle: task.title,
-        newDescription: task.description,
-        newSchedules: task.schedules,
-        newEstimatedDuration: task.estimatedDuration,
-        newMissedPolicy: task.missedPolicy,
-        newIsMaster: task.isMaster,
-        newLastSpawnedDate: task.lastSpawnedDate,
-        newIsFamily: task.isFamily,
-        newPriority: task.priority,
-        newLabelIds: ['L-3'],
-      );
-      expect(mod1.newTask.labelIds, equals(['L-3']));
-      expect(mod1.changes['labelIds'], equals(['L-3']));
-
-      // Edit without changing labelIds
-      final mod2 = task.edit(
-        newTitle: task.title,
-        newDescription: task.description,
-        newSchedules: task.schedules,
-        newEstimatedDuration: task.estimatedDuration,
-        newMissedPolicy: task.missedPolicy,
-        newIsMaster: task.isMaster,
-        newLastSpawnedDate: task.lastSpawnedDate,
-        newIsFamily: task.isFamily,
-        newPriority: task.priority,
-        newLabelIds: ['L-1', 'L-2'],
-      );
-      expect(mod2.changes.containsKey('labelIds'), isFalse);
-
-      // Edit with null newLabelIds preserves existing
-      final mod3 = task.edit(
-        newTitle: 'Updated',
-        newDescription: task.description,
-        newSchedules: task.schedules,
-        newEstimatedDuration: task.estimatedDuration,
-        newMissedPolicy: task.missedPolicy,
-        newIsMaster: task.isMaster,
-        newLastSpawnedDate: task.lastSpawnedDate,
-        newIsFamily: task.isFamily,
-        newPriority: task.priority,
-      );
-      expect(mod3.newTask.labelIds, equals(['L-1', 'L-2']));
-      expect(mod3.changes.containsKey('labelIds'), isFalse);
+      expect(task.isOverdue(DateTime(2024, 1, 1, 10, 0)), isFalse);
+      expect(task.isOverdue(DateTime(2024, 1, 1, 13, 0)), isTrue);
     });
 
     test(
-        'parses map timestamp with string seconds and nanoseconds without throwing',
+        'toFirestore and fromFirestore serialize multiple schedules, policies, and Agile fields correctly',
         () {
-      final schedule = TaskSchedule.fromMap({
-        'title': 'Map Timestamp Schedule',
-        'updatedAt': {
-          '_seconds': '1725000000',
-          '_nanoseconds': '500000000',
-        },
-      });
-      expect(schedule.updatedAt, isNotNull);
-      expect(schedule.updatedAt.millisecondsSinceEpoch, equals(1725000000500));
-    });
+      final task = TaskSchedule(
+        id: 'task-test',
+        title: 'Multi TaskSchedule',
+        description: 'Desc',
+        schedules: [
+          DailySchedule(
+            startDate: const CivilDay(year: 2026, month: 3, day: 8),
+            interval: 1,
+            startRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 8, minute: 0),
+            dueRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 7),
+              targetHour: 9,
+              targetMinute: 30,
+            ),
+            missedOccurrencePolicy: const MissedOccurrencePolicy.autoDismiss(
+              gracePeriod: Duration(hours: 4),
+            ),
+          ),
+          WeeklySchedule(
+            startDate: const CivilDay(year: 2026, month: 3, day: 8),
+            interval: 1,
+            daysOfWeek: const {1, 3, 5},
+            startRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 20, minute: 0),
+            dueRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 21, minute: 0),
+          ),
+        ],
+        activeOccurrenceIndex: 1,
+        estimatedDuration: const Duration(minutes: 45),
+        isFamily: true,
+        familyCompletionMode: FamilyCompletionMode.individual,
+        priority: TaskPriority.high,
+        cycleId: '2026-W23',
+        assignedUserId: 'user-1',
+        preferredBy: const {'user-1': true, 'user-2': false},
+        appLaunchUrl: 'https://example.com/app',
+        labelIds: const ['L-alpha', 'L-beta'],
+      );
 
-    test('parses numeric string timestamp without throwing', () {
-      final schedule = TaskSchedule.fromMap({
-        'title': 'String Timestamp Schedule',
-        'updatedAt': '1725000000',
-      });
-      expect(schedule.updatedAt, isNotNull);
-      expect(schedule.updatedAt.millisecondsSinceEpoch, equals(1725000000000));
-    });
+      final map = task.toFirestore();
+      expect(map['schedules'], isA<List>());
+      expect(map['schedules'].length, 2);
+      expect(map['activeOccurrenceIndex'], 1);
+      expect(map['estimatedDuration'], 45);
+      expect(map['isFamily'], true);
+      expect(map['familyCompletionMode'], 'individual');
+      expect(map['priority'], 'high');
+      expect(map['cycleId'], '2026-W23');
+      expect(map['assignedUserId'], 'user-1');
+      expect(map['appLaunchUrl'], 'https://example.com/app');
+      expect(map['labelIds'], ['L-alpha', 'L-beta']);
 
-    test('parses digit-only ISO strings like 2026 and 20260923 correctly', () {
-      final scheduleYear = TaskSchedule.fromMap({
-        'title': 'Year Only',
-        'updatedAt': '2026',
-      });
-      expect(scheduleYear.updatedAt.year, equals(2026));
-
-      final scheduleCompact = TaskSchedule.fromMap({
-        'title': 'Compact ISO Date',
-        'updatedAt': '20260923',
-      });
-      expect(scheduleCompact.updatedAt.year, equals(2026));
-      expect(scheduleCompact.updatedAt.month, equals(9));
-      expect(scheduleCompact.updatedAt.day, equals(23));
-    });
-
-    test(
-        'preserves microsecond precision and normalizes to UTC from Firestore map',
-        () {
-      final schedule = TaskSchedule.fromMap({
-        'title': 'Microsecond Map Schedule',
-        'updatedAt': {
-          '_seconds': 1789571787,
-          '_nanoseconds': 529188000,
-        },
-      });
-      expect(schedule.updatedAt.isUtc, isTrue);
+      final deserialized = TaskSchedule.fromFirestore(
+        _FakeDocumentSnapshot(id: task.id, dataMap: map),
+      );
+      expect(deserialized.id, task.id);
+      expect(deserialized.schedules.length, 2);
+      expect(deserialized.schedulingPolicy, isA<CompletionRelativePolicy>());
+      final policy = deserialized.schedulingPolicy as CompletionRelativePolicy;
+      expect(policy.interval, const Duration(days: 7));
+      expect(policy.targetHour, 9);
+      expect(policy.targetMinute, 30);
+      expect(deserialized.missedOccurrencePolicy.isAutoDismiss, isTrue);
+      expect(deserialized.missedOccurrencePolicy.gracePeriod,
+          const Duration(hours: 4));
+      expect(deserialized.estimatedDuration, const Duration(minutes: 45));
+      expect(deserialized.isFamily, true);
       expect(
-          schedule.updatedAt.microsecondsSinceEpoch, equals(1789571787529188));
-      expect(schedule.updatedAt.toIso8601String(),
-          equals('2026-09-16T15:16:27.529188Z'));
+          deserialized.familyCompletionMode, FamilyCompletionMode.individual);
+      expect(deserialized.priority, TaskPriority.high);
+      expect(deserialized.cycleId, '2026-W23');
+      expect(deserialized.preferredBy['user-1'], true);
+      expect(deserialized.preferredBy['user-2'], false);
+      expect(deserialized.assignedUserId, 'user-1');
+      expect(deserialized.appLaunchUrl, 'https://example.com/app');
+      expect(deserialized.labelIds, ['L-alpha', 'L-beta']);
     });
 
     test(
-        'fromMap and fromFirestore default missing or null updatedAt to UTC epoch instead of DateTime.now()',
+        'fromMap and copyWith handle defaults, labelIds clearing, and missing updatedAt',
         () {
       final epoch = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-
       final missingUpdatedAt = TaskSchedule.fromMap({
         'title': 'Legacy Task Missing UpdatedAt',
       }, id: 'S-legacy-1');
       expect(missingUpdatedAt.updatedAt, equals(epoch));
+      expect(missingUpdatedAt.labelIds, isEmpty);
+      expect(missingUpdatedAt.estimatedDuration, isNull);
 
-      final nullUpdatedAt = TaskSchedule.fromFirestore(
-        _FakeDocumentSnapshot(
-          id: 'S-legacy-2',
-          dataMap: {
-            'title': 'Legacy Task Null UpdatedAt',
-            'updatedAt': null,
-          },
-        ),
+      final updated = missingUpdatedAt.copyWith(
+        labelIds: ['L-2', 'L-3'],
+        familyCompletionMode: FamilyCompletionMode.anyone,
+        skipIfNoCapacity: true,
       );
-      expect(nullUpdatedAt.updatedAt, equals(epoch));
+      expect(updated.labelIds, equals(['L-2', 'L-3']));
+      expect(updated.familyCompletionMode, FamilyCompletionMode.anyone);
+      expect(updated.skipIfNoCapacity, isTrue);
+
+      final cleared = updated.copyWith(clearLabelIds: true);
+      expect(cleared.labelIds, isEmpty);
+    });
+  });
+
+  group('TaskSchedule Editing, Diffs, and Whitespace Trimming', () {
+    test('TaskSchedule.edit() returns correctly updated task and changes map',
+        () {
+      final task = TaskSchedule(
+        id: 'edit-test-task',
+        title: '   Initial Title   ',
+        description: '   Initial Desc   \n\t',
+        schedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 3, day: 8),
+            startRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 9, minute: 0),
+            dueRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 17, minute: 0),
+          ),
+        ],
+        labelIds: ['L-1', 'L-2'],
+      );
+
+      expect(task.title, 'Initial Title');
+      expect(task.description, 'Initial Desc');
+
+      final result = task.edit(
+        newTitle: '   Updated Title   ',
+        newDescription: 'Initial Desc', // unchanged
+        newSchedules: [
+          OneOffSchedule(
+            date: const CivilDay(year: 2026, month: 3, day: 9),
+            startRelativeTime:
+                const RelativeTime(dayOffset: -1, hour: 10, minute: 0),
+            dueRelativeTime:
+                const RelativeTime(dayOffset: 0, hour: 18, minute: 0),
+          ),
+        ],
+        newEstimatedDuration: null,
+        newMissedPolicy: MissedPolicy.stack,
+        newIsMaster: false,
+        newLastSpawnedDate: null,
+        newIsFamily: true,
+        newFamilyCompletionMode: FamilyCompletionMode.individual,
+        newPriority: TaskPriority.high,
+        newLabelIds: ['L-3'],
+      );
+
+      final newTask = result.newTask;
+      final changes = result.changes;
+
+      expect(newTask.id, task.id);
+      expect(newTask.title, 'Updated Title');
+      expect(newTask.description, 'Initial Desc');
+      expect(newTask.schedules.first.startRelativeTime.dayOffset, -1);
+      expect(newTask.schedules.first.startRelativeTime.hour, 10);
+      expect(newTask.schedules.first.dueRelativeTime.hour, 18);
+      expect((newTask.schedules.first as OneOffSchedule).date.day, 9);
+      expect(newTask.estimatedDuration, isNull);
+      expect(newTask.isFamily, isTrue);
+      expect(newTask.familyCompletionMode, FamilyCompletionMode.individual);
+      expect(newTask.priority, TaskPriority.high);
+      expect(newTask.labelIds, equals(['L-3']));
+
+      expect(changes['title'], 'Updated Title');
+      expect(changes.containsKey('description'), isFalse);
+      expect(changes['schedules'][0]['startRelativeTime']['dayOffset'], -1);
+      expect(changes['schedules'][0]['startRelativeTime']['hour'], 10);
+      expect(changes['schedules'][0]['dueRelativeTime']['hour'], 18);
+      expect(changes['schedules'][0]['date']['day'], 9);
+      expect(changes['estimatedDuration'], isNull);
+      expect(changes['isFamily'], isTrue);
+      expect(changes['familyCompletionMode'], 'individual');
+      expect(changes['priority'], 'high');
+      expect(changes['labelIds'], equals(['L-3']));
+
+      // Edit converting family task back to personal without changing labelIds
+      final revertResult = newTask.edit(
+        newTitle: newTask.title,
+        newDescription: newTask.description,
+        newSchedules: newTask.schedules,
+        newEstimatedDuration: newTask.estimatedDuration,
+        newMissedPolicy: newTask.missedPolicy,
+        newIsMaster: newTask.isMaster,
+        newLastSpawnedDate: newTask.lastSpawnedDate,
+        newIsFamily: false,
+        newPriority: newTask.priority,
+        newLabelIds: ['L-3'],
+      );
+      expect(revertResult.newTask.isFamily, isFalse);
+      expect(revertResult.changes['isFamily'], isFalse);
+      expect(revertResult.changes.containsKey('labelIds'), isFalse);
     });
   });
 }

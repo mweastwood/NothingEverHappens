@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:nothing_ever_happens/logic/family_task_completion_mode.dart';
+import 'package:core/core.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('FamilyCompletionMode Tests', () {

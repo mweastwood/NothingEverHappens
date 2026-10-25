@@ -210,18 +210,9 @@ void main() {
     );
 
     test(
-      'individualPlanPriceProvider and familyPlanPriceProvider can be read and overridden',
+      'individualPlanPriceProvider and familyPlanPriceProvider return null gracefully when Purchases is unconfigured',
       () async {
-        final container = ProviderContainer(
-          overrides: [
-            individualPlanPriceProvider.overrideWith(
-              (ref) => Future.value(r'$1.99'),
-            ),
-            familyPlanPriceProvider.overrideWith(
-              (ref) => Future.value(r'$4.99'),
-            ),
-          ],
-        );
+        final container = ProviderContainer();
         addTearDown(container.dispose);
 
         final indPrice = await container.read(
@@ -229,8 +220,8 @@ void main() {
         );
         final famPrice = await container.read(familyPlanPriceProvider.future);
 
-        expect(indPrice, r'$1.99');
-        expect(famPrice, r'$4.99');
+        expect(indPrice, isNull);
+        expect(famPrice, isNull);
       },
     );
   });
