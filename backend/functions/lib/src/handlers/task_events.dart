@@ -3,6 +3,7 @@ import '../interop/firebase_admin.dart';
 import '../interop/firebase_functions.dart';
 import '../interop/node_interop.dart';
 import '../models/task_event.dart';
+import 'auth_helpers.dart';
 
 /// Validates the structure of an incoming ExternalTaskEvent payload.
 TaskEventValidation validateTaskEvent(dynamic payload) {
@@ -80,48 +81,31 @@ Future<TaskAuthValidationResult> authenticateTaskEventRequest(
   AuthService? auth,
   String? envSecret,
 }) async {
-  final authHeaderRaw = headers['authorization'] ?? headers['Authorization'];
-  final authHeader = authHeaderRaw is List
-      ? (authHeaderRaw.isNotEmpty ? authHeaderRaw.first.toString() : null)
-      : authHeaderRaw?.toString();
-
-  final serviceKeyRaw = headers['x-service-secret'] ?? headers['x-api-key'];
-  final serviceKey = serviceKeyRaw is List
-      ? (serviceKeyRaw.isNotEmpty ? serviceKeyRaw.first.toString() : null)
-      : serviceKeyRaw?.toString();
-
-  final secret =
-      envSecret ?? getEnv('TASK_HUB_SECRET') ?? getEnv('SERVICE_SECRET');
-
   // 1. Check Service Secret Header or Bearer secret
-  if (secret != null &&
-      secret.isNotEmpty &&
-      (serviceKey == secret || authHeader == 'Bearer $secret')) {
+  if (hasValidServiceSecret(headers, envSecret: envSecret)) {
     return const TaskAuthValidationResult(authenticated: true);
   }
 
   // 2. Check Firebase ID Token in Bearer header
-  if (authHeader != null && authHeader.startsWith('Bearer ')) {
-    final idToken = authHeader.substring(7).trim();
-    if (idToken.isNotEmpty) {
-      try {
-        final firebaseAuth = auth ?? getFirebaseAdminAuth();
-        final decodedToken = await firebaseAuth.verifyIdToken(idToken);
-        if (decodedToken.uid == targetUserId || decodedToken.admin == true) {
-          return const TaskAuthValidationResult(authenticated: true);
-        }
-        return const TaskAuthValidationResult(
-          authenticated: false,
-          status: 403,
-          error: 'Forbidden: Authenticated user does not match target userId.',
-        );
-      } catch (_) {
-        return const TaskAuthValidationResult(
-          authenticated: false,
-          status: 401,
-          error: 'Unauthorized: Invalid or expired authentication token.',
-        );
+  final idToken = extractBearerToken(headers);
+  if (idToken != null) {
+    try {
+      final firebaseAuth = auth ?? getFirebaseAdminAuth();
+      final decodedToken = await firebaseAuth.verifyIdToken(idToken);
+      if (decodedToken.uid == targetUserId || decodedToken.admin == true) {
+        return const TaskAuthValidationResult(authenticated: true);
       }
+      return const TaskAuthValidationResult(
+        authenticated: false,
+        status: 403,
+        error: 'Forbidden: Authenticated user does not match target userId.',
+      );
+    } catch (_) {
+      return const TaskAuthValidationResult(
+        authenticated: false,
+        status: 401,
+        error: 'Unauthorized: Invalid or expired authentication token.',
+      );
     }
   }
 

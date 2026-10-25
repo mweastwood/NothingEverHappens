@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../logic/civil_day.dart';
 import '../logic/relative_time.dart';
 import '../logic/missed_occurrence_policy.dart';
 import '../logic/l10n_extension.dart';
 import 'interval_stepper.dart';
 import 'date_stepper.dart';
+import 'day_stepper.dart';
 
 import 'schedule_timing_section.dart';
 import 'notification_config_section.dart';
@@ -313,12 +313,14 @@ class _YearlyFixedSchedulingWidgetState
               const SizedBox(width: 16),
               Expanded(
                 flex: 1,
-                child: _DayStepper(
+                child: DayStepper(
                   key: const Key('yearly_day_stepper'),
                   day: widget.day,
                   maxDays: _maxDaysInMonth(widget.month),
                   onDayChanged: widget.onDayChanged,
                   label: l10n.dayLabel,
+                  textFieldKey: const Key('yearly_day_field'),
+                  rangeErrorText: '1-${_maxDaysInMonth(widget.month)}',
                   readOnly: widget.readOnly,
                   controller: _dayController,
                 ),
@@ -407,224 +409,5 @@ String _getMonthName(BuildContext context, int month) {
       return l10n.monthDecember;
     default:
       return '';
-  }
-}
-
-class _DayStepper extends StatefulWidget {
-  final int day;
-  final int maxDays;
-  final ValueChanged<int> onDayChanged;
-  final String label;
-  final bool readOnly;
-  final TextEditingController? controller;
-
-  const _DayStepper({
-    super.key,
-    required this.day,
-    required this.maxDays,
-    required this.onDayChanged,
-    required this.label,
-    this.readOnly = false,
-    this.controller,
-  });
-
-  @override
-  State<_DayStepper> createState() => _DayStepperState();
-}
-
-class _DayStepperState extends State<_DayStepper> {
-  late final TextEditingController _controller;
-  late final FocusNode _focusNode;
-
-  double _getFieldWidth() {
-    final textLength = _controller.text.isEmpty ? 1 : _controller.text.length;
-    return textLength * 11.0;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    final initialText = widget.day.toString();
-    _controller = widget.controller ?? TextEditingController(text: initialText);
-    if (widget.controller == null) {
-      _controller.text = initialText;
-    } else {
-      final cleanText = _controller.text.replaceAll(RegExp(r'\D'), '');
-      if (_controller.text != cleanText) {
-        _controller.text = cleanText;
-      }
-    }
-
-    _focusNode = FocusNode();
-    _focusNode.addListener(_onFocusChange);
-  }
-
-  void _onFocusChange() {
-    if (!_focusNode.hasFocus) {
-      final parsed = int.tryParse(_controller.text) ?? widget.day;
-      if (parsed < 1) {
-        _controller.text = '1';
-        widget.onDayChanged(1);
-      } else if (parsed > widget.maxDays) {
-        _controller.text = widget.maxDays.toString();
-        widget.onDayChanged(widget.maxDays);
-      } else {
-        _controller.text = parsed.toString();
-        if (parsed != widget.day) {
-          widget.onDayChanged(parsed);
-        }
-      }
-      setState(() {});
-    }
-  }
-
-  @override
-  void didUpdateWidget(_DayStepper oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.day != widget.day || oldWidget.maxDays != widget.maxDays) {
-      final expectedText = widget.day.toString();
-      if (_controller.text != expectedText) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _controller.text != expectedText) {
-            _controller.text = expectedText;
-            setState(() {});
-          }
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _focusNode.removeListener(_onFocusChange);
-    _focusNode.dispose();
-    if (widget.controller == null) {
-      _controller.dispose();
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Padding(
-            padding: EdgeInsets.zero,
-            child: Row(
-              children: [
-                IconButton(
-                  key: const Key('day_decrement_button'),
-                  icon: const Icon(Icons.remove),
-                  onPressed: widget.readOnly || widget.day <= 1
-                      ? null
-                      : () {
-                          final newVal = widget.day - 1;
-                          _controller.text = newVal.toString();
-                          widget.onDayChanged(newVal);
-                          setState(() {});
-                        },
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  constraints: const BoxConstraints(),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.label,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            height: 1.1,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: _getFieldWidth(),
-                              child: TextFormField(
-                                key: const Key('yearly_day_field'),
-                                controller: _controller,
-                                focusNode: _focusNode,
-                                enabled: !widget.readOnly,
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.2,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                validator: (val) {
-                                  if (val == null || val.trim().isEmpty) {
-                                    return 'Required';
-                                  }
-                                  final parsed = int.tryParse(val.trim());
-                                  if (parsed == null ||
-                                      parsed < 1 ||
-                                      parsed > widget.maxDays) {
-                                    return '1-${widget.maxDays}';
-                                  }
-                                  return null;
-                                },
-                                onChanged: (val) {
-                                  final parsed = int.tryParse(val.trim());
-                                  if (parsed != null &&
-                                      parsed >= 1 &&
-                                      parsed <= widget.maxDays) {
-                                    widget.onDayChanged(parsed);
-                                  }
-                                  setState(() {});
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                IconButton(
-                  key: const Key('day_increment_button'),
-                  icon: const Icon(Icons.add),
-                  onPressed: widget.readOnly || widget.day >= widget.maxDays
-                      ? null
-                      : () {
-                          final newVal = widget.day + 1;
-                          _controller.text = newVal.toString();
-                          widget.onDayChanged(newVal);
-                          setState(() {});
-                        },
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }

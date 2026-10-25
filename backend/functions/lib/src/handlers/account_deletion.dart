@@ -2,37 +2,31 @@ import '../interop/firebase_admin.dart';
 import '../interop/firebase_functions.dart';
 import '../interop/node_interop.dart';
 import '../models/account_deletion.dart';
+import 'auth_helpers.dart';
 
 /// Authenticates an incoming request using a Firebase Auth ID Token in the Authorization Bearer header.
 Future<AccountDeletionAuthResult> authenticateUserRequest(
   Map<String, dynamic> headers, {
   AuthService? auth,
 }) async {
-  final authHeaderRaw = headers['authorization'] ?? headers['Authorization'];
-  final authHeader = authHeaderRaw is List
-      ? (authHeaderRaw.isNotEmpty ? authHeaderRaw.first.toString() : null)
-      : authHeaderRaw?.toString();
-
-  if (authHeader != null && authHeader.startsWith('Bearer ')) {
-    final idToken = authHeader.substring(7).trim();
-    if (idToken.isNotEmpty) {
-      try {
-        final firebaseAuth = auth ?? getFirebaseAdminAuth();
-        final decodedToken = await firebaseAuth.verifyIdToken(idToken);
-        return AccountDeletionAuthResult(
-          authenticated: true,
-          user: AuthenticatedUser(
-            uid: decodedToken.uid,
-            email: decodedToken.email,
-          ),
-        );
-      } catch (_) {
-        return const AccountDeletionAuthResult(
-          authenticated: false,
-          status: 401,
-          error: 'Unauthorized: Invalid or expired authentication token.',
-        );
-      }
+  final idToken = extractBearerToken(headers);
+  if (idToken != null) {
+    try {
+      final firebaseAuth = auth ?? getFirebaseAdminAuth();
+      final decodedToken = await firebaseAuth.verifyIdToken(idToken);
+      return AccountDeletionAuthResult(
+        authenticated: true,
+        user: AuthenticatedUser(
+          uid: decodedToken.uid,
+          email: decodedToken.email,
+        ),
+      );
+    } catch (_) {
+      return const AccountDeletionAuthResult(
+        authenticated: false,
+        status: 401,
+        error: 'Unauthorized: Invalid or expired authentication token.',
+      );
     }
   }
 

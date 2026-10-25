@@ -5,8 +5,9 @@ import '../logic/missed_occurrence_policy.dart';
 import '../logic/l10n_extension.dart';
 import 'interval_stepper.dart';
 import 'date_stepper.dart';
-import 'relative_time_widget.dart';
-import 'missed_occurrence_policy_selector.dart';
+import 'missed_occurrence_policy_section.dart';
+import 'notification_config_section.dart';
+import 'schedule_timing_section.dart';
 
 class DailyFixedSchedulingWidget extends StatefulWidget {
   final CivilDay startDate;
@@ -132,7 +133,6 @@ class _DailyFixedSchedulingWidgetState
       widget.startDate.month,
       widget.startDate.day,
     );
-    final notificationEnabled = widget.notificationRelativeTime != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,136 +201,32 @@ class _DailyFixedSchedulingWidgetState
         ),
         const SizedBox(height: 20),
 
-        // 3. Start Window & help text
-        Text(
-          l10n.startLabel,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        RelativeTimeWidget(
-          key: const Key('daily_fixed_start_relative_time_picker'),
-          constraint: RelativeTimeConstraint.unconstrained,
-          controller: _startController,
-        ),
-        const SizedBox(height: 6),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.help_outline,
-              size: 14,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                l10n.taskAppearanceHelpText,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-
-        // 4. Due Window & help text
-        Text(
-          l10n.dueWithoutColon,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        RelativeTimeWidget(
-          key: const Key('daily_fixed_due_relative_time_picker'),
-          constraint: RelativeTimeConstraint.unconstrained,
-          controller: _dueController,
-        ),
-        const SizedBox(height: 6),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.help_outline,
-              size: 14,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                l10n.dueDescription,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
+        // 3 & 4. Start & Due Windows
+        ScheduleTimingSection(
+          keyPrefix: 'daily_fixed',
+          startController: _startController,
+          dueController: _dueController,
         ),
 
         // 5. Notifications
-        if (widget.showNotification) ...[
-          const SizedBox(height: 16),
-          const Divider(),
-          CheckboxListTile(
-            key: const Key('daily_fixed_notification_checkbox'),
-            title: Text(
-              l10n.enableNotificationReminderLabel,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            value: notificationEnabled,
-            onChanged: widget.readOnly
-                ? null
-                : (enabled) {
-                    if (enabled == true) {
-                      widget.onNotificationRelativeTimeChanged(
-                        _notificationController.value,
-                      );
-                    } else {
-                      widget.onNotificationRelativeTimeChanged(null);
-                    }
-                  },
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-          ),
-          if (notificationEnabled) ...[
-            Text(
-              l10n.notificationWindowLabel,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            RelativeTimeWidget(
-              key: const Key('daily_fixed_notification_relative_time_picker'),
-              constraint: RelativeTimeConstraint.unconstrained,
-              controller: _notificationController,
-            ),
-          ],
-        ],
+        NotificationConfigSection(
+          keyPrefix: 'daily_fixed',
+          showNotification: widget.showNotification,
+          notificationEnabled: widget.notificationRelativeTime != null,
+          onNotificationRelativeTimeChanged:
+              widget.onNotificationRelativeTimeChanged,
+          notificationController: _notificationController,
+          readOnly: widget.readOnly,
+        ),
 
         // 6. Missed occurrence policy selector
-        if (widget.showMissedPolicy &&
-            widget.missedOccurrencePolicy != null &&
-            widget.onMissedOccurrencePolicyChanged != null) ...[
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 12),
-          MissedOccurrencePolicySelector(
-            key: const Key('daily_fixed_missed_policy'),
-            policy: widget.missedOccurrencePolicy!,
-            onChanged: widget.onMissedOccurrencePolicyChanged!,
-          ),
-        ],
+        MissedOccurrencePolicySection(
+          keyPrefix: 'daily_fixed',
+          showMissedPolicy: widget.showMissedPolicy,
+          missedOccurrencePolicy: widget.missedOccurrencePolicy,
+          onMissedOccurrencePolicyChanged:
+              widget.onMissedOccurrencePolicyChanged,
+        ),
       ],
     );
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../logic/l10n_extension.dart';
-import '../../logic/schedule_rules/task_schedule_rule.dart';
+import '../../logic/task_schedule_rule.dart';
 import '../schedule_config_card.dart';
 
 /// Section widget for list of schedule configuration cards and add schedule action in CreateTaskScreen.

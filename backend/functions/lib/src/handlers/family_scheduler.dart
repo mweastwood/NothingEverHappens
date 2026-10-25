@@ -2,6 +2,7 @@ import '../interop/firebase_admin.dart';
 import '../interop/firebase_functions.dart';
 import '../interop/node_interop.dart';
 import '../services/family_scheduler_service.dart';
+import 'auth_helpers.dart';
 
 /// Authentication result for family scheduler invocation.
 class FamilySchedulerAuthResult {
@@ -34,108 +35,72 @@ Future<FamilySchedulerAuthResult> authenticateFamilySchedulerRequest(
   AuthService? auth,
   String? envSecret,
 }) async {
-  String? getHeader(List<String> targetNames) {
-    for (final name in targetNames) {
-      if (headers.containsKey(name)) {
-        final val = headers[name];
-        return val is List
-            ? (val.isNotEmpty ? val.first.toString() : null)
-            : val?.toString();
-      }
-    }
-    final lowerTargets = targetNames.map((n) => n.toLowerCase()).toSet();
-    for (final entry in headers.entries) {
-      if (lowerTargets.contains(entry.key.toLowerCase())) {
-        final val = entry.value;
-        return val is List
-            ? (val.isNotEmpty ? val.first.toString() : null)
-            : val?.toString();
-      }
-    }
-    return null;
-  }
-
-  final authHeader = getHeader(['authorization', 'Authorization']);
-  final serviceKey = getHeader([
-    'x-service-secret',
-    'X-Service-Secret',
-    'x-api-key',
-    'X-Api-Key',
-  ]);
-
-  final secret =
-      envSecret ?? getEnv('TASK_HUB_SECRET') ?? getEnv('SERVICE_SECRET');
-
   // 1. Service Secret authentication
-  if (secret != null &&
-      secret.isNotEmpty &&
-      (serviceKey == secret || authHeader == 'Bearer $secret')) {
+  if (hasValidServiceSecret(headers, envSecret: envSecret)) {
     return const FamilySchedulerAuthResult(authenticated: true, isAdmin: true);
   }
 
   // 2. Firebase ID Token authentication
-  if (authHeader != null && authHeader.startsWith('Bearer ')) {
-    final idToken = authHeader.substring(7).trim();
-    if (idToken.isNotEmpty) {
-      try {
-        final firebaseAuth = auth ?? getFirebaseAdminAuth();
-        final decodedToken = await firebaseAuth.verifyIdToken(idToken);
-        final uid = decodedToken.uid;
-        final isAdmin = decodedToken.admin == true;
+  final idToken = extractBearerToken(headers);
+  if (idToken != null) {
+    try {
+      final firebaseAuth = auth ?? getFirebaseAdminAuth();
+      final decodedToken = await firebaseAuth.verifyIdToken(idToken);
+      final uid = decodedToken.uid;
+      final isAdmin = decodedToken.admin == true;
 
-        if (isAdmin) {
-          return FamilySchedulerAuthResult(
-            authenticated: true,
-            uid: uid,
-            isAdmin: true,
-          );
-        }
+      if (isAdmin) {
+        return FamilySchedulerAuthResult(
+          authenticated: true,
+          uid: uid,
+          isAdmin: true,
+        );
+      }
 
-        // Processing all families requires admin or service secret
-        if (familyId == null || familyId.isEmpty) {
-          return const FamilySchedulerAuthResult(
-            authenticated: false,
-            status: 403,
-            error:
-                'Forbidden: Admin credentials required to schedule all families.',
-          );
-        }
-
-        // Verify membership in the target family
-        final firestoreDb = db ?? getFirebaseAdminDb();
-        final familyDoc =
-            await firestoreDb.collection('families').doc(familyId).get();
-
-        if (!familyDoc.exists) {
-          return const FamilySchedulerAuthResult(
-            authenticated: false,
-            status: 404,
-            error: 'Family not found.',
-          );
-        }
-
-        final familyData = familyDoc.data();
-        final members = familyData?['members'] as Map?;
-        if (members != null && members.containsKey(uid)) {
-          return FamilySchedulerAuthResult(
-            authenticated: true,
-            uid: uid,
-            isAdmin: false,
-          );
-        }
-
+      // Processing all families requires admin or service secret
+      if (familyId == null || familyId.isEmpty) {
         return const FamilySchedulerAuthResult(
           authenticated: false,
           status: 403,
-          error: 'Forbidden: User is not a member of this family.',
-        );
-      } catch (_) {
-        return const FamilySchedulerAuthResult(
-          authenticated: false,
-          status: 401,
-          error: 'Unauthorized: Invalid or expired authentication token.',
+          error:
+              'Forbidden: Admin credentials required to schedule all families.',
         );
       }
+
+      // Verify membership in the target family
+      final firestoreDb = db ?? getFirebaseAdminDb();
+      final familyDoc =
+          await firestoreDb.collection('families').doc(familyId).get();
+
+      if (!familyDoc.exists) {
+        return const FamilySchedulerAuthResult(
+          authenticated: false,
+          status: 404,
+          error: 'Family not found.',
+        );
+      }
+
+      final familyData = familyDoc.data();
+      final members = familyData?['members'] as Map?;
+      if (members != null && members.containsKey(uid)) {
+        return FamilySchedulerAuthResult(
+          authenticated: true,
+          uid: uid,
+          isAdmin: false,
+        );
+      }
+
+      return const FamilySchedulerAuthResult(
+        authenticated: false,
+        status: 403,
+        error: 'Forbidden: User is not a member of this family.',
+      );
+    } catch (_) {
+      return const FamilySchedulerAuthResult(
+        authenticated: false,
+        status: 401,
+        error: 'Unauthorized: Invalid or expired authentication token.',
+      );
     }
   }
 
