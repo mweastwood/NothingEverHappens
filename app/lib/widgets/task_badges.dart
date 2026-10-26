@@ -11,12 +11,14 @@ class TaskBadge extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final double fontSize;
 
   const TaskBadge({
     super.key,
     required this.icon,
     required this.label,
     required this.color,
+    this.fontSize = 10,
   });
 
   @override
@@ -50,7 +52,7 @@ class TaskBadge extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: fontSize,
                     fontWeight: FontWeight.w600,
                     color: color,
                   ),
@@ -96,8 +98,13 @@ class FamilyTaskProgressBadge extends ConsumerWidget {
 /// from the parent `TaskWidget`.
 class TaskAssigneeBadge extends ConsumerWidget {
   final String userId;
+  final double fontSize;
 
-  const TaskAssigneeBadge({super.key, required this.userId});
+  const TaskAssigneeBadge({
+    super.key,
+    required this.userId,
+    this.fontSize = 10,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -115,6 +122,7 @@ class TaskAssigneeBadge extends ConsumerWidget {
       icon: Icons.assignment_ind,
       label: label,
       color: Theme.of(context).colorScheme.primary,
+      fontSize: fontSize,
     );
   }
 }

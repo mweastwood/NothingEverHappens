@@ -21,58 +21,136 @@ typedef _ScheduleWidgetBuilder =
       TaskScheduleRule s,
     );
 
+SchedulingPolicy _scaleCompletionRelativeInterval(
+  SchedulingPolicy policy,
+  int intervalUnits,
+  int daysPerUnit,
+) {
+  if (policy is CompletionRelativePolicy) {
+    return CompletionRelativePolicy(
+      interval: Duration(days: intervalUnits * daysPerUnit),
+      targetHour: policy.targetHour,
+      targetMinute: policy.targetMinute,
+    );
+  }
+  return policy;
+}
+
+DailySchedule _updateDaily(DailySchedule rule, {required int interval}) {
+  return DailySchedule(
+    id: rule.id,
+    scheduleId: rule.scheduleId,
+    startDate: rule.startDate,
+    interval: interval,
+    startRelativeTime: rule.startRelativeTime,
+    dueRelativeTime: rule.dueRelativeTime,
+    notificationRelativeTimes: rule.notificationRelativeTimes,
+    schedulingPolicy: _scaleCompletionRelativeInterval(
+      rule.schedulingPolicy,
+      interval,
+      1,
+    ),
+    missedOccurrencePolicy: rule.missedOccurrencePolicy,
+  );
+}
+
+WeeklySchedule _updateWeekly(
+  WeeklySchedule rule, {
+  int? interval,
+  Set<int>? daysOfWeek,
+}) {
+  final nextInterval = interval ?? rule.interval;
+  return WeeklySchedule(
+    id: rule.id,
+    scheduleId: rule.scheduleId,
+    startDate: rule.startDate,
+    interval: nextInterval,
+    daysOfWeek: daysOfWeek ?? rule.daysOfWeek,
+    startRelativeTime: rule.startRelativeTime,
+    dueRelativeTime: rule.dueRelativeTime,
+    notificationRelativeTimes: rule.notificationRelativeTimes,
+    schedulingPolicy: interval != null
+        ? _scaleCompletionRelativeInterval(rule.schedulingPolicy, interval, 7)
+        : rule.schedulingPolicy,
+    missedOccurrencePolicy: rule.missedOccurrencePolicy,
+  );
+}
+
+MonthlySchedule _updateMonthly(
+  MonthlySchedule rule, {
+  int? interval,
+  int? dayOfMonth,
+  int? dayOfWeek,
+  int? occurrence,
+  bool clearDayOfMonth = false,
+  bool clearNthWeekday = false,
+}) {
+  final nextInterval = interval ?? rule.interval;
+  return MonthlySchedule(
+    id: rule.id,
+    scheduleId: rule.scheduleId,
+    startDate: rule.startDate,
+    interval: nextInterval,
+    dayOfMonth: clearDayOfMonth ? null : (dayOfMonth ?? rule.dayOfMonth),
+    dayOfWeek: clearNthWeekday ? null : (dayOfWeek ?? rule.dayOfWeek),
+    occurrence: clearNthWeekday ? null : (occurrence ?? rule.occurrence),
+    startRelativeTime: rule.startRelativeTime,
+    dueRelativeTime: rule.dueRelativeTime,
+    notificationRelativeTimes: rule.notificationRelativeTimes,
+    schedulingPolicy: interval != null
+        ? _scaleCompletionRelativeInterval(rule.schedulingPolicy, interval, 30)
+        : rule.schedulingPolicy,
+    missedOccurrencePolicy: rule.missedOccurrencePolicy,
+  );
+}
+
+YearlySchedule _updateYearly(
+  YearlySchedule rule, {
+  int? interval,
+  int? month,
+  int? day,
+}) {
+  final nextInterval = interval ?? rule.interval;
+  return YearlySchedule(
+    id: rule.id,
+    scheduleId: rule.scheduleId,
+    startDate: rule.startDate,
+    interval: nextInterval,
+    month: month ?? rule.month,
+    day: day ?? rule.day,
+    startRelativeTime: rule.startRelativeTime,
+    dueRelativeTime: rule.dueRelativeTime,
+    notificationRelativeTimes: rule.notificationRelativeTimes,
+    schedulingPolicy: interval != null
+        ? _scaleCompletionRelativeInterval(rule.schedulingPolicy, interval, 365)
+        : rule.schedulingPolicy,
+    missedOccurrencePolicy: rule.missedOccurrencePolicy,
+  );
+}
+
 final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
   DailySchedule: (context, state, s) {
     final rule = s as DailySchedule;
     return DailySchedulingWidget(
       startDate: rule.startDate,
-      onStartDateChanged: (date) {
-        state.widget.onChanged(rule.copyWithStartDate(date));
-      },
+      onStartDateChanged: (date) => state._emit(rule.copyWithStartDate(date)),
       interval: rule.interval,
-      onIntervalChanged: (val) {
-        var policy = rule.schedulingPolicy;
-        if (policy is CompletionRelativePolicy) {
-          policy = CompletionRelativePolicy(
-            interval: Duration(days: val),
-            targetHour: policy.targetHour,
-            targetMinute: policy.targetMinute,
-          );
-        }
-        state.widget.onChanged(
-          DailySchedule(
-            id: rule.id,
-            scheduleId: rule.scheduleId,
-            startDate: rule.startDate,
-            interval: val,
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            notificationRelativeTimes: rule.notificationRelativeTimes,
-            schedulingPolicy: policy,
-            missedOccurrencePolicy: rule.missedOccurrencePolicy,
-          ),
-        );
-      },
+      onIntervalChanged: (val) =>
+          state._emit(_updateDaily(rule, interval: val)),
       schedulingPolicy: rule.schedulingPolicy,
-      onSchedulingPolicyChanged: (policy) {
-        state.widget.onChanged(rule.copyWithTiming(schedulingPolicy: policy));
-      },
+      onSchedulingPolicyChanged: (policy) =>
+          state._emit(rule.copyWithTiming(schedulingPolicy: policy)),
       startRelativeTime: rule.startRelativeTime,
-      onStartRelativeTimeChanged: (start) {
-        state.widget.onChanged(rule.copyWithTiming(startRelativeTime: start));
-      },
+      onStartRelativeTimeChanged: (start) =>
+          state._emit(rule.copyWithTiming(startRelativeTime: start)),
       dueRelativeTime: rule.dueRelativeTime,
-      onDueRelativeTimeChanged: (due) {
-        state.widget.onChanged(rule.copyWithTiming(dueRelativeTime: due));
-      },
+      onDueRelativeTimeChanged: (due) =>
+          state._emit(rule.copyWithTiming(dueRelativeTime: due)),
       notificationRelativeTime: null,
       onNotificationRelativeTimeChanged: (_) {},
       missedOccurrencePolicy: rule.missedOccurrencePolicy,
-      onMissedOccurrencePolicyChanged: (policy) {
-        state.widget.onChanged(
-          rule.copyWithTiming(missedOccurrencePolicy: policy),
-        );
-      },
+      onMissedOccurrencePolicyChanged: (policy) =>
+          state._emit(rule.copyWithTiming(missedOccurrencePolicy: policy)),
       showNotification: false,
       showMissedPolicy: false,
       readOnly: state.widget.readOnly,
@@ -83,71 +161,27 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
     final rule = s as WeeklySchedule;
     return WeeklySchedulingWidget(
       startDate: rule.startDate,
-      onStartDateChanged: (date) {
-        state.widget.onChanged(rule.copyWithStartDate(date));
-      },
+      onStartDateChanged: (date) => state._emit(rule.copyWithStartDate(date)),
       interval: rule.interval,
-      onIntervalChanged: (val) {
-        var policy = rule.schedulingPolicy;
-        if (policy is CompletionRelativePolicy) {
-          policy = CompletionRelativePolicy(
-            interval: Duration(days: val * 7),
-            targetHour: policy.targetHour,
-            targetMinute: policy.targetMinute,
-          );
-        }
-        state.widget.onChanged(
-          WeeklySchedule(
-            id: rule.id,
-            scheduleId: rule.scheduleId,
-            startDate: rule.startDate,
-            interval: val,
-            daysOfWeek: rule.daysOfWeek,
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            notificationRelativeTimes: rule.notificationRelativeTimes,
-            schedulingPolicy: policy,
-            missedOccurrencePolicy: rule.missedOccurrencePolicy,
-          ),
-        );
-      },
+      onIntervalChanged: (val) =>
+          state._emit(_updateWeekly(rule, interval: val)),
       schedulingPolicy: rule.schedulingPolicy,
-      onSchedulingPolicyChanged: (policy) {
-        state.widget.onChanged(rule.copyWithTiming(schedulingPolicy: policy));
-      },
+      onSchedulingPolicyChanged: (policy) =>
+          state._emit(rule.copyWithTiming(schedulingPolicy: policy)),
       selectedWeekdays: rule.daysOfWeek,
-      onWeekdaysChanged: (days) {
-        state.widget.onChanged(
-          WeeklySchedule(
-            id: rule.id,
-            scheduleId: rule.scheduleId,
-            startDate: rule.startDate,
-            interval: rule.interval,
-            daysOfWeek: days,
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            notificationRelativeTimes: rule.notificationRelativeTimes,
-            schedulingPolicy: rule.schedulingPolicy,
-            missedOccurrencePolicy: rule.missedOccurrencePolicy,
-          ),
-        );
-      },
+      onWeekdaysChanged: (days) =>
+          state._emit(_updateWeekly(rule, daysOfWeek: days)),
       startRelativeTime: rule.startRelativeTime,
-      onStartRelativeTimeChanged: (start) {
-        state.widget.onChanged(rule.copyWithTiming(startRelativeTime: start));
-      },
+      onStartRelativeTimeChanged: (start) =>
+          state._emit(rule.copyWithTiming(startRelativeTime: start)),
       dueRelativeTime: rule.dueRelativeTime,
-      onDueRelativeTimeChanged: (due) {
-        state.widget.onChanged(rule.copyWithTiming(dueRelativeTime: due));
-      },
+      onDueRelativeTimeChanged: (due) =>
+          state._emit(rule.copyWithTiming(dueRelativeTime: due)),
       notificationRelativeTime: null,
       onNotificationRelativeTimeChanged: (_) {},
       missedOccurrencePolicy: rule.missedOccurrencePolicy,
-      onMissedOccurrencePolicyChanged: (policy) {
-        state.widget.onChanged(
-          rule.copyWithTiming(missedOccurrencePolicy: policy),
-        );
-      },
+      onMissedOccurrencePolicyChanged: (policy) =>
+          state._emit(rule.copyWithTiming(missedOccurrencePolicy: policy)),
       showNotification: false,
       showMissedPolicy: false,
       readOnly: state.widget.readOnly,
@@ -158,144 +192,57 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
     final rule = s as MonthlySchedule;
     return MonthlySchedulingWidget(
       startDate: rule.startDate,
-      onStartDateChanged: (date) {
-        state.widget.onChanged(rule.copyWithStartDate(date));
-      },
+      onStartDateChanged: (date) => state._emit(rule.copyWithStartDate(date)),
       interval: rule.interval,
-      onIntervalChanged: (val) {
-        var policy = rule.schedulingPolicy;
-        if (policy is CompletionRelativePolicy) {
-          policy = CompletionRelativePolicy(
-            interval: Duration(days: val * 30),
-            targetHour: policy.targetHour,
-            targetMinute: policy.targetMinute,
-          );
-        }
-        state.widget.onChanged(
-          MonthlySchedule(
-            id: rule.id,
-            scheduleId: rule.scheduleId,
-            startDate: rule.startDate,
-            interval: val,
-            dayOfMonth: rule.dayOfMonth,
-            dayOfWeek: rule.dayOfWeek,
-            occurrence: rule.occurrence,
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            notificationRelativeTimes: rule.notificationRelativeTimes,
-            schedulingPolicy: policy,
-            missedOccurrencePolicy: rule.missedOccurrencePolicy,
-          ),
-        );
-      },
+      onIntervalChanged: (val) =>
+          state._emit(_updateMonthly(rule, interval: val)),
       schedulingPolicy: rule.schedulingPolicy,
-      onSchedulingPolicyChanged: (policy) {
-        state.widget.onChanged(rule.copyWithTiming(schedulingPolicy: policy));
-      },
+      onSchedulingPolicyChanged: (policy) =>
+          state._emit(rule.copyWithTiming(schedulingPolicy: policy)),
       ruleType: rule.dayOfMonth != null ? 'dayOfMonth' : 'nthDayOfWeek',
       onRuleTypeChanged: (type) {
         if (type == 'dayOfMonth') {
-          state.widget.onChanged(
-            MonthlySchedule(
-              id: rule.id,
-              scheduleId: rule.scheduleId,
-              startDate: rule.startDate,
-              interval: rule.interval,
+          state._emit(
+            _updateMonthly(
+              rule,
               dayOfMonth: rule.startDate.day <= 28 ? rule.startDate.day : 28,
-              startRelativeTime: rule.startRelativeTime,
-              dueRelativeTime: rule.dueRelativeTime,
-              notificationRelativeTimes: rule.notificationRelativeTimes,
-              schedulingPolicy: rule.schedulingPolicy,
-              missedOccurrencePolicy: rule.missedOccurrencePolicy,
+              clearNthWeekday: true,
             ),
           );
         } else {
-          state.widget.onChanged(
-            MonthlySchedule(
-              id: rule.id,
-              scheduleId: rule.scheduleId,
-              startDate: rule.startDate,
-              interval: rule.interval,
+          state._emit(
+            _updateMonthly(
+              rule,
               dayOfWeek: rule.startDate.toUtcDateTime().weekday,
               occurrence: 1,
-              startRelativeTime: rule.startRelativeTime,
-              dueRelativeTime: rule.dueRelativeTime,
-              notificationRelativeTimes: rule.notificationRelativeTimes,
-              schedulingPolicy: rule.schedulingPolicy,
-              missedOccurrencePolicy: rule.missedOccurrencePolicy,
+              clearDayOfMonth: true,
             ),
           );
         }
       },
       dayOfMonth: rule.dayOfMonth,
-      onDayOfMonthChanged: (val) {
-        state.widget.onChanged(
-          MonthlySchedule(
-            id: rule.id,
-            scheduleId: rule.scheduleId,
-            startDate: rule.startDate,
-            interval: rule.interval,
-            dayOfMonth: val,
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            notificationRelativeTimes: rule.notificationRelativeTimes,
-            schedulingPolicy: rule.schedulingPolicy,
-            missedOccurrencePolicy: rule.missedOccurrencePolicy,
-          ),
-        );
-      },
+      onDayOfMonthChanged: (val) => state._emit(
+        _updateMonthly(rule, dayOfMonth: val, clearNthWeekday: true),
+      ),
       occurrence: rule.occurrence,
-      onOccurrenceChanged: (val) {
-        state.widget.onChanged(
-          MonthlySchedule(
-            id: rule.id,
-            scheduleId: rule.scheduleId,
-            startDate: rule.startDate,
-            interval: rule.interval,
-            dayOfWeek: rule.dayOfWeek,
-            occurrence: val,
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            notificationRelativeTimes: rule.notificationRelativeTimes,
-            schedulingPolicy: rule.schedulingPolicy,
-            missedOccurrencePolicy: rule.missedOccurrencePolicy,
-          ),
-        );
-      },
+      onOccurrenceChanged: (val) => state._emit(
+        _updateMonthly(rule, occurrence: val, clearDayOfMonth: true),
+      ),
       dayOfWeek: rule.dayOfWeek,
-      onDayOfWeekChanged: (val) {
-        state.widget.onChanged(
-          MonthlySchedule(
-            id: rule.id,
-            scheduleId: rule.scheduleId,
-            startDate: rule.startDate,
-            interval: rule.interval,
-            dayOfWeek: val,
-            occurrence: rule.occurrence,
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            notificationRelativeTimes: rule.notificationRelativeTimes,
-            schedulingPolicy: rule.schedulingPolicy,
-            missedOccurrencePolicy: rule.missedOccurrencePolicy,
-          ),
-        );
-      },
+      onDayOfWeekChanged: (val) => state._emit(
+        _updateMonthly(rule, dayOfWeek: val, clearDayOfMonth: true),
+      ),
       startRelativeTime: rule.startRelativeTime,
-      onStartRelativeTimeChanged: (start) {
-        state.widget.onChanged(rule.copyWithTiming(startRelativeTime: start));
-      },
+      onStartRelativeTimeChanged: (start) =>
+          state._emit(rule.copyWithTiming(startRelativeTime: start)),
       dueRelativeTime: rule.dueRelativeTime,
-      onDueRelativeTimeChanged: (due) {
-        state.widget.onChanged(rule.copyWithTiming(dueRelativeTime: due));
-      },
+      onDueRelativeTimeChanged: (due) =>
+          state._emit(rule.copyWithTiming(dueRelativeTime: due)),
       notificationRelativeTime: null,
       onNotificationRelativeTimeChanged: (_) {},
       missedOccurrencePolicy: rule.missedOccurrencePolicy,
-      onMissedOccurrencePolicyChanged: (policy) {
-        state.widget.onChanged(
-          rule.copyWithTiming(missedOccurrencePolicy: policy),
-        );
-      },
+      onMissedOccurrencePolicyChanged: (policy) =>
+          state._emit(rule.copyWithTiming(missedOccurrencePolicy: policy)),
       showNotification: false,
       showMissedPolicy: false,
       readOnly: state.widget.readOnly,
@@ -307,91 +254,28 @@ final Map<Type, _ScheduleWidgetBuilder> _configBuilders = {
     final rule = s as YearlySchedule;
     return YearlySchedulingWidget(
       startDate: rule.startDate,
-      onStartDateChanged: (date) {
-        state.widget.onChanged(rule.copyWithStartDate(date));
-      },
+      onStartDateChanged: (date) => state._emit(rule.copyWithStartDate(date)),
       interval: rule.interval,
-      onIntervalChanged: (val) {
-        var policy = rule.schedulingPolicy;
-        if (policy is CompletionRelativePolicy) {
-          policy = CompletionRelativePolicy(
-            interval: Duration(days: val * 365),
-            targetHour: policy.targetHour,
-            targetMinute: policy.targetMinute,
-          );
-        }
-        state.widget.onChanged(
-          YearlySchedule(
-            id: rule.id,
-            scheduleId: rule.scheduleId,
-            startDate: rule.startDate,
-            interval: val,
-            month: rule.month,
-            day: rule.day,
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            notificationRelativeTimes: rule.notificationRelativeTimes,
-            schedulingPolicy: policy,
-            missedOccurrencePolicy: rule.missedOccurrencePolicy,
-          ),
-        );
-      },
+      onIntervalChanged: (val) =>
+          state._emit(_updateYearly(rule, interval: val)),
       schedulingPolicy: rule.schedulingPolicy,
-      onSchedulingPolicyChanged: (policy) {
-        state.widget.onChanged(rule.copyWithTiming(schedulingPolicy: policy));
-      },
+      onSchedulingPolicyChanged: (policy) =>
+          state._emit(rule.copyWithTiming(schedulingPolicy: policy)),
       month: rule.month,
-      onMonthChanged: (val) {
-        state.widget.onChanged(
-          YearlySchedule(
-            id: rule.id,
-            scheduleId: rule.scheduleId,
-            startDate: rule.startDate,
-            interval: rule.interval,
-            month: val,
-            day: rule.day,
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            notificationRelativeTimes: rule.notificationRelativeTimes,
-            schedulingPolicy: rule.schedulingPolicy,
-            missedOccurrencePolicy: rule.missedOccurrencePolicy,
-          ),
-        );
-      },
+      onMonthChanged: (val) => state._emit(_updateYearly(rule, month: val)),
       day: rule.day,
-      onDayChanged: (val) {
-        state.widget.onChanged(
-          YearlySchedule(
-            id: rule.id,
-            scheduleId: rule.scheduleId,
-            startDate: rule.startDate,
-            interval: rule.interval,
-            month: rule.month,
-            day: val,
-            startRelativeTime: rule.startRelativeTime,
-            dueRelativeTime: rule.dueRelativeTime,
-            notificationRelativeTimes: rule.notificationRelativeTimes,
-            schedulingPolicy: rule.schedulingPolicy,
-            missedOccurrencePolicy: rule.missedOccurrencePolicy,
-          ),
-        );
-      },
+      onDayChanged: (val) => state._emit(_updateYearly(rule, day: val)),
       startRelativeTime: rule.startRelativeTime,
-      onStartRelativeTimeChanged: (start) {
-        state.widget.onChanged(rule.copyWithTiming(startRelativeTime: start));
-      },
+      onStartRelativeTimeChanged: (start) =>
+          state._emit(rule.copyWithTiming(startRelativeTime: start)),
       dueRelativeTime: rule.dueRelativeTime,
-      onDueRelativeTimeChanged: (due) {
-        state.widget.onChanged(rule.copyWithTiming(dueRelativeTime: due));
-      },
+      onDueRelativeTimeChanged: (due) =>
+          state._emit(rule.copyWithTiming(dueRelativeTime: due)),
       notificationRelativeTime: null,
       onNotificationRelativeTimeChanged: (_) {},
       missedOccurrencePolicy: rule.missedOccurrencePolicy,
-      onMissedOccurrencePolicyChanged: (policy) {
-        state.widget.onChanged(
-          rule.copyWithTiming(missedOccurrencePolicy: policy),
-        );
-      },
+      onMissedOccurrencePolicyChanged: (policy) =>
+          state._emit(rule.copyWithTiming(missedOccurrencePolicy: policy)),
       showNotification: false,
       showMissedPolicy: false,
       readOnly: state.widget.readOnly,
@@ -444,6 +328,10 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
   String? _lastReportedError;
   bool _hasReportedError = false;
   bool _didInit = false;
+
+  void _emit(TaskScheduleRule rule) {
+    widget.onChanged(rule);
+  }
 
   @override
   void initState() {
@@ -560,18 +448,25 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     }
   }
 
+  String _formatIntervalControllerText(TaskScheduleRule s) {
+    final l10n = context.l10n;
+    final intervalText = _getIntervalText(s);
+    if (s is DailySchedule) {
+      return intervalText == '1'
+          ? '1 ${l10n.presetDaySingular}'
+          : '$intervalText ${l10n.presetDayPlural}';
+    }
+    return intervalText;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_didInit) {
       _didInit = true;
-      final l10n = context.l10n;
-      final intervalText = _getIntervalText(widget.schedule);
-      final initialFormattedText = widget.schedule is DailySchedule
-          ? (intervalText == '1'
-                ? '1 ${l10n.presetDaySingular}'
-                : '$intervalText ${l10n.presetDayPlural}')
-          : intervalText;
+      final initialFormattedText = _formatIntervalControllerText(
+        widget.schedule,
+      );
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _intervalController.text = initialFormattedText;
@@ -606,12 +501,7 @@ class _ScheduleRuleConfigWidgetState extends State<ScheduleRuleConfigWidget> {
     final oldIntervalText = _getIntervalText(oldWidget.schedule);
     final newIntervalText = _getIntervalText(widget.schedule);
     if (typeChanged || oldIntervalText != newIntervalText) {
-      final l10n = context.l10n;
-      final formattedText = widget.schedule is DailySchedule
-          ? (newIntervalText == '1'
-                ? '1 ${l10n.presetDaySingular}'
-                : '$newIntervalText ${l10n.presetDayPlural}')
-          : newIntervalText;
+      final formattedText = _formatIntervalControllerText(widget.schedule);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _intervalController.text = formattedText;
