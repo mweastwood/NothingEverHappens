@@ -1,7 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../logic/app_clock.dart';
 import '../logic/dashboard_stats.dart';
+import 'timeline_chart_components.dart';
+
+export 'timeline_chart_components.dart'
+    show HatchedPatternPainter, DashedRectPainter;
 
 class DailyCapacityData {
   final DateTime date;
@@ -85,7 +88,6 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
   }
 
   void _centerOnToday() {
-    if (!_scrollController.hasClients) return;
     final today = AppClock.now;
     final todayIndex = widget.daysData.indexWhere(
       (d) =>
@@ -93,39 +95,7 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
           d.date.month == today.month &&
           d.date.day == today.day,
     );
-
-    if (todayIndex >= 0) {
-      final viewportWidth = _scrollController.position.viewportDimension;
-      final targetOffset =
-          (todayIndex * _itemWidth + _itemWidth / 2) - (viewportWidth / 2);
-      final maxScroll = _scrollController.position.maxScrollExtent;
-      if (maxScroll > 0) {
-        _scrollController.jumpTo(targetOffset.clamp(0.0, maxScroll));
-      }
-    }
-  }
-
-  String _formatDateRange(DateTime start, DateTime end) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final startMonth = months[start.month - 1];
-    final endMonth = months[end.month - 1];
-    if (start.month == end.month) {
-      return '$startMonth ${start.day} – ${end.day}';
-    }
-    return '$startMonth ${start.day} – $endMonth ${end.day}';
+    centerTimelineOnIndex(_scrollController, todayIndex, itemWidth: _itemWidth);
   }
 
   @override
@@ -159,9 +129,11 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
     final double scaleMax = peakValue > 0 ? peakValue : 8.0;
 
     final dateRangeStr = widget.daysData.isNotEmpty
-        ? _formatDateRange(
-            widget.daysData.first.date,
-            widget.daysData.last.date,
+        ? formatTimelineDateRange(
+            startMonth: widget.daysData.first.date.month,
+            startDay: widget.daysData.first.date.day,
+            endMonth: widget.daysData.last.date.month,
+            endDay: widget.daysData.last.date.day,
           )
         : '';
 
@@ -232,123 +204,20 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
             const SizedBox(height: 16),
 
             // Timeline Guide (Past 6 Days / Today / Future 6 Days)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.history,
-                        size: 14,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          'Past',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      'Today',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          'Future',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.trending_up,
-                        size: 14,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            const TimelineGuideRow(),
             const SizedBox(height: 12),
 
             // 13-Day Horizontal Timeline Strip
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final totalWidth = widget.daysData.length * _itemWidth;
-                final bool canFit = constraints.maxWidth >= totalWidth;
-
-                final children = widget.daysData.map((data) {
-                  final dayColumn = _buildDayColumn(
-                    context,
-                    data,
-                    scaleMax,
-                    today,
-                  );
-                  if (canFit) {
-                    return Expanded(child: dayColumn);
-                  } else {
-                    return SizedBox(width: _itemWidth, child: dayColumn);
-                  }
-                }).toList();
-
-                final chartContent = SizedBox(
-                  height: 180,
-                  width: canFit ? constraints.maxWidth : totalWidth,
-                  child: Row(
-                    mainAxisAlignment: canFit
-                        ? MainAxisAlignment.spaceEvenly
-                        : MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: children,
-                  ),
-                );
-
-                if (canFit) {
-                  return chartContent;
-                }
-
-                return SingleChildScrollView(
-                  controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: chartContent,
-                );
-              },
+            TimelineScrollStrip(
+              itemCount: widget.daysData.length,
+              itemWidth: _itemWidth,
+              scrollController: _scrollController,
+              itemBuilder: (context, index) => _buildDayColumn(
+                context,
+                widget.daysData[index],
+                scaleMax,
+                today,
+              ),
             ),
           ],
         ),
@@ -388,21 +257,11 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
         ? (capacity / scaleMax * 120.0).clamp(8.0, 120.0)
         : 0.0;
 
-    final List<String> weekdays = [
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-      'Sun',
-    ];
-    final dayLabel = weekdays[date.weekday - 1];
     final isOverCapacity = workHours > capacity;
 
-    return GestureDetector(
-      key: Key('capacity_bar_$dateStr'),
-      behavior: HitTestBehavior.opaque,
+    return TimelineDayColumnShell(
+      gestureKey: Key('capacity_bar_$dateStr'),
+      subtreeKey: Key('daily_activity_bar_$dateStr'),
       onTap: () {
         if (widget.onDayActivityTap != null && data.statsData != null) {
           widget.onDayActivityTap!(data.statsData!);
@@ -410,82 +269,39 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
           widget.onDayTap(date);
         }
       },
-      child: KeyedSubtree(
-        key: Key('daily_activity_bar_$dateStr'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          decoration: isToday
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.4),
-                    width: 1,
-                  ),
-                )
-              : null,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              SizedBox(
-                height: 120,
-                child: Stack(
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    _buildBarFill(
-                      context,
-                      data,
-                      scaleMax,
-                      isPast,
-                      isToday,
-                      isOverCapacity,
-                      isOverridden,
-                    ),
-                    if (barHeight > 0 && !isPast)
-                      IgnorePointer(
-                        child: Container(
-                          height: barHeight,
-                          width: double.infinity,
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          child: CustomPaint(
-                            painter: DashedRectPainter(
-                              color: isToday
-                                  ? theme.colorScheme.primary
-                                  : isOverridden
-                                  ? theme.colorScheme.tertiary
-                                  : theme.colorScheme.outlineVariant,
-                              strokeWidth: isToday ? 2.0 : 1.5,
-                              borderRadius: 6.0,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                dayLabel,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                  color: isToday
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface,
-                ),
-              ),
-              Text(
-                '${date.day}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 10,
-                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                  color: isToday
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
+      isToday: isToday,
+      weekday: date.weekday,
+      dayOfMonth: date.day,
+      stackChildren: [
+        _buildBarFill(
+          context,
+          data,
+          scaleMax,
+          isPast,
+          isToday,
+          isOverCapacity,
+          isOverridden,
         ),
-      ),
+        if (barHeight > 0 && !isPast)
+          IgnorePointer(
+            child: Container(
+              height: barHeight,
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              child: CustomPaint(
+                painter: DashedRectPainter(
+                  color: isToday
+                      ? theme.colorScheme.primary
+                      : isOverridden
+                      ? theme.colorScheme.tertiary
+                      : theme.colorScheme.outlineVariant,
+                  strokeWidth: isToday ? 2.0 : 1.5,
+                  borderRadius: 6.0,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -499,109 +315,26 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
     bool isOverridden,
   ) {
     final theme = Theme.of(context);
+    final Color plannedColor = isOverCapacity
+        ? theme.colorScheme.error
+        : isOverridden
+        ? theme.colorScheme.tertiary
+        : theme.colorScheme.primary;
 
     if (isPast) {
-      double onTimeHours = data.completedOnTimeHours;
-      double overdueHours = data.completedOverdueHours;
-      double seriouslyOverdueHours = data.completedSeriouslyOverdueHours;
-      double skippedHours = data.skippedHours + data.missedHours;
-
-      if (onTimeHours == 0 &&
-          overdueHours == 0 &&
-          seriouslyOverdueHours == 0 &&
-          skippedHours == 0 &&
-          data.statsData != null) {
-        if (data.statsData!.completedCount > 0) {
-          if (data.statsData!.completedSeriouslyOverdueCount > 0) {
-            seriouslyOverdueHours = 0.25;
-          } else if (data.statsData!.completedOverdueCount > 0) {
-            overdueHours = 0.25;
-          } else {
-            onTimeHours = 0.25;
-          }
-        }
-        if (data.statsData!.skippedCount > 0 ||
-            data.statsData!.missedCount > 0) {
-          skippedHours = 0.25;
-        }
-      }
-
-      final totalActivity =
-          onTimeHours + overdueHours + seriouslyOverdueHours + skippedHours;
-      if (totalActivity <= 0) return const SizedBox.shrink();
-
-      final double fillHeight = (totalActivity / scaleMax * 120.0).clamp(
-        8.0,
-        120.0,
+      final resolved = resolvePastDayActivityHours(
+        onTimeHours: data.completedOnTimeHours,
+        overdueHours: data.completedOverdueHours,
+        seriouslyOverdueHours: data.completedSeriouslyOverdueHours,
+        skippedHours: data.skippedHours + data.missedHours,
+        statsData: data.statsData,
       );
-
-      return Container(
-        height: fillHeight,
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Column(
-            children: [
-              if (skippedHours > 0)
-                Expanded(
-                  flex: (skippedHours * 1000).round().clamp(1, 1000000),
-                  child: CustomPaint(
-                    painter: HatchedPatternPainter(
-                      backgroundColor: theme.colorScheme.error.withValues(
-                        alpha: 0.15,
-                      ),
-                      stripeColor: theme.colorScheme.error,
-                      stripeWidth: 2.0,
-                      gap: 3.0,
-                    ),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              if (seriouslyOverdueHours > 0)
-                Expanded(
-                  flex: (seriouslyOverdueHours * 1000).round().clamp(
-                    1,
-                    1000000,
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.red.shade700, Colors.red.shade600],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
-                ),
-              if (overdueHours > 0)
-                Expanded(
-                  flex: (overdueHours * 1000).round().clamp(1, 1000000),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.amber.shade700, Colors.amber.shade600],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
-                ),
-              if (onTimeHours > 0)
-                Expanded(
-                  flex: (onTimeHours * 1000).round().clamp(1, 1000000),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.green.shade600, Colors.green.shade500],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      return TimelineStackedActivityBar(
+        scaleMax: scaleMax,
+        onTimeHours: resolved.onTimeHours,
+        overdueHours: resolved.overdueHours,
+        seriouslyOverdueHours: resolved.seriouslyOverdueHours,
+        skippedHours: resolved.skippedHours,
       );
     }
 
@@ -610,103 +343,14 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
         (data.completedHours > 0 ||
             data.skippedHours > 0 ||
             data.missedHours > 0)) {
-      double onTimeHours = data.completedOnTimeHours;
-      double overdueHours = data.completedOverdueHours;
-      double seriouslyOverdueHours = data.completedSeriouslyOverdueHours;
-      double skippedHours = data.skippedHours + data.missedHours;
-      double plannedHours = data.plannedHours;
-
-      final totalActivity =
-          onTimeHours +
-          overdueHours +
-          seriouslyOverdueHours +
-          skippedHours +
-          plannedHours;
-      if (totalActivity <= 0) return const SizedBox.shrink();
-
-      final double fillHeight = (totalActivity / scaleMax * 120.0).clamp(
-        8.0,
-        120.0,
-      );
-
-      final Color plannedColor = isOverCapacity
-          ? theme.colorScheme.error
-          : isOverridden
-          ? theme.colorScheme.tertiary
-          : theme.colorScheme.primary;
-
-      return Container(
-        height: fillHeight,
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Column(
-            children: [
-              if (plannedHours > 0)
-                Expanded(
-                  flex: (plannedHours * 1000).round().clamp(1, 1000000),
-                  child: Container(color: plannedColor.withValues(alpha: 0.5)),
-                ),
-              if (skippedHours > 0)
-                Expanded(
-                  flex: (skippedHours * 1000).round().clamp(1, 1000000),
-                  child: CustomPaint(
-                    painter: HatchedPatternPainter(
-                      backgroundColor: theme.colorScheme.error.withValues(
-                        alpha: 0.15,
-                      ),
-                      stripeColor: theme.colorScheme.error,
-                      stripeWidth: 2.0,
-                      gap: 3.0,
-                    ),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              if (seriouslyOverdueHours > 0)
-                Expanded(
-                  flex: (seriouslyOverdueHours * 1000).round().clamp(
-                    1,
-                    1000000,
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.red.shade700, Colors.red.shade600],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
-                ),
-              if (overdueHours > 0)
-                Expanded(
-                  flex: (overdueHours * 1000).round().clamp(1, 1000000),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.amber.shade700, Colors.amber.shade600],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
-                ),
-              if (onTimeHours > 0)
-                Expanded(
-                  flex: (onTimeHours * 1000).round().clamp(1, 1000000),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.green.shade600, Colors.green.shade500],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      return TimelineStackedActivityBar(
+        scaleMax: scaleMax,
+        onTimeHours: data.completedOnTimeHours,
+        overdueHours: data.completedOverdueHours,
+        seriouslyOverdueHours: data.completedSeriouslyOverdueHours,
+        skippedHours: data.skippedHours + data.missedHours,
+        plannedHours: data.plannedHours,
+        plannedColor: plannedColor,
       );
     }
 
@@ -721,12 +365,6 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
 
     if (fillHeight <= 0) return const SizedBox.shrink();
 
-    final Color plannedColor = isOverCapacity
-        ? theme.colorScheme.error
-        : isOverridden
-        ? theme.colorScheme.tertiary
-        : theme.colorScheme.primary;
-
     return Container(
       height: fillHeight,
       margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -735,109 +373,5 @@ class _WeeklyCapacityChartState extends State<WeeklyCapacityChart> {
         borderRadius: BorderRadius.circular(6),
       ),
     );
-  }
-}
-
-class HatchedPatternPainter extends CustomPainter {
-  final Color backgroundColor;
-  final Color stripeColor;
-  final double stripeWidth;
-  final double gap;
-
-  const HatchedPatternPainter({
-    required this.backgroundColor,
-    required this.stripeColor,
-    this.stripeWidth = 2.0,
-    this.gap = 3.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) return;
-
-    final bgPaint = Paint()..color = backgroundColor;
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    final stripePaint = Paint()
-      ..color = stripeColor
-      ..strokeWidth = stripeWidth
-      ..style = PaintingStyle.stroke;
-
-    final step = stripeWidth + gap;
-    final total = size.width + size.height;
-    for (double offset = -size.height; offset < total; offset += step) {
-      canvas.drawLine(
-        Offset(offset, size.height),
-        Offset(offset + size.height, 0),
-        stripePaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant HatchedPatternPainter oldDelegate) {
-    return oldDelegate.backgroundColor != backgroundColor ||
-        oldDelegate.stripeColor != stripeColor ||
-        oldDelegate.stripeWidth != stripeWidth ||
-        oldDelegate.gap != gap;
-  }
-}
-
-class DashedRectPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-  final double gap;
-  final double dashLength;
-  final double borderRadius;
-
-  DashedRectPainter({
-    required this.color,
-    this.strokeWidth = 1.0,
-    this.gap = 4.0,
-    this.dashLength = 4.0,
-    this.borderRadius = 6.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, 0, size.width, size.height),
-          Radius.circular(borderRadius),
-        ),
-      );
-
-    final dashPath = Path();
-    for (final PathMetric metric in path.computeMetrics()) {
-      double distance = 0.0;
-      while (distance < metric.length) {
-        final double length = dashLength;
-        dashPath.addPath(
-          metric.extractPath(
-            distance,
-            (distance + length).clamp(0.0, metric.length),
-          ),
-          Offset.zero,
-        );
-        distance += length + gap;
-      }
-    }
-
-    canvas.drawPath(dashPath, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant DashedRectPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.strokeWidth != strokeWidth ||
-        oldDelegate.gap != gap ||
-        oldDelegate.dashLength != dashLength ||
-        oldDelegate.borderRadius != borderRadius;
   }
 }

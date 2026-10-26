@@ -8,6 +8,7 @@ import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/app_clock.dart';
+import 'playground_fake_task_repository.dart';
 import 'task_widget.dart';
 
 class BasicTaskCompletionTab extends StatefulWidget {
@@ -20,15 +21,16 @@ class BasicTaskCompletionTab extends StatefulWidget {
 class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
   late List<TaskSchedule> _tasks;
   late List<TaskInstance> _instances;
-  late FakeTaskRepository _fakeRepository;
+  late PlaygroundFakeTaskRepository _fakeRepository;
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _fakeRepository = FakeTaskRepository(
+    _fakeRepository = PlaygroundFakeTaskRepository(
+      userId: 'practice_user',
       onComplete: _handleComplete,
-      onDelete: _handleDelete,
+      onDeleteSchedule: _handleDelete,
       onUndo: _handleUndo,
     );
   }
@@ -234,60 +236,4 @@ class _BasicTaskCompletionTabState extends State<BasicTaskCompletionTab> {
       ),
     );
   }
-}
-
-class FakeTaskRepository implements TaskRepository {
-  @override
-  final String userId = 'practice_user';
-
-  final void Function(String) onComplete;
-  final void Function(String) onDelete;
-  final void Function(TaskInstance) onUndo;
-
-  FakeTaskRepository({
-    required this.onComplete,
-    required this.onDelete,
-    required this.onUndo,
-  });
-
-  @override
-  Future<TaskInstance?> completeTaskInstance(String id) async {
-    onComplete(id);
-    return null;
-  }
-
-  @override
-  Future<({TaskSchedule task, List<TaskInstance> pendingInstances})?>
-  deleteTaskSchedule(String id) async {
-    onDelete(id);
-    return null;
-  }
-
-  @override
-  Future<void> restoreTaskSchedule(
-    TaskSchedule task,
-    List<TaskInstance> pendingInstances,
-  ) async {
-    // No-op for practice
-  }
-
-  @override
-  Future<TaskInstance?> dismissTaskInstance(String id) async {
-    onComplete(id);
-    return null;
-  }
-
-  @override
-  Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {
-    // Restore the pending version of the instance to the list
-    final pending = resolvedInstance.copyWith(
-      status: TaskStatus.pending,
-      clearCompletedByUserId: true,
-      clearCompletedAt: true,
-    );
-    onUndo(pending);
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
