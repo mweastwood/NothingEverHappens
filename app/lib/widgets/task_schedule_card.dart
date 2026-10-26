@@ -7,15 +7,15 @@ import '../logic/family_repository.dart';
 import '../logic/label_repository.dart';
 import '../logic/task_label.dart';
 import '../logic/l10n_extension.dart';
-import '../logic/relative_time.dart';
 import '../logic/task_repository.dart';
 import '../logic/task_schedule.dart';
 import '../logic/undo_notifier.dart';
-import '../logic/user_profile_provider.dart';
 import '../logic/user_settings_repository.dart';
 import '../screens/create_task_screen.dart';
 import 'markdown_styles.dart';
+import 'task_badges.dart';
 import 'task_hero_stripe.dart';
+import 'task_schedule_rule_row.dart';
 import 'undo_snackbar.dart';
 
 class TaskScheduleCard extends ConsumerWidget {
@@ -54,54 +54,6 @@ class TaskScheduleCard extends ConsumerWidget {
     }
   }
 
-  Widget _buildBadge(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isDark ? 0.15 : 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: isDark ? 0.4 : 0.25),
-          width: 1,
-        ),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth <= 0) {
-            return const SizedBox.shrink();
-          }
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (constraints.maxWidth >= 16) ...[
-                Icon(icon, size: 12, color: color),
-                const SizedBox(width: 4),
-              ],
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
   List<TaskLabel> _resolveLabels(WidgetRef ref) {
     if (labels != null) {
       return labels!;
@@ -118,193 +70,14 @@ class TaskScheduleCard extends ConsumerWidget {
     if (labels.isEmpty) return const <Widget>[];
     return labels
         .map(
-          (label) => _buildBadge(
-            context,
+          (label) => TaskBadge(
             icon: LabelIcons.getIcon(label.iconKey),
             label: label.name,
             color: LabelPalette.getColor(label.colorKey, context),
+            fontSize: 11,
           ),
         )
         .toList();
-  }
-
-  String _getRecurrenceRuleTypeName(
-    BuildContext context,
-    TaskScheduleRule? schedule,
-  ) {
-    if (schedule == null) return '';
-    if (schedule is DailySchedule) return context.l10n.dailyLabel;
-    if (schedule is WeeklySchedule) return context.l10n.weeklyLabel;
-    if (schedule is MonthlySchedule) return context.l10n.monthlyLabel;
-    if (schedule is YearlySchedule) return context.l10n.yearlyLabel;
-    return context.l10n.oneOffLabel;
-  }
-
-  String _formatRelativeTime(BuildContext context, RelativeTime rt) {
-    final formattedTime = rt.time.format(context);
-    if (rt.dayOffset > 0) {
-      return '$formattedTime (+${rt.dayOffset})';
-    } else if (rt.dayOffset < 0) {
-      return '$formattedTime (${rt.dayOffset})';
-    }
-    return formattedTime;
-  }
-
-  ({String interval, String days, String start}) _getRecurrenceRuleDetails(
-    BuildContext context,
-    TaskScheduleRule? schedule,
-  ) {
-    if (schedule == null) return (interval: '', days: '', start: '');
-
-    String intervalStr = '';
-    String startStr = '';
-    String daysStr = '';
-    final isCompletionRelative =
-        schedule.schedulingPolicy is CompletionRelativePolicy;
-
-    if (schedule is OneOffSchedule) {
-      final dateStr =
-          '${schedule.date.year}-${schedule.date.month.toString().padLeft(2, '0')}-${schedule.date.day.toString().padLeft(2, '0')}';
-      intervalStr = context.l10n.oneOffLabel;
-      startStr = context.l10n.startingDate(dateStr);
-    } else if (schedule is DailySchedule) {
-      final ds = schedule;
-      intervalStr = ds.interval == 1
-          ? context.l10n.everyDay
-          : context.l10n.everyNDays(ds.interval);
-      final dateStr =
-          '${ds.startDate.year}-${ds.startDate.month.toString().padLeft(2, '0')}-${ds.startDate.day.toString().padLeft(2, '0')}';
-      startStr = context.l10n.startingDate(dateStr);
-    } else if (schedule is WeeklySchedule) {
-      final ws = schedule;
-      intervalStr = ws.interval == 1
-          ? context.l10n.everyWeek
-          : context.l10n.everyNWeeks(ws.interval);
-      final dateStr =
-          '${ws.startDate.year}-${ws.startDate.month.toString().padLeft(2, '0')}-${ws.startDate.day.toString().padLeft(2, '0')}';
-      startStr = context.l10n.startingDate(dateStr);
-
-      if (!isCompletionRelative) {
-        final dayNames = {
-          1: context.l10n.weekdayShortMonday,
-          2: context.l10n.weekdayShortTuesday,
-          3: context.l10n.weekdayShortWednesday,
-          4: context.l10n.weekdayShortThursday,
-          5: context.l10n.weekdayShortFriday,
-          6: context.l10n.weekdayShortSaturday,
-          7: context.l10n.weekdayShortSunday,
-        };
-        final selectedDays = ws.daysOfWeek.toList()..sort();
-        final joinedDays = selectedDays
-            .map((d) => dayNames[d] ?? '')
-            .join(', ');
-        daysStr = context.l10n.onDaysOfWeek(joinedDays);
-      }
-    } else if (schedule is MonthlySchedule) {
-      final ms = schedule;
-      intervalStr = ms.interval == 1
-          ? context.l10n.everyMonth
-          : context.l10n.everyNMonths(ms.interval);
-      final dateStr =
-          '${ms.startDate.year}-${ms.startDate.month.toString().padLeft(2, '0')}-${ms.startDate.day.toString().padLeft(2, '0')}';
-      startStr = context.l10n.startingDate(dateStr);
-
-      if (!isCompletionRelative) {
-        if (ms.dayOfMonth != null) {
-          if (ms.dayOfMonth! > 0) {
-            daysStr = context.l10n.dayOfMonthOnDay(ms.dayOfMonth!);
-          } else {
-            daysStr = context.l10n.dayOfMonthFromEnd(ms.dayOfMonth!.abs());
-          }
-        } else {
-          final occurrenceNames = {
-            1: context.l10n.firstOccurrence,
-            2: context.l10n.secondOccurrence,
-            3: context.l10n.thirdOccurrence,
-            4: context.l10n.fourthOccurrence,
-            -1: context.l10n.lastOccurrence,
-          };
-          final dayOfWeekNames = {
-            1: context.l10n.weekdayMonday,
-            2: context.l10n.weekdayTuesday,
-            3: context.l10n.weekdayWednesday,
-            4: context.l10n.weekdayThursday,
-            5: context.l10n.weekdayFriday,
-            6: context.l10n.weekdaySaturday,
-            7: context.l10n.weekdaySunday,
-          };
-          final occStr = occurrenceNames[ms.occurrence] ?? '';
-          final dowStr = dayOfWeekNames[ms.dayOfWeek] ?? '';
-          daysStr = context.l10n.nthDayOfWeekOccurrence(occStr, dowStr);
-        }
-      }
-    } else if (schedule is YearlySchedule) {
-      final ys = schedule;
-      intervalStr = ys.interval == 1
-          ? context.l10n.everyYear
-          : context.l10n.everyNYears(ys.interval);
-      final dateStr =
-          '${ys.startDate.year}-${ys.startDate.month.toString().padLeft(2, '0')}-${ys.startDate.day.toString().padLeft(2, '0')}';
-      startStr = context.l10n.startingDate(dateStr);
-
-      if (!isCompletionRelative) {
-        final monthNames = {
-          1: context.l10n.monthJanuary,
-          2: context.l10n.monthFebruary,
-          3: context.l10n.monthMarch,
-          4: context.l10n.monthApril,
-          5: context.l10n.monthMay,
-          6: context.l10n.monthJune,
-          7: context.l10n.monthJuly,
-          8: context.l10n.monthAugust,
-          9: context.l10n.monthSeptember,
-          10: context.l10n.monthOctober,
-          11: context.l10n.monthNovember,
-          12: context.l10n.monthDecember,
-        };
-        final mStr = monthNames[ys.month] ?? '';
-        daysStr = context.l10n.yearlyOn(mStr, ys.day);
-      }
-    }
-
-    return (interval: intervalStr, days: daysStr, start: startStr);
-  }
-
-  String _getMissedPolicyString(BuildContext context, TaskScheduleRule rule) {
-    if (rule is OneOffSchedule) return '';
-    final policy = rule.missedOccurrencePolicy;
-    switch (policy.policy) {
-      case MissedPolicy.preferNewer:
-        return context.l10n.preferNewerTitle;
-      case MissedPolicy.preferOlder:
-        return context.l10n.preferOlderTitle;
-      case MissedPolicy.stack:
-        return context.l10n.stackPolicyTitle;
-      case MissedPolicy.autoDismiss:
-        final minutes = policy.gracePeriod.inMinutes;
-        if (minutes == 0) {
-          return '${context.l10n.autoDismissPolicyTitle} (${context.l10n.immediatelyPolicy})';
-        } else if (minutes == 60) {
-          return '${context.l10n.autoDismissPolicyTitle} (${context.l10n.oneHourPolicy})';
-        } else if (minutes == 6 * 60) {
-          return '${context.l10n.autoDismissPolicyTitle} (${context.l10n.sixHoursPolicy})';
-        } else if (minutes == 12 * 60) {
-          return '${context.l10n.autoDismissPolicyTitle} (${context.l10n.twelveHoursPolicy})';
-        } else if (minutes == 24 * 60) {
-          return '${context.l10n.autoDismissPolicyTitle} (${context.l10n.twentyFourHoursPolicy})';
-        } else if (minutes % (7 * 24 * 60) == 0) {
-          final weeks = minutes ~/ (7 * 24 * 60);
-          return '${context.l10n.autoDismissPolicyTitle} ($weeks ${context.l10n.unitWeeks})';
-        } else if (minutes % (24 * 60) == 0) {
-          final days = minutes ~/ (24 * 60);
-          return '${context.l10n.autoDismissPolicyTitle} ($days ${context.l10n.unitDays})';
-        } else if (minutes % 60 == 0) {
-          final hours = minutes ~/ 60;
-          return '${context.l10n.autoDismissPolicyTitle} ($hours ${context.l10n.unitHours})';
-        } else {
-          return '${context.l10n.autoDismissPolicyTitle} ($minutes ${context.l10n.unitMinutes})';
-        }
-    }
   }
 
   void _confirmDelete(
@@ -492,33 +265,25 @@ class TaskScheduleCard extends ConsumerWidget {
                       runSpacing: 6.0,
                       children: [
                         if (task.isFamily)
-                          _buildBadge(
-                            context,
+                          TaskBadge(
                             icon: Icons.people_alt,
                             label: context.l10n.familyTab,
                             color: theme.colorScheme.primary,
+                            fontSize: 11,
                           ),
                         if (task.isFamily &&
                             task.familyCompletionMode ==
                                 FamilyCompletionMode.individual)
-                          _buildBadge(
-                            context,
+                          TaskBadge(
                             icon: Icons.checklist,
                             label: context.l10n.completionModeIndividualLabel,
                             color: theme.colorScheme.primary,
+                            fontSize: 11,
                           ),
                         if (task.isFamily && task.assignedUserId != null)
-                          _buildBadge(
-                            context,
-                            icon: Icons.assignment_ind,
-                            label: ref
-                                .watch(userNameProvider(task.assignedUserId!))
-                                .when(
-                                  data: (name) => context.l10n.assignedTo(name),
-                                  loading: () => context.l10n.loadingBadge,
-                                  error: (_, _) => context.l10n.assignedBadge,
-                                ),
-                            color: theme.colorScheme.primary,
+                          TaskAssigneeBadge(
+                            userId: task.assignedUserId!,
+                            fontSize: 11,
                           ),
                         ..._buildLabelBadges(context, resolvedLabels),
                       ],
@@ -586,7 +351,7 @@ class TaskScheduleCard extends ConsumerWidget {
                 for (int idx = 0; idx < task.schedules.length; idx++) ...[
                   if (idx > 0)
                     const Divider(height: 1, indent: 12, endIndent: 12),
-                  _buildScheduleRuleRow(context, theme, task.schedules[idx]),
+                  TaskScheduleRuleRow(rule: task.schedules[idx]),
                 ],
               ],
             ),
@@ -601,137 +366,6 @@ class TaskScheduleCard extends ConsumerWidget {
               ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildScheduleRuleRow(
-    BuildContext context,
-    ThemeData theme,
-    TaskScheduleRule rule,
-  ) {
-    final parts = _getRecurrenceRuleDetails(context, rule);
-
-    String freqText = _getRecurrenceRuleTypeName(context, rule);
-    int interval = 1;
-    if (rule is DailySchedule) {
-      interval = rule.interval;
-    } else if (rule is WeeklySchedule) {
-      interval = rule.interval;
-    } else if (rule is MonthlySchedule) {
-      interval = rule.interval;
-    } else if (rule is YearlySchedule) {
-      interval = rule.interval;
-    }
-    if (interval > 1) {
-      freqText = '$freqText (${parts.interval})';
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Column 1
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  freqText,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (parts.days.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    parts.days,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Column 2
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(
-                      rule.schedulingPolicy is CompletionRelativePolicy
-                          ? Icons.sync
-                          : Icons.calendar_today,
-                      size: 14,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        rule.schedulingPolicy is CompletionRelativePolicy
-                            ? context.l10n.completionRelativeLabel
-                            : context.l10n.fixedCalendarLabel,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (rule is! OneOffSchedule &&
-                    rule.schedulingPolicy is! CompletionRelativePolicy) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.assignment_late_outlined,
-                        size: 14,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          _getMissedPolicyString(context, rule),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 14,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        '${_formatRelativeTime(context, rule.startRelativeTime)} -- ${_formatRelativeTime(context, rule.dueRelativeTime)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
