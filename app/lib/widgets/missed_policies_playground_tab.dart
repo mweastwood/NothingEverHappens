@@ -9,8 +9,9 @@ import '../logic/task_repository.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/scheduler_engine.dart';
 import '../logic/app_clock.dart';
-import 'task_widget.dart';
 import 'missed_occurrence_policy_selector.dart';
+import 'playground_fake_task_repository.dart';
+import 'task_widget.dart';
 
 enum SimulationPreset { daily, weekly }
 
@@ -30,16 +31,16 @@ class _MissedPoliciesPlaygroundTabState
   late TaskSchedule _taskSchedule;
   late List<TaskInstance> _taskInstances;
   late List<String> _historyLog;
-  late FakeTaskRepository _fakeRepository;
+  late PlaygroundFakeTaskRepository _fakeRepository;
 
   @override
   void initState() {
     super.initState();
     _preset = SimulationPreset.daily;
     _missedOccurrencePolicy = const MissedOccurrencePolicy.stack();
-    _fakeRepository = FakeTaskRepository(
+    _fakeRepository = PlaygroundFakeTaskRepository(
       onComplete: _handleCompleteTask,
-      onDelete: _handleDeleteTask,
+      onDismiss: _handleDeleteTask,
     );
     _reset();
   }
@@ -227,7 +228,11 @@ class _MissedPoliciesPlaygroundTabState
     _runEvaluation();
   }
 
-  Future<void> _handleCompleteTask(String instanceId) async {
+  Future<void> _resolveTaskInstance(
+    String instanceId, {
+    required TaskStatus status,
+    required String actionVerb,
+  }) async {
     if (!mounted) return;
     setState(() {
       int idx = _taskInstances.indexWhere((t) => t.id == instanceId);
@@ -240,38 +245,27 @@ class _MissedPoliciesPlaygroundTabState
       if (idx == -1) return;
       final taskInst = _taskInstances[idx];
       _taskInstances[idx] = taskInst.copyWith(
-        status: TaskStatus.completed,
+        status: status,
         completedAt: _simulatedNow,
       );
       _historyLog.add(
-        "${_formatDateTimeLog(_simulatedNow)}: Completed task scheduled for ${_formatDate(taskInst.scheduledDate)}.",
+        "${_formatDateTimeLog(_simulatedNow)}: $actionVerb task scheduled for ${_formatDate(taskInst.scheduledDate)}.",
       );
     });
     _runEvaluation();
   }
 
-  Future<void> _handleDeleteTask(String instanceId) async {
-    if (!mounted) return;
-    setState(() {
-      int idx = _taskInstances.indexWhere((t) => t.id == instanceId);
-      if (idx == -1) {
-        final stripped = instanceId.startsWith('I-')
-            ? instanceId.substring(2)
-            : instanceId;
-        idx = _taskInstances.indexWhere((t) => t.id == stripped);
-      }
-      if (idx == -1) return;
-      final taskInst = _taskInstances[idx];
-      _taskInstances[idx] = taskInst.copyWith(
-        status: TaskStatus.skipped,
-        completedAt: _simulatedNow,
-      );
-      _historyLog.add(
-        "${_formatDateTimeLog(_simulatedNow)}: Dismissed task scheduled for ${_formatDate(taskInst.scheduledDate)}.",
-      );
-    });
-    _runEvaluation();
-  }
+  Future<void> _handleCompleteTask(String instanceId) => _resolveTaskInstance(
+    instanceId,
+    status: TaskStatus.completed,
+    actionVerb: 'Completed',
+  );
+
+  Future<void> _handleDeleteTask(String instanceId) => _resolveTaskInstance(
+    instanceId,
+    status: TaskStatus.skipped,
+    actionVerb: 'Dismissed',
+  );
 
   String _formatDate(CivilDay day) {
     final l10n = context.l10n;
@@ -292,8 +286,15 @@ class _MissedPoliciesPlaygroundTabState
     return "${monthNames[day.month - 1]} ${day.day}";
   }
 
+  String _format12HourTime(DateTime dt) {
+    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $ampm';
+  }
+
   String _formatDateTimeLog(DateTime dt) {
-    final months = [
+    const months = [
       'Jan',
       'Feb',
       'Mar',
@@ -307,14 +308,11 @@ class _MissedPoliciesPlaygroundTabState
       'Nov',
       'Dec',
     ];
-    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
-    return "${months[dt.month - 1]} ${dt.day} @ $hour:$minute $ampm";
+    return "${months[dt.month - 1]} ${dt.day} @ ${_format12HourTime(dt)}";
   }
 
   String _formatDateTimeLabel(DateTime dt) {
-    final months = [
+    const months = [
       'January',
       'February',
       'March',
@@ -328,10 +326,7 @@ class _MissedPoliciesPlaygroundTabState
       'November',
       'December',
     ];
-    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
-    return "${months[dt.month - 1]} ${dt.day}, $hour:$minute $ampm";
+    return "${months[dt.month - 1]} ${dt.day}, ${_format12HourTime(dt)}";
   }
 
   String _getTipText() {
@@ -374,6 +369,28 @@ class _MissedPoliciesPlaygroundTabState
 **Try this:**
 1. Configured preset has a due time. Notice when you advance time past the task's due time + grace period, the task automatically expires and is marked as skipped in history, keeping your active list clean.""";
     }
+  }
+
+  Widget _buildAdvanceTimeButton(
+    ThemeData theme, {
+    required Duration duration,
+    required String label,
+  }) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        child: ElevatedButton.icon(
+          onPressed: () => _advanceTime(duration),
+          icon: const Icon(Icons.fast_forward, size: 16),
+          label: Text(label),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: theme.colorScheme.primaryContainer,
+            foregroundColor: theme.colorScheme.onPrimaryContainer,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -502,71 +519,20 @@ class _MissedPoliciesPlaygroundTabState
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4.0,
-                            ),
-                            child: ElevatedButton.icon(
-                              onPressed: () =>
-                                  _advanceTime(const Duration(hours: 1)),
-                              icon: const Icon(Icons.fast_forward, size: 16),
-                              label: Text(l10n.simulationOneHour),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    theme.colorScheme.primaryContainer,
-                                foregroundColor:
-                                    theme.colorScheme.onPrimaryContainer,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                              ),
-                            ),
-                          ),
+                        _buildAdvanceTimeButton(
+                          theme,
+                          duration: const Duration(hours: 1),
+                          label: l10n.simulationOneHour,
                         ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4.0,
-                            ),
-                            child: ElevatedButton.icon(
-                              onPressed: () =>
-                                  _advanceTime(const Duration(hours: 6)),
-                              icon: const Icon(Icons.fast_forward, size: 16),
-                              label: Text(l10n.simulationSixHours),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    theme.colorScheme.primaryContainer,
-                                foregroundColor:
-                                    theme.colorScheme.onPrimaryContainer,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                              ),
-                            ),
-                          ),
+                        _buildAdvanceTimeButton(
+                          theme,
+                          duration: const Duration(hours: 6),
+                          label: l10n.simulationSixHours,
                         ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4.0,
-                            ),
-                            child: ElevatedButton.icon(
-                              onPressed: () =>
-                                  _advanceTime(const Duration(hours: 24)),
-                              icon: const Icon(Icons.fast_forward, size: 16),
-                              label: Text(l10n.simulationTwentyFourHours),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    theme.colorScheme.primaryContainer,
-                                foregroundColor:
-                                    theme.colorScheme.onPrimaryContainer,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                              ),
-                            ),
-                          ),
+                        _buildAdvanceTimeButton(
+                          theme,
+                          duration: const Duration(hours: 24),
+                          label: l10n.simulationTwentyFourHours,
                         ),
                       ],
                     ),
@@ -666,44 +632,4 @@ class _MissedPoliciesPlaygroundTabState
       ),
     );
   }
-}
-
-class FakeTaskRepository implements TaskRepository {
-  @override
-  final String userId = 'playground_user';
-
-  final Future<void> Function(String) onComplete;
-  final Future<void> Function(String) onDelete;
-
-  FakeTaskRepository({required this.onComplete, required this.onDelete});
-
-  @override
-  Future<TaskInstance?> completeTaskInstance(String id) async {
-    await onComplete(id);
-    return null;
-  }
-
-  @override
-  Future<({TaskSchedule task, List<TaskInstance> pendingInstances})?>
-  deleteTaskSchedule(String id) async {
-    return null;
-  }
-
-  @override
-  Future<void> restoreTaskSchedule(
-    TaskSchedule task,
-    List<TaskInstance> pendingInstances,
-  ) async {}
-
-  @override
-  Future<TaskInstance?> dismissTaskInstance(String id) async {
-    await onDelete(id);
-    return null;
-  }
-
-  @override
-  Future<void> undoResolveTaskInstance(TaskInstance resolvedInstance) async {}
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
