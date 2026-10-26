@@ -9,6 +9,7 @@ import '../logic/label_repository.dart';
 import '../logic/task_label.dart';
 import '../logic/utils/layout_breakpoints.dart';
 import '../widgets/label_edit_dialog.dart';
+import '../widgets/label_item_card.dart';
 import 'family_screen.dart';
 
 class LabelsScreen extends ConsumerStatefulWidget {
@@ -33,23 +34,9 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
     );
   }
 
-  Future<void> _onReorderPersonal(
-    List<TaskLabel> currentLabels,
-    int oldIndex,
-    int newIndex,
-  ) async {
-    final reordered = List<TaskLabel>.from(currentLabels);
-    final item = reordered.removeAt(oldIndex);
-    reordered.insert(newIndex, item);
-
+  Future<void> _runWithErrorDialog(Future<void> Function() action) async {
     try {
-      final userId = ref.read(authStateProvider).value?.uid ?? '';
-      if (userId.isEmpty) {
-        throw StateError('User is not authenticated');
-      }
-      await ref
-          .read(labelRepositoryProvider)
-          .reorderPersonalLabels(userId, reordered);
+      await action();
     } catch (e, stackTrace) {
       if (mounted) {
         final errorHandler = ref.read(errorHandlerProvider);
@@ -59,16 +46,40 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
     }
   }
 
+  Future<void> _reorderLabels(
+    List<TaskLabel> currentLabels,
+    int oldIndex,
+    int newIndex,
+    Future<void> Function(List<TaskLabel> reordered) onPersist,
+  ) {
+    final reordered = List<TaskLabel>.from(currentLabels);
+    final item = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, item);
+    return _runWithErrorDialog(() => onPersist(reordered));
+  }
+
+  Future<void> _onReorderPersonal(
+    List<TaskLabel> currentLabels,
+    int oldIndex,
+    int newIndex,
+  ) {
+    return _reorderLabels(currentLabels, oldIndex, newIndex, (reordered) async {
+      final userId = ref.read(authStateProvider).value?.uid ?? '';
+      if (userId.isEmpty) {
+        throw StateError('User is not authenticated');
+      }
+      await ref
+          .read(labelRepositoryProvider)
+          .reorderPersonalLabels(userId, reordered);
+    });
+  }
+
   Future<void> _onReorderFamily(
     List<TaskLabel> currentLabels,
     int oldIndex,
     int newIndex,
-  ) async {
-    final reordered = List<TaskLabel>.from(currentLabels);
-    final item = reordered.removeAt(oldIndex);
-    reordered.insert(newIndex, item);
-
-    try {
+  ) {
+    return _reorderLabels(currentLabels, oldIndex, newIndex, (reordered) async {
       final familyProfile = ref.read(familyProfileStreamProvider).value;
       final familyId = familyProfile?.familyId ?? '';
       if (familyId.isEmpty) {
@@ -77,13 +88,7 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
       await ref
           .read(labelRepositoryProvider)
           .reorderFamilyLabels(familyId, reordered);
-    } catch (e, stackTrace) {
-      if (mounted) {
-        final errorHandler = ref.read(errorHandlerProvider);
-        final report = errorHandler.report(e, stackTrace: stackTrace);
-        errorHandler.showErrorDialog(context, report);
-      }
-    }
+    });
   }
 
   Future<void> _confirmDelete(TaskLabel label) async {
@@ -109,7 +114,7 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
     );
 
     if (confirmed == true && mounted) {
-      try {
+      await _runWithErrorDialog(() async {
         final repo = ref.read(labelRepositoryProvider);
         if (label.scope == TaskLabelScope.personal) {
           final userId = ref.read(authStateProvider).value?.uid ?? '';
@@ -125,13 +130,7 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
           }
           await repo.deleteFamilyLabel(familyId, label.id);
         }
-      } catch (e, stackTrace) {
-        if (mounted) {
-          final errorHandler = ref.read(errorHandlerProvider);
-          final report = errorHandler.report(e, stackTrace: stackTrace);
-          errorHandler.showErrorDialog(context, report);
-        }
-      }
+      });
     }
   }
 
@@ -194,33 +193,32 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
     );
   }
 
-  Widget _buildPersonalSection(
-    BuildContext context,
-    AsyncValue<List<TaskLabel>> personalLabelsAsync, {
-    required bool isScrollable,
+  Widget _buildSectionHeader(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    Key? addButtonKey,
+    VoidCallback? onAdd,
   }) {
-    final header = Padding(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
         children: [
-          Icon(
-            Icons.person_outline,
-            size: 26,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+          Icon(icon, size: 26, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  context.l10n.personalLabelsSection,
+                  title,
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  context.l10n.personalLabelsSubtitle,
+                  subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -228,60 +226,116 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
               ],
             ),
           ),
-          FilledButton.tonalIcon(
-            key: const Key('add_personal_label_button'),
-            onPressed: () => _openEditDialog(
-              context,
-              scope: TaskLabelScope.personal,
-              nextOrder: personalLabelsAsync.value?.length ?? 0,
+          if (onAdd != null)
+            FilledButton.tonalIcon(
+              key: addButtonKey,
+              onPressed: onAdd,
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(context.l10n.addLabelButton),
             ),
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(context.l10n.addLabelButton),
-          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyStateCard(BuildContext context, String message) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Card(
+        elevation: 0,
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.label_off_outlined,
+                  size: 40,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _wrapSection({
+    required Widget header,
+    required Widget content,
+    required bool isScrollable,
+  }) {
+    if (isScrollable) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          const Divider(height: 1, thickness: 1),
+          Expanded(child: content),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [header, content],
+    );
+  }
+
+  Widget _buildLabelItem(
+    BuildContext context, {
+    required TaskLabel label,
+    int? index,
+    required bool canEdit,
+  }) {
+    return LabelItemCard(
+      key: ValueKey(label.id),
+      label: label,
+      index: index,
+      canEdit: canEdit,
+      onEdit: () =>
+          _openEditDialog(context, existingLabel: label, scope: label.scope),
+      onDelete: () => _confirmDelete(label),
+    );
+  }
+
+  Widget _buildPersonalSection(
+    BuildContext context,
+    AsyncValue<List<TaskLabel>> personalLabelsAsync, {
+    required bool isScrollable,
+  }) {
+    final header = _buildSectionHeader(
+      context,
+      icon: Icons.person_outline,
+      title: context.l10n.personalLabelsSection,
+      subtitle: context.l10n.personalLabelsSubtitle,
+      addButtonKey: const Key('add_personal_label_button'),
+      onAdd: () => _openEditDialog(
+        context,
+        scope: TaskLabelScope.personal,
+        nextOrder: personalLabelsAsync.value?.length ?? 0,
       ),
     );
 
     final content = personalLabelsAsync.when(
       data: (labels) {
         if (labels.isEmpty) {
-          final emptyCard = Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Card(
-              elevation: 0,
-              color: Theme.of(
-                context,
-              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 32.0,
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.label_off_outlined,
-                        size: 40,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        context.l10n.noPersonalLabels,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          final emptyCard = _buildEmptyStateCard(
+            context,
+            context.l10n.noPersonalLabels,
           );
           return isScrollable
               ? SingleChildScrollView(child: emptyCard)
@@ -296,15 +350,12 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
           itemCount: labels.length,
           onReorderItem: (oldIndex, newIndex) =>
               _onReorderPersonal(labels, oldIndex, newIndex),
-          itemBuilder: (context, index) {
-            final label = labels[index];
-            return _buildLabelCard(
-              context,
-              label: label,
-              index: index,
-              canEdit: true,
-            );
-          },
+          itemBuilder: (context, index) => _buildLabelItem(
+            context,
+            label: labels[index],
+            index: index,
+            canEdit: true,
+          ),
         );
       },
       loading: () => const Center(
@@ -321,21 +372,11 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
       ),
     );
 
-    if (isScrollable) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          header,
-          const Divider(height: 1, thickness: 1),
-          Expanded(child: content),
-        ],
-      );
-    } else {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [header, content],
-      );
-    }
+    return _wrapSection(
+      header: header,
+      content: content,
+      isScrollable: isScrollable,
+    );
   }
 
   Widget _buildFamilySection(
@@ -345,48 +386,19 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
     required bool isParent,
     required bool isScrollable,
   }) {
-    final header = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(
-            Icons.people_outline,
-            size: 26,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.familyLabelsSection,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  context.l10n.familyLabelsSubtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (inFamily && isParent)
-            FilledButton.tonalIcon(
-              key: const Key('add_family_label_button'),
-              onPressed: () => _openEditDialog(
-                context,
-                scope: TaskLabelScope.family,
-                nextOrder: familyLabelsAsync.value?.length ?? 0,
-              ),
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(context.l10n.addLabelButton),
-            ),
-        ],
-      ),
+    final header = _buildSectionHeader(
+      context,
+      icon: Icons.people_outline,
+      title: context.l10n.familyLabelsSection,
+      subtitle: context.l10n.familyLabelsSubtitle,
+      addButtonKey: const Key('add_family_label_button'),
+      onAdd: (inFamily && isParent)
+          ? () => _openEditDialog(
+              context,
+              scope: TaskLabelScope.family,
+              nextOrder: familyLabelsAsync.value?.length ?? 0,
+            )
+          : null,
     );
 
     Widget content;
@@ -485,47 +497,11 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
           }
 
           if (labels.isEmpty) {
-            final emptyCard = Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(
-                elevation: 0,
-                color: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 32.0,
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.label_off_outlined,
-                          size: 40,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          isParent
-                              ? context.l10n.noFamilyLabels
-                              : context.l10n.noFamilyLabelsNonParent,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            final emptyCard = _buildEmptyStateCard(
+              context,
+              isParent
+                  ? context.l10n.noFamilyLabels
+                  : context.l10n.noFamilyLabelsNonParent,
             );
             final emptyContent = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -550,15 +526,12 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
                   itemCount: labels.length,
                   onReorderItem: (oldIndex, newIndex) =>
                       _onReorderFamily(labels, oldIndex, newIndex),
-                  itemBuilder: (context, index) {
-                    final label = labels[index];
-                    return _buildLabelCard(
-                      context,
-                      label: label,
-                      index: index,
-                      canEdit: true,
-                    );
-                  },
+                  itemBuilder: (context, index) => _buildLabelItem(
+                    context,
+                    label: labels[index],
+                    index: index,
+                    canEdit: true,
+                  ),
                 )
               : ListView.builder(
                   shrinkWrap: !isScrollable,
@@ -570,30 +543,20 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
                     vertical: 8.0,
                   ),
                   itemCount: labels.length,
-                  itemBuilder: (context, index) {
-                    final label = labels[index];
-                    return _buildLabelCard(
-                      context,
-                      label: label,
-                      canEdit: false,
-                    );
-                  },
+                  itemBuilder: (context, index) => _buildLabelItem(
+                    context,
+                    label: labels[index],
+                    canEdit: false,
+                  ),
                 );
 
-          if (isScrollable) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ?banner,
-                Expanded(child: listView),
-              ],
-            );
-          } else {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [?banner, listView],
-            );
-          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ?banner,
+              if (isScrollable) Expanded(child: listView) else listView,
+            ],
+          );
         },
         loading: () => const Center(
           child: Padding(
@@ -610,94 +573,10 @@ class _LabelsScreenState extends ConsumerState<LabelsScreen> {
       );
     }
 
-    if (isScrollable) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          header,
-          const Divider(height: 1, thickness: 1),
-          Expanded(child: content),
-        ],
-      );
-    } else {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [header, content],
-      );
-    }
-  }
-
-  Widget _buildLabelCard(
-    BuildContext context, {
-    required TaskLabel label,
-    int? index,
-    required bool canEdit,
-  }) {
-    final color = LabelPalette.getColor(label.colorKey, context);
-    final icon = LabelIcons.getIcon(label.iconKey);
-
-    return Card(
-      key: Key('label_item_${label.id}'),
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 8.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: Theme.of(
-            context,
-          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
-            border: Border.all(color: color.withValues(alpha: 0.4)),
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        title: Text(
-          label.name,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        trailing: canEdit
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    key: Key('edit_label_${label.id}'),
-                    icon: const Icon(Icons.edit_outlined),
-                    tooltip: context.l10n.editButton,
-                    onPressed: () => _openEditDialog(
-                      context,
-                      existingLabel: label,
-                      scope: label.scope,
-                    ),
-                  ),
-                  IconButton(
-                    key: Key('delete_label_${label.id}'),
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: context.l10n.deleteButton,
-                    onPressed: () => _confirmDelete(label),
-                  ),
-                  if (index != null)
-                    ReorderableDragStartListener(
-                      index: index,
-                      child: IconButton(
-                        key: Key('drag_handle_${label.id}'),
-                        icon: const Icon(Icons.drag_handle),
-                        onPressed: null,
-                      ),
-                    ),
-                ],
-              )
-            : null,
-      ),
+    return _wrapSection(
+      header: header,
+      content: content,
+      isScrollable: isScrollable,
     );
   }
 }

@@ -4,15 +4,13 @@ import '../logic/family.dart';
 import '../logic/family_repository.dart';
 import '../logic/error_handler.dart';
 import '../logic/l10n_extension.dart';
-import '../widgets/family_invite_card.dart';
-import '../widgets/family_outstanding_invite_tile.dart';
-import '../widgets/family_member_tile.dart';
 import '../widgets/subscription_paywall_widget.dart';
 import '../widgets/app_snackbar.dart';
 import '../logic/subscription_service.dart';
 import '../widgets/family/create_family_dialog.dart';
 import '../widgets/family/invite_member_dialog.dart';
 import '../widgets/family/change_family_role_dialog.dart';
+import '../widgets/family/family_screen_sections.dart';
 import 'subscription_screen.dart';
 
 class FamilyScreen extends ConsumerStatefulWidget {
@@ -32,129 +30,20 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     );
   }
 
-  Future<void> _createFamily(FamilyRepository repository) async {
-    final name = await CreateFamilyDialog.show(context);
-
-    if (name != null && mounted) {
-      setState(() {
-        _isProcessing = true;
-      });
-      try {
-        await repository.createFamily(name);
-      } catch (e, stackTrace) {
-        if (mounted) {
-          final errorHandler = ref.read(errorHandlerProvider);
-          final report = errorHandler.report(e, stackTrace: stackTrace);
-          errorHandler.showErrorDialog(context, report);
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isProcessing = false;
-          });
-        }
-      }
-    }
-  }
-
-  Future<void> _inviteMember(FamilyRepository repository, Family family) async {
-    final result = await InviteMemberDialog.show(context);
-
-    if (result != null && mounted) {
-      setState(() {
-        _isProcessing = true;
-      });
-      try {
-        await repository.inviteMember(
-          familyId: family.id,
-          familyName: family.name,
-          toEmail: result.email,
-          role: result.role,
-        );
-        if (mounted) {
-          AppSnackBar.show(
-            context,
-            content: Text(context.l10n.inviteSentSuccess),
-          );
-        }
-      } catch (e, stackTrace) {
-        if (mounted) {
-          final errorHandler = ref.read(errorHandlerProvider);
-          final report = errorHandler.report(e, stackTrace: stackTrace);
-          errorHandler.showErrorDialog(context, report);
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isProcessing = false;
-          });
-        }
-      }
-    }
-  }
-
-  Future<void> _leaveFamily(
-    FamilyRepository repository,
-    String familyId,
-  ) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.leaveFamilyConfirmTitle),
-        content: Text(context.l10n.leaveFamilyConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.cancelButton),
-          ),
-          ElevatedButton(
-            key: const Key('confirm_leave_family_button'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.leaveFamilyButton),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true && mounted) {
-      setState(() {
-        _isProcessing = true;
-      });
-      try {
-        await repository.leaveFamily(familyId);
-      } catch (e, stackTrace) {
-        if (mounted) {
-          final errorHandler = ref.read(errorHandlerProvider);
-          final report = errorHandler.report(e, stackTrace: stackTrace);
-          errorHandler.showErrorDialog(context, report);
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isProcessing = false;
-          });
-        }
-      }
-    }
-  }
-
-  Future<void> _handleInvite(
-    FamilyRepository repository,
-    FamilyInvite invite,
-    bool accept,
-  ) async {
+  Future<void> _runProcessingAction(
+    Future<void> Function() action, {
+    String? Function()? successMessage,
+  }) async {
     setState(() {
       _isProcessing = true;
     });
     try {
-      if (accept) {
-        await repository.acceptInvite(invite);
-      } else {
-        await repository.declineInvite(invite);
+      await action();
+      if (mounted && successMessage != null) {
+        final msg = successMessage();
+        if (msg != null) {
+          AppSnackBar.show(context, content: Text(msg));
+        }
       }
     } catch (e, stackTrace) {
       if (mounted) {
@@ -171,58 +60,102 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     }
   }
 
-  Future<void> _revokeInvite(
-    FamilyRepository repository,
-    FamilyInvite invite,
-  ) async {
-    final confirm = await showDialog<bool>(
+  Future<bool?> _showDestructiveConfirmDialog({
+    required String title,
+    required String content,
+    required Key confirmButtonKey,
+    required String confirmLabel,
+  }) {
+    return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(context.l10n.revokeInviteConfirmTitle),
-        content: Text(context.l10n.revokeInviteConfirmBody(invite.toEmail)),
+        title: Text(title),
+        content: Text(content),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(context.l10n.cancelButton),
           ),
           ElevatedButton(
-            key: const Key('confirm_revoke_invite_button'),
+            key: confirmButtonKey,
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.revokeInviteButton),
+            child: Text(confirmLabel),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _createFamily(FamilyRepository repository) async {
+    final name = await CreateFamilyDialog.show(context);
+    if (name != null && mounted) {
+      await _runProcessingAction(() => repository.createFamily(name));
+    }
+  }
+
+  Future<void> _inviteMember(FamilyRepository repository, Family family) async {
+    final result = await InviteMemberDialog.show(context);
+    if (result != null && mounted) {
+      await _runProcessingAction(
+        () => repository.inviteMember(
+          familyId: family.id,
+          familyName: family.name,
+          toEmail: result.email,
+          role: result.role,
+        ),
+        successMessage: () => context.l10n.inviteSentSuccess,
+      );
+    }
+  }
+
+  Future<void> _leaveFamily(
+    FamilyRepository repository,
+    String familyId,
+  ) async {
+    final confirm = await _showDestructiveConfirmDialog(
+      title: context.l10n.leaveFamilyConfirmTitle,
+      content: context.l10n.leaveFamilyConfirmBody,
+      confirmButtonKey: const Key('confirm_leave_family_button'),
+      confirmLabel: context.l10n.leaveFamilyButton,
+    );
 
     if (confirm == true && mounted) {
-      setState(() {
-        _isProcessing = true;
-      });
-      try {
-        await repository.revokeInvite(invite.id);
-        if (mounted) {
-          AppSnackBar.show(
-            context,
-            content: Text(context.l10n.inviteRevokedSuccess),
-          );
-        }
-      } catch (e, stackTrace) {
-        if (mounted) {
-          final errorHandler = ref.read(errorHandlerProvider);
-          final report = errorHandler.report(e, stackTrace: stackTrace);
-          errorHandler.showErrorDialog(context, report);
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isProcessing = false;
-          });
-        }
-      }
+      await _runProcessingAction(() => repository.leaveFamily(familyId));
+    }
+  }
+
+  Future<void> _handleInvite(
+    FamilyRepository repository,
+    FamilyInvite invite,
+    bool accept,
+  ) {
+    return _runProcessingAction(
+      () => accept
+          ? repository.acceptInvite(invite)
+          : repository.declineInvite(invite),
+    );
+  }
+
+  Future<void> _revokeInvite(
+    FamilyRepository repository,
+    FamilyInvite invite,
+  ) async {
+    final confirm = await _showDestructiveConfirmDialog(
+      title: context.l10n.revokeInviteConfirmTitle,
+      content: context.l10n.revokeInviteConfirmBody(invite.toEmail),
+      confirmButtonKey: const Key('confirm_revoke_invite_button'),
+      confirmLabel: context.l10n.revokeInviteButton,
+    );
+
+    if (confirm == true && mounted) {
+      await _runProcessingAction(
+        () => repository.revokeInvite(invite.id),
+        successMessage: () => context.l10n.inviteRevokedSuccess,
+      );
     }
   }
 
@@ -243,34 +176,15 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
     );
 
     if (newRole != null && newRole != member.role && mounted) {
-      setState(() {
-        _isProcessing = true;
-      });
-      try {
-        await repository.updateMemberRole(
+      await _runProcessingAction(
+        () => repository.updateMemberRole(
           familyId: family.id,
           memberUserId: member.userId,
           newRole: newRole,
-        );
-        if (mounted) {
-          AppSnackBar.show(
-            context,
-            content: Text(context.l10n.roleUpdatedSuccess(member.displayName)),
-          );
-        }
-      } catch (e, stackTrace) {
-        if (mounted) {
-          final errorHandler = ref.read(errorHandlerProvider);
-          final report = errorHandler.report(e, stackTrace: stackTrace);
-          errorHandler.showErrorDialog(context, report);
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isProcessing = false;
-          });
-        }
-      }
+        ),
+        successMessage: () =>
+            context.l10n.roleUpdatedSuccess(member.displayName),
+      );
     }
   }
 
@@ -307,11 +221,23 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
         final familyRole = profile?.familyRole ?? '';
 
         if (familyId.isNotEmpty) {
-          return _buildFamilyScreen(familyRepo, familyId, familyRole);
+          return FamilyMembersView(
+            familyId: familyId,
+            familyRole: familyRole,
+            onInviteMember: (family) => _inviteMember(familyRepo, family),
+            onChangeMemberRole: (family, member) =>
+                _changeMemberRole(familyRepo, family, member),
+            onRevokeInvite: (invite) => _revokeInvite(familyRepo, invite),
+            onLeaveFamily: (id) => _leaveFamily(familyRepo, id),
+          );
         }
 
         if (subscription.isFamilyPlan) {
-          return _buildNoFamilyScreen(familyRepo);
+          return NoFamilyView(
+            onCreateFamily: () => _createFamily(familyRepo),
+            onHandleInvite: (invite, accept) =>
+                _handleInvite(familyRepo, invite, accept),
+          );
         }
 
         final invitesAsync = ref.watch(pendingInvitesStreamProvider);
@@ -322,10 +248,13 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           data: (invites) {
             if (invites.isNotEmpty) {
-              return _buildPendingInvitesScreen(
-                familyRepo,
-                invites,
+              return PendingInvitesView(
+                invites: invites,
                 isFamilyPlan: false,
+                onHandleInvite: (invite, accept) =>
+                    _handleInvite(familyRepo, invite, accept),
+                onCreateFamily: () => _createFamily(familyRepo),
+                onViewSubscriptions: () => _navigateToSubscriptions(context),
               );
             }
 
@@ -337,382 +266,6 @@ class _FamilyScreenState extends ConsumerState<FamilyScreen> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildNoFamilyScreen(FamilyRepository repository) {
-    final pendingInvitesAsync = ref.watch(pendingInvitesStreamProvider);
-
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer.withValues(alpha: 0.4),
-                  Theme.of(
-                    context,
-                  ).colorScheme.secondaryContainer.withValues(alpha: 0.2),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.people_outline,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    context.l10n.familyScreenTitle,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    context.l10n.notInFamilyBody,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    key: const Key('create_family_button'),
-                    onPressed: () => _createFamily(repository),
-                    icon: const Icon(Icons.add),
-                    label: Text(context.l10n.createFamilyButton),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          context.l10n.pendingInvitesHeader,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        pendingInvitesAsync.when(
-          error: (error, stackTrace) =>
-              Text('${context.l10n.errorOccurred}: $error'),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          data: (invites) {
-            if (invites.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24.0),
-                child: Center(
-                  child: Text(
-                    context.l10n.noPendingInvites,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).disabledColor,
-                    ),
-                  ),
-                ),
-              );
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final invite in invites)
-                  FamilyInviteCard(
-                    invite: invite,
-                    onAccept: () => _handleInvite(repository, invite, true),
-                    onDecline: () => _handleInvite(repository, invite, false),
-                  ),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFamilyScreen(
-    FamilyRepository repository,
-    String familyId,
-    String familyRole,
-  ) {
-    final familyAsync = ref.watch(familyStreamProvider(familyId));
-
-    return familyAsync.when(
-      error: (error, stackTrace) =>
-          Center(child: Text('${context.l10n.errorOccurred}: $error')),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      data: (family) {
-        if (family == null) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    context.l10n.errorOccurred,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    key: const Key('leave_missing_family_button'),
-                    onPressed: () => _leaveFamily(repository, familyId),
-                    icon: const Icon(Icons.exit_to_app),
-                    label: Text(context.l10n.leaveFamilyButton),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        final isParent = familyRole == FamilyRole.parent.value;
-
-        return ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.secondary,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        family.name,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        context.l10n.familyMembersCount(family.members.length),
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onPrimary.withValues(alpha: 0.8),
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    context.l10n.membersHeader,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                if (isParent)
-                  TextButton.icon(
-                    key: const Key('invite_member_button'),
-                    onPressed: () => _inviteMember(repository, family),
-                    icon: const Icon(Icons.person_add),
-                    label: Text(context.l10n.inviteMemberButton),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ...family.members.values.map((member) {
-              return FamilyMemberTile(
-                member: member,
-                isCurrentParent: isParent,
-                onEditRole: isParent
-                    ? () => _changeMemberRole(repository, family, member)
-                    : null,
-              );
-            }),
-            if (isParent) ...[
-              const SizedBox(height: 24),
-              Text(
-                context.l10n.outstandingInvitesHeader,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              _buildOutstandingInvitesList(repository, familyId),
-            ],
-            const SizedBox(height: 32),
-            Center(
-              child: ElevatedButton.icon(
-                key: const Key('leave_family_button'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
-                  foregroundColor: Theme.of(
-                    context,
-                  ).colorScheme.onErrorContainer,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () => _leaveFamily(repository, family.id),
-                icon: const Icon(Icons.exit_to_app),
-                label: Text(context.l10n.leaveFamilyButton),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildOutstandingInvitesList(
-    FamilyRepository repository,
-    String familyId,
-  ) {
-    final outstandingAsync = ref.watch(
-      outstandingInvitesStreamProvider(familyId),
-    );
-
-    return outstandingAsync.when(
-      error: (error, stackTrace) =>
-          Text('${context.l10n.errorOccurred}: $error'),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      data: (invites) {
-        if (invites.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Center(
-              child: Text(
-                context.l10n.noOutstandingInvites,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).disabledColor,
-                ),
-              ),
-            ),
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final invite in invites)
-              FamilyOutstandingInviteTile(
-                invite: invite,
-                onRevoke: () => _revokeInvite(repository, invite),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildPendingInvitesScreen(
-    FamilyRepository repository,
-    List<FamilyInvite> invites, {
-    required bool isFamilyPlan,
-  }) {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        Text(
-          context.l10n.pendingInvitesHeader,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final invite in invites)
-              FamilyInviteCard(
-                invite: invite,
-                onAccept: () => _handleInvite(repository, invite, true),
-                onDecline: () => _handleInvite(repository, invite, false),
-              ),
-          ],
-        ),
-        if (isFamilyPlan) ...[
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            key: const Key('create_family_button'),
-            onPressed: () => _createFamily(repository),
-            icon: const Icon(Icons.add),
-            label: Text(context.l10n.createFamilyButton),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ] else ...[
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            key: const Key('view_subscriptions_button'),
-            onPressed: () => _navigateToSubscriptions(context),
-            icon: const Icon(Icons.star_outline),
-            label: const Text('View Subscriptions'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ],
-      ],
     );
   }
 }
