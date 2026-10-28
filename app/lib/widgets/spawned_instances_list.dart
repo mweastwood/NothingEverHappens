@@ -7,6 +7,11 @@ import '../logic/scheduler_engine.dart';
 import '../logic/l10n_extension.dart';
 import '../logic/user_settings_repository.dart';
 import '../logic/task_repository.dart';
+import 'occurrence_card.dart';
+
+export 'occurrence_card.dart' show FutureOccurrenceCard, PastOccurrenceCard;
+
+enum _OccurrenceSectionKind { past, current, future }
 
 class SpawnedInstancesList extends ConsumerStatefulWidget {
   final TaskSchedule task;
@@ -26,50 +31,11 @@ class SpawnedInstancesList extends ConsumerStatefulWidget {
   ConsumerState<SpawnedInstancesList> createState() =>
       _SpawnedInstancesListState();
 
-  static List<String> _getMonthNames(BuildContext context) {
-    final l10n = context.l10n;
-    return [
-      l10n.monthJanuary,
-      l10n.monthFebruary,
-      l10n.monthMarch,
-      l10n.monthApril,
-      l10n.monthMay,
-      l10n.monthJune,
-      l10n.monthJuly,
-      l10n.monthAugust,
-      l10n.monthSeptember,
-      l10n.monthOctober,
-      l10n.monthNovember,
-      l10n.monthDecember,
-    ];
-  }
+  static String formatCivilDay(BuildContext context, CivilDay day) =>
+      formatLocalizedCivilDay(context, day);
 
-  static List<String> _getWeekdayNames(BuildContext context) {
-    final l10n = context.l10n;
-    return [
-      l10n.weekdayMonday,
-      l10n.weekdayTuesday,
-      l10n.weekdayWednesday,
-      l10n.weekdayThursday,
-      l10n.weekdayFriday,
-      l10n.weekdaySaturday,
-      l10n.weekdaySunday,
-    ];
-  }
-
-  static String formatCivilDay(BuildContext context, CivilDay day) {
-    final dt = day.toDateTime();
-    final weekdayStr = _getWeekdayNames(context)[dt.weekday - 1];
-    final monthStr = _getMonthNames(context)[day.month - 1];
-    return '$weekdayStr, $monthStr ${day.day}, ${day.year}';
-  }
-
-  static String formatDateTime(BuildContext context, DateTime dt) {
-    final weekdayStr = _getWeekdayNames(context)[dt.weekday - 1];
-    final monthStr = _getMonthNames(context)[dt.month - 1];
-    final timeStr = TimeOfDay.fromDateTime(dt).format(context);
-    return '$weekdayStr, $monthStr ${dt.day}, ${dt.year} $timeStr';
-  }
+  static String formatDateTime(BuildContext context, DateTime dt) =>
+      formatLocalizedDateTime(context, dt);
 }
 
 class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
@@ -97,21 +63,17 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
     super.dispose();
   }
 
+  DateTime _startDateTime(TaskInstance inst) =>
+      inst.startRelativeTime.referenceTo(inst.scheduledDate);
+
   List<TaskInstance> _calculateFutureInstances(
     List<TaskInstance> currentInstances,
   ) {
-    final futureInstances = currentInstances.where((inst) {
-      final startDateTime = inst.startRelativeTime.referenceTo(
-        inst.scheduledDate,
-      );
-      return widget.now.isBefore(startDateTime);
-    }).toList();
-
-    futureInstances.sort((a, b) {
-      final startA = a.startRelativeTime.referenceTo(a.scheduledDate);
-      final startB = b.startRelativeTime.referenceTo(b.scheduledDate);
-      return startA.compareTo(startB);
-    });
+    final futureInstances =
+        currentInstances
+            .where((inst) => widget.now.isBefore(_startDateTime(inst)))
+            .toList()
+          ..sort((a, b) => _startDateTime(a).compareTo(_startDateTime(b)));
 
     if (futureInstances.length > 10) {
       return futureInstances.sublist(0, 10);
@@ -122,45 +84,25 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
   List<TaskInstance> _calculateCurrentInstances(
     List<TaskInstance> currentInstances,
   ) {
-    final activeInstances = currentInstances.where((inst) {
-      final startDateTime = inst.startRelativeTime.referenceTo(
-        inst.scheduledDate,
-      );
-      final hasAppeared = !widget.now.isBefore(startDateTime);
+    return currentInstances.where((inst) {
+      final hasAppeared = !widget.now.isBefore(_startDateTime(inst));
       final isUnresolved =
           inst.status != TaskStatus.completed &&
           inst.status != TaskStatus.skipped;
       return hasAppeared && isUnresolved;
-    }).toList();
-
-    activeInstances.sort((a, b) {
-      final startA = a.startRelativeTime.referenceTo(a.scheduledDate);
-      final startB = b.startRelativeTime.referenceTo(b.scheduledDate);
-      return startA.compareTo(startB);
-    });
-
-    return activeInstances;
+    }).toList()..sort((a, b) => _startDateTime(a).compareTo(_startDateTime(b)));
   }
 
   List<TaskInstance> _calculatePastInstances(
     List<TaskInstance> currentInstances,
   ) {
     final pastInstances = currentInstances.where((inst) {
-      final startDateTime = inst.startRelativeTime.referenceTo(
-        inst.scheduledDate,
-      );
-      final hasAppeared = !widget.now.isBefore(startDateTime);
+      final hasAppeared = !widget.now.isBefore(_startDateTime(inst));
       final isResolved =
           inst.status == TaskStatus.completed ||
           inst.status == TaskStatus.skipped;
       return hasAppeared && isResolved;
-    }).toList();
-
-    pastInstances.sort((a, b) {
-      final startA = a.startRelativeTime.referenceTo(a.scheduledDate);
-      final startB = b.startRelativeTime.referenceTo(b.scheduledDate);
-      return startB.compareTo(startA);
-    });
+    }).toList()..sort((a, b) => _startDateTime(b).compareTo(_startDateTime(a)));
 
     if (pastInstances.length > 10) {
       return pastInstances.sublist(0, 10);
@@ -261,7 +203,7 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
             title: context.l10n.pastTabLabel,
             instances: past,
             placeholder: context.l10n.noPastOccurrencesPlaceholder,
-            isPast: true,
+            kind: _OccurrenceSectionKind.past,
           ),
         ),
         const SizedBox(width: 16),
@@ -271,7 +213,7 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
             title: context.l10n.currentTabLabel,
             instances: current,
             placeholder: context.l10n.noCurrentOccurrencesPlaceholder,
-            isCurrent: true,
+            kind: _OccurrenceSectionKind.current,
           ),
         ),
         const SizedBox(width: 16),
@@ -281,7 +223,7 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
             title: context.l10n.futureTabLabel,
             instances: future,
             placeholder: context.l10n.noOccurrencesPlaceholder,
-            isFuture: true,
+            kind: _OccurrenceSectionKind.future,
           ),
         ),
       ],
@@ -317,28 +259,28 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
     List<TaskInstance> current,
     List<TaskInstance> future,
   ) {
-    final selectedIndex = _tabController.index;
-    if (selectedIndex == 0) {
-      return _buildInstancesList(
-        context,
-        instances: past,
-        placeholder: context.l10n.noPastOccurrencesPlaceholder,
-        isPast: true,
-      );
-    } else if (selectedIndex == 1) {
-      return _buildInstancesList(
-        context,
-        instances: current,
-        placeholder: context.l10n.noCurrentOccurrencesPlaceholder,
-        isCurrent: true,
-      );
-    } else {
-      return _buildInstancesList(
-        context,
-        instances: future,
-        placeholder: context.l10n.noOccurrencesPlaceholder,
-        isFuture: true,
-      );
+    switch (_tabController.index) {
+      case 0:
+        return _buildInstancesList(
+          context,
+          instances: past,
+          placeholder: context.l10n.noPastOccurrencesPlaceholder,
+          kind: _OccurrenceSectionKind.past,
+        );
+      case 1:
+        return _buildInstancesList(
+          context,
+          instances: current,
+          placeholder: context.l10n.noCurrentOccurrencesPlaceholder,
+          kind: _OccurrenceSectionKind.current,
+        );
+      default:
+        return _buildInstancesList(
+          context,
+          instances: future,
+          placeholder: context.l10n.noOccurrencesPlaceholder,
+          kind: _OccurrenceSectionKind.future,
+        );
     }
   }
 
@@ -347,9 +289,7 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
     required String title,
     required List<TaskInstance> instances,
     required String placeholder,
-    bool isPast = false,
-    bool isCurrent = false,
-    bool isFuture = false,
+    required _OccurrenceSectionKind kind,
   }) {
     final theme = Theme.of(context);
     return Column(
@@ -366,9 +306,7 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
           context,
           instances: instances,
           placeholder: placeholder,
-          isPast: isPast,
-          isCurrent: isCurrent,
-          isFuture: isFuture,
+          kind: kind,
         ),
       ],
     );
@@ -378,9 +316,7 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
     BuildContext context, {
     required List<TaskInstance> instances,
     required String placeholder,
-    bool isPast = false,
-    bool isCurrent = false,
-    bool isFuture = false,
+    required _OccurrenceSectionKind kind,
   }) {
     final theme = Theme.of(context);
     if (instances.isEmpty) {
@@ -400,202 +336,25 @@ class _SpawnedInstancesListState extends ConsumerState<SpawnedInstancesList>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (int index = 0; index < instances.length; index++)
-          if (isPast)
-            PastOccurrenceCard(
+          switch (kind) {
+            _OccurrenceSectionKind.past => PastOccurrenceCard(
               instance: instances[index],
               index: index,
               now: widget.now,
               keyPrefix: 'past',
-            )
-          else if (isCurrent)
-            PastOccurrenceCard(
+            ),
+            _OccurrenceSectionKind.current => PastOccurrenceCard(
               instance: instances[index],
               index: index,
               now: widget.now,
               keyPrefix: 'current',
-            )
-          else
-            FutureOccurrenceCard(instance: instances[index], index: index),
+            ),
+            _OccurrenceSectionKind.future => FutureOccurrenceCard(
+              instance: instances[index],
+              index: index,
+            ),
+          },
       ],
-    );
-  }
-}
-
-class FutureOccurrenceCard extends StatelessWidget {
-  final TaskInstance instance;
-  final int index;
-
-  const FutureOccurrenceCard({
-    super.key,
-    required this.instance,
-    required this.index,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final occurrence = instance.scheduledDate;
-    final startAbs = instance.startRelativeTime.referenceTo(occurrence);
-    final dueAbs = instance.dueRelativeTime.referenceTo(occurrence);
-
-    final detailsWidget = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Icon(Icons.visibility, size: 14, color: theme.colorScheme.primary),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                context.l10n.occurrenceAppears(
-                  SpawnedInstancesList.formatDateTime(context, startAbs),
-                ),
-                style: theme.textTheme.bodySmall,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Icon(Icons.alarm, size: 14, color: theme.colorScheme.error),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                context.l10n.occurrenceDue(
-                  SpawnedInstancesList.formatDateTime(context, dueAbs),
-                ),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-
-    return Card(
-      key: Key('spawned_occurrence_card_$index'),
-      margin: const EdgeInsets.only(bottom: 8.0),
-      elevation: 1,
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.primaryContainer,
-          child: Text(
-            '${index + 1}',
-            style: TextStyle(
-              color: theme.colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        title: Text(
-          SpawnedInstancesList.formatCivilDay(context, occurrence),
-          style: const TextStyle(fontWeight: FontWeight.w500),
-        ),
-        subtitle: detailsWidget,
-      ),
-    );
-  }
-}
-
-class PastOccurrenceCard extends StatelessWidget {
-  final TaskInstance instance;
-  final int index;
-  final DateTime now;
-  final String keyPrefix;
-
-  const PastOccurrenceCard({
-    super.key,
-    required this.instance,
-    required this.index,
-    required this.now,
-    this.keyPrefix = 'past',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final occurrence = instance.scheduledDate;
-    final dueAbs = instance.dueRelativeTime.referenceTo(occurrence);
-
-    final String statusText;
-    final IconData iconData;
-    final Color color;
-
-    if (instance.status == TaskStatus.completed) {
-      final formattedCompletedAt = instance.completedAt != null
-          ? SpawnedInstancesList.formatDateTime(
-              context,
-              instance.completedAt!.toLocal(),
-            )
-          : '';
-      statusText = context.l10n.occurrenceCompleted(formattedCompletedAt);
-      iconData = Icons.check_circle;
-      color = Colors.green;
-    } else if (instance.status == TaskStatus.skipped) {
-      statusText = context.l10n.occurrenceSkipped;
-      iconData = Icons.skip_next;
-      color = theme.colorScheme.onSurfaceVariant;
-    } else {
-      if (now.isBefore(dueAbs)) {
-        final formattedDueAbs = SpawnedInstancesList.formatDateTime(
-          context,
-          dueAbs,
-        );
-        statusText = context.l10n.occurrenceActive(formattedDueAbs);
-        iconData = Icons.play_circle_outline;
-        color = theme.colorScheme.primary;
-      } else {
-        final formattedDueAbs = SpawnedInstancesList.formatDateTime(
-          context,
-          dueAbs,
-        );
-        statusText = context.l10n.occurrenceMissed(formattedDueAbs);
-        iconData = Icons.alarm;
-        color = theme.colorScheme.error;
-      }
-    }
-
-    final detailsWidget = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Icon(iconData, size: 14, color: color),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                statusText,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-
-    return Card(
-      key: Key('${keyPrefix}_occurrence_card_$index'),
-      margin: const EdgeInsets.only(bottom: 8.0),
-      elevation: 1,
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.12),
-          child: Icon(iconData, color: color),
-        ),
-        title: Text(
-          SpawnedInstancesList.formatCivilDay(context, occurrence),
-          style: const TextStyle(fontWeight: FontWeight.w500),
-        ),
-        subtitle: detailsWidget,
-      ),
     );
   }
 }

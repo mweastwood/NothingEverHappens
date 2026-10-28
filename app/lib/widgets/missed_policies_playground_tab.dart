@@ -268,22 +268,7 @@ class _MissedPoliciesPlaygroundTabState
   );
 
   String _formatDate(CivilDay day) {
-    final l10n = context.l10n;
-    final monthNames = [
-      l10n.monthJanuary,
-      l10n.monthFebruary,
-      l10n.monthMarch,
-      l10n.monthApril,
-      l10n.monthMay,
-      l10n.monthJune,
-      l10n.monthJuly,
-      l10n.monthAugust,
-      l10n.monthSeptember,
-      l10n.monthOctober,
-      l10n.monthNovember,
-      l10n.monthDecember,
-    ];
-    return "${monthNames[day.month - 1]} ${day.day}";
+    return "${context.l10n.monthNames[day.month - 1]} ${day.day}";
   }
 
   String _format12HourTime(DateTime dt) {
