@@ -22,24 +22,6 @@ class MonthGrid extends StatelessWidget {
     required this.startDate,
   });
 
-  List<String> _getMonthNames(BuildContext context) {
-    final l10n = context.l10n;
-    return [
-      l10n.monthJanuary,
-      l10n.monthFebruary,
-      l10n.monthMarch,
-      l10n.monthApril,
-      l10n.monthMay,
-      l10n.monthJune,
-      l10n.monthJuly,
-      l10n.monthAugust,
-      l10n.monthSeptember,
-      l10n.monthOctober,
-      l10n.monthNovember,
-      l10n.monthDecember,
-    ];
-  }
-
   List<String> _getWeekdayHeaders(BuildContext context) {
     final l10n = context.l10n;
     return [
@@ -60,7 +42,7 @@ class MonthGrid extends StatelessWidget {
     final totalDays = DateTime.utc(year, month + 1, 0).day;
     final firstWeekday = firstDay.weekday; // 1 = Mon, 7 = Sun
 
-    final monthName = _getMonthNames(context)[month - 1];
+    final monthName = context.l10n.monthNames[month - 1];
     final weekdayLabels = _getWeekdayHeaders(context);
 
     return Container(
