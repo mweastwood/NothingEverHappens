@@ -1538,6 +1538,110 @@ void main() {
           expect(nextSpawned.lastModifiedByPlatform, equals('linux'));
         },
       );
+
+      test(
+        'respects lastSpawnedDate after history cleanup deletes old resolved instances for OneOff, FixedCalendar, and CompletionRelative rules',
+        () {
+          const engine = SchedulerEngine();
+          final evalNow = DateTime.utc(2026, 6, 15, 10, 0);
+
+          // 1. OneOffSchedule whose resolved instance was purged by 90-day history cleanup
+          final oneOffRule = OneOffSchedule(
+            id: 'R-oneoff',
+            scheduleId: 'S-oneoff',
+            date: const CivilDay(year: 2026, month: 1, day: 10),
+          );
+          final oneOffTask = TaskSchedule(
+            id: 'S-oneoff',
+            title: 'One-off Task',
+            description: '',
+            schedules: [oneOffRule],
+            lastSpawnedDate: const CivilDay(year: 2026, month: 1, day: 10),
+          );
+          final oneOffAction = engine.evaluate(oneOffTask, const [], evalNow);
+          expect(oneOffAction.instancesToSpawn, isEmpty);
+
+          // Also verify initial spawn of OneOffSchedule sets lastSpawnedDate on updatedSchedule
+          final freshOneOffTask = TaskSchedule(
+            id: 'S-oneoff-fresh',
+            title: 'Fresh One-off Task',
+            description: '',
+            schedules: [oneOffRule],
+          );
+          final freshOneOffAction = engine.evaluate(
+            freshOneOffTask,
+            const [],
+            evalNow,
+          );
+          expect(freshOneOffAction.instancesToSpawn, hasLength(1));
+          expect(
+            freshOneOffAction.updatedSchedule?.lastSpawnedDate,
+            equals(const CivilDay(year: 2026, month: 1, day: 10)),
+          );
+
+          // 2. FixedCalendarPolicy (MissedPolicy.stack) whose resolved instances up to March 1 were purged
+          final fixedRule = MonthlySchedule(
+            id: 'R-monthly',
+            scheduleId: 'S-monthly',
+            startDate: const CivilDay(year: 2026, month: 1, day: 1),
+            interval: 1,
+            dayOfMonth: 1,
+            missedOccurrencePolicy: const MissedOccurrencePolicy(
+              policy: MissedPolicy.stack,
+            ),
+          );
+          final fixedTask = TaskSchedule(
+            id: 'S-monthly',
+            title: 'Monthly Stack Task',
+            description: '',
+            schedules: [fixedRule],
+            lastSpawnedDate: const CivilDay(year: 2026, month: 3, day: 1),
+          );
+          final fixedAction = engine.evaluate(fixedTask, const [], evalNow);
+          final spawnedDates =
+              fixedAction.instancesToSpawn.map((i) => i.scheduledDate).toList();
+          // Should not resurrect Jan 1, Feb 1, or Mar 1; should start from Apr 1
+          expect(
+            spawnedDates,
+            isNot(contains(const CivilDay(year: 2026, month: 1, day: 1))),
+          );
+          expect(
+            spawnedDates,
+            isNot(contains(const CivilDay(year: 2026, month: 2, day: 1))),
+          );
+          expect(
+            spawnedDates,
+            isNot(contains(const CivilDay(year: 2026, month: 3, day: 1))),
+          );
+          expect(
+            spawnedDates.first,
+            equals(const CivilDay(year: 2026, month: 4, day: 1)),
+          );
+
+          // 3. CompletionRelativePolicy whose resolved instance on March 1 was purged, with 180-day interval
+          final crRule = DailySchedule(
+            id: 'R-cr',
+            scheduleId: 'S-cr',
+            startDate: const CivilDay(year: 2026, month: 1, day: 1),
+            interval: 180,
+            schedulingPolicy: const CompletionRelativePolicy(
+              interval: Duration(days: 180),
+              targetHour: 9,
+              targetMinute: 0,
+            ),
+          );
+          final crTask = TaskSchedule(
+            id: 'S-cr',
+            title: 'CR Long Interval Task',
+            description: '',
+            schedules: [crRule],
+            lastSpawnedDate: const CivilDay(year: 2026, month: 3, day: 1),
+          );
+          // At June 15 (106 days after March 1), 180 days have not elapsed yet, so it should NOT resurrect Jan 1
+          final crAction = engine.evaluate(crTask, const [], evalNow);
+          expect(crAction.instancesToSpawn, isEmpty);
+        },
+      );
     });
   });
 }
