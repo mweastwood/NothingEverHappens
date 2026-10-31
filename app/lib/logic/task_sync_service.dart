@@ -24,6 +24,12 @@ final taskSyncServiceProvider = Provider<TaskSyncService>((ref) {
   final user = ref.watch(authStateProvider).value;
   final subscriptionState = ref.watch(subscriptionServiceProvider);
 
+  if (subscriptionState.isResolved) {
+    unawaited(
+      localDataSource.setIsActivePremium(subscriptionState.isActivePremium),
+    );
+  }
+
   final service = TaskSyncService(
     firestore: firestore,
     localDataSource: localDataSource,
