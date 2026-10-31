@@ -3363,6 +3363,56 @@ void main() {
         expect(oct22Instances.first.id, equals('I-remote-oct22'));
       },
     );
+
+    test(
+      'completeTaskInstance for unassigned individual family task keeps status pending and records userId when family doc is missing or offline',
+      () async {
+        const familyId = 'fam-missing-offline';
+        const user1 = 'user1';
+
+        // User has a familyId, but the family document is missing / unavailable offline
+        await firestore.collection('users').doc(user1).set({
+          'familyId': familyId,
+        });
+
+        final task = TaskSchedule(
+          id: 'S-indiv-offline',
+          title: 'Daily Vitamin',
+          description: 'Everyone takes their vitamin',
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          schedules: [],
+        );
+        final instance = TaskInstance(
+          id: 'I-indiv-offline-1',
+          scheduleId: task.id,
+          ruleId: 'R-1',
+          title: task.title,
+          description: task.description,
+          scheduledDate: const CivilDay(year: 2026, month: 10, day: 25),
+          startRelativeTime: const RelativeTime(hour: 8, minute: 0),
+          dueRelativeTime: const RelativeTime(hour: 20, minute: 0),
+          isFamily: true,
+          familyCompletionMode: FamilyCompletionMode.individual,
+          status: TaskStatus.pending,
+        );
+
+        await localDataSource.saveTask(task);
+        await localDataSource.saveInstance(instance);
+
+        final result = await repository.completeTaskInstance(instance.id);
+        expect(result, isNotNull);
+        expect(result!.status, TaskStatus.pending);
+        expect(result.completedByUserIds, equals([user1]));
+
+        final savedInstance = localDataSource.getInstances().firstWhere(
+          (i) => i.id == instance.id,
+        );
+        expect(savedInstance.status, TaskStatus.pending);
+        expect(savedInstance.completedByUserIds, equals([user1]));
+        expect(localDataSource.getDirtyTaskIds(), contains(instance.id));
+      },
+    );
   });
 }
 
